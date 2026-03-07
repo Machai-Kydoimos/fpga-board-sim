@@ -6,16 +6,40 @@ Interactive FPGA board simulator with GHDL-backed VHDL simulation. Select from 7
 
 ### Prerequisites
 
-- **Python 3.12+** (standalone, not Windows Store — see setup below)
+- **Python 3.12+**
 - **GHDL** (VHDL simulator)
 
 ### Install GHDL
 
+**Windows:**
 ```powershell
 winget install ghdl.ghdl.ucrt64.mcode
 ```
 
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt install ghdl
+```
+
+**Linux (Fedora):**
+```bash
+sudo dnf install ghdl
+```
+
+**macOS:**
+```bash
+brew install ghdl
+```
+
 ### Set up Python environment
+
+**Linux / macOS:**
+```bash
+python3 -m venv .venv
+.venv/bin/pip install pygame cocotb find_libpython
+```
+
+**Windows:**
 
 The Windows Store Python is sandboxed and can't be embedded by GHDL. Use `uv` to install a standalone Python:
 
@@ -41,11 +65,16 @@ Create and populate the venv:
 
 ### Run
 
+**Linux / macOS:**
+```bash
+.venv/bin/python fpga_board.py
+```
+
+**Windows:**
 ```powershell
-# Ensure GHDL is on PATH
+# Ensure GHDL is on PATH (if not already after install)
 $env:PATH = "C:\Users\$env:USERNAME\AppData\Local\Microsoft\WinGet\Packages\ghdl.ghdl.ucrt64.mcode_Microsoft.Winget.Source_8wekyb3d8bbwe\bin;$env:PATH"
 
-# Launch
 .venv\Scripts\python fpga_board.py
 ```
 
@@ -162,9 +191,13 @@ A simple but complete VHDL design that exercises all board I/O:
   - Buttons OR directly → LEDs light immediately while held
 - **Generics**: `NUM_SWITCHES`, `NUM_BUTTONS`, `NUM_LEDS`, `COUNTER_BITS` are set by the simulator to match the selected board. `COUNTER_BITS=10` in simulation keeps the blink rate visible.
 
-### Windows VPI Setup (`sim_bridge.py`)
+### Platform-Specific VPI Setup (`sim_bridge.py`)
 
-Getting GHDL's VPI (Verilog Procedural Interface) to work with cocotb on Windows requires careful environment setup:
+Getting GHDL's VPI (Verilog Procedural Interface) to work with cocotb requires platform-aware environment setup. `_build_sim_env()` handles this automatically:
+
+**Linux:** Straightforward — GHDL and cocotb are typically system packages. The bridge sets `LD_LIBRARY_PATH` to include the cocotb shared libraries and GHDL lib directory.
+
+**Windows:** More complex due to DLL search semantics:
 
 - **`cocotbvpi_ghdl.dll`** depends on `gpi.dll`, `gpilog.dll` (cocotb internal), `libghdlvpi.dll` (GHDL's VPI library), and `python312.dll`
 - All DLL directories must be on `PATH` so Windows can resolve the dependency chain
@@ -172,10 +205,14 @@ Getting GHDL's VPI (Verilog Procedural Interface) to work with cocotb on Windows
 - `PYTHONPATH` includes the venv's `site-packages` so cocotb and project modules are importable
 - The Windows Store Python is sandboxed and **cannot** be embedded by external processes — a standalone Python (installed via `uv python install`) is required
 
-`_build_sim_env()` in `sim_bridge.py` assembles all of this automatically from the `.venv` directory.
-
 ## Running Tests
 
+**Linux / macOS:**
+```bash
+.venv/bin/python sim/run_tests.py
+```
+
+**Windows:**
 ```powershell
 $env:PATH = "C:\Users\$env:USERNAME\AppData\Local\Microsoft\WinGet\Packages\ghdl.ghdl.ucrt64.mcode_Microsoft.Winget.Source_8wekyb3d8bbwe\bin;$env:PATH"
 .venv\Scripts\python sim\run_tests.py
