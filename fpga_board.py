@@ -331,12 +331,14 @@ class FPGABoard:
         return False
 
     def run(self):
-        """Enter the main loop (blocking)."""
+        """Enter the main loop.  Returns 'back' if user pressed ESC."""
         self.running = True
+        self._go_back = False
         while self.running:
             self._handle_events()
             self._draw()
             self.clock.tick(60)
+        return "back" if self._go_back else "quit"
 
     # ── layout engine ────────────────────────────────────────────────
 
@@ -412,6 +414,10 @@ class FPGABoard:
             if event.type == pygame.QUIT:
                 self.running = False
 
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self._go_back = True
+                self.running = False
+
             elif event.type == pygame.VIDEORESIZE:
                 self.width, self.height = event.w, event.h
                 self.screen = pygame.display.set_mode(
@@ -470,18 +476,20 @@ def main():
         pygame.display.set_caption("FPGA Simulator")
         clock = pygame.time.Clock()
 
-        chosen = BoardSelector(boards, screen).run(clock)
-        if chosen is None:
-            pygame.quit()
-            return
+        while True:
+            chosen = BoardSelector(boards, screen).run(clock)
+            if chosen is None:
+                break
 
-        sim = FPGABoard(board_def=chosen, width=width, height=height)
+            sim = FPGABoard(board_def=chosen, width=width, height=height)
+            result = sim.run()
+            if result != "back":
+                break
     else:
         print("No amaranth-boards found; using generic board.")
         print("Run  git submodule update --init  to load board definitions.")
-        sim = FPGABoard(width=width, height=height)
+        FPGABoard(width=width, height=height).run()
 
-    sim.run()
     pygame.quit()
 
 
