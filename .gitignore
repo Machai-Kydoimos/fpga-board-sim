@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+*.xml
+work-obj*.cf
+e~*.exe

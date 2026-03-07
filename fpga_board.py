@@ -10,6 +10,7 @@ resources (names, pins, connectors) are reflected in the UI.
 import math
 import pygame
 import sys
+from pathlib import Path
 
 from board_loader import (
     discover_boards, get_default_boards_path, BoardDef, ComponentInfo,
@@ -331,13 +332,16 @@ class FPGABoard:
         return False
 
     def run(self):
-        """Enter the main loop.  Returns 'back' if user pressed ESC."""
+        """Enter the main loop.  Returns 'back' (ESC), 'simulate' (Enter), or 'quit'."""
         self.running = True
         self._go_back = False
+        self._simulate = False
         while self.running:
             self._handle_events()
             self._draw()
             self.clock.tick(60)
+        if self._simulate:
+            return "simulate"
         return "back" if self._go_back else "quit"
 
     # ── layout engine ────────────────────────────────────────────────
@@ -421,6 +425,10 @@ class FPGABoard:
                 self._go_back = True
                 self.running = False
 
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                self._simulate = True
+                self.running = False
+
             elif event.type == pygame.VIDEORESIZE:
                 self.width, self.height = event.w, event.h
                 self.screen = pygame.display.set_mode(
@@ -463,6 +471,121 @@ class FPGABoard:
         for sw in self.switches:
             sw.draw(self.screen, font)
 
+        # Navigation hint
+        hint_f = pygame.font.SysFont("consolas", 12)
+        hint = hint_f.render("ESC: back   ENTER: select VHDL file", True, (200, 200, 200))
+        self.screen.blit(hint, (self.width - hint.get_width() - 10, self.height - 20))
+
+        pygame.display.flip()
+
+
+# ── VHDL file picker ─────────────────────────────────────────────────
+
+class VHDLFilePicker:
+    """Simple file picker for .vhd/.vhdl files.  Returns path or None."""
+
+    def __init__(self, screen, start_dir=None):
+        self.screen = screen
+        self.width, self.height = screen.get_size()
+        self.scroll = 0
+        self.hovered = -1
+        self.row_h = 36
+        self.current_dir = Path(start_dir or Path.cwd())
+        self._scan()
+
+    def _scan(self):
+        """Refresh the file list for current_dir."""
+        self.entries = []
+        if self.current_dir.parent != self.current_dir:
+            self.entries.append(("..", self.current_dir.parent, True))
+        try:
+            for p in sorted(self.current_dir.iterdir()):
+                if p.name.startswith("."):
+                    continue
+                if p.is_dir():
+                    self.entries.append((p.name + "/", p, True))
+            for p in sorted(self.current_dir.iterdir()):
+                if p.suffix.lower() in (".vhd", ".vhdl"):
+                    self.entries.append((p.name, p, False))
+        except PermissionError:
+            pass
+
+    def run(self, clock):
+        while True:
+            for ev in pygame.event.get():
+                if ev.type == pygame.QUIT:
+                    return None
+                elif ev.type == pygame.VIDEORESIZE:
+                    self.width, self.height = ev.w, ev.h
+                    self.screen = pygame.display.set_mode(
+                        (self.width, self.height), pygame.RESIZABLE)
+                elif ev.type == pygame.MOUSEMOTION:
+                    self._hover(ev.pos)
+                elif ev.type == pygame.MOUSEBUTTONDOWN:
+                    if ev.button == 1:
+                        result = self._click()
+                        if result == "rescan":
+                            self.scroll = 0
+                            self.hovered = -1
+                            continue
+                        if result is not None:
+                            return result
+                    elif ev.button == 4:
+                        self.scroll = max(0, self.scroll - 30)
+                    elif ev.button == 5:
+                        self.scroll += 30
+                elif ev.type == pygame.KEYDOWN:
+                    if ev.key == pygame.K_ESCAPE:
+                        return None
+            self._draw()
+            clock.tick(30)
+
+    def _hover(self, pos):
+        hdr = 70
+        _, y = pos
+        if y < hdr:
+            self.hovered = -1
+            return
+        idx = (y - hdr + self.scroll) // self.row_h
+        self.hovered = idx if 0 <= idx < len(self.entries) else -1
+
+    def _click(self):
+        if 0 <= self.hovered < len(self.entries):
+            name, path, is_dir = self.entries[self.hovered]
+            if is_dir:
+                self.current_dir = path
+                self._scan()
+                return "rescan"
+            return str(path)
+        return None
+
+    def _draw(self):
+        self.screen.fill(SEL_BG)
+        title_f = pygame.font.SysFont("consolas", 20, bold=True)
+        path_f = pygame.font.SysFont("consolas", 12)
+        item_f = pygame.font.SysFont("consolas", 14)
+
+        hdr = 70
+
+        for i, (name, path, is_dir) in enumerate(self.entries):
+            y = hdr + i * self.row_h - self.scroll
+            if y + self.row_h < hdr or y > self.height:
+                continue
+            bg = SEL_HOVER if i == self.hovered else (
+                SEL_ROW_A if i % 2 == 0 else SEL_ROW_B)
+            pygame.draw.rect(self.screen, bg,
+                             (10, y, self.width - 20, self.row_h - 2))
+            colour = (180, 180, 255) if is_dir else (220, 255, 220)
+            nm = item_f.render(name, True, colour)
+            self.screen.blit(nm, (24, y + 8))
+
+        # Header
+        pygame.draw.rect(self.screen, SEL_BG, (0, 0, self.width, hdr))
+        title = title_f.render("Select VHDL File", True, WHITE)
+        self.screen.blit(title, (20, 10))
+        pd = path_f.render(str(self.current_dir), True, (150, 150, 150))
+        self.screen.blit(pd, (20, 40))
+
         pygame.display.flip()
 
 
@@ -474,24 +597,76 @@ def main():
 
     boards = discover_boards(get_default_boards_path())
 
-    if boards:
-        screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
-        pygame.display.set_caption("FPGA Simulator")
-        clock = pygame.time.Clock()
-
-        while True:
-            chosen = BoardSelector(boards, screen).run(clock)
-            if chosen is None:
-                break
-
-            sim = FPGABoard(board_def=chosen, width=width, height=height)
-            result = sim.run()
-            if result != "back":
-                break
-    else:
+    if not boards:
         print("No amaranth-boards found; using generic board.")
         print("Run  git submodule update --init  to load board definitions.")
         FPGABoard(width=width, height=height).run()
+        pygame.quit()
+        return
+
+    screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+    pygame.display.set_caption("FPGA Simulator")
+    clock = pygame.time.Clock()
+
+    while True:
+        # ── Step 1: pick a board ─────────────────────────────────
+        chosen = BoardSelector(boards, screen).run(clock)
+        if chosen is None:
+            break
+
+        # ── Step 2: preview board ────────────────────────────────
+        # ESC → back to selector, Enter → pick VHDL, close → quit
+        preview = FPGABoard(board_def=chosen, width=width, height=height)
+        result = preview.run()
+        if result == "quit":
+            break
+        if result == "back":
+            continue
+
+        # result == "simulate" → proceed to VHDL file picker
+        # ── Step 3: pick VHDL file ───────────────────────────────
+        screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+        pygame.display.set_caption("FPGA Simulator – Select VHDL")
+        hdl_dir = Path(__file__).parent / "hdl"
+        vhdl_path = VHDLFilePicker(screen, start_dir=hdl_dir).run(clock)
+        if vhdl_path is None:
+            continue  # back to board selector
+
+        # ── Step 4: analyze VHDL ─────────────────────────────────
+        from sim_bridge import analyze_vhdl
+        ok, detail = analyze_vhdl(vhdl_path)
+        if not ok:
+            print(f"GHDL error: {detail}")
+            # TODO: show error in pygame UI
+            continue
+
+        # ── Step 5: launch simulation ────────────────────────────
+        pygame.quit()  # cocotb subprocess will start its own pygame
+
+        from sim_testbench import _board_to_json
+        from sim_bridge import launch_simulation
+
+        board_json = _board_to_json(chosen)
+        toplevel = Path(vhdl_path).stem  # assume entity name = filename
+
+        # Size generics to match board
+        generics = {
+            "NUM_SWITCHES": str(max(1, len(chosen.switches))),
+            "NUM_BUTTONS": str(max(1, len(chosen.buttons))),
+            "NUM_LEDS": str(max(1, len(chosen.leds))),
+            "COUNTER_BITS": "10",  # short for fast visible blinking
+        }
+
+        try:
+            launch_simulation(board_json, vhdl_path, toplevel, generics)
+        except Exception as e:
+            print(f"Simulation error: {e}")
+
+        # After simulation ends, re-init pygame and loop back
+        pygame.init()
+        screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+        clock = pygame.time.Clock()
+        continue
 
     pygame.quit()
 
