@@ -357,7 +357,7 @@ def load_board_from_source(source, filename="<string>"):
             continue
         if obj_name.startswith("_"):
             continue
-        if "Test" in obj_name:
+        if "Test" in obj_name and "Platform" not in obj_name:
             continue
         if all_names and obj_name not in all_names:
             continue
