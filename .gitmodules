@@ -1,0 +1,3 @@
+[submodule "amaranth-boards"]
+	path = amaranth-boards
+	url = https://github.com/amaranth-lang/amaranth-boards.git
