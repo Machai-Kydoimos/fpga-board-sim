@@ -1,0 +1,414 @@
+"""
+Board Loader – discovers and parses amaranth-boards definitions.
+
+Uses lightweight mock classes to evaluate board files without
+requiring the full amaranth toolchain.
+"""
+
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Mock amaranth.build classes (just enough to exec board files)
+# ═══════════════════════════════════════════════════════════════════════
+
+class _Attrs(dict):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class _Pins:
+    def __init__(self, names, *, dir="io", invert=False, conn=None, assert_width=None):
+        self.names = names.split() if isinstance(names, str) else list(names)
+        self.dir = dir
+        self.invert = invert
+        self.conn = conn
+
+
+class _PinsN(_Pins):
+    def __init__(self, names, **kwargs):
+        kwargs["invert"] = True
+        super().__init__(names, **kwargs)
+
+
+class _DiffPairs:
+    def __init__(self, p, n, *, dir="io", invert=False, conn=None, assert_width=None):
+        self.p = p.split() if isinstance(p, str) else list(p)
+        self.n = n.split() if isinstance(n, str) else list(n)
+        self.dir = dir
+
+
+class _Clock:
+    def __init__(self, freq):
+        self.freq = freq
+
+
+class _Subsignal:
+    def __init__(self, name, *ios, **kwargs):
+        self.name = name
+        self.ios = [io for io in ios if io is not None]
+
+
+class _Connector:
+    def __init__(self, name, number, pins="", **kwargs):
+        self.name = name
+        self.number = number
+        if isinstance(pins, str):
+            self.mapping = {}
+            for i, p in enumerate(pins.split()):
+                if p != "-":
+                    self.mapping[str(i)] = p
+        elif isinstance(pins, dict):
+            self.mapping = {str(k): v for k, v in pins.items()}
+        else:
+            self.mapping = {}
+
+
+class _Resource:
+    def __init__(self, name, number, *ios):
+        self.name = name
+        self.number = number
+        self.ios = []
+        self.attrs = _Attrs()
+        for io in ios:
+            if isinstance(io, _Attrs):
+                self.attrs = io
+            elif io is not None:
+                self.ios.append(io)
+
+    @classmethod
+    def family(cls, *args, default_name, ios, name_suffix=""):
+        # args is (number,) or (name, number) – mirrors the real amaranth API
+        if len(args) >= 2 and isinstance(args[0], str):
+            name, number = args[0], args[1]
+        elif len(args) >= 1:
+            name, number = default_name, args[0]
+        else:
+            name, number = default_name, 0
+        if name_suffix:
+            name = f"{name}_{name_suffix}"
+        return cls(name, number, *ios)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Resource helper functions (mirrors amaranth_boards/resources/)
+# ═══════════════════════════════════════════════════════════════════════
+
+def _split_resources(*args, pins, invert=False, conn=None, attrs=None,
+                     default_name, dir):
+    if isinstance(pins, str):
+        pins = pins.split()
+    if isinstance(pins, list):
+        pins = dict(enumerate(pins))
+    resources = []
+    for number, pin in pins.items():
+        ios = [_Pins(pin, dir=dir, invert=invert, conn=conn)]
+        if attrs is not None:
+            ios.append(attrs)
+        resources.append(
+            _Resource.family(*args, number, default_name=default_name, ios=ios))
+    return resources
+
+
+def _led_resources(*args, **kwargs):
+    return _split_resources(*args, **kwargs, default_name="led", dir="o")
+
+
+def _rgb_led_resource(*args, r, g, b, invert=False, conn=None, attrs=None):
+    ios = [
+        _Subsignal("r", _Pins(r, dir="o", invert=invert, conn=conn, assert_width=1)),
+        _Subsignal("g", _Pins(g, dir="o", invert=invert, conn=conn, assert_width=1)),
+        _Subsignal("b", _Pins(b, dir="o", invert=invert, conn=conn, assert_width=1)),
+    ]
+    if attrs is not None:
+        ios.append(attrs)
+    return _Resource.family(*args, default_name="rgb_led", ios=ios)
+
+
+def _button_resources(*args, **kwargs):
+    return _split_resources(*args, **kwargs, default_name="button", dir="i")
+
+
+def _switch_resources(*args, **kwargs):
+    return _split_resources(*args, **kwargs, default_name="switch", dir="i")
+
+
+def _stub_single(*args, **kwargs):
+    """Stub for single-resource helpers we don't simulate."""
+    return _Resource("_stub", 0)
+
+
+def _stub_multi(*args, **kwargs):
+    """Stub for multi-resource helpers we don't simulate."""
+    return [_Resource("_stub", 0)]
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Exec namespace
+# ═══════════════════════════════════════════════════════════════════════
+
+_PLATFORM_NAMES = [
+    "XilinxPlatform", "IntelPlatform",
+    "LatticeICE40Platform", "LatticeECP5Platform",
+    "LatticeMachXO2Platform", "LatticeMachXO3LPlatform",
+    "QuicklogicPlatform", "GowinPlatform",
+    "Xilinx7SeriesPlatform", "XilinxUltraScalePlatform",
+]
+
+
+def _make_namespace():
+    ns = {
+        # Core build DSL
+        "Resource":     _Resource,
+        "Subsignal":    _Subsignal,
+        "Pins":         _Pins,
+        "PinsN":        _PinsN,
+        "DiffPairs":    _DiffPairs,
+        "Attrs":        _Attrs,
+        "Clock":        _Clock,
+        "Connector":    _Connector,
+        # User resources (the ones we actually parse)
+        "LEDResources":     _led_resources,
+        "RGBLEDResource":   _rgb_led_resource,
+        "ButtonResources":  _button_resources,
+        "SwitchResources":  _switch_resources,
+        # Display stubs
+        "Display7SegResource": _stub_single,
+        "VGAResource":         _stub_single,
+        # Interface stubs
+        "UARTResource":      _stub_single,
+        "IrDAResource":      _stub_single,
+        "SPIResource":       _stub_single,
+        "I2CResource":       _stub_single,
+        "DirectUSBResource": _stub_single,
+        "ULPIResource":      _stub_single,
+        "PS2Resource":       _stub_single,
+        # Memory stubs
+        "SPIFlashResources":  _stub_multi,
+        "SDCardResources":    _stub_multi,
+        "SRAMResource":       _stub_single,
+        "SDRAMResource":      _stub_single,
+        "NORFlashResources":  _stub_multi,
+        "DDR3Resource":       _stub_single,
+        # Stdlib modules used by board files
+        "os":         __import__("os"),
+        "subprocess": __import__("subprocess"),
+        "unittest":   __import__("unittest"),
+        # Prevent __main__ guard from running
+        "__name__":     "_board_loader_exec",
+        "__builtins__": __builtins__,
+    }
+    for name in _PLATFORM_NAMES:
+        ns[name] = type(name, (), {"resources": [], "connectors": []})
+    return ns
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Data classes
+# ═══════════════════════════════════════════════════════════════════════
+
+@dataclass
+class ComponentInfo:
+    """Describes a single LED, button, or switch extracted from a board."""
+    kind: str           # "led", "button", or "switch"
+    name: str           # amaranth resource name, e.g. "led", "button_up", "rgb_led"
+    number: int         # resource index
+    pins: list = field(default_factory=list)
+    direction: str = ""
+    inverted: bool = False
+    connector: tuple = None
+    attrs: dict = field(default_factory=dict)
+
+    @property
+    def display_name(self) -> str:
+        """Short label for the UI, e.g. 'LED0', 'BTN2', 'UP0', 'RGB1'."""
+        prefixes = {"led": "LED", "button": "BTN", "switch": "SW"}
+        if self.name == self.kind:
+            return f"{prefixes.get(self.kind, self.kind.upper())}{self.number}"
+        suffix = self.name
+        if suffix.startswith(self.kind):
+            suffix = suffix[len(self.kind):]
+        suffix = suffix.lstrip("_")
+        if not suffix:
+            return f"{prefixes.get(self.kind, self.kind.upper())}{self.number}"
+        return f"{suffix.upper()}{self.number}"
+
+    @property
+    def connector_str(self) -> str:
+        """Human-readable pin/connector/attrs summary for callback printing."""
+        parts = []
+        if self.pins:
+            lbl = "Pins" if len(self.pins) > 1 else "Pin"
+            parts.append(f"{lbl}: {', '.join(self.pins)}")
+        if self.connector:
+            parts.append(f"Conn: {self.connector[0]}[{self.connector[1]}]")
+        for k, v in self.attrs.items():
+            parts.append(f"{k}={v}")
+        return " | ".join(parts) if parts else "no pin info"
+
+
+@dataclass
+class BoardDef:
+    """Parsed board definition with UI-relevant resources."""
+    name: str
+    class_name: str
+    leds: list = field(default_factory=list)
+    buttons: list = field(default_factory=list)
+    switches: list = field(default_factory=list)
+
+    @property
+    def summary(self) -> str:
+        return (f"{len(self.leds)} LEDs, "
+                f"{len(self.buttons)} buttons, "
+                f"{len(self.switches)} switches")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Extraction helpers
+# ═══════════════════════════════════════════════════════════════════════
+
+def _extract_pins(resource):
+    pins, direction, inverted, connector = [], "", False, None
+    for io in resource.ios:
+        if isinstance(io, _Pins):
+            pins.extend(io.names)
+            direction = io.dir
+            inverted = io.invert
+            connector = io.conn
+        elif isinstance(io, _Subsignal):
+            for sub in io.ios:
+                if isinstance(sub, _Pins):
+                    pins.extend(sub.names)
+                    if not direction:
+                        direction = sub.dir
+                    inverted = inverted or sub.invert
+                    if sub.conn:
+                        connector = sub.conn
+    return pins, direction, inverted, connector
+
+
+def _classify(resource):
+    """Return 'led', 'button', 'switch', or None."""
+    n = resource.name.lower()
+    if n == "_stub":
+        return None
+    if "led" in n:
+        return "led"
+    if "button" in n or n.startswith("btn"):
+        return "button"
+    if "switch" in n or n.startswith("sw"):
+        return "switch"
+    return None
+
+
+def _to_component(resource, kind):
+    pins, direction, inverted, connector = _extract_pins(resource)
+    return ComponentInfo(
+        kind=kind,
+        name=resource.name,
+        number=resource.number,
+        pins=pins,
+        direction=direction,
+        inverted=inverted,
+        connector=connector,
+        attrs=dict(resource.attrs),
+    )
+
+
+def _prettify_class_name(name):
+    """Convert 'ArtyA7_35Platform' → 'Arty A7-35'."""
+    name = re.sub(r"Platform$", "", name)
+    name = name.lstrip("_")
+    # Insert space between camelCase boundaries
+    name = re.sub(r"([a-z\d])([A-Z])", r"\1 \2", name)
+    name = name.replace("_", "-")
+    return name
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Public API
+# ═══════════════════════════════════════════════════════════════════════
+
+def load_board_from_source(source, filename="<string>"):
+    """Parse a single board file's source and return a list of BoardDefs."""
+    # Strip import statements – we inject everything via namespace
+    lines = source.split("\n")
+    cleaned = []
+    for line in lines:
+        s = line.strip()
+        if s.startswith(("import ", "from ")):
+            cleaned.append("")
+        else:
+            cleaned.append(line)
+
+    ns = _make_namespace()
+    try:
+        exec(compile("\n".join(cleaned), filename, "exec"), ns)
+    except Exception:
+        return []
+
+    all_names = ns.get("__all__")
+
+    boards = []
+    for obj_name, obj in list(ns.items()):
+        if not isinstance(obj, type):
+            continue
+        if obj_name.startswith("_"):
+            continue
+        if "Test" in obj_name:
+            continue
+        if all_names and obj_name not in all_names:
+            continue
+
+        resources = getattr(obj, "resources", None)
+        if not isinstance(resources, list) or not resources:
+            continue
+
+        leds, buttons, switches = [], [], []
+        for res in resources:
+            if not isinstance(res, _Resource):
+                continue
+            kind = _classify(res)
+            if kind == "led":
+                leds.append(_to_component(res, "led"))
+            elif kind == "button":
+                buttons.append(_to_component(res, "button"))
+            elif kind == "switch":
+                switches.append(_to_component(res, "switch"))
+
+        if not (leds or buttons or switches):
+            continue
+
+        boards.append(BoardDef(
+            name=_prettify_class_name(obj_name),
+            class_name=obj_name,
+            leds=leds,
+            buttons=buttons,
+            switches=switches,
+        ))
+
+    return boards
+
+
+def discover_boards(boards_dir):
+    """Scan a directory of board .py files and return all BoardDefs."""
+    boards_dir = Path(boards_dir)
+    if not boards_dir.is_dir():
+        return []
+    all_boards = []
+    for py_file in sorted(boards_dir.glob("*.py")):
+        if py_file.name.startswith("_"):
+            continue
+        try:
+            source = py_file.read_text(encoding="utf-8")
+            all_boards.extend(load_board_from_source(source, str(py_file)))
+        except Exception:
+            continue
+    return all_boards
+
+
+def get_default_boards_path():
+    """Path to amaranth_boards/ inside the git submodule."""
+    return Path(__file__).parent / "amaranth-boards" / "amaranth_boards"

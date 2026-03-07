@@ -2,12 +2,18 @@
 FPGA Board Simulator - Pygame-based graphical interface.
 
 Provides interactive switches, buttons, and LEDs that auto-arrange
-to fit the window. Supports resize and per-component callbacks.
+to fit the window.  When amaranth-boards definitions are available
+(git submodule), a board selector lets you pick a real board whose
+resources (names, pins, connectors) are reflected in the UI.
 """
 
 import math
 import pygame
 import sys
+
+from board_loader import (
+    discover_boards, get_default_boards_path, BoardDef, ComponentInfo,
+)
 
 # ── Colours ──────────────────────────────────────────────────────────
 BG_GREEN = (34, 139, 34)
@@ -20,6 +26,10 @@ DARK_GRAY = (80, 80, 80)
 YELLOW = (255, 230, 50)
 BLUE_ON = (80, 140, 255)
 BLUE_OFF = (40, 50, 80)
+SEL_BG = (30, 30, 40)
+SEL_ROW_A = (40, 40, 50)
+SEL_ROW_B = (35, 35, 45)
+SEL_HOVER = (50, 70, 50)
 
 
 # ── Component classes ────────────────────────────────────────────────
@@ -27,17 +37,21 @@ BLUE_OFF = (40, 50, 80)
 class LED:
     """A read-only indicator controlled via FPGABoard.set_led()."""
 
-    def __init__(self, index):
+    def __init__(self, index, info=None):
         self.index = index
+        self.info = info
         self.state = False
         self.rect = pygame.Rect(0, 0, 0, 0)
+
+    @property
+    def label(self):
+        return self.info.display_name if self.info else f"LED{self.index}"
 
     def draw(self, surface, font):
         cx, cy = self.rect.center
         r = max(4, min(self.rect.width, self.rect.height) // 2 - 2)
 
         if self.state:
-            # soft glow
             glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
             pygame.draw.circle(glow, (255, 40, 40, 50), (r * 2, r * 2), r * 2)
             surface.blit(glow, (cx - r * 2, cy - r * 2))
@@ -47,41 +61,42 @@ class LED:
 
         pygame.draw.circle(surface, WHITE, (cx, cy), r, 1)
 
-        label = font.render(str(self.index), True, WHITE)
-        surface.blit(label, label.get_rect(centerx=cx, top=self.rect.bottom + 1))
+        lbl = font.render(self.label, True, WHITE)
+        surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
 
 
 class Switch:
     """A toggle switch – clicks flip the state."""
 
-    def __init__(self, index):
+    def __init__(self, index, info=None):
         self.index = index
+        self.info = info
         self.state = False
         self.rect = pygame.Rect(0, 0, 0, 0)
         self.callback = None
+
+    @property
+    def label(self):
+        return self.info.display_name if self.info else f"SW{self.index}"
 
     def draw(self, surface, font):
         colour = BLUE_ON if self.state else BLUE_OFF
         pygame.draw.rect(surface, colour, self.rect, border_radius=4)
         pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=4)
 
-        # slider knob
         knob_h = self.rect.height // 2
-        if self.state:
-            knob_y = self.rect.y + 2
-        else:
-            knob_y = self.rect.bottom - knob_h - 2
+        knob_y = self.rect.y + 2 if self.state else self.rect.bottom - knob_h - 2
         knob = pygame.Rect(self.rect.x + 3, knob_y, self.rect.width - 6, knob_h)
         pygame.draw.rect(surface, WHITE if self.state else GRAY, knob, border_radius=3)
 
-        label = font.render(f"SW{self.index}", True, WHITE)
-        surface.blit(label, label.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
+        lbl = font.render(self.label, True, WHITE)
+        surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
 
     def handle_click(self, pos):
         if self.rect.collidepoint(pos):
             self.state = not self.state
             if self.callback:
-                self.callback(self.index, self.state)
+                self.callback(self.index, self.state, self.info)
             return True
         return False
 
@@ -89,11 +104,16 @@ class Switch:
 class Button:
     """A momentary push-button – pressed while the mouse is held down."""
 
-    def __init__(self, index):
+    def __init__(self, index, info=None):
         self.index = index
+        self.info = info
         self.pressed = False
         self.rect = pygame.Rect(0, 0, 0, 0)
         self.callback = None
+
+    @property
+    def label(self):
+        return self.info.display_name if self.info else f"BTN{self.index}"
 
     def draw(self, surface, font):
         if self.pressed:
@@ -103,14 +123,14 @@ class Button:
             pygame.draw.rect(surface, GRAY, self.rect, border_radius=6)
         pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=6)
 
-        label = font.render(f"BTN{self.index}", True, WHITE)
-        surface.blit(label, label.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
+        lbl = font.render(self.label, True, WHITE)
+        surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
 
     def handle_press(self, pos):
         if self.rect.collidepoint(pos):
             self.pressed = True
             if self.callback:
-                self.callback(self.index, True)
+                self.callback(self.index, True, self.info)
             return True
         return False
 
@@ -118,7 +138,117 @@ class Button:
         if self.pressed:
             self.pressed = False
             if self.callback:
-                self.callback(self.index, False)
+                self.callback(self.index, False, self.info)
+
+
+# ── Board selector ───────────────────────────────────────────────────
+
+class BoardSelector:
+    """Full-screen picker.  Returns the chosen BoardDef, or None on quit."""
+
+    def __init__(self, boards, screen):
+        self.boards = boards
+        self.screen = screen
+        self.width, self.height = screen.get_size()
+        self.scroll = 0
+        self.hovered = -1
+        self.row_h = 48
+        self.filter_text = ""
+
+    def _filtered(self):
+        if not self.filter_text:
+            return self.boards
+        ft = self.filter_text.lower()
+        return [b for b in self.boards
+                if ft in b.name.lower() or ft in b.class_name.lower()]
+
+    def run(self, clock):
+        while True:
+            for ev in pygame.event.get():
+                if ev.type == pygame.QUIT:
+                    return None
+                elif ev.type == pygame.VIDEORESIZE:
+                    self.width, self.height = ev.w, ev.h
+                    self.screen = pygame.display.set_mode(
+                        (self.width, self.height), pygame.RESIZABLE)
+                elif ev.type == pygame.MOUSEMOTION:
+                    self._hover(ev.pos)
+                elif ev.type == pygame.MOUSEBUTTONDOWN:
+                    if ev.button == 1:
+                        result = self._click(ev.pos)
+                        if result is not None:
+                            return result
+                    elif ev.button == 4:
+                        self.scroll = max(0, self.scroll - 30)
+                    elif ev.button == 5:
+                        self.scroll += 30
+                elif ev.type == pygame.KEYDOWN:
+                    if ev.key == pygame.K_ESCAPE:
+                        return None
+                    elif ev.key == pygame.K_BACKSPACE:
+                        self.filter_text = self.filter_text[:-1]
+                        self.scroll = 0
+                    elif ev.unicode and ev.unicode.isprintable():
+                        self.filter_text += ev.unicode
+                        self.scroll = 0
+
+            self._draw()
+            clock.tick(30)
+
+    def _hover(self, pos):
+        hdr = 80
+        _, y = pos
+        if y < hdr:
+            self.hovered = -1
+            return
+        idx = (y - hdr + self.scroll) // self.row_h
+        f = self._filtered()
+        self.hovered = idx if 0 <= idx < len(f) else -1
+
+    def _click(self, pos):
+        self._hover(pos)
+        f = self._filtered()
+        if 0 <= self.hovered < len(f):
+            return f[self.hovered]
+        return None
+
+    def _draw(self):
+        self.screen.fill(SEL_BG)
+        title_f = pygame.font.SysFont("consolas", 22, bold=True)
+        item_f = pygame.font.SysFont("consolas", 15)
+        detail_f = pygame.font.SysFont("consolas", 11)
+
+        hdr = 80
+        filtered = self._filtered()
+
+        for i, b in enumerate(filtered):
+            y = hdr + i * self.row_h - self.scroll
+            if y + self.row_h < hdr or y > self.height:
+                continue
+            bg = SEL_HOVER if i == self.hovered else (
+                SEL_ROW_A if i % 2 == 0 else SEL_ROW_B)
+            pygame.draw.rect(self.screen, bg,
+                             (10, y, self.width - 20, self.row_h - 2))
+            nm = item_f.render(b.name, True, (220, 220, 255))
+            self.screen.blit(nm, (20, y + 4))
+            sm = detail_f.render(b.summary, True, (150, 150, 150))
+            self.screen.blit(sm, (20, y + 26))
+
+        # Header overlay (hides items that scrolled behind header)
+        pygame.draw.rect(self.screen, SEL_BG, (0, 0, self.width, hdr))
+        title = title_f.render("FPGA Simulator \u2014 Select Board", True, WHITE)
+        self.screen.blit(title, (20, 12))
+
+        stxt = (f"Filter: {self.filter_text}_"
+                if self.filter_text else "Type to filter boards...")
+        srch = item_f.render(stxt, True, (180, 180, 180))
+        pygame.draw.rect(self.screen, (50, 50, 60),
+                         (20, 48, self.width - 140, 24), border_radius=3)
+        self.screen.blit(srch, (26, 50))
+        cnt = detail_f.render(f"{len(filtered)} boards", True, (120, 120, 120))
+        self.screen.blit(cnt, (self.width - 100, 52))
+
+        pygame.display.flip()
 
 
 # ── Main board ───────────────────────────────────────────────────────
@@ -129,32 +259,51 @@ class FPGABoard:
 
     Parameters
     ----------
-    num_switches : int   Number of toggle switches (0-12+).
-    num_buttons  : int   Number of push-buttons (0-12+).
-    num_leds     : int   Number of LEDs (0-64+).
-    width, height: int   Initial window size (resizable).
+    board_def    : BoardDef or None
+        If given, components are built from the board's resource list.
+    num_switches, num_buttons, num_leds : int
+        Fallback counts when no BoardDef is provided.
+    width, height: int
+        Initial window size (resizable).
     """
 
-    def __init__(self, num_switches=8, num_buttons=4, num_leds=16,
+    def __init__(self, board_def=None, *,
+                 num_switches=8, num_buttons=4, num_leds=16,
                  width=1024, height=700):
-        pygame.init()
+        self.board_def = board_def
         self.width = width
         self.height = height
         self.screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
-        pygame.display.set_caption("FPGA Simulator")
         self.clock = pygame.time.Clock()
         self.running = False
 
-        # Create components (geometry set by _layout)
-        self.leds = [LED(i) for i in range(num_leds)]
-        self.buttons = [Button(i) for i in range(num_buttons)]
-        self.switches = [Switch(i) for i in range(num_switches)]
+        title = f"FPGA Simulator \u2013 {board_def.name}" if board_def else "FPGA Simulator"
+        pygame.display.set_caption(title)
 
-        # Wire default print callbacks
+        if board_def:
+            self.leds = [LED(i, info=c) for i, c in enumerate(board_def.leds)]
+            self.buttons = [Button(i, info=c) for i, c in enumerate(board_def.buttons)]
+            self.switches = [Switch(i, info=c) for i, c in enumerate(board_def.switches)]
+        else:
+            self.leds = [LED(i) for i in range(num_leds)]
+            self.buttons = [Button(i) for i in range(num_buttons)]
+            self.switches = [Switch(i) for i in range(num_switches)]
+
+        # Default callbacks – print name + connector info
+        def _sw_cb(idx, state, info):
+            label = info.display_name if info else f"Switch {idx}"
+            conn = f"  [{info.connector_str}]" if info else ""
+            print(f"{label}: {'ON' if state else 'OFF'}{conn}")
+
+        def _btn_cb(idx, pressed, info):
+            label = info.display_name if info else f"Button {idx}"
+            conn = f"  [{info.connector_str}]" if info else ""
+            print(f"{label}: {'PRESSED' if pressed else 'RELEASED'}{conn}")
+
         for sw in self.switches:
-            sw.callback = lambda idx, st: print(f"Switch {idx}: {'ON' if st else 'OFF'}")
+            sw.callback = _sw_cb
         for btn in self.buttons:
-            btn.callback = lambda idx, st: print(f"Button {idx}: {'PRESSED' if st else 'RELEASED'}")
+            btn.callback = _btn_cb
 
         self._layout()
 
@@ -166,12 +315,12 @@ class FPGABoard:
             self.leds[index].state = bool(state)
 
     def set_switch_callback(self, callback):
-        """Set callback for *all* switches.  Signature: callback(index, state)."""
+        """Set callback for *all* switches.  Signature: callback(index, state, info)."""
         for sw in self.switches:
             sw.callback = callback
 
     def set_button_callback(self, callback):
-        """Set callback for *all* buttons.  Signature: callback(index, pressed)."""
+        """Set callback for *all* buttons.  Signature: callback(index, pressed, info)."""
         for btn in self.buttons:
             btn.callback = callback
 
@@ -188,7 +337,6 @@ class FPGABoard:
             self._handle_events()
             self._draw()
             self.clock.tick(60)
-        pygame.quit()
 
     # ── layout engine ────────────────────────────────────────────────
 
@@ -196,11 +344,11 @@ class FPGABoard:
         """Recompute component positions to fit the current window size."""
         w, h = self.width, self.height
         margin = 20
-        title_h = 22          # space for each section title
-        label_h = 18           # space for labels below components
-        section_pad = 10       # gap between sections
+        title_h = 22
+        label_h = 18
+        section_pad = 10
 
-        sections = []          # (name, items, weight)
+        sections = []
         if self.leds:
             sections.append(("leds", self.leds, 3))
         if self.buttons:
@@ -226,7 +374,6 @@ class FPGABoard:
         if n == 0:
             return
 
-        # Determine grid cols × rows to best fill the rectangle
         if kind == "leds":
             aspect = avail_w / max(1, avail_h)
             cols = max(1, round(math.sqrt(n * aspect)))
@@ -244,7 +391,7 @@ class FPGABoard:
         elif kind == "buttons":
             size_w = min(cell_w * 0.70, 90)
             size_h = min(cell_h * 0.60, 50)
-        else:  # switches
+        else:
             size_w = min(cell_w * 0.50, 44)
             size_h = min(cell_h * 0.65, 60)
 
@@ -290,7 +437,6 @@ class FPGABoard:
         font = pygame.font.SysFont("consolas", font_size)
         title_font = pygame.font.SysFont("consolas", font_size + 4, bold=True)
 
-        # Section titles
         if self.leds:
             t = title_font.render("LEDs", True, WHITE)
             self.screen.blit(t, (20, self.leds[0].rect.top - font_size - 10))
@@ -313,12 +459,31 @@ class FPGABoard:
 
 # ── Entry point ──────────────────────────────────────────────────────
 
+def main():
+    pygame.init()
+    width, height = 1024, 700
+
+    boards = discover_boards(get_default_boards_path())
+
+    if boards:
+        screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+        pygame.display.set_caption("FPGA Simulator")
+        clock = pygame.time.Clock()
+
+        chosen = BoardSelector(boards, screen).run(clock)
+        if chosen is None:
+            pygame.quit()
+            return
+
+        sim = FPGABoard(board_def=chosen, width=width, height=height)
+    else:
+        print("No amaranth-boards found; using generic board.")
+        print("Run  git submodule update --init  to load board definitions.")
+        sim = FPGABoard(width=width, height=height)
+
+    sim.run()
+    pygame.quit()
+
+
 if __name__ == "__main__":
-    board = FPGABoard(num_switches=8, num_buttons=4, num_leds=16)
-
-    # Demo: light up a few LEDs
-    board.set_led(0, True)
-    board.set_led(3, True)
-    board.set_led(7, True)
-
-    board.run()
+    main()
