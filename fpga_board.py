@@ -377,9 +377,12 @@ class FPGABoard:
             return
 
         if kind == "leds":
-            aspect = avail_w / max(1, avail_h)
-            cols = max(1, round(math.sqrt(n * aspect)))
-            cols = min(cols, n)
+            if n <= 16:
+                cols = n
+            else:
+                aspect = avail_w / max(1, avail_h)
+                cols = max(1, round(math.sqrt(n * aspect)))
+                cols = min(cols, n)
         else:
             cols = min(n, max(1, int(avail_w / 65)))
         rows = math.ceil(n / cols)
