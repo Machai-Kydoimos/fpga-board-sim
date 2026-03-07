@@ -306,6 +306,7 @@ class FPGABoard:
         for btn in self.buttons:
             btn.callback = _btn_cb
 
+        self._sim_btn_rect = None
         self._layout()
 
     # ── public API ───────────────────────────────────────────────────
@@ -436,6 +437,11 @@ class FPGABoard:
                 self._layout()
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                # Check "Start Simulation" button first
+                if self._sim_btn_rect and self._sim_btn_rect.collidepoint(event.pos):
+                    self._simulate = True
+                    self.running = False
+                    return
                 for sw in self.switches:
                     sw.handle_click(event.pos)
                 for btn in self.buttons:
@@ -471,10 +477,26 @@ class FPGABoard:
         for sw in self.switches:
             sw.draw(self.screen, font)
 
-        # Navigation hint
+        # "Start Simulation" button
+        btn_font = pygame.font.SysFont("consolas", 16, bold=True)
+        btn_text = btn_font.render("Start Simulation", True, WHITE)
+        btn_w = btn_text.get_width() + 30
+        btn_h = btn_text.get_height() + 14
+        btn_x = self.width - btn_w - 15
+        btn_y = self.height - btn_h - 10
+        self._sim_btn_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
+
+        mouse_pos = pygame.mouse.get_pos()
+        hovered = self._sim_btn_rect.collidepoint(mouse_pos)
+        btn_bg = (30, 120, 60) if hovered else (20, 90, 40)
+        pygame.draw.rect(self.screen, btn_bg, self._sim_btn_rect, border_radius=6)
+        pygame.draw.rect(self.screen, WHITE, self._sim_btn_rect, 2, border_radius=6)
+        self.screen.blit(btn_text, (btn_x + 15, btn_y + 7))
+
+        # ESC hint
         hint_f = pygame.font.SysFont("consolas", 12)
-        hint = hint_f.render("ESC: back   ENTER: select VHDL file", True, (200, 200, 200))
-        self.screen.blit(hint, (self.width - hint.get_width() - 10, self.height - 20))
+        hint = hint_f.render("ESC: back to board list", True, (160, 160, 160))
+        self.screen.blit(hint, (15, self.height - 20))
 
         pygame.display.flip()
 
