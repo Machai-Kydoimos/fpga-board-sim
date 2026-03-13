@@ -35,6 +35,60 @@ SEL_HOVER = (50, 70, 50)
 
 # ── Component classes ────────────────────────────────────────────────
 
+class FPGAChip:
+    """Visual representation of the FPGA IC package on the board."""
+
+    _VENDOR_COLORS = {
+        "Xilinx":     (20,  60, 140),
+        "Intel":      (0,   90,  50),
+        "Lattice":    (90,  20,  90),
+        "QuickLogic": (130, 60,   0),
+        "Gowin":      (70,  70,   0),
+    }
+
+    def __init__(self, vendor: str = "", device: str = "", package: str = ""):
+        self.vendor  = vendor
+        self.device  = device
+        self.package = package
+        self.rect = pygame.Rect(0, 0, 0, 0)
+
+    def draw(self, surface, font):
+        if self.rect.width < 20:
+            return
+        r = self.rect
+        color = self._VENDOR_COLORS.get(self.vendor, (40, 40, 40))
+
+        pygame.draw.rect(surface, color, r, border_radius=6)
+        pygame.draw.rect(surface, (180, 180, 180), r, 2, border_radius=6)
+        self._draw_pin_marks(surface, r)
+
+        cx, cy = r.centerx, r.centery
+        for text, colour, dy in [
+            (self.vendor,          WHITE,          -14),
+            (self.device.upper(),  (200, 200, 200),  2),
+            (self.package.upper(), (150, 150, 150), 18),
+        ]:
+            if text:
+                s = font.render(text, True, colour)
+                surface.blit(s, s.get_rect(centerx=cx, centery=cy + dy))
+
+    def _draw_pin_marks(self, surface, r):
+        color = (120, 120, 120)
+        length = 5
+        h_count = max(4, min(20, r.width  // 14))
+        v_count = max(4, min(14, r.height // 14))
+
+        for i in range(h_count):
+            x = r.left + (i + 1) * r.width // (h_count + 1)
+            pygame.draw.line(surface, color, (x, r.top),    (x, r.top    - length))
+            pygame.draw.line(surface, color, (x, r.bottom), (x, r.bottom + length))
+
+        for i in range(v_count):
+            y = r.top + (i + 1) * r.height // (v_count + 1)
+            pygame.draw.line(surface, color, (r.left,  y), (r.left  - length, y))
+            pygame.draw.line(surface, color, (r.right, y), (r.right + length, y))
+
+
 class LED:
     """A read-only indicator controlled via FPGABoard.set_led()."""
 
@@ -282,10 +336,16 @@ class FPGABoard:
         pygame.display.set_caption(title)
 
         if board_def:
+            self.fpga_chip = FPGAChip(
+                vendor=board_def.vendor,
+                device=board_def.device,
+                package=board_def.package,
+            )
             self.leds = [LED(i, info=c) for i, c in enumerate(board_def.leds)]
             self.buttons = [Button(i, info=c) for i, c in enumerate(board_def.buttons)]
             self.switches = [Switch(i, info=c) for i, c in enumerate(board_def.switches)]
         else:
+            self.fpga_chip = FPGAChip()
             self.leds = [LED(i) for i in range(num_leds)]
             self.buttons = [Button(i) for i in range(num_buttons)]
             self.switches = [Switch(i) for i in range(num_switches)]
@@ -355,7 +415,7 @@ class FPGABoard:
         label_h = 18
         section_pad = 10
 
-        sections = []
+        sections = [("fpga", [self.fpga_chip], 2)]
         if self.leds:
             sections.append(("leds", self.leds, 3))
         if self.buttons:
@@ -379,6 +439,15 @@ class FPGABoard:
     def _place_items(self, items, x0, y0, avail_w, avail_h, kind):
         n = len(items)
         if n == 0:
+            return
+
+        if kind == "fpga":
+            size_w = min(avail_w * 0.50, 260)
+            size_h = min(avail_h * 0.70, 160)
+            cx = x0 + avail_w / 2
+            cy = y0 + avail_h / 2
+            items[0].rect = pygame.Rect(
+                cx - size_w / 2, cy - size_h / 2, size_w, size_h)
             return
 
         if kind == "leds":
@@ -459,6 +528,12 @@ class FPGABoard:
         font_size = max(10, min(14, self.height // 55))
         font = pygame.font.SysFont("consolas", font_size)
         title_font = pygame.font.SysFont("consolas", font_size + 4, bold=True)
+
+        chip_font = pygame.font.SysFont("consolas", max(11, font_size + 1), bold=True)
+        if self.fpga_chip.rect.width >= 20:
+            t = title_font.render("FPGA", True, WHITE)
+            self.screen.blit(t, (20, self.fpga_chip.rect.top - font_size - 10))
+        self.fpga_chip.draw(self.screen, chip_font)
 
         if self.leds:
             t = title_font.render("LEDs", True, WHITE)
@@ -665,10 +740,9 @@ def main():
         # ── Step 5: launch simulation ────────────────────────────
         pygame.quit()  # cocotb subprocess will start its own pygame
 
-        from sim_testbench import _board_to_json
         from sim_bridge import launch_simulation
 
-        board_json = _board_to_json(chosen)
+        board_json = chosen.to_json()
         toplevel = Path(vhdl_path).stem  # assume entity name = filename
 
         # Size generics to match board

@@ -60,6 +60,9 @@ if arty:
     check("Arty has switches", len(a.switches) > 0, f"{len(a.switches)} switches")
     check("LED has pin info", len(a.leds[0].pins) > 0, str(a.leds[0].pins))
     check("LED display_name", a.leds[0].display_name == "LED0")
+    check("Arty vendor is Xilinx", a.vendor == "Xilinx", repr(a.vendor))
+    check("Arty has device", a.device != "", repr(a.device))
+    check("Arty has clocks", len(a.clocks) > 0, str(a.clocks))
 
 # Named buttons (Nexys4DDR)
 nexys = [b for b in boards if "Nexys4" in b.name]
@@ -83,8 +86,10 @@ class InlineTestPlatform(XilinxPlatform):
 inline_boards = load_board_from_source(inline_src, "<inline>")
 check("inline parse", len(inline_boards) == 1, inline_boards[0].name if inline_boards else "none")
 if inline_boards:
-    check("inline 3 LEDs", len(inline_boards[0].leds) == 3)
-    check("inline 2 switches", len(inline_boards[0].switches) == 2)
+    check("inline 3 LEDs",           len(inline_boards[0].leds) == 3)
+    check("inline 2 switches",       len(inline_boards[0].switches) == 2)
+    check("inline vendor is Xilinx", inline_boards[0].vendor == "Xilinx",
+          repr(inline_boards[0].vendor))
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -92,28 +97,34 @@ if inline_boards:
 # ═══════════════════════════════════════════════════════════════════
 print("\n=== JSON Serialization ===")
 
-from sim_testbench import _board_to_json, _load_board_from_env
-
 test_board = BoardDef(
     name="RoundTrip", class_name="RTP",
+    vendor="Xilinx", device="xc7a35ti", package="csg324",
+    clocks=[100e6],
     leds=[ComponentInfo("led", "led", 0, pins=["P1"], attrs={"IO": "LVCMOS"})],
     buttons=[ComponentInfo("button", "button_up", 0, pins=["B1"],
                            connector=("pmod", 0))],
     switches=[ComponentInfo("switch", "switch", 0, pins=["S1"])],
 )
-j = _board_to_json(test_board)
+j = test_board.to_json()
 check("serialize to JSON", isinstance(j, str) and len(j) > 10)
 
 parsed = json.loads(j)
-check("JSON has name", parsed["name"] == "RoundTrip")
-check("JSON has LED pin", parsed["leds"][0]["pins"] == ["P1"])
+check("JSON has name",      parsed["name"] == "RoundTrip")
+check("JSON has vendor",    parsed["vendor"] == "Xilinx")
+check("JSON has device",    parsed["device"] == "xc7a35ti")
+check("JSON has clocks",    parsed["clocks"] == [100e6])
+check("JSON has LED pin",   parsed["leds"][0]["pins"] == ["P1"])
 check("JSON has connector", parsed["buttons"][0]["connector"] == ["pmod", 0])
 
 # Round-trip through env
 os.environ["FPGA_SIM_BOARD_JSON"] = j
-rt = _load_board_from_env()
-check("round-trip name", rt.name == "RoundTrip")
-check("round-trip LED pin", rt.leds[0].pins == ["P1"])
+rt = BoardDef.from_json(j)
+check("round-trip name",          rt.name == "RoundTrip")
+check("round-trip vendor",        rt.vendor == "Xilinx")
+check("round-trip device",        rt.device == "xc7a35ti")
+check("round-trip clocks",        rt.clocks == [100e6])
+check("round-trip LED pin",       rt.leds[0].pins == ["P1"])
 check("round-trip btn connector", rt.buttons[0].connector == ("pmod", 0))
 del os.environ["FPGA_SIM_BOARD_JSON"]
 

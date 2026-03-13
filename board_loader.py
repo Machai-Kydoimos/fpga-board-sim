@@ -5,6 +5,7 @@ Uses lightweight mock classes to evaluate board files without
 requiring the full amaranth toolchain.
 """
 
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -149,13 +150,18 @@ def _stub_multi(*args, **kwargs):
 #  Exec namespace
 # ═══════════════════════════════════════════════════════════════════════
 
-_PLATFORM_NAMES = [
-    "XilinxPlatform", "IntelPlatform",
-    "LatticeICE40Platform", "LatticeECP5Platform",
-    "LatticeMachXO2Platform", "LatticeMachXO3LPlatform",
-    "QuicklogicPlatform", "GowinPlatform",
-    "Xilinx7SeriesPlatform", "XilinxUltraScalePlatform",
-]
+_PLATFORM_VENDORS: dict[str, str] = {
+    "XilinxPlatform":           "Xilinx",
+    "Xilinx7SeriesPlatform":    "Xilinx",
+    "XilinxUltraScalePlatform": "Xilinx",
+    "IntelPlatform":            "Intel",
+    "LatticeICE40Platform":     "Lattice",
+    "LatticeECP5Platform":      "Lattice",
+    "LatticeMachXO2Platform":   "Lattice",
+    "LatticeMachXO3LPlatform":  "Lattice",
+    "QuicklogicPlatform":       "QuickLogic",
+    "GowinPlatform":            "Gowin",
+}
 
 
 def _make_namespace():
@@ -200,9 +206,25 @@ def _make_namespace():
         "__name__":     "_board_loader_exec",
         "__builtins__": __builtins__,
     }
-    for name in _PLATFORM_NAMES:
-        ns[name] = type(name, (), {"resources": [], "connectors": []})
+    for name, vendor in _PLATFORM_VENDORS.items():
+        ns[name] = type(name, (), {
+            "resources": [], "connectors": [], "_vendor": vendor,
+        })
     return ns
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Clock extraction
+# ═══════════════════════════════════════════════════════════════════════
+
+def _extract_clocks(resources: list) -> list[float]:
+    """Return sorted unique clock frequencies (Hz) from the resource list."""
+    seen: set[float] = set()
+    for res in resources:
+        for io in res.ios:
+            if isinstance(io, _Clock):
+                seen.add(io.freq)
+    return sorted(seen)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -254,6 +276,10 @@ class BoardDef:
     """Parsed board definition with UI-relevant resources."""
     name: str
     class_name: str
+    vendor: str = ""
+    device: str = ""
+    package: str = ""
+    clocks: list = field(default_factory=list)   # Hz, e.g. [25e6, 100e6]
     leds: list = field(default_factory=list)
     buttons: list = field(default_factory=list)
     switches: list = field(default_factory=list)
@@ -263,6 +289,49 @@ class BoardDef:
         return (f"{len(self.leds)} LEDs, "
                 f"{len(self.buttons)} buttons, "
                 f"{len(self.switches)} switches")
+
+    def to_json(self) -> str:
+        """Serialize to JSON for passing to the cocotb subprocess."""
+        def _comp(c):
+            return {
+                "name": c.name, "number": c.number,
+                "pins": c.pins, "direction": c.direction,
+                "inverted": c.inverted,
+                "connector": list(c.connector) if c.connector else None,
+                "attrs": c.attrs,
+            }
+        return json.dumps({
+            "name": self.name, "class_name": self.class_name,
+            "vendor": self.vendor, "device": self.device,
+            "package": self.package, "clocks": self.clocks,
+            "leds":    [_comp(c) for c in self.leds],
+            "buttons": [_comp(c) for c in self.buttons],
+            "switches": [_comp(c) for c in self.switches],
+        })
+
+    @classmethod
+    def from_json(cls, raw: str) -> "BoardDef":
+        """Deserialize from JSON produced by to_json()."""
+        data = json.loads(raw)
+
+        def _make(items, kind):
+            return [ComponentInfo(
+                kind=kind,
+                name=c["name"], number=c["number"],
+                pins=c.get("pins", []), direction=c.get("direction", ""),
+                inverted=c.get("inverted", False),
+                connector=tuple(c["connector"]) if c.get("connector") else None,
+                attrs=c.get("attrs", {}),
+            ) for c in items]
+
+        return cls(
+            name=data["name"], class_name=data["class_name"],
+            vendor=data.get("vendor", ""), device=data.get("device", ""),
+            package=data.get("package", ""), clocks=data.get("clocks", []),
+            leds=_make(data.get("leds", []), "led"),
+            buttons=_make(data.get("buttons", []), "button"),
+            switches=_make(data.get("switches", []), "switch"),
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -381,9 +450,18 @@ def load_board_from_source(source, filename="<string>"):
         if not (leds or buttons or switches):
             continue
 
+        vendor = next(
+            (getattr(base, "_vendor", "") for base in obj.__mro__
+             if getattr(base, "_vendor", "")),
+            ""
+        )
         boards.append(BoardDef(
             name=_prettify_class_name(obj_name),
             class_name=obj_name,
+            vendor=vendor,
+            device=getattr(obj, "device", ""),
+            package=getattr(obj, "package", ""),
+            clocks=_extract_clocks(resources),
             leds=leds,
             buttons=buttons,
             switches=switches,
