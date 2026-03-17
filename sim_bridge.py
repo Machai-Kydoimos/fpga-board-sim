@@ -53,7 +53,7 @@ def _venv_dirs(venv_dir):
 
 def _vpi_lib_name():
     """Return the platform-specific cocotb VPI library filename for GHDL."""
-    return "cocotbvpi_ghdl.dll" if IS_WINDOWS else "cocotbvpi_ghdl.so"
+    return "cocotbvpi_ghdl.dll" if IS_WINDOWS else "libcocotbvpi_ghdl.so"
 
 
 def _libpython_name(base_python):
