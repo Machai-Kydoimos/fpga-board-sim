@@ -10,7 +10,6 @@ pygame events.
 """
 
 import os
-import json
 
 import cocotb
 from cocotb.clock import Clock
@@ -18,56 +17,14 @@ from cocotb.triggers import Timer
 
 import pygame
 
-# Imported here so the testbench can reconstruct the board UI
-from board_loader import BoardDef, ComponentInfo
+from board_loader import BoardDef
 from fpga_board import FPGABoard
 
 
-def _load_board_from_env():
+def _load_board_from_env() -> BoardDef | None:
     """Reconstruct a BoardDef from the JSON in the environment."""
     raw = os.environ.get("FPGA_SIM_BOARD_JSON", "")
-    if not raw:
-        return None
-    data = json.loads(raw)
-
-    def _make_components(items, kind):
-        return [ComponentInfo(
-            kind=kind,
-            name=c["name"],
-            number=c["number"],
-            pins=c.get("pins", []),
-            direction=c.get("direction", ""),
-            inverted=c.get("inverted", False),
-            connector=tuple(c["connector"]) if c.get("connector") else None,
-            attrs=c.get("attrs", {}),
-        ) for c in items]
-
-    return BoardDef(
-        name=data["name"],
-        class_name=data["class_name"],
-        leds=_make_components(data.get("leds", []), "led"),
-        buttons=_make_components(data.get("buttons", []), "button"),
-        switches=_make_components(data.get("switches", []), "switch"),
-    )
-
-
-def _board_to_json(board_def):
-    """Serialize a BoardDef to JSON (called from the launcher side)."""
-    def _comp(c):
-        return {
-            "name": c.name, "number": c.number,
-            "pins": c.pins, "direction": c.direction,
-            "inverted": c.inverted,
-            "connector": list(c.connector) if c.connector else None,
-            "attrs": c.attrs,
-        }
-    return json.dumps({
-        "name": board_def.name,
-        "class_name": board_def.class_name,
-        "leds": [_comp(c) for c in board_def.leds],
-        "buttons": [_comp(c) for c in board_def.buttons],
-        "switches": [_comp(c) for c in board_def.switches],
-    })
+    return BoardDef.from_json(raw) if raw else None
 
 
 @cocotb.test()
