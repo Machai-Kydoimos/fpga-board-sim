@@ -10,7 +10,8 @@ dependencies = [
 ]
 
 [project.scripts]
-fpga-sim = "fpga_board:main"
+fpga-sim            = "fpga_board:main"
+generate-board-images = "generate_board_images:main"
 
 [build-system]
 requires = ["hatchling"]
