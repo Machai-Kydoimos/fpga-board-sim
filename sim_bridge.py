@@ -144,7 +144,7 @@ def _build_sim_env(venv_dir=None):
 
 
 def launch_simulation(board_json, vhdl_path, toplevel="blinky",
-                      generics=None):
+                      generics=None, sim_width=1024, sim_height=700):
     """
     Launch an interactive GHDL + cocotb simulation.
 
@@ -178,6 +178,8 @@ def launch_simulation(board_json, vhdl_path, toplevel="blinky",
     env["COCOTB_TEST_MODULES"] = "sim_testbench"
     env["TOPLEVEL"] = toplevel
     env["FPGA_SIM_BOARD_JSON"] = board_json
+    env["FPGA_SIM_WIDTH"]  = str(sim_width)
+    env["FPGA_SIM_HEIGHT"] = str(sim_height)
 
     print(f"Starting simulation: {toplevel} from {vhdl_path.name}")
     result = subprocess.run(cmd, env=env, cwd=work_dir)

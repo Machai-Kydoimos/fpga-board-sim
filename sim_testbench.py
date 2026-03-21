@@ -37,8 +37,10 @@ async def interactive_sim(dut):
     """
     board_def = _load_board_from_env()
 
+    sim_w = int(os.environ.get("FPGA_SIM_WIDTH",  "1024"))
+    sim_h = int(os.environ.get("FPGA_SIM_HEIGHT", "700"))
     pygame.init()
-    board = FPGABoard(board_def=board_def, width=1024, height=700)
+    board = FPGABoard(board_def=board_def, width=sim_w, height=sim_h)
 
     # ── Start simulation clock (10ns period = 100MHz) ────────────
     cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())

@@ -32,6 +32,14 @@ SEL_ROW_A = (40, 40, 50)
 SEL_ROW_B = (35, 35, 45)
 SEL_HOVER = (50, 70, 50)
 
+# ── UI scaling ────────────────────────────────────────────────────────
+_BASE_W, _BASE_H = 1024, 700
+
+def _ui_scale(w: int, h: int) -> float:
+    """Linear scale factor relative to the 1024×700 reference (= 1.0).
+    Uses the smaller axis ratio so no dimension overflows the window."""
+    return min(w / _BASE_W, h / _BASE_H)
+
 
 # ── Component classes ────────────────────────────────────────────────
 
@@ -63,10 +71,11 @@ class FPGAChip:
         self._draw_pin_marks(surface, r)
 
         cx, cy = r.centerx, r.centery
+        line_h = font.get_linesize()
         for text, colour, dy in [
-            (self.vendor,          WHITE,          -14),
-            (self.device.upper(),  (200, 200, 200),  2),
-            (self.package.upper(), (150, 150, 150), 18),
+            (self.vendor,          WHITE,           -line_h),
+            (self.device.upper(),  (200, 200, 200),  0),
+            (self.package.upper(), (150, 150, 150),  line_h),
         ]:
             if text:
                 s = font.render(text, True, colour)
@@ -207,8 +216,15 @@ class BoardSelector:
         self.width, self.height = screen.get_size()
         self.scroll = 0
         self.hovered = -1
-        self.row_h = 48
         self.filter_text = ""
+
+    @property
+    def row_h(self) -> int:
+        return max(32, round(48 * _ui_scale(self.width, self.height)))
+
+    @property
+    def _hdr(self) -> int:
+        return max(56, round(80 * _ui_scale(self.width, self.height)))
 
     def _filtered(self):
         if not self.filter_text:
@@ -222,10 +238,9 @@ class BoardSelector:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
                     return None
-                elif ev.type == pygame.VIDEORESIZE:
-                    self.width, self.height = ev.w, ev.h
-                    self.screen = pygame.display.set_mode(
-                        (self.width, self.height), pygame.RESIZABLE)
+                elif ev.type == pygame.WINDOWRESIZED:
+                    self.width, self.height = ev.x, ev.y
+                    self.scroll = 0
                 elif ev.type == pygame.MOUSEMOTION:
                     self._hover(ev.pos)
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
@@ -234,9 +249,11 @@ class BoardSelector:
                         if result is not None:
                             return result
                     elif ev.button == 4:
-                        self.scroll = max(0, self.scroll - 30)
+                        step = max(20, round(self.row_h * 3))
+                        self.scroll = max(0, self.scroll - step)
                     elif ev.button == 5:
-                        self.scroll += 30
+                        step = max(20, round(self.row_h * 3))
+                        self.scroll += step
                 elif ev.type == pygame.KEYDOWN:
                     if ev.key == pygame.K_ESCAPE:
                         return None
@@ -251,7 +268,7 @@ class BoardSelector:
             clock.tick(30)
 
     def _hover(self, pos):
-        hdr = 80
+        hdr = self._hdr
         _, y = pos
         if y < hdr:
             self.hovered = -1
@@ -269,11 +286,12 @@ class BoardSelector:
 
     def _draw(self):
         self.screen.fill(SEL_BG)
-        title_f = pygame.font.SysFont("consolas", 22, bold=True)
-        item_f = pygame.font.SysFont("consolas", 15)
-        detail_f = pygame.font.SysFont("consolas", 11)
+        s = _ui_scale(self.width, self.height)
+        title_f  = pygame.font.SysFont("consolas", max(14, round(22 * s)), bold=True)
+        item_f   = pygame.font.SysFont("consolas", max(11, round(15 * s)))
+        detail_f = pygame.font.SysFont("consolas", max( 9, round(11 * s)))
 
-        hdr = 80
+        hdr = self._hdr
         filtered = self._filtered()
 
         for i, b in enumerate(filtered):
@@ -323,12 +341,16 @@ class FPGABoard:
     """
 
     def __init__(self, board_def=None, *,
+                 screen=None,
                  num_switches=8, num_buttons=4, num_leds=16,
                  width=1024, height=700):
         self.board_def = board_def
-        self.width = width
-        self.height = height
-        self.screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+        if screen is not None:
+            self.screen = screen
+            self.width, self.height = screen.get_size()
+        else:
+            self.screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+            self.width, self.height = width, height
         self.clock = pygame.time.Clock()
         self.running = False
 
@@ -410,10 +432,12 @@ class FPGABoard:
     def _layout(self):
         """Recompute component positions to fit the current window size."""
         w, h = self.width, self.height
-        margin = 20
-        title_h = 22
-        label_h = 18
-        section_pad = 10
+        s              = _ui_scale(self.width, self.height)
+        margin         = max(10, round(20 * s))
+        title_h        = max(14, round(22 * s))
+        label_h        = max(12, round(18 * s))
+        section_pad    = max( 6, round(10 * s))
+        bottom_reserve = max(50, round(70 * s))   # space for button + ESC hint
 
         sections = [("fpga", [self.fpga_chip], 2)]
         if self.leds:
@@ -427,23 +451,23 @@ class FPGABoard:
             return
 
         total_weight = sum(s[2] for s in sections)
-        usable_h = h - 2 * margin - section_pad * (len(sections) - 1)
+        usable_h = h - 2 * margin - section_pad * (len(sections) - 1) - bottom_reserve
 
         y = margin
         for name, items, weight in sections:
             sec_h = usable_h * weight / total_weight
             content_h = sec_h - title_h - label_h
-            self._place_items(items, margin, y + title_h, w - 2 * margin, content_h, name)
+            self._place_items(items, margin, y + title_h, w - 2 * margin, content_h, name, scale=s)
             y += sec_h + section_pad
 
-    def _place_items(self, items, x0, y0, avail_w, avail_h, kind):
+    def _place_items(self, items, x0, y0, avail_w, avail_h, kind, scale=1.0):
         n = len(items)
         if n == 0:
             return
 
         if kind == "fpga":
-            size_w = min(avail_w * 0.50, 260)
-            size_h = min(avail_h * 0.70, 160)
+            size_w = min(avail_w * 0.50, round(260 * scale))
+            size_h = min(avail_h * 0.70, round(160 * scale))
             cx = x0 + avail_w / 2
             cy = y0 + avail_h / 2
             items[0].rect = pygame.Rect(
@@ -466,13 +490,13 @@ class FPGABoard:
 
         if kind == "leds":
             size = min(cell_w, cell_h) * 0.75
-            size = max(10, min(size, 44))
+            size = max(10, min(size, round(44 * scale)))
         elif kind == "buttons":
-            size_w = min(cell_w * 0.70, 90)
-            size_h = min(cell_h * 0.60, 50)
+            size_w = min(cell_w * 0.70, round(90 * scale))
+            size_h = min(cell_h * 0.60, round(50 * scale))
         else:
-            size_w = min(cell_w * 0.50, 44)
-            size_h = min(cell_h * 0.65, 60)
+            size_w = min(cell_w * 0.50, round(44 * scale))
+            size_h = min(cell_h * 0.65, round(60 * scale))
 
         for i, item in enumerate(items):
             r = i // cols
@@ -499,10 +523,8 @@ class FPGABoard:
                 self._simulate = True
                 self.running = False
 
-            elif event.type == pygame.VIDEORESIZE:
-                self.width, self.height = event.w, event.h
-                self.screen = pygame.display.set_mode(
-                    (self.width, self.height), pygame.RESIZABLE)
+            elif event.type == pygame.WINDOWRESIZED:
+                self.width, self.height = event.x, event.y
                 self._layout()
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -525,7 +547,8 @@ class FPGABoard:
     def _draw(self):
         self.screen.fill(BG_GREEN)
 
-        font_size = max(10, min(14, self.height // 55))
+        s = _ui_scale(self.width, self.height)
+        font_size = max(9, round(12 * s))
         font = pygame.font.SysFont("consolas", font_size)
         title_font = pygame.font.SysFont("consolas", font_size + 4, bold=True)
 
@@ -553,12 +576,14 @@ class FPGABoard:
             sw.draw(self.screen, font)
 
         # "Start Simulation" button
-        btn_font = pygame.font.SysFont("consolas", 16, bold=True)
+        btn_font = pygame.font.SysFont("consolas", max(12, round(16 * s)), bold=True)
         btn_text = btn_font.render("Start Simulation", True, WHITE)
         btn_w = btn_text.get_width() + 30
         btn_h = btn_text.get_height() + 14
-        btn_x = self.width - btn_w - 15
-        btn_y = self.height - btn_h - 10
+        btn_margin_x = max(15, round(20 * s))
+        btn_margin_y = max(15, round(20 * s))
+        btn_x = self.width  - btn_w - btn_margin_x
+        btn_y = self.height - btn_h - btn_margin_y
         self._sim_btn_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
 
         mouse_pos = pygame.mouse.get_pos()
@@ -568,10 +593,11 @@ class FPGABoard:
         pygame.draw.rect(self.screen, WHITE, self._sim_btn_rect, 2, border_radius=6)
         self.screen.blit(btn_text, (btn_x + 15, btn_y + 7))
 
-        # ESC hint
-        hint_f = pygame.font.SysFont("consolas", 12)
+        # ESC hint — positioned using actual font height so it's never clipped
+        hint_f = pygame.font.SysFont("consolas", max(9, round(12 * s)))
         hint = hint_f.render("ESC: back to board list", True, (160, 160, 160))
-        self.screen.blit(hint, (15, self.height - 20))
+        hint_margin = max(8, round(10 * s))
+        self.screen.blit(hint, (15, self.height - hint_f.get_height() - hint_margin))
 
         pygame.display.flip()
 
@@ -586,9 +612,16 @@ class VHDLFilePicker:
         self.width, self.height = screen.get_size()
         self.scroll = 0
         self.hovered = -1
-        self.row_h = 36
         self.current_dir = Path(start_dir or Path.cwd())
         self._scan()
+
+    @property
+    def row_h(self) -> int:
+        return max(24, round(36 * _ui_scale(self.width, self.height)))
+
+    @property
+    def _hdr(self) -> int:
+        return max(48, round(70 * _ui_scale(self.width, self.height)))
 
     def _scan(self):
         """Refresh the file list for current_dir."""
@@ -612,10 +645,9 @@ class VHDLFilePicker:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
                     return None
-                elif ev.type == pygame.VIDEORESIZE:
-                    self.width, self.height = ev.w, ev.h
-                    self.screen = pygame.display.set_mode(
-                        (self.width, self.height), pygame.RESIZABLE)
+                elif ev.type == pygame.WINDOWRESIZED:
+                    self.width, self.height = ev.x, ev.y
+                    self.scroll = 0
                 elif ev.type == pygame.MOUSEMOTION:
                     self._hover(ev.pos)
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
@@ -628,9 +660,11 @@ class VHDLFilePicker:
                         if result is not None:
                             return result
                     elif ev.button == 4:
-                        self.scroll = max(0, self.scroll - 30)
+                        step = max(20, round(self.row_h * 3))
+                        self.scroll = max(0, self.scroll - step)
                     elif ev.button == 5:
-                        self.scroll += 30
+                        step = max(20, round(self.row_h * 3))
+                        self.scroll += step
                 elif ev.type == pygame.KEYDOWN:
                     if ev.key == pygame.K_ESCAPE:
                         return None
@@ -638,7 +672,7 @@ class VHDLFilePicker:
             clock.tick(30)
 
     def _hover(self, pos):
-        hdr = 70
+        hdr = self._hdr
         _, y = pos
         if y < hdr:
             self.hovered = -1
@@ -658,11 +692,12 @@ class VHDLFilePicker:
 
     def _draw(self):
         self.screen.fill(SEL_BG)
-        title_f = pygame.font.SysFont("consolas", 20, bold=True)
-        path_f = pygame.font.SysFont("consolas", 12)
-        item_f = pygame.font.SysFont("consolas", 14)
+        s       = _ui_scale(self.width, self.height)
+        title_f = pygame.font.SysFont("consolas", max(13, round(20 * s)), bold=True)
+        path_f  = pygame.font.SysFont("consolas", max( 9, round(12 * s)))
+        item_f  = pygame.font.SysFont("consolas", max(10, round(14 * s)))
 
-        hdr = 70
+        hdr = self._hdr
 
         for i, (name, path, is_dir) in enumerate(self.entries):
             y = hdr + i * self.row_h - self.scroll
@@ -690,7 +725,11 @@ class VHDLFilePicker:
 
 def main():
     pygame.init()
-    width, height = 1024, 700
+    # get_desktop_sizes() is reliable in pygame 2.x before any set_mode() call
+    sizes = pygame.display.get_desktop_sizes()
+    sw, sh = sizes[0] if sizes else (1920, 1080)
+    width  = max(1024, min(round(sw * 0.80), 1600))
+    height = max(700,  min(round(sh * 0.80), 1000))
 
     boards = discover_boards(get_default_boards_path())
 
@@ -713,7 +752,8 @@ def main():
 
         # ── Step 2: preview board ────────────────────────────────
         # ESC → back to selector, Enter → pick VHDL, close → quit
-        preview = FPGABoard(board_def=chosen, width=width, height=height)
+        # Pass the existing screen — no set_mode(), preserves window state.
+        preview = FPGABoard(board_def=chosen, screen=screen)
         result = preview.run()
         if result == "quit":
             break
@@ -722,11 +762,12 @@ def main():
 
         # result == "simulate" → proceed to VHDL file picker
         # ── Step 3: pick VHDL file ───────────────────────────────
-        screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+        # Reuse the existing screen; just update the caption.
         pygame.display.set_caption("FPGA Simulator – Select VHDL")
         hdl_dir = Path(__file__).parent / "hdl"
         vhdl_path = VHDLFilePicker(screen, start_dir=hdl_dir).run(clock)
         if vhdl_path is None:
+            pygame.display.set_caption("FPGA Simulator")
             continue  # back to board selector
 
         # ── Step 4: analyze VHDL ─────────────────────────────────
@@ -738,6 +779,9 @@ def main():
             continue
 
         # ── Step 5: launch simulation ────────────────────────────
+        # Capture final window size before quitting pygame so the
+        # simulation subprocess and the post-sim restart both use it.
+        width, height = screen.get_size()
         pygame.quit()  # cocotb subprocess will start its own pygame
 
         from sim_bridge import launch_simulation
@@ -754,13 +798,15 @@ def main():
         }
 
         try:
-            launch_simulation(board_json, vhdl_path, toplevel, generics)
+            launch_simulation(board_json, vhdl_path, toplevel, generics,
+                              sim_width=width, sim_height=height)
         except Exception as e:
             print(f"Simulation error: {e}")
 
-        # After simulation ends, re-init pygame and loop back
+        # After simulation ends, re-init pygame and loop back at the same size.
         pygame.init()
         screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+        pygame.display.set_caption("FPGA Simulator")
         clock = pygame.time.Clock()
         continue
 
