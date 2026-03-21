@@ -9,19 +9,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Initialize board definitions submodule (required)
 git submodule update --init
 
-# Create venv and install dependencies
-python3 -m venv .venv
-.venv/bin/pip install pygame cocotb find_libpython
+# Install runtime dependencies
+uv sync
+
+# Install with dev dependencies (includes pytest)
+uv sync --group dev
 ```
 
 ### Run the simulator
 ```bash
-.venv/bin/python fpga_board.py
+uv run python fpga_board.py
 ```
 
-### Run tests (26 headless tests, no display needed)
+### Run tests (no display needed)
 ```bash
-.venv/bin/python sim/run_tests.py
+uv run pytest
 ```
 
 Tests cover board loading, JSON serialization, GHDL analysis, and cocotb simulation.
@@ -39,7 +41,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `sim_bridge.py` | GHDL analysis + simulation launcher; platform-specific VPI env setup |
 | `sim_testbench.py` | cocotb test that runs pygame inside the GHDL simulation |
 | `hdl/blinky.vhd` | Example VHDL design (use as template for the expected port interface) |
-| `sim/run_tests.py` | Integration test suite |
+| `tests/` | pytest integration test suite |
 | `sim/test_blinky.py` | Headless cocotb tests for the blinky design |
 | `amaranth-boards/` | Git submodule with 74+ real board definitions |
 
