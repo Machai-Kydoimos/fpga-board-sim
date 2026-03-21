@@ -8,6 +8,7 @@ Works on both Windows and Linux.
 """
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -73,13 +74,90 @@ def _libpython_name(base_python):
         return str(Path(base_python) / "lib" / f"libpython{sys.version_info.major}.{sys.version_info.minor}.so")
 
 
-def analyze_vhdl(vhdl_path, work_dir=None):
+def check_vhdl_encoding(path) -> tuple:
     """
-    Run GHDL analysis on a VHDL file.
+    Stage 1: encoding check (no GHDL needed).
+    Returns (ok: bool, message: str).
+    """
+    path = Path(path)
+    try:
+        raw = path.read_bytes()
+    except OSError as e:
+        return False, f"Cannot read file: {e}"
+
+    if raw[:3] == b"\xef\xbb\xbf":
+        return False, (
+            f"UTF-8 BOM detected in '{path.name}'.\n"
+            "Save the file without BOM (UTF-8 without BOM / ASCII)."
+        )
+
+    for lineno, line in enumerate(raw.split(b"\n"), start=1):
+        for byte in line:
+            if byte > 127:
+                return False, (
+                    f"Non-ASCII byte (0x{byte:02X}) on line {lineno} of '{path.name}'.\n"
+                    "VHDL source must be plain ASCII or UTF-8 without BOM."
+                )
+
+    return True, ""
+
+
+def check_vhdl_contract(path) -> tuple:
+    """
+    Stage 2: contract validation (text-based, no GHDL needed).
+    Returns (ok: bool, message: str).
+    """
+    path = Path(path)
+    stem = path.stem.lower()
+    try:
+        text = path.read_text(errors="replace")
+    except OSError as e:
+        return False, f"Cannot read file: {e}"
+
+    # Check entity name matches filename
+    entities = re.findall(r'entity\s+(\w+)\s+is', text, re.IGNORECASE)
+    if not entities:
+        return False, (
+            f"No entity declaration found in '{path.name}'.\n"
+            "The file must contain: entity <name> is ... end entity;"
+        )
+    entity_names_lower = [e.lower() for e in entities]
+    if stem not in entity_names_lower:
+        found = ", ".join(f"'{e}'" for e in entities)
+        return False, (
+            f"Entity name mismatch: found {found} but filename is '{path.name}'.\n"
+            f"Rename the file to '{entities[0]}.vhd' or rename the entity to '{stem}'."
+        )
+
+    # Check required ports
+    required_ports = ["clk", "sw", "btn", "led"]
+    missing_ports = [p for p in required_ports
+                     if not re.search(r'\b' + p + r'\b', text, re.IGNORECASE)]
+    if missing_ports:
+        return False, (
+            f"Missing required port(s) in '{path.name}': {', '.join(missing_ports)}.\n"
+            "The top-level entity must have ports: clk, sw, btn, led."
+        )
+
+    # Warn (non-fatal) about missing generics — just log, don't fail
+    required_generics = ["NUM_SWITCHES", "NUM_BUTTONS", "NUM_LEDS", "COUNTER_BITS"]
+    missing_generics = [g for g in required_generics
+                        if not re.search(r'\b' + g + r'\b', text, re.IGNORECASE)]
+    if missing_generics:
+        print(f"[warn] Missing generics (will use VHDL defaults): {', '.join(missing_generics)}")
+
+    return True, ""
+
+
+def analyze_vhdl(vhdl_path, work_dir=None, toplevel=None):
+    """
+    Run GHDL analysis and elaboration on a VHDL file.
     Returns (ok: bool, detail: str).  On success detail is the work dir.
     """
     ghdl = _find_ghdl()
     work_dir = work_dir or tempfile.mkdtemp(prefix="fpga_sim_")
+    if toplevel is None:
+        toplevel = Path(vhdl_path).stem
     try:
         result = subprocess.run(
             [ghdl, "-a", "--std=08", "--workdir=" + work_dir, str(vhdl_path)],
@@ -87,6 +165,15 @@ def analyze_vhdl(vhdl_path, work_dir=None):
         )
         if result.returncode != 0:
             return False, result.stderr.strip()
+
+        elab = subprocess.run(
+            [ghdl, "-e", "--std=08", f"--workdir={work_dir}", toplevel],
+            capture_output=True, text=True, timeout=30,
+        )
+        if elab.returncode != 0:
+            combined = (result.stderr + elab.stderr).strip()
+            return False, combined or f"Elaboration failed for entity '{toplevel}'."
+
         return True, work_dir
     except FileNotFoundError:
         hint = ("winget install ghdl.ghdl.ucrt64.mcode" if IS_WINDOWS

@@ -721,6 +721,160 @@ class VHDLFilePicker:
         pygame.display.flip()
 
 
+# ── Error dialog ─────────────────────────────────────────────────────
+
+class ErrorDialog:
+    """
+    Modal error dialog drawn over a dimmed snapshot of the current screen.
+
+    run() returns 'retry' (Try Another File) or 'back' (Back to Boards).
+    """
+
+    _PANEL_W   = 640
+    _PANEL_PAD = 24
+    _LINE_H    = 20
+
+    def __init__(self, screen, title: str, message: str):
+        self.screen  = screen
+        self.title   = title
+        self.message = message
+        self._bg     = screen.copy()
+        self._scroll = 0
+
+    def run(self, clock):
+        while True:
+            for ev in pygame.event.get():
+                if ev.type == pygame.QUIT:
+                    return "back"
+                elif ev.type == pygame.KEYDOWN:
+                    if ev.key == pygame.K_ESCAPE:
+                        return "back"
+                    elif ev.key == pygame.K_RETURN:
+                        return "retry"
+                elif ev.type == pygame.MOUSEBUTTONDOWN:
+                    if ev.button == 1:
+                        result = self._click(ev.pos)
+                        if result:
+                            return result
+                    elif ev.button == 4:
+                        self._scroll = max(0, self._scroll - self._LINE_H * 3)
+                    elif ev.button == 5:
+                        self._scroll += self._LINE_H * 3
+
+            self._draw()
+            clock.tick(30)
+
+    def _click(self, pos):
+        if self._retry_rect and self._retry_rect.collidepoint(pos):
+            return "retry"
+        if self._back_rect and self._back_rect.collidepoint(pos):
+            return "back"
+        return None
+
+    def _draw(self):
+        sw, sh = self.screen.get_size()
+
+        # Dimmed background
+        overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 160))
+        self.screen.blit(self._bg, (0, 0))
+        self.screen.blit(overlay, (0, 0))
+
+        pad      = self._PANEL_PAD
+        panel_w  = min(self._PANEL_W, sw - 2 * pad)
+        btn_h    = 36
+        btn_gap  = 12
+        btns_h   = btn_h + btn_gap * 2
+
+        title_f  = pygame.font.SysFont("consolas", 18, bold=True)
+        body_f   = pygame.font.SysFont("consolas", 13)
+        btn_f    = pygame.font.SysFont("consolas", 14, bold=True)
+
+        # Word-wrap message lines
+        max_text_w = panel_w - pad * 2
+        wrapped = []
+        for raw_line in self.message.split("\n"):
+            words = raw_line.split(" ") if raw_line else [""]
+            current = ""
+            for word in words:
+                test = (current + " " + word).strip()
+                if body_f.size(test)[0] <= max_text_w:
+                    current = test
+                else:
+                    if current:
+                        wrapped.append(current)
+                    current = word
+            wrapped.append(current)
+
+        body_h   = len(wrapped) * self._LINE_H
+        viewport_h = min(body_h, sh // 2)
+        panel_h  = pad + title_f.get_linesize() + pad + viewport_h + btns_h + pad
+
+        px = (sw - panel_w) // 2
+        py = (sh - panel_h) // 2
+
+        # Panel background
+        panel_rect = pygame.Rect(px, py, panel_w, panel_h)
+        pygame.draw.rect(self.screen, (30, 30, 40), panel_rect, border_radius=8)
+        pygame.draw.rect(self.screen, (200, 60, 60), panel_rect, 2, border_radius=8)
+
+        # Title
+        t = title_f.render(self.title, True, (255, 100, 100))
+        self.screen.blit(t, (px + pad, py + pad))
+
+        # Scrollable body text
+        body_top = py + pad + title_f.get_linesize() + pad
+        clip = pygame.Rect(px + pad, body_top, max_text_w, viewport_h)
+        self.screen.set_clip(clip)
+        max_scroll = max(0, body_h - viewport_h)
+        self._scroll = min(self._scroll, max_scroll)
+        for i, line in enumerate(wrapped):
+            ly = body_top + i * self._LINE_H - self._scroll
+            if ly + self._LINE_H < body_top or ly > body_top + viewport_h:
+                continue
+            surf = body_f.render(line, True, (220, 220, 220))
+            self.screen.blit(surf, (px + pad, ly))
+        self.screen.set_clip(None)
+
+        # Scroll indicator
+        if body_h > viewport_h:
+            sb_x = px + panel_w - 6
+            sb_h = viewport_h
+            thumb_h = max(20, sb_h * viewport_h // body_h)
+            thumb_y = body_top + (self._scroll * (sb_h - thumb_h) // max(1, max_scroll))
+            pygame.draw.rect(self.screen, (80, 80, 100),
+                             pygame.Rect(sb_x, body_top, 4, sb_h), border_radius=2)
+            pygame.draw.rect(self.screen, (160, 160, 180),
+                             pygame.Rect(sb_x, thumb_y, 4, thumb_h), border_radius=2)
+
+        # Buttons
+        btn_y = py + panel_h - btns_h + btn_gap
+        retry_w = btn_f.size("Try Another File")[0] + 28
+        back_w  = btn_f.size("Back to Boards")[0]  + 28
+        total_btn_w = retry_w + btn_gap + back_w
+        btn_start_x = px + (panel_w - total_btn_w) // 2
+
+        mouse = pygame.mouse.get_pos()
+
+        self._retry_rect = pygame.Rect(btn_start_x, btn_y, retry_w, btn_h)
+        retry_hov = self._retry_rect.collidepoint(mouse)
+        pygame.draw.rect(self.screen, (40, 100, 40) if retry_hov else (25, 70, 25),
+                         self._retry_rect, border_radius=6)
+        pygame.draw.rect(self.screen, WHITE, self._retry_rect, 2, border_radius=6)
+        rt = btn_f.render("Try Another File", True, WHITE)
+        self.screen.blit(rt, rt.get_rect(center=self._retry_rect.center))
+
+        self._back_rect = pygame.Rect(btn_start_x + retry_w + btn_gap, btn_y, back_w, btn_h)
+        back_hov = self._back_rect.collidepoint(mouse)
+        pygame.draw.rect(self.screen, (80, 40, 40) if back_hov else (55, 25, 25),
+                         self._back_rect, border_radius=6)
+        pygame.draw.rect(self.screen, (200, 100, 100), self._back_rect, 2, border_radius=6)
+        bt = btn_f.render("Back to Boards", True, WHITE)
+        self.screen.blit(bt, bt.get_rect(center=self._back_rect.center))
+
+        pygame.display.flip()
+
+
 # ── Entry point ──────────────────────────────────────────────────────
 
 def main():
@@ -761,22 +915,45 @@ def main():
             continue
 
         # result == "simulate" → proceed to VHDL file picker
-        # ── Step 3: pick VHDL file ───────────────────────────────
-        # Reuse the existing screen; just update the caption.
-        pygame.display.set_caption("FPGA Simulator – Select VHDL")
+        # ── Steps 3-4: pick + validate VHDL (inner loop for retry) ───
+        from sim_bridge import (analyze_vhdl, check_vhdl_encoding,
+                                check_vhdl_contract)
         hdl_dir = Path(__file__).parent / "hdl"
-        vhdl_path = VHDLFilePicker(screen, start_dir=hdl_dir).run(clock)
-        if vhdl_path is None:
-            pygame.display.set_caption("FPGA Simulator")
-            continue  # back to board selector
+        vhdl_path = None
+        _back_to_boards = False
 
-        # ── Step 4: analyze VHDL ─────────────────────────────────
-        from sim_bridge import analyze_vhdl
-        ok, detail = analyze_vhdl(vhdl_path)
-        if not ok:
-            print(f"GHDL error: {detail}")
-            # TODO: show error in pygame UI
-            continue
+        while True:
+            pygame.display.set_caption("FPGA Simulator – Select VHDL")
+            vhdl_path = VHDLFilePicker(screen, start_dir=hdl_dir).run(clock)
+            if vhdl_path is None:
+                # ESC in file picker → back to board selector
+                _back_to_boards = True
+                break
+
+            # Stage 1 + 2: encoding and contract checks
+            toplevel_name = Path(vhdl_path).stem
+            intent = "retry"
+            for check_fn in [check_vhdl_encoding, check_vhdl_contract]:
+                ok, detail = check_fn(vhdl_path)
+                if not ok:
+                    intent = ErrorDialog(screen, "VHDL Error", detail).run(clock)
+                    break
+            else:
+                # Stage 3: GHDL analysis + elaboration
+                ok, detail = analyze_vhdl(vhdl_path, toplevel=toplevel_name)
+                if not ok:
+                    intent = ErrorDialog(screen, "GHDL Error", detail).run(clock)
+
+            if ok:
+                break  # valid file — proceed to simulation
+            if intent == "back":
+                _back_to_boards = True
+                break
+            # intent == "retry" → loop back to file picker
+
+        if _back_to_boards:
+            pygame.display.set_caption("FPGA Simulator")
+            continue  # back to BoardSelector
 
         # ── Step 5: launch simulation ────────────────────────────
         # Capture final window size before quitting pygame so the
@@ -787,7 +964,7 @@ def main():
         from sim_bridge import launch_simulation
 
         board_json = chosen.to_json()
-        toplevel = Path(vhdl_path).stem  # assume entity name = filename
+        toplevel = toplevel_name
 
         # Size generics to match board
         generics = {
