@@ -13,6 +13,13 @@ dependencies = [
 fpga-sim            = "fpga_board:main"
 generate-board-images = "generate_board_images:main"
 
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
