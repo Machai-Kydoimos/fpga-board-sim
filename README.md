@@ -97,22 +97,29 @@ GHDL compiles and simulates the VHDL design via cocotb, clocked at the board's a
 ## Project Structure
 
 ```
-fpga_board.py           Main entry point — pygame UI (board selector, preview, file picker)
-board_loader.py         Parses amaranth-boards definitions without the full amaranth toolchain
-sim_bridge.py           GHDL analysis + cocotb simulation launcher (handles Windows VPI setup)
-sim_testbench.py        cocotb test that bridges GHDL signals ↔ pygame UI
-session_config.py       Session persistence (~/.fpga_simulator/session.json)
-generate_board_images.py Renders static board previews (used for documentation/thumbnails)
-hdl/blinky.vhd          Example VHDL design (switches XOR counter → LEDs, buttons OR → LEDs)
-hdl/blinky_alt.vhd      Alternate blinky using independent per-LED counters
-hdl/blinky_counter.vhd  Binary counter displayed on LEDs
-hdl/blinky_morse.vhd    Morse code blinker
-hdl/blinky_pwm.vhd      PWM-based LED brightness control
-hdl/blinky_walking.vhd  Walking-light / knight-rider pattern
-sim/test_blinky.py      Headless cocotb tests for the blinky design
-tests/                  pytest integration suite (board loading, serialization, GHDL, UI)
-amaranth-boards/        Board definitions from amaranth-lang/amaranth-boards
-pyproject.toml          Project metadata and dependencies
+fpga_board.py              Entry point — runs main() and orchestrates the screen flow
+board_loader.py            Parses amaranth-boards definitions without the full amaranth toolchain
+sim_bridge.py              GHDL analysis + cocotb simulation launcher (handles Windows VPI setup)
+sim_testbench.py           cocotb test that bridges GHDL signals ↔ pygame UI
+session_config.py          Session persistence (~/.fpga_simulator/session.json)
+generate_board_images.py   Renders static board previews (used for documentation/thumbnails)
+ui/                        pygame UI package
+ui/constants.py            Colour constants and _ui_scale helper (single source of truth)
+ui/components.py           FPGAChip, LED, Switch, Button — low-level board components
+ui/board_selector.py       Board picker screen
+ui/fpga_board.py           Board preview screen (FPGABoard class)
+ui/vhdl_picker.py          VHDL file browser screen
+ui/error_dialog.py         Error dialog overlay
+hdl/blinky.vhd             Example VHDL design (switches XOR counter → LEDs, buttons OR → LEDs)
+hdl/blinky_alt.vhd         Alternate blinky using independent per-LED counters
+hdl/blinky_counter.vhd     Binary counter displayed on LEDs
+hdl/blinky_morse.vhd       Morse code blinker
+hdl/blinky_pwm.vhd         PWM-based LED brightness control
+hdl/blinky_walking.vhd     Walking-light / knight-rider pattern
+sim/test_blinky.py         Headless cocotb tests for the blinky design
+tests/                     pytest integration suite (board loading, serialization, GHDL, UI)
+amaranth-boards/           Board definitions from amaranth-lang/amaranth-boards
+pyproject.toml             Project metadata and dependencies
 ```
 
 ## How It Works
@@ -131,7 +138,7 @@ Rather than requiring the full amaranth toolchain as a dependency, `board_loader
 
 The result is a `BoardDef` object per board containing `ComponentInfo` entries with display names (e.g. `LED0`, `BTN2`, `UP0` for named buttons like `button_up`) and hardware metadata (pin names, connector references, IO standard attributes).
 
-### Pygame UI (`fpga_board.py`)
+### Pygame UI (`ui/` package)
 
 The UI has four screens, each a class with a `run()` method:
 

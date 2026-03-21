@@ -45,26 +45,14 @@ import pygame
 sys.path.insert(0, str(Path(__file__).parent))
 
 from board_loader import BoardDef, discover_boards, get_default_boards_path
-from fpga_board import (
-    _ui_scale,
-    BG_GREEN, BLUE_OFF, DARK_GRAY, GRAY, RED_OFF, WHITE,
-    Button, FPGABoard, FPGAChip, LED, Switch,
-)
+from ui.constants import _ui_scale, BG_GREEN, BLUE_OFF, DARK_GRAY, GRAY, RED_OFF, WHITE
+from ui import Button, FPGABoard, FPGAChip, LED, Switch
 
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
 DEFAULT_WIDTH:  int = 1024
 DEFAULT_HEIGHT: int = 700
-
-# FPGAChip detail colors — must match the values used in FPGAChip.draw()
-# and FPGAChip._draw_pin_marks() in fpga_board.py.
-_CHIP_BORDER_COLOR:  tuple[int, int, int] = (180, 180, 180)
-_CHIP_PIN_COLOR:     tuple[int, int, int] = (120, 120, 120)
-_CHIP_PIN_LENGTH:    int = 5
-_CHIP_DEVICE_COLOR:  tuple[int, int, int] = (200, 200, 200)
-_CHIP_PACKAGE_COLOR: tuple[int, int, int] = (150, 150, 150)
-_CHIP_CLOCK_COLOR:   tuple[int, int, int] = (120, 200, 120)
 
 
 # ── Pygame setup ───────────────────────────────────────────────────────────────
@@ -269,22 +257,22 @@ def _svg_draw_fpga_chip(
 
     # Main body — vendor-specific fill with gray border
     fill = FPGAChip._VENDOR_COLORS.get(chip.vendor, (40, 40, 40))
-    _svg_rect(parent, r, fill, stroke=_CHIP_BORDER_COLOR, stroke_width=2, radius=6)
+    _svg_rect(parent, r, fill, stroke=FPGAChip._BORDER_COLOR, stroke_width=2, radius=6)
 
     # Pin tick marks — replicates _draw_pin_marks() count formula exactly
     h_count = max(4, min(20, r.width  // 14))
     v_count = max(4, min(14, r.height // 14))
-    ln = _CHIP_PIN_LENGTH
+    ln = FPGAChip._PIN_LENGTH
 
     for i in range(h_count):
         x = r.left + (i + 1) * r.width // (h_count + 1)
-        _svg_line(parent, x, r.top,    x, r.top    - ln, _CHIP_PIN_COLOR)  # top edge
-        _svg_line(parent, x, r.bottom, x, r.bottom + ln, _CHIP_PIN_COLOR)  # bottom edge
+        _svg_line(parent, x, r.top,    x, r.top    - ln, FPGAChip._PIN_COLOR)  # top edge
+        _svg_line(parent, x, r.bottom, x, r.bottom + ln, FPGAChip._PIN_COLOR)  # bottom edge
 
     for i in range(v_count):
         y = r.top + (i + 1) * r.height // (v_count + 1)
-        _svg_line(parent, r.left,  y, r.left  - ln, y, _CHIP_PIN_COLOR)  # left edge
-        _svg_line(parent, r.right, y, r.right + ln, y, _CHIP_PIN_COLOR)  # right edge
+        _svg_line(parent, r.left,  y, r.left  - ln, y, FPGAChip._PIN_COLOR)  # left edge
+        _svg_line(parent, r.right, y, r.right + ln, y, FPGAChip._PIN_COLOR)  # right edge
 
     # Centered text labels — mirrors the dynamic layout in FPGAChip.draw().
     # 1.2× is the standard approximation for a monospace font's line height.
@@ -293,12 +281,12 @@ def _svg_draw_fpga_chip(
     cx, cy = r.centerx, r.centery
 
     lines: list[tuple[str, tuple[int, int, int], bool]] = [
-        (chip.vendor,                    WHITE,              True),
-        (chip.device.upper(),            _CHIP_DEVICE_COLOR, False),
-        (chip.package.upper(),           _CHIP_PACKAGE_COLOR, False),
+        (chip.vendor,          WHITE,                    True),
+        (chip.device.upper(),  FPGAChip._DEVICE_COLOR,  False),
+        (chip.package.upper(), FPGAChip._PACKAGE_COLOR, False),
     ]
     if chip.clock_hz:
-        lines.append((FPGAChip._fmt_clock(chip.clock_hz), _CHIP_CLOCK_COLOR, False))
+        lines.append((FPGAChip._fmt_clock(chip.clock_hz), FPGAChip._CLOCK_COLOR, False))
     active = [(t, c, b) for t, c, b in lines if t]
     offset = -(len(active) - 1) / 2 * line_h
     for text, color, bold in active:
