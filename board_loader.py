@@ -227,6 +227,20 @@ def _extract_clocks(resources: list) -> list[float]:
     return sorted(seen)
 
 
+_FALLBACK_CLOCK_HZ: float = 12e6  # most common across 80 surveyed boards
+
+
+def _find_default_clock_hz(resources: list, default_clk: str | None) -> float:
+    """Return Hz for the named default_clk resource, or _FALLBACK_CLOCK_HZ."""
+    if default_clk:
+        for res in resources:
+            if res.name == default_clk:
+                for io in res.ios:
+                    if isinstance(io, _Clock):
+                        return io.freq
+    return _FALLBACK_CLOCK_HZ
+
+
 # ═══════════════════════════════════════════════════════════════════════
 #  Data classes
 # ═══════════════════════════════════════════════════════════════════════
@@ -280,6 +294,7 @@ class BoardDef:
     device: str = ""
     package: str = ""
     clocks: list = field(default_factory=list)   # Hz, e.g. [25e6, 100e6]
+    default_clock_hz: float = _FALLBACK_CLOCK_HZ  # Hz; drives cocotb Clock()
     leds: list = field(default_factory=list)
     buttons: list = field(default_factory=list)
     switches: list = field(default_factory=list)
@@ -304,6 +319,7 @@ class BoardDef:
             "name": self.name, "class_name": self.class_name,
             "vendor": self.vendor, "device": self.device,
             "package": self.package, "clocks": self.clocks,
+            "default_clock_hz": self.default_clock_hz,
             "leds":    [_comp(c) for c in self.leds],
             "buttons": [_comp(c) for c in self.buttons],
             "switches": [_comp(c) for c in self.switches],
@@ -328,6 +344,7 @@ class BoardDef:
             name=data["name"], class_name=data["class_name"],
             vendor=data.get("vendor", ""), device=data.get("device", ""),
             package=data.get("package", ""), clocks=data.get("clocks", []),
+            default_clock_hz=data.get("default_clock_hz", _FALLBACK_CLOCK_HZ),
             leds=_make(data.get("leds", []), "led"),
             buttons=_make(data.get("buttons", []), "button"),
             switches=_make(data.get("switches", []), "switch"),
@@ -455,6 +472,7 @@ def load_board_from_source(source, filename="<string>"):
              if getattr(base, "_vendor", "")),
             ""
         )
+        default_clk = getattr(obj, "default_clk", None)
         boards.append(BoardDef(
             name=_prettify_class_name(obj_name),
             class_name=obj_name,
@@ -462,6 +480,7 @@ def load_board_from_source(source, filename="<string>"):
             device=getattr(obj, "device", ""),
             package=getattr(obj, "package", ""),
             clocks=_extract_clocks(resources),
+            default_clock_hz=_find_default_clock_hz(resources, default_clk),
             leds=leds,
             buttons=buttons,
             switches=switches,

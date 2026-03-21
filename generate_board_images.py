@@ -64,6 +64,7 @@ _CHIP_PIN_COLOR:     tuple[int, int, int] = (120, 120, 120)
 _CHIP_PIN_LENGTH:    int = 5
 _CHIP_DEVICE_COLOR:  tuple[int, int, int] = (200, 200, 200)
 _CHIP_PACKAGE_COLOR: tuple[int, int, int] = (150, 150, 150)
+_CHIP_CLOCK_COLOR:   tuple[int, int, int] = (120, 200, 120)
 
 
 # ── Pygame setup ───────────────────────────────────────────────────────────────
@@ -285,23 +286,26 @@ def _svg_draw_fpga_chip(
         _svg_line(parent, r.left,  y, r.left  - ln, y, _CHIP_PIN_COLOR)  # left edge
         _svg_line(parent, r.right, y, r.right + ln, y, _CHIP_PIN_COLOR)  # right edge
 
-    # Centered text labels — dy offsets mirror FPGAChip.draw()'s font.get_linesize()
-    # logic; 1.2× is the standard approximation for a monospace font's line height.
+    # Centered text labels — mirrors the dynamic layout in FPGAChip.draw().
+    # 1.2× is the standard approximation for a monospace font's line height.
     chip_font_size = max(11, font_size + 1)
     line_h = round(chip_font_size * 1.2)
     cx, cy = r.centerx, r.centery
-    if chip.vendor:
-        _svg_text(parent, cx, cy - line_h, chip.vendor,
-                  size=chip_font_size, color=WHITE, bold=True,
+
+    lines: list[tuple[str, tuple[int, int, int], bool]] = [
+        (chip.vendor,                    WHITE,              True),
+        (chip.device.upper(),            _CHIP_DEVICE_COLOR, False),
+        (chip.package.upper(),           _CHIP_PACKAGE_COLOR, False),
+    ]
+    if chip.clock_hz:
+        lines.append((FPGAChip._fmt_clock(chip.clock_hz), _CHIP_CLOCK_COLOR, False))
+    active = [(t, c, b) for t, c, b in lines if t]
+    offset = -(len(active) - 1) / 2 * line_h
+    for text, color, bold in active:
+        _svg_text(parent, cx, cy + offset, text,
+                  size=chip_font_size, color=color, bold=bold,
                   anchor="middle", baseline="middle")
-    if chip.device:
-        _svg_text(parent, cx, cy, chip.device.upper(),
-                  size=chip_font_size, color=_CHIP_DEVICE_COLOR,
-                  anchor="middle", baseline="middle")
-    if chip.package:
-        _svg_text(parent, cx, cy + line_h, chip.package.upper(),
-                  size=chip_font_size, color=_CHIP_PACKAGE_COLOR,
-                  anchor="middle", baseline="middle")
+        offset += line_h
 
 
 def _svg_draw_led(

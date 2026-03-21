@@ -17,7 +17,7 @@ from cocotb.triggers import Timer
 
 import pygame
 
-from board_loader import BoardDef
+from board_loader import BoardDef, _FALLBACK_CLOCK_HZ
 from fpga_board import FPGABoard
 
 
@@ -42,8 +42,10 @@ async def interactive_sim(dut):
     pygame.init()
     board = FPGABoard(board_def=board_def, width=sim_w, height=sim_h)
 
-    # ── Start simulation clock (10ns period = 100MHz) ────────────
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    # ── Start simulation clock ────────────────────────────────────
+    clk_hz = board_def.default_clock_hz if board_def else _FALLBACK_CLOCK_HZ
+    clk_period_ns = 1e9 / clk_hz
+    cocotb.start_soon(Clock(dut.clk, clk_period_ns, unit="ns").start())
 
     # ── Initialize inputs ────────────────────────────────────────
     num_sw = len(board.switches)
@@ -92,11 +94,12 @@ async def interactive_sim(dut):
     board.set_button_callback(_on_button)
 
     # ── Main loop ────────────────────────────────────────────────
-    SIM_STEP_NS = 2000  # 2us per frame = 200 clock cycles at 100MHz
+    SIM_STEP_NS = 2000  # 2 µs per display frame
 
     print(f"\n{'='*60}")
     print(f"  Simulation running: {board_def.name if board_def else 'Generic'}")
     print(f"  {num_led} LEDs, {num_btn} buttons, {num_sw} switches")
+    print(f"  Clock: {clk_hz / 1e6:.3g} MHz ({clk_period_ns:.3g} ns period)")
     print(f"  Press ESC or close window to stop")
     print(f"{'='*60}\n")
 
