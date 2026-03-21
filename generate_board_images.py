@@ -45,11 +45,8 @@ import pygame
 sys.path.insert(0, str(Path(__file__).parent))
 
 from board_loader import BoardDef, discover_boards, get_default_boards_path
-from fpga_board import (
-    _ui_scale,
-    BG_GREEN, BLUE_OFF, DARK_GRAY, GRAY, RED_OFF, WHITE,
-    Button, FPGABoard, FPGAChip, LED, Switch,
-)
+from ui.constants import _ui_scale, BG_GREEN, BLUE_OFF, DARK_GRAY, GRAY, RED_OFF, WHITE
+from ui import Button, FPGABoard, FPGAChip, LED, Switch
 
 
 # ── Constants ──────────────────────────────────────────────────────────────────

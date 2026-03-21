@@ -1,0 +1,192 @@
+"""
+Low-level UI components: FPGAChip, LED, Switch, Button.
+
+These are the building blocks placed on the board canvas by FPGABoard.
+"""
+
+import math
+import pygame
+
+from ui.constants import (
+    WHITE, RED_ON, RED_OFF, GRAY, YELLOW, BLUE_ON, BLUE_OFF,
+)
+
+
+# ── Component classes ────────────────────────────────────────────────
+
+class FPGAChip:
+    """Visual representation of the FPGA IC package on the board."""
+
+    _VENDOR_COLORS = {
+        "Xilinx":     (20,  60, 140),
+        "Intel":      (0,   90,  50),
+        "Lattice":    (90,  20,  90),
+        "QuickLogic": (130, 60,   0),
+        "Gowin":      (70,  70,   0),
+    }
+
+    def __init__(self, vendor: str = "", device: str = "", package: str = "",
+                 clock_hz: float = 0.0):
+        self.vendor   = vendor
+        self.device   = device
+        self.package  = package
+        self.clock_hz = clock_hz
+        self.rect = pygame.Rect(0, 0, 0, 0)
+
+    @staticmethod
+    def _fmt_clock(hz: float) -> str:
+        if hz >= 1e6:
+            mhz = hz / 1e6
+            return f"{mhz:g} MHz"
+        if hz >= 1e3:
+            return f"{hz / 1e3:g} kHz"
+        return f"{hz:g} Hz"
+
+    def draw(self, surface, font):
+        if self.rect.width < 20:
+            return
+        r = self.rect
+        color = self._VENDOR_COLORS.get(self.vendor, (40, 40, 40))
+
+        pygame.draw.rect(surface, color, r, border_radius=6)
+        pygame.draw.rect(surface, (180, 180, 180), r, 2, border_radius=6)
+        self._draw_pin_marks(surface, r)
+
+        cx, cy = r.centerx, r.centery
+        line_h = font.get_linesize()
+        lines = [
+            (self.vendor,          WHITE,           ),
+            (self.device.upper(),  (200, 200, 200), ),
+            (self.package.upper(), (150, 150, 150), ),
+        ]
+        if self.clock_hz:
+            lines.append((self._fmt_clock(self.clock_hz), (120, 200, 120)))
+        active = [(t, c) for t, c in lines if t]
+        offset = -(len(active) - 1) / 2 * line_h
+        for text, colour in active:
+            s = font.render(text, True, colour)
+            surface.blit(s, s.get_rect(centerx=cx, centery=cy + offset))
+            offset += line_h
+
+    def _draw_pin_marks(self, surface, r):
+        color = (120, 120, 120)
+        length = 5
+        h_count = max(4, min(20, r.width  // 14))
+        v_count = max(4, min(14, r.height // 14))
+
+        for i in range(h_count):
+            x = r.left + (i + 1) * r.width // (h_count + 1)
+            pygame.draw.line(surface, color, (x, r.top),    (x, r.top    - length))
+            pygame.draw.line(surface, color, (x, r.bottom), (x, r.bottom + length))
+
+        for i in range(v_count):
+            y = r.top + (i + 1) * r.height // (v_count + 1)
+            pygame.draw.line(surface, color, (r.left,  y), (r.left  - length, y))
+            pygame.draw.line(surface, color, (r.right, y), (r.right + length, y))
+
+
+class LED:
+    """A read-only indicator controlled via FPGABoard.set_led()."""
+
+    def __init__(self, index, info=None):
+        self.index = index
+        self.info = info
+        self.state = False
+        self.rect = pygame.Rect(0, 0, 0, 0)
+
+    @property
+    def label(self):
+        return self.info.display_name if self.info else f"LED{self.index}"
+
+    def draw(self, surface, font):
+        cx, cy = self.rect.center
+        r = max(4, min(self.rect.width, self.rect.height) // 2 - 2)
+
+        if self.state:
+            glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (255, 40, 40, 50), (r * 2, r * 2), r * 2)
+            surface.blit(glow, (cx - r * 2, cy - r * 2))
+            pygame.draw.circle(surface, RED_ON, (cx, cy), r)
+        else:
+            pygame.draw.circle(surface, RED_OFF, (cx, cy), r)
+
+        pygame.draw.circle(surface, WHITE, (cx, cy), r, 1)
+
+        lbl = font.render(self.label, True, WHITE)
+        surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
+
+
+class Switch:
+    """A toggle switch – clicks flip the state."""
+
+    def __init__(self, index, info=None):
+        self.index = index
+        self.info = info
+        self.state = False
+        self.rect = pygame.Rect(0, 0, 0, 0)
+        self.callback = None
+
+    @property
+    def label(self):
+        return self.info.display_name if self.info else f"SW{self.index}"
+
+    def draw(self, surface, font):
+        colour = BLUE_ON if self.state else BLUE_OFF
+        pygame.draw.rect(surface, colour, self.rect, border_radius=4)
+        pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=4)
+
+        knob_h = self.rect.height // 2
+        knob_y = self.rect.y + 2 if self.state else self.rect.bottom - knob_h - 2
+        knob = pygame.Rect(self.rect.x + 3, knob_y, self.rect.width - 6, knob_h)
+        pygame.draw.rect(surface, WHITE if self.state else GRAY, knob, border_radius=3)
+
+        lbl = font.render(self.label, True, WHITE)
+        surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
+
+    def handle_click(self, pos):
+        if self.rect.collidepoint(pos):
+            self.state = not self.state
+            if self.callback:
+                self.callback(self.index, self.state, self.info)
+            return True
+        return False
+
+
+class Button:
+    """A momentary push-button – pressed while the mouse is held down."""
+
+    def __init__(self, index, info=None):
+        self.index = index
+        self.info = info
+        self.pressed = False
+        self.rect = pygame.Rect(0, 0, 0, 0)
+        self.callback = None
+
+    @property
+    def label(self):
+        return self.info.display_name if self.info else f"BTN{self.index}"
+
+    def draw(self, surface, font):
+        if self.pressed:
+            inner = self.rect.inflate(-4, -4)
+            pygame.draw.rect(surface, YELLOW, inner, border_radius=6)
+        else:
+            pygame.draw.rect(surface, GRAY, self.rect, border_radius=6)
+        pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=6)
+
+        lbl = font.render(self.label, True, WHITE)
+        surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
+
+    def handle_press(self, pos):
+        if self.rect.collidepoint(pos):
+            self.pressed = True
+            if self.callback:
+                self.callback(self.index, True, self.info)
+            return True
+        return False
+
+    def handle_release(self):
+        if self.pressed:
+            self.pressed = False
+            if self.callback:
+                self.callback(self.index, False, self.info)

@@ -18,7 +18,7 @@ from cocotb.triggers import Timer
 import pygame
 
 from board_loader import BoardDef, _FALLBACK_CLOCK_HZ
-from fpga_board import FPGABoard
+from ui import FPGABoard
 
 
 def _load_board_from_env() -> BoardDef | None:
