@@ -1,4 +1,4 @@
--- blinky_counter.vhd – Binary counter display blinky.
+-- blinky_counter.vhd - Binary counter display blinky.
 --
 -- All LEDs display a sliding window of bits from a free-running counter,
 -- showing the raw binary count.  With no switches active the window sits at

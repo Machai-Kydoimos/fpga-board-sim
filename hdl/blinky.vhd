@@ -1,4 +1,4 @@
--- blinky.vhd – Simple blinky design for FPGA simulator testing.
+-- blinky.vhd - Simple blinky design for FPGA simulator testing.
 --
 -- Directly wires switches to LEDs, with a clock-driven counter
 -- that XORs the upper counter bits onto the LED outputs to create

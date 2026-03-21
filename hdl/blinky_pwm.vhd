@@ -1,17 +1,17 @@
--- blinky_pwm.vhd – Breathing (PWM fade) blinky.
+-- blinky_pwm.vhd - Breathing (PWM fade) blinky.
 --
 -- All LEDs slowly fade in and out using pulse-width modulation.  Brightness
 -- follows a triangle-wave envelope derived from the upper bits of a wide
 -- free-running counter; the lower 8 bits form the PWM sawtooth.
 --
 -- Triangle wave construction:
---   When MSB of counter = 0 : brightness rises  0 → 255  (ascending half)
---   When MSB of counter = 1 : brightness falls 255 → 0   (descending half)
+--   When MSB of counter = 0 : brightness rises  0 -> 255  (ascending half)
+--   When MSB of counter = 1 : brightness falls 255 -> 0   (descending half)
 --   The falling half is the bitwise complement of the ascending ramp, which
---   equals (255 - ramp) for 8-bit values — a perfect mirror image.
+--   equals (255 - ramp) for 8-bit values  -- a perfect mirror image.
 --
 -- Breathing period = 2^(COUNTER_BITS + 8) clocks.
--- At 100 MHz, COUNTER_BITS = 24 → one full breath every ~43 seconds.
+-- At 100 MHz, COUNTER_BITS = 24 -> one full breath every ~43 seconds.
 -- Reduce COUNTER_BITS (e.g. 16) for a faster breath (~167 ms).
 --
 -- sw(i)  : '1' enables LED i to breathe; '0' keeps it dark
