@@ -46,6 +46,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from board_loader import BoardDef, discover_boards, get_default_boards_path
 from fpga_board import (
+    _ui_scale,
     BG_GREEN, BLUE_OFF, DARK_GRAY, GRAY, RED_OFF, WHITE,
     Button, FPGABoard, FPGAChip, LED, Switch,
 )
@@ -284,19 +285,21 @@ def _svg_draw_fpga_chip(
         _svg_line(parent, r.left,  y, r.left  - ln, y, _CHIP_PIN_COLOR)  # left edge
         _svg_line(parent, r.right, y, r.right + ln, y, _CHIP_PIN_COLOR)  # right edge
 
-    # Centered text labels — dy offsets match FPGAChip.draw() (centery = cy + dy)
+    # Centered text labels — dy offsets mirror FPGAChip.draw()'s font.get_linesize()
+    # logic; 1.2× is the standard approximation for a monospace font's line height.
     chip_font_size = max(11, font_size + 1)
+    line_h = round(chip_font_size * 1.2)
     cx, cy = r.centerx, r.centery
     if chip.vendor:
-        _svg_text(parent, cx, cy - 14, chip.vendor,
+        _svg_text(parent, cx, cy - line_h, chip.vendor,
                   size=chip_font_size, color=WHITE, bold=True,
                   anchor="middle", baseline="middle")
     if chip.device:
-        _svg_text(parent, cx, cy + 2, chip.device.upper(),
+        _svg_text(parent, cx, cy, chip.device.upper(),
                   size=chip_font_size, color=_CHIP_DEVICE_COLOR,
                   anchor="middle", baseline="middle")
     if chip.package:
-        _svg_text(parent, cx, cy + 18, chip.package.upper(),
+        _svg_text(parent, cx, cy + line_h, chip.package.upper(),
                   size=chip_font_size, color=_CHIP_PACKAGE_COLOR,
                   anchor="middle", baseline="middle")
 
@@ -396,7 +399,7 @@ def build_svg(board: FPGABoard, width: int, height: int) -> str:
 
     Returns the full SVG document as a UTF-8 XML string.
     """
-    font_size  = max(10, min(14, height // 55))   # matches FPGABoard._draw()
+    font_size  = max(9, round(12 * _ui_scale(width, height)))  # matches FPGABoard._draw()
     title_size = font_size + 4                     # matches FPGABoard._draw() title_font
 
     svg = ET.Element("svg", {
