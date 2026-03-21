@@ -6,7 +6,7 @@ Interactive FPGA board simulator with GHDL-backed VHDL simulation. Select from 7
 
 ### Prerequisites
 
-- **Python 3.12+**
+- **Python 3.10+**
 - **[uv](https://docs.astral.sh/uv/)** (Python package manager)
 - **GHDL** (VHDL simulator)
 
@@ -53,7 +53,8 @@ uv sync
 
 **Linux / macOS:**
 ```bash
-uv run python fpga_board.py
+uv run fpga-sim
+# or: uv run python fpga_board.py
 ```
 
 **Windows:**
@@ -61,7 +62,7 @@ uv run python fpga_board.py
 # Ensure GHDL is on PATH (if not already after install)
 $env:PATH = "C:\Users\$env:USERNAME\AppData\Local\Microsoft\WinGet\Packages\ghdl.ghdl.ucrt64.mcode_Microsoft.Winget.Source_8wekyb3d8bbwe\bin;$env:PATH"
 
-uv run python fpga_board.py
+uv run fpga-sim
 ```
 
 ## Usage
@@ -81,28 +82,37 @@ The board renders with LEDs, buttons, and switches matching the real hardware. C
 
 ### 3. Select a VHDL file
 
-Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains `blinky.vhd` as a starting point.
+Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains six ready-to-run designs (`blinky.vhd`, `blinky_counter.vhd`, `blinky_morse.vhd`, `blinky_pwm.vhd`, `blinky_walking.vhd`, `blinky_alt.vhd`) as starting points.
 
 ### 4. Simulation runs
 
-GHDL compiles and simulates the VHDL design via cocotb. The pygame UI becomes interactive:
+GHDL compiles and simulates the VHDL design via cocotb, clocked at the board's actual frequency. The pygame UI becomes interactive:
 
 - **Switches/buttons** drive FPGA inputs in real time
 - **LEDs** reflect FPGA outputs from the simulation
 - **ESC** or close window → stops simulation, returns to board list
 
+> **Session persistence:** The last-used board and VHDL file are saved to `~/.fpga_simulator/session.json` and pre-selected on the next run.
+
 ## Project Structure
 
 ```
-fpga_board.py      Main entry point — pygame UI (board selector, preview, file picker)
-board_loader.py    Parses amaranth-boards definitions without the full amaranth toolchain
-sim_bridge.py      GHDL analysis + cocotb simulation launcher (handles Windows VPI setup)
-sim_testbench.py   cocotb test that bridges GHDL signals ↔ pygame UI
-hdl/blinky.vhd     Example VHDL design (switches XOR counter → LEDs, buttons OR → LEDs)
-sim/test_blinky.py Headless cocotb tests for the blinky design
-sim/run_tests.py   Full integration test suite (26 tests, no GUI needed)
-amaranth-boards/   Board definitions from amaranth-lang/amaranth-boards
-pyproject.toml     Project metadata and dependencies
+fpga_board.py           Main entry point — pygame UI (board selector, preview, file picker)
+board_loader.py         Parses amaranth-boards definitions without the full amaranth toolchain
+sim_bridge.py           GHDL analysis + cocotb simulation launcher (handles Windows VPI setup)
+sim_testbench.py        cocotb test that bridges GHDL signals ↔ pygame UI
+session_config.py       Session persistence (~/.fpga_simulator/session.json)
+generate_board_images.py Renders static board previews (used for documentation/thumbnails)
+hdl/blinky.vhd          Example VHDL design (switches XOR counter → LEDs, buttons OR → LEDs)
+hdl/blinky_alt.vhd      Alternate blinky using independent per-LED counters
+hdl/blinky_counter.vhd  Binary counter displayed on LEDs
+hdl/blinky_morse.vhd    Morse code blinker
+hdl/blinky_pwm.vhd      PWM-based LED brightness control
+hdl/blinky_walking.vhd  Walking-light / knight-rider pattern
+sim/test_blinky.py      Headless cocotb tests for the blinky design
+tests/                  pytest integration suite (board loading, serialization, GHDL, UI)
+amaranth-boards/        Board definitions from amaranth-lang/amaranth-boards
+pyproject.toml          Project metadata and dependencies
 ```
 
 ## How It Works
@@ -152,7 +162,7 @@ fpga_board.py                    sim_bridge.py                     GHDL + cocotb
                                  ────────────────
                                  9.  Deserialize BoardDef from env
                                  10. pygame.init(), create FPGABoard
-                                 11. Start 100MHz clock coroutine
+                                 11. Start board clock coroutine (board frequency)
                                  12. Wire switch/button callbacks:
                                      on click → collect all states
                                      into bit vector → dut.sw.value
@@ -165,7 +175,7 @@ fpga_board.py                    sim_bridge.py                     GHDL + cocotb
                                      clock.tick(60)       ← 60fps cap
 ```
 
-The key insight is that **pygame runs inside the cocotb test function**. Each frame, `await Timer(2, unit="us")` advances the GHDL simulation by 2 microseconds (200 clock cycles at 100MHz), then the test reads outputs and processes pygame events. This cooperative loop gives smooth 60fps rendering with live simulation.
+The key insight is that **pygame runs inside the cocotb test function**. Each frame, `await Timer(2, unit="us")` advances the GHDL simulation by 2 microseconds, then the test reads outputs and processes pygame events. This cooperative loop gives smooth 60fps rendering with live simulation.
 
 ### The Blinky Design (`hdl/blinky.vhd`)
 
@@ -175,7 +185,7 @@ A simple but complete VHDL design that exercises all board I/O:
 - **LED logic**: `led(i) = sw(i) XOR counter(top-i) OR btn(i)`
   - Switches XOR with counter bits → LEDs blink at different rates depending on which switches are on
   - Buttons OR directly → LEDs light immediately while held
-- **Generics**: `NUM_SWITCHES`, `NUM_BUTTONS`, `NUM_LEDS`, `COUNTER_BITS` are set by the simulator to match the selected board. `COUNTER_BITS=10` in simulation keeps the blink rate visible.
+- **Generics**: `NUM_SWITCHES`, `NUM_BUTTONS`, `NUM_LEDS`, `COUNTER_BITS` are set by the simulator to match the selected board. `COUNTER_BITS=10` in simulation keeps the blink rate visible at typical board clock frequencies.
 
 ### Platform-Specific VPI Setup (`sim_bridge.py`)
 
@@ -227,13 +237,13 @@ entity my_design is
 end entity;
 ```
 
-The simulator sets the generics to match the selected board's resource counts and provides a 100 MHz clock.
+The simulator sets the generics to match the selected board's resource counts and drives `clk` at the board's actual clock frequency (extracted from its `Clock` resource, falling back to 12 MHz).
 
 ## Dependencies
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Python | 3.12+ | Runtime (must be standalone, not Windows Store) |
+| Python | 3.10+ | Runtime (must be standalone, not Windows Store) |
 | pygame | 2.5+ | GUI rendering |
 | cocotb | 2.0+ | Python ↔ GHDL simulation bridge |
 | GHDL | 5.0+ | VHDL compilation and simulation (mcode backend) |
