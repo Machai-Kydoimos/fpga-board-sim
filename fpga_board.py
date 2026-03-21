@@ -15,6 +15,7 @@ from pathlib import Path
 from board_loader import (
     discover_boards, get_default_boards_path, BoardDef, ComponentInfo,
 )
+from session_config import load_session, save_session
 
 # ── Colours ──────────────────────────────────────────────────────────
 BG_GREEN = (34, 139, 34)
@@ -210,13 +211,23 @@ class Button:
 class BoardSelector:
     """Full-screen picker.  Returns the chosen BoardDef, or None on quit."""
 
-    def __init__(self, boards, screen):
+    def __init__(self, boards, screen, preselect_class: str = ""):
         self.boards = boards
         self.screen = screen
         self.width, self.height = screen.get_size()
         self.scroll = 0
         self.hovered = -1
         self.filter_text = ""
+
+        if preselect_class:
+            idx = next((i for i, b in enumerate(boards)
+                        if b.class_name == preselect_class), -1)
+            if idx >= 0:
+                self.hovered = idx
+                viewport_h = self.height - self._hdr
+                self.scroll = max(
+                    0, idx * self.row_h - viewport_h // 2 + self.row_h // 2
+                )
 
     @property
     def row_h(self) -> int:
@@ -607,13 +618,23 @@ class FPGABoard:
 class VHDLFilePicker:
     """Simple file picker for .vhd/.vhdl files.  Returns path or None."""
 
-    def __init__(self, screen, start_dir=None):
+    def __init__(self, screen, start_dir=None, preselect_name: str = ""):
         self.screen = screen
         self.width, self.height = screen.get_size()
         self.scroll = 0
         self.hovered = -1
         self.current_dir = Path(start_dir or Path.cwd())
         self._scan()
+
+        if preselect_name:
+            for i, (name, _path, is_dir) in enumerate(self.entries):
+                if not is_dir and name == preselect_name:
+                    self.hovered = i
+                    viewport_h = self.height - self._hdr
+                    self.scroll = max(
+                        0, i * self.row_h - viewport_h // 2 + self.row_h // 2
+                    )
+                    break
 
     @property
     def row_h(self) -> int:
@@ -912,9 +933,14 @@ def main():
     pygame.display.set_caption("FPGA Simulator")
     clock = pygame.time.Clock()
 
+    session = load_session()
+    last_board_class = session.get("board_class", "")
+    last_vhdl_path   = session.get("vhdl_path", "")
+
     while True:
         # ── Step 1: pick a board ─────────────────────────────────
-        chosen = BoardSelector(boards, screen).run(clock)
+        chosen = BoardSelector(boards, screen,
+                               preselect_class=last_board_class).run(clock)
         if chosen is None:
             break
 
@@ -937,9 +963,20 @@ def main():
         _back_to_boards = False
         analyzed_work_dir = None
 
+        # Derive file-picker start dir and pre-selection from session (first pick only)
+        _last_p = Path(last_vhdl_path) if last_vhdl_path else None
+        _fp_dir  = _last_p.parent if (_last_p and _last_p.exists()) else hdl_dir
+        _fp_pre  = _last_p.name   if (_last_p and _last_p.exists()) else ""
+        _first_pick = True
+
         while True:
             pygame.display.set_caption("FPGA Simulator – Select VHDL")
-            vhdl_path = VHDLFilePicker(screen, start_dir=hdl_dir).run(clock)
+            if _first_pick:
+                vhdl_path = VHDLFilePicker(
+                    screen, start_dir=_fp_dir, preselect_name=_fp_pre).run(clock)
+                _first_pick = False
+            else:
+                vhdl_path = VHDLFilePicker(screen, start_dir=hdl_dir).run(clock)
             if vhdl_path is None:
                 # ESC in file picker → back to board selector
                 _back_to_boards = True
@@ -973,6 +1010,10 @@ def main():
             continue  # back to BoardSelector
 
         # ── Step 5: launch simulation ────────────────────────────
+        save_session(chosen.class_name, vhdl_path)
+        last_board_class = chosen.class_name  # update in-memory session for this run
+        last_vhdl_path   = vhdl_path
+
         # Capture final window size before quitting pygame so the
         # simulation subprocess and the post-sim restart both use it.
         width, height = screen.get_size()
