@@ -43,8 +43,8 @@ def test_bad_contract_passes_stage1():
     assert ok, f"Unexpected encoding failure: {msg}"
 
 
-def test_bad_ghdl_passes_stage1():
-    ok, msg = check_vhdl_encoding(HDL / "bad_ghdl_blinky.vhdl")
+def test_bad_semantic_passes_stage1():
+    ok, msg = check_vhdl_encoding(HDL / "bad_semantic_blinky.vhdl")
     assert ok, f"Unexpected encoding failure: {msg}"
 
 
@@ -62,8 +62,8 @@ def test_bad_contract_fails_stage2():
     assert "mismatch" in msg.lower()
 
 
-def test_bad_ghdl_passes_stage2():
-    ok, msg = check_vhdl_contract(HDL / "bad_ghdl_blinky.vhdl")
+def test_bad_semantic_passes_stage2():
+    ok, msg = check_vhdl_contract(HDL / "bad_semantic_blinky.vhdl")
     assert ok, f"Unexpected contract failure: {msg}"
 
 
@@ -76,8 +76,8 @@ def test_good_blinky_ghdl_pass(filename, ghdl):
     assert ok, f"GHDL failed on {filename}: {detail}"
 
 
-def test_bad_ghdl_fails_stage3(ghdl):
-    f = HDL / "bad_ghdl_blinky.vhdl"
+def test_bad_semantic_fails_stage3(ghdl):
+    f = HDL / "bad_semantic_blinky.vhdl"
     ok, detail = analyze_vhdl(f, toplevel=f.stem)
-    assert not ok, "Expected GHDL analysis to fail on bad_ghdl_blinky.vhdl"
+    assert not ok, "Expected GHDL analysis to fail on bad_semantic_blinky.vhdl"
     assert "unsigned" in detail.lower()

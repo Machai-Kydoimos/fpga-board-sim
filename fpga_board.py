@@ -8,17 +8,34 @@ All UI logic lives in the ui/ package:
   ui/fpga_board.py     FPGABoard screen
   ui/vhdl_picker.py    VHDLFilePicker screen
   ui/error_dialog.py   ErrorDialog overlay
+
+Usage:
+  uv run python fpga_board.py [--sim ghdl|nvc]
 """
 
+import argparse
 import pygame
 from pathlib import Path
 
 from board_loader import discover_boards, get_default_boards_path
 from session_config import load_session, save_session
+from sim_bridge import detect_simulators
 from ui import BoardSelector, FPGABoard, VHDLFilePicker, ErrorDialog
 
 
+def _parse_args():
+    p = argparse.ArgumentParser(description="FPGA Board Simulator")
+    p.add_argument(
+        "--sim", metavar="NAME", default=None,
+        help="Simulator to use: 'ghdl' or 'nvc' (overrides saved session)",
+    )
+    return p.parse_args()
+
+
 def main():
+    args = _parse_args()
+    available_sims = detect_simulators()
+
     pygame.init()
     # get_desktop_sizes() is reliable in pygame 2.x before any set_mode() call
     sizes = pygame.display.get_desktop_sizes()
@@ -43,6 +60,16 @@ def main():
     last_board_class = session.get("board_class", "")
     last_vhdl_path   = session.get("vhdl_path", "")
 
+    # CLI flag overrides session; session overrides default; default is first available
+    if args.sim and args.sim in available_sims:
+        simulator = args.sim
+    elif args.sim:
+        print(f"[warn] Simulator '{args.sim}' not found; falling back to {available_sims[0]}")
+        simulator = available_sims[0]
+    else:
+        saved = session.get("simulator", "")
+        simulator = saved if saved in available_sims else available_sims[0]
+
     while True:
         # ── Step 1: pick a board ─────────────────────────────────
         chosen = BoardSelector(boards, screen,
@@ -53,8 +80,11 @@ def main():
         # ── Step 2: preview board ────────────────────────────────
         # ESC → back to selector, Enter → pick VHDL, close → quit
         # Pass the existing screen — no set_mode(), preserves window state.
-        preview = FPGABoard(board_def=chosen, screen=screen)
+        preview = FPGABoard(board_def=chosen, screen=screen,
+                            simulator=simulator,
+                            available_simulators=available_sims)
         result = preview.run()
+        simulator = preview.simulator   # pick up any toggle change
         if result == "quit":
             break
         if result == "back":
@@ -97,12 +127,14 @@ def main():
                     intent = ErrorDialog(screen, "VHDL Error", detail).run(clock)
                     break
             else:
-                # Stage 3: GHDL analysis + elaboration
-                ok, detail = analyze_vhdl(vhdl_path, toplevel=toplevel_name)
+                # Stage 3: simulator analysis + elaboration
+                ok, detail = analyze_vhdl(vhdl_path, toplevel=toplevel_name,
+                                          simulator=simulator)
                 if ok:
                     analyzed_work_dir = detail  # reuse in launch_simulation
                 else:
-                    intent = ErrorDialog(screen, "GHDL Error", detail).run(clock)
+                    intent = ErrorDialog(
+                        screen, f"{simulator.upper()} Error", detail).run(clock)
 
             if ok:
                 break  # valid file — proceed to simulation
@@ -116,7 +148,7 @@ def main():
             continue  # back to BoardSelector
 
         # ── Step 5: launch simulation ────────────────────────────
-        save_session(chosen.class_name, vhdl_path)
+        save_session(chosen.class_name, vhdl_path, simulator)
         last_board_class = chosen.class_name  # update in-memory session for this run
         last_vhdl_path   = vhdl_path
 
@@ -141,7 +173,8 @@ def main():
         try:
             launch_simulation(board_json, vhdl_path, toplevel, generics,
                               sim_width=width, sim_height=height,
-                              work_dir=analyzed_work_dir)
+                              work_dir=analyzed_work_dir,
+                              simulator=simulator)
         except Exception as e:
             print(f"Simulation error: {e}")
 

@@ -1,14 +1,14 @@
--- bad_ghdl_blinky.vhdl - Fails Stage 3 (GHDL analysis).
+-- bad_semantic_blinky.vhdl - Fails Stage 3 (simulator analysis).
 --
 -- DELIBERATE FLAW: "use ieee.numeric_std.all;" is omitted, so the
--- "unsigned" type is undefined.  GHDL -a will report an error.
+-- "unsigned" type is undefined.  Both GHDL and NVC will report an error.
 -- Encoding is clean ASCII and the entity name matches the filename.
 
 library ieee;
 use ieee.std_logic_1164.all;
 -- use ieee.numeric_std.all;   <-- intentionally removed
 
-entity bad_ghdl_blinky is
+entity bad_semantic_blinky is
   generic (
     NUM_SWITCHES : positive := 4;
     NUM_BUTTONS  : positive := 4;
@@ -21,9 +21,9 @@ entity bad_ghdl_blinky is
     btn  : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0);
     led  : out std_logic_vector(NUM_LEDS     - 1 downto 0)
   );
-end entity bad_ghdl_blinky;
+end entity bad_semantic_blinky;
 
-architecture rtl of bad_ghdl_blinky is
+architecture rtl of bad_semantic_blinky is
   -- "unsigned" is unknown without ieee.numeric_std
   signal counter : unsigned(COUNTER_BITS - 1 downto 0) := (others => '0');
 begin
