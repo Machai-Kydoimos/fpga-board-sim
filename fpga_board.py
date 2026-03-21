@@ -55,11 +55,22 @@ class FPGAChip:
         "Gowin":      (70,  70,   0),
     }
 
-    def __init__(self, vendor: str = "", device: str = "", package: str = ""):
-        self.vendor  = vendor
-        self.device  = device
-        self.package = package
+    def __init__(self, vendor: str = "", device: str = "", package: str = "",
+                 clock_hz: float = 0.0):
+        self.vendor   = vendor
+        self.device   = device
+        self.package  = package
+        self.clock_hz = clock_hz
         self.rect = pygame.Rect(0, 0, 0, 0)
+
+    @staticmethod
+    def _fmt_clock(hz: float) -> str:
+        if hz >= 1e6:
+            mhz = hz / 1e6
+            return f"{mhz:g} MHz"
+        if hz >= 1e3:
+            return f"{hz / 1e3:g} kHz"
+        return f"{hz:g} Hz"
 
     def draw(self, surface, font):
         if self.rect.width < 20:
@@ -73,14 +84,19 @@ class FPGAChip:
 
         cx, cy = r.centerx, r.centery
         line_h = font.get_linesize()
-        for text, colour, dy in [
-            (self.vendor,          WHITE,           -line_h),
-            (self.device.upper(),  (200, 200, 200),  0),
-            (self.package.upper(), (150, 150, 150),  line_h),
-        ]:
-            if text:
-                s = font.render(text, True, colour)
-                surface.blit(s, s.get_rect(centerx=cx, centery=cy + dy))
+        lines = [
+            (self.vendor,          WHITE,           ),
+            (self.device.upper(),  (200, 200, 200), ),
+            (self.package.upper(), (150, 150, 150), ),
+        ]
+        if self.clock_hz:
+            lines.append((self._fmt_clock(self.clock_hz), (120, 200, 120)))
+        active = [(t, c) for t, c in lines if t]
+        offset = -(len(active) - 1) / 2 * line_h
+        for text, colour in active:
+            s = font.render(text, True, colour)
+            surface.blit(s, s.get_rect(centerx=cx, centery=cy + offset))
+            offset += line_h
 
     def _draw_pin_marks(self, surface, r):
         color = (120, 120, 120)
@@ -373,6 +389,7 @@ class FPGABoard:
                 vendor=board_def.vendor,
                 device=board_def.device,
                 package=board_def.package,
+                clock_hz=board_def.default_clock_hz,
             )
             self.leds = [LED(i, info=c) for i, c in enumerate(board_def.leds)]
             self.buttons = [Button(i, info=c) for i, c in enumerate(board_def.buttons)]

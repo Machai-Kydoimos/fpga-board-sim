@@ -14,6 +14,7 @@ def test_board():
         device="xc7a35ti",
         package="csg324",
         clocks=[100e6],
+        default_clock_hz=100e6,
         leds=[ComponentInfo("led", "led", 0, pins=["P1"], attrs={"IO": "LVCMOS"})],
         buttons=[ComponentInfo("button", "button_up", 0, pins=["B1"],
                                connector=("pmod", 0))],
@@ -51,6 +52,10 @@ def test_json_has_clocks(parsed):
     assert parsed["clocks"] == [100e6]
 
 
+def test_json_has_default_clock_hz(parsed):
+    assert parsed["default_clock_hz"] == 100e6
+
+
 def test_json_has_led_pin(parsed):
     assert parsed["leds"][0]["pins"] == ["P1"]
 
@@ -78,6 +83,10 @@ def test_roundtrip_device(round_tripped):
 
 def test_roundtrip_clocks(round_tripped):
     assert round_tripped.clocks == [100e6]
+
+
+def test_roundtrip_default_clock_hz(round_tripped):
+    assert round_tripped.default_clock_hz == 100e6
 
 
 def test_roundtrip_led_pin(round_tripped):

@@ -73,6 +73,27 @@ def test_arty_has_clocks(arty):
     assert len(arty.clocks) > 0
 
 
+def test_arty_default_clock_is_100mhz(arty):
+    assert arty.default_clock_hz == 100e6
+
+
+@pytest.fixture(scope="module")
+def icestick(all_boards):
+    matches = [b for b in all_boards if "icestick" in b.name.lower()]
+    if not matches:
+        pytest.skip("Icestick board not found")
+    return matches[0]
+
+
+def test_icestick_default_clock_is_12mhz(icestick):
+    assert icestick.default_clock_hz == 12e6
+
+
+def test_inline_board_uses_fallback_clock(inline_board):
+    from board_loader import _FALLBACK_CLOCK_HZ
+    assert inline_board.default_clock_hz == _FALLBACK_CLOCK_HZ
+
+
 def test_nexys_has_named_buttons(all_boards):
     nexys = [b for b in all_boards if "Nexys4" in b.name]
     if not nexys:
@@ -89,6 +110,17 @@ class InlineTestPlatform(XilinxPlatform):
     resources = [
         *LEDResources(pins="A B C", attrs=Attrs(IO="TEST")),
         *SwitchResources(pins="X Y", attrs=Attrs(IO="TEST")),
+    ]
+'''
+
+_INLINE_SRC_WITH_CLOCK = '''
+from amaranth.build import *
+from amaranth.vendor import XilinxPlatform
+class InlineClockPlatform(XilinxPlatform):
+    default_clk = "clk50"
+    resources = [
+        Resource("clk50", 0, Pins("E3", dir="i"), Clock(50e6), Attrs(IO="LVCMOS")),
+        *LEDResources(pins="A B", attrs=Attrs(IO="TEST")),
     ]
 '''
 
@@ -114,3 +146,14 @@ def test_inline_two_switches(inline_board):
 
 def test_inline_vendor_is_xilinx(inline_board):
     assert inline_board.vendor == "Xilinx"
+
+
+@pytest.fixture(scope="module")
+def inline_clocked_board():
+    boards = load_board_from_source(_INLINE_SRC_WITH_CLOCK, "<inline_clk>")
+    assert boards
+    return boards[0]
+
+
+def test_inline_explicit_50mhz_clock(inline_clocked_board):
+    assert inline_clocked_board.default_clock_hz == 50e6
