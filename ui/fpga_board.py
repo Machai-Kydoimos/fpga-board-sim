@@ -3,6 +3,10 @@ FPGABoard: the main interactive board display screen.
 
 Renders the FPGA chip, LEDs, buttons, and switches in a resizable pygame
 window.  run() returns 'back', 'simulate', or 'quit'.
+
+The active simulator can be toggled via a button in the footer when more
+than one simulator is installed.  Read ``board.simulator`` after run()
+returns 'simulate' to discover the user's choice.
 """
 
 import math
@@ -24,12 +28,19 @@ class FPGABoard:
         Fallback counts when no BoardDef is provided.
     width, height: int
         Initial window size (resizable).
+    simulator : str
+        Currently selected simulator ('ghdl' or 'nvc').
+    available_simulators : list[str]
+        Simulators that are installed.  If the list has more than one
+        entry the footer shows a toggle button.
     """
 
     def __init__(self, board_def=None, *,
                  screen=None,
                  num_switches=8, num_buttons=4, num_leds=16,
-                 width=1024, height=700):
+                 width=1024, height=700,
+                 simulator="ghdl",
+                 available_simulators=None):
         self.board_def = board_def
         if screen is not None:
             self.screen = screen
@@ -39,6 +50,9 @@ class FPGABoard:
             self.width, self.height = width, height
         self.clock = pygame.time.Clock()
         self.running = False
+
+        self.simulator = simulator
+        self.available_simulators = available_simulators or ["ghdl"]
 
         title = f"FPGA Simulator \u2013 {board_def.name}" if board_def else "FPGA Simulator"
         pygame.display.set_caption(title)
@@ -76,6 +90,7 @@ class FPGABoard:
             btn.callback = _btn_cb
 
         self._sim_btn_rect = None
+        self._sim_toggle_rect = None
         self._layout()
 
     # ── public API ───────────────────────────────────────────────────
@@ -102,7 +117,7 @@ class FPGABoard:
         return False
 
     def run(self):
-        """Enter the main loop.  Returns 'back' (ESC), 'simulate' (Enter), or 'quit'."""
+        """Enter the main loop.  Returns 'back' (ESC), 'simulate' (Enter/button), or 'quit'."""
         self.running = True
         self._go_back = False
         self._simulate = False
@@ -215,11 +230,22 @@ class FPGABoard:
                 self._layout()
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # Check "Start Simulation" button first
+                # Simulator toggle (cycle to next available simulator)
+                if (self._sim_toggle_rect
+                        and self._sim_toggle_rect.collidepoint(event.pos)
+                        and len(self.available_simulators) > 1):
+                    idx = (self.available_simulators.index(self.simulator)
+                           if self.simulator in self.available_simulators else 0)
+                    self.simulator = self.available_simulators[
+                        (idx + 1) % len(self.available_simulators)]
+                    return
+
+                # "Start Simulation" button
                 if self._sim_btn_rect and self._sim_btn_rect.collidepoint(event.pos):
                     self._simulate = True
                     self.running = False
                     return
+
                 for sw in self.switches:
                     sw.handle_click(event.pos)
                 for btn in self.buttons:
@@ -262,13 +288,15 @@ class FPGABoard:
         for sw in self.switches:
             sw.draw(self.screen, font)
 
-        # "Start Simulation" button
+        # ── Footer buttons ────────────────────────────────────────────
         btn_font = pygame.font.SysFont("consolas", max(12, round(16 * s)), bold=True)
-        btn_text = btn_font.render("Start Simulation", True, WHITE)
-        btn_w = btn_text.get_width() + 30
-        btn_h = btn_text.get_height() + 14
         btn_margin_x = max(15, round(20 * s))
         btn_margin_y = max(15, round(20 * s))
+
+        # "Start Simulation" button (bottom-right)
+        start_text = btn_font.render("Start Simulation", True, WHITE)
+        btn_w = start_text.get_width() + 30
+        btn_h = start_text.get_height() + 14
         btn_x = self.width  - btn_w - btn_margin_x
         btn_y = self.height - btn_h - btn_margin_y
         self._sim_btn_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
@@ -278,9 +306,32 @@ class FPGABoard:
         btn_bg = (30, 120, 60) if hovered else (20, 90, 40)
         pygame.draw.rect(self.screen, btn_bg, self._sim_btn_rect, border_radius=6)
         pygame.draw.rect(self.screen, WHITE, self._sim_btn_rect, 2, border_radius=6)
-        self.screen.blit(btn_text, (btn_x + 15, btn_y + 7))
+        self.screen.blit(start_text, (btn_x + 15, btn_y + 7))
 
-        # ESC hint — positioned using actual font height so it's never clipped
+        # Simulator toggle button (left of "Start Simulation")
+        toggle_text = btn_font.render(f"SIM: {self.simulator.upper()}", True, WHITE)
+        toggle_w = toggle_text.get_width() + 24
+        toggle_h = btn_h
+        toggle_x = btn_x - toggle_w - 10
+        toggle_y = btn_y
+        self._sim_toggle_rect = pygame.Rect(toggle_x, toggle_y, toggle_w, toggle_h)
+
+        can_toggle = len(self.available_simulators) > 1
+        t_hovered = can_toggle and self._sim_toggle_rect.collidepoint(mouse_pos)
+        if self.simulator == "nvc":
+            toggle_bg = (100, 40, 130) if t_hovered else (80, 30, 100)
+        elif can_toggle:
+            toggle_bg = (30, 80, 140) if t_hovered else (20, 60, 110)
+        else:
+            toggle_bg = (50, 50, 60)   # greyed out – only one simulator available
+        pygame.draw.rect(self.screen, toggle_bg, self._sim_toggle_rect, border_radius=6)
+        border_color = WHITE if can_toggle else (100, 100, 110)
+        pygame.draw.rect(self.screen, border_color, self._sim_toggle_rect, 2, border_radius=6)
+        text_color = WHITE if can_toggle else (140, 140, 150)
+        self.screen.blit(btn_font.render(f"SIM: {self.simulator.upper()}", True, text_color),
+                         (toggle_x + 12, toggle_y + 7))
+
+        # ESC hint (bottom-left)
         hint_f = pygame.font.SysFont("consolas", max(9, round(12 * s)))
         hint = hint_f.render("ESC: back to board list", True, (160, 160, 160))
         hint_margin = max(8, round(10 * s))

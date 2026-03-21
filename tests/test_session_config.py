@@ -68,3 +68,37 @@ def test_save_overwrites_previous(session_file):
     result = load_session()
     assert result["board_class"] == "BoardB"
     assert result["vhdl_path"] == "/path/b.vhd"
+
+
+# ── Simulator persistence ──────────────────────────────────────────────────────
+
+def test_save_default_simulator_is_ghdl(session_file):
+    save_session("MyBoard", "/path/blinky.vhd")
+    data = json.loads(session_file.read_text())
+    assert data["simulator"] == "ghdl"
+
+
+def test_save_nvc_simulator(session_file):
+    save_session("MyBoard", "/path/blinky.vhd", simulator="nvc")
+    data = json.loads(session_file.read_text())
+    assert data["simulator"] == "nvc"
+
+
+def test_simulator_roundtrip_ghdl(session_file):
+    save_session("BoardX", "/path/blinky.vhd", simulator="ghdl")
+    result = load_session()
+    assert result["simulator"] == "ghdl"
+
+
+def test_simulator_roundtrip_nvc(session_file):
+    save_session("BoardX", "/path/blinky.vhd", simulator="nvc")
+    result = load_session()
+    assert result["simulator"] == "nvc"
+
+
+def test_load_missing_simulator_key(session_file):
+    """Old session files without 'simulator' key load without error."""
+    session_file.parent.mkdir(parents=True)
+    session_file.write_text(json.dumps({"board_class": "X", "vhdl_path": "y"}))
+    result = load_session()
+    assert "simulator" not in result  # caller supplies a default
