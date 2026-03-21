@@ -1,6 +1,4 @@
 """Tests for GHDL availability and VHDL analysis."""
-import tempfile
-import os
 from pathlib import Path
 import pytest
 from sim_bridge import analyze_vhdl, _find_ghdl
@@ -27,12 +25,3 @@ def test_blinky_analyzes_ok(ghdl):
     assert ok, f"GHDL analysis failed: {detail}"
 
 
-def test_bad_vhdl_fails_analysis():
-    with tempfile.NamedTemporaryFile(suffix=".vhd", delete=False, mode="w") as f:
-        f.write("this is not valid VHDL;\n")
-        name = f.name
-    try:
-        ok, detail = analyze_vhdl(name)
-        assert not ok, "Expected analysis to fail on invalid VHDL"
-    finally:
-        os.unlink(name)

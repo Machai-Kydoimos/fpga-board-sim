@@ -745,6 +745,11 @@ class ErrorDialog:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
                     return "back"
+                elif ev.type == pygame.WINDOWRESIZED:
+                    # Rebuild background at new size so the dim overlay fills correctly
+                    self._bg = pygame.Surface((ev.x, ev.y))
+                    self._bg.fill(SEL_BG)
+                    self._scroll = 0
                 elif ev.type == pygame.KEYDOWN:
                     if ev.key == pygame.K_ESCAPE:
                         return "back"
@@ -874,6 +879,13 @@ class ErrorDialog:
         bt = btn_f.render("Back to Boards", True, WHITE)
         self.screen.blit(bt, bt.get_rect(center=self._back_rect.center))
 
+        # Keyboard shortcut hint below the panel
+        hint_f = pygame.font.SysFont("consolas", max(12, round(14 * s)))
+        hint = hint_f.render("Enter: Try Another File    Esc: Back to Boards",
+                             True, (140, 140, 140))
+        self.screen.blit(hint, hint.get_rect(centerx=px + panel_w // 2,
+                                             top=py + panel_h + 8))
+
         pygame.display.flip()
 
 
@@ -923,6 +935,7 @@ def main():
         hdl_dir = Path(__file__).parent / "hdl"
         vhdl_path = None
         _back_to_boards = False
+        analyzed_work_dir = None
 
         while True:
             pygame.display.set_caption("FPGA Simulator – Select VHDL")
@@ -943,7 +956,9 @@ def main():
             else:
                 # Stage 3: GHDL analysis + elaboration
                 ok, detail = analyze_vhdl(vhdl_path, toplevel=toplevel_name)
-                if not ok:
+                if ok:
+                    analyzed_work_dir = detail  # reuse in launch_simulation
+                else:
                     intent = ErrorDialog(screen, "GHDL Error", detail).run(clock)
 
             if ok:
@@ -978,7 +993,8 @@ def main():
 
         try:
             launch_simulation(board_json, vhdl_path, toplevel, generics,
-                              sim_width=width, sim_height=height)
+                              sim_width=width, sim_height=height,
+                              work_dir=analyzed_work_dir)
         except Exception as e:
             print(f"Simulation error: {e}")
 

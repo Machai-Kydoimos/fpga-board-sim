@@ -126,7 +126,7 @@ def check_vhdl_contract(path) -> tuple:
         found = ", ".join(f"'{e}'" for e in entities)
         return False, (
             f"Entity name mismatch: found {found} but filename is '{path.name}'.\n"
-            f"Rename the file to '{entities[0]}.vhd' or rename the entity to '{stem}'."
+            f"Rename the file to '{entities[0]}{path.suffix}' or rename the entity to '{stem}'."
         )
 
     # Check required ports
@@ -231,26 +231,29 @@ def _build_sim_env(venv_dir=None):
 
 
 def launch_simulation(board_json, vhdl_path, toplevel="blinky",
-                      generics=None, sim_width=1024, sim_height=700):
+                      generics=None, sim_width=1024, sim_height=700,
+                      work_dir=None):
     """
     Launch an interactive GHDL + cocotb simulation.
 
     Runs GHDL with the VPI module, which loads cocotb, which imports
     sim_testbench.py which runs the pygame interactive loop.
 
+    If work_dir is supplied (from a prior analyze_vhdl() call) the
+    GHDL analysis step is skipped — the existing artifacts are reused.
+
     This call blocks until the simulation exits.
     """
     vhdl_path = Path(vhdl_path).resolve()
-    work_dir = tempfile.mkdtemp(prefix="fpga_sim_run_")
-
+    ghdl = _find_ghdl()
     env, vpi_lib = _build_sim_env()
 
-    # Analyze VHDL in work_dir
-    ghdl = _find_ghdl()
-    subprocess.run(
-        [ghdl, "-a", "--std=08", "--workdir=" + work_dir, str(vhdl_path)],
-        env=env, check=True, cwd=work_dir,
-    )
+    if work_dir is None:
+        work_dir = tempfile.mkdtemp(prefix="fpga_sim_run_")
+        subprocess.run(
+            [ghdl, "-a", "--std=08", "--workdir=" + work_dir, str(vhdl_path)],
+            env=env, check=True, cwd=work_dir,
+        )
 
     # Build ghdl -r command
     cmd = [ghdl, "-r", "--std=08", "--workdir=" + work_dir]
