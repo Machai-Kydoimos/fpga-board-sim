@@ -143,6 +143,10 @@ The UI has four screens, each a class with a `run()` method:
 
 4. **`FPGABoard`** (simulation mode, inside `sim_testbench.py`) — same rendering as preview, but now driven by the GHDL simulation. Switch/button callbacks write to DUT inputs; DUT LED outputs update the display each frame.
 
+In simulation mode, pygame is the sole interface between the user and GHDL. Mouse events on switches and buttons trigger callbacks that write directly to `dut.sw` / `dut.btn` via cocotb — there is no queue or IPC; the write is synchronous in the event handler. LED state flows the other way: once per frame, after `await Timer(2µs)` has advanced the simulation, `dut.led.value` is read and each LED's display state is updated.
+
+Note that pygame runs in two separate OS processes. The launcher (board selector → file picker) calls `pygame.quit()` before spawning GHDL; `sim_testbench.py` calls `pygame.init()` fresh inside the GHDL subprocess.
+
 ### Simulation Pipeline
 
 When the user clicks "Start Simulation" and picks a VHDL file, the following happens:
