@@ -1,6 +1,6 @@
 # FPGA Simulator
 
-Interactive FPGA board simulator with GHDL-backed VHDL simulation. Select from 74 real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards)), then run VHDL designs against a virtual board with switches, buttons, and LEDs — all driven by [GHDL](https://github.com/ghdl/ghdl) + [cocotb](https://github.com/cocotb/cocotb).
+Interactive FPGA board simulator with GHDL-backed VHDL simulation. Select from 76 real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards)), then run VHDL designs against a virtual board with switches, buttons, and LEDs — all driven by [GHDL](https://github.com/ghdl/ghdl) + [cocotb](https://github.com/cocotb/cocotb).
 
 ## Quick Start
 
@@ -69,7 +69,7 @@ uv run fpga-sim
 
 ### 1. Select a board
 
-A list of 74 FPGA boards appears. Type to filter, click to select.
+A list of 76 FPGA boards appears. Type to filter, click to select.
 
 ### 2. Preview the board
 
@@ -119,7 +119,7 @@ pyproject.toml          Project metadata and dependencies
 
 ### Board Loading (`board_loader.py`)
 
-The amaranth-boards project defines 74+ FPGA boards as Python classes, each with a `resources` list describing LEDs, switches, buttons, clocks, and other peripherals using amaranth's build DSL (`Resource`, `Pins`, `Attrs`, etc.).
+The amaranth-boards project defines 76 FPGA boards as Python classes, each with a `resources` list describing LEDs, switches, buttons, clocks, and other peripherals using amaranth's build DSL (`Resource`, `Pins`, `Attrs`, etc.).
 
 Rather than requiring the full amaranth toolchain as a dependency, `board_loader.py` provides **lightweight mock classes** that mimic just enough of the amaranth API to execute board definition files. It:
 
