@@ -7,7 +7,17 @@ Interactive FPGA board simulator with GHDL-backed VHDL simulation. Select from 7
 ### Prerequisites
 
 - **Python 3.12+**
+- **[uv](https://docs.astral.sh/uv/)** (Python package manager)
 - **GHDL** (VHDL simulator)
+
+### Clone the repository
+
+```bash
+git clone --recurse-submodules https://github.com/Machai-Kydoimos/simulator.git
+cd simulator
+```
+
+> If you already cloned without `--recurse-submodules`, run `git submodule update --init` to populate the `amaranth-boards/` directory.
 
 ### Install GHDL
 
@@ -33,41 +43,17 @@ brew install ghdl
 
 ### Set up Python environment
 
-**Linux / macOS:**
+`uv` manages the venv and all dependencies automatically. It also installs a standalone Python when needed — which matters on Windows where the Windows Store Python can't be embedded by GHDL.
+
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install pygame cocotb find_libpython
-```
-
-**Windows:**
-
-The Windows Store Python is sandboxed and can't be embedded by GHDL. Use `uv` to install a standalone Python:
-
-```powershell
-pip install uv
-python -m uv python install 3.12
-```
-
-Find the standalone interpreter path:
-
-```powershell
-python -m uv python list | Select-String "3.12"
-# Look for the one under AppData\Roaming\uv\python\...
-```
-
-Create and populate the venv:
-
-```powershell
-# Use the standalone Python (adjust path if needed)
-& "$env:APPDATA\uv\python\cpython-3.12.13-windows-x86_64-none\python.exe" -m venv .venv
-.venv\Scripts\pip install pygame cocotb find_libpython
+uv sync
 ```
 
 ### Run
 
 **Linux / macOS:**
 ```bash
-.venv/bin/python fpga_board.py
+uv run python fpga_board.py
 ```
 
 **Windows:**
@@ -75,7 +61,7 @@ Create and populate the venv:
 # Ensure GHDL is on PATH (if not already after install)
 $env:PATH = "C:\Users\$env:USERNAME\AppData\Local\Microsoft\WinGet\Packages\ghdl.ghdl.ucrt64.mcode_Microsoft.Winget.Source_8wekyb3d8bbwe\bin;$env:PATH"
 
-.venv\Scripts\python fpga_board.py
+uv run python fpga_board.py
 ```
 
 ## Usage
@@ -209,16 +195,16 @@ Getting GHDL's VPI (Verilog Procedural Interface) to work with cocotb requires p
 
 **Linux / macOS:**
 ```bash
-.venv/bin/python sim/run_tests.py
+uv run pytest
 ```
 
 **Windows:**
 ```powershell
 $env:PATH = "C:\Users\$env:USERNAME\AppData\Local\Microsoft\WinGet\Packages\ghdl.ghdl.ucrt64.mcode_Microsoft.Winget.Source_8wekyb3d8bbwe\bin;$env:PATH"
-.venv\Scripts\python sim\run_tests.py
+uv run pytest
 ```
 
-This runs 26 headless tests covering board loading, JSON serialization, GHDL analysis, and cocotb simulation — no display needed.
+Tests cover board loading, JSON serialization, GHDL analysis, and cocotb simulation — no display needed.
 
 ## Writing VHDL for the Simulator
 
