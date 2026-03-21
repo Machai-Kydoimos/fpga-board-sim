@@ -1,4 +1,4 @@
--- blinky_walking.vhd – Walking LED (Knight Rider) blinky.
+-- blinky_walking.vhd - Walking LED (Knight Rider) blinky.
 --
 -- A single lit LED bounces back and forth across all available LEDs.
 -- The step rate is derived from the free-running counter: with no switches,
@@ -7,7 +7,7 @@
 -- the LSB.
 --
 -- btn(0) : each press reverses the walking direction
--- btn(1) : held — all LEDs on simultaneously
+-- btn(1) : held  -- all LEDs on simultaneously
 --
 -- Effect  : Single lit LED ping-pongs across the board.
 -- Teaches : Shift register emulation, direction control, boundary detection.
@@ -69,7 +69,7 @@ begin
   end process idx_proc;
 
   -- Walk logic: advance position on the rising edge of counter(step_idx).
-  -- btn(0) edge → reverse direction.
+  -- btn(0) edge -> reverse direction.
   walk_proc : process(clk)
     variable fwd_v : std_logic;
     variable pos_v : integer range 0 to NUM_LEDS - 1;

@@ -1,7 +1,7 @@
--- blinky_morse.vhd – SOS Morse code blinky.
+-- blinky_morse.vhd - SOS Morse code blinky.
 --
 -- All LEDs continuously blink the international SOS distress signal:
---   S = · · ·   O = − − −   S = · · ·   (then a long word gap)
+--   S = . . .   O = - - -   S = . . .   (then a long word gap)
 --
 -- Timing follows standard Morse code proportions:
 --   dot      = 1 unit    dash    = 3 units
@@ -9,7 +9,7 @@
 --   inter-character gap = 3 units   word gap = 7 units
 --
 -- One "unit" is 2^COUNTER_BITS clock cycles (one counter rollover).
--- At 100 MHz, COUNTER_BITS = 24 → unit ≈ 167 ms → full SOS ≈ 5.7 s.
+-- At 100 MHz, COUNTER_BITS = 24 -> unit ~ 167 ms -> full SOS ~ 5.7 s.
 --
 -- sw(i)  : '0' mutes LED i from the pattern (keeps it dark)
 -- btn(*) : any button held lights all LEDs at full brightness

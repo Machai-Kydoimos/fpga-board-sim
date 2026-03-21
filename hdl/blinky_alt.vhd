@@ -1,13 +1,13 @@
--- blinky_alt.vhd – Alternating-phase blinky.
+-- blinky_alt.vhd - Alternating-phase blinky.
 --
 -- Even-indexed LEDs and odd-indexed LEDs blink in opposite phase: when the
 -- even group is on the odd group is off, and vice versa.  The blink rate is
 -- set by COUNTER_BITS (MSB of the free-running counter).
 --
 -- sw(i)  : '1' enables LED i; '0' keeps it dark regardless of phase
---          (unmatched LEDs — where i >= NUM_SWITCHES — are always enabled)
--- btn(0) : held — inverts the current phase of both groups simultaneously
--- btn(1) : held — forces all LEDs on regardless of phase or switches
+--          (unmatched LEDs  -- where i >= NUM_SWITCHES  -- are always enabled)
+-- btn(0) : held  -- inverts the current phase of both groups simultaneously
+-- btn(1) : held  -- forces all LEDs on regardless of phase or switches
 --
 -- Effect  : Two groups of LEDs flash in opposition (like a crossing signal).
 -- Teaches : XOR phase patterns, combinational gating, minimal logic.
