@@ -1,0 +1,70 @@
+"""Tests for session_config: load/save/roundtrip."""
+import json
+import pytest
+from pathlib import Path
+from session_config import load_session, save_session, SESSION_FILE
+
+
+@pytest.fixture
+def session_file(tmp_path, monkeypatch):
+    """Redirect SESSION_FILE to a temp location for every test."""
+    target = tmp_path / ".fpga_simulator" / "session.json"
+    monkeypatch.setattr("session_config.SESSION_FILE", target)
+    return target
+
+
+def test_load_missing_file_returns_empty(session_file):
+    assert load_session() == {}
+
+
+def test_load_corrupt_json_returns_empty(session_file):
+    session_file.parent.mkdir(parents=True)
+    session_file.write_text("not valid json {{{")
+    assert load_session() == {}
+
+
+def test_load_empty_file_returns_empty(session_file):
+    session_file.parent.mkdir(parents=True)
+    session_file.write_text("")
+    assert load_session() == {}
+
+
+def test_save_creates_directory(session_file):
+    assert not session_file.parent.exists()
+    save_session("MyBoard", "/some/path/blinky.vhd")
+    assert session_file.parent.is_dir()
+
+
+def test_save_creates_file(session_file):
+    save_session("MyBoard", "/some/path/blinky.vhd")
+    assert session_file.is_file()
+
+
+def test_save_writes_valid_json(session_file):
+    save_session("MyBoard", "/some/path/blinky.vhd")
+    data = json.loads(session_file.read_text())
+    assert data["board_class"] == "MyBoard"
+    assert data["vhdl_path"] == "/some/path/blinky.vhd"
+
+
+def test_roundtrip(session_file):
+    save_session("ArtyA7_35Platform", "/home/user/hdl/blinky.vhd")
+    result = load_session()
+    assert result["board_class"] == "ArtyA7_35Platform"
+    assert result["vhdl_path"] == "/home/user/hdl/blinky.vhd"
+
+
+def test_load_ignores_extra_keys(session_file):
+    session_file.parent.mkdir(parents=True)
+    session_file.write_text(json.dumps({"board_class": "X", "vhdl_path": "y", "extra": 42}))
+    result = load_session()
+    assert result["board_class"] == "X"
+    assert result["extra"] == 42  # extra keys preserved, not an error
+
+
+def test_save_overwrites_previous(session_file):
+    save_session("BoardA", "/path/a.vhd")
+    save_session("BoardB", "/path/b.vhd")
+    result = load_session()
+    assert result["board_class"] == "BoardB"
+    assert result["vhdl_path"] == "/path/b.vhd"
