@@ -24,6 +24,12 @@ class FPGAChip:
         "QuickLogic": (130, 60,   0),
         "Gowin":      (70,  70,   0),
     }
+    _BORDER_COLOR  = (180, 180, 180)
+    _DEVICE_COLOR  = (200, 200, 200)
+    _PACKAGE_COLOR = (150, 150, 150)
+    _CLOCK_COLOR   = (120, 200, 120)
+    _PIN_COLOR     = (120, 120, 120)
+    _PIN_LENGTH    = 5
 
     def __init__(self, vendor: str = "", device: str = "", package: str = "",
                  clock_hz: float = 0.0):
@@ -49,18 +55,18 @@ class FPGAChip:
         color = self._VENDOR_COLORS.get(self.vendor, (40, 40, 40))
 
         pygame.draw.rect(surface, color, r, border_radius=6)
-        pygame.draw.rect(surface, (180, 180, 180), r, 2, border_radius=6)
+        pygame.draw.rect(surface, self._BORDER_COLOR, r, 2, border_radius=6)
         self._draw_pin_marks(surface, r)
 
         cx, cy = r.centerx, r.centery
         line_h = font.get_linesize()
         lines = [
-            (self.vendor,          WHITE,           ),
-            (self.device.upper(),  (200, 200, 200), ),
-            (self.package.upper(), (150, 150, 150), ),
+            (self.vendor,          WHITE,                ),
+            (self.device.upper(),  self._DEVICE_COLOR,  ),
+            (self.package.upper(), self._PACKAGE_COLOR, ),
         ]
         if self.clock_hz:
-            lines.append((self._fmt_clock(self.clock_hz), (120, 200, 120)))
+            lines.append((self._fmt_clock(self.clock_hz), self._CLOCK_COLOR))
         active = [(t, c) for t, c in lines if t]
         offset = -(len(active) - 1) / 2 * line_h
         for text, colour in active:
@@ -69,8 +75,8 @@ class FPGAChip:
             offset += line_h
 
     def _draw_pin_marks(self, surface, r):
-        color = (120, 120, 120)
-        length = 5
+        color = self._PIN_COLOR
+        length = self._PIN_LENGTH
         h_count = max(4, min(20, r.width  // 14))
         v_count = max(4, min(14, r.height // 14))
 

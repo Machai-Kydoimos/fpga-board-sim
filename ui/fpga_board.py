@@ -137,7 +137,7 @@ class FPGABoard:
         if not sections:
             return
 
-        total_weight = sum(s[2] for s in sections)
+        total_weight = sum(sec[2] for sec in sections)
         usable_h = h - 2 * margin - section_pad * (len(sections) - 1) - bottom_reserve
 
         y = margin
