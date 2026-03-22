@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""generate_board_images.py
+"""generate_board_images: batch PNG/JPEG/SVG board image generator.
 
 Generates PNG, JPEG, and SVG preview images for every FPGA board discovered
 in the amaranth-boards git submodule.  Images are written to a local

@@ -53,7 +53,7 @@ def dummy_screen(headless_pygame):
 
 # ── B. Property tests ─────────────────────────────────────────────────────────
 
-from ui import BoardSelector, VHDLFilePicker
+from ui import BoardSelector, VHDLFilePicker  # noqa: E402
 
 
 class TestBoardSelectorProperties:
@@ -122,8 +122,8 @@ class TestVHDLFilePickerProperties:
 
 # ── C. Smoke render tests ─────────────────────────────────────────────────────
 
-from board_loader import BoardDef, ComponentInfo
-from ui import FPGABoard
+from board_loader import BoardDef, ComponentInfo  # noqa: E402
+from ui import FPGABoard  # noqa: E402
 
 
 def _sample_board_def():
@@ -151,7 +151,7 @@ def test_board_selector_draws(headless_pygame, w, h):
     (800, 480), (1024, 700), (1280, 800), (1600, 1000), (400, 300)
 ])
 def test_fpga_board_draws(headless_pygame, w, h):
-    screen = headless_pygame.display.set_mode((w, h))
+    headless_pygame.display.set_mode((w, h))
     board = FPGABoard(board_def=_sample_board_def(), width=w, height=h)
     board._draw()  # must not raise
 
@@ -168,7 +168,7 @@ def test_fpga_board_accepts_screen_param(headless_pygame):
 def test_layout_leaves_bottom_gap(headless_pygame):
     """Bottom of the lowest component must be above the reserved button area."""
     w, h = 1024, 700
-    screen = headless_pygame.display.set_mode((w, h))
+    headless_pygame.display.set_mode((w, h))
     board = FPGABoard(board_def=_sample_board_def(), width=w, height=h)
     s = _ui_scale(w, h)
     bottom_reserve = max(50, round(70 * s))

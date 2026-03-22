@@ -14,9 +14,10 @@ SESSION_FILE = Path.home() / ".fpga_simulator" / "session.json"
 
 
 def load_session() -> dict[str, Any]:
-    """Load the saved session.  Returns a dict with keys 'board_class',
-    'vhdl_path', and 'simulator', or an empty dict if the file is
-    missing or corrupt.  Never raises.
+    """Load the saved session.
+
+    Returns a dict with keys 'board_class', 'vhdl_path', and 'simulator',
+    or an empty dict if the file is missing or corrupt.  Never raises.
     """
     try:
         return cast(dict[str, Any], json.loads(SESSION_FILE.read_text()))
@@ -26,6 +27,7 @@ def load_session() -> dict[str, Any]:
 
 def save_session(board_class: str, vhdl_path: str, simulator: str = "ghdl") -> None:
     """Persist the board class name, VHDL file path, and simulator choice.
+
     Creates ~/.fpga_simulator/ if it does not exist.
     Silently ignores write failures (read-only filesystem, etc.).
     """
