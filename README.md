@@ -305,6 +305,14 @@ At least one of GHDL or NVC must be installed. Both can coexist; the active simu
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, quality
 standards, type annotation conventions, and architecture notes for contributors.
 
+## Acknowledgements
+
+This simulator was inspired by these working examples of interactive virtual FPGA boards:
+
+- **[ghdl-interactive-sim](https://github.com/chuckb/ghdl-interactive-sim)** by Chuck ([Chuck's Tech Talk](https://www.chuckstechtalk.com/software/2021/12/27/interactive-vhdl-testbench.html)) — demonstrated driving GHDL interactively via VPI from Python, which is the core technique used here.
+
+- **[ghdl-vpi-virtual-board](https://gitlab.ensta-bretagne.fr/bollenth/ghdl-vpi-virtual-board)** by bollenth (ENSTA Bretagne) — a polished FPGA virtual board simulator built on GHDL VPI (without Python). A beautiful piece of work worth admiring.
+
 ## License
 
 Board definitions in `amaranth-boards/` are from [amaranth-lang/amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) (BSD-2-Clause).
