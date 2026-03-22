@@ -64,9 +64,12 @@ warn_unused_ignores = true
 ignore_missing_imports = true
 exclude = ["amaranth-boards/"]
 disallow_incomplete_defs = true
-# Gradually tighten as annotation coverage grows:
-# disallow_untyped_defs = true
-# strict = true
+disallow_untyped_defs = true
+# strict = true  (future: evaluate after feature work settles)
+
+[[tool.mypy.overrides]]
+module = ["tests.*", "test_blinky"]
+disallow_untyped_defs = false   # test functions and fixtures are exempt
 
 [build-system]
 requires = ["hatchling"]
