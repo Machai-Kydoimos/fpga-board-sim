@@ -1,5 +1,4 @@
-"""
-FPGA Board Simulator - entry point.
+"""FPGA Board Simulator - entry point.
 
 All UI logic lives in the ui/ package:
   ui/constants.py      colours and _ui_scale
@@ -14,16 +13,17 @@ Usage:
 """
 
 import argparse
-import pygame
 from pathlib import Path
+
+import pygame
 
 from board_loader import discover_boards, get_default_boards_path
 from session_config import load_session, save_session
 from sim_bridge import detect_simulators
-from ui import BoardSelector, FPGABoard, VHDLFilePicker, ErrorDialog
+from ui import BoardSelector, ErrorDialog, FPGABoard, VHDLFilePicker
 
 
-def _parse_args():
+def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="FPGA Board Simulator")
     p.add_argument(
         "--sim", metavar="NAME", default=None,
@@ -92,8 +92,7 @@ def main():
 
         # result == "simulate" → proceed to VHDL file picker
         # ── Steps 3-4: pick + validate VHDL (inner loop for retry) ───
-        from sim_bridge import (analyze_vhdl, check_vhdl_encoding,
-                                check_vhdl_contract)
+        from sim_bridge import analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
         hdl_dir = Path(__file__).parent / "hdl"
         vhdl_path = None
         _back_to_boards = False

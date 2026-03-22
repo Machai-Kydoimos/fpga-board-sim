@@ -1,8 +1,7 @@
 """Tests for board_loader: discovery, parsing, and spot-checks."""
 import pytest
+
 from board_loader import (
-    BoardDef,
-    ComponentInfo,
     discover_boards,
     get_default_boards_path,
     load_board_from_source,

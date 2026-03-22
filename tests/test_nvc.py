@@ -6,12 +6,14 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+
 import pytest
+
 from sim_bridge import (
-    analyze_vhdl,
-    detect_simulators,
     _build_sim_env,
     _NVCBackend,
+    analyze_vhdl,
+    detect_simulators,
 )
 
 PROJECT = Path(__file__).resolve().parent.parent

@@ -1,8 +1,9 @@
 """Tests for session_config: load/save/roundtrip."""
 import json
+
 import pytest
-from pathlib import Path
-from session_config import load_session, save_session, SESSION_FILE
+
+from session_config import load_session, save_session
 
 
 @pytest.fixture

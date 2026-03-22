@@ -1,5 +1,4 @@
-"""
-session_config.py - Lightweight session persistence for the FPGA simulator.
+"""session_config.py - Lightweight session persistence for the FPGA simulator.
 
 Saves and restores the last-used board, VHDL file path, and simulator
 so the user doesn't have to re-navigate on every launch.
@@ -14,8 +13,7 @@ SESSION_FILE = Path.home() / ".fpga_simulator" / "session.json"
 
 
 def load_session() -> dict:
-    """
-    Load the saved session.  Returns a dict with keys 'board_class',
+    """Load the saved session.  Returns a dict with keys 'board_class',
     'vhdl_path', and 'simulator', or an empty dict if the file is
     missing or corrupt.  Never raises.
     """
@@ -26,8 +24,7 @@ def load_session() -> dict:
 
 
 def save_session(board_class: str, vhdl_path: str, simulator: str = "ghdl") -> None:
-    """
-    Persist the board class name, VHDL file path, and simulator choice.
+    """Persist the board class name, VHDL file path, and simulator choice.
     Creates ~/.fpga_simulator/ if it does not exist.
     Silently ignores write failures (read-only filesystem, etc.).
     """

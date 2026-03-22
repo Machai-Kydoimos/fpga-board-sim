@@ -3,8 +3,10 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+
 import pytest
-from sim_bridge import analyze_vhdl, _find_ghdl, _build_sim_env
+
+from sim_bridge import _build_sim_env, _find_ghdl
 
 PROJECT = Path(__file__).resolve().parent.parent
 

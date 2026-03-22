@@ -1,5 +1,4 @@
-"""
-sim_bridge.py – Manages VHDL analysis and launches interactive
+"""sim_bridge.py – Manages VHDL analysis and launches interactive
 cocotb simulations.
 
 Supports two open-source simulators:
@@ -48,17 +47,17 @@ class _GHDLBackend:
         return "cocotbvpi_ghdl.dll" if IS_WINDOWS else "libcocotbvpi_ghdl.so"
 
     @staticmethod
-    def analyze_cmd(vhdl_path: Path, work_dir: str) -> list:
+    def analyze_cmd(vhdl_path: Path, work_dir: str) -> list[str]:
         return [_GHDLBackend.find(), "-a", "--std=08",
                 f"--workdir={work_dir}", str(vhdl_path)]
 
     @staticmethod
-    def elaborate_cmd(toplevel: str, work_dir: str) -> list:
+    def elaborate_cmd(toplevel: str, work_dir: str) -> list[str]:
         return [_GHDLBackend.find(), "-e", "--std=08",
                 f"--workdir={work_dir}", toplevel]
 
     @staticmethod
-    def run_cmd(toplevel: str, generics: dict, plugin_lib: str, work_dir: str) -> list:
+    def run_cmd(toplevel: str, generics: dict[str, str], plugin_lib: str, work_dir: str) -> list[str]:
         cmd = [_GHDLBackend.find(), "-r", "--std=08", f"--workdir={work_dir}"]
         for k, v in (generics or {}).items():
             cmd.append(f"-g{k}={v}")
@@ -67,7 +66,7 @@ class _GHDLBackend:
         return cmd
 
     @staticmethod
-    def sim_bin_lib() -> tuple:
+    def sim_bin_lib() -> tuple[str, str]:
         """Return (bin_dir, lib_dir) for environment setup."""
         return str(Path(_GHDLBackend.find()).resolve().parent), _GHDLBackend.lib_dir()
 
@@ -103,12 +102,12 @@ class _NVCBackend:
         return "cocotbvhpi_nvc.dll" if IS_WINDOWS else "libcocotbvhpi_nvc.so"
 
     @staticmethod
-    def analyze_cmd(vhdl_path: Path, work_dir: str) -> list:
+    def analyze_cmd(vhdl_path: Path, work_dir: str) -> list[str]:
         return [_NVCBackend.find(), f"--work=work:{work_dir}",
                 "--std=2008", "-a", str(vhdl_path)]
 
     @staticmethod
-    def elaborate_cmd(toplevel: str, generics: dict, work_dir: str) -> list:
+    def elaborate_cmd(toplevel: str, generics: dict[str, str], work_dir: str) -> list[str]:
         """Elaborate with generics (NVC requires generics at elaboration time)."""
         cmd = [_NVCBackend.find(), f"--work=work:{work_dir}", "--std=2008", "-e"]
         for k, v in (generics or {}).items():
@@ -117,12 +116,12 @@ class _NVCBackend:
         return cmd
 
     @staticmethod
-    def run_cmd(toplevel: str, plugin_lib: str, work_dir: str) -> list:
+    def run_cmd(toplevel: str, plugin_lib: str, work_dir: str) -> list[str]:
         return [_NVCBackend.find(), f"--work=work:{work_dir}",
                 "--std=2008", "-r", f"--load={plugin_lib}", toplevel]
 
     @staticmethod
-    def sim_bin_lib() -> tuple:
+    def sim_bin_lib() -> tuple[str, str]:
         """Return (bin_dir, lib_dir) for environment setup."""
         return str(Path(_NVCBackend.find()).resolve().parent), _NVCBackend.lib_dir()
 
@@ -139,7 +138,7 @@ def _find_ghdl():
     return _GHDLBackend.find()
 
 
-def detect_simulators() -> list:
+def detect_simulators() -> list[str]:
     """Return a list of installed simulator names, e.g. ['ghdl', 'nvc'].
 
     Always returns at least one entry; falls back to ['ghdl'] even when
@@ -155,7 +154,7 @@ def detect_simulators() -> list:
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
 
-def _venv_dirs(venv_dir):
+def _venv_dirs(venv_dir: str | Path) -> tuple[Path, Path, Path]:
     """Return (scripts_dir, site_packages_dir, python_exe) for a venv."""
     venv_dir = Path(venv_dir)
     if IS_WINDOWS:
@@ -171,7 +170,7 @@ def _venv_dirs(venv_dir):
     return scripts, site, python
 
 
-def _libpython_name(base_python):
+def _libpython_name(base_python: str) -> str:
     """Return the path to the Python shared library."""
     try:
         import find_libpython
@@ -190,9 +189,8 @@ def _libpython_name(base_python):
 
 # ── VHDL validation (simulator-independent) ───────────────────────────────────
 
-def check_vhdl_encoding(path) -> tuple:
-    """
-    Stage 1: encoding check (no simulator needed).
+def check_vhdl_encoding(path: str | Path) -> tuple[bool, str]:
+    """Stage 1: encoding check (no simulator needed).
     Returns (ok: bool, message: str).
     """
     path = Path(path)
@@ -218,9 +216,8 @@ def check_vhdl_encoding(path) -> tuple:
     return True, ""
 
 
-def check_vhdl_contract(path) -> tuple:
-    """
-    Stage 2: contract validation (text-based, no simulator needed).
+def check_vhdl_contract(path: str | Path) -> tuple[bool, str]:
+    """Stage 2: contract validation (text-based, no simulator needed).
     Returns (ok: bool, message: str).
     """
     path = Path(path)
@@ -267,9 +264,13 @@ def check_vhdl_contract(path) -> tuple:
 
 # ── Simulation infrastructure ─────────────────────────────────────────────────
 
-def analyze_vhdl(vhdl_path, work_dir=None, toplevel=None, simulator="ghdl"):
-    """
-    Run analysis (and for GHDL, elaboration) on a VHDL file.
+def analyze_vhdl(
+    vhdl_path: str | Path,
+    work_dir: str | None = None,
+    toplevel: str | None = None,
+    simulator: str = "ghdl",
+) -> tuple[bool, str]:
+    """Run analysis (and for GHDL, elaboration) on a VHDL file.
 
     GHDL: runs ``-a`` then ``-e`` (no generics needed at this stage).
     NVC:  runs ``-a`` only — elaboration is deferred to launch_simulation()
@@ -311,9 +312,11 @@ def analyze_vhdl(vhdl_path, work_dir=None, toplevel=None, simulator="ghdl"):
         return False, f"{simulator.upper()} analysis timed out."
 
 
-def _build_sim_env(simulator="ghdl", venv_dir=None):
-    """
-    Build the environment dict needed for the simulator + cocotb VPI/VHPI.
+def _build_sim_env(
+    simulator: str = "ghdl",
+    venv_dir: str | Path | None = None,
+) -> tuple[dict[str, str], str]:
+    """Build the environment dict needed for the simulator + cocotb VPI/VHPI.
     Returns (env_dict, plugin_lib_path).
     """
     venv_dir = Path(venv_dir or (Path(__file__).parent / ".venv"))
@@ -354,11 +357,17 @@ def _build_sim_env(simulator="ghdl", venv_dir=None):
     return env, plugin_lib
 
 
-def launch_simulation(board_json, vhdl_path, toplevel="blinky",
-                      generics=None, sim_width=1024, sim_height=700,
-                      work_dir=None, simulator="ghdl"):
-    """
-    Launch an interactive simulator + cocotb simulation.
+def launch_simulation(
+    board_json: str,
+    vhdl_path: str | Path,
+    toplevel: str = "blinky",
+    generics: dict[str, str] | None = None,
+    sim_width: int = 1024,
+    sim_height: int = 700,
+    work_dir: str | None = None,
+    simulator: str = "ghdl",
+) -> bool:
+    """Launch an interactive simulator + cocotb simulation.
 
     GHDL: reuses analysis artifacts from analyze_vhdl(), passes generics
           inline on the ``-r`` run command.

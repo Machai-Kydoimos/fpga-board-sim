@@ -1,5 +1,4 @@
-"""
-ErrorDialog: modal error overlay with scrollable message and retry/back buttons.
+"""ErrorDialog: modal error overlay with scrollable message and retry/back buttons.
 """
 
 import pygame
@@ -8,8 +7,7 @@ from ui.constants import SEL_BG, WHITE, _ui_scale
 
 
 class ErrorDialog:
-    """
-    Modal error dialog drawn over a dimmed snapshot of the current screen.
+    """Modal error dialog drawn over a dimmed snapshot of the current screen.
 
     Sized to ~1/3 of the main window area (2/3 wide, 1/2 tall).
     run() returns 'retry' (Try Another File) or 'back' (Back to Boards).

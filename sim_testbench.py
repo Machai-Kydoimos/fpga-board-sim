@@ -1,5 +1,4 @@
-"""
-sim_testbench.py – cocotb testbench that bridges GHDL signals
+"""sim_testbench.py – cocotb testbench that bridges GHDL signals
 to the pygame-based FPGA board UI.
 
 This module is loaded by cocotb inside the GHDL process.
@@ -12,12 +11,12 @@ pygame events.
 import os
 
 import cocotb
+import pygame
 from cocotb.clock import Clock
+from cocotb.handle import SimHandleBase
 from cocotb.triggers import Timer
 
-import pygame
-
-from board_loader import BoardDef, _FALLBACK_CLOCK_HZ
+from board_loader import _FALLBACK_CLOCK_HZ, BoardDef
 from ui import FPGABoard
 
 
@@ -28,9 +27,8 @@ def _load_board_from_env() -> BoardDef | None:
 
 
 @cocotb.test()
-async def interactive_sim(dut):
-    """
-    Main interactive simulation loop.
+async def interactive_sim(dut: SimHandleBase) -> None:
+    """Main interactive simulation loop.
 
     Drives the clock, reads switch/button state from pygame,
     writes it to GHDL, reads LED outputs, and updates the display.
@@ -100,7 +98,7 @@ async def interactive_sim(dut):
     print(f"  Simulation running: {board_def.name if board_def else 'Generic'}")
     print(f"  {num_led} LEDs, {num_btn} buttons, {num_sw} switches")
     print(f"  Clock: {clk_hz / 1e6:.3g} MHz ({clk_period_ns:.3g} ns period)")
-    print(f"  Press ESC or close window to stop")
+    print("  Press ESC or close window to stop")
     print(f"{'='*60}\n")
 
     board.running = True

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-generate_board_images.py
+"""generate_board_images.py
 
 Generates PNG, JPEG, and SVG preview images for every FPGA board discovered
 in the amaranth-boards git submodule.  Images are written to a local
@@ -29,6 +28,7 @@ Dependencies: pygame (already in pyproject.toml).  No new dependencies needed.
 # no window appears, but pygame.Surface objects are fully usable for rendering
 # and saving to files.
 import os
+
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
 
@@ -36,7 +36,6 @@ import argparse
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Union
 
 import pygame
 
@@ -45,9 +44,8 @@ import pygame
 sys.path.insert(0, str(Path(__file__).parent))
 
 from board_loader import BoardDef, discover_boards, get_default_boards_path
-from ui.constants import _ui_scale, BG_GREEN, BLUE_OFF, DARK_GRAY, GRAY, RED_OFF, WHITE
-from ui import Button, FPGABoard, FPGAChip, LED, Switch
-
+from ui import LED, Button, FPGABoard, FPGAChip, Switch
+from ui.constants import BG_GREEN, BLUE_OFF, GRAY, RED_OFF, WHITE, _ui_scale
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -58,8 +56,7 @@ DEFAULT_HEIGHT: int = 700
 # ── Pygame setup ───────────────────────────────────────────────────────────────
 
 def setup_pygame_headless() -> None:
-    """
-    Initialize pygame once for the entire batch run.
+    """Initialize pygame once for the entire batch run.
 
     With SDL_VIDEODRIVER=dummy (set at module load time), pygame.init()
     starts the display subsystem in memory — no window is created.
@@ -71,8 +68,7 @@ def setup_pygame_headless() -> None:
 # ── Filename utilities ─────────────────────────────────────────────────────────
 
 def sanitize_filename(name: str) -> str:
-    """
-    Convert a board name to a filesystem-safe base name.
+    """Convert a board name to a filesystem-safe base name.
 
     Non-alphanumeric characters (except hyphens) become underscores;
     consecutive underscores are collapsed; leading/trailing separators
@@ -82,6 +78,7 @@ def sanitize_filename(name: str) -> str:
         "Arty A7-35"  → "arty_a7_35"
         "iCEBreaker"  → "icebreaker"
         "Tang Nano 9K"→ "tang_nano_9k"
+
     """
     result: list[str] = []
     for ch in name.lower():
@@ -94,8 +91,7 @@ def sanitize_filename(name: str) -> str:
 
 
 def unique_name(base: str, seen: dict[str, int]) -> str:
-    """
-    Return a unique filename base, appending _2, _3, … on collision.
+    """Return a unique filename base, appending _2, _3, … on collision.
 
     Mutates `seen` to record usage counts.  Collisions are rare in practice
     (boards generally have distinct names) but are handled defensively.
@@ -110,8 +106,7 @@ def unique_name(base: str, seen: dict[str, int]) -> str:
 # ── Raster rendering (PNG / JPEG) ──────────────────────────────────────────────
 
 def render_board_raster(board: FPGABoard) -> pygame.Surface:
-    """
-    Render the board to its pygame Surface and return a snapshot copy.
+    """Render the board to its pygame Surface and return a snapshot copy.
 
     Calls FPGABoard._draw() — a private but stable method — which fills
     the screen with BG_GREEN and draws all sections (FPGA chip, LEDs,
@@ -131,8 +126,7 @@ def save_png(surface: pygame.Surface, path: Path) -> None:
 
 
 def save_jpeg(surface: pygame.Surface, path: Path) -> None:
-    """
-    Save a pygame Surface as a JPEG file.
+    """Save a pygame Surface as a JPEG file.
 
     pygame.image.save() supports JPEG when libjpeg is available, which is
     standard on all common pygame distributions.  JPEG quality is not
@@ -161,8 +155,7 @@ def _svg_text(
     anchor: str = "middle",
     baseline: str = "hanging",
 ) -> None:
-    """
-    Append a <text> element to `parent`.
+    """Append a <text> element to `parent`.
 
     `baseline` controls vertical alignment:
       "hanging" — y is the top of the text box (matches pygame's blit top-left).
@@ -192,12 +185,11 @@ def _svg_rect(
     rect: pygame.Rect,
     fill: tuple[int, int, int],
     *,
-    stroke: Union[tuple[int, int, int], None] = None,
+    stroke: tuple[int, int, int] | None = None,
     stroke_width: int = 2,
     radius: int = 0,
 ) -> None:
-    """
-    Append a <rect> element with optional rounded corners and stroke.
+    """Append a <rect> element with optional rounded corners and stroke.
 
     When stroke is None the rect has no visible border (stroke="none").
     """
@@ -239,8 +231,7 @@ def _svg_draw_fpga_chip(
     chip: FPGAChip,
     font_size: int,
 ) -> None:
-    """
-    Draw the FPGA IC package as SVG elements.
+    """Draw the FPGA IC package as SVG elements.
 
     Replicates FPGAChip.draw() and FPGAChip._draw_pin_marks() from
     fpga_board.py:
@@ -301,8 +292,7 @@ def _svg_draw_led(
     led: LED,
     font_size: int,
 ) -> None:
-    """
-    Draw a single LED as an SVG circle with a white border ring and label.
+    """Draw a single LED as an SVG circle with a white border ring and label.
 
     Replicates LED.draw() from fpga_board.py.  Always renders in the OFF
     state (dark red fill) since board images show the default/reset state.
@@ -329,8 +319,7 @@ def _svg_draw_switch(
     sw: Switch,
     font_size: int,
 ) -> None:
-    """
-    Draw a toggle switch as an SVG rectangle with a sliding knob and label.
+    """Draw a toggle switch as an SVG rectangle with a sliding knob and label.
 
     Replicates Switch.draw() from fpga_board.py.  Always renders in the OFF
     state: BLUE_OFF background, GRAY knob positioned in the lower half of
@@ -358,8 +347,7 @@ def _svg_draw_button(
     btn: Button,
     font_size: int,
 ) -> None:
-    """
-    Draw a momentary button as an SVG rectangle with label.
+    """Draw a momentary button as an SVG rectangle with label.
 
     Replicates Button.draw() from fpga_board.py.  Always renders in the
     unpressed state: GRAY fill, white border, rounded corners.
@@ -378,8 +366,7 @@ def _svg_draw_button(
 # ── SVG document builder ───────────────────────────────────────────────────────
 
 def build_svg(board: FPGABoard, width: int, height: int) -> str:
-    """
-    Build a complete SVG document from an already-laid-out FPGABoard.
+    """Build a complete SVG document from an already-laid-out FPGABoard.
 
     The board's component .rect fields must already be populated — this
     happens automatically inside FPGABoard.__init__ via _layout().
@@ -463,8 +450,7 @@ def generate_images_for_board(
     height: int,
     formats: set[str],
 ) -> tuple[bool, str]:
-    """
-    Generate all requested image formats for a single board.
+    """Generate all requested image formats for a single board.
 
     One FPGABoard instance is created and reused for all formats, so the
     layout is computed only once.  PNG and JPEG share the same rendered
@@ -502,8 +488,7 @@ def generate_images_for_board(
 # ── CLI ────────────────────────────────────────────────────────────────────────
 
 def _parse_formats(raw: str) -> set[str]:
-    """
-    Parse a comma-separated format string into a validated set.
+    """Parse a comma-separated format string into a validated set.
 
     Accepts any combination of: png, jpeg, svg, all.
     Raises argparse.ArgumentTypeError on unrecognised tokens.
@@ -525,8 +510,7 @@ def _parse_formats(raw: str) -> set[str]:
 
 
 def main() -> None:
-    """
-    Entry point: discover boards, generate images, report results.
+    """Entry point: discover boards, generate images, report results.
 
     Workflow:
       1. Parse CLI arguments.
