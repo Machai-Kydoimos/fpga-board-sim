@@ -1,5 +1,4 @@
-"""
-Board Loader – discovers and parses amaranth-boards definitions.
+"""Board Loader – discovers and parses amaranth-boards definitions.
 
 Uses lightweight mock classes to evaluate board files without
 requiring the full amaranth toolchain.
@@ -9,7 +8,6 @@ import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Mock amaranth.build classes (just enough to exec board files)
@@ -248,14 +246,15 @@ def _find_default_clock_hz(resources: list, default_clk: str | None) -> float:
 @dataclass
 class ComponentInfo:
     """Describes a single LED, button, or switch extracted from a board."""
+
     kind: str           # "led", "button", or "switch"
     name: str           # amaranth resource name, e.g. "led", "button_up", "rgb_led"
     number: int         # resource index
-    pins: list = field(default_factory=list)
+    pins: list[str] = field(default_factory=list)
     direction: str = ""
     inverted: bool = False
-    connector: tuple = None
-    attrs: dict = field(default_factory=dict)
+    connector: tuple[str, int] | None = None
+    attrs: dict[str, str] = field(default_factory=dict)
 
     @property
     def display_name(self) -> str:
@@ -288,6 +287,7 @@ class ComponentInfo:
 @dataclass
 class BoardDef:
     """Parsed board definition with UI-relevant resources."""
+
     name: str
     class_name: str
     vendor: str = ""

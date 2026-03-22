@@ -6,7 +6,6 @@ import tempfile
 import pytest
 
 # ── A. Pure math tests (no display needed) ────────────────────────────────────
-
 from ui.constants import _ui_scale
 
 

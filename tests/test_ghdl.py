@@ -1,7 +1,9 @@
 """Tests for GHDL availability and VHDL analysis."""
 from pathlib import Path
+
 import pytest
-from sim_bridge import analyze_vhdl, _find_ghdl
+
+from sim_bridge import _find_ghdl, analyze_vhdl
 
 PROJECT = Path(__file__).resolve().parent.parent
 

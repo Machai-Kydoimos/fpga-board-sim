@@ -1,16 +1,22 @@
-"""
-Low-level UI components: FPGAChip, LED, Switch, Button.
+"""Low-level UI components: FPGAChip, LED, Switch, Button.
 
 These are the building blocks placed on the board canvas by FPGABoard.
 """
 
-import math
+from collections.abc import Callable
+
 import pygame
 
+from board_loader import ComponentInfo
 from ui.constants import (
-    WHITE, RED_ON, RED_OFF, GRAY, YELLOW, BLUE_ON, BLUE_OFF,
+    BLUE_OFF,
+    BLUE_ON,
+    GRAY,
+    RED_OFF,
+    RED_ON,
+    WHITE,
+    YELLOW,
 )
-
 
 # ── Component classes ────────────────────────────────────────────────
 
@@ -48,7 +54,7 @@ class FPGAChip:
             return f"{hz / 1e3:g} kHz"
         return f"{hz:g} Hz"
 
-    def draw(self, surface, font):
+    def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         if self.rect.width < 20:
             return
         r = self.rect
@@ -74,7 +80,7 @@ class FPGAChip:
             surface.blit(s, s.get_rect(centerx=cx, centery=cy + offset))
             offset += line_h
 
-    def _draw_pin_marks(self, surface, r):
+    def _draw_pin_marks(self, surface: pygame.Surface, r: pygame.Rect) -> None:
         color = self._PIN_COLOR
         length = self._PIN_LENGTH
         h_count = max(4, min(20, r.width  // 14))
@@ -94,17 +100,17 @@ class FPGAChip:
 class LED:
     """A read-only indicator controlled via FPGABoard.set_led()."""
 
-    def __init__(self, index, info=None):
+    def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
         self.index = index
         self.info = info
         self.state = False
         self.rect = pygame.Rect(0, 0, 0, 0)
 
     @property
-    def label(self):
+    def label(self) -> str:
         return self.info.display_name if self.info else f"LED{self.index}"
 
-    def draw(self, surface, font):
+    def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         cx, cy = self.rect.center
         r = max(4, min(self.rect.width, self.rect.height) // 2 - 2)
 
@@ -125,18 +131,18 @@ class LED:
 class Switch:
     """A toggle switch – clicks flip the state."""
 
-    def __init__(self, index, info=None):
+    def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
         self.index = index
         self.info = info
         self.state = False
         self.rect = pygame.Rect(0, 0, 0, 0)
-        self.callback = None
+        self.callback: Callable[[int, bool, ComponentInfo | None], None] | None = None
 
     @property
-    def label(self):
+    def label(self) -> str:
         return self.info.display_name if self.info else f"SW{self.index}"
 
-    def draw(self, surface, font):
+    def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         colour = BLUE_ON if self.state else BLUE_OFF
         pygame.draw.rect(surface, colour, self.rect, border_radius=4)
         pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=4)
@@ -149,7 +155,7 @@ class Switch:
         lbl = font.render(self.label, True, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
 
-    def handle_click(self, pos):
+    def handle_click(self, pos: tuple[int, int]) -> bool:
         if self.rect.collidepoint(pos):
             self.state = not self.state
             if self.callback:
@@ -161,18 +167,18 @@ class Switch:
 class Button:
     """A momentary push-button – pressed while the mouse is held down."""
 
-    def __init__(self, index, info=None):
+    def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
         self.index = index
         self.info = info
         self.pressed = False
         self.rect = pygame.Rect(0, 0, 0, 0)
-        self.callback = None
+        self.callback: Callable[[int, bool, ComponentInfo | None], None] | None = None
 
     @property
-    def label(self):
+    def label(self) -> str:
         return self.info.display_name if self.info else f"BTN{self.index}"
 
-    def draw(self, surface, font):
+    def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         if self.pressed:
             inner = self.rect.inflate(-4, -4)
             pygame.draw.rect(surface, YELLOW, inner, border_radius=6)
@@ -183,7 +189,7 @@ class Button:
         lbl = font.render(self.label, True, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
 
-    def handle_press(self, pos):
+    def handle_press(self, pos: tuple[int, int]) -> bool:
         if self.rect.collidepoint(pos):
             self.pressed = True
             if self.callback:
@@ -191,7 +197,7 @@ class Button:
             return True
         return False
 
-    def handle_release(self):
+    def handle_release(self) -> None:
         if self.pressed:
             self.pressed = False
             if self.callback:

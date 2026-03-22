@@ -1,5 +1,4 @@
-"""
-FPGABoard: the main interactive board display screen.
+"""FPGABoard: the main interactive board display screen.
 
 Renders the FPGA chip, LEDs, buttons, and switches in a resizable pygame
 window.  run() returns 'back', 'simulate', or 'quit'.
@@ -10,15 +9,15 @@ returns 'simulate' to discover the user's choice.
 """
 
 import math
+
 import pygame
 
+from ui.components import LED, Button, FPGAChip, Switch
 from ui.constants import BG_GREEN, WHITE, _ui_scale
-from ui.components import FPGAChip, LED, Switch, Button
 
 
 class FPGABoard:
-    """
-    Pygame window that renders an FPGA-style board.
+    """Pygame window that renders an FPGA-style board.
 
     Parameters
     ----------
@@ -33,6 +32,7 @@ class FPGABoard:
     available_simulators : list[str]
         Simulators that are installed.  If the list has more than one
         entry the footer shows a toggle button.
+
     """
 
     def __init__(self, board_def=None, *,

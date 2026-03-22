@@ -4,8 +4,10 @@ Covers check_vhdl_encoding(), check_vhdl_contract(), and analyze_vhdl()
 using the good blinky designs and the dedicated bad_*_blinky fixtures.
 """
 from pathlib import Path
+
 import pytest
-from sim_bridge import analyze_vhdl, check_vhdl_encoding, check_vhdl_contract, _find_ghdl
+
+from sim_bridge import _find_ghdl, analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
 
 HDL = Path(__file__).resolve().parent.parent / "hdl"
 

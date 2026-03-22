@@ -1,7 +1,8 @@
 """Tests for BoardDef JSON serialization round-trip."""
 import json
-import os
+
 import pytest
+
 from board_loader import BoardDef, ComponentInfo
 
 

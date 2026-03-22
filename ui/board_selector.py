@@ -1,10 +1,9 @@
-"""
-BoardSelector screen: full-screen board picker with search filter and scrolling.
+"""BoardSelector screen: full-screen board picker with search filter and scrolling.
 """
 
 import pygame
 
-from ui.constants import SEL_BG, SEL_ROW_A, SEL_ROW_B, SEL_HOVER, WHITE, _ui_scale
+from ui.constants import SEL_BG, SEL_HOVER, SEL_ROW_A, SEL_ROW_B, WHITE, _ui_scale
 
 
 class BoardSelector:

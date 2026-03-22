@@ -1,11 +1,11 @@
-"""
-VHDLFilePicker: file browser screen for selecting .vhd/.vhdl files.
+"""VHDLFilePicker: file browser screen for selecting .vhd/.vhdl files.
 """
 
 from pathlib import Path
+
 import pygame
 
-from ui.constants import SEL_BG, SEL_ROW_A, SEL_ROW_B, SEL_HOVER, WHITE, _ui_scale
+from ui.constants import SEL_BG, SEL_HOVER, SEL_ROW_A, SEL_ROW_B, WHITE, _ui_scale
 
 
 class VHDLFilePicker:

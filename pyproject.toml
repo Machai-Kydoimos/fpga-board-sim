@@ -14,11 +14,56 @@ fpga-sim            = "fpga_board:main"
 generate-board-images = "generate_board_images:main"
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = [
+    "pytest>=8",
+    "mypy>=1.10",
+    "ruff>=0.4",
+    "pre-commit>=3",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v"
+
+# ── Ruff (linter + formatter) ────────────────────────────────────────────────
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+exclude = ["amaranth-boards/"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "UP",       # pyupgrade – modernise syntax
+    "N",        # pep8-naming
+    "B",        # flake8-bugbear – common bugs
+    "ANN",      # missing type annotations
+    "D",        # pydocstyle – docstring conventions
+]
+ignore = [
+    "D203",     # conflicts with D211 (no-blank-line-before-class)
+    "D213",     # conflicts with D212 (multi-line-summary-first-line)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN", "D"]        # relax annotations + docstrings in tests
+"sim_testbench.py" = ["ANN201"] # cocotb async test implicit return type
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ── mypy (static type checker) ───────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_ignores = true
+ignore_missing_imports = true
+# Gradually tighten as annotation coverage grows:
+# disallow_untyped_defs = true
+# strict = true
 
 [build-system]
 requires = ["hatchling"]
