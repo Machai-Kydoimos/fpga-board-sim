@@ -43,7 +43,7 @@ async def interactive_sim(dut: SimHandleBase) -> None:
     # ── Start simulation clock ────────────────────────────────────
     clk_hz = board_def.default_clock_hz if board_def else _FALLBACK_CLOCK_HZ
     clk_period_ns = 1e9 / clk_hz
-    cocotb.start_soon(Clock(dut.clk, clk_period_ns, unit="ns").start())
+    cocotb.start_soon(Clock(dut.clk, clk_period_ns, unit="ns").start())  # type: ignore[attr-defined]
 
     # ── Initialize inputs ────────────────────────────────────────
     num_sw = len(board.switches)
@@ -51,11 +51,11 @@ async def interactive_sim(dut: SimHandleBase) -> None:
     num_led = len(board.leds)
 
     try:
-        dut.sw.value = 0
+        dut.sw.value = 0  # type: ignore[attr-defined]
     except AttributeError:
         pass
     try:
-        dut.btn.value = 0
+        dut.btn.value = 0  # type: ignore[attr-defined]
     except AttributeError:
         pass
 
@@ -108,7 +108,7 @@ async def interactive_sim(dut: SimHandleBase) -> None:
 
         # Read LED outputs from simulation and update pygame
         try:
-            led_val = int(dut.led.value)
+            led_val = int(dut.led.value)  # type: ignore[attr-defined]
             for i in range(num_led):
                 board.set_led(i, bool(led_val & (1 << i)))
         except Exception:

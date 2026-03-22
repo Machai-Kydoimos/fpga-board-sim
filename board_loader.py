@@ -235,7 +235,7 @@ def _find_default_clock_hz(resources: list, default_clk: str | None) -> float:
             if res.name == default_clk:
                 for io in res.ios:
                     if isinstance(io, _Clock):
-                        return io.freq
+                        return float(io.freq)
     return _FALLBACK_CLOCK_HZ
 
 

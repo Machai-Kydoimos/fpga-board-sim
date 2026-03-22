@@ -8,17 +8,18 @@ Session file: ~/.fpga_simulator/session.json
 
 import json
 from pathlib import Path
+from typing import Any, cast
 
 SESSION_FILE = Path.home() / ".fpga_simulator" / "session.json"
 
 
-def load_session() -> dict:
+def load_session() -> dict[str, Any]:
     """Load the saved session.  Returns a dict with keys 'board_class',
     'vhdl_path', and 'simulator', or an empty dict if the file is
     missing or corrupt.  Never raises.
     """
     try:
-        return json.loads(SESSION_FILE.read_text())
+        return cast(dict[str, Any], json.loads(SESSION_FILE.read_text()))
     except (OSError, json.JSONDecodeError, ValueError):
         return {}
 

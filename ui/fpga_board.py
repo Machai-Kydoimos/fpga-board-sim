@@ -95,7 +95,7 @@ class FPGABoard:
 
     # ── public API ───────────────────────────────────────────────────
 
-    def set_led(self, index: int, state: bool):
+    def set_led(self, index: int, state: bool) -> None:
         """Turn an LED on or off by index."""
         if 0 <= index < len(self.leds):
             self.leds[index].state = bool(state)
@@ -113,7 +113,7 @@ class FPGABoard:
     def get_switch_state(self, index: int) -> bool:
         """Read the current state of a switch."""
         if 0 <= index < len(self.switches):
-            return self.switches[index].state
+            return bool(self.switches[index].state)
         return False
 
     def run(self):
