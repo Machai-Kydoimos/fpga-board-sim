@@ -14,12 +14,20 @@ from pathlib import Path
 # ═══════════════════════════════════════════════════════════════════════
 
 class _Attrs(dict):
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: str) -> None:
         super().__init__(**kwargs)
 
 
 class _Pins:
-    def __init__(self, names, *, dir="io", invert=False, conn=None, assert_width=None):
+    def __init__(
+        self,
+        names: str | list[str],
+        *,
+        dir: str = "io",
+        invert: bool = False,
+        conn: str | None = None,
+        assert_width: int | None = None,
+    ) -> None:
         self.names = names.split() if isinstance(names, str) else list(names)
         self.dir = dir
         self.invert = invert
@@ -27,31 +35,46 @@ class _Pins:
 
 
 class _PinsN(_Pins):
-    def __init__(self, names, **kwargs):
+    def __init__(self, names: str | list[str], **kwargs: object) -> None:
         kwargs["invert"] = True
-        super().__init__(names, **kwargs)
+        super().__init__(names, **kwargs)  # type: ignore[arg-type]
 
 
 class _DiffPairs:
-    def __init__(self, p, n, *, dir="io", invert=False, conn=None, assert_width=None):
+    def __init__(
+        self,
+        p: str | list[str],
+        n: str | list[str],
+        *,
+        dir: str = "io",
+        invert: bool = False,
+        conn: str | None = None,
+        assert_width: int | None = None,
+    ) -> None:
         self.p = p.split() if isinstance(p, str) else list(p)
         self.n = n.split() if isinstance(n, str) else list(n)
         self.dir = dir
 
 
 class _Clock:
-    def __init__(self, freq):
+    def __init__(self, freq: float) -> None:
         self.freq = freq
 
 
 class _Subsignal:
-    def __init__(self, name, *ios, **kwargs):
+    def __init__(self, name: str, *ios: object, **kwargs: object) -> None:
         self.name = name
         self.ios = [io for io in ios if io is not None]
 
 
 class _Connector:
-    def __init__(self, name, number, pins="", **kwargs):
+    def __init__(
+        self,
+        name: str,
+        number: int,
+        pins: str | dict = "",
+        **kwargs: object,
+    ) -> None:
         self.name = name
         self.number = number
         if isinstance(pins, str):
@@ -66,7 +89,7 @@ class _Connector:
 
 
 class _Resource:
-    def __init__(self, name, number, *ios):
+    def __init__(self, name: str, number: int, *ios: object) -> None:
         self.name = name
         self.number = number
         self.ios = []
@@ -78,7 +101,14 @@ class _Resource:
                 self.ios.append(io)
 
     @classmethod
-    def family(cls, *args, default_name, ios, name_suffix=""):
+    def family(
+        cls,
+        *args: object,
+        default_name: str,
+        ios: list,
+        name_suffix: str = "",
+    ) -> "_Resource":
+        """Construct a _Resource from positional (number,) or (name, number) args."""
         # args is (number,) or (name, number) – mirrors the real amaranth API
         if len(args) >= 2 and isinstance(args[0], str):
             name, number = args[0], args[1]
@@ -88,22 +118,29 @@ class _Resource:
             name, number = default_name, 0
         if name_suffix:
             name = f"{name}_{name_suffix}"
-        return cls(name, number, *ios)
+        return cls(name, number, *ios)  # type: ignore[arg-type]
 
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Resource helper functions (mirrors amaranth_boards/resources/)
 # ═══════════════════════════════════════════════════════════════════════
 
-def _split_resources(*args, pins, invert=False, conn=None, attrs=None,
-                     default_name, dir):
+def _split_resources(
+    *args: object,
+    pins: str | list | dict,
+    invert: bool = False,
+    conn: str | None = None,
+    attrs: "_Attrs | None" = None,
+    default_name: str,
+    dir: str,
+) -> list[_Resource]:
     if isinstance(pins, str):
         pins = pins.split()
     if isinstance(pins, list):
         pins = dict(enumerate(pins))
     resources = []
     for number, pin in pins.items():
-        ios = [_Pins(pin, dir=dir, invert=invert, conn=conn)]
+        ios: list[_Pins | _Attrs] = [_Pins(pin, dir=dir, invert=invert, conn=conn)]
         if attrs is not None:
             ios.append(attrs)
         resources.append(
@@ -111,12 +148,20 @@ def _split_resources(*args, pins, invert=False, conn=None, attrs=None,
     return resources
 
 
-def _led_resources(*args, **kwargs):
-    return _split_resources(*args, **kwargs, default_name="led", dir="o")
+def _led_resources(*args: object, **kwargs: object) -> list[_Resource]:
+    return _split_resources(*args, **kwargs, default_name="led", dir="o")  # type: ignore[arg-type]
 
 
-def _rgb_led_resource(*args, r, g, b, invert=False, conn=None, attrs=None):
-    ios = [
+def _rgb_led_resource(
+    *args: object,
+    r: str,
+    g: str,
+    b: str,
+    invert: bool = False,
+    conn: str | None = None,
+    attrs: "_Attrs | None" = None,
+) -> _Resource:
+    ios: list[_Subsignal | _Attrs] = [
         _Subsignal("r", _Pins(r, dir="o", invert=invert, conn=conn, assert_width=1)),
         _Subsignal("g", _Pins(g, dir="o", invert=invert, conn=conn, assert_width=1)),
         _Subsignal("b", _Pins(b, dir="o", invert=invert, conn=conn, assert_width=1)),
@@ -126,20 +171,20 @@ def _rgb_led_resource(*args, r, g, b, invert=False, conn=None, attrs=None):
     return _Resource.family(*args, default_name="rgb_led", ios=ios)
 
 
-def _button_resources(*args, **kwargs):
-    return _split_resources(*args, **kwargs, default_name="button", dir="i")
+def _button_resources(*args: object, **kwargs: object) -> list[_Resource]:
+    return _split_resources(*args, **kwargs, default_name="button", dir="i")  # type: ignore[arg-type]
 
 
-def _switch_resources(*args, **kwargs):
-    return _split_resources(*args, **kwargs, default_name="switch", dir="i")
+def _switch_resources(*args: object, **kwargs: object) -> list[_Resource]:
+    return _split_resources(*args, **kwargs, default_name="switch", dir="i")  # type: ignore[arg-type]
 
 
-def _stub_single(*args, **kwargs):
+def _stub_single(*args: object, **kwargs: object) -> _Resource:
     """Stub for single-resource helpers we don't simulate."""
     return _Resource("_stub", 0)
 
 
-def _stub_multi(*args, **kwargs):
+def _stub_multi(*args: object, **kwargs: object) -> list[_Resource]:
     """Stub for multi-resource helpers we don't simulate."""
     return [_Resource("_stub", 0)]
 
@@ -162,8 +207,8 @@ _PLATFORM_VENDORS: dict[str, str] = {
 }
 
 
-def _make_namespace():
-    ns = {
+def _make_namespace() -> dict[str, object]:
+    ns: dict[str, object] = {
         # Core build DSL
         "Resource":     _Resource,
         "Subsignal":    _Subsignal,
@@ -301,13 +346,14 @@ class BoardDef:
 
     @property
     def summary(self) -> str:
+        """One-line summary of resource counts for display in the UI."""
         return (f"{len(self.leds)} LEDs, "
                 f"{len(self.buttons)} buttons, "
                 f"{len(self.switches)} switches")
 
     def to_json(self) -> str:
         """Serialize to JSON for passing to the cocotb subprocess."""
-        def _comp(c):
+        def _comp(c: ComponentInfo) -> dict[str, object]:
             return {
                 "name": c.name, "number": c.number,
                 "pins": c.pins, "direction": c.direction,
@@ -330,7 +376,7 @@ class BoardDef:
         """Deserialize from JSON produced by to_json()."""
         data = json.loads(raw)
 
-        def _make(items, kind):
+        def _make(items: list, kind: str) -> list[ComponentInfo]:
             return [ComponentInfo(
                 kind=kind,
                 name=c["name"], number=c["number"],
@@ -355,7 +401,9 @@ class BoardDef:
 #  Extraction helpers
 # ═══════════════════════════════════════════════════════════════════════
 
-def _extract_pins(resource):
+def _extract_pins(
+    resource: _Resource,
+) -> tuple[list[str], str, bool, str | None]:
     pins, direction, inverted, connector = [], "", False, None
     for io in resource.ios:
         if isinstance(io, _Pins):
@@ -375,7 +423,7 @@ def _extract_pins(resource):
     return pins, direction, inverted, connector
 
 
-def _classify(resource):
+def _classify(resource: _Resource) -> str | None:
     """Return 'led', 'button', 'switch', or None."""
     n = resource.name.lower()
     if n == "_stub":
@@ -389,7 +437,7 @@ def _classify(resource):
     return None
 
 
-def _to_component(resource, kind):
+def _to_component(resource: _Resource, kind: str) -> ComponentInfo:
     pins, direction, inverted, connector = _extract_pins(resource)
     return ComponentInfo(
         kind=kind,
@@ -398,12 +446,12 @@ def _to_component(resource, kind):
         pins=pins,
         direction=direction,
         inverted=inverted,
-        connector=connector,
+        connector=connector,  # type: ignore[arg-type]
         attrs=dict(resource.attrs),
     )
 
 
-def _prettify_class_name(name):
+def _prettify_class_name(name: str) -> str:
     """Convert 'ArtyA7_35Platform' → 'Arty A7-35'."""
     name = re.sub(r"Platform$", "", name)
     name = name.lstrip("_")
@@ -417,7 +465,7 @@ def _prettify_class_name(name):
 #  Public API
 # ═══════════════════════════════════════════════════════════════════════
 
-def load_board_from_source(source, filename="<string>"):
+def load_board_from_source(source: str, filename: str = "<string>") -> list[BoardDef]:
     """Parse a single board file's source and return a list of BoardDefs."""
     # Strip import statements – we inject everything via namespace
     lines = source.split("\n")
@@ -435,7 +483,7 @@ def load_board_from_source(source, filename="<string>"):
     except Exception:
         return []
 
-    all_names = ns.get("__all__")
+    all_names: list | None = ns.get("__all__")  # type: ignore[assignment]
 
     boards = []
     for obj_name, obj in list(ns.items()):
@@ -489,7 +537,7 @@ def load_board_from_source(source, filename="<string>"):
     return boards
 
 
-def discover_boards(boards_dir):
+def discover_boards(boards_dir: str | Path) -> list[BoardDef]:
     """Scan a directory of board .py files and return all BoardDefs."""
     boards_dir = Path(boards_dir)
     if not boards_dir.is_dir():
@@ -506,6 +554,6 @@ def discover_boards(boards_dir):
     return all_boards
 
 
-def get_default_boards_path():
+def get_default_boards_path() -> Path:
     """Path to amaranth_boards/ inside the git submodule."""
     return Path(__file__).parent / "amaranth-boards" / "amaranth_boards"

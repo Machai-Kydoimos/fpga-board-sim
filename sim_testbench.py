@@ -1,5 +1,4 @@
-"""sim_testbench.py – cocotb testbench that bridges GHDL signals
-to the pygame-based FPGA board UI.
+"""sim_testbench.py – cocotb testbench that bridges GHDL signals to the pygame-based FPGA board UI.
 
 This module is loaded by cocotb inside the GHDL process.
 It reads the board definition from an environment variable,
@@ -16,7 +15,7 @@ from cocotb.clock import Clock
 from cocotb.handle import SimHandleBase
 from cocotb.triggers import Timer
 
-from board_loader import _FALLBACK_CLOCK_HZ, BoardDef
+from board_loader import _FALLBACK_CLOCK_HZ, BoardDef, ComponentInfo
 from ui import FPGABoard
 
 
@@ -28,7 +27,7 @@ def _load_board_from_env() -> BoardDef | None:
 
 @cocotb.test()
 async def interactive_sim(dut: SimHandleBase) -> None:
-    """Main interactive simulation loop.
+    """Run the interactive simulation loop.
 
     Drives the clock, reads switch/button state from pygame,
     writes it to GHDL, reads LED outputs, and updates the display.
@@ -60,28 +59,28 @@ async def interactive_sim(dut: SimHandleBase) -> None:
         pass
 
     # ── Wire callbacks: pygame → GHDL inputs ─────────────────────
-    def _on_switch(idx, state, info):
+    def _on_switch(idx: int, state: bool, info: ComponentInfo | None) -> None:
         """Collect all switch states into a bit vector and push to DUT."""
         sw_val = 0
         for s in board.switches:
             if s.state:
                 sw_val |= (1 << s.index)
         try:
-            dut.sw.value = sw_val
+            dut.sw.value = sw_val  # type: ignore[attr-defined]
         except AttributeError:
             pass
         label = info.display_name if info else f"SW{idx}"
         conn = f"  [{info.connector_str}]" if info else ""
         print(f"{label}: {'ON' if state else 'OFF'}{conn}")
 
-    def _on_button(idx, pressed, info):
+    def _on_button(idx: int, pressed: bool, info: ComponentInfo | None) -> None:
         """Collect all button states into a bit vector and push to DUT."""
         btn_val = 0
         for b in board.buttons:
             if b.pressed:
                 btn_val |= (1 << b.index)
         try:
-            dut.btn.value = btn_val
+            dut.btn.value = btn_val  # type: ignore[attr-defined]
         except AttributeError:
             pass
         label = info.display_name if info else f"BTN{idx}"
@@ -92,7 +91,7 @@ async def interactive_sim(dut: SimHandleBase) -> None:
     board.set_button_callback(_on_button)
 
     # ── Main loop ────────────────────────────────────────────────
-    SIM_STEP_NS = 2000  # 2 µs per display frame
+    sim_step_ns = 2000  # 2 µs per display frame
 
     print(f"\n{'='*60}")
     print(f"  Simulation running: {board_def.name if board_def else 'Generic'}")
@@ -104,7 +103,7 @@ async def interactive_sim(dut: SimHandleBase) -> None:
     board.running = True
     while board.running:
         # Advance simulation time
-        await Timer(SIM_STEP_NS, unit="ns")
+        await Timer(sim_step_ns, unit="ns")
 
         # Read LED outputs from simulation and update pygame
         try:

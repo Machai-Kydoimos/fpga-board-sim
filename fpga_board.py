@@ -32,7 +32,8 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def main():
+def main() -> None:
+    """Run the FPGA Board Simulator: board selection, VHDL picking, and simulation loop."""
     args = _parse_args()
     available_sims = detect_simulators()
 
@@ -147,6 +148,7 @@ def main():
             continue  # back to BoardSelector
 
         # ── Step 5: launch simulation ────────────────────────────
+        assert vhdl_path is not None  # loop only exits here when a valid file was chosen
         save_session(chosen.class_name, vhdl_path, simulator)
         last_board_class = chosen.class_name  # update in-memory session for this run
         last_vhdl_path   = vhdl_path

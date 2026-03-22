@@ -1,5 +1,4 @@
-"""sim_bridge.py – Manages VHDL analysis and launches interactive
-cocotb simulations.
+"""sim_bridge.py – Manages VHDL analysis and launches interactive cocotb simulations.
 
 Supports two open-source simulators:
   * GHDL (default)  – VPI interface  (libcocotbvpi_ghdl.so)
@@ -57,7 +56,9 @@ class _GHDLBackend:
                 f"--workdir={work_dir}", toplevel]
 
     @staticmethod
-    def run_cmd(toplevel: str, generics: dict[str, str], plugin_lib: str, work_dir: str) -> list[str]:
+    def run_cmd(
+        toplevel: str, generics: dict[str, str], plugin_lib: str, work_dir: str,
+    ) -> list[str]:
         cmd = [_GHDLBackend.find(), "-r", "--std=08", f"--workdir={work_dir}"]
         for k, v in (generics or {}).items():
             cmd.append(f"-g{k}={v}")
@@ -133,7 +134,7 @@ def _backend(simulator: str) -> type[_GHDLBackend] | type[_NVCBackend]:
 
 # ── Public discovery ──────────────────────────────────────────────────────────
 
-def _find_ghdl():
+def _find_ghdl() -> str:
     """Locate the ghdl executable (kept for backward compatibility)."""
     return _GHDLBackend.find()
 
@@ -191,6 +192,7 @@ def _libpython_name(base_python: str) -> str:
 
 def check_vhdl_encoding(path: str | Path) -> tuple[bool, str]:
     """Stage 1: encoding check (no simulator needed).
+
     Returns (ok: bool, message: str).
     """
     path = Path(path)
@@ -218,6 +220,7 @@ def check_vhdl_encoding(path: str | Path) -> tuple[bool, str]:
 
 def check_vhdl_contract(path: str | Path) -> tuple[bool, str]:
     """Stage 2: contract validation (text-based, no simulator needed).
+
     Returns (ok: bool, message: str).
     """
     path = Path(path)
@@ -317,6 +320,7 @@ def _build_sim_env(
     venv_dir: str | Path | None = None,
 ) -> tuple[dict[str, str], str]:
     """Build the environment dict needed for the simulator + cocotb VPI/VHPI.
+
     Returns (env_dict, plugin_lib_path).
     """
     venv_dir = Path(venv_dir or (Path(__file__).parent / ".venv"))

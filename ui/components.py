@@ -38,7 +38,8 @@ class FPGAChip:
     _PIN_LENGTH    = 5
 
     def __init__(self, vendor: str = "", device: str = "", package: str = "",
-                 clock_hz: float = 0.0):
+                 clock_hz: float = 0.0) -> None:
+        """Initialise the chip with optional vendor, device, package, and clock metadata."""
         self.vendor   = vendor
         self.device   = device
         self.package  = package
@@ -55,6 +56,7 @@ class FPGAChip:
         return f"{hz:g} Hz"
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+        """Draw the FPGA chip package with vendor colour, pin marks, and text labels."""
         if self.rect.width < 20:
             return
         r = self.rect
@@ -101,6 +103,7 @@ class LED:
     """A read-only indicator controlled via FPGABoard.set_led()."""
 
     def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
+        """Initialise the LED with its board index and optional component metadata."""
         self.index = index
         self.info = info
         self.state = False
@@ -108,9 +111,11 @@ class LED:
 
     @property
     def label(self) -> str:
+        """Human-readable label derived from ComponentInfo or the LED index."""
         return self.info.display_name if self.info else f"LED{self.index}"
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+        """Draw the LED circle with glow effect when lit, plus its label."""
         cx, cy = self.rect.center
         r = max(4, min(self.rect.width, self.rect.height) // 2 - 2)
 
@@ -132,6 +137,7 @@ class Switch:
     """A toggle switch – clicks flip the state."""
 
     def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
+        """Initialise the switch with its board index and optional component metadata."""
         self.index = index
         self.info = info
         self.state = False
@@ -140,9 +146,11 @@ class Switch:
 
     @property
     def label(self) -> str:
+        """Human-readable label derived from ComponentInfo or the switch index."""
         return self.info.display_name if self.info else f"SW{self.index}"
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+        """Draw the toggle switch body, knob, and label."""
         colour = BLUE_ON if self.state else BLUE_OFF
         pygame.draw.rect(surface, colour, self.rect, border_radius=4)
         pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=4)
@@ -156,6 +164,7 @@ class Switch:
         surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
 
     def handle_click(self, pos: tuple[int, int]) -> bool:
+        """Toggle the switch state if pos falls within its rect; return True on hit."""
         if self.rect.collidepoint(pos):
             self.state = not self.state
             if self.callback:
@@ -168,6 +177,7 @@ class Button:
     """A momentary push-button – pressed while the mouse is held down."""
 
     def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
+        """Initialise the button with its board index and optional component metadata."""
         self.index = index
         self.info = info
         self.pressed = False
@@ -176,9 +186,11 @@ class Button:
 
     @property
     def label(self) -> str:
+        """Human-readable label derived from ComponentInfo or the button index."""
         return self.info.display_name if self.info else f"BTN{self.index}"
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+        """Draw the push-button with a highlight when pressed, plus its label."""
         if self.pressed:
             inner = self.rect.inflate(-4, -4)
             pygame.draw.rect(surface, YELLOW, inner, border_radius=6)
@@ -190,6 +202,7 @@ class Button:
         surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
 
     def handle_press(self, pos: tuple[int, int]) -> bool:
+        """Mark the button as pressed if pos is within its rect; return True on hit."""
         if self.rect.collidepoint(pos):
             self.pressed = True
             if self.callback:
@@ -198,6 +211,7 @@ class Button:
         return False
 
     def handle_release(self) -> None:
+        """Release the button and fire the callback if it was previously pressed."""
         if self.pressed:
             self.pressed = False
             if self.callback:

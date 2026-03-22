@@ -9,9 +9,11 @@ returns 'simulate' to discover the user's choice.
 """
 
 import math
+from collections.abc import Callable
 
 import pygame
 
+from board_loader import BoardDef, ComponentInfo
 from ui.components import LED, Button, FPGAChip, Switch
 from ui.constants import BG_GREEN, WHITE, _ui_scale
 
@@ -35,12 +37,20 @@ class FPGABoard:
 
     """
 
-    def __init__(self, board_def=None, *,
-                 screen=None,
-                 num_switches=8, num_buttons=4, num_leds=16,
-                 width=1024, height=700,
-                 simulator="ghdl",
-                 available_simulators=None):
+    def __init__(  # noqa: PLR0913
+        self,
+        board_def: BoardDef | None = None,
+        *,
+        screen: pygame.Surface | None = None,
+        num_switches: int = 8,
+        num_buttons: int = 4,
+        num_leds: int = 16,
+        width: int = 1024,
+        height: int = 700,
+        simulator: str = "ghdl",
+        available_simulators: list[str] | None = None,
+    ) -> None:
+        """Initialise the board display with components laid out from board_def."""
         self.board_def = board_def
         if screen is not None:
             self.screen = screen
@@ -74,12 +84,12 @@ class FPGABoard:
             self.switches = [Switch(i) for i in range(num_switches)]
 
         # Default callbacks – print name + connector info
-        def _sw_cb(idx, state, info):
+        def _sw_cb(idx: int, state: bool, info: ComponentInfo | None) -> None:
             label = info.display_name if info else f"Switch {idx}"
             conn = f"  [{info.connector_str}]" if info else ""
             print(f"{label}: {'ON' if state else 'OFF'}{conn}")
 
-        def _btn_cb(idx, pressed, info):
+        def _btn_cb(idx: int, pressed: bool, info: ComponentInfo | None) -> None:
             label = info.display_name if info else f"Button {idx}"
             conn = f"  [{info.connector_str}]" if info else ""
             print(f"{label}: {'PRESSED' if pressed else 'RELEASED'}{conn}")
@@ -89,8 +99,8 @@ class FPGABoard:
         for btn in self.buttons:
             btn.callback = _btn_cb
 
-        self._sim_btn_rect = None
-        self._sim_toggle_rect = None
+        self._sim_btn_rect: pygame.Rect | None = None
+        self._sim_toggle_rect: pygame.Rect | None = None
         self._layout()
 
     # ── public API ───────────────────────────────────────────────────
@@ -100,12 +110,16 @@ class FPGABoard:
         if 0 <= index < len(self.leds):
             self.leds[index].state = bool(state)
 
-    def set_switch_callback(self, callback):
+    def set_switch_callback(
+        self, callback: Callable[[int, bool, ComponentInfo | None], None]
+    ) -> None:
         """Set callback for *all* switches.  Signature: callback(index, state, info)."""
         for sw in self.switches:
             sw.callback = callback
 
-    def set_button_callback(self, callback):
+    def set_button_callback(
+        self, callback: Callable[[int, bool, ComponentInfo | None], None]
+    ) -> None:
         """Set callback for *all* buttons.  Signature: callback(index, pressed, info)."""
         for btn in self.buttons:
             btn.callback = callback
@@ -116,7 +130,7 @@ class FPGABoard:
             return bool(self.switches[index].state)
         return False
 
-    def run(self):
+    def run(self) -> str:
         """Enter the main loop.  Returns 'back' (ESC), 'simulate' (Enter/button), or 'quit'."""
         self.running = True
         self._go_back = False
@@ -131,7 +145,7 @@ class FPGABoard:
 
     # ── layout engine ────────────────────────────────────────────────
 
-    def _layout(self):
+    def _layout(self) -> None:
         """Recompute component positions to fit the current window size."""
         w, h = self.width, self.height
         s              = _ui_scale(self.width, self.height)
@@ -141,7 +155,7 @@ class FPGABoard:
         section_pad    = max( 6, round(10 * s))
         bottom_reserve = max(50, round(70 * s))   # space for button + ESC hint
 
-        sections = [("fpga", [self.fpga_chip], 2)]
+        sections: list[tuple[str, list, int]] = [("fpga", [self.fpga_chip], 2)]
         if self.leds:
             sections.append(("leds", self.leds, 3))
         if self.buttons:
@@ -155,14 +169,23 @@ class FPGABoard:
         total_weight = sum(sec[2] for sec in sections)
         usable_h = h - 2 * margin - section_pad * (len(sections) - 1) - bottom_reserve
 
-        y = margin
+        y: float = margin
         for name, items, weight in sections:
             sec_h = usable_h * weight / total_weight
             content_h = sec_h - title_h - label_h
             self._place_items(items, margin, y + title_h, w - 2 * margin, content_h, name, scale=s)
             y += sec_h + section_pad
 
-    def _place_items(self, items, x0, y0, avail_w, avail_h, kind, scale=1.0):
+    def _place_items(  # noqa: PLR0913
+        self,
+        items: list,
+        x0: float,
+        y0: float,
+        avail_w: float,
+        avail_h: float,
+        kind: str,
+        scale: float = 1.0,
+    ) -> None:
         n = len(items)
         if n == 0:
             return
@@ -212,7 +235,7 @@ class FPGABoard:
 
     # ── events ───────────────────────────────────────────────────────
 
-    def _handle_events(self):
+    def _handle_events(self) -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
@@ -257,7 +280,7 @@ class FPGABoard:
 
     # ── drawing ──────────────────────────────────────────────────────
 
-    def _draw(self):
+    def _draw(self) -> None:
         self.screen.fill(BG_GREEN)
 
         s = _ui_scale(self.width, self.height)

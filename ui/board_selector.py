@@ -1,5 +1,4 @@
-"""BoardSelector screen: full-screen board picker with search filter and scrolling.
-"""
+"""BoardSelector screen: full-screen board picker with search filter and scrolling."""
 
 import pygame
 
@@ -10,7 +9,13 @@ from ui.constants import SEL_BG, SEL_HOVER, SEL_ROW_A, SEL_ROW_B, WHITE, _ui_sca
 class BoardSelector:
     """Full-screen picker.  Returns the chosen BoardDef, or None on quit."""
 
-    def __init__(self, boards: list[BoardDef], screen: pygame.Surface, preselect_class: str = "") -> None:
+    def __init__(
+        self,
+        boards: list[BoardDef],
+        screen: pygame.Surface,
+        preselect_class: str = "",
+    ) -> None:
+        """Initialise the selector with a board list and optional pre-selected class name."""
         self.boards = boards
         self.screen = screen
         self.width, self.height = screen.get_size()
@@ -30,20 +35,22 @@ class BoardSelector:
 
     @property
     def row_h(self) -> int:
+        """Return the pixel height of each board-list row."""
         return max(32, round(48 * _ui_scale(self.width, self.height)))
 
     @property
     def _hdr(self) -> int:
         return max(56, round(80 * _ui_scale(self.width, self.height)))
 
-    def _filtered(self):
+    def _filtered(self) -> list[BoardDef]:
         if not self.filter_text:
             return self.boards
         ft = self.filter_text.lower()
         return [b for b in self.boards
                 if ft in b.name.lower() or ft in b.class_name.lower()]
 
-    def run(self, clock):
+    def run(self, clock: pygame.time.Clock) -> BoardDef | None:
+        """Run the event loop and return the selected BoardDef, or None on quit."""
         while True:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
@@ -77,7 +84,7 @@ class BoardSelector:
             self._draw()
             clock.tick(30)
 
-    def _hover(self, pos):
+    def _hover(self, pos: tuple[int, int]) -> None:
         hdr = self._hdr
         _, y = pos
         if y < hdr:
@@ -87,14 +94,14 @@ class BoardSelector:
         f = self._filtered()
         self.hovered = idx if 0 <= idx < len(f) else -1
 
-    def _click(self, pos):
+    def _click(self, pos: tuple[int, int]) -> BoardDef | None:
         self._hover(pos)
         f = self._filtered()
         if 0 <= self.hovered < len(f):
             return f[self.hovered]
         return None
 
-    def _draw(self):
+    def _draw(self) -> None:
         self.screen.fill(SEL_BG)
         s = _ui_scale(self.width, self.height)
         title_f  = pygame.font.SysFont("consolas", max(14, round(22 * s)), bold=True)

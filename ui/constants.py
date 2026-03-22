@@ -26,6 +26,7 @@ _BASE_W, _BASE_H = 1024, 700
 
 def _ui_scale(w: int, h: int) -> float:
     """Linear scale factor relative to the 1024×700 reference (= 1.0).
+
     Uses the smaller axis ratio so no dimension overflows the window.
     """
     return min(w / _BASE_W, h / _BASE_H)

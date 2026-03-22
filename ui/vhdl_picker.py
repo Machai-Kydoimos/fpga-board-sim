@@ -1,5 +1,4 @@
-"""VHDLFilePicker: file browser screen for selecting .vhd/.vhdl files.
-"""
+"""VHDLFilePicker: file browser screen for selecting .vhd/.vhdl files."""
 
 from pathlib import Path
 
@@ -11,7 +10,13 @@ from ui.constants import SEL_BG, SEL_HOVER, SEL_ROW_A, SEL_ROW_B, WHITE, _ui_sca
 class VHDLFilePicker:
     """Simple file picker for .vhd/.vhdl files.  Returns path or None."""
 
-    def __init__(self, screen: pygame.Surface, start_dir: Path | str | None = None, preselect_name: str = "") -> None:
+    def __init__(
+        self,
+        screen: pygame.Surface,
+        start_dir: Path | str | None = None,
+        preselect_name: str = "",
+    ) -> None:
+        """Initialise the picker for the given directory, optionally pre-selecting a file."""
         self.screen = screen
         self.width, self.height = screen.get_size()
         self.scroll = 0
@@ -31,13 +36,14 @@ class VHDLFilePicker:
 
     @property
     def row_h(self) -> int:
+        """Return the pixel height of each file-list row."""
         return max(24, round(36 * _ui_scale(self.width, self.height)))
 
     @property
     def _hdr(self) -> int:
         return max(48, round(70 * _ui_scale(self.width, self.height)))
 
-    def _scan(self):
+    def _scan(self) -> None:
         """Refresh the file list for current_dir."""
         self.entries = []
         if self.current_dir.parent != self.current_dir:
@@ -54,7 +60,8 @@ class VHDLFilePicker:
         except PermissionError:
             pass
 
-    def run(self, clock):
+    def run(self, clock: pygame.time.Clock) -> str | None:
+        """Run the event loop and return the selected file path, or None on cancel."""
         while True:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
@@ -85,7 +92,7 @@ class VHDLFilePicker:
             self._draw()
             clock.tick(30)
 
-    def _hover(self, pos):
+    def _hover(self, pos: tuple[int, int]) -> None:
         hdr = self._hdr
         _, y = pos
         if y < hdr:
@@ -94,7 +101,7 @@ class VHDLFilePicker:
         idx = (y - hdr + self.scroll) // self.row_h
         self.hovered = idx if 0 <= idx < len(self.entries) else -1
 
-    def _click(self):
+    def _click(self) -> str | None:
         if 0 <= self.hovered < len(self.entries):
             name, path, is_dir = self.entries[self.hovered]
             if is_dir:
@@ -104,7 +111,7 @@ class VHDLFilePicker:
             return str(path)
         return None
 
-    def _draw(self):
+    def _draw(self) -> None:
         self.screen.fill(SEL_BG)
         s       = _ui_scale(self.width, self.height)
         title_f = pygame.font.SysFont("consolas", max(13, round(20 * s)), bold=True)

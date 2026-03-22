@@ -1,5 +1,4 @@
-"""ErrorDialog: modal error overlay with scrollable message and retry/back buttons.
-"""
+"""ErrorDialog: modal error overlay with scrollable message and retry/back buttons."""
 
 import pygame
 
@@ -14,15 +13,17 @@ class ErrorDialog:
     """
 
     def __init__(self, screen: pygame.Surface, title: str, message: str) -> None:
+        """Initialise the dialog with a screen snapshot, title, and message text."""
         self.screen   = screen
         self.title    = title
         self.message  = message
         self._bg      = screen.copy()
         self._scroll  = 0
-        self._retry_rect = None
-        self._back_rect  = None
+        self._retry_rect: pygame.Rect | None = None
+        self._back_rect:  pygame.Rect | None = None
 
-    def run(self, clock):
+    def run(self, clock: pygame.time.Clock) -> str:
+        """Run the event loop and return 'retry' or 'back'."""
         while True:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
@@ -50,14 +51,14 @@ class ErrorDialog:
             self._draw()
             clock.tick(30)
 
-    def _click(self, pos):
+    def _click(self, pos: tuple[int, int]) -> str | None:
         if self._retry_rect and self._retry_rect.collidepoint(pos):
             return "retry"
         if self._back_rect and self._back_rect.collidepoint(pos):
             return "back"
         return None
 
-    def _draw(self):
+    def _draw(self) -> None:
         sw, sh = self.screen.get_size()
         s = _ui_scale(sw, sh)
 
