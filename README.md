@@ -300,6 +300,11 @@ The simulator sets the generics to match the selected board's resource counts an
 
 At least one of GHDL or NVC must be installed. Both can coexist; the active simulator is selected via the UI toggle or `--sim` flag.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, quality
+standards, type annotation conventions, and architecture notes for contributors.
+
 ## License
 
 Board definitions in `amaranth-boards/` are from [amaranth-lang/amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) (BSD-2-Clause).
