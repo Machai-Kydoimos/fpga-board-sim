@@ -13,7 +13,7 @@ class ErrorDialog:
     run() returns 'retry' (Try Another File) or 'back' (Back to Boards).
     """
 
-    def __init__(self, screen, title: str, message: str):
+    def __init__(self, screen: pygame.Surface, title: str, message: str) -> None:
         self.screen   = screen
         self.title    = title
         self.message  = message

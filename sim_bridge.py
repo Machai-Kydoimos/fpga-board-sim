@@ -126,7 +126,7 @@ class _NVCBackend:
         return str(Path(_NVCBackend.find()).resolve().parent), _NVCBackend.lib_dir()
 
 
-def _backend(simulator: str):
+def _backend(simulator: str) -> type[_GHDLBackend] | type[_NVCBackend]:
     """Return the backend class for the given simulator name."""
     return _NVCBackend if simulator == "nvc" else _GHDLBackend
 
@@ -292,7 +292,7 @@ def analyze_vhdl(
 
         if simulator == "ghdl":
             elab = subprocess.run(
-                be.elaborate_cmd(toplevel, work_dir),
+                be.elaborate_cmd(toplevel, work_dir),  # type: ignore[call-arg,arg-type]
                 capture_output=True, text=True, timeout=30,
             )
             if elab.returncode != 0:
@@ -393,13 +393,13 @@ def launch_simulation(
     if simulator == "nvc":
         # NVC: elaborate with generics, then run (no generics at run time)
         subprocess.run(
-            be.elaborate_cmd(toplevel, generics, work_dir),
+            be.elaborate_cmd(toplevel, generics, work_dir),  # type: ignore[call-arg,arg-type]
             env=env, check=True, cwd=work_dir,
         )
-        cmd = be.run_cmd(toplevel, plugin_lib, work_dir)
+        cmd = be.run_cmd(toplevel, plugin_lib, work_dir)  # type: ignore[call-arg,arg-type]
     else:
         # GHDL: run with generics inline
-        cmd = be.run_cmd(toplevel, generics, plugin_lib, work_dir)
+        cmd = be.run_cmd(toplevel, generics, plugin_lib, work_dir)  # type: ignore[call-arg,arg-type]
 
     env["COCOTB_TEST_MODULES"] = "sim_testbench"
     env["TOPLEVEL"] = toplevel

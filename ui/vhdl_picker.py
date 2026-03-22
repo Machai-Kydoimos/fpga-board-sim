@@ -11,7 +11,7 @@ from ui.constants import SEL_BG, SEL_HOVER, SEL_ROW_A, SEL_ROW_B, WHITE, _ui_sca
 class VHDLFilePicker:
     """Simple file picker for .vhd/.vhdl files.  Returns path or None."""
 
-    def __init__(self, screen, start_dir=None, preselect_name: str = ""):
+    def __init__(self, screen: pygame.Surface, start_dir: Path | str | None = None, preselect_name: str = "") -> None:
         self.screen = screen
         self.width, self.height = screen.get_size()
         self.scroll = 0
@@ -113,7 +113,7 @@ class VHDLFilePicker:
 
         hdr = self._hdr
 
-        for i, (name, path, is_dir) in enumerate(self.entries):
+        for i, (name, _path, is_dir) in enumerate(self.entries):
             y = hdr + i * self.row_h - self.scroll
             if y + self.row_h < hdr or y > self.height:
                 continue

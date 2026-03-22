@@ -3,13 +3,14 @@
 
 import pygame
 
+from board_loader import BoardDef
 from ui.constants import SEL_BG, SEL_HOVER, SEL_ROW_A, SEL_ROW_B, WHITE, _ui_scale
 
 
 class BoardSelector:
     """Full-screen picker.  Returns the chosen BoardDef, or None on quit."""
 
-    def __init__(self, boards, screen, preselect_class: str = ""):
+    def __init__(self, boards: list[BoardDef], screen: pygame.Surface, preselect_class: str = "") -> None:
         self.boards = boards
         self.screen = screen
         self.width, self.height = screen.get_size()

@@ -61,6 +61,8 @@ python_version = "3.10"
 warn_return_any = true
 warn_unused_ignores = true
 ignore_missing_imports = true
+exclude = ["amaranth-boards/"]
+disallow_incomplete_defs = true
 # Gradually tighten as annotation coverage grows:
 # disallow_untyped_defs = true
 # strict = true
