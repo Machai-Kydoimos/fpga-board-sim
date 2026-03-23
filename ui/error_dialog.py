@@ -2,7 +2,7 @@
 
 import pygame
 
-from ui.constants import SEL_BG, WHITE, _ui_scale
+from ui.constants import SEL_BG, WHITE, _ui_scale, get_font
 
 
 class ErrorDialog:
@@ -75,9 +75,9 @@ class ErrorDialog:
         btn_gap = max(12, round(16 * s))
         btns_h  = btn_h + btn_gap * 2
 
-        title_f = pygame.font.SysFont("consolas", max(20, round(26 * s)), bold=True)
-        body_f  = pygame.font.SysFont("consolas", max(16, round(20 * s)))
-        btn_f   = pygame.font.SysFont("consolas", max(16, round(20 * s)), bold=True)
+        title_f = get_font(max(20, round(26 * s)), bold=True)
+        body_f  = get_font(max(16, round(20 * s)))
+        btn_f   = get_font(max(16, round(20 * s)), bold=True)
         line_h  = body_f.get_linesize() + 2
 
         # Word-wrap message lines to fit panel width
@@ -163,7 +163,7 @@ class ErrorDialog:
         self.screen.blit(bt, bt.get_rect(center=self._back_rect.center))
 
         # Keyboard shortcut hint below the panel
-        hint_f = pygame.font.SysFont("consolas", max(12, round(14 * s)))
+        hint_f = get_font(max(12, round(14 * s)))
         hint = hint_f.render("Enter: Try Another File    Esc: Back to Boards",
                              True, (140, 140, 140))
         self.screen.blit(hint, hint.get_rect(centerx=px + panel_w // 2,

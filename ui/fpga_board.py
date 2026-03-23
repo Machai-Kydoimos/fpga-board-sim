@@ -15,7 +15,7 @@ import pygame
 
 from board_loader import BoardDef, ComponentInfo
 from ui.components import LED, Button, FPGAChip, Switch
-from ui.constants import BG_GREEN, WHITE, _ui_scale
+from ui.constants import BG_GREEN, WHITE, _ui_scale, get_font
 
 
 class FPGABoard:
@@ -45,19 +45,38 @@ class FPGABoard:
         num_switches: int = 8,
         num_buttons: int = 4,
         num_leds: int = 16,
-        width: int = 1024,
-        height: int = 700,
+        width: int = 0,
+        height: int = 0,
         simulator: str = "ghdl",
         available_simulators: list[str] | None = None,
+        height_offset: int = 0,
     ) -> None:
-        """Initialise the board display with components laid out from board_def."""
+        """Initialise the board display with components laid out from board_def.
+
+        Parameters
+        ----------
+        width, height:
+            Initial window size.  When ``0`` (the default) and *screen* is
+            provided the surface dimensions are used; without a screen the
+            fallback 1024 × 700 is used.
+        height_offset:
+            Pixels to subtract from the effective height when computing
+            layout and handling resize events.  Reserve space for a panel
+            drawn below the board (e.g. SimPanel).
+
+        """
         self.board_def = board_def
+        self._height_offset = height_offset
         if screen is not None:
             self.screen = screen
-            self.width, self.height = screen.get_size()
+            sw, sh = screen.get_size()
+            self.width  = width  if width  > 0 else sw
+            self.height = (height if height > 0 else sh) - height_offset
         else:
-            self.screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
-            self.width, self.height = width, height
+            w = width  or 1024
+            h = height or 700
+            self.screen = pygame.display.set_mode((w, h), pygame.RESIZABLE)
+            self.width, self.height = w, h - height_offset
         self.clock = pygame.time.Clock()
         self.running = False
 
@@ -235,8 +254,8 @@ class FPGABoard:
 
     # ── events ───────────────────────────────────────────────────────
 
-    def _handle_events(self) -> None:
-        for event in pygame.event.get():
+    def _handle_events(self, events: list | None = None) -> None:
+        for event in (events if events is not None else pygame.event.get()):
             if event.type == pygame.QUIT:
                 self.running = False
 
@@ -249,7 +268,7 @@ class FPGABoard:
                 self.running = False
 
             elif event.type == pygame.WINDOWRESIZED:
-                self.width, self.height = event.x, event.y
+                self.width, self.height = event.x, event.y - self._height_offset
                 self._layout()
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -280,15 +299,15 @@ class FPGABoard:
 
     # ── drawing ──────────────────────────────────────────────────────
 
-    def _draw(self) -> None:
+    def _draw(self, *, flip: bool = True) -> None:
         self.screen.fill(BG_GREEN)
 
         s = _ui_scale(self.width, self.height)
         font_size = max(9, round(12 * s))
-        font = pygame.font.SysFont("consolas", font_size)
-        title_font = pygame.font.SysFont("consolas", font_size + 4, bold=True)
+        font = get_font(font_size)
+        title_font = get_font(font_size + 4, bold=True)
 
-        chip_font = pygame.font.SysFont("consolas", max(11, font_size + 1), bold=True)
+        chip_font = get_font(max(11, font_size + 1), bold=True)
         if self.fpga_chip.rect.width >= 20:
             t = title_font.render("FPGA", True, WHITE)
             self.screen.blit(t, (20, self.fpga_chip.rect.top - font_size - 10))
@@ -312,7 +331,7 @@ class FPGABoard:
             sw.draw(self.screen, font)
 
         # ── Footer buttons ────────────────────────────────────────────
-        btn_font = pygame.font.SysFont("consolas", max(12, round(16 * s)), bold=True)
+        btn_font = get_font(max(12, round(16 * s)), bold=True)
         btn_margin_x = max(15, round(20 * s))
         btn_margin_y = max(15, round(20 * s))
 
@@ -355,9 +374,10 @@ class FPGABoard:
                          (toggle_x + 12, toggle_y + 7))
 
         # ESC hint (bottom-left)
-        hint_f = pygame.font.SysFont("consolas", max(9, round(12 * s)))
+        hint_f = get_font(max(9, round(12 * s)))
         hint = hint_f.render("ESC: back to board list", True, (160, 160, 160))
         hint_margin = max(8, round(10 * s))
         self.screen.blit(hint, (15, self.height - hint_f.get_height() - hint_margin))
 
-        pygame.display.flip()
+        if flip:
+            pygame.display.flip()

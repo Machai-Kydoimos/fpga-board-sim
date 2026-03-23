@@ -163,12 +163,16 @@ def main() -> None:
         board_json = chosen.to_json()
         toplevel = toplevel_name
 
-        # Size generics to match board
+        # Size generics to match the selected board.
+        # CLK_HALF_NS seeds the VHDL wrapper's clock process (sim_wrapper)
+        # and is the initial value written to dut.clk_half_ns by sim_testbench.
+        clk_half_ns = max(1, round(5e8 / chosen.default_clock_hz))
         generics = {
             "NUM_SWITCHES": str(max(1, len(chosen.switches))),
             "NUM_BUTTONS": str(max(1, len(chosen.buttons))),
             "NUM_LEDS": str(max(1, len(chosen.leds))),
-            "COUNTER_BITS": "10",  # short for fast visible blinking
+            "COUNTER_BITS": "17",
+            "CLK_HALF_NS_INIT": str(clk_half_ns),
         }
 
         try:

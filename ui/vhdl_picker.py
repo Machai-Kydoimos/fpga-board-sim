@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pygame
 
-from ui.constants import SEL_BG, SEL_HOVER, SEL_ROW_A, SEL_ROW_B, WHITE, _ui_scale
+from ui.constants import SEL_BG, SEL_HOVER, SEL_ROW_A, SEL_ROW_B, WHITE, _ui_scale, get_font
 
 
 class VHDLFilePicker:
@@ -114,9 +114,9 @@ class VHDLFilePicker:
     def _draw(self) -> None:
         self.screen.fill(SEL_BG)
         s       = _ui_scale(self.width, self.height)
-        title_f = pygame.font.SysFont("consolas", max(13, round(20 * s)), bold=True)
-        path_f  = pygame.font.SysFont("consolas", max( 9, round(12 * s)))
-        item_f  = pygame.font.SysFont("consolas", max(10, round(14 * s)))
+        title_f = get_font(max(13, round(20 * s)), bold=True)
+        path_f  = get_font(max( 9, round(12 * s)))
+        item_f  = get_font(max(10, round(14 * s)))
 
         hdr = self._hdr
 

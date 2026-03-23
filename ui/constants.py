@@ -4,6 +4,12 @@ All other ui/ modules import from here so visual parameters have a single
 source of truth (both the pygame renderer and the SVG generator stay in sync).
 """
 
+from __future__ import annotations
+
+import functools
+
+import pygame
+
 # ── Colours ──────────────────────────────────────────────────────────
 BG_GREEN  = (34, 139, 34)
 WHITE     = (255, 255, 255)
@@ -30,3 +36,14 @@ def _ui_scale(w: int, h: int) -> float:
     Uses the smaller axis ratio so no dimension overflows the window.
     """
     return min(w / _BASE_W, h / _BASE_H)
+
+
+@functools.lru_cache(maxsize=128)
+def get_font(size: int, bold: bool = False) -> pygame.font.Font:
+    """Return a cached Consolas font at *size* px (bold optional).
+
+    ``pygame.font.SysFont`` can take ~0.3 ms per call; caching by (size, bold)
+    cuts the per-frame cost to a single dict lookup when the window is not
+    being resized.
+    """
+    return pygame.font.SysFont("consolas", size, bold=bold)
