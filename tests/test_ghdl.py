@@ -5,6 +5,8 @@ import pytest
 
 from sim_bridge import _find_ghdl, analyze_vhdl
 
+pytestmark = pytest.mark.slow
+
 PROJECT = Path(__file__).resolve().parent.parent
 
 

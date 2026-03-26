@@ -71,6 +71,7 @@ def test_bad_semantic_passes_stage2():
 
 # ── Stage 3: GHDL analysis + elaboration ─────────────────────────────────────
 
+@pytest.mark.slow
 @pytest.mark.parametrize("filename", GOOD_BLINKYS)
 def test_good_blinky_ghdl_pass(filename, ghdl):
     f = HDL / filename
@@ -78,8 +79,38 @@ def test_good_blinky_ghdl_pass(filename, ghdl):
     assert ok, f"GHDL failed on {filename}: {detail}"
 
 
+@pytest.mark.slow
 def test_bad_semantic_fails_stage3(ghdl):
     f = HDL / "bad_semantic_blinky.vhdl"
     ok, detail = analyze_vhdl(f, toplevel=f.stem)
     assert not ok, "Expected GHDL analysis to fail on bad_semantic_blinky.vhdl"
     assert "unsigned" in detail.lower()
+
+
+# ── Error message quality ─────────────────────────────────────────────────────
+
+def test_bad_encoding_error_names_the_bom():
+    """The BOM error must tell the user exactly what was detected."""
+    _, msg = check_vhdl_encoding(HDL / "bad_encoding_blinky.vhdl")
+    assert "BOM" in msg
+
+
+def test_bad_contract_error_names_found_entity():
+    """Mismatch error must include the entity name that was found in the file."""
+    _, msg = check_vhdl_contract(HDL / "bad_contract_blinky.vhdl")
+    # entity is 'blinky'; error must say so
+    assert "blinky" in msg
+
+
+def test_bad_contract_error_names_expected_stem():
+    """Mismatch error must include the filename stem so the user knows the fix."""
+    _, msg = check_vhdl_contract(HDL / "bad_contract_blinky.vhdl")
+    assert "bad_contract_blinky" in msg
+
+
+@pytest.mark.slow
+def test_analyze_semantic_error_is_nonempty(ghdl):
+    """GHDL analysis error for bad_semantic_blinky.vhdl must not be blank."""
+    f = HDL / "bad_semantic_blinky.vhdl"
+    _, detail = analyze_vhdl(f, toplevel=f.stem)
+    assert detail.strip()  # non-empty, human-readable error
