@@ -3,9 +3,11 @@
 Draws three zones:
   Left  – live info: board clock, simulated time elapsed, clocks/frame,
           effective simulation rate.
-  Center – logarithmic speed slider (0.001× … 10×, default 0.1×).
-  Right  – virtual-clock selector (preset frequencies via [-]/[+]),
-           effective-rate readout, and a pause toggle.
+  Center – logarithmic speed slider (0.001× … REAL … MAX, default 0.1×).
+           Below REAL: limits sim cycles per frame proportionally.
+           At/above REAL: always uses the maximum-cycles cap (full throughput).
+  Right  – virtual-clock selector (preset frequencies via [-]/[+]) and
+           effective-rate readout.
 
 The ``clk_state`` dict is shared with sim_testbench.  When the virtual
 clock is changed via [-]/[+], sim_testbench detects the updated
@@ -156,6 +158,15 @@ class SimPanel:
 
         self.speed_factor: float = _SPEED_DEFAULT
         self.paused: bool = False
+        # stop_requested is set by sim_testbench when the overlay [■ Stop] button
+        # is clicked.  Declared here so sim_testbench can read it without coupling
+        # to the overlay drawing logic.
+        self.stop_requested: bool = False
+        # at_max_throughput is set by sim_testbench each frame when the computed
+        # sim step equals the cycle cap (i.e. the slider is asking for more work
+        # than the cap allows).  The panel uses this to show "MAX SPEED" instead
+        # of the requested Nx value, since additional slider movement has no effect.
+        self.at_max_throughput: bool = False
 
         # Running statistics updated by sim_testbench each frame
         self._sim_elapsed_ns: int = 0
@@ -181,7 +192,6 @@ class SimPanel:
         self._slider_handle: pygame.Rect | None = None
         self._minus_rect: pygame.Rect | None = None
         self._plus_rect: pygame.Rect | None = None
-        self._pause_rect: pygame.Rect | None = None
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -305,8 +315,6 @@ class SimPanel:
             if self._preset_idx < len(self._clock_options) - 1:
                 self._preset_idx += 1
                 self.clk_state["period_ns"] = 1e9 / self._clock_options[self._preset_idx]
-        if self._pause_rect and self._pause_rect.collidepoint(pos):
-            self.paused = not self.paused
 
     def _on_mouse_motion(self, pos: tuple[int, int]) -> None:
         if self._dragging and self._slider_track:
@@ -391,13 +399,16 @@ class SimPanel:
         pygame.draw.circle(self.screen, DARK_GRAY, (hx, hy), hr, 1)
         self._slider_handle = pygame.Rect(hx - hr, hy - hr, hr * 2, hr * 2)
 
-        # Tick marks + labels
+        # Tick marks + labels.
+        # At/above REAL the step is always capped at the max-cycles limit, so
+        # the right half of the slider is a "MAX SPEED" zone rather than a
+        # linear extension of the rate target.
         ticks: list[tuple[float, str]] = [
             (0.001, "0.001x"),
             (0.01,  "0.01x"),
             (0.1,   "0.1x"),
             (1.0,   "REAL"),
-            (10.0,  "10x"),
+            (10.0,  "MAX"),
         ]
         tick_y = track.bottom + max(2, round(3 * s))
         for val, lbl in ticks:
@@ -409,22 +420,45 @@ class SimPanel:
             t = small.render(lbl, True, col)
             self.screen.blit(t, (tx - t.get_width() // 2, tick_y))
 
-        # Current value (or PAUSED), plus actual throughput when cap-limited
+        # Current value (or PAUSED / MAX SPEED), plus actual throughput note.
+        # "MAX SPEED" is shown when the cycle cap is reached (at_max_throughput),
+        # meaning adjusting the slider further right has no effect.
+        # "CPU-limited" appears when the requested rate is not achieved (slider
+        # below the cap point but still too fast for the host CPU).
+        # For slow boards (< ~576 kHz) REAL genuinely means 1:1 real-time.
         cv_y = tick_y + small.get_linesize() + max(2, round(3 * s))
         if self.paused:
             cv = bold.render("PAUSED", True, (255, 100, 100))
             self.screen.blit(cv, (x + (w - cv.get_width()) // 2, cv_y))
-        else:
-            cv = bold.render(f"{self.speed_factor:.4g}x", True, WHITE)
+        elif self.at_max_throughput:
+            cv = bold.render("MAX SPEED", True, (255, 210, 80))
             self.screen.blit(cv, (x + (w - cv.get_width()) // 2, cv_y))
-            # Show actual rate and a CPU-limited warning when throughput caps the step
             if self._fps > 0:
                 actual_factor = (
                     self._clocks_per_frame * self._fps / self._board_clock_hz
                 )
-                requested_factor = self.speed_factor
                 cv_y2 = cv_y + bold.get_linesize()
-                if actual_factor < requested_factor * 0.9:
+                if actual_factor >= 1.0:
+                    note = small.render(
+                        f"actual {actual_factor:.3g}x  (faster than real-time)",
+                        True, (100, 240, 120),
+                    )
+                else:
+                    note = small.render(
+                        f"actual {actual_factor:.3g}x  (at max throughput)",
+                        True, (140, 200, 140),
+                    )
+                self.screen.blit(note, (x + (w - note.get_width()) // 2, cv_y2))
+        else:
+            cv = bold.render(f"{self.speed_factor:.4g}x", True, WHITE)
+            self.screen.blit(cv, (x + (w - cv.get_width()) // 2, cv_y))
+            # Show actual rate; warn when the requested rate is not achieved
+            if self._fps > 0:
+                actual_factor = (
+                    self._clocks_per_frame * self._fps / self._board_clock_hz
+                )
+                cv_y2 = cv_y + bold.get_linesize()
+                if actual_factor < self.speed_factor * 0.9:
                     note = small.render(
                         f"actual {actual_factor:.3g}x  (CPU-limited)",
                         True, (255, 180, 80),
@@ -474,23 +508,6 @@ class SimPanel:
         eff_y = btn_y + btn_h + max(3, round(5 * s))
         eff_surf = font.render(f"Eff: {_fmt_hz(self.effective_hz)}", True, (100, 200, 255))
         self.screen.blit(eff_surf, (x + (w - eff_surf.get_width()) // 2, eff_y))
-
-        # Pause / Resume button
-        p_label = "[RESUME]" if self.paused else "[PAUSE]"
-        p_w = max(70, round(88 * s))
-        p_h = max(15, round(19 * s))
-        p_x = x + (w - p_w) // 2
-        p_y = eff_y + eff_surf.get_height() + max(3, round(4 * s))
-        pause_rect = pygame.Rect(p_x, p_y, p_w, p_h)
-        p_bg = (100, 35, 35) if self.paused else (30, 65, 110)
-        pygame.draw.rect(self.screen, p_bg, pause_rect, border_radius=3)
-        pygame.draw.rect(self.screen, WHITE, pause_rect, 1, border_radius=3)
-        pt = font.render(p_label, True, WHITE)
-        self.screen.blit(pt, (
-            pause_rect.centerx - pt.get_width() // 2,
-            pause_rect.centery - pt.get_height() // 2,
-        ))
-        self._pause_rect = pause_rect
 
 
 # ── Utility ───────────────────────────────────────────────────────────────────

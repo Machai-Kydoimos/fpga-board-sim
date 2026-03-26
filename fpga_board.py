@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pygame
 
-from board_loader import discover_boards, get_default_boards_path
+from board_loader import BoardDef, discover_boards, get_default_boards_path
 from session_config import load_session, save_session
 from sim_bridge import detect_simulators
 from ui import BoardSelector, ErrorDialog, FPGABoard, VHDLFilePicker
@@ -180,87 +180,148 @@ def main() -> None:
         saved = session.get("simulator", "")
         simulator = saved if saved in available_sims else available_sims[0]
 
+    # Persistent VHDL state — survives across FPGABoard re-entries and simulation runs.
+    # Reset to None when the user switches to a different board.
+    # Pre-populate from the session so the last-used file is ready on launch;
+    # analysis runs on-demand when the user first clicks [Start Simulation].
+    current_vhdl_path: str | None = (
+        last_vhdl_path if last_vhdl_path and Path(last_vhdl_path).exists() else None
+    )
+    current_work_dir: str | None = None
+    # Track which simulator produced current_work_dir so we can re-analyse
+    # automatically when the user switches simulators before hitting Start.
+    _work_dir_simulator: str | None = None
+
+    # When set, skip BoardSelector and re-enter FPGABoard with this board.
+    # Set after [Load VHDL], after simulation ends, etc.
+    _return_to_board: BoardDef | None = None
+
+    from sim_bridge import analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
+
     while True:
         # ── Step 1: pick a board ─────────────────────────────────
-        chosen = BoardSelector(boards, screen,
-                               preselect_class=last_board_class).run(clock)
-        if chosen is None:
-            break
+        chosen: BoardDef | None
+        if _return_to_board is not None:
+            chosen = _return_to_board
+            _return_to_board = None
+        else:
+            chosen = BoardSelector(boards, screen,
+                                   preselect_class=last_board_class).run(clock)
+            if chosen is None:
+                break
+        assert chosen is not None  # both branches above guarantee non-None here
 
-        # ── Step 2: preview board ────────────────────────────────
-        # ESC → back to selector, Enter → pick VHDL, close → quit
-        # Pass the existing screen — no set_mode(), preserves window state.
+        # ── Step 2: FPGABoard preview ─────────────────────────────
+        # Three footer buttons: [Select Board] [Load VHDL File] [Start Simulation]
+        # run() returns: 'back', 'load_vhdl', 'simulate', or 'quit'
+        # Title is set by FPGABoard.__init__ (includes VHDL filename when loaded).
         preview = FPGABoard(board_def=chosen, screen=screen,
                             simulator=simulator,
-                            available_simulators=available_sims)
+                            available_simulators=available_sims,
+                            vhdl_path=current_vhdl_path)
         result = preview.run()
         simulator = preview.simulator   # pick up any toggle change
+
         if result == "quit":
             break
+
         if result == "back":
+            # User chose a new board — clear VHDL state so stale path isn't shown
+            current_vhdl_path   = None
+            current_work_dir    = None
+            _work_dir_simulator = None
             continue
 
-        # result == "simulate" → proceed to VHDL file picker
-        # ── Steps 3-4: pick + validate VHDL (inner loop for retry) ───
-        from sim_bridge import analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
-        hdl_dir = Path(__file__).parent / "hdl"
-        vhdl_path = None
-        _back_to_boards = False
-        analyzed_work_dir = None
+        if result == "load_vhdl":
+            # ── Steps 3-4: pick + validate VHDL ──────────────────────────────
+            hdl_dir = Path(__file__).parent / "hdl"
 
-        # Derive file-picker start dir and pre-selection from session (first pick only)
-        _last_p = Path(last_vhdl_path) if last_vhdl_path else None
-        _fp_dir  = _last_p.parent if (_last_p and _last_p.exists()) else hdl_dir
-        _fp_pre  = _last_p.name   if (_last_p and _last_p.exists()) else ""
-        _first_pick = True
+            # Start dir: current VHDL, then last session path, then hdl/
+            _ref_p = (Path(current_vhdl_path) if current_vhdl_path
+                      else (Path(last_vhdl_path) if last_vhdl_path else None))
+            _fp_dir = _ref_p.parent if (_ref_p and _ref_p.exists()) else hdl_dir
+            _fp_pre = _ref_p.name   if (_ref_p and _ref_p.exists()) else ""
+            _first_pick = True
+            _new_path: str | None = None
+            _new_work_dir: str | None = None
+            _back_to_boards = False
 
-        while True:
-            pygame.display.set_caption("FPGA Simulator – Select VHDL")
-            if _first_pick:
-                vhdl_path = VHDLFilePicker(
-                    screen, start_dir=_fp_dir, preselect_name=_fp_pre).run(clock)
-                _first_pick = False
-            else:
-                vhdl_path = VHDLFilePicker(screen, start_dir=hdl_dir).run(clock)
-            if vhdl_path is None:
-                # ESC in file picker → back to board selector
-                _back_to_boards = True
-                break
-
-            # Stage 1 + 2: encoding and contract checks
-            toplevel_name = Path(vhdl_path).stem
-            intent = "retry"
-            for check_fn in [check_vhdl_encoding, check_vhdl_contract]:
-                ok, detail = check_fn(vhdl_path)
-                if not ok:
-                    intent = ErrorDialog(screen, "VHDL Error", detail).run(clock)
-                    break
-            else:
-                # Stage 3: simulator analysis + elaboration
-                ok, detail = analyze_vhdl(vhdl_path, toplevel=toplevel_name,
-                                          simulator=simulator)
-                if ok:
-                    analyzed_work_dir = detail  # reuse in launch_simulation
+            while True:
+                pygame.display.set_caption("FPGA Simulator \u2013 Select VHDL")
+                if _first_pick:
+                    picked = VHDLFilePicker(
+                        screen, start_dir=_fp_dir, preselect_name=_fp_pre).run(clock)
+                    _first_pick = False
                 else:
-                    intent = ErrorDialog(
-                        screen, f"{simulator.upper()} Error", detail).run(clock)
+                    picked = VHDLFilePicker(screen, start_dir=hdl_dir).run(clock)
 
-            if ok:
-                break  # valid file — proceed to simulation
-            if intent == "back":
-                _back_to_boards = True
-                break
-            # intent == "retry" → loop back to file picker
+                if picked is None:
+                    break   # cancelled → return to FPGABoard keeping existing VHDL
 
-        if _back_to_boards:
-            pygame.display.set_caption("FPGA Simulator")
-            continue  # back to BoardSelector
+                # Stage 1+2: encoding and contract checks
+                _toplevel = Path(picked).stem
+                _intent = "retry"
+                _ok = False
+                _detail = ""
+                for _check_fn in [check_vhdl_encoding, check_vhdl_contract]:
+                    _ok, _detail = _check_fn(picked)
+                    if not _ok:
+                        _intent = ErrorDialog(screen, "VHDL Error", _detail).run(clock)
+                        break
+                else:
+                    # Stage 3: simulator analysis + elaboration
+                    _ok, _detail = analyze_vhdl(picked, toplevel=_toplevel,
+                                                simulator=simulator)
+                    if _ok:
+                        _new_work_dir = _detail
+                    else:
+                        _intent = ErrorDialog(
+                            screen, f"{simulator.upper()} Error", _detail).run(clock)
 
-        # ── Step 5: launch simulation ────────────────────────────
-        assert vhdl_path is not None  # loop only exits here when a valid file was chosen
-        save_session(chosen.class_name, vhdl_path, simulator)
-        last_board_class = chosen.class_name  # update in-memory session for this run
-        last_vhdl_path   = vhdl_path
+                if _ok:
+                    _new_path = picked
+                    break
+                if _intent == "back":
+                    _back_to_boards = True
+                    break
+                # "retry" → loop
+
+            if _back_to_boards:
+                # "Back to Boards" in error dialog → go to board selector
+                current_vhdl_path = None
+                current_work_dir  = None
+                pygame.display.set_caption("FPGA Simulator")
+                continue
+            if _new_path is not None:
+                current_vhdl_path   = _new_path
+                current_work_dir    = _new_work_dir
+                last_vhdl_path      = _new_path
+                _work_dir_simulator = simulator   # record which sim was used
+            _return_to_board = chosen   # return to FPGABoard with updated state
+            continue
+
+        # result == "simulate" ────────────────────────────────────
+        # ── Step 5: launch simulation ─────────────────────────────
+        assert current_vhdl_path is not None  # Start button only fires when VHDL is set
+
+        # Re-analyse if the user switched simulator since the last analysis.
+        # Each simulator writes its own work directory, so a work_dir produced
+        # by NVC cannot be reused by GHDL and vice-versa.
+        if _work_dir_simulator != simulator:
+            _ra_top = Path(current_vhdl_path).stem
+            _ra_ok, _ra_dir = analyze_vhdl(current_vhdl_path, toplevel=_ra_top,
+                                           simulator=simulator)
+            if _ra_ok:
+                current_work_dir    = _ra_dir
+                _work_dir_simulator = simulator
+            else:
+                ErrorDialog(screen, f"{simulator.upper()} Error", _ra_dir).run(clock)
+                _return_to_board = chosen
+                continue
+
+        save_session(chosen.class_name, current_vhdl_path, simulator)
+        last_board_class = chosen.class_name
+        last_vhdl_path   = current_vhdl_path
 
         # Capture final window size before quitting pygame so the
         # simulation subprocess and the post-sim restart both use it.
@@ -270,8 +331,8 @@ def main() -> None:
 
         from sim_bridge import launch_simulation
 
-        board_json = chosen.to_json()
-        toplevel = toplevel_name
+        board_json   = chosen.to_json()
+        toplevel_sim = Path(current_vhdl_path).stem
 
         # Size generics to match the selected board.
         # CLK_HALF_NS seeds the VHDL wrapper's clock process (sim_wrapper)
@@ -286,18 +347,20 @@ def main() -> None:
         }
 
         try:
-            launch_simulation(board_json, vhdl_path, toplevel, generics,
+            launch_simulation(board_json, current_vhdl_path, toplevel_sim, generics,
                               sim_width=width, sim_height=height,
-                              work_dir=analyzed_work_dir,
+                              work_dir=current_work_dir,
                               simulator=simulator)
         except Exception as e:
             print(f"Simulation error: {e}")
 
-        # After simulation ends, re-init pygame and loop back at the same size.
+        # After simulation ends, re-init pygame and return to board preview.
+        # current_vhdl_path / current_work_dir persist so user can restart immediately.
         pygame.init()
         screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
         pygame.display.set_caption("FPGA Simulator")
         clock = pygame.time.Clock()
+        _return_to_board = chosen   # skip board selector; re-enter preview
         continue
 
     get_font.cache_clear()
