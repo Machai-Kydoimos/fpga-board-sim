@@ -85,7 +85,7 @@ def test_rolling_average_converges(dummy_screen):
 
 def test_panel_height_scales_with_window(headless_pygame):
     """panel_height must grow proportionally when the window is enlarged."""
-    from ui.sim_panel import SimPanel, _PANEL_H_BASE
+    from ui.sim_panel import _PANEL_H_BASE, SimPanel
     small = headless_pygame.display.set_mode((1024, 700))
     panel_small = SimPanel(small, height=_PANEL_H_BASE, board_clock_hz=100e6)
     h_small = panel_small.panel_height
@@ -99,7 +99,7 @@ def test_panel_height_scales_with_window(headless_pygame):
 
 def test_panel_height_updates_after_resize(headless_pygame):
     """panel_height must reflect the current screen size, not the startup size."""
-    from ui.sim_panel import SimPanel, _PANEL_H_BASE
+    from ui.sim_panel import _PANEL_H_BASE, SimPanel
     screen = headless_pygame.display.set_mode((1024, 700))
     panel = SimPanel(screen, height=_PANEL_H_BASE, board_clock_hz=100e6)
     h_before = panel.panel_height

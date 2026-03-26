@@ -33,7 +33,7 @@ ruff and mypy automatically; run them manually at any time:
 uv run ruff check .        # linter — must report 0 errors
 uv run ruff format --check . # formatter check (ruff format . to auto-fix)
 uv run mypy .              # type checker — must report 0 errors
-uv run pytest              # test suite — must be 131/131 (no display needed)
+uv run pytest              # test suite — must be 153/153 (no display needed)
 ```
 
 Running all four at once:
@@ -106,12 +106,13 @@ from typing import cast
 surface = cast(pygame.Surface, board.screen.copy())
 ```
 
-cocotb DUT signal attributes (`dut.clk`, `dut.sw`, `dut.btn`, `dut.led`)
+cocotb DUT signal attributes (`dut.sw`, `dut.btn`, `dut.led`, `dut.clk_half_ns`)
 are resolved dynamically at simulation time.  All DUT attribute accesses
 carry `# type: ignore[attr-defined]` — this is correct, not a workaround:
 
 ```python
-cocotb.start_soon(Clock(dut.clk, period, unit="ns").start())  # type: ignore[attr-defined]
+dut.clk_half_ns.value = new_half  # type: ignore[attr-defined]
+led_val = int(dut.led.value)       # type: ignore[attr-defined]
 ```
 
 Do not remove these ignores; they will cause mypy errors.
@@ -145,7 +146,7 @@ setup.  A few things that matter for contributors:
 - **`tests/` has an `__init__.py`**; `sim/` does not.  This matters if
   you add a mypy override — use `"tests.*"` for `tests/` and the bare
   module name `"test_blinky"` for `sim/test_blinky.py`.
-- The test suite must stay at **131/131 passed** before merge.
+- The test suite must stay at **153/153 passed** before merge.
 
 ---
 
@@ -159,6 +160,19 @@ calls `pygame.quit()` before spawning the simulator subprocess.
 `sim_testbench.py` calls `pygame.init()` fresh inside that subprocess.
 Never assume pygame state persists across the boundary.
 
+**VHDL-side clock.**  The clock is driven by the generated `sim_wrapper`
+entity (see `sim/sim_wrapper_template.vhd`), not by a Python coroutine.
+This eliminates per-half-period GPI callbacks — only two GPI calls happen
+per frame (the Timer endpoints).  The wrapper exposes `clk_half_ns`; the
+testbench writes to it when the panel's **[-]/[+]** buttons change the
+virtual clock frequency.
+
+**SimPanel.**  `ui/sim_panel.py` owns the stats strip drawn at the bottom
+of the simulation window.  Its `panel_height` is a property that re-evaluates
+`_ui_scale(w, h)` on every access — call `board.set_height_offset(panel.panel_height)`
+whenever the window resizes to keep the board and panel areas in sync.
+`sim_testbench.py` does this check at the top of every frame.
+
 **`board_loader.py` mock namespace.**  Board definition files are
 executed via `exec()` in a mock namespace that provides lightweight
 stand-ins for `Resource`, `Pins`, `Attrs`, etc.  The mock classes are
@@ -169,4 +183,5 @@ if you need a narrower type after extracting a value from a mock object.
 **Session state** is stored in `~/.fpga_simulator/session.json` and
 loaded at startup.  It is intentionally best-effort — load and save
 failures are silently ignored so a corrupt or missing file never breaks
-the app.
+the app.  After each simulation run, a separate per-session performance
+summary is appended to `~/.fpga_simulator/sessions/` by `sim_session_log.py`.

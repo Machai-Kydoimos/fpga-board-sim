@@ -79,10 +79,14 @@ uv sync
 
 **Linux / macOS:**
 ```bash
-uv run fpga-sim           # use default/saved simulator
-uv run fpga-sim --sim nvc # force NVC
-uv run fpga-sim --sim ghdl # force GHDL
+uv run fpga-sim                 # use default/saved simulator
+uv run fpga-sim --sim nvc       # force NVC
+uv run fpga-sim --sim ghdl      # force GHDL
 # or: uv run python fpga_board.py [--sim ghdl|nvc]
+
+# Headless benchmark (no window, prints a performance report):
+uv run fpga-sim --benchmark 10
+uv run fpga-sim --benchmark 10 --board ArtyA7_35Platform --vhdl hdl/blinky.vhd
 ```
 
 **Windows:**
@@ -119,24 +123,52 @@ The selected simulator (GHDL or NVC) compiles and simulates the VHDL design via 
 
 - **Switches/buttons** drive FPGA inputs in real time
 - **LEDs** reflect FPGA outputs from the simulation
+- **S** — toggle the stats panel (see below)
 - **ESC** or close window → stops simulation, returns to board list
 
-> **Session persistence:** The last-used board, VHDL file, and simulator choice are saved to `~/.fpga_simulator/session.json` and pre-selected on the next run.
+#### Stats panel
+
+A strip at the bottom of the window shows live simulation statistics across three zones:
+
+**Info (left)**
+
+| Stat | Description |
+|------|-------------|
+| Board clk | Native clock frequency of the selected board |
+| Sim time | Total simulated time elapsed this session |
+| Clk/frame | Clock cycles advanced in the last simulation step |
+| Eff. rate | Actual measured throughput (clocks/frame × GUI fps) |
+| GUI FPS | 30-frame rolling average of display frames per second |
+| G/D/I % | Frame time split: **G**HDL step / **D**raw / **I**dle (cap sleep) |
+
+**Simulation speed (centre)**
+
+A logarithmic slider from **0.001× to 10×** (default **0.1×**) controls how many simulated nanoseconds are passed to each `await Timer(...)` call, effectively slowing the design below real-time for debugging. When GHDL/NVC throughput limits the step, an amber **(CPU-limited)** note appears — dragging right won't help; try lowering the virtual clock instead.
+
+**Virtual clock (right)**
+
+**[-] / [+]** cycle through the clock frequencies declared in the board's amaranth-boards definition. The new half-period is written directly to the VHDL wrapper; the clock changes within one half-period without restarting the simulator. A **[PAUSE] / [RESUME]** button freezes simulation while keeping the simulator process alive.
+
+> **Session persistence:** The last-used board, VHDL file, and simulator choice are saved to `~/.fpga_simulator/session.json` and pre-selected on the next run.  After each simulation session a compact performance summary is also written to `~/.fpga_simulator/sessions/<timestamp>_<board>.json` (board, simulator, duration, avg FPS, simulated time, G/D/I breakdown).
 
 ## Project Structure
 
 ```
-fpga_board.py              Entry point — runs main() and orchestrates the screen flow
+fpga_board.py              Entry point — screen flow, --benchmark CLI, --sim flag
 board_loader.py            Parses amaranth-boards definitions without the full amaranth toolchain
 sim_bridge.py              GHDL/NVC analysis + cocotb simulation launcher; _GHDLBackend/_NVCBackend classes
-sim_testbench.py           cocotb test that bridges simulator signals ↔ pygame UI
+sim_testbench.py           cocotb test that bridges simulator signals ↔ pygame UI; main sim loop
+sim_session_log.py         Writes per-session JSON summaries to ~/.fpga_simulator/sessions/
+sim_metrics.py             Optional per-frame CSV metrics (set FPGA_SIM_METRICS=<path> to enable)
+analyze_metrics.py         Standalone performance report from a sim_metrics CSV
 session_config.py          Session persistence (~/.fpga_simulator/session.json)
 generate_board_images.py   Renders static board previews (used for documentation/thumbnails)
 ui/                        pygame UI package
 ui/constants.py            Colour constants and _ui_scale helper (single source of truth)
 ui/components.py           FPGAChip, LED, Switch, Button — low-level board components
 ui/board_selector.py       Board picker screen
-ui/fpga_board.py           Board preview screen (FPGABoard class)
+ui/fpga_board.py           Board preview + simulation screen (FPGABoard class)
+ui/sim_panel.py            Stats strip rendered during simulation (SimPanel class)
 ui/vhdl_picker.py          VHDL file browser screen
 ui/error_dialog.py         Error dialog overlay
 hdl/blinky.vhd             Example VHDL design (switches XOR counter → LEDs, buttons OR → LEDs)
@@ -145,8 +177,9 @@ hdl/blinky_counter.vhd     Binary counter displayed on LEDs
 hdl/blinky_morse.vhd       Morse code blinker
 hdl/blinky_pwm.vhd         PWM-based LED brightness control
 hdl/blinky_walking.vhd     Walking-light / knight-rider pattern
+sim/sim_wrapper_template.vhd  VHDL wrapper template — drives the clock internally, instantiates user design
 sim/test_blinky.py         Headless cocotb tests for the blinky design
-tests/                     pytest integration suite (board loading, serialization, GHDL, NVC, UI)
+tests/                     pytest integration suite (board loading, serialization, GHDL, NVC, UI, panel)
 amaranth-boards/           Board definitions from amaranth-lang/amaranth-boards
 pyproject.toml             Project metadata and dependencies
 ```
@@ -204,21 +237,30 @@ fpga_board.py                    sim_bridge.py                     Simulator + c
                                  sim_testbench.py
                                  ────────────────
                                  9.  Deserialize BoardDef from env
-                                 10. pygame.init(), create FPGABoard
-                                 11. Start board clock coroutine (board frequency)
+                                 10. pygame.init(), create FPGABoard + SimPanel
+                                 11. Write initial clk_half_ns to dut
+                                     (VHDL sim_wrapper drives clock internally)
                                  12. Wire switch/button callbacks:
                                      on click → collect all states
                                      into bit vector → dut.sw.value
                                  13. Main loop:
-                                     await Timer(2us)     ← advances simulation
-                                     read dut.led.value   ← get outputs
-                                     set_led() for each   ← update pygame
-                                     _handle_events()     ← process mouse/keyboard
-                                     _draw()              ← render frame
-                                     clock.tick(60)       ← 60fps cap
+                                     await Timer(step_ns)  ← advances simulation
+                                                             step = BASE_STEP_NS
+                                                              × speed_factor
+                                                              capped at MAX_CYCLES
+                                     read dut.led.value    ← get outputs
+                                     set_led() for each    ← update pygame
+                                     _handle_events()      ← process mouse/keyboard
+                                     if [-]/[+] clicked:
+                                       dut.clk_half_ns ←   ← change virtual clock
+                                     board._draw()         ← render board
+                                     panel.draw()          ← render stats strip
+                                     clock.tick(60)        ← 60fps cap
 ```
 
-The key insight is that **pygame runs inside the cocotb test function**. Each frame, `await Timer(2, unit="us")` advances the simulation by 2 microseconds, then the test reads outputs and processes pygame events. This cooperative loop gives smooth 60fps rendering with live simulation.
+The key insight is that **pygame runs inside the cocotb test function**. Each frame, `await Timer(step_ns, unit="ns")` advances the simulation by a configurable number of nanoseconds (controlled by the speed slider), then the test reads outputs and processes pygame events. This cooperative loop gives smooth rendering with live simulation.
+
+The clock is generated entirely inside the VHDL `sim_wrapper` entity rather than by a Python coroutine. This eliminates per-half-period GPI callbacks — the only GPI round-trips per frame are the two endpoints of the single `await Timer(...)` call. The wrapper exposes a `clk_half_ns` port; when the panel's **[-]/[+]** buttons change the virtual clock frequency, `sim_testbench.py` writes the new half-period to `dut.clk_half_ns` and the VHDL process picks it up within one half-cycle.
 
 ### The Blinky Design (`hdl/blinky.vhd`)
 
@@ -228,7 +270,7 @@ A simple but complete VHDL design that exercises all board I/O:
 - **LED logic**: `led(i) = sw(i) XOR counter(top-i) OR btn(i)`
   - Switches XOR with counter bits → LEDs blink at different rates depending on which switches are on
   - Buttons OR directly → LEDs light immediately while held
-- **Generics**: `NUM_SWITCHES`, `NUM_BUTTONS`, `NUM_LEDS`, `COUNTER_BITS` are set by the simulator to match the selected board. `COUNTER_BITS=10` in simulation keeps the blink rate visible at typical board clock frequencies.
+- **Generics**: `NUM_SWITCHES`, `NUM_BUTTONS`, `NUM_LEDS`, `COUNTER_BITS` are set by the simulator to match the selected board. `COUNTER_BITS=17` keeps the blink rate visible at typical board clock frequencies (a 100 MHz board with a 17-bit counter blinks the MSB at ~763 Hz, well within the visible range).
 
 ### Simulator Backends (`sim_bridge.py`)
 
