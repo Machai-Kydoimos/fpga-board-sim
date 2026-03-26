@@ -48,6 +48,7 @@ from cocotb.triggers import Timer
 from board_loader import _FALLBACK_CLOCK_HZ, BoardDef, ComponentInfo
 from sim_session_log import save_session_stats
 from ui import FPGABoard, SimPanel
+from ui.sim_panel import _PANEL_H_BASE
 
 # ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
 _METRICS_PATH: str = os.environ.get("FPGA_SIM_METRICS", "")
@@ -59,8 +60,7 @@ if _BENCHMARK_MODE:
     # Suppress display before pygame is imported (may already be set by caller)
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
-# ── Panel height (px at 1.0 scale; _panel_h is computed from window scale) ────
-_PANEL_H_BASE = 130
+# _PANEL_H_BASE is defined in ui.sim_panel; imported above.
 
 # ── Simulation step constants ─────────────────────────────────────────────────
 # Base sim step at the default speed (0.1×).
@@ -160,19 +160,18 @@ async def interactive_sim(dut: object) -> None:
     # Create the pygame window explicitly so the panel and board share it
     screen = pygame.display.set_mode((sim_w, sim_h), pygame.RESIZABLE)
 
-    # Scale the panel height to match the current window size so all 6 info
-    # rows remain visible at large / maximised windows.
-    from ui.constants import _ui_scale  # noqa: PLC0415
-    _panel_h = max(_PANEL_H_BASE, round(_PANEL_H_BASE * _ui_scale(sim_w, sim_h)))
-
-    # Build the SimPanel (occupies the bottom _panel_h px of the window)
+    # Build the SimPanel with the base height; panel.panel_height is a property
+    # that re-scales automatically on every access as the window changes.
     clk_hz = board_def.default_clock_hz if board_def else _FALLBACK_CLOCK_HZ
     panel = SimPanel(
         screen,
-        height=_panel_h,
+        height=_PANEL_H_BASE,
         board_clock_hz=clk_hz,
         board_clocks_hz=board_def.clocks if board_def else None,
     )
+
+    # Initial scaled panel height for the board layout.
+    _panel_h = panel.panel_height
 
     # FPGABoard renders into the top (sim_h - _panel_h) px
     board = FPGABoard(
@@ -268,6 +267,9 @@ async def interactive_sim(dut: object) -> None:
 
     # S key toggles the stats panel; track visibility here
     _show_panel: bool = True
+    # Track the board's current height offset so we only call set_height_offset
+    # when it needs to change (avoids redundant _layout() calls every frame).
+    _board_offset: int = _panel_h
 
     # Session-level accumulators for the post-run JSON summary
     _session_start = time.monotonic()
@@ -280,6 +282,13 @@ async def interactive_sim(dut: object) -> None:
         not _BENCHMARK_MODE
         or time.monotonic() - _session_start < _BENCHMARK_SECS
     ):
+        # ── Sync board height offset when panel rescales after window resize ─────
+        if _show_panel:
+            _cur_offset = panel.panel_height
+            if _cur_offset != _board_offset:
+                board.set_height_offset(_cur_offset)
+                _board_offset = _cur_offset
+
         # ── Compute sim step from speed slider ────────────────────────────────
         clk_period_ns = panel.clk_state["period_ns"]
 
@@ -312,7 +321,8 @@ async def interactive_sim(dut: object) -> None:
         for ev in events:
             if ev.type == pygame.KEYDOWN and ev.key == pygame.K_s:
                 _show_panel = not _show_panel
-                board.set_height_offset(_panel_h if _show_panel else 0)
+                _board_offset = panel.panel_height if _show_panel else 0
+                board.set_height_offset(_board_offset)
             panel.handle_event(ev)
 
         # ── Propagate virtual clock changes to the VHDL wrapper ───────────────

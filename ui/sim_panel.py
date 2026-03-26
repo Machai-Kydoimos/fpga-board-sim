@@ -22,6 +22,10 @@ import pygame
 
 from ui.constants import DARK_GRAY, GRAY, WHITE, YELLOW, _ui_scale, get_font
 
+# ── Panel height base (pixels at 1.0 scale; actual height scales with window) ─
+
+_PANEL_H_BASE: int = 130
+
 # ── Clock presets (Hz) ────────────────────────────────────────────────────────
 
 _CLOCK_PRESETS_HZ: list[float] = [
@@ -130,7 +134,7 @@ class SimPanel:
 
         """
         self.screen = screen
-        self.panel_height = height
+        self._panel_h_base: int = height
         self._board_clock_hz = board_clock_hz
 
         # Use the board's actual clock options when provided; fall back to the
@@ -180,6 +184,15 @@ class SimPanel:
         self._pause_rect: pygame.Rect | None = None
 
     # ── Public API ────────────────────────────────────────────────────────────
+
+    @property
+    def panel_height(self) -> int:
+        """Pixel height of the panel, scaled to the current window size.
+
+        Re-evaluated on every access so it stays correct after window resize.
+        """
+        sw, sh = self.screen.get_size()
+        return max(self._panel_h_base, round(self._panel_h_base * _ui_scale(sw, sh)))
 
     @property
     def current_clock_hz(self) -> float:
@@ -253,10 +266,10 @@ class SimPanel:
         pygame.display.flip() so the panel paints over the board's
         background without being erased by the next fill.
         """
-        sw = self.screen.get_width()
-        sh = self.screen.get_height()
-        y0 = sh - self.panel_height
+        sw, sh = self.screen.get_size()
         s = _ui_scale(sw, sh)
+        ph = max(self._panel_h_base, round(self._panel_h_base * s))
+        y0 = sh - ph
 
         # Panel background + separator line
         bg = (24, 96, 24)
@@ -270,9 +283,9 @@ class SimPanel:
 
         zone_w = sw // 3
 
-        self._draw_info_zone(0, y0, zone_w, self.panel_height, font, bold, s)
-        self._draw_speed_zone(zone_w, y0, zone_w, self.panel_height, font, bold, small, s)
-        self._draw_clock_zone(zone_w * 2, y0, sw - zone_w * 2, self.panel_height, font, bold, s)
+        self._draw_info_zone(0, y0, zone_w, ph, font, bold, s)
+        self._draw_speed_zone(zone_w, y0, zone_w, ph, font, bold, small, s)
+        self._draw_clock_zone(zone_w * 2, y0, sw - zone_w * 2, ph, font, bold, s)
 
     # ── Private event helpers ─────────────────────────────────────────────────
 

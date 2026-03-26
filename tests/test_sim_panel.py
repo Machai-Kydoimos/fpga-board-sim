@@ -83,6 +83,34 @@ def test_rolling_average_converges(dummy_screen):
     assert panel._idle_us  == pytest.approx(300.0)
 
 
+def test_panel_height_scales_with_window(headless_pygame):
+    """panel_height must grow proportionally when the window is enlarged."""
+    from ui.sim_panel import SimPanel, _PANEL_H_BASE
+    small = headless_pygame.display.set_mode((1024, 700))
+    panel_small = SimPanel(small, height=_PANEL_H_BASE, board_clock_hz=100e6)
+    h_small = panel_small.panel_height
+
+    large = headless_pygame.display.set_mode((1920, 1080))
+    panel_large = SimPanel(large, height=_PANEL_H_BASE, board_clock_hz=100e6)
+    h_large = panel_large.panel_height
+
+    assert h_large > h_small
+
+
+def test_panel_height_updates_after_resize(headless_pygame):
+    """panel_height must reflect the current screen size, not the startup size."""
+    from ui.sim_panel import SimPanel, _PANEL_H_BASE
+    screen = headless_pygame.display.set_mode((1024, 700))
+    panel = SimPanel(screen, height=_PANEL_H_BASE, board_clock_hz=100e6)
+    h_before = panel.panel_height
+
+    # Simulate a window resize by changing the display mode on the same panel
+    headless_pygame.display.set_mode((1920, 1080))
+    h_after = panel.panel_height
+
+    assert h_after > h_before
+
+
 def test_effective_hz_reflects_actual_throughput(dummy_screen):
     """effective_hz must equal clocks_per_frame × fps, not clock × speed_factor."""
     panel = _make_panel(dummy_screen, clock_hz=100e6)
