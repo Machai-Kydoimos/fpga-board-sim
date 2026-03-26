@@ -147,7 +147,12 @@ async def interactive_sim(dut: object) -> None:
 
     # Build the SimPanel (occupies the bottom _PANEL_H px of the window)
     clk_hz = board_def.default_clock_hz if board_def else _FALLBACK_CLOCK_HZ
-    panel = SimPanel(screen, height=_PANEL_H, board_clock_hz=clk_hz)
+    panel = SimPanel(
+        screen,
+        height=_PANEL_H,
+        board_clock_hz=clk_hz,
+        board_clocks_hz=board_def.clocks if board_def else None,
+    )
 
     # FPGABoard renders into the top (sim_h - _PANEL_H) px
     board = FPGABoard(
@@ -292,6 +297,14 @@ async def interactive_sim(dut: object) -> None:
 
         board.clock.tick(60)
         _t_tick_end = time.monotonic_ns()
+
+        # ── Update panel timing display ───────────────────────────────────────
+        panel.update_timing(
+            fps=board.clock.get_fps(),
+            timer_us=(_t_timer - _t0) / 1_000,
+            draw_us=(_t_draw_end - _t_draw_start) / 1_000,
+            idle_us=(_t_tick_end - _t_draw_end) / 1_000,
+        )
 
         # ── Post metrics (non-blocking; zero cost when metrics disabled) ──────
         if _metrics:

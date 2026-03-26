@@ -107,21 +107,46 @@ class SimPanel:
         screen: pygame.Surface,
         height: int,
         board_clock_hz: float,
+        board_clocks_hz: list[float] | None = None,
     ) -> None:
-        """Initialise the panel with screen surface, pixel height, and board clock."""
+        """Initialise the panel with screen surface, pixel height, and board clock.
+
+        Parameters
+        ----------
+        screen:
+            The shared pygame display surface.
+        height:
+            Pixel height of the panel strip.
+        board_clock_hz:
+            Native clock frequency from the selected board (used as the initial
+            virtual-clock selection and fallback when *board_clocks_hz* is not
+            supplied).
+        board_clocks_hz:
+            Ordered list of clock frequencies (Hz) available on the selected
+            board.  When provided the [-]/[+] buttons cycle through these
+            instead of the built-in generic preset list.  Pass ``None`` (the
+            default) to use the generic preset list.
+
+        """
         self.screen = screen
         self.panel_height = height
         self._board_clock_hz = board_clock_hz
 
-        # Find the closest preset to the board's native clock
+        # Use the board's actual clock options when provided; fall back to the
+        # generic preset list for boards whose clock data is unavailable.
+        self._clock_options: list[float] = (
+            list(board_clocks_hz) if board_clocks_hz else _CLOCK_PRESETS_HZ
+        )
+
+        # Find the closest option to the board's native clock
         self._preset_idx: int = min(
-            range(len(_CLOCK_PRESETS_HZ)),
-            key=lambda i: abs(_CLOCK_PRESETS_HZ[i] - board_clock_hz),
+            range(len(self._clock_options)),
+            key=lambda i: abs(self._clock_options[i] - board_clock_hz),
         )
 
         # Shared mutable state read by the dynamic-clock coroutine
         self.clk_state: dict[str, float] = {
-            "period_ns": 1e9 / _CLOCK_PRESETS_HZ[self._preset_idx],
+            "period_ns": 1e9 / self._clock_options[self._preset_idx],
         }
 
         self.speed_factor: float = _SPEED_DEFAULT
@@ -130,6 +155,12 @@ class SimPanel:
         # Running statistics updated by sim_testbench each frame
         self._sim_elapsed_ns: int = 0
         self._clocks_per_frame: float = 0.0
+
+        # Per-frame timing breakdown (updated via update_timing)
+        self._fps: float = 0.0
+        self._timer_us: float = 0.0
+        self._draw_us: float = 0.0
+        self._idle_us: float = 0.0
 
         # Slider drag state
         self._dragging: bool = False
@@ -161,6 +192,32 @@ class SimPanel:
         self._sim_elapsed_ns += sim_step_ns
         period = self.clk_state["period_ns"]
         self._clocks_per_frame = sim_step_ns / period if period > 0 else 0.0
+
+    def update_timing(
+        self,
+        fps: float,
+        timer_us: float,
+        draw_us: float,
+        idle_us: float,
+    ) -> None:
+        """Record per-frame timing breakdown for display in the info zone.
+
+        Parameters
+        ----------
+        fps:
+            Frames per second from ``pygame.time.Clock.get_fps()``.
+        timer_us:
+            Microseconds spent inside ``await Timer(...)`` (GHDL/NVC step).
+        draw_us:
+            Microseconds for board draw + panel draw + ``pygame.display.flip``.
+        idle_us:
+            Microseconds spent in ``board.clock.tick`` (frame-cap sleep).
+
+        """
+        self._fps = fps
+        self._timer_us = timer_us
+        self._draw_us = draw_us
+        self._idle_us = idle_us
 
     def handle_event(self, event: pygame.event.Event) -> None:
         """Process a single pygame event that may affect the panel."""
@@ -212,11 +269,11 @@ class SimPanel:
         if self._minus_rect and self._minus_rect.collidepoint(pos):
             if self._preset_idx > 0:
                 self._preset_idx -= 1
-                self.clk_state["period_ns"] = 1e9 / _CLOCK_PRESETS_HZ[self._preset_idx]
+                self.clk_state["period_ns"] = 1e9 / self._clock_options[self._preset_idx]
         if self._plus_rect and self._plus_rect.collidepoint(pos):
-            if self._preset_idx < len(_CLOCK_PRESETS_HZ) - 1:
+            if self._preset_idx < len(self._clock_options) - 1:
                 self._preset_idx += 1
-                self.clk_state["period_ns"] = 1e9 / _CLOCK_PRESETS_HZ[self._preset_idx]
+                self.clk_state["period_ns"] = 1e9 / self._clock_options[self._preset_idx]
         if self._pause_rect and self._pause_rect.collidepoint(pos):
             self.paused = not self.paused
 
@@ -246,11 +303,17 @@ class SimPanel:
         self.screen.blit(hdr, (x + lpad, y0 + max(4, round(5 * s))))
         ty = y0 + hdr.get_height() + max(5, round(7 * s))
 
+        total_us = max(1.0, self._timer_us + self._draw_us + self._idle_us)
+        g_pct = int(self._timer_us / total_us * 100)
+        d_pct = int(self._draw_us  / total_us * 100)
+        i_pct = 100 - g_pct - d_pct
         rows: list[tuple[str, str, tuple[int, int, int]]] = [
-            ("Board clk:", _fmt_hz(self._board_clock_hz),    (150, 190, 150)),
-            ("Sim time: ", _fmt_time(self._sim_elapsed_ns),  WHITE),
-            ("Clk/frame:", f"{self._clocks_per_frame:.1f}",  WHITE),
-            ("Eff. rate:", _fmt_hz(self.effective_hz),       (100, 200, 255)),
+            ("Board clk:", _fmt_hz(self._board_clock_hz),             (150, 190, 150)),
+            ("Sim time: ", _fmt_time(self._sim_elapsed_ns),           WHITE),
+            ("Clk/frame:", f"{self._clocks_per_frame:.1f}",           WHITE),
+            ("Eff. rate:", _fmt_hz(self.effective_hz),                (100, 200, 255)),
+            ("GUI FPS:  ", f"{self._fps:.1f}",                        (200, 200, 100)),
+            ("G/D/I %:  ", f"{g_pct}/{d_pct}/{i_pct}",               (180, 150, 100)),
         ]
         for label, value, color in rows:
             lbl_surf = font.render(label, True, (150, 185, 150))
@@ -346,7 +409,7 @@ class SimPanel:
 
         # [+] button
         plus_rect = pygame.Rect(cx + btn_w + 6, btn_y, btn_w, btn_h)
-        can_inc = self._preset_idx < len(_CLOCK_PRESETS_HZ) - 1
+        can_inc = self._preset_idx < len(self._clock_options) - 1
         _draw_btn(self.screen, plus_rect, "+", bold, enabled=can_inc)
         self._plus_rect = plus_rect
 
