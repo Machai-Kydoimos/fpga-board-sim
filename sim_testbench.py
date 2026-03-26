@@ -46,6 +46,13 @@ from ui import FPGABoard, SimPanel
 # ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
 _METRICS_PATH: str = os.environ.get("FPGA_SIM_METRICS", "")
 
+# ── Benchmark mode (set FPGA_SIM_BENCHMARK=<seconds> for headless run) ────────
+_BENCHMARK_SECS: float = float(os.environ.get("FPGA_SIM_BENCHMARK", "0"))
+_BENCHMARK_MODE: bool = _BENCHMARK_SECS > 0
+if _BENCHMARK_MODE:
+    # Suppress display before pygame is imported (may already be set by caller)
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+
 # ── Panel height (px at 1.0 scale; actual value computed from window size) ────
 _PANEL_H = 130
 
@@ -257,7 +264,10 @@ async def interactive_sim(dut: object) -> None:
     _draw_pct_acc: list[float] = []
     _idle_pct_acc: list[float] = []
 
-    while board.running:
+    while board.running and (
+        not _BENCHMARK_MODE
+        or time.monotonic() - _session_start < _BENCHMARK_SECS
+    ):
         # ── Compute sim step from speed slider ────────────────────────────────
         clk_period_ns = panel.clk_state["period_ns"]
 
@@ -347,19 +357,40 @@ async def interactive_sim(dut: object) -> None:
         print(f"[metrics] Saved to: {_METRICS_PATH}")
 
     # ── Write per-session JSON summary ────────────────────────────────────────
+    _duration_s = time.monotonic() - _session_start
     if _fps_acc:
         _n = len(_fps_acc)
+        _avg_fps      = sum(_fps_acc)      / _n
+        _avg_ghdl_pct = sum(_ghdl_pct_acc) / _n
+        _avg_draw_pct = sum(_draw_pct_acc) / _n
+        _avg_idle_pct = sum(_idle_pct_acc) / _n
         save_session_stats(
             board_name   = board_def.name if board_def else "Generic",
             simulator    = os.environ.get("FPGA_SIM_SIMULATOR", "ghdl"),
-            duration_s   = time.monotonic() - _session_start,
-            avg_fps      = sum(_fps_acc) / _n,
+            duration_s   = _duration_s,
+            avg_fps      = _avg_fps,
             sim_time_ns  = panel._sim_elapsed_ns,
-            avg_ghdl_pct = sum(_ghdl_pct_acc) / _n,
-            avg_draw_pct = sum(_draw_pct_acc) / _n,
-            avg_idle_pct = sum(_idle_pct_acc) / _n,
+            avg_ghdl_pct = _avg_ghdl_pct,
+            avg_draw_pct = _avg_draw_pct,
+            avg_idle_pct = _avg_idle_pct,
             clock_hz     = panel.current_clock_hz,
         )
+        if _BENCHMARK_MODE:
+            _sim_rate = (panel._sim_elapsed_ns / 1e9) / max(_duration_s, 1e-9)
+            print(f"\n{'='*55}")
+            print(f"  Benchmark Report  ({_duration_s:.1f}s wall-clock)")
+            print(f"{'='*55}")
+            print(f"  Board     : {board_def.name if board_def else 'Generic'}")
+            print(f"  Simulator : {os.environ.get('FPGA_SIM_SIMULATOR', 'ghdl').upper()}")
+            print(f"  Clock     : {panel.current_clock_hz / 1e6:.4g} MHz")
+            print(f"  Frames    : {len(_fps_acc)}")
+            print(f"  Avg FPS   : {_avg_fps:.1f}")
+            print(f"  Sim time  : {panel._sim_elapsed_ns / 1e9:.4g} s simulated")
+            print(f"  Sim rate  : {_sim_rate:.4g}x real-time")
+            print(f"  GHDL step : {_avg_ghdl_pct:.1f}%")
+            print(f"  Draw      : {_avg_draw_pct:.1f}%")
+            print(f"  Idle      : {_avg_idle_pct:.1f}%")
+            print(f"{'='*55}\n")
 
     pygame.quit()
     print("Simulation stopped.")

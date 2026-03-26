@@ -10,9 +10,12 @@ All UI logic lives in the ui/ package:
 
 Usage:
   uv run python fpga_board.py [--sim ghdl|nvc]
+  uv run python fpga_board.py --benchmark 10 [--board ICEStick] [--vhdl hdl/blinky.vhd]
 """
 
 import argparse
+import os
+import sys
 from pathlib import Path
 
 import pygame
@@ -30,13 +33,117 @@ def _parse_args() -> argparse.Namespace:
         "--sim", metavar="NAME", default=None,
         help="Simulator to use: 'ghdl' or 'nvc' (overrides saved session)",
     )
+    p.add_argument(
+        "--benchmark", metavar="SECONDS", type=int, default=None,
+        help="Run headless benchmark for N seconds and print a performance report",
+    )
+    p.add_argument(
+        "--board", metavar="CLASSNAME", default=None,
+        help="Board class name to use in benchmark mode (default: first available)",
+    )
+    p.add_argument(
+        "--vhdl", metavar="PATH", default=None,
+        help="VHDL file to simulate in benchmark mode (default: hdl/blinky.vhd)",
+    )
     return p.parse_args()
+
+
+def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
+    """Run a headless benchmark and return an exit code.
+
+    Discovers the board, analyzes the VHDL, then launches the simulation
+    with ``SDL_VIDEODRIVER=dummy`` and ``FPGA_SIM_BENCHMARK=<N>``.
+    The simulation runs for *args.benchmark* wall-clock seconds and then
+    prints a performance report via the session log.
+
+    Returns 0 on success, 1 on error.
+    """
+    from sim_bridge import analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
+
+    simulator = args.sim if args.sim and args.sim in available_sims else available_sims[0]
+    boards_path = get_default_boards_path()
+    boards = discover_boards(boards_path)
+
+    if not boards:
+        print("[benchmark] No boards found. Run: git submodule update --init", file=sys.stderr)
+        return 1
+
+    # Board selection
+    if args.board:
+        chosen = next(
+            (b for b in boards if b.class_name == args.board or b.name == args.board),
+            None,
+        )
+        if chosen is None:
+            names = ", ".join(b.class_name for b in boards[:6])
+            print(f"[benchmark] Board '{args.board}' not found. Examples: {names}...",
+                  file=sys.stderr)
+            return 1
+    else:
+        chosen = boards[0]
+
+    # VHDL file selection
+    hdl_dir = Path(__file__).parent / "hdl"
+    vhdl_path = Path(args.vhdl) if args.vhdl else hdl_dir / "blinky.vhd"
+    if not vhdl_path.exists():
+        print(f"[benchmark] VHDL file not found: {vhdl_path}", file=sys.stderr)
+        return 1
+
+    # Quick validation
+    ok, msg = check_vhdl_encoding(vhdl_path)
+    if not ok:
+        print(f"[benchmark] VHDL encoding error: {msg}", file=sys.stderr)
+        return 1
+    toplevel_name = vhdl_path.stem
+    ok, msg = check_vhdl_contract(vhdl_path)
+    if not ok:
+        print(f"[benchmark] VHDL contract error: {msg}", file=sys.stderr)
+        return 1
+
+    print(f"[benchmark] Board:    {chosen.name}")
+    print(f"[benchmark] VHDL:     {vhdl_path.name}")
+    print(f"[benchmark] Sim:      {simulator}")
+    print(f"[benchmark] Duration: {args.benchmark}s  (headless)")
+
+    # Analyze VHDL
+    clk_half_ns = max(1, round(5e8 / chosen.default_clock_hz))
+    generics = {
+        "NUM_SWITCHES":    str(max(1, len(chosen.switches))),
+        "NUM_BUTTONS":     str(max(1, len(chosen.buttons))),
+        "NUM_LEDS":        str(max(1, len(chosen.leds))),
+        "COUNTER_BITS":    "17",
+        "CLK_HALF_NS_INIT": str(clk_half_ns),
+    }
+    ok, work_dir = analyze_vhdl(vhdl_path, toplevel=toplevel_name, simulator=simulator)
+    if not ok:
+        print(f"[benchmark] VHDL analysis failed: {work_dir}", file=sys.stderr)
+        return 1
+
+    # Launch headless simulation
+    from sim_bridge import launch_simulation
+    board_json = chosen.to_json()
+    os.environ["FPGA_SIM_BENCHMARK"] = str(args.benchmark)
+    os.environ["SDL_VIDEODRIVER"]    = "dummy"
+    try:
+        launch_simulation(
+            board_json, vhdl_path, toplevel_name, generics,
+            sim_width=1024, sim_height=700,
+            work_dir=work_dir,
+            simulator=simulator,
+        )
+    finally:
+        os.environ.pop("FPGA_SIM_BENCHMARK", None)
+        os.environ.pop("SDL_VIDEODRIVER", None)
+    return 0
 
 
 def main() -> None:
     """Run the FPGA Board Simulator: board selection, VHDL picking, and simulation loop."""
     args = _parse_args()
     available_sims = detect_simulators()
+
+    if args.benchmark is not None:
+        sys.exit(_run_benchmark(args, available_sims))
 
     pygame.init()
     # get_desktop_sizes() is reliable in pygame 2.x before any set_mode() call
