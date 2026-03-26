@@ -40,6 +40,7 @@ import pygame
 from cocotb.triggers import Timer
 
 from board_loader import _FALLBACK_CLOCK_HZ, BoardDef, ComponentInfo
+from sim_session_log import save_session_stats
 from ui import FPGABoard, SimPanel
 
 # ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
@@ -249,6 +250,13 @@ async def interactive_sim(dut: object) -> None:
     # S key toggles the stats panel; track visibility here
     _show_panel: bool = True
 
+    # Session-level accumulators for the post-run JSON summary
+    _session_start = time.monotonic()
+    _fps_acc: list[float] = []
+    _ghdl_pct_acc: list[float] = []
+    _draw_pct_acc: list[float] = []
+    _idle_pct_acc: list[float] = []
+
     while board.running:
         # ── Compute sim step from speed slider ────────────────────────────────
         clk_period_ns = panel.clk_state["period_ns"]
@@ -305,13 +313,23 @@ async def interactive_sim(dut: object) -> None:
         board.clock.tick(60)
         _t_tick_end = time.monotonic_ns()
 
-        # ── Update panel timing display ───────────────────────────────────────
+        # ── Update panel timing display + accumulate session stats ───────────
+        _frame_fps       = board.clock.get_fps()
+        _frame_timer_us  = (_t_timer    - _t0)           / 1_000
+        _frame_draw_us   = (_t_draw_end - _t_draw_start) / 1_000
+        _frame_idle_us   = (_t_tick_end - _t_draw_end)   / 1_000
         panel.update_timing(
-            fps=board.clock.get_fps(),
-            timer_us=(_t_timer - _t0) / 1_000,
-            draw_us=(_t_draw_end - _t_draw_start) / 1_000,
-            idle_us=(_t_tick_end - _t_draw_end) / 1_000,
+            fps=_frame_fps,
+            timer_us=_frame_timer_us,
+            draw_us=_frame_draw_us,
+            idle_us=_frame_idle_us,
         )
+        if _frame_fps > 0:
+            _fps_acc.append(_frame_fps)
+            _total_frame = max(1.0, _frame_timer_us + _frame_draw_us + _frame_idle_us)
+            _ghdl_pct_acc.append(_frame_timer_us / _total_frame * 100)
+            _draw_pct_acc.append(_frame_draw_us  / _total_frame * 100)
+            _idle_pct_acc.append(_frame_idle_us  / _total_frame * 100)
 
         # ── Post metrics (non-blocking; zero cost when metrics disabled) ──────
         if _metrics:
@@ -327,6 +345,21 @@ async def interactive_sim(dut: object) -> None:
     if _metrics:
         _metrics.stop()
         print(f"[metrics] Saved to: {_METRICS_PATH}")
+
+    # ── Write per-session JSON summary ────────────────────────────────────────
+    if _fps_acc:
+        _n = len(_fps_acc)
+        save_session_stats(
+            board_name   = board_def.name if board_def else "Generic",
+            simulator    = os.environ.get("FPGA_SIM_SIMULATOR", "ghdl"),
+            duration_s   = time.monotonic() - _session_start,
+            avg_fps      = sum(_fps_acc) / _n,
+            sim_time_ns  = panel._sim_elapsed_ns,
+            avg_ghdl_pct = sum(_ghdl_pct_acc) / _n,
+            avg_draw_pct = sum(_draw_pct_acc) / _n,
+            avg_idle_pct = sum(_idle_pct_acc) / _n,
+            clock_hz     = panel.current_clock_hz,
+        )
 
     pygame.quit()
     print("Simulation stopped.")
