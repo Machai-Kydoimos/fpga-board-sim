@@ -16,6 +16,7 @@ on the VHDL sim_wrapper, taking effect within one clock half-period.
 from __future__ import annotations
 
 import math
+from collections import deque
 
 import pygame
 
@@ -156,7 +157,13 @@ class SimPanel:
         self._sim_elapsed_ns: int = 0
         self._clocks_per_frame: float = 0.0
 
-        # Per-frame timing breakdown (updated via update_timing)
+        # Per-frame timing breakdown — 30-frame rolling windows for smooth display
+        _w = 30
+        self._fps_window:   deque[float] = deque(maxlen=_w)
+        self._timer_window: deque[float] = deque(maxlen=_w)
+        self._draw_window:  deque[float] = deque(maxlen=_w)
+        self._idle_window:  deque[float] = deque(maxlen=_w)
+        # Smoothed averages (computed in update_timing, read in _draw_info_zone)
         self._fps: float = 0.0
         self._timer_us: float = 0.0
         self._draw_us: float = 0.0
@@ -214,10 +221,15 @@ class SimPanel:
             Microseconds spent in ``board.clock.tick`` (frame-cap sleep).
 
         """
-        self._fps = fps
-        self._timer_us = timer_us
-        self._draw_us = draw_us
-        self._idle_us = idle_us
+        self._fps_window.append(fps)
+        self._timer_window.append(timer_us)
+        self._draw_window.append(draw_us)
+        self._idle_window.append(idle_us)
+        n = len(self._fps_window)
+        self._fps      = sum(self._fps_window)    / n
+        self._timer_us = sum(self._timer_window)  / n
+        self._draw_us  = sum(self._draw_window)   / n
+        self._idle_us  = sum(self._idle_window)   / n
 
     def handle_event(self, event: pygame.event.Event) -> None:
         """Process a single pygame event that may affect the panel."""
