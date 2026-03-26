@@ -55,10 +55,28 @@ class FPGABoard:
 
         Parameters
         ----------
+        board_def:
+            Parsed board definition supplying LED, button, and switch counts.
+            When ``None`` the *num_leds*, *num_buttons*, and *num_switches*
+            fallback counts are used instead.
+        screen:
+            Existing pygame surface to draw on.  When ``None`` a new resizable
+            window is created using *width* × *height*.
+        num_switches:
+            Switch count used when *board_def* is ``None``.
+        num_buttons:
+            Button count used when *board_def* is ``None``.
+        num_leds:
+            LED count used when *board_def* is ``None``.
         width, height:
             Initial window size.  When ``0`` (the default) and *screen* is
             provided the surface dimensions are used; without a screen the
             fallback 1024 × 700 is used.
+        simulator:
+            Name of the active simulator backend (``"ghdl"`` or ``"nvc"``).
+        available_simulators:
+            Simulators that are installed.  If the list has more than one
+            entry the footer shows a toggle button.
         height_offset:
             Pixels to subtract from the effective height when computing
             layout and handling resize events.  Reserve space for a panel
@@ -69,9 +87,9 @@ class FPGABoard:
         self._height_offset = height_offset
         if screen is not None:
             self.screen = screen
-            sw, sh = screen.get_size()
-            self.width  = width  if width  > 0 else sw
-            self.height = (height if height > 0 else sh) - height_offset
+            scr_w, scr_h = screen.get_size()
+            self.width  = width  if width  > 0 else scr_w
+            self.height = (height if height > 0 else scr_h) - height_offset
         else:
             w = width  or 1024
             h = height or 700
@@ -93,9 +111,13 @@ class FPGABoard:
                 package=board_def.package,
                 clock_hz=board_def.default_clock_hz,
             )
-            self.leds = [LED(i, info=c) for i, c in enumerate(board_def.leds)]
-            self.buttons = [Button(i, info=c) for i, c in enumerate(board_def.buttons)]
-            self.switches = [Switch(i, info=c) for i, c in enumerate(board_def.switches)]
+            self.leds: list[LED] = [LED(i, info=c) for i, c in enumerate(board_def.leds)]
+            self.buttons: list[Button] = [
+                Button(i, info=c) for i, c in enumerate(board_def.buttons)
+            ]
+            self.switches: list[Switch] = [
+                Switch(i, info=c) for i, c in enumerate(board_def.switches)
+            ]
         else:
             self.fpga_chip = FPGAChip()
             self.leds = [LED(i) for i in range(num_leds)]

@@ -50,10 +50,10 @@ _PANEL_H = 130
 
 # ── Simulation step constants ─────────────────────────────────────────────────
 # Base sim step at the default speed (0.1×).
-# 9720 ns lands exactly at the _MAX_CYCLES_PER_STEP=243 cap for 25 MHz boards
-# (243 × 40 ns = 9720 ns), using ~28% of frame for GHDL at ~9 µs/GPI callback.
-# For boards ≥50 MHz the cap kicks in and limits the step to 243 cycles regardless.
-# For boards ≤12 MHz the cap is never reached and this value sets the step directly.
+# 383840 ns lands exactly at the _MAX_CYCLES_PER_STEP=9596 cap for 25 MHz boards
+# (9596 × 40 ns = 383840 ns).  For boards ≥50 MHz the cap kicks in and limits
+# the step to 9596 cycles regardless.  For boards ≤12 MHz the cap is never
+# reached and this value sets the step directly.
 _BASE_STEP_NS: int = 383_840
 _BASE_SPEED: float = 0.1
 # Maximum clock cycles per Timer call.  With VHDL-side clock generation
@@ -175,13 +175,14 @@ async def interactive_sim(dut: object) -> None:
     # ── Optional metrics collector ────────────────────────────────────────────
     if _METRICS_PATH:
         from sim_metrics import SimMetrics  # noqa: PLC0415
-        _metrics: SimMetrics | None = SimMetrics(_METRICS_PATH)
-        _metrics.start()
+        _metrics_obj = SimMetrics(_METRICS_PATH)
+        _metrics_obj.start()
         _write_meta_sidecar(
             _METRICS_PATH, board_def, clk_hz,
             num_led, num_sw, num_btn,
         )
         print(f"[metrics] Writing per-frame data to: {_METRICS_PATH}")
+        _metrics: SimMetrics | None = _metrics_obj
     else:
         _metrics = None
 

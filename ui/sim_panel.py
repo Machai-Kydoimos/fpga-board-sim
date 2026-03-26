@@ -48,7 +48,7 @@ def _speed_to_frac(speed: float) -> float:
 
 def _frac_to_speed(frac: float) -> float:
     """Map a slider fraction in [0, 1] to a speed multiplier."""
-    return 10.0 ** (max(0.0, min(1.0, frac)) * _LOG_RANGE + _LOG_MIN)
+    return float(10.0 ** (max(0.0, min(1.0, frac)) * _LOG_RANGE + _LOG_MIN))
 
 
 def _fmt_hz(hz: float) -> str:

@@ -73,8 +73,8 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
     """Load *path* and print a full performance report."""
     rows: list[dict[str, float]] = []
     with path.open(newline="") as f:
-        for r in csv.DictReader(f):
-            rows.append({k: float(v) for k, v in r.items()})
+        for row in csv.DictReader(f):
+            rows.append({str(k): float(v) for k, v in row.items()})
 
     if not rows:
         print("CSV is empty — nothing to analyse.")

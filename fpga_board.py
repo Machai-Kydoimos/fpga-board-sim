@@ -21,6 +21,7 @@ from board_loader import discover_boards, get_default_boards_path
 from session_config import load_session, save_session
 from sim_bridge import detect_simulators
 from ui import BoardSelector, ErrorDialog, FPGABoard, VHDLFilePicker
+from ui.constants import get_font
 
 
 def _parse_args() -> argparse.Namespace:
@@ -50,6 +51,7 @@ def main() -> None:
         print("No amaranth-boards found; using generic board.")
         print("Run  git submodule update --init  to load board definitions.")
         FPGABoard(width=width, height=height).run()
+        get_font.cache_clear()
         pygame.quit()
         return
 
@@ -156,6 +158,7 @@ def main() -> None:
         # Capture final window size before quitting pygame so the
         # simulation subprocess and the post-sim restart both use it.
         width, height = screen.get_size()
+        get_font.cache_clear()
         pygame.quit()  # cocotb subprocess will start its own pygame
 
         from sim_bridge import launch_simulation
@@ -190,6 +193,7 @@ def main() -> None:
         clock = pygame.time.Clock()
         continue
 
+    get_font.cache_clear()
     pygame.quit()
 
 
