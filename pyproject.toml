@@ -24,6 +24,10 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v"
+markers = [
+    "slow: requires GHDL or NVC subprocess (deselect with -m 'not slow')",
+    "ui: requires headless pygame display",
+]
 
 # ── Ruff (linter + formatter) ────────────────────────────────────────────────
 [tool.ruff]

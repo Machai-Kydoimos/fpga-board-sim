@@ -176,3 +176,42 @@ def test_set_height_offset_zero_restores_full_height(headless_pygame):
     board.set_height_offset(120)
     board.set_height_offset(0)
     assert board.height == 700
+
+
+# ── Clock arithmetic edge cases ───────────────────────────────────────────────
+
+def test_high_frequency_period_ns(dummy_screen):
+    """500 MHz board clock must produce a 2 ns period."""
+    panel = _make_panel(dummy_screen, clock_hz=500e6, clocks_hz=[500e6])
+    assert panel.clk_state["period_ns"] == pytest.approx(2.0)
+
+
+def test_low_frequency_period_ns(dummy_screen):
+    """1 kHz board clock must produce a 1,000,000 ns period."""
+    panel = _make_panel(dummy_screen, clock_hz=1e3, clocks_hz=[1e3])
+    assert panel.clk_state["period_ns"] == pytest.approx(1_000_000.0)
+
+
+def test_initial_speed_factor_is_default(dummy_screen):
+    """speed_factor must start at _SPEED_DEFAULT (0.1×) on a fresh panel."""
+    from ui.sim_panel import _SPEED_DEFAULT
+    panel = _make_panel(dummy_screen, clock_hz=100e6)
+    assert panel.speed_factor == pytest.approx(_SPEED_DEFAULT)
+
+
+def test_update_one_frame_gives_exact_values(dummy_screen):
+    """After a single update_timing call the stored averages equal that frame."""
+    panel = _make_panel(dummy_screen)
+    panel.update_timing(fps=45.0, timer_us=300.0, draw_us=100.0, idle_us=50.0)
+    assert panel._fps == pytest.approx(45.0)
+    assert panel._timer_us == pytest.approx(300.0)
+    assert panel._draw_us == pytest.approx(100.0)
+    assert panel._idle_us == pytest.approx(50.0)
+
+
+def test_clocks_per_frame_computed_from_step_and_period(dummy_screen):
+    """update() must set _clocks_per_frame = sim_step_ns / period_ns."""
+    clocks = [10e6]  # period = 100 ns
+    panel = _make_panel(dummy_screen, clock_hz=10e6, clocks_hz=clocks)
+    panel.update(1000)  # 1000 ns at 100 ns/clock → 10 clocks/frame
+    assert panel._clocks_per_frame == pytest.approx(10.0)

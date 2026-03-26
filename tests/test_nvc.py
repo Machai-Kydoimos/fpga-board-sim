@@ -16,6 +16,8 @@ from sim_bridge import (
     detect_simulators,
 )
 
+pytestmark = pytest.mark.slow
+
 PROJECT = Path(__file__).resolve().parent.parent
 
 

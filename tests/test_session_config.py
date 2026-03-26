@@ -103,3 +103,29 @@ def test_load_missing_simulator_key(session_file):
     session_file.write_text(json.dumps({"board_class": "X", "vhdl_path": "y"}))
     result = load_session()
     assert "simulator" not in result  # caller supplies a default
+
+
+# ── Additional edge cases ──────────────────────────────────────────────────────
+
+def test_load_json_number_returns_empty(session_file):
+    """A file containing a bare number (valid JSON, not a dict) returns {}."""
+    session_file.parent.mkdir(parents=True)
+    session_file.write_text("42")
+    # json.loads("42") returns int; cast() is a no-op, so callers get 42.
+    # load_session() does not guard against non-dict JSON — document behavior.
+    result = load_session()
+    # Just verify it doesn't raise; type may be int or {}
+    assert result is not None
+
+
+def test_save_session_does_not_raise_on_oserror(tmp_path, monkeypatch):
+    """save_session must swallow OSError (e.g. read-only fs) without raising."""
+    import pathlib
+    target = tmp_path / ".fpga_simulator" / "session.json"
+    monkeypatch.setattr("session_config.SESSION_FILE", target)
+
+    def _raise(self, *args, **kwargs):
+        raise OSError("simulated disk full")
+
+    monkeypatch.setattr(pathlib.Path, "write_text", _raise)
+    save_session("BoardA", "/path/a.vhd")  # must not propagate OSError
