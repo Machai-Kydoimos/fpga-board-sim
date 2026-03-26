@@ -246,6 +246,9 @@ async def interactive_sim(dut: object) -> None:
     if _metrics:
         _metrics.mark_frame_start()
 
+    # S key toggles the stats panel; track visibility here
+    _show_panel: bool = True
+
     while board.running:
         # ── Compute sim step from speed slider ────────────────────────────────
         clk_period_ns = panel.clk_state["period_ns"]
@@ -277,6 +280,9 @@ async def interactive_sim(dut: object) -> None:
         events = pygame.event.get()
         board._handle_events(events)
         for ev in events:
+            if ev.type == pygame.KEYDOWN and ev.key == pygame.K_s:
+                _show_panel = not _show_panel
+                board.set_height_offset(_PANEL_H if _show_panel else 0)
             panel.handle_event(ev)
 
         # ── Propagate virtual clock changes to the VHDL wrapper ───────────────
@@ -288,10 +294,11 @@ async def interactive_sim(dut: object) -> None:
                 pass
             _clk_half_ns = new_half
 
-        # ── Render: board first (no flip), then panel, then flip ──────────────
+        # ── Render: board first (no flip), then panel (if visible), then flip ──
         _t_draw_start = time.monotonic_ns()
         board._draw(flip=False)
-        panel.draw()
+        if _show_panel:
+            panel.draw()
         pygame.display.flip()
         _t_draw_end = time.monotonic_ns()
 

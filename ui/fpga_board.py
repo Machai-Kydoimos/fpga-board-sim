@@ -171,6 +171,22 @@ class FPGABoard:
             return bool(self.switches[index].state)
         return False
 
+    def set_height_offset(self, offset: int) -> None:
+        """Change the panel height reservation and reflow the board layout.
+
+        Parameters
+        ----------
+        offset:
+            New pixel height to subtract from the window for the external
+            panel below the board.  Pass ``0`` to give the board the full
+            window height.
+
+        """
+        self._height_offset = offset
+        scr_w, scr_h = self.screen.get_size()
+        self.height = scr_h - offset
+        self._layout()
+
     def run(self) -> str:
         """Enter the main loop.  Returns 'back' (ESC), 'simulate' (Enter/button), or 'quit'."""
         self.running = True
