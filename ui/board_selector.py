@@ -3,7 +3,7 @@
 import pygame
 
 from board_loader import BoardDef
-from ui.constants import SEL_BG, SEL_HOVER, SEL_ROW_A, SEL_ROW_B, WHITE, _ui_scale
+from ui.constants import SEL_BG, SEL_HOVER, SEL_ROW_A, SEL_ROW_B, WHITE, _ui_scale, get_font
 
 
 class BoardSelector:
@@ -104,9 +104,9 @@ class BoardSelector:
     def _draw(self) -> None:
         self.screen.fill(SEL_BG)
         s = _ui_scale(self.width, self.height)
-        title_f  = pygame.font.SysFont("consolas", max(14, round(22 * s)), bold=True)
-        item_f   = pygame.font.SysFont("consolas", max(11, round(15 * s)))
-        detail_f = pygame.font.SysFont("consolas", max( 9, round(11 * s)))
+        title_f  = get_font(max(14, round(22 * s)), bold=True)
+        item_f   = get_font(max(11, round(15 * s)))
+        detail_f = get_font(max( 9, round(11 * s)))
 
         hdr = self._hdr
         filtered = self._filtered()
