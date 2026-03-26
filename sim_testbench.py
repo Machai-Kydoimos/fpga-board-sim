@@ -21,10 +21,16 @@ it up on the next half-cycle without restarting the simulator.
 Timing model
 ------------
 Each frame advances simulation by ``_BASE_STEP_NS × speed_factor / _BASE_SPEED`` ns,
-where ``_BASE_STEP_NS = 9720`` ns and ``_BASE_SPEED = 0.1`` (the slider default).
+where ``_BASE_STEP_NS = 9_596`` ns and ``_BASE_SPEED = 0.1`` (the slider default).
+
+At the default 0.1× speed the target step equals exactly one ``_MAX_CYCLES_PER_STEP``
+worth of cycles at 1 ns/cycle, so the cap is only reached for boards whose clock
+period is less than 1 ns (i.e. > 1 GHz — none in practice).  This keeps the full
+slider range useful: dragging left slows the design below the default; dragging right
+requests more sim time per frame up to the cycle cap.
 
 The step is capped at ``_MAX_CYCLES_PER_STEP`` clock cycles regardless of
-the speed setting, to bound simulation work per frame on high-frequency boards.
+the speed setting, to bound simulation work per frame.
 """
 
 import json
@@ -53,21 +59,22 @@ if _BENCHMARK_MODE:
     # Suppress display before pygame is imported (may already be set by caller)
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
-# ── Panel height (px at 1.0 scale; actual value computed from window size) ────
-_PANEL_H = 130
+# ── Panel height (px at 1.0 scale; _panel_h is computed from window scale) ────
+_PANEL_H_BASE = 130
 
 # ── Simulation step constants ─────────────────────────────────────────────────
 # Base sim step at the default speed (0.1×).
-# 383840 ns lands exactly at the _MAX_CYCLES_PER_STEP=9596 cap for 25 MHz boards
-# (9596 × 40 ns = 383840 ns).  For boards ≥50 MHz the cap kicks in and limits
-# the step to 9596 cycles regardless.  For boards ≤12 MHz the cap is never
-# reached and this value sets the step directly.
-_BASE_STEP_NS: int = 383_840
+# 9596 ns = exactly _MAX_CYCLES_PER_STEP × 1 ns, so at 0.1× the slider's
+# target equals the cap threshold for a hypothetical 1 GHz board — meaning the
+# cap never limits the step at the default speed for any real board (max ~200 MHz,
+# period 5 ns → cap = 9596 × 5 = 47980 ns > 9596 ns target).  Moving the slider
+# right requests proportionally more ns, eventually hitting the cycle cap for
+# high-frequency boards; moving left slows down below the default.
+_BASE_STEP_NS: int = 9_596
 _BASE_SPEED: float = 0.1
 # Maximum clock cycles per Timer call.  With VHDL-side clock generation
 # there are no per-cycle GPI callbacks; the limit is NVC/GHDL internal
-# simulation throughput.  9596 cycles × ~0.23 µs/cycle ≈ 2.2 ms — well
-# under the 16.7 ms display budget.
+# simulation throughput.
 _MAX_CYCLES_PER_STEP: int = 9_596
 
 
@@ -153,22 +160,27 @@ async def interactive_sim(dut: object) -> None:
     # Create the pygame window explicitly so the panel and board share it
     screen = pygame.display.set_mode((sim_w, sim_h), pygame.RESIZABLE)
 
-    # Build the SimPanel (occupies the bottom _PANEL_H px of the window)
+    # Scale the panel height to match the current window size so all 6 info
+    # rows remain visible at large / maximised windows.
+    from ui.constants import _ui_scale  # noqa: PLC0415
+    _panel_h = max(_PANEL_H_BASE, round(_PANEL_H_BASE * _ui_scale(sim_w, sim_h)))
+
+    # Build the SimPanel (occupies the bottom _panel_h px of the window)
     clk_hz = board_def.default_clock_hz if board_def else _FALLBACK_CLOCK_HZ
     panel = SimPanel(
         screen,
-        height=_PANEL_H,
+        height=_panel_h,
         board_clock_hz=clk_hz,
         board_clocks_hz=board_def.clocks if board_def else None,
     )
 
-    # FPGABoard renders into the top (sim_h - _PANEL_H) px
+    # FPGABoard renders into the top (sim_h - _panel_h) px
     board = FPGABoard(
         board_def=board_def,
         screen=screen,
         width=sim_w,
-        height=sim_h - _PANEL_H,
-        height_offset=_PANEL_H,
+        height=sim_h - _panel_h,
+        height_offset=_panel_h,
     )
 
     # ── Sync initial clock half-period to the VHDL wrapper ───────────────────
@@ -300,7 +312,7 @@ async def interactive_sim(dut: object) -> None:
         for ev in events:
             if ev.type == pygame.KEYDOWN and ev.key == pygame.K_s:
                 _show_panel = not _show_panel
-                board.set_height_offset(_PANEL_H if _show_panel else 0)
+                board.set_height_offset(_panel_h if _show_panel else 0)
             panel.handle_event(ev)
 
         # ── Propagate virtual clock changes to the VHDL wrapper ───────────────

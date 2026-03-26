@@ -188,8 +188,14 @@ class SimPanel:
 
     @property
     def effective_hz(self) -> float:
-        """Effective simulation rate = virtual_clock × speed_factor."""
-        return self.current_clock_hz * (0.0 if self.paused else self.speed_factor)
+        """Actual measured simulation rate in Hz (clocks/frame × frames/s).
+
+        Returns the throughput-limited real rate, not the requested rate.
+        Zero when paused or before the first timing sample arrives.
+        """
+        if self.paused or self._fps <= 0:
+            return 0.0
+        return self._clocks_per_frame * self._fps
 
     def update(self, sim_step_ns: int) -> None:
         """Record that *sim_step_ns* of simulation time just elapsed.
@@ -390,13 +396,32 @@ class SimPanel:
             t = small.render(lbl, True, col)
             self.screen.blit(t, (tx - t.get_width() // 2, tick_y))
 
-        # Current value (or PAUSED)
+        # Current value (or PAUSED), plus actual throughput when cap-limited
         cv_y = tick_y + small.get_linesize() + max(2, round(3 * s))
         if self.paused:
             cv = bold.render("PAUSED", True, (255, 100, 100))
+            self.screen.blit(cv, (x + (w - cv.get_width()) // 2, cv_y))
         else:
             cv = bold.render(f"{self.speed_factor:.4g}x", True, WHITE)
-        self.screen.blit(cv, (x + (w - cv.get_width()) // 2, cv_y))
+            self.screen.blit(cv, (x + (w - cv.get_width()) // 2, cv_y))
+            # Show actual rate and a CPU-limited warning when throughput caps the step
+            if self._fps > 0:
+                actual_factor = (
+                    self._clocks_per_frame * self._fps / self._board_clock_hz
+                )
+                requested_factor = self.speed_factor
+                cv_y2 = cv_y + bold.get_linesize()
+                if actual_factor < requested_factor * 0.9:
+                    note = small.render(
+                        f"actual {actual_factor:.3g}x  (CPU-limited)",
+                        True, (255, 180, 80),
+                    )
+                else:
+                    note = small.render(
+                        f"actual {actual_factor:.3g}x",
+                        True, (140, 200, 140),
+                    )
+                self.screen.blit(note, (x + (w - note.get_width()) // 2, cv_y2))
 
     def _draw_clock_zone(
         self,

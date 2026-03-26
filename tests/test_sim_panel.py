@@ -83,6 +83,26 @@ def test_rolling_average_converges(dummy_screen):
     assert panel._idle_us  == pytest.approx(300.0)
 
 
+def test_effective_hz_reflects_actual_throughput(dummy_screen):
+    """effective_hz must equal clocks_per_frame × fps, not clock × speed_factor."""
+    panel = _make_panel(dummy_screen, clock_hz=100e6)
+    # Inject measured data: 9596 clocks/frame at 35 fps = 335,860 Hz actual
+    panel.update(9596 * 10)  # sim_step_ns = 9596 cycles × 10 ns/cycle
+    for _ in range(5):
+        panel.update_timing(fps=35.0, timer_us=27_000.0, draw_us=500.0, idle_us=0.0)
+    expected = panel._clocks_per_frame * panel._fps
+    assert panel.effective_hz == pytest.approx(expected, rel=1e-3)
+
+
+def test_effective_hz_zero_when_paused(dummy_screen):
+    panel = _make_panel(dummy_screen, clock_hz=100e6)
+    panel.update(9596 * 10)
+    for _ in range(5):
+        panel.update_timing(fps=35.0, timer_us=27_000.0, draw_us=500.0, idle_us=0.0)
+    panel.paused = True
+    assert panel.effective_hz == 0.0
+
+
 def test_window_drops_oldest_sample(dummy_screen):
     """After the window fills, old samples are discarded (maxlen=30)."""
     panel = _make_panel(dummy_screen)
