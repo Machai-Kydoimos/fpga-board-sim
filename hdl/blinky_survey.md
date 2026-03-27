@@ -22,7 +22,7 @@ begin
 end architecture;
 ```
 
-Technically not a blinky — it turns one LED permanently on.  Occasionally labelled
+Technically not a blinky — it turns one LED permanently on.  Occasionally labeled
 "blinky" in slide decks as the first synthesisable VHDL file a student writes.
 
 ---
@@ -146,7 +146,7 @@ end architecture;
 
 Intel Quartus style-guide mandates explicit reset for all registers.  An asynchronous
 variant (reset checked outside `rising_edge`) is common in textbooks but complicates
-timing closure and is disfavoured in modern synthesis practice.
+timing closure and is disfavored in modern synthesis practice.
 
 ---
 

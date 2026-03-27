@@ -141,7 +141,7 @@ A strip at the bottom of the window shows live simulation statistics across thre
 | GUI FPS | 30-frame rolling average of display frames per second |
 | G/D/I % | Frame time split: **G**HDL step / **D**raw / **I**dle (cap sleep) |
 
-**Simulation speed (centre)**
+**Simulation speed (center)**
 
 A logarithmic slider from **0.001× to 10×** (default **0.1×**) controls how many simulated nanoseconds are passed to each `await Timer(...)` call, effectively slowing the design below real-time for debugging. When GHDL/NVC throughput limits the step, an amber **(CPU-limited)** note appears — dragging right won't help; try lowering the virtual clock instead.
 
@@ -164,7 +164,7 @@ analyze_metrics.py         Standalone performance report from a sim_metrics CSV
 session_config.py          Session persistence (~/.fpga_simulator/session.json)
 generate_board_images.py   Renders static board previews (used for documentation/thumbnails)
 ui/                        pygame UI package
-ui/constants.py            Colour constants and _ui_scale helper (single source of truth)
+ui/constants.py            Color constants and _ui_scale helper (single source of truth)
 ui/components.py           FPGAChip, LED, Switch, Button — low-level board components
 ui/board_selector.py       Board picker screen
 ui/fpga_board.py           Board preview + simulation screen (FPGABoard class)
