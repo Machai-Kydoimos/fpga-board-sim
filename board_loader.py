@@ -447,7 +447,7 @@ def _to_component(resource: _Resource, kind: str) -> ComponentInfo:
         direction=direction,
         inverted=inverted,
         connector=connector,  # type: ignore[arg-type]
-        attrs=dict(resource.attrs),
+        attrs={k: v for k, v in resource.attrs.items() if not callable(v)},
     )
 
 
