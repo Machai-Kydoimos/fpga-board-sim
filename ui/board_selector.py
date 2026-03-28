@@ -36,7 +36,7 @@ class BoardSelector:
     @property
     def row_h(self) -> int:
         """Return the pixel height of each board-list row."""
-        return max(32, round(48 * _ui_scale(self.width, self.height)))
+        return max(48, round(48 * _ui_scale(self.width, self.height)))
 
     @property
     def _hdr(self) -> int:
@@ -122,7 +122,7 @@ class BoardSelector:
             nm = item_f.render(b.name, True, (220, 220, 255))
             self.screen.blit(nm, (20, y + 4))
             sm = detail_f.render(b.summary, True, (150, 150, 150))
-            self.screen.blit(sm, (20, y + 26))
+            self.screen.blit(sm, (20, y + 4 + item_f.get_height() + 2))
 
         # Header overlay (hides items that scrolled behind header)
         pygame.draw.rect(self.screen, SEL_BG, (0, 0, self.width, hdr))
@@ -132,10 +132,11 @@ class BoardSelector:
         stxt = (f"Filter: {self.filter_text}_"
                 if self.filter_text else "Type to filter boards...")
         srch = item_f.render(stxt, True, (180, 180, 180))
+        filter_y = 12 + title_f.get_height() + 6
         pygame.draw.rect(self.screen, (50, 50, 60),
-                         (20, 48, self.width - 140, 24), border_radius=3)
-        self.screen.blit(srch, (26, 50))
+                         (20, filter_y, self.width - 140, 24), border_radius=3)
+        self.screen.blit(srch, (26, filter_y + 2))
         cnt = detail_f.render(f"{len(filtered)} boards", True, (120, 120, 120))
-        self.screen.blit(cnt, (self.width - 100, 52))
+        self.screen.blit(cnt, (self.width - cnt.get_width() - 20, filter_y + 4))
 
         pygame.display.flip()
