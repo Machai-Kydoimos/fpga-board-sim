@@ -137,6 +137,6 @@ class VHDLFilePicker:
         title = title_f.render("Select VHDL File", True, WHITE)
         self.screen.blit(title, (20, 10))
         pd = path_f.render(str(self.current_dir), True, (150, 150, 150))
-        self.screen.blit(pd, (20, 40))
+        self.screen.blit(pd, (20, 10 + title_f.get_height() + 4))
 
         pygame.display.flip()
