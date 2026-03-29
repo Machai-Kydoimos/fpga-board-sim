@@ -2,8 +2,10 @@
 Richard/Benjamin/Oliver Graham & Anthropic's Agentic AI
 :description: Přednáška na InstallFest 2026
 :icons: font
-
 :source-highlighter: highlight.js
+
+[.text-center]
+_Richard/Benjamin/Oliver Graham & Anthropic's Agentic AI_
 
 [.lead]
 _Nemáte fyzickou desku FPGA? To nevadí!_
