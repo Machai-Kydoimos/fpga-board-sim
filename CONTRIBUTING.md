@@ -9,8 +9,8 @@ everything a developer needs beyond the user-facing [README](README.md).
 
 ```bash
 # Clone with the board-definitions submodule
-git clone --recurse-submodules https://github.com/Machai-Kydoimos/simulator.git
-cd simulator
+git clone --recurse-submodules https://github.com/Machai-Kydoimos/fpga-board-sim.git
+cd fpga-board-sim
 
 # Install runtime + dev dependencies (pytest, ruff, mypy, pre-commit)
 uv sync --group dev

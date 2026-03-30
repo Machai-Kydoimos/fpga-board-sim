@@ -13,8 +13,8 @@ Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://g
 ### Clone the repository
 
 ```bash
-git clone --recurse-submodules https://github.com/Machai-Kydoimos/simulator.git
-cd simulator
+git clone --recurse-submodules https://github.com/Machai-Kydoimos/fpga-board-sim.git
+cd fpga-board-sim
 ```
 
 > If you already cloned without `--recurse-submodules`, run `git submodule update --init` to populate the `amaranth-boards/` directory.
