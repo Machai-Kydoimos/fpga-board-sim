@@ -1,4 +1,5 @@
 """Tests for sim_session_log.save_session_stats()."""
+
 import json
 
 import pytest
@@ -51,9 +52,19 @@ def test_file_is_valid_json(session_dir):
 def test_json_has_required_keys(session_dir):
     path = _call()
     data = json.loads(path.read_text())
-    for key in ("timestamp", "board", "simulator", "duration_s", "avg_fps",
-                "sim_time_ns", "sim_rate", "avg_ghdl_pct", "avg_draw_pct",
-                "avg_idle_pct", "clock_hz"):
+    for key in (
+        "timestamp",
+        "board",
+        "simulator",
+        "duration_s",
+        "avg_fps",
+        "sim_time_ns",
+        "sim_rate",
+        "avg_ghdl_pct",
+        "avg_draw_pct",
+        "avg_idle_pct",
+        "clock_hz",
+    ):
         assert key in data, f"missing key: {key}"
 
 

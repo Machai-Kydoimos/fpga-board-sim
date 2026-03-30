@@ -1,9 +1,9 @@
 """Tests for board_loader: discovery, parsing, and spot-checks."""
+
 import pytest
 
 from board_loader import (
     BoardDef,
-    ComponentInfo,
     discover_boards,
     get_default_boards_path,
     load_board_from_source,
@@ -92,6 +92,7 @@ def test_icestick_default_clock_is_12mhz(icestick):
 
 def test_inline_board_uses_fallback_clock(inline_board):
     from board_loader import _FALLBACK_CLOCK_HZ
+
     assert inline_board.default_clock_hz == _FALLBACK_CLOCK_HZ
 
 
@@ -103,7 +104,7 @@ def test_nexys_has_named_buttons(all_boards):
     assert len(named) > 0, "Expected named buttons on Nexys4"
 
 
-_INLINE_SRC = '''
+_INLINE_SRC = """
 from amaranth.build import *
 from amaranth.vendor import XilinxPlatform
 __all__ = ["InlineTestPlatform"]
@@ -112,9 +113,9 @@ class InlineTestPlatform(XilinxPlatform):
         *LEDResources(pins="A B C", attrs=Attrs(IO="TEST")),
         *SwitchResources(pins="X Y", attrs=Attrs(IO="TEST")),
     ]
-'''
+"""
 
-_INLINE_SRC_WITH_CLOCK = '''
+_INLINE_SRC_WITH_CLOCK = """
 from amaranth.build import *
 from amaranth.vendor import XilinxPlatform
 class InlineClockPlatform(XilinxPlatform):
@@ -123,7 +124,7 @@ class InlineClockPlatform(XilinxPlatform):
         Resource("clk50", 0, Pins("E3", dir="i"), Clock(50e6), Attrs(IO="LVCMOS")),
         *LEDResources(pins="A B", attrs=Attrs(IO="TEST")),
     ]
-'''
+"""
 
 
 @pytest.fixture(scope="module")
@@ -162,7 +163,7 @@ def test_inline_explicit_50mhz_clock(inline_clocked_board):
 
 # ── Edge cases ────────────────────────────────────────────────────────────────
 
-_BUTTONS_ONLY_SRC = '''
+_BUTTONS_ONLY_SRC = """
 from amaranth.build import *
 from amaranth.vendor import XilinxPlatform
 class ButtonsOnlyPlatform(XilinxPlatform):
@@ -170,7 +171,7 @@ class ButtonsOnlyPlatform(XilinxPlatform):
         *ButtonResources(pins="A B C", attrs=Attrs(IO="TEST")),
         *SwitchResources(pins="X Y", attrs=Attrs(IO="TEST")),
     ]
-'''
+"""
 
 
 def test_board_with_no_leds_is_included():
@@ -182,14 +183,14 @@ def test_board_with_no_leds_is_included():
     assert len(boards[0].switches) == 2
 
 
-_PINS_N_SRC = '''
+_PINS_N_SRC = """
 from amaranth.build import *
 from amaranth.vendor import XilinxPlatform
 class InvertedLedPlatform(XilinxPlatform):
     resources = [
         Resource("led", 0, PinsN("A", dir="o")),
     ]
-'''
+"""
 
 
 def test_pinsn_led_sets_inverted_flag():
@@ -199,19 +200,20 @@ def test_pinsn_led_sets_inverted_flag():
     assert boards[0].leds[0].inverted is True
 
 
-_NO_CLK_SRC = '''
+_NO_CLK_SRC = """
 from amaranth.build import *
 from amaranth.vendor import LatticeICE40Platform
 class NoClkPlatform(LatticeICE40Platform):
     resources = [
         *LEDResources(pins="A B", attrs=Attrs(IO="TEST")),
     ]
-'''
+"""
 
 
 def test_board_without_default_clk_uses_fallback():
     """Board with no default_clk attribute must fall back to _FALLBACK_CLOCK_HZ."""
     from board_loader import _FALLBACK_CLOCK_HZ
+
     boards = load_board_from_source(_NO_CLK_SRC, "<noclk>")
     assert len(boards) == 1
     assert boards[0].default_clock_hz == _FALLBACK_CLOCK_HZ
@@ -220,6 +222,7 @@ def test_board_without_default_clk_uses_fallback():
 def test_to_json_with_empty_components_is_valid():
     """BoardDef with no components round-trips to valid JSON with empty lists."""
     import json
+
     board = BoardDef(name="Empty", class_name="EmptyPlatform")
     data = json.loads(board.to_json())
     assert data["leds"] == []

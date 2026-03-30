@@ -50,11 +50,12 @@ from ui.constants import BG_GREEN, BLUE_OFF, GRAY, RED_OFF, WHITE, _ui_scale
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
-DEFAULT_WIDTH:  int = 1024
+DEFAULT_WIDTH: int = 1024
 DEFAULT_HEIGHT: int = 700
 
 
 # ── Pygame setup ───────────────────────────────────────────────────────────────
+
 
 def setup_pygame_headless() -> None:
     """Initialize pygame once for the entire batch run.
@@ -67,6 +68,7 @@ def setup_pygame_headless() -> None:
 
 
 # ── Filename utilities ─────────────────────────────────────────────────────────
+
 
 def sanitize_filename(name: str) -> str:
     """Convert a board name to a filesystem-safe base name.
@@ -106,6 +108,7 @@ def unique_name(base: str, seen: dict[str, int]) -> str:
 
 # ── Raster rendering (PNG / JPEG) ──────────────────────────────────────────────
 
+
 def render_board_raster(board: FPGABoard) -> pygame.Surface:
     """Render the board to its pygame Surface and return a snapshot copy.
 
@@ -137,6 +140,7 @@ def save_jpeg(surface: pygame.Surface, path: Path) -> None:
 
 
 # ── SVG primitive helpers ──────────────────────────────────────────────────────
+
 
 def _svg_color(rgb: tuple[int, int, int]) -> str:
     """Convert an RGB tuple to an SVG hex color string, e.g. (80,0,0)→'#500000'."""
@@ -195,11 +199,11 @@ def _svg_rect(
     When stroke is None the rect has no visible border (stroke="none").
     """
     attrs: dict[str, str] = {
-        "x":      str(int(rect.x)),
-        "y":      str(int(rect.y)),
-        "width":  str(int(rect.width)),
+        "x": str(int(rect.x)),
+        "y": str(int(rect.y)),
+        "width": str(int(rect.width)),
         "height": str(int(rect.height)),
-        "fill":   _svg_color(fill),
+        "fill": _svg_color(fill),
         "stroke": _svg_color(stroke) if stroke is not None else "none",
     }
     if stroke is not None:
@@ -212,20 +216,29 @@ def _svg_rect(
 
 def _svg_line(
     parent: ET.Element,
-    x1: float, y1: float,
-    x2: float, y2: float,
+    x1: float,
+    y1: float,
+    x2: float,
+    y2: float,
     color: tuple[int, int, int],
 ) -> None:
     """Append a <line> element with a 1px stroke."""
-    ET.SubElement(parent, "line", {
-        "x1": str(int(x1)), "y1": str(int(y1)),
-        "x2": str(int(x2)), "y2": str(int(y2)),
-        "stroke": _svg_color(color),
-        "stroke-width": "1",
-    })
+    ET.SubElement(
+        parent,
+        "line",
+        {
+            "x1": str(int(x1)),
+            "y1": str(int(y1)),
+            "x2": str(int(x2)),
+            "y2": str(int(y2)),
+            "stroke": _svg_color(color),
+            "stroke-width": "1",
+        },
+    )
 
 
 # ── SVG component renderers ────────────────────────────────────────────────────
+
 
 def _svg_draw_fpga_chip(
     parent: ET.Element,
@@ -252,18 +265,18 @@ def _svg_draw_fpga_chip(
     _svg_rect(parent, r, fill, stroke=FPGAChip._BORDER_COLOR, stroke_width=2, radius=6)
 
     # Pin tick marks — replicates _draw_pin_marks() count formula exactly
-    h_count = max(4, min(20, r.width  // 14))
+    h_count = max(4, min(20, r.width // 14))
     v_count = max(4, min(14, r.height // 14))
     ln = FPGAChip._PIN_LENGTH
 
     for i in range(h_count):
         x = r.left + (i + 1) * r.width // (h_count + 1)
-        _svg_line(parent, x, r.top,    x, r.top    - ln, FPGAChip._PIN_COLOR)  # top edge
+        _svg_line(parent, x, r.top, x, r.top - ln, FPGAChip._PIN_COLOR)  # top edge
         _svg_line(parent, x, r.bottom, x, r.bottom + ln, FPGAChip._PIN_COLOR)  # bottom edge
 
     for i in range(v_count):
         y = r.top + (i + 1) * r.height // (v_count + 1)
-        _svg_line(parent, r.left,  y, r.left  - ln, y, FPGAChip._PIN_COLOR)  # left edge
+        _svg_line(parent, r.left, y, r.left - ln, y, FPGAChip._PIN_COLOR)  # left edge
         _svg_line(parent, r.right, y, r.right + ln, y, FPGAChip._PIN_COLOR)  # right edge
 
     # Centered text labels — mirrors the dynamic layout in FPGAChip.draw().
@@ -273,8 +286,8 @@ def _svg_draw_fpga_chip(
     cx, cy = r.centerx, r.centery
 
     lines: list[tuple[str, tuple[int, int, int], bool]] = [
-        (chip.vendor,          WHITE,                    True),
-        (chip.device.upper(),  FPGAChip._DEVICE_COLOR,  False),
+        (chip.vendor, WHITE, True),
+        (chip.device.upper(), FPGAChip._DEVICE_COLOR, False),
         (chip.package.upper(), FPGAChip._PACKAGE_COLOR, False),
     ]
     if chip.clock_hz:
@@ -282,9 +295,17 @@ def _svg_draw_fpga_chip(
     active = [(t, c, b) for t, c, b in lines if t]
     offset = -(len(active) - 1) / 2 * line_h
     for text, color, bold in active:
-        _svg_text(parent, cx, cy + offset, text,
-                  size=chip_font_size, color=color, bold=bold,
-                  anchor="middle", baseline="middle")
+        _svg_text(
+            parent,
+            cx,
+            cy + offset,
+            text,
+            size=chip_font_size,
+            color=color,
+            bold=bold,
+            anchor="middle",
+            baseline="middle",
+        )
         offset += line_h
 
 
@@ -302,17 +323,30 @@ def _svg_draw_led(
     cx, cy = led.rect.center
     radius = max(4, min(led.rect.width, led.rect.height) // 2 - 2)
 
-    ET.SubElement(parent, "circle", {
-        "cx": str(cx), "cy": str(cy), "r": str(radius),
-        "fill":         _svg_color(RED_OFF),
-        "stroke":       _svg_color(WHITE),
-        "stroke-width": "1",
-    })
+    ET.SubElement(
+        parent,
+        "circle",
+        {
+            "cx": str(cx),
+            "cy": str(cy),
+            "r": str(radius),
+            "fill": _svg_color(RED_OFF),
+            "stroke": _svg_color(WHITE),
+            "stroke-width": "1",
+        },
+    )
 
     # Label sits below the LED circle; top of text aligns to rect.bottom + 1
-    _svg_text(parent, cx, led.rect.bottom + 1,
-              led.label, size=font_size, color=WHITE,
-              anchor="middle", baseline="hanging")
+    _svg_text(
+        parent,
+        cx,
+        led.rect.bottom + 1,
+        led.label,
+        size=font_size,
+        color=WHITE,
+        anchor="middle",
+        baseline="hanging",
+    )
 
 
 def _svg_draw_switch(
@@ -338,9 +372,16 @@ def _svg_draw_switch(
     _svg_rect(parent, knob, GRAY, radius=3)
 
     # Label below the switch body
-    _svg_text(parent, r.centerx, r.bottom + 2,
-              sw.label, size=font_size, color=WHITE,
-              anchor="middle", baseline="hanging")
+    _svg_text(
+        parent,
+        r.centerx,
+        r.bottom + 2,
+        sw.label,
+        size=font_size,
+        color=WHITE,
+        anchor="middle",
+        baseline="hanging",
+    )
 
 
 def _svg_draw_button(
@@ -359,12 +400,20 @@ def _svg_draw_button(
     _svg_rect(parent, r, GRAY, stroke=WHITE, stroke_width=2, radius=6)
 
     # Label below the button body
-    _svg_text(parent, r.centerx, r.bottom + 2,
-              btn.label, size=font_size, color=WHITE,
-              anchor="middle", baseline="hanging")
+    _svg_text(
+        parent,
+        r.centerx,
+        r.bottom + 2,
+        btn.label,
+        size=font_size,
+        color=WHITE,
+        anchor="middle",
+        baseline="hanging",
+    )
 
 
 # ── SVG document builder ───────────────────────────────────────────────────────
+
 
 def build_svg(board: FPGABoard, width: int, height: int) -> str:
     """Build a complete SVG document from an already-laid-out FPGABoard.
@@ -379,22 +428,22 @@ def build_svg(board: FPGABoard, width: int, height: int) -> str:
 
     Returns the full SVG document as a UTF-8 XML string.
     """
-    font_size  = max(9, round(12 * _ui_scale(width, height)))  # matches FPGABoard._draw()
-    title_size = font_size + 4                     # matches FPGABoard._draw() title_font
+    font_size = max(9, round(12 * _ui_scale(width, height)))  # matches FPGABoard._draw()
+    title_size = font_size + 4  # matches FPGABoard._draw() title_font
 
-    svg = ET.Element("svg", {
-        "xmlns":   "http://www.w3.org/2000/svg",
-        "width":   str(width),
-        "height":  str(height),
-        "viewBox": f"0 0 {width} {height}",
-    })
+    svg = ET.Element(
+        "svg",
+        {
+            "xmlns": "http://www.w3.org/2000/svg",
+            "width": str(width),
+            "height": str(height),
+            "viewBox": f"0 0 {width} {height}",
+        },
+    )
 
     # Board name and clock info as a leading XML comment (metadata, no visual impact)
     board_name = board.board_def.name if board.board_def else "FPGA Board"
-    clocks_mhz = [
-        f"{c / 1e6:.3g} MHz"
-        for c in (board.board_def.clocks if board.board_def else [])
-    ]
+    clocks_mhz = [f"{c / 1e6:.3g} MHz" for c in (board.board_def.clocks if board.board_def else [])]
     comment = f" {board_name}"
     if clocks_mhz:
         comment += f" | Clocks: {', '.join(clocks_mhz)}"
@@ -402,39 +451,76 @@ def build_svg(board: FPGABoard, width: int, height: int) -> str:
     svg.append(ET.Comment(comment))
 
     # PCB green background
-    ET.SubElement(svg, "rect", {
-        "width": str(width), "height": str(height),
-        "fill": _svg_color(BG_GREEN),
-    })
+    ET.SubElement(
+        svg,
+        "rect",
+        {
+            "width": str(width),
+            "height": str(height),
+            "fill": _svg_color(BG_GREEN),
+        },
+    )
 
     # FPGA chip section — topmost, weight 2 in the layout
     if board.fpga_chip.rect.width >= 20:
-        _svg_text(svg, 20, board.fpga_chip.rect.top - title_size - 10,
-                  "FPGA", size=title_size, color=WHITE,
-                  bold=True, anchor="start", baseline="hanging")
+        _svg_text(
+            svg,
+            20,
+            board.fpga_chip.rect.top - title_size - 10,
+            "FPGA",
+            size=title_size,
+            color=WHITE,
+            bold=True,
+            anchor="start",
+            baseline="hanging",
+        )
         _svg_draw_fpga_chip(svg, board.fpga_chip, font_size)
 
     # LEDs section — weight 3, gets the most vertical space
     if board.leds:
-        _svg_text(svg, 20, board.leds[0].rect.top - title_size - 10,
-                  "LEDs", size=title_size, color=WHITE,
-                  bold=True, anchor="start", baseline="hanging")
+        _svg_text(
+            svg,
+            20,
+            board.leds[0].rect.top - title_size - 10,
+            "LEDs",
+            size=title_size,
+            color=WHITE,
+            bold=True,
+            anchor="start",
+            baseline="hanging",
+        )
         for led in board.leds:
             _svg_draw_led(svg, led, font_size)
 
     # Buttons section — weight 1
     if board.buttons:
-        _svg_text(svg, 20, board.buttons[0].rect.top - title_size - 14,
-                  "Buttons", size=title_size, color=WHITE,
-                  bold=True, anchor="start", baseline="hanging")
+        _svg_text(
+            svg,
+            20,
+            board.buttons[0].rect.top - title_size - 14,
+            "Buttons",
+            size=title_size,
+            color=WHITE,
+            bold=True,
+            anchor="start",
+            baseline="hanging",
+        )
         for btn in board.buttons:
             _svg_draw_button(svg, btn, font_size)
 
     # Switches section — weight 1
     if board.switches:
-        _svg_text(svg, 20, board.switches[0].rect.top - title_size - 14,
-                  "Switches", size=title_size, color=WHITE,
-                  bold=True, anchor="start", baseline="hanging")
+        _svg_text(
+            svg,
+            20,
+            board.switches[0].rect.top - title_size - 14,
+            "Switches",
+            size=title_size,
+            color=WHITE,
+            bold=True,
+            anchor="start",
+            baseline="hanging",
+        )
         for sw in board.switches:
             _svg_draw_switch(svg, sw, font_size)
 
@@ -442,6 +528,7 @@ def build_svg(board: FPGABoard, width: int, height: int) -> str:
 
 
 # ── Per-board orchestration ────────────────────────────────────────────────────
+
 
 def generate_images_for_board(
     board_def: BoardDef,
@@ -488,6 +575,7 @@ def generate_images_for_board(
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
 
+
 def _parse_formats(raw: str) -> set[str]:
     """Parse a comma-separated format string into a validated set.
 
@@ -504,7 +592,8 @@ def _parse_formats(raw: str) -> set[str]:
             result.add(token)
         else:
             raise argparse.ArgumentTypeError(
-                f"Unknown format '{token}'.  Choose from: png, jpeg, svg, all")
+                f"Unknown format '{token}'.  Choose from: png, jpeg, svg, all"
+            )
     if not result:
         raise argparse.ArgumentTypeError("At least one format must be specified.")
     return result
@@ -528,32 +617,48 @@ def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--output-dir", metavar="PATH", type=Path,
+        "--output-dir",
+        metavar="PATH",
+        type=Path,
         default=Path(__file__).parent / "board_images",
         help="Destination directory for generated images",
     )
     parser.add_argument(
-        "--width", type=int, default=DEFAULT_WIDTH,
+        "--width",
+        type=int,
+        default=DEFAULT_WIDTH,
         help="Image width in pixels",
     )
     parser.add_argument(
-        "--height", type=int, default=DEFAULT_HEIGHT,
+        "--height",
+        type=int,
+        default=DEFAULT_HEIGHT,
         help="Image height in pixels",
     )
     parser.add_argument(
-        "--formats", metavar="LIST", type=_parse_formats, default="all",
+        "--formats",
+        metavar="LIST",
+        type=_parse_formats,
+        default="all",
         help="Comma-separated formats to generate: png, jpeg, svg, all",
     )
     parser.add_argument(
-        "--filter", metavar="TEXT", dest="name_filter", default="",
+        "--filter",
+        metavar="TEXT",
+        dest="name_filter",
+        default="",
         help="Only process boards whose name contains TEXT (case-insensitive)",
     )
     parser.add_argument(
-        "--list", action="store_true",
+        "--list",
+        action="store_true",
         help="Print discovered board names and exit without generating images",
     )
     parser.add_argument(
-        "--boards-dir", metavar="PATH", type=Path, default=None,
+        "--boards-dir",
+        metavar="PATH",
+        type=Path,
+        default=None,
         help="Override the amaranth_boards directory (default: auto-detect from submodule)",
     )
     args = parser.parse_args()
@@ -605,8 +710,12 @@ def main() -> None:
 
     for i, (board_def, base_name) in enumerate(name_map, 1):
         ok, msg = generate_images_for_board(
-            board_def, args.output_dir, base_name,
-            args.width, args.height, args.formats,
+            board_def,
+            args.output_dir,
+            base_name,
+            args.width,
+            args.height,
+            args.formats,
         )
         status = "OK  " if ok else "FAIL"
         print(f"  [{i:3}/{total}] [{status}] {msg}")

@@ -1,4 +1,5 @@
 """Tests for GHDL availability and VHDL analysis."""
+
 from pathlib import Path
 
 import pytest
@@ -27,5 +28,3 @@ def test_blinky_analyzes_ok(ghdl):
     blinky = PROJECT / "hdl" / "blinky.vhd"
     ok, detail = analyze_vhdl(str(blinky))
     assert ok, f"GHDL analysis failed: {detail}"
-
-

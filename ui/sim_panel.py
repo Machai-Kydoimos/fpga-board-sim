@@ -31,7 +31,15 @@ _PANEL_H_BASE: int = 130
 # ── Clock presets (Hz) ────────────────────────────────────────────────────────
 
 _CLOCK_PRESETS_HZ: list[float] = [
-    3.3e6, 8e6, 12e6, 16e6, 25e6, 50e6, 100e6, 125e6, 200e6,
+    3.3e6,
+    8e6,
+    12e6,
+    16e6,
+    25e6,
+    50e6,
+    100e6,
+    125e6,
+    200e6,
 ]
 
 # ── Speed-slider constants ────────────────────────────────────────────────────
@@ -40,12 +48,13 @@ _SPEED_MIN: float = 0.001
 _SPEED_MAX: float = 10.0
 _SPEED_DEFAULT: float = 0.1
 
-_LOG_MIN: float = math.log10(_SPEED_MIN)   # -3
-_LOG_MAX: float = math.log10(_SPEED_MAX)   #  1
-_LOG_RANGE: float = _LOG_MAX - _LOG_MIN    #  4
+_LOG_MIN: float = math.log10(_SPEED_MIN)  # -3
+_LOG_MAX: float = math.log10(_SPEED_MAX)  #  1
+_LOG_RANGE: float = _LOG_MAX - _LOG_MIN  #  4
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _speed_to_frac(speed: float) -> float:
     """Map a speed multiplier to a slider fraction in [0, 1]."""
@@ -80,6 +89,7 @@ def _fmt_time(ns: float) -> str:
 
 
 # ── SimPanel ──────────────────────────────────────────────────────────────────
+
 
 class SimPanel:
     """Bottom-strip simulation control panel.
@@ -174,10 +184,10 @@ class SimPanel:
 
         # Per-frame timing breakdown — 30-frame rolling windows for smooth display
         _w = 30
-        self._fps_window:   deque[float] = deque(maxlen=_w)
+        self._fps_window: deque[float] = deque(maxlen=_w)
         self._timer_window: deque[float] = deque(maxlen=_w)
-        self._draw_window:  deque[float] = deque(maxlen=_w)
-        self._idle_window:  deque[float] = deque(maxlen=_w)
+        self._draw_window: deque[float] = deque(maxlen=_w)
+        self._idle_window: deque[float] = deque(maxlen=_w)
         # Smoothed averages (computed in update_timing, read in _draw_info_zone)
         self._fps: float = 0.0
         self._timer_us: float = 0.0
@@ -255,10 +265,10 @@ class SimPanel:
         self._draw_window.append(draw_us)
         self._idle_window.append(idle_us)
         n = len(self._fps_window)
-        self._fps      = sum(self._fps_window)    / n
-        self._timer_us = sum(self._timer_window)  / n
-        self._draw_us  = sum(self._draw_window)   / n
-        self._idle_us  = sum(self._idle_window)   / n
+        self._fps = sum(self._fps_window) / n
+        self._timer_us = sum(self._timer_window) / n
+        self._draw_us = sum(self._draw_window) / n
+        self._idle_us = sum(self._idle_window) / n
 
     def handle_event(self, event: pygame.event.Event) -> None:
         """Process a single pygame event that may affect the panel."""
@@ -330,7 +340,10 @@ class SimPanel:
 
     def _draw_info_zone(
         self,
-        x: int, y0: int, w: int, h: int,
+        x: int,
+        y0: int,
+        w: int,
+        h: int,
         font: pygame.font.Font,
         bold: pygame.font.Font,
         s: float,
@@ -344,15 +357,15 @@ class SimPanel:
 
         total_us = max(1.0, self._timer_us + self._draw_us + self._idle_us)
         g_pct = int(self._timer_us / total_us * 100)
-        d_pct = int(self._draw_us  / total_us * 100)
+        d_pct = int(self._draw_us / total_us * 100)
         i_pct = 100 - g_pct - d_pct
         rows: list[tuple[str, str, tuple[int, int, int]]] = [
-            ("Board clk:", _fmt_hz(self._board_clock_hz),             (150, 190, 150)),
-            ("Sim time: ", _fmt_time(self._sim_elapsed_ns),           WHITE),
-            ("Clk/frame:", f"{self._clocks_per_frame:.1f}",           WHITE),
-            ("Eff. rate:", _fmt_hz(self.effective_hz),                (100, 200, 255)),
-            ("GUI FPS:  ", f"{self._fps:.1f}",                        (200, 200, 100)),
-            ("G/D/I %:  ", f"{g_pct}/{d_pct}/{i_pct}",               (180, 150, 100)),
+            ("Board clk:", _fmt_hz(self._board_clock_hz), (150, 190, 150)),
+            ("Sim time: ", _fmt_time(self._sim_elapsed_ns), WHITE),
+            ("Clk/frame:", f"{self._clocks_per_frame:.1f}", WHITE),
+            ("Eff. rate:", _fmt_hz(self.effective_hz), (100, 200, 255)),
+            ("GUI FPS:  ", f"{self._fps:.1f}", (200, 200, 100)),
+            ("G/D/I %:  ", f"{g_pct}/{d_pct}/{i_pct}", (180, 150, 100)),
         ]
         for label, value, color in rows:
             lbl_surf = font.render(label, True, (150, 185, 150))
@@ -363,7 +376,10 @@ class SimPanel:
 
     def _draw_speed_zone(
         self,
-        x: int, y0: int, w: int, h: int,
+        x: int,
+        y0: int,
+        w: int,
+        h: int,
         font: pygame.font.Font,
         bold: pygame.font.Font,
         small: pygame.font.Font,
@@ -385,7 +401,8 @@ class SimPanel:
         filled_w = max(0, int(track.width * frac))
         if filled_w:
             pygame.draw.rect(
-                self.screen, (60, 160, 60),
+                self.screen,
+                (60, 160, 60),
                 pygame.Rect(track.left, track.top, filled_w, track_h),
                 border_radius=2,
             )
@@ -405,18 +422,17 @@ class SimPanel:
         # linear extension of the rate target.
         ticks: list[tuple[float, str]] = [
             (0.001, "0.001x"),
-            (0.01,  "0.01x"),
-            (0.1,   "0.1x"),
-            (1.0,   "REAL"),
-            (10.0,  "MAX"),
+            (0.01, "0.01x"),
+            (0.1, "0.1x"),
+            (1.0, "REAL"),
+            (10.0, "MAX"),
         ]
         tick_y = track.bottom + max(2, round(3 * s))
         for val, lbl in ticks:
             tf = _speed_to_frac(val)
             tx = track.left + int(track.width * tf)
             col = YELLOW if val == 1.0 else (130, 170, 130)
-            pygame.draw.line(self.screen, col,
-                             (tx, track.top - 2), (tx, track.bottom + 2), 1)
+            pygame.draw.line(self.screen, col, (tx, track.top - 2), (tx, track.bottom + 2), 1)
             t = small.render(lbl, True, col)
             self.screen.blit(t, (tx - t.get_width() // 2, tick_y))
 
@@ -434,19 +450,19 @@ class SimPanel:
             cv = bold.render("MAX SPEED", True, (255, 210, 80))
             self.screen.blit(cv, (x + (w - cv.get_width()) // 2, cv_y))
             if self._fps > 0:
-                actual_factor = (
-                    self._clocks_per_frame * self._fps / self._board_clock_hz
-                )
+                actual_factor = self._clocks_per_frame * self._fps / self._board_clock_hz
                 cv_y2 = cv_y + bold.get_linesize()
                 if actual_factor >= 1.0:
                     note = small.render(
                         f"actual {actual_factor:.3g}x  (faster than real-time)",
-                        True, (100, 240, 120),
+                        True,
+                        (100, 240, 120),
                     )
                 else:
                     note = small.render(
                         f"actual {actual_factor:.3g}x  (at max throughput)",
-                        True, (140, 200, 140),
+                        True,
+                        (140, 200, 140),
                     )
                 self.screen.blit(note, (x + (w - note.get_width()) // 2, cv_y2))
         else:
@@ -454,25 +470,28 @@ class SimPanel:
             self.screen.blit(cv, (x + (w - cv.get_width()) // 2, cv_y))
             # Show actual rate; warn when the requested rate is not achieved
             if self._fps > 0:
-                actual_factor = (
-                    self._clocks_per_frame * self._fps / self._board_clock_hz
-                )
+                actual_factor = self._clocks_per_frame * self._fps / self._board_clock_hz
                 cv_y2 = cv_y + bold.get_linesize()
                 if actual_factor < self.speed_factor * 0.9:
                     note = small.render(
                         f"actual {actual_factor:.3g}x  (CPU-limited)",
-                        True, (255, 180, 80),
+                        True,
+                        (255, 180, 80),
                     )
                 else:
                     note = small.render(
                         f"actual {actual_factor:.3g}x",
-                        True, (140, 200, 140),
+                        True,
+                        (140, 200, 140),
                     )
                 self.screen.blit(note, (x + (w - note.get_width()) // 2, cv_y2))
 
     def _draw_clock_zone(
         self,
-        x: int, y0: int, w: int, h: int,
+        x: int,
+        y0: int,
+        w: int,
+        h: int,
         font: pygame.font.Font,
         bold: pygame.font.Font,
         s: float,
@@ -499,10 +518,13 @@ class SimPanel:
 
         # Current clock label (between buttons)
         clk_surf = bold.render(_fmt_hz(self.current_clock_hz), True, WHITE)
-        self.screen.blit(clk_surf, (
-            cx - clk_surf.get_width() // 2,
-            btn_y + (btn_h - clk_surf.get_height()) // 2,
-        ))
+        self.screen.blit(
+            clk_surf,
+            (
+                cx - clk_surf.get_width() // 2,
+                btn_y + (btn_h - clk_surf.get_height()) // 2,
+            ),
+        )
 
         # Effective rate
         eff_y = btn_y + btn_h + max(3, round(5 * s))
@@ -511,6 +533,7 @@ class SimPanel:
 
 
 # ── Utility ───────────────────────────────────────────────────────────────────
+
 
 def _draw_btn(
     screen: pygame.Surface,
@@ -527,7 +550,10 @@ def _draw_btn(
     pygame.draw.rect(screen, bg, rect, border_radius=3)
     pygame.draw.rect(screen, border, rect, 1, border_radius=3)
     surf = font.render(label, True, fg)
-    screen.blit(surf, (
-        rect.centerx - surf.get_width() // 2,
-        rect.centery - surf.get_height() // 2,
-    ))
+    screen.blit(
+        surf,
+        (
+            rect.centerx - surf.get_width() // 2,
+            rect.centery - surf.get_height() // 2,
+        ),
+    )

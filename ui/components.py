@@ -20,29 +20,31 @@ from ui.constants import (
 
 # ── Component classes ────────────────────────────────────────────────
 
+
 class FPGAChip:
     """Visual representation of the FPGA IC package on the board."""
 
     _VENDOR_COLORS = {
-        "Xilinx":     (20,  60, 140),
-        "Intel":      (0,   90,  50),
-        "Lattice":    (90,  20,  90),
-        "QuickLogic": (130, 60,   0),
-        "Gowin":      (70,  70,   0),
+        "Xilinx": (20, 60, 140),
+        "Intel": (0, 90, 50),
+        "Lattice": (90, 20, 90),
+        "QuickLogic": (130, 60, 0),
+        "Gowin": (70, 70, 0),
     }
-    _BORDER_COLOR  = (180, 180, 180)
-    _DEVICE_COLOR  = (200, 200, 200)
+    _BORDER_COLOR = (180, 180, 180)
+    _DEVICE_COLOR = (200, 200, 200)
     _PACKAGE_COLOR = (150, 150, 150)
-    _CLOCK_COLOR   = (120, 200, 120)
-    _PIN_COLOR     = (120, 120, 120)
-    _PIN_LENGTH    = 5
+    _CLOCK_COLOR = (120, 200, 120)
+    _PIN_COLOR = (120, 120, 120)
+    _PIN_LENGTH = 5
 
-    def __init__(self, vendor: str = "", device: str = "", package: str = "",
-                 clock_hz: float = 0.0) -> None:
+    def __init__(
+        self, vendor: str = "", device: str = "", package: str = "", clock_hz: float = 0.0
+    ) -> None:
         """Initialise the chip with optional vendor, device, package, and clock metadata."""
-        self.vendor   = vendor
-        self.device   = device
-        self.package  = package
+        self.vendor = vendor
+        self.device = device
+        self.package = package
         self.clock_hz = clock_hz
         self.rect = pygame.Rect(0, 0, 0, 0)
 
@@ -69,9 +71,18 @@ class FPGAChip:
         cx, cy = r.centerx, r.centery
         line_h = font.get_linesize()
         lines = [
-            (self.vendor,          WHITE,                ),
-            (self.device.upper(),  self._DEVICE_COLOR,  ),
-            (self.package.upper(), self._PACKAGE_COLOR, ),
+            (
+                self.vendor,
+                WHITE,
+            ),
+            (
+                self.device.upper(),
+                self._DEVICE_COLOR,
+            ),
+            (
+                self.package.upper(),
+                self._PACKAGE_COLOR,
+            ),
         ]
         if self.clock_hz:
             lines.append((self._fmt_clock(self.clock_hz), self._CLOCK_COLOR))
@@ -85,17 +96,17 @@ class FPGAChip:
     def _draw_pin_marks(self, surface: pygame.Surface, r: pygame.Rect) -> None:
         color = self._PIN_COLOR
         length = self._PIN_LENGTH
-        h_count = max(4, min(20, r.width  // 14))
+        h_count = max(4, min(20, r.width // 14))
         v_count = max(4, min(14, r.height // 14))
 
         for i in range(h_count):
             x = r.left + (i + 1) * r.width // (h_count + 1)
-            pygame.draw.line(surface, color, (x, r.top),    (x, r.top    - length))
+            pygame.draw.line(surface, color, (x, r.top), (x, r.top - length))
             pygame.draw.line(surface, color, (x, r.bottom), (x, r.bottom + length))
 
         for i in range(v_count):
             y = r.top + (i + 1) * r.height // (v_count + 1)
-            pygame.draw.line(surface, color, (r.left,  y), (r.left  - length, y))
+            pygame.draw.line(surface, color, (r.left, y), (r.left - length, y))
             pygame.draw.line(surface, color, (r.right, y), (r.right + length, y))
 
 

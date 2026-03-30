@@ -99,17 +99,17 @@ def save_session_stats(
     sim_rate = sim_us_per_s / 1e6  # simulated seconds per real second
 
     data = {
-        "timestamp":    ts,
-        "board":        board_name,
-        "simulator":    simulator,
-        "duration_s":   round(duration_s, 2),
-        "avg_fps":      round(avg_fps, 1),
-        "sim_time_ns":  sim_time_ns,
-        "sim_rate":     round(sim_rate, 6),
+        "timestamp": ts,
+        "board": board_name,
+        "simulator": simulator,
+        "duration_s": round(duration_s, 2),
+        "avg_fps": round(avg_fps, 1),
+        "sim_time_ns": sim_time_ns,
+        "sim_rate": round(sim_rate, 6),
         "avg_ghdl_pct": round(avg_ghdl_pct, 1),
         "avg_draw_pct": round(avg_draw_pct, 1),
         "avg_idle_pct": round(avg_idle_pct, 1),
-        "clock_hz":     clock_hz,
+        "clock_hz": clock_hz,
     }
     path.write_text(json.dumps(data, indent=2) + "\n")
     print(f"[session] Stats saved → {path}")

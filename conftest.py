@@ -1,4 +1,5 @@
 """Make the project root importable when running pytest from any directory."""
+
 import sys
 from pathlib import Path
 

@@ -29,9 +29,7 @@ class VHDLFilePicker:
                 if not is_dir and name == preselect_name:
                     self.hovered = i
                     viewport_h = self.height - self._hdr
-                    self.scroll = max(
-                        0, i * self.row_h - viewport_h // 2 + self.row_h // 2
-                    )
+                    self.scroll = max(0, i * self.row_h - viewport_h // 2 + self.row_h // 2)
                     break
 
     @property
@@ -113,10 +111,10 @@ class VHDLFilePicker:
 
     def _draw(self) -> None:
         self.screen.fill(SEL_BG)
-        s       = _ui_scale(self.width, self.height)
+        s = _ui_scale(self.width, self.height)
         title_f = get_font(max(13, round(20 * s)), bold=True)
-        path_f  = get_font(max( 9, round(12 * s)))
-        item_f  = get_font(max(10, round(14 * s)))
+        path_f = get_font(max(9, round(12 * s)))
+        item_f = get_font(max(10, round(14 * s)))
 
         hdr = self._hdr
 
@@ -124,10 +122,8 @@ class VHDLFilePicker:
             y = hdr + i * self.row_h - self.scroll
             if y + self.row_h < hdr or y > self.height:
                 continue
-            bg = SEL_HOVER if i == self.hovered else (
-                SEL_ROW_A if i % 2 == 0 else SEL_ROW_B)
-            pygame.draw.rect(self.screen, bg,
-                             (10, y, self.width - 20, self.row_h - 2))
+            bg = SEL_HOVER if i == self.hovered else (SEL_ROW_A if i % 2 == 0 else SEL_ROW_B)
+            pygame.draw.rect(self.screen, bg, (10, y, self.width - 20, self.row_h - 2))
             colour = (180, 180, 255) if is_dir else (220, 255, 220)
             nm = item_f.render(name, True, colour)
             self.screen.blit(nm, (24, y + 8))

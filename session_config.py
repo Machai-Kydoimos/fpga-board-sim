@@ -33,10 +33,15 @@ def save_session(board_class: str, vhdl_path: str, simulator: str = "ghdl") -> N
     """
     try:
         SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
-        SESSION_FILE.write_text(json.dumps({
-            "board_class": board_class,
-            "vhdl_path":   vhdl_path,
-            "simulator":   simulator,
-        }, indent=2))
+        SESSION_FILE.write_text(
+            json.dumps(
+                {
+                    "board_class": board_class,
+                    "vhdl_path": vhdl_path,
+                    "simulator": simulator,
+                },
+                indent=2,
+            )
+        )
     except OSError:
         pass

@@ -1,16 +1,19 @@
 """Tests for SimPanel: clock options, update_timing rolling averages,
 and FPGABoard.set_height_offset()."""
+
 import os
 
 import pytest
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture(scope="module")
 def headless_pygame():
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     import pygame
+
     pygame.init()
     yield pygame
     pygame.quit()
@@ -23,17 +26,20 @@ def dummy_screen(headless_pygame):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _make_panel(dummy_screen, clock_hz=100e6, clocks_hz=None):
     from ui.sim_panel import SimPanel
-    return SimPanel(dummy_screen, height=120, board_clock_hz=clock_hz,
-                    board_clocks_hz=clocks_hz)
+
+    return SimPanel(dummy_screen, height=120, board_clock_hz=clock_hz, board_clocks_hz=clocks_hz)
 
 
 # ── Clock options ─────────────────────────────────────────────────────────────
 
+
 def test_default_clock_options_are_presets(dummy_screen):
     """Without board_clocks_hz, the panel uses the built-in preset list."""
     from ui.sim_panel import _CLOCK_PRESETS_HZ
+
     panel = _make_panel(dummy_screen, clock_hz=100e6, clocks_hz=None)
     assert panel._clock_options == _CLOCK_PRESETS_HZ
 
@@ -63,13 +69,14 @@ def test_clk_state_period_matches_selected_clock(dummy_screen):
 
 # ── update_timing rolling averages ────────────────────────────────────────────
 
+
 def test_single_update_sets_values(dummy_screen):
     panel = _make_panel(dummy_screen)
     panel.update_timing(fps=60.0, timer_us=800.0, draw_us=150.0, idle_us=50.0)
-    assert panel._fps      == pytest.approx(60.0)
+    assert panel._fps == pytest.approx(60.0)
     assert panel._timer_us == pytest.approx(800.0)
-    assert panel._draw_us  == pytest.approx(150.0)
-    assert panel._idle_us  == pytest.approx(50.0)
+    assert panel._draw_us == pytest.approx(150.0)
+    assert panel._idle_us == pytest.approx(50.0)
 
 
 def test_rolling_average_converges(dummy_screen):
@@ -77,15 +84,16 @@ def test_rolling_average_converges(dummy_screen):
     panel = _make_panel(dummy_screen)
     for _ in range(30):
         panel.update_timing(fps=30.0, timer_us=500.0, draw_us=200.0, idle_us=300.0)
-    assert panel._fps      == pytest.approx(30.0)
+    assert panel._fps == pytest.approx(30.0)
     assert panel._timer_us == pytest.approx(500.0)
-    assert panel._draw_us  == pytest.approx(200.0)
-    assert panel._idle_us  == pytest.approx(300.0)
+    assert panel._draw_us == pytest.approx(200.0)
+    assert panel._idle_us == pytest.approx(300.0)
 
 
 def test_panel_height_scales_with_window(headless_pygame):
     """panel_height must grow proportionally when the window is enlarged."""
     from ui.sim_panel import _PANEL_H_BASE, SimPanel
+
     small = headless_pygame.display.set_mode((1024, 700))
     panel_small = SimPanel(small, height=_PANEL_H_BASE, board_clock_hz=100e6)
     h_small = panel_small.panel_height
@@ -100,6 +108,7 @@ def test_panel_height_scales_with_window(headless_pygame):
 def test_panel_height_updates_after_resize(headless_pygame):
     """panel_height must reflect the current screen size, not the startup size."""
     from ui.sim_panel import _PANEL_H_BASE, SimPanel
+
     screen = headless_pygame.display.set_mode((1024, 700))
     panel = SimPanel(screen, height=_PANEL_H_BASE, board_clock_hz=100e6)
     h_before = panel.panel_height
@@ -150,13 +159,18 @@ from ui import FPGABoard  # noqa: E402
 
 
 def _sample_board():
-    leds    = [ComponentInfo(f"led{i}", f"LED{i}", "", "") for i in range(4)]
+    leds = [ComponentInfo(f"led{i}", f"LED{i}", "", "") for i in range(4)]
     buttons = [ComponentInfo(f"btn{i}", f"BTN{i}", "", "") for i in range(2)]
     switches = [ComponentInfo(f"sw{i}", f"SW{i}", "", "") for i in range(4)]
     return BoardDef(
-        name="Test Board", class_name="TestBoard",
-        vendor="TestVendor", device="TestDevice", package="QFP100",
-        leds=leds, buttons=buttons, switches=switches,
+        name="Test Board",
+        class_name="TestBoard",
+        vendor="TestVendor",
+        device="TestDevice",
+        package="QFP100",
+        leds=leds,
+        buttons=buttons,
+        switches=switches,
     )
 
 
@@ -180,6 +194,7 @@ def test_set_height_offset_zero_restores_full_height(headless_pygame):
 
 # ── Clock arithmetic edge cases ───────────────────────────────────────────────
 
+
 def test_high_frequency_period_ns(dummy_screen):
     """500 MHz board clock must produce a 2 ns period."""
     panel = _make_panel(dummy_screen, clock_hz=500e6, clocks_hz=[500e6])
@@ -195,6 +210,7 @@ def test_low_frequency_period_ns(dummy_screen):
 def test_initial_speed_factor_is_default(dummy_screen):
     """speed_factor must start at _SPEED_DEFAULT (0.1×) on a fresh panel."""
     from ui.sim_panel import _SPEED_DEFAULT
+
     panel = _make_panel(dummy_screen, clock_hz=100e6)
     assert panel.speed_factor == pytest.approx(_SPEED_DEFAULT)
 
