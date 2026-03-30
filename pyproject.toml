@@ -3,11 +3,28 @@ name = "fpga-simulator"
 version = "0.1.0"
 description = "Interactive FPGA board simulator with GHDL-backed VHDL simulation"
 requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Richard Graham", email = "rickhg12hs@users.noreply.github.com"},
+    {name = "Benjamin Graham", email = "29547812+benwilliamgraham@users.noreply.github.com"},
+    {name = "Oliver Graham", email = "62159522+oliverhgraham@users.noreply.github.com"},
+]
+keywords = ["fpga", "vhdl", "simulation", "ghdl", "cocotb", "pygame"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
 dependencies = [
     "pygame>=2.5",
     "cocotb>=2.0",
     "find_libpython",
 ]
+
+[project.urls]
+Repository = "https://github.com/Machai-Kydoimos/fpga-board-sim"
+Issues = "https://github.com/Machai-Kydoimos/fpga-board-sim/issues"
 
 [project.scripts]
 fpga-sim            = "fpga_board:main"
