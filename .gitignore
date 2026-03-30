@@ -5,3 +5,22 @@ __pycache__/
 work-obj*.cf
 e~*.exe
 board_images/
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Build / packaging
+*.egg-info/
+dist/
+build/
+
+# OS
+.DS_Store
+
+# Editors
+*.swp
+*~
+.idea/
+.vscode/
