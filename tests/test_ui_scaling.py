@@ -1,5 +1,6 @@
 """Tests for proportional UI scaling: _ui_scale helper, row_h/_hdr properties,
 and smoke-render tests at various window sizes."""
+
 import os
 import tempfile
 
@@ -22,7 +23,7 @@ def test_ui_scale_double():
 
 
 def test_ui_scale_uses_min_axis():
-    assert _ui_scale(2048, 700) == pytest.approx(1.0)   # height constrains
+    assert _ui_scale(2048, 700) == pytest.approx(1.0)  # height constrains
     assert _ui_scale(1024, 1400) == pytest.approx(1.0)  # width constrains
 
 
@@ -36,11 +37,13 @@ def test_ui_scale_small():
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture(scope="module")
 def headless_pygame():
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
     import pygame
+
     pygame.init()
     yield pygame
     pygame.quit()
@@ -127,19 +130,22 @@ from ui import FPGABoard  # noqa: E402
 
 
 def _sample_board_def():
-    leds     = [ComponentInfo(f"led{i}",    f"LED{i}",    "", "") for i in range(4)]
-    buttons  = [ComponentInfo(f"btn{i}",    f"BTN{i}",    "", "") for i in range(2)]
-    switches = [ComponentInfo(f"sw{i}",     f"SW{i}",     "", "") for i in range(4)]
+    leds = [ComponentInfo(f"led{i}", f"LED{i}", "", "") for i in range(4)]
+    buttons = [ComponentInfo(f"btn{i}", f"BTN{i}", "", "") for i in range(2)]
+    switches = [ComponentInfo(f"sw{i}", f"SW{i}", "", "") for i in range(4)]
     return BoardDef(
-        name="Test Board", class_name="TestBoard",
-        vendor="TestVendor", device="TestDevice", package="QFP100",
-        leds=leds, buttons=buttons, switches=switches,
+        name="Test Board",
+        class_name="TestBoard",
+        vendor="TestVendor",
+        device="TestDevice",
+        package="QFP100",
+        leds=leds,
+        buttons=buttons,
+        switches=switches,
     )
 
 
-@pytest.mark.parametrize("w,h", [
-    (800, 480), (1024, 700), (1280, 800), (1600, 1000), (400, 300)
-])
+@pytest.mark.parametrize("w,h", [(800, 480), (1024, 700), (1280, 800), (1600, 1000), (400, 300)])
 def test_board_selector_draws(headless_pygame, w, h):
     screen = headless_pygame.display.set_mode((w, h))
     sel = BoardSelector([], screen)
@@ -147,9 +153,7 @@ def test_board_selector_draws(headless_pygame, w, h):
     sel._draw()  # must not raise
 
 
-@pytest.mark.parametrize("w,h", [
-    (800, 480), (1024, 700), (1280, 800), (1600, 1000), (400, 300)
-])
+@pytest.mark.parametrize("w,h", [(800, 480), (1024, 700), (1280, 800), (1600, 1000), (400, 300)])
 def test_fpga_board_draws(headless_pygame, w, h):
     headless_pygame.display.set_mode((w, h))
     board = FPGABoard(board_def=_sample_board_def(), width=w, height=h)
@@ -185,9 +189,7 @@ def test_layout_leaves_bottom_gap(headless_pygame):
         )
 
 
-@pytest.mark.parametrize("w,h", [
-    (800, 480), (1024, 700), (1280, 800), (1600, 1000), (400, 300)
-])
+@pytest.mark.parametrize("w,h", [(800, 480), (1024, 700), (1280, 800), (1600, 1000), (400, 300)])
 def test_vhdl_file_picker_draws(headless_pygame, w, h):
     screen = headless_pygame.display.set_mode((w, h))
     picker = VHDLFilePicker(screen, start_dir=tempfile.gettempdir())

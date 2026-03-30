@@ -2,6 +2,7 @@
 
 All tests are skipped automatically when NVC is not installed.
 """
+
 import os
 import subprocess
 import tempfile
@@ -22,6 +23,7 @@ PROJECT = Path(__file__).resolve().parent.parent
 
 
 # ── Availability ──────────────────────────────────────────────────────────────
+
 
 def test_detect_simulators_returns_list():
     sims = detect_simulators()
@@ -55,6 +57,7 @@ def test_nvc_in_detect_simulators(nvc):
 
 # ── Analysis ──────────────────────────────────────────────────────────────────
 
+
 def test_blinky_analyzes_ok_with_nvc(nvc):
     blinky = PROJECT / "hdl" / "blinky.vhd"
     ok, detail = analyze_vhdl(str(blinky), simulator="nvc")
@@ -68,14 +71,17 @@ def test_nvc_analyze_returns_work_dir(nvc):
     assert Path(detail).is_dir(), f"Expected a work_dir path, got: {detail!r}"
 
 
-@pytest.mark.parametrize("filename", [
-    "blinky.vhd",
-    "blinky_alt.vhd",
-    "blinky_counter.vhd",
-    "blinky_morse.vhd",
-    "blinky_pwm.vhd",
-    "blinky_walking.vhd",
-])
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "blinky.vhd",
+        "blinky_alt.vhd",
+        "blinky_counter.vhd",
+        "blinky_morse.vhd",
+        "blinky_pwm.vhd",
+        "blinky_walking.vhd",
+    ],
+)
 def test_good_blinky_analyzes_with_nvc(nvc, filename):
     f = PROJECT / "hdl" / filename
     ok, detail = analyze_vhdl(f, toplevel=f.stem, simulator="nvc")
@@ -90,6 +96,7 @@ def test_bad_semantic_fails_nvc_analysis(nvc):
 
 
 # ── VHPI plugin ───────────────────────────────────────────────────────────────
+
 
 @pytest.fixture(scope="module")
 def nvc_sim_env(nvc):
@@ -109,6 +116,7 @@ def test_vhpi_lib_name_contains_nvc(nvc_sim_env):
 
 # ── Simulation ────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture(scope="module")
 def nvc_work_dir(nvc, nvc_sim_env):
     """Analyze blinky with NVC into a temp workdir; reused by simulation test."""
@@ -117,7 +125,9 @@ def nvc_work_dir(nvc, nvc_sim_env):
     d = tempfile.mkdtemp(prefix="fpga_nvc_ci_")
     subprocess.run(
         _NVCBackend.analyze_cmd(blinky, d),
-        env=env, check=True, cwd=d,
+        env=env,
+        check=True,
+        cwd=d,
     )
     return d
 
@@ -132,8 +142,7 @@ def test_nvc_cocotb_simulation_passes(nvc, nvc_sim_env, nvc_work_dir):
     # Elaborate with generics (NVC requires this before run)
     elab_cmd = _NVCBackend.elaborate_cmd(
         "blinky",
-        {"NUM_SWITCHES": "4", "NUM_BUTTONS": "4",
-         "NUM_LEDS": "4", "COUNTER_BITS": "10"},
+        {"NUM_SWITCHES": "4", "NUM_BUTTONS": "4", "NUM_LEDS": "4", "COUNTER_BITS": "10"},
         nvc_work_dir,
     )
     subprocess.run(elab_cmd, env=env, check=True, cwd=nvc_work_dir)
@@ -145,12 +154,9 @@ def test_nvc_cocotb_simulation_passes(nvc, nvc_sim_env, nvc_work_dir):
     run_env = env.copy()
     run_env["COCOTB_TEST_MODULES"] = "test_blinky"
     run_env["TOPLEVEL"] = "blinky"
-    run_env["PYTHONPATH"] = (
-        str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
-    )
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=nvc_work_dir,
-                            capture_output=True, text=True)
+    result = subprocess.run(run_cmd, env=run_env, cwd=nvc_work_dir, capture_output=True, text=True)
     output = result.stdout + result.stderr
 
     for line in output.splitlines():
@@ -158,6 +164,5 @@ def test_nvc_cocotb_simulation_passes(nvc, nvc_sim_env, nvc_work_dir):
             print(line.strip())
 
     assert "FAIL=0" in output and "PASS=" in output, (
-        "cocotb tests did not all pass under NVC.\n"
-        + "\n".join(output.splitlines()[-30:])
+        "cocotb tests did not all pass under NVC.\n" + "\n".join(output.splitlines()[-30:])
     )

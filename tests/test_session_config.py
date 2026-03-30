@@ -1,4 +1,5 @@
 """Tests for session_config: load/save/roundtrip."""
+
 import json
 
 import pytest
@@ -73,6 +74,7 @@ def test_save_overwrites_previous(session_file):
 
 # ── Simulator persistence ──────────────────────────────────────────────────────
 
+
 def test_save_default_simulator_is_ghdl(session_file):
     save_session("MyBoard", "/path/blinky.vhd")
     data = json.loads(session_file.read_text())
@@ -107,6 +109,7 @@ def test_load_missing_simulator_key(session_file):
 
 # ── Additional edge cases ──────────────────────────────────────────────────────
 
+
 def test_load_json_number_returns_empty(session_file):
     """A file containing a bare number (valid JSON, not a dict) returns {}."""
     session_file.parent.mkdir(parents=True)
@@ -121,6 +124,7 @@ def test_load_json_number_returns_empty(session_file):
 def test_save_session_does_not_raise_on_oserror(tmp_path, monkeypatch):
     """save_session must swallow OSError (e.g. read-only fs) without raising."""
     import pathlib
+
     target = tmp_path / ".fpga_simulator" / "session.json"
     monkeypatch.setattr("session_config.SESSION_FILE", target)
 

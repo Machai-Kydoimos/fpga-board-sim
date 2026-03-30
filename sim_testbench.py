@@ -84,7 +84,10 @@ def _simulator_version(sim_name: str) -> str:
     """Return the first line of the simulator's --version output."""
     try:
         result = subprocess.run(
-            [sim_name, "--version"], capture_output=True, text=True, timeout=5,
+            [sim_name, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         return (result.stdout or result.stderr).splitlines()[0].strip()
     except Exception:
@@ -100,37 +103,38 @@ def _write_meta_sidecar(
     num_buttons: int,
 ) -> None:
     """Write a JSON metadata file alongside the CSV for report context."""
-    sim_name  = os.environ.get("FPGA_SIM_SIMULATOR", "unknown")
+    sim_name = os.environ.get("FPGA_SIM_SIMULATOR", "unknown")
     vhdl_path = os.environ.get("FPGA_SIM_VHDL_PATH", "unknown")
     # FPGA_SIM_TOPLEVEL carries the user's entity name; TOPLEVEL is sim_wrapper
-    toplevel  = os.environ.get("FPGA_SIM_TOPLEVEL") or os.environ.get("TOPLEVEL", "unknown")
+    toplevel = os.environ.get("FPGA_SIM_TOPLEVEL") or os.environ.get("TOPLEVEL", "unknown")
     try:
         generics: dict[str, str] = json.loads(os.environ.get("FPGA_SIM_GENERICS", "{}"))
     except json.JSONDecodeError:
         generics = {}
 
     meta = {
-        "timestamp":           datetime.now(tz=timezone.utc).isoformat(timespec="seconds"),
-        "vhdl_file":           os.path.basename(vhdl_path),
-        "vhdl_path":           vhdl_path,
-        "toplevel":            toplevel,
-        "simulator":           sim_name,
-        "simulator_version":   _simulator_version(sim_name),
-        "board_name":          board_def.name if board_def else "Generic",
-        "board_clock_hz":      clk_hz,
-        "generics":            generics,
-        "counter_bits":        int(generics.get("COUNTER_BITS", 24)),
-        "num_leds":            num_leds,
-        "num_switches":        num_switches,
-        "num_buttons":         num_buttons,
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(timespec="seconds"),
+        "vhdl_file": os.path.basename(vhdl_path),
+        "vhdl_path": vhdl_path,
+        "toplevel": toplevel,
+        "simulator": sim_name,
+        "simulator_version": _simulator_version(sim_name),
+        "board_name": board_def.name if board_def else "Generic",
+        "board_clock_hz": clk_hz,
+        "generics": generics,
+        "counter_bits": int(generics.get("COUNTER_BITS", 24)),
+        "num_leds": num_leds,
+        "num_switches": num_switches,
+        "num_buttons": num_buttons,
         "max_cycles_per_step": _MAX_CYCLES_PER_STEP,
-        "real_step_ns":        _REAL_STEP_NS,
-        "speed_factor_default":_SPEED_DEFAULT,
-        "python_version":      sys.version.split()[0],
-        "platform":            platform.platform(),
+        "real_step_ns": _REAL_STEP_NS,
+        "speed_factor_default": _SPEED_DEFAULT,
+        "python_version": sys.version.split()[0],
+        "platform": platform.platform(),
     }
 
     import pathlib  # noqa: PLC0415
+
     meta_path = str(pathlib.Path(csv_path).with_suffix("")) + ".meta.json"
     with open(meta_path, "w") as f:
         json.dump(meta, f, indent=2)
@@ -154,7 +158,7 @@ async def interactive_sim(dut: object) -> None:
     """
     board_def = _load_board_from_env()
 
-    sim_w = int(os.environ.get("FPGA_SIM_WIDTH",  "1024"))
+    sim_w = int(os.environ.get("FPGA_SIM_WIDTH", "1024"))
     sim_h = int(os.environ.get("FPGA_SIM_HEIGHT", "700"))
 
     pygame.init()
@@ -189,9 +193,9 @@ async def interactive_sim(dut: object) -> None:
     )
 
     # ── Window title: board, VHDL file, simulator ────────────────────────
-    _sim_name      = os.environ.get("FPGA_SIM_SIMULATOR", "ghdl").upper()
+    _sim_name = os.environ.get("FPGA_SIM_SIMULATOR", "ghdl").upper()
     _vhdl_basename = os.path.basename(os.environ.get("FPGA_SIM_VHDL_PATH", ""))
-    _board_name    = board_def.name if board_def else "Generic"
+    _board_name = board_def.name if board_def else "Generic"
     pygame.display.set_caption(
         f"FPGA Simulator \u2013 {_board_name} \u2013 {_vhdl_basename} ({_sim_name})"
     )
@@ -206,18 +210,23 @@ async def interactive_sim(dut: object) -> None:
         pass
 
     # ── Initialise inputs ─────────────────────────────────────────────────────
-    num_sw  = len(board.switches)
+    num_sw = len(board.switches)
     num_btn = len(board.buttons)
     num_led = len(board.leds)
 
     # ── Optional metrics collector ────────────────────────────────────────────
     if _METRICS_PATH:
         from sim_metrics import SimMetrics  # noqa: PLC0415
+
         _metrics_obj = SimMetrics(_METRICS_PATH)
         _metrics_obj.start()
         _write_meta_sidecar(
-            _METRICS_PATH, board_def, clk_hz,
-            num_led, num_sw, num_btn,
+            _METRICS_PATH,
+            board_def,
+            clk_hz,
+            num_led,
+            num_sw,
+            num_btn,
         )
         print(f"[metrics] Writing per-frame data to: {_METRICS_PATH}")
         _metrics: SimMetrics | None = _metrics_obj
@@ -239,13 +248,13 @@ async def interactive_sim(dut: object) -> None:
         sw_val = 0
         for s in board.switches:
             if s.state:
-                sw_val |= (1 << s.index)
+                sw_val |= 1 << s.index
         try:
             dut.sw.value = sw_val  # type: ignore[attr-defined]
         except AttributeError:
             pass
         label = info.display_name if info else f"SW{idx}"
-        conn  = f"  [{info.connector_str}]" if info else ""
+        conn = f"  [{info.connector_str}]" if info else ""
         print(f"{label}: {'ON' if state else 'OFF'}{conn}")
 
     def _on_button(idx: int, pressed: bool, info: ComponentInfo | None) -> None:
@@ -253,20 +262,20 @@ async def interactive_sim(dut: object) -> None:
         btn_val = 0
         for b in board.buttons:
             if b.pressed:
-                btn_val |= (1 << b.index)
+                btn_val |= 1 << b.index
         try:
             dut.btn.value = btn_val  # type: ignore[attr-defined]
         except AttributeError:
             pass
         label = info.display_name if info else f"BTN{idx}"
-        conn  = f"  [{info.connector_str}]" if info else ""
+        conn = f"  [{info.connector_str}]" if info else ""
         print(f"{label}: {'PRESSED' if pressed else 'RELEASED'}{conn}")
 
     board.set_switch_callback(_on_switch)
     board.set_button_callback(_on_button)
 
     # ── Print banner ──────────────────────────────────────────────────────────
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Simulation running: {_board_name}")
     print(f"  VHDL: {_vhdl_basename}  |  Simulator: {_sim_name}")
     print(f"  {num_led} LEDs, {num_btn} buttons, {num_sw} switches")
@@ -274,7 +283,7 @@ async def interactive_sim(dut: object) -> None:
     print("  Use the panel sliders to adjust speed and virtual clock.")
     print("  S: toggle stats panel  |  Pause/Stop: bottom-right of board")
     print("  Press ESC or close window to stop")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     # ── Main loop ─────────────────────────────────────────────────────────────
     board.running = True
@@ -299,9 +308,10 @@ async def interactive_sim(dut: object) -> None:
     _draw_pct_acc: list[float] = []
     _idle_pct_acc: list[float] = []
 
-    while board.running and not panel.stop_requested and (
-        not _BENCHMARK_MODE
-        or time.monotonic() - _session_start < _BENCHMARK_SECS
+    while (
+        board.running
+        and not panel.stop_requested
+        and (not _BENCHMARK_MODE or time.monotonic() - _session_start < _BENCHMARK_SECS)
     ):
         # ── Sync board height offset when panel rescales after window resize ─────
         if _show_panel:
@@ -347,11 +357,9 @@ async def interactive_sim(dut: object) -> None:
                 board.set_height_offset(_board_offset)
             # Overlay button clicks (checked before panel so they're always active)
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                if (_stop_btn_rect is not None
-                        and _stop_btn_rect.collidepoint(ev.pos)):
+                if _stop_btn_rect is not None and _stop_btn_rect.collidepoint(ev.pos):
                     panel.stop_requested = True
-                elif (_pause_btn_rect is not None
-                        and _pause_btn_rect.collidepoint(ev.pos)):
+                elif _pause_btn_rect is not None and _pause_btn_rect.collidepoint(ev.pos):
                     panel.paused = not panel.paused
             panel.handle_event(ev)
 
@@ -374,16 +382,17 @@ async def interactive_sim(dut: object) -> None:
         # Drawn last so they are never obscured by board or panel.
         _sw, _sh = screen.get_size()
         from ui.constants import get_font as _gf  # noqa: PLC0415
-        _ov_s  = min(_sw / 1024, _sh / 700)
+
+        _ov_s = min(_sw / 1024, _sh / 700)
         _ov_fs = max(10, round(13 * _ov_s))
         _ov_font = _gf(_ov_fs, bold=True)
 
         # ── Info strip (top-left): board | VHDL | simulator ───────────────────
         _info_font = _gf(max(9, round(11 * _ov_s)))
         _info_parts = [p for p in (_board_name, _vhdl_basename, _sim_name) if p]
-        _info_text  = "  |  ".join(_info_parts)
-        _info_surf  = _info_font.render(_info_text, True, (170, 210, 170))
-        _info_bg    = pygame.Surface(
+        _info_text = "  |  ".join(_info_parts)
+        _info_surf = _info_font.render(_info_text, True, (170, 210, 170))
+        _info_bg = pygame.Surface(
             (_info_surf.get_width() + 12, _info_surf.get_height() + 6),
             pygame.SRCALPHA,
         )
@@ -392,9 +401,9 @@ async def interactive_sim(dut: object) -> None:
         screen.blit(_info_surf, (6, 3))
 
         # ── Bottom-right Pause + Stop buttons ─────────────────────────────────
-        _ov_pad_x  = max(8, round(10 * _ov_s))
-        _ov_pad_y  = max(5, round(6 * _ov_s))
-        _ov_gap    = max(6, round(8 * _ov_s))
+        _ov_pad_x = max(8, round(10 * _ov_s))
+        _ov_pad_y = max(5, round(6 * _ov_s))
+        _ov_gap = max(6, round(8 * _ov_s))
         _ov_margin = max(8, round(10 * _ov_s))
 
         # Board area bottom: top of panel when visible, else screen bottom
@@ -402,52 +411,61 @@ async def interactive_sim(dut: object) -> None:
 
         # Pause button text changes when paused
         _pause_label = "[RESUME]" if panel.paused else "[PAUSE]"
-        _pause_surf  = _ov_font.render(_pause_label, True, (255, 220, 80))
-        _pause_bw    = _pause_surf.get_width()  + _ov_pad_x * 2
-        _pause_bh    = _pause_surf.get_height() + _ov_pad_y * 2
+        _pause_surf = _ov_font.render(_pause_label, True, (255, 220, 80))
+        _pause_bw = _pause_surf.get_width() + _ov_pad_x * 2
+        _pause_bh = _pause_surf.get_height() + _ov_pad_y * 2
 
         _stop_surf_ov = _ov_font.render("\u25a0 Stop", True, (240, 100, 100))
-        _stop_bw      = _stop_surf_ov.get_width()  + _ov_pad_x * 2
-        _stop_bh      = _stop_surf_ov.get_height() + _ov_pad_y * 2
+        _stop_bw = _stop_surf_ov.get_width() + _ov_pad_x * 2
+        _stop_bh = _stop_surf_ov.get_height() + _ov_pad_y * 2
 
-        _btn_h  = max(_pause_bh, _stop_bh)
+        _btn_h = max(_pause_bh, _stop_bh)
         _btn_py = _board_bottom - _btn_h - _ov_margin
 
         # Stop button (rightmost)
-        _stop_bx   = _sw - _stop_bw - _ov_margin
+        _stop_bx = _sw - _stop_bw - _ov_margin
         _stop_btn_rect = pygame.Rect(_stop_bx, _btn_py, _stop_bw, _btn_h)
-        _stop_hov  = _stop_btn_rect.collidepoint(pygame.mouse.get_pos())
-        _stop_bg   = (160, 40, 40) if _stop_hov else (110, 28, 28)
+        _stop_hov = _stop_btn_rect.collidepoint(pygame.mouse.get_pos())
+        _stop_bg = (160, 40, 40) if _stop_hov else (110, 28, 28)
         pygame.draw.rect(screen, _stop_bg, _stop_btn_rect, border_radius=5)
         pygame.draw.rect(screen, (220, 90, 90), _stop_btn_rect, 1, border_radius=5)
-        screen.blit(_stop_surf_ov, (
-            _stop_btn_rect.centerx - _stop_surf_ov.get_width() // 2,
-            _stop_btn_rect.centery - _stop_surf_ov.get_height() // 2,
-        ))
+        screen.blit(
+            _stop_surf_ov,
+            (
+                _stop_btn_rect.centerx - _stop_surf_ov.get_width() // 2,
+                _stop_btn_rect.centery - _stop_surf_ov.get_height() // 2,
+            ),
+        )
 
         # Pause button (left of Stop)
-        _pause_bx      = _stop_bx - _ov_gap - _pause_bw
+        _pause_bx = _stop_bx - _ov_gap - _pause_bw
         _pause_btn_rect = pygame.Rect(_pause_bx, _btn_py, _pause_bw, _btn_h)
-        _pause_hov     = _pause_btn_rect.collidepoint(pygame.mouse.get_pos())
+        _pause_hov = _pause_btn_rect.collidepoint(pygame.mouse.get_pos())
         _pause_bg_base = (100, 80, 20) if panel.paused else (20, 60, 110)
-        _pause_bg_hot  = (130, 110, 30) if panel.paused else (30, 80, 140)
-        _pause_bg      = _pause_bg_hot if _pause_hov else _pause_bg_base
-        _pause_border  = (200, 180, 80) if panel.paused else (80, 140, 220)
+        _pause_bg_hot = (130, 110, 30) if panel.paused else (30, 80, 140)
+        _pause_bg = _pause_bg_hot if _pause_hov else _pause_bg_base
+        _pause_border = (200, 180, 80) if panel.paused else (80, 140, 220)
         pygame.draw.rect(screen, _pause_bg, _pause_btn_rect, border_radius=5)
         pygame.draw.rect(screen, _pause_border, _pause_btn_rect, 1, border_radius=5)
-        screen.blit(_pause_surf, (
-            _pause_btn_rect.centerx - _pause_surf.get_width() // 2,
-            _pause_btn_rect.centery - _pause_surf.get_height() // 2,
-        ))
+        screen.blit(
+            _pause_surf,
+            (
+                _pause_btn_rect.centerx - _pause_surf.get_width() // 2,
+                _pause_btn_rect.centery - _pause_surf.get_height() // 2,
+            ),
+        )
 
         # ── "S: stats" hint (bottom-left) when panel is hidden ────────────────
         if not _show_panel:
             _hint_font = _gf(max(9, round(10 * _ov_s)))
             _hint_surf = _hint_font.render("S: stats", True, (110, 160, 110))
-            screen.blit(_hint_surf, (
-                max(6, round(8 * _ov_s)),
-                _sh - _hint_surf.get_height() - max(4, round(5 * _ov_s)),
-            ))
+            screen.blit(
+                _hint_surf,
+                (
+                    max(6, round(8 * _ov_s)),
+                    _sh - _hint_surf.get_height() - max(4, round(5 * _ov_s)),
+                ),
+            )
 
         pygame.display.flip()
         _t_draw_end = time.monotonic_ns()
@@ -456,10 +474,10 @@ async def interactive_sim(dut: object) -> None:
         _t_tick_end = time.monotonic_ns()
 
         # ── Update panel timing display + accumulate session stats ───────────
-        _frame_fps       = board.clock.get_fps()
-        _frame_timer_us  = (_t_timer    - _t0)           / 1_000
-        _frame_draw_us   = (_t_draw_end - _t_draw_start) / 1_000
-        _frame_idle_us   = (_t_tick_end - _t_draw_end)   / 1_000
+        _frame_fps = board.clock.get_fps()
+        _frame_timer_us = (_t_timer - _t0) / 1_000
+        _frame_draw_us = (_t_draw_end - _t_draw_start) / 1_000
+        _frame_idle_us = (_t_tick_end - _t_draw_end) / 1_000
         panel.update_timing(
             fps=_frame_fps,
             timer_us=_frame_timer_us,
@@ -470,8 +488,8 @@ async def interactive_sim(dut: object) -> None:
             _fps_acc.append(_frame_fps)
             _total_frame = max(1.0, _frame_timer_us + _frame_draw_us + _frame_idle_us)
             _ghdl_pct_acc.append(_frame_timer_us / _total_frame * 100)
-            _draw_pct_acc.append(_frame_draw_us  / _total_frame * 100)
-            _idle_pct_acc.append(_frame_idle_us  / _total_frame * 100)
+            _draw_pct_acc.append(_frame_draw_us / _total_frame * 100)
+            _idle_pct_acc.append(_frame_idle_us / _total_frame * 100)
 
         # ── Post metrics (non-blocking; zero cost when metrics disabled) ──────
         if _metrics:
@@ -492,26 +510,26 @@ async def interactive_sim(dut: object) -> None:
     _duration_s = time.monotonic() - _session_start
     if _fps_acc:
         _n = len(_fps_acc)
-        _avg_fps      = sum(_fps_acc)      / _n
+        _avg_fps = sum(_fps_acc) / _n
         _avg_ghdl_pct = sum(_ghdl_pct_acc) / _n
         _avg_draw_pct = sum(_draw_pct_acc) / _n
         _avg_idle_pct = sum(_idle_pct_acc) / _n
         save_session_stats(
-            board_name   = board_def.name if board_def else "Generic",
-            simulator    = os.environ.get("FPGA_SIM_SIMULATOR", "ghdl"),
-            duration_s   = _duration_s,
-            avg_fps      = _avg_fps,
-            sim_time_ns  = panel._sim_elapsed_ns,
-            avg_ghdl_pct = _avg_ghdl_pct,
-            avg_draw_pct = _avg_draw_pct,
-            avg_idle_pct = _avg_idle_pct,
-            clock_hz     = panel.current_clock_hz,
+            board_name=board_def.name if board_def else "Generic",
+            simulator=os.environ.get("FPGA_SIM_SIMULATOR", "ghdl"),
+            duration_s=_duration_s,
+            avg_fps=_avg_fps,
+            sim_time_ns=panel._sim_elapsed_ns,
+            avg_ghdl_pct=_avg_ghdl_pct,
+            avg_draw_pct=_avg_draw_pct,
+            avg_idle_pct=_avg_idle_pct,
+            clock_hz=panel.current_clock_hz,
         )
         if _BENCHMARK_MODE:
             _sim_rate = (panel._sim_elapsed_ns / 1e9) / max(_duration_s, 1e-9)
-            print(f"\n{'='*55}")
+            print(f"\n{'=' * 55}")
             print(f"  Benchmark Report  ({_duration_s:.1f}s wall-clock)")
-            print(f"{'='*55}")
+            print(f"{'=' * 55}")
             print(f"  Board     : {board_def.name if board_def else 'Generic'}")
             print(f"  Simulator : {os.environ.get('FPGA_SIM_SIMULATOR', 'ghdl').upper()}")
             print(f"  Clock     : {panel.current_clock_hz / 1e6:.4g} MHz")
@@ -522,7 +540,7 @@ async def interactive_sim(dut: object) -> None:
             print(f"  GHDL step : {_avg_ghdl_pct:.1f}%")
             print(f"  Draw      : {_avg_draw_pct:.1f}%")
             print(f"  Idle      : {_avg_idle_pct:.1f}%")
-            print(f"{'='*55}\n")
+            print(f"{'=' * 55}\n")
 
     pygame.quit()
     print("Simulation stopped.")

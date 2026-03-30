@@ -19,6 +19,7 @@ from pathlib import Path
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _pct(vals: list[float], p: float) -> float:
     if not vals:
         return 0.0
@@ -28,15 +29,15 @@ def _pct(vals: list[float], p: float) -> float:
 
 def _fmt_us(us: float) -> str:
     if us >= 1_000:
-        return f"{us/1000:.2f} ms"
+        return f"{us / 1000:.2f} ms"
     return f"{us:.1f} µs"
 
 
 def _fmt_hz(hz: float) -> str:
     if hz >= 1e6:
-        return f"{hz/1e6:.4g} MHz"
+        return f"{hz / 1e6:.4g} MHz"
     if hz >= 1e3:
-        return f"{hz/1e3:.4g} kHz"
+        return f"{hz / 1e3:.4g} kHz"
     return f"{hz:.4g} Hz"
 
 
@@ -46,13 +47,14 @@ def _stats_row(label: str, vals: list[float], fmt: str = ".1f") -> None:
         print(f"  {label}: (no data)")
         return
     mean = statistics.mean(vals)
-    med  = statistics.median(vals)
-    p95  = _pct(vals, 0.95)
-    mx   = max(vals)
+    med = statistics.median(vals)
+    p95 = _pct(vals, 0.95)
+    mx = max(vals)
     print(f"  {label:<34}  mean={mean:{fmt}}  p50={med:{fmt}}  p95={p95:{fmt}}  max={mx:{fmt}}")
 
 
 # ── Main analysis ─────────────────────────────────────────────────────────────
+
 
 def _load_meta(csv_path: Path) -> dict:
     """Load the JSON sidecar written by sim_testbench, or return empty dict."""
@@ -85,30 +87,30 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
     # Drop first 5 frames (start-up transient)
     data = rows[5:] if len(rows) > 5 else rows
     n = len(data)
-    print(f"\n{'='*65}")
+    print(f"\n{'=' * 65}")
     print(f"  Simulation Performance Report  ({n} frames from {path.name})")
-    print(f"{'='*65}\n")
+    print(f"{'=' * 65}\n")
 
     # ── Section 0: Run context ────────────────────────────────────────────────
     if meta:
         print("── Run context ─────────────────────────────────────────────────\n")
         _mf = meta.get
-        vhdl    = _mf("vhdl_file", "unknown")
-        top     = _mf("toplevel",  "unknown")
-        sim     = _mf("simulator", "unknown").upper()
-        simver  = _mf("simulator_version", "")
-        board   = _mf("board_name", "Generic")
-        clk_hz  = _mf("board_clock_hz", 0.0)
-        ts      = _mf("timestamp", "")
+        vhdl = _mf("vhdl_file", "unknown")
+        top = _mf("toplevel", "unknown")
+        sim = _mf("simulator", "unknown").upper()
+        simver = _mf("simulator_version", "")
+        board = _mf("board_name", "Generic")
+        clk_hz = _mf("board_clock_hz", 0.0)
+        ts = _mf("timestamp", "")
         generics: dict = _mf("generics", {})
-        cb      = _mf("counter_bits", generics.get("COUNTER_BITS", "?"))
-        pyver   = _mf("python_version", "")
-        plat    = _mf("platform", "")
-        mcs     = _mf("max_cycles_per_step", "?")
-        bsns    = _mf("base_step_ns", "?")
-        nleds   = _mf("num_leds", "?")
-        nsw     = _mf("num_switches", "?")
-        nbtn    = _mf("num_buttons", "?")
+        cb = _mf("counter_bits", generics.get("COUNTER_BITS", "?"))
+        pyver = _mf("python_version", "")
+        plat = _mf("platform", "")
+        mcs = _mf("max_cycles_per_step", "?")
+        bsns = _mf("base_step_ns", "?")
+        nleds = _mf("num_leds", "?")
+        nsw = _mf("num_switches", "?")
+        nbtn = _mf("num_buttons", "?")
 
         print(f"  Design        : {vhdl}  (entity: {top})")
         print(f"  Simulator     : {sim}  {simver}")
@@ -118,11 +120,15 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
         # Generics
         gen_str = "  ".join(f"{k}={v}" for k, v in generics.items()) if generics else "defaults"
         print(f"  Generics      : {gen_str}")
-        print(f"  COUNTER_BITS  : {cb}  "
-              f"(half-period = 2^{int(cb)-1} = {2**(int(cb)-1):,} cycles)")
+        print(
+            f"  COUNTER_BITS  : {cb}  "
+            f"(half-period = 2^{int(cb) - 1} = {2 ** (int(cb) - 1):,} cycles)"
+        )
         print()
-        print(f"  Sim settings  : _BASE_STEP_NS={bsns}  _MAX_CYCLES_PER_STEP={mcs}"
-              f"  speed_default={_mf('speed_factor_default', '?')}×")
+        print(
+            f"  Sim settings  : _BASE_STEP_NS={bsns}  _MAX_CYCLES_PER_STEP={mcs}"
+            f"  speed_default={_mf('speed_factor_default', '?')}×"
+        )
         print(f"  Python        : {pyver}")
         print(f"  Platform      : {plat}")
         if ts:
@@ -143,21 +149,21 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
 
     # ── Section 1: Frame timing breakdown ────────────────────────────────────
     print("── Frame timing breakdown ──────────────────────────────────────\n")
-    _stats_row("Total frame (µs)",    [r["wall_us"]   for r in data], ".1f")
-    _stats_row("  await Timer / GHDL (µs)", [r["timer_us"]  for r in data], ".1f")
-    _stats_row("  draw + flip (µs)",  [r["draw_us"]   for r in data], ".1f")
+    _stats_row("Total frame (µs)", [r["wall_us"] for r in data], ".1f")
+    _stats_row("  await Timer / GHDL (µs)", [r["timer_us"] for r in data], ".1f")
+    _stats_row("  draw + flip (µs)", [r["draw_us"] for r in data], ".1f")
     _stats_row("  clock.tick sleep (µs)", [r["tick_us"] for r in data], ".1f")
 
-    mean_wall  = statistics.mean([r["wall_us"]   for r in data])
-    mean_timer = statistics.mean([r["timer_us"]  for r in data])
-    mean_draw  = statistics.mean([r["draw_us"]   for r in data])
-    mean_tick  = statistics.mean([r["tick_us"]   for r in data])
+    mean_wall = statistics.mean([r["wall_us"] for r in data])
+    mean_timer = statistics.mean([r["timer_us"] for r in data])
+    mean_draw = statistics.mean([r["draw_us"] for r in data])
+    mean_tick = statistics.mean([r["tick_us"] for r in data])
 
     print()
     print("  Frame budget breakdown (mean):")
-    print(f"    GHDL step  : {mean_timer/mean_wall*100:5.1f}%  ({_fmt_us(mean_timer)})")
-    print(f"    Draw/flip  : {mean_draw/mean_wall*100:5.1f}%  ({_fmt_us(mean_draw)})")
-    print(f"    Idle sleep : {mean_tick/mean_wall*100:5.1f}%  ({_fmt_us(mean_tick)})")
+    print(f"    GHDL step  : {mean_timer / mean_wall * 100:5.1f}%  ({_fmt_us(mean_timer)})")
+    print(f"    Draw/flip  : {mean_draw / mean_wall * 100:5.1f}%  ({_fmt_us(mean_draw)})")
+    print(f"    Idle sleep : {mean_tick / mean_wall * 100:5.1f}%  ({_fmt_us(mean_tick)})")
 
     # ── Section 2: Display rate ───────────────────────────────────────────────
     print("\n── Display frame rate ──────────────────────────────────────────\n")
@@ -174,18 +180,18 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
 
     # ── Section 3: GPI performance ────────────────────────────────────────────
     print("\n── GPI callback analysis ───────────────────────────────────────\n")
-    _stats_row("Clock cycles / frame",     [r["clk_per_frame"]     for r in data], ".1f")
-    _stats_row("GPI callbacks / frame",    [r["gpi_cbs_per_frame"] for r in data], ".1f")
-    _stats_row("Estimated µs / GPI call",  [r["gpi_us_per_cb"]     for r in data], ".3f")
+    _stats_row("Clock cycles / frame", [r["clk_per_frame"] for r in data], ".1f")
+    _stats_row("GPI callbacks / frame", [r["gpi_cbs_per_frame"] for r in data], ".1f")
+    _stats_row("Estimated µs / GPI call", [r["gpi_us_per_cb"] for r in data], ".3f")
 
-    mean_gpi_us   = statistics.mean([r["gpi_us_per_cb"]     for r in data])
-    mean_cbs      = statistics.mean([r["gpi_cbs_per_frame"] for r in data])
-    mean_cycles   = statistics.mean([r["clk_per_frame"]     for r in data])
+    mean_gpi_us = statistics.mean([r["gpi_us_per_cb"] for r in data])
+    mean_cbs = statistics.mean([r["gpi_cbs_per_frame"] for r in data])
+    mean_cycles = statistics.mean([r["clk_per_frame"] for r in data])
 
     # How many callbacks fit inside the non-draw, non-sleep frame budget?
-    ghdl_budget_us  = mean_wall - mean_draw  # ignore sleep — it's flexible
-    max_viable_cbs  = (ghdl_budget_us * 0.5) / mean_gpi_us if mean_gpi_us > 0 else 0
-    max_viable_cyc  = max_viable_cbs / 2
+    ghdl_budget_us = mean_wall - mean_draw  # ignore sleep — it's flexible
+    max_viable_cbs = (ghdl_budget_us * 0.5) / mean_gpi_us if mean_gpi_us > 0 else 0
+    max_viable_cyc = max_viable_cbs / 2
 
     print()
     print(f"  Measured GPI cost : {mean_gpi_us:.3f} µs / callback")
@@ -196,26 +202,30 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
     # ── Section 4: Simulation rate ────────────────────────────────────────────
     print("\n── Simulation rate ─────────────────────────────────────────────\n")
     mean_clk_period_ns = statistics.mean([r["clk_period_ns"] for r in data])
-    mean_speed         = statistics.mean([r["speed_factor"]  for r in data])
-    mean_sim_ns_per_s  = statistics.mean([r["sim_ns_per_sec"] for r in data])
+    mean_speed = statistics.mean([r["speed_factor"] for r in data])
+    mean_sim_ns_per_s = statistics.mean([r["sim_ns_per_sec"] for r in data])
     mean_sim_cyc_per_s = mean_sim_ns_per_s / mean_clk_period_ns
-    real_time_frac     = mean_sim_ns_per_s / 1e9
+    real_time_frac = mean_sim_ns_per_s / 1e9
 
     clk_hz = 1e9 / mean_clk_period_ns
     print(f"  Virtual clock     : {_fmt_hz(clk_hz)}")
     print(f"  Speed slider      : {mean_speed:.4g}×")
-    print(f"  Sim time / sec    : {_fmt_us(mean_sim_ns_per_s/1000)} sim")
+    print(f"  Sim time / sec    : {_fmt_us(mean_sim_ns_per_s / 1000)} sim")
     print(f"  Sim cycles / sec  : {mean_sim_cyc_per_s:,.0f}")
-    print(f"  Real-time ratio   : {real_time_frac*100:.5f}%")
+    print(f"  Real-time ratio   : {real_time_frac * 100:.5f}%")
 
     # With COUNTER_BITS=10: MSB of 10-bit counter toggles every 2^9=512 cycles
     blink_hz_cb10 = mean_sim_cyc_per_s / 512
     blink_hz_cb24 = mean_sim_cyc_per_s / (2**23)
     print()
-    print(f"  Blinky LED rate (COUNTER_BITS=10): {blink_hz_cb10:.2f} Hz  "
-          f"({'visible ✓' if 0.3 < blink_hz_cb10 < 25 else 'too fast/slow ✗'})")
-    print(f"  Blinky LED rate (COUNTER_BITS=24): {blink_hz_cb24:.4f} Hz  "
-          f"({'visible ✓' if 0.3 < blink_hz_cb24 < 25 else 'too fast/slow ✗'})")
+    print(
+        f"  Blinky LED rate (COUNTER_BITS=10): {blink_hz_cb10:.2f} Hz  "
+        f"({'visible ✓' if 0.3 < blink_hz_cb10 < 25 else 'too fast/slow ✗'})"
+    )
+    print(
+        f"  Blinky LED rate (COUNTER_BITS=24): {blink_hz_cb24:.4f} Hz  "
+        f"({'visible ✓' if 0.3 < blink_hz_cb24 < 25 else 'too fast/slow ✗'})"
+    )
 
     # ── Section 5: Bottleneck diagnosis + recommendations ────────────────────
     print("\n── Diagnosis & recommendations ─────────────────────────────────\n")
@@ -225,15 +235,14 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
 
     # Read settings from sidecar (if available) to give precise advice
     max_cyc_setting = int(meta.get("max_cycles_per_step", 0))
-    base_step_ns    = int(meta.get("base_step_ns", 2000))
-    counter_bits    = int(meta.get("counter_bits", 10))
+    base_step_ns = int(meta.get("base_step_ns", 2000))
+    counter_bits = int(meta.get("counter_bits", 10))
 
     # Is GHDL the bottleneck (display is slow)?
     ghdl_pct = mean_timer / mean_wall * 100
     if ghdl_pct > 70:
         issues.append(
-            f"GHDL step consumes {ghdl_pct:.0f}% of frame time — "
-            f"display will drop below 60 FPS."
+            f"GHDL step consumes {ghdl_pct:.0f}% of frame time — display will drop below 60 FPS."
         )
         safe_cycles = max(24, int(max_viable_cyc * 0.8))
         suggestions.append(
@@ -246,7 +255,7 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
         # Determine which lever is limiting: the cap, the base step, or both.
         cap_is_active = max_cyc_setting > 0 and mean_cycles >= max_cyc_setting * 0.9
         headroom_pct = mean_tick / mean_wall * 100
-        target_cyc = int(max_viable_cyc * 0.6)   # aim for 60% of the safe maximum
+        target_cyc = int(max_viable_cyc * 0.6)  # aim for 60% of the safe maximum
 
         # Detect co-binding: target_ns (base step at current speed) ≈ cap_ns.
         # Example: 25 MHz board, _BASE_STEP_NS=8000, _MAX_CYCLES_PER_STEP=200 →
@@ -258,9 +267,7 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
         )
         cap_ns = int(max_cyc_setting * mean_clk_period_ns) if max_cyc_setting > 0 else 0
         both_binding = (
-            cap_is_active
-            and cap_ns > 0
-            and abs(effective_base_ns - cap_ns) / max(1, cap_ns) < 0.05
+            cap_is_active and cap_ns > 0 and abs(effective_base_ns - cap_ns) / max(1, cap_ns) < 0.05
         )
 
         target_base_ns = int(target_cyc * mean_clk_period_ns)
@@ -299,8 +306,10 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
     blink_hz_actual = mean_sim_cyc_per_s / (2 ** (counter_bits - 1))
     if counter_bits != 10:  # report already showed CB=10 rates; add actual CB rate
         vis = "visible ✓" if 0.3 < blink_hz_actual < 25 else "too fast/slow ✗"
-        print(f"  Blinky LED rate (current COUNTER_BITS={counter_bits}): "
-              f"{blink_hz_actual:.2f} Hz  ({vis})")
+        print(
+            f"  Blinky LED rate (current COUNTER_BITS={counter_bits}): "
+            f"{blink_hz_actual:.2f} Hz  ({vis})"
+        )
         print()
 
     if not (0.3 < blink_hz_actual < 25):
@@ -325,7 +334,7 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
                 print(f"    → {s}")
             print()
 
-    print(f"{'='*65}\n")
+    print(f"{'=' * 65}\n")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

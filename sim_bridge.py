@@ -23,6 +23,7 @@ IS_WINDOWS = sys.platform == "win32"
 
 # ── Simulator backend classes ─────────────────────────────────────────────────
 
+
 class _GHDLBackend:
     """GHDL simulator backend – uses the VPI interface."""
 
@@ -48,17 +49,18 @@ class _GHDLBackend:
 
     @staticmethod
     def analyze_cmd(vhdl_path: Path, work_dir: str) -> list[str]:
-        return [_GHDLBackend.find(), "-a", "--std=08",
-                f"--workdir={work_dir}", str(vhdl_path)]
+        return [_GHDLBackend.find(), "-a", "--std=08", f"--workdir={work_dir}", str(vhdl_path)]
 
     @staticmethod
     def elaborate_cmd(toplevel: str, work_dir: str) -> list[str]:
-        return [_GHDLBackend.find(), "-e", "--std=08",
-                f"--workdir={work_dir}", toplevel]
+        return [_GHDLBackend.find(), "-e", "--std=08", f"--workdir={work_dir}", toplevel]
 
     @staticmethod
     def run_cmd(
-        toplevel: str, generics: dict[str, str], plugin_lib: str, work_dir: str,
+        toplevel: str,
+        generics: dict[str, str],
+        plugin_lib: str,
+        work_dir: str,
     ) -> list[str]:
         cmd = [_GHDLBackend.find(), "-r", "--std=08", f"--workdir={work_dir}"]
         for k, v in (generics or {}).items():
@@ -105,8 +107,7 @@ class _NVCBackend:
 
     @staticmethod
     def analyze_cmd(vhdl_path: Path, work_dir: str) -> list[str]:
-        return [_NVCBackend.find(), f"--work=work:{work_dir}",
-                "--std=2008", "-a", str(vhdl_path)]
+        return [_NVCBackend.find(), f"--work=work:{work_dir}", "--std=2008", "-a", str(vhdl_path)]
 
     @staticmethod
     def elaborate_cmd(toplevel: str, generics: dict[str, str], work_dir: str) -> list[str]:
@@ -119,8 +120,14 @@ class _NVCBackend:
 
     @staticmethod
     def run_cmd(toplevel: str, plugin_lib: str, work_dir: str) -> list[str]:
-        return [_NVCBackend.find(), f"--work=work:{work_dir}",
-                "--std=2008", "-r", f"--load={plugin_lib}", toplevel]
+        return [
+            _NVCBackend.find(),
+            f"--work=work:{work_dir}",
+            "--std=2008",
+            "-r",
+            f"--load={plugin_lib}",
+            toplevel,
+        ]
 
     @staticmethod
     def sim_bin_lib() -> tuple[str, str]:
@@ -134,6 +141,7 @@ def _backend(simulator: str) -> type[_GHDLBackend] | type[_NVCBackend]:
 
 
 # ── Public discovery ──────────────────────────────────────────────────────────
+
 
 def _find_ghdl() -> str:
     """Locate the ghdl executable (kept for backward compatibility)."""
@@ -156,6 +164,7 @@ def detect_simulators() -> list[str]:
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
 
+
 def _venv_dirs(venv_dir: str | Path) -> tuple[Path, Path, Path]:
     """Return (scripts_dir, site_packages_dir, python_exe) for a venv."""
     venv_dir = Path(venv_dir)
@@ -165,9 +174,12 @@ def _venv_dirs(venv_dir: str | Path) -> tuple[Path, Path, Path]:
         python = scripts / "python.exe"
     else:
         scripts = venv_dir / "bin"
-        site = (venv_dir / "lib"
-                / f"python{sys.version_info.major}.{sys.version_info.minor}"
-                / "site-packages")
+        site = (
+            venv_dir
+            / "lib"
+            / f"python{sys.version_info.major}.{sys.version_info.minor}"
+            / "site-packages"
+        )
         python = scripts / "python"
     return scripts, site, python
 
@@ -176,20 +188,26 @@ def _libpython_name(base_python: str) -> str:
     """Return the path to the Python shared library."""
     try:
         import find_libpython
+
         found = find_libpython.find_libpython()
         if found:
             return found
     except ImportError:
         pass
     if IS_WINDOWS:
-        return str(Path(base_python)
-                   / f"python{sys.version_info.major}{sys.version_info.minor}.dll")
+        return str(
+            Path(base_python) / f"python{sys.version_info.major}{sys.version_info.minor}.dll"
+        )
     else:
-        return str(Path(base_python) / "lib"
-                   / f"libpython{sys.version_info.major}.{sys.version_info.minor}.so")
+        return str(
+            Path(base_python)
+            / "lib"
+            / f"libpython{sys.version_info.major}.{sys.version_info.minor}.so"
+        )
 
 
 # ── VHDL validation (simulator-independent) ───────────────────────────────────
+
 
 def check_vhdl_encoding(path: str | Path) -> tuple[bool, str]:
     """Stage 1: encoding check (no simulator needed).
@@ -232,7 +250,7 @@ def check_vhdl_contract(path: str | Path) -> tuple[bool, str]:
         return False, f"Cannot read file: {e}"
 
     # Check entity name matches filename
-    entities = re.findall(r'entity\s+(\w+)\s+is', text, re.IGNORECASE)
+    entities = re.findall(r"entity\s+(\w+)\s+is", text, re.IGNORECASE)
     if not entities:
         return False, (
             f"No entity declaration found in '{path.name}'.\n"
@@ -248,8 +266,9 @@ def check_vhdl_contract(path: str | Path) -> tuple[bool, str]:
 
     # Check required ports
     required_ports = ["clk", "sw", "btn", "led"]
-    missing_ports = [p for p in required_ports
-                     if not re.search(r'\b' + p + r'\b', text, re.IGNORECASE)]
+    missing_ports = [
+        p for p in required_ports if not re.search(r"\b" + p + r"\b", text, re.IGNORECASE)
+    ]
     if missing_ports:
         return False, (
             f"Missing required port(s) in '{path.name}': {', '.join(missing_ports)}.\n"
@@ -258,8 +277,9 @@ def check_vhdl_contract(path: str | Path) -> tuple[bool, str]:
 
     # Warn (non-fatal) about missing generics
     required_generics = ["NUM_SWITCHES", "NUM_BUTTONS", "NUM_LEDS", "COUNTER_BITS"]
-    missing_generics = [g for g in required_generics
-                        if not re.search(r'\b' + g + r'\b', text, re.IGNORECASE)]
+    missing_generics = [
+        g for g in required_generics if not re.search(r"\b" + g + r"\b", text, re.IGNORECASE)
+    ]
     if missing_generics:
         print(f"[warn] Missing generics (will use VHDL defaults): {', '.join(missing_generics)}")
 
@@ -310,7 +330,9 @@ def analyze_vhdl(
         # Step 1: analyse user's VHDL
         result = subprocess.run(
             be.analyze_cmd(Path(vhdl_path), work_dir),
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if result.returncode != 0:
             return False, result.stderr.strip()
@@ -319,7 +341,9 @@ def analyze_vhdl(
         wrapper_path = _generate_wrapper(toplevel, work_dir)
         result2 = subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir),
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if result2.returncode != 0:
             msg = result2.stderr.strip()
@@ -330,7 +354,9 @@ def analyze_vhdl(
         if simulator == "ghdl":
             elab = subprocess.run(
                 be.elaborate_cmd("sim_wrapper", work_dir),  # type: ignore[call-arg,arg-type]
-                capture_output=True, text=True, timeout=30,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             if elab.returncode != 0:
                 combined = (result2.stderr + elab.stderr).strip()
@@ -339,8 +365,11 @@ def analyze_vhdl(
         return True, work_dir
     except FileNotFoundError:
         if simulator == "ghdl":
-            hint = ("winget install ghdl.ghdl.ucrt64.mcode" if IS_WINDOWS
-                    else "apt install ghdl  OR  brew install ghdl")
+            hint = (
+                "winget install ghdl.ghdl.ucrt64.mcode"
+                if IS_WINDOWS
+                else "apt install ghdl  OR  brew install ghdl"
+            )
             return False, f"GHDL not found. Install: {hint}"
         else:
             hint = "brew install nvc  OR  build from source: https://github.com/nickg/nvc"
@@ -363,7 +392,8 @@ def _build_sim_env(
 
     base_python = subprocess.run(
         [str(venv_python), "-c", "import sys; print(sys.base_exec_prefix)"],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     ).stdout.strip()
 
     be = _backend(simulator)
@@ -375,10 +405,15 @@ def _build_sim_env(
     env = os.environ.copy()
 
     if IS_WINDOWS:
-        extra_path = os.pathsep.join([
-            str(venv_scripts), base_python, str(cocotb_libs),
-            sim_lib, sim_bin,
-        ])
+        extra_path = os.pathsep.join(
+            [
+                str(venv_scripts),
+                base_python,
+                str(cocotb_libs),
+                sim_lib,
+                sim_bin,
+            ]
+        )
         env["PATH"] = extra_path + os.pathsep + env.get("PATH", "")
         env["PYTHONHOME"] = base_python
     else:
@@ -430,19 +465,25 @@ def launch_simulation(
         work_dir = tempfile.mkdtemp(prefix="fpga_sim_run_")
         subprocess.run(
             be.analyze_cmd(vhdl_path, work_dir),
-            env=env, check=True, cwd=work_dir,
+            env=env,
+            check=True,
+            cwd=work_dir,
         )
         wrapper_path = _generate_wrapper(toplevel, work_dir)
         subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir),
-            env=env, check=True, cwd=work_dir,
+            env=env,
+            check=True,
+            cwd=work_dir,
         )
 
     if simulator == "nvc":
         # NVC: elaborate sim_wrapper with generics, then run
         subprocess.run(
             be.elaborate_cmd("sim_wrapper", generics, work_dir),  # type: ignore[call-arg,arg-type]
-            env=env, check=True, cwd=work_dir,
+            env=env,
+            check=True,
+            cwd=work_dir,
         )
         cmd = be.run_cmd("sim_wrapper", plugin_lib, work_dir)  # type: ignore[call-arg,arg-type]
     else:
@@ -450,15 +491,15 @@ def launch_simulation(
         cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir)  # type: ignore[call-arg,arg-type]
 
     env["COCOTB_TEST_MODULES"] = "sim_testbench"
-    env["TOPLEVEL"]            = "sim_wrapper"
-    env["FPGA_SIM_TOPLEVEL"]   = toplevel          # user's entity, for display/metadata
+    env["TOPLEVEL"] = "sim_wrapper"
+    env["FPGA_SIM_TOPLEVEL"] = toplevel  # user's entity, for display/metadata
     env["FPGA_SIM_BOARD_JSON"] = board_json
-    env["FPGA_SIM_WIDTH"]      = str(sim_width)
-    env["FPGA_SIM_HEIGHT"]     = str(sim_height)
+    env["FPGA_SIM_WIDTH"] = str(sim_width)
+    env["FPGA_SIM_HEIGHT"] = str(sim_height)
     # Metadata consumed by sim_testbench when FPGA_SIM_METRICS is set
-    env["FPGA_SIM_SIMULATOR"]  = simulator
-    env["FPGA_SIM_VHDL_PATH"]  = str(vhdl_path)
-    env["FPGA_SIM_GENERICS"]   = json.dumps(generics)
+    env["FPGA_SIM_SIMULATOR"] = simulator
+    env["FPGA_SIM_VHDL_PATH"] = str(vhdl_path)
+    env["FPGA_SIM_GENERICS"] = json.dumps(generics)
 
     print(f"Starting simulation: {toplevel} from {vhdl_path.name} [{simulator.upper()}]")
     result = subprocess.run(cmd, env=env, cwd=work_dir)

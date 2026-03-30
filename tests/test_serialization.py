@@ -1,4 +1,5 @@
 """Tests for BoardDef JSON serialization round-trip."""
+
 import json
 
 import pytest
@@ -17,8 +18,7 @@ def test_board():
         clocks=[100e6],
         default_clock_hz=100e6,
         leds=[ComponentInfo("led", "led", 0, pins=["P1"], attrs={"IO": "LVCMOS"})],
-        buttons=[ComponentInfo("button", "button_up", 0, pins=["B1"],
-                               connector=("pmod", 0))],
+        buttons=[ComponentInfo("button", "button_up", 0, pins=["B1"], connector=("pmod", 0))],
         switches=[ComponentInfo("switch", "switch", 0, pins=["S1"])],
     )
 

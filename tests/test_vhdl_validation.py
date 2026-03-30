@@ -3,6 +3,7 @@
 Covers check_vhdl_encoding(), check_vhdl_contract(), and analyze_vhdl()
 using the good blinky designs and the dedicated bad_*_blinky fixtures.
 """
+
 from pathlib import Path
 
 import pytest
@@ -28,6 +29,7 @@ def ghdl():
 
 # ── Stage 1: encoding ─────────────────────────────────────────────────────────
 
+
 @pytest.mark.parametrize("filename", GOOD_BLINKYS)
 def test_good_blinky_encoding_pass(filename):
     ok, msg = check_vhdl_encoding(HDL / filename)
@@ -52,6 +54,7 @@ def test_bad_semantic_passes_stage1():
 
 # ── Stage 2: contract ─────────────────────────────────────────────────────────
 
+
 @pytest.mark.parametrize("filename", GOOD_BLINKYS)
 def test_good_blinky_contract_pass(filename):
     ok, msg = check_vhdl_contract(HDL / filename)
@@ -71,6 +74,7 @@ def test_bad_semantic_passes_stage2():
 
 # ── Stage 3: GHDL analysis + elaboration ─────────────────────────────────────
 
+
 @pytest.mark.slow
 @pytest.mark.parametrize("filename", GOOD_BLINKYS)
 def test_good_blinky_ghdl_pass(filename, ghdl):
@@ -88,6 +92,7 @@ def test_bad_semantic_fails_stage3(ghdl):
 
 
 # ── Error message quality ─────────────────────────────────────────────────────
+
 
 def test_bad_encoding_error_names_the_bom():
     """The BOM error must tell the user exactly what was detected."""

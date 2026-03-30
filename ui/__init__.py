@@ -14,7 +14,13 @@ from ui.sim_panel import SimPanel
 from ui.vhdl_picker import VHDLFilePicker
 
 __all__ = [
-    "FPGAChip", "LED", "Switch", "Button",
-    "BoardSelector", "FPGABoard", "VHDLFilePicker", "ErrorDialog",
+    "FPGAChip",
+    "LED",
+    "Switch",
+    "Button",
+    "BoardSelector",
+    "FPGABoard",
+    "VHDLFilePicker",
+    "ErrorDialog",
     "SimPanel",
 ]

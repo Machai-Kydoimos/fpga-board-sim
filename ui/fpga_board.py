@@ -114,10 +114,10 @@ class FPGABoard:
         if screen is not None:
             self.screen = screen
             scr_w, scr_h = screen.get_size()
-            self.width  = width  if width  > 0 else scr_w
+            self.width = width if width > 0 else scr_w
             self.height = (height if height > 0 else scr_h) - height_offset
         else:
-            w = width  or 1024
+            w = width or 1024
             h = height or 700
             self.screen = pygame.display.set_mode((w, h), pygame.RESIZABLE)
             self.width, self.height = w, h - height_offset
@@ -255,11 +255,11 @@ class FPGABoard:
     def _layout(self) -> None:
         """Recompute component positions to fit the current window size."""
         w, h = self.width, self.height
-        s              = _ui_scale(self.width, self.height)
-        margin         = max(10, round(20 * s))
-        title_h        = max(14, round(22 * s))
-        label_h        = max(12, round(18 * s))
-        section_pad    = max( 6, round(10 * s))
+        s = _ui_scale(self.width, self.height)
+        margin = max(10, round(20 * s))
+        title_h = max(14, round(22 * s))
+        label_h = max(12, round(18 * s))
+        section_pad = max(6, round(10 * s))
         # Reserve space for footer buttons + VHDL status; none needed when footer hidden
         bottom_reserve = max(65, round(90 * s)) if self._show_footer else max(8, round(10 * s))
 
@@ -305,8 +305,7 @@ class FPGABoard:
             size_w = min(avail_w * 0.70, round(420 * scale), round(size_h * 1.6))
             cx = x0 + avail_w / 2
             cy = y0 + avail_h / 2
-            items[0].rect = pygame.Rect(
-                cx - size_w / 2, cy - size_h / 2, size_w, size_h)
+            items[0].rect = pygame.Rect(cx - size_w / 2, cy - size_h / 2, size_w, size_h)
             return
 
         if kind == "leds":
@@ -346,7 +345,7 @@ class FPGABoard:
     # ── events ───────────────────────────────────────────────────────
 
     def _handle_events(self, events: list | None = None) -> None:
-        for event in (events if events is not None else pygame.event.get()):
+        for event in events if events is not None else pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
 
@@ -365,33 +364,41 @@ class FPGABoard:
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 # Simulator toggle (cycle to next available simulator)
-                if (self._sim_toggle_rect
-                        and self._sim_toggle_rect.collidepoint(event.pos)
-                        and len(self.available_simulators) > 1):
-                    idx = (self.available_simulators.index(self.simulator)
-                           if self.simulator in self.available_simulators else 0)
+                if (
+                    self._sim_toggle_rect
+                    and self._sim_toggle_rect.collidepoint(event.pos)
+                    and len(self.available_simulators) > 1
+                ):
+                    idx = (
+                        self.available_simulators.index(self.simulator)
+                        if self.simulator in self.available_simulators
+                        else 0
+                    )
                     self.simulator = self.available_simulators[
-                        (idx + 1) % len(self.available_simulators)]
+                        (idx + 1) % len(self.available_simulators)
+                    ]
                     return
 
                 # [Select Board] button
-                if (self._select_board_btn_rect
-                        and self._select_board_btn_rect.collidepoint(event.pos)):
+                if self._select_board_btn_rect and self._select_board_btn_rect.collidepoint(
+                    event.pos
+                ):
                     self._go_back = True
                     self.running = False
                     return
 
                 # [Load VHDL File] button
-                if (self._load_vhdl_btn_rect
-                        and self._load_vhdl_btn_rect.collidepoint(event.pos)):
+                if self._load_vhdl_btn_rect and self._load_vhdl_btn_rect.collidepoint(event.pos):
                     self._load_vhdl = True
                     self.running = False
                     return
 
                 # [Start Simulation] button (only active when VHDL is loaded)
-                if (self._sim_btn_rect
-                        and self._sim_btn_rect.collidepoint(event.pos)
-                        and self.vhdl_path is not None):
+                if (
+                    self._sim_btn_rect
+                    and self._sim_btn_rect.collidepoint(event.pos)
+                    and self.vhdl_path is not None
+                ):
                     self._simulate = True
                     self.running = False
                     return
@@ -521,8 +528,9 @@ class FPGABoard:
             sim_fg = (100, 140, 105)
         pygame.draw.rect(self.screen, sim_bg, self._sim_btn_rect, border_radius=6)
         pygame.draw.rect(self.screen, sim_border, self._sim_btn_rect, 2, border_radius=6)
-        self.screen.blit(btn_font.render("Start Simulation", True, sim_fg),
-                         (start_x + 15, btn_y + 7))
+        self.screen.blit(
+            btn_font.render("Start Simulation", True, sim_fg), (start_x + 15, btn_y + 7)
+        )
 
         # [SIM: GHDL/NVC] toggle — left of Start Simulation
         toggle_label = f"SIM: {self.simulator.upper()}"
@@ -541,19 +549,19 @@ class FPGABoard:
         t_border = WHITE if can_toggle else (100, 100, 110)
         pygame.draw.rect(self.screen, t_border, self._sim_toggle_rect, 2, border_radius=6)
         t_fg = WHITE if can_toggle else (140, 140, 150)
-        self.screen.blit(btn_font.render(toggle_label, True, t_fg),
-                         (toggle_x + 12, btn_y + 7))
+        self.screen.blit(btn_font.render(toggle_label, True, t_fg), (toggle_x + 12, btn_y + 7))
 
         # ── VHDL status line (above button row) ───────────────────────────────
         status_f = get_font(max(10, round(13 * s)))
         status_y = btn_y - status_f.get_linesize() - max(4, round(5 * s))
         if self.vhdl_path is not None:
-            status_txt = status_f.render(
-                f"VHDL: {self.vhdl_path.name}", True, (140, 220, 140))
+            status_txt = status_f.render(f"VHDL: {self.vhdl_path.name}", True, (140, 220, 140))
         else:
             status_txt = status_f.render(
                 "No VHDL file loaded  \u2013  use [Load VHDL File] to select one",
-                True, (210, 170, 70))
+                True,
+                (210, 170, 70),
+            )
         self.screen.blit(status_txt, (btn_margin_x, status_y))
 
         if flip:

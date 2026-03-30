@@ -13,6 +13,7 @@ from pathlib import Path
 #  Mock amaranth.build classes (just enough to exec board files)
 # ═══════════════════════════════════════════════════════════════════════
 
+
 class _Attrs(dict):
     def __init__(self, **kwargs: str) -> None:
         super().__init__(**kwargs)
@@ -125,6 +126,7 @@ class _Resource:
 #  Resource helper functions (mirrors amaranth_boards/resources/)
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def _split_resources(
     *args: object,
     pins: str | list | dict,
@@ -143,8 +145,7 @@ def _split_resources(
         ios: list[_Pins | _Attrs] = [_Pins(pin, dir=dir, invert=invert, conn=conn)]
         if attrs is not None:
             ios.append(attrs)
-        resources.append(
-            _Resource.family(*args, number, default_name=default_name, ios=ios))
+        resources.append(_Resource.family(*args, number, default_name=default_name, ios=ios))
     return resources
 
 
@@ -194,71 +195,78 @@ def _stub_multi(*args: object, **kwargs: object) -> list[_Resource]:
 # ═══════════════════════════════════════════════════════════════════════
 
 _PLATFORM_VENDORS: dict[str, str] = {
-    "XilinxPlatform":           "Xilinx",
-    "Xilinx7SeriesPlatform":    "Xilinx",
+    "XilinxPlatform": "Xilinx",
+    "Xilinx7SeriesPlatform": "Xilinx",
     "XilinxUltraScalePlatform": "Xilinx",
-    "IntelPlatform":            "Intel",
-    "LatticeICE40Platform":     "Lattice",
-    "LatticeECP5Platform":      "Lattice",
-    "LatticeMachXO2Platform":   "Lattice",
-    "LatticeMachXO3LPlatform":  "Lattice",
-    "QuicklogicPlatform":       "QuickLogic",
-    "GowinPlatform":            "Gowin",
+    "IntelPlatform": "Intel",
+    "LatticeICE40Platform": "Lattice",
+    "LatticeECP5Platform": "Lattice",
+    "LatticeMachXO2Platform": "Lattice",
+    "LatticeMachXO3LPlatform": "Lattice",
+    "QuicklogicPlatform": "QuickLogic",
+    "GowinPlatform": "Gowin",
 }
 
 
 def _make_namespace() -> dict[str, object]:
     ns: dict[str, object] = {
         # Core build DSL
-        "Resource":     _Resource,
-        "Subsignal":    _Subsignal,
-        "Pins":         _Pins,
-        "PinsN":        _PinsN,
-        "DiffPairs":    _DiffPairs,
-        "Attrs":        _Attrs,
-        "Clock":        _Clock,
-        "Connector":    _Connector,
+        "Resource": _Resource,
+        "Subsignal": _Subsignal,
+        "Pins": _Pins,
+        "PinsN": _PinsN,
+        "DiffPairs": _DiffPairs,
+        "Attrs": _Attrs,
+        "Clock": _Clock,
+        "Connector": _Connector,
         # User resources (the ones we actually parse)
-        "LEDResources":     _led_resources,
-        "RGBLEDResource":   _rgb_led_resource,
-        "ButtonResources":  _button_resources,
-        "SwitchResources":  _switch_resources,
+        "LEDResources": _led_resources,
+        "RGBLEDResource": _rgb_led_resource,
+        "ButtonResources": _button_resources,
+        "SwitchResources": _switch_resources,
         # Display stubs
         "Display7SegResource": _stub_single,
-        "VGAResource":         _stub_single,
+        "VGAResource": _stub_single,
         # Interface stubs
-        "UARTResource":      _stub_single,
-        "IrDAResource":      _stub_single,
-        "SPIResource":       _stub_single,
-        "I2CResource":       _stub_single,
+        "UARTResource": _stub_single,
+        "IrDAResource": _stub_single,
+        "SPIResource": _stub_single,
+        "I2CResource": _stub_single,
         "DirectUSBResource": _stub_single,
-        "ULPIResource":      _stub_single,
-        "PS2Resource":       _stub_single,
+        "ULPIResource": _stub_single,
+        "PS2Resource": _stub_single,
         # Memory stubs
-        "SPIFlashResources":  _stub_multi,
-        "SDCardResources":    _stub_multi,
-        "SRAMResource":       _stub_single,
-        "SDRAMResource":      _stub_single,
-        "NORFlashResources":  _stub_multi,
-        "DDR3Resource":       _stub_single,
+        "SPIFlashResources": _stub_multi,
+        "SDCardResources": _stub_multi,
+        "SRAMResource": _stub_single,
+        "SDRAMResource": _stub_single,
+        "NORFlashResources": _stub_multi,
+        "DDR3Resource": _stub_single,
         # Stdlib modules used by board files
-        "os":         __import__("os"),
+        "os": __import__("os"),
         "subprocess": __import__("subprocess"),
-        "unittest":   __import__("unittest"),
+        "unittest": __import__("unittest"),
         # Prevent __main__ guard from running
-        "__name__":     "_board_loader_exec",
+        "__name__": "_board_loader_exec",
         "__builtins__": __builtins__,
     }
     for name, vendor in _PLATFORM_VENDORS.items():
-        ns[name] = type(name, (), {
-            "resources": [], "connectors": [], "_vendor": vendor,
-        })
+        ns[name] = type(
+            name,
+            (),
+            {
+                "resources": [],
+                "connectors": [],
+                "_vendor": vendor,
+            },
+        )
     return ns
 
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Clock extraction
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def _extract_clocks(resources: list) -> list[float]:
     """Return sorted unique clock frequencies (Hz) from the resource list."""
@@ -288,13 +296,14 @@ def _find_default_clock_hz(resources: list, default_clk: str | None) -> float:
 #  Data classes
 # ═══════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class ComponentInfo:
     """Describes a single LED, button, or switch extracted from a board."""
 
-    kind: str           # "led", "button", or "switch"
-    name: str           # amaranth resource name, e.g. "led", "button_up", "rgb_led"
-    number: int         # resource index
+    kind: str  # "led", "button", or "switch"
+    name: str  # amaranth resource name, e.g. "led", "button_up", "rgb_led"
+    number: int  # resource index
     pins: list[str] = field(default_factory=list)
     direction: str = ""
     inverted: bool = False
@@ -309,7 +318,7 @@ class ComponentInfo:
             return f"{prefixes.get(self.kind, self.kind.upper())}{self.number}"
         suffix = self.name
         if suffix.startswith(self.kind):
-            suffix = suffix[len(self.kind):]
+            suffix = suffix[len(self.kind) :]
         suffix = suffix.lstrip("_")
         if not suffix:
             return f"{prefixes.get(self.kind, self.kind.upper())}{self.number}"
@@ -338,7 +347,7 @@ class BoardDef:
     vendor: str = ""
     device: str = ""
     package: str = ""
-    clocks: list = field(default_factory=list)   # Hz, e.g. [25e6, 100e6]
+    clocks: list = field(default_factory=list)  # Hz, e.g. [25e6, 100e6]
     default_clock_hz: float = _FALLBACK_CLOCK_HZ  # Hz; drives cocotb Clock()
     leds: list = field(default_factory=list)
     buttons: list = field(default_factory=list)
@@ -347,29 +356,36 @@ class BoardDef:
     @property
     def summary(self) -> str:
         """One-line summary of resource counts for display in the UI."""
-        return (f"{len(self.leds)} LEDs, "
-                f"{len(self.buttons)} buttons, "
-                f"{len(self.switches)} switches")
+        return f"{len(self.leds)} LEDs, {len(self.buttons)} buttons, {len(self.switches)} switches"
 
     def to_json(self) -> str:
         """Serialize to JSON for passing to the cocotb subprocess."""
+
         def _comp(c: ComponentInfo) -> dict[str, object]:
             return {
-                "name": c.name, "number": c.number,
-                "pins": c.pins, "direction": c.direction,
+                "name": c.name,
+                "number": c.number,
+                "pins": c.pins,
+                "direction": c.direction,
                 "inverted": c.inverted,
                 "connector": list(c.connector) if c.connector else None,
                 "attrs": c.attrs,
             }
-        return json.dumps({
-            "name": self.name, "class_name": self.class_name,
-            "vendor": self.vendor, "device": self.device,
-            "package": self.package, "clocks": self.clocks,
-            "default_clock_hz": self.default_clock_hz,
-            "leds":    [_comp(c) for c in self.leds],
-            "buttons": [_comp(c) for c in self.buttons],
-            "switches": [_comp(c) for c in self.switches],
-        })
+
+        return json.dumps(
+            {
+                "name": self.name,
+                "class_name": self.class_name,
+                "vendor": self.vendor,
+                "device": self.device,
+                "package": self.package,
+                "clocks": self.clocks,
+                "default_clock_hz": self.default_clock_hz,
+                "leds": [_comp(c) for c in self.leds],
+                "buttons": [_comp(c) for c in self.buttons],
+                "switches": [_comp(c) for c in self.switches],
+            }
+        )
 
     @classmethod
     def from_json(cls, raw: str) -> "BoardDef":
@@ -377,19 +393,27 @@ class BoardDef:
         data = json.loads(raw)
 
         def _make(items: list, kind: str) -> list[ComponentInfo]:
-            return [ComponentInfo(
-                kind=kind,
-                name=c["name"], number=c["number"],
-                pins=c.get("pins", []), direction=c.get("direction", ""),
-                inverted=c.get("inverted", False),
-                connector=tuple(c["connector"]) if c.get("connector") else None,
-                attrs=c.get("attrs", {}),
-            ) for c in items]
+            return [
+                ComponentInfo(
+                    kind=kind,
+                    name=c["name"],
+                    number=c["number"],
+                    pins=c.get("pins", []),
+                    direction=c.get("direction", ""),
+                    inverted=c.get("inverted", False),
+                    connector=tuple(c["connector"]) if c.get("connector") else None,
+                    attrs=c.get("attrs", {}),
+                )
+                for c in items
+            ]
 
         return cls(
-            name=data["name"], class_name=data["class_name"],
-            vendor=data.get("vendor", ""), device=data.get("device", ""),
-            package=data.get("package", ""), clocks=data.get("clocks", []),
+            name=data["name"],
+            class_name=data["class_name"],
+            vendor=data.get("vendor", ""),
+            device=data.get("device", ""),
+            package=data.get("package", ""),
+            clocks=data.get("clocks", []),
             default_clock_hz=data.get("default_clock_hz", _FALLBACK_CLOCK_HZ),
             leds=_make(data.get("leds", []), "led"),
             buttons=_make(data.get("buttons", []), "button"),
@@ -400,6 +424,7 @@ class BoardDef:
 # ═══════════════════════════════════════════════════════════════════════
 #  Extraction helpers
 # ═══════════════════════════════════════════════════════════════════════
+
 
 def _extract_pins(
     resource: _Resource,
@@ -465,6 +490,7 @@ def _prettify_class_name(name: str) -> str:
 #  Public API
 # ═══════════════════════════════════════════════════════════════════════
 
+
 def load_board_from_source(source: str, filename: str = "<string>") -> list[BoardDef]:
     """Parse a single board file's source and return a list of BoardDefs."""
     # Strip import statements – we inject everything via namespace
@@ -516,23 +542,24 @@ def load_board_from_source(source: str, filename: str = "<string>") -> list[Boar
             continue
 
         vendor = next(
-            (getattr(base, "_vendor", "") for base in obj.__mro__
-             if getattr(base, "_vendor", "")),
-            ""
+            (getattr(base, "_vendor", "") for base in obj.__mro__ if getattr(base, "_vendor", "")),
+            "",
         )
         default_clk = getattr(obj, "default_clk", None)
-        boards.append(BoardDef(
-            name=_prettify_class_name(obj_name),
-            class_name=obj_name,
-            vendor=vendor,
-            device=getattr(obj, "device", ""),
-            package=getattr(obj, "package", ""),
-            clocks=_extract_clocks(resources),
-            default_clock_hz=_find_default_clock_hz(resources, default_clk),
-            leds=leds,
-            buttons=buttons,
-            switches=switches,
-        ))
+        boards.append(
+            BoardDef(
+                name=_prettify_class_name(obj_name),
+                class_name=obj_name,
+                vendor=vendor,
+                device=getattr(obj, "device", ""),
+                package=getattr(obj, "package", ""),
+                clocks=_extract_clocks(resources),
+                default_clock_hz=_find_default_clock_hz(resources, default_clk),
+                leds=leds,
+                buttons=buttons,
+                switches=switches,
+            )
+        )
 
     return boards
 

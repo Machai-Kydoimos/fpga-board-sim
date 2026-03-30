@@ -24,14 +24,11 @@ class BoardSelector:
         self.filter_text = ""
 
         if preselect_class:
-            idx = next((i for i, b in enumerate(boards)
-                        if b.class_name == preselect_class), -1)
+            idx = next((i for i, b in enumerate(boards) if b.class_name == preselect_class), -1)
             if idx >= 0:
                 self.hovered = idx
                 viewport_h = self.height - self._hdr
-                self.scroll = max(
-                    0, idx * self.row_h - viewport_h // 2 + self.row_h // 2
-                )
+                self.scroll = max(0, idx * self.row_h - viewport_h // 2 + self.row_h // 2)
 
     @property
     def row_h(self) -> int:
@@ -46,8 +43,7 @@ class BoardSelector:
         if not self.filter_text:
             return self.boards
         ft = self.filter_text.lower()
-        return [b for b in self.boards
-                if ft in b.name.lower() or ft in b.class_name.lower()]
+        return [b for b in self.boards if ft in b.name.lower() or ft in b.class_name.lower()]
 
     def run(self, clock: pygame.time.Clock) -> BoardDef | None:
         """Run the event loop and return the selected BoardDef, or None on quit."""
@@ -104,9 +100,9 @@ class BoardSelector:
     def _draw(self) -> None:
         self.screen.fill(SEL_BG)
         s = _ui_scale(self.width, self.height)
-        title_f  = get_font(max(14, round(22 * s)), bold=True)
-        item_f   = get_font(max(11, round(15 * s)))
-        detail_f = get_font(max( 9, round(11 * s)))
+        title_f = get_font(max(14, round(22 * s)), bold=True)
+        item_f = get_font(max(11, round(15 * s)))
+        detail_f = get_font(max(9, round(11 * s)))
 
         hdr = self._hdr
         filtered = self._filtered()
@@ -115,10 +111,8 @@ class BoardSelector:
             y = hdr + i * self.row_h - self.scroll
             if y + self.row_h < hdr or y > self.height:
                 continue
-            bg = SEL_HOVER if i == self.hovered else (
-                SEL_ROW_A if i % 2 == 0 else SEL_ROW_B)
-            pygame.draw.rect(self.screen, bg,
-                             (10, y, self.width - 20, self.row_h - 2))
+            bg = SEL_HOVER if i == self.hovered else (SEL_ROW_A if i % 2 == 0 else SEL_ROW_B)
+            pygame.draw.rect(self.screen, bg, (10, y, self.width - 20, self.row_h - 2))
             nm = item_f.render(b.name, True, (220, 220, 255))
             self.screen.blit(nm, (20, y + 4))
             sm = detail_f.render(b.summary, True, (150, 150, 150))
@@ -129,12 +123,12 @@ class BoardSelector:
         title = title_f.render("FPGA Simulator \u2014 Select Board", True, WHITE)
         self.screen.blit(title, (20, 12))
 
-        stxt = (f"Filter: {self.filter_text}_"
-                if self.filter_text else "Type to filter boards...")
+        stxt = f"Filter: {self.filter_text}_" if self.filter_text else "Type to filter boards..."
         srch = item_f.render(stxt, True, (180, 180, 180))
         filter_y = 12 + title_f.get_height() + 6
-        pygame.draw.rect(self.screen, (50, 50, 60),
-                         (20, filter_y, self.width - 140, 24), border_radius=3)
+        pygame.draw.rect(
+            self.screen, (50, 50, 60), (20, filter_y, self.width - 140, 24), border_radius=3
+        )
         self.screen.blit(srch, (26, filter_y + 2))
         cnt = detail_f.render(f"{len(filtered)} boards", True, (120, 120, 120))
         self.screen.blit(cnt, (self.width - cnt.get_width() - 20, filter_y + 4))
