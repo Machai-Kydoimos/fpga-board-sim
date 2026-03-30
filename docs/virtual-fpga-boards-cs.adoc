@@ -343,7 +343,7 @@ reagující živě. Žádný hardware není potřeba.
 
 == 8. Simulátor
 
-link:https://github.com/Machai-Kydoimos/simulator[github.com/Machai-Kydoimos/simulator^]
+link:https://github.com/Machai-Kydoimos/fpga-board-sim[github.com/Machai-Kydoimos/fpga-board-sim^]
 
 [.lead]
 Grafické rozhraní pygame přímo propojené s běžící simulací VHDL — 76 definic reálných desek.
@@ -569,7 +569,7 @@ link:https://claude.ai/code[Claude Code^] má systém oprávnění, plánovací 
 .Simulátor a simulace
 [cols="3,4", frame=none, grid=rows]
 |===
-| *Simulátor (tento projekt)*  | link:https://github.com/Machai-Kydoimos/simulator[github.com/Machai-Kydoimos/simulator^]
+| *Simulátor (tento projekt)*  | link:https://github.com/Machai-Kydoimos/fpga-board-sim[github.com/Machai-Kydoimos/fpga-board-sim^]
 | *GHDL*                       | link:https://ghdl.github.io/ghdl/[ghdl.github.io^]
 | *NVC*                        | link:https://www.nickg.me.uk/nvc/[nickg.me.uk/nvc^]
 | *cocotb*                     | link:https://docs.cocotb.org/[docs.cocotb.org^]
@@ -762,8 +762,8 @@ brew install nvc          # macOS
 # Linux: sestavení ze zdrojového kódu — github.com/nickg/nvc
 
 # ── Klonování a nastavení simulátoru ─────────────────────────
-git clone --recurse-submodules https://github.com/Machai-Kydoimos/simulator
-cd simulator
+git clone --recurse-submodules https://github.com/Machai-Kydoimos/fpga-board-sim
+cd fpga-board-sim
 uv sync                   # vytvoří virtuální prostředí, nainstaluje závislosti Pythonu
 
 # ── Spuštění ─────────────────────────────────────────────────

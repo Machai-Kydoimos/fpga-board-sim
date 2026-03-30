@@ -344,7 +344,7 @@ live. No hardware required.
 
 == 8. The Simulator
 
-link:https://github.com/Machai-Kydoimos/simulator[github.com/Machai-Kydoimos/simulator^]
+link:https://github.com/Machai-Kydoimos/fpga-board-sim[github.com/Machai-Kydoimos/fpga-board-sim^]
 
 [.lead]
 A pygame graphical UI wired directly to a running VHDL simulation — 76 real board definitions.
@@ -570,7 +570,7 @@ link:https://claude.ai/code[Claude Code^] has a permission system, plan mode, sa
 .Simulator & simulation
 [cols="3,4", frame=none, grid=rows]
 |===
-| *Simulator (this project)*   | link:https://github.com/Machai-Kydoimos/simulator[github.com/Machai-Kydoimos/simulator^]
+| *Simulator (this project)*   | link:https://github.com/Machai-Kydoimos/fpga-board-sim[github.com/Machai-Kydoimos/fpga-board-sim^]
 | *GHDL*                       | link:https://ghdl.github.io/ghdl/[ghdl.github.io^]
 | *NVC*                        | link:https://www.nickg.me.uk/nvc/[nickg.me.uk/nvc^]
 | *cocotb*                     | link:https://docs.cocotb.org/[docs.cocotb.org^]
@@ -763,8 +763,8 @@ brew install nvc          # macOS
 # Linux: build from source — github.com/nickg/nvc
 
 # ── Clone and set up the simulator ───────────────────────────
-git clone --recurse-submodules https://github.com/Machai-Kydoimos/simulator
-cd simulator
+git clone --recurse-submodules https://github.com/Machai-Kydoimos/fpga-board-sim
+cd fpga-board-sim
 uv sync                   # creates venv, installs Python deps
 
 # ── Run ──────────────────────────────────────────────────────
