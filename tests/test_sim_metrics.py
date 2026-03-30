@@ -4,8 +4,7 @@ import time
 
 import pytest
 
-from sim_metrics import SimMetrics, _FIELDS
-
+from sim_metrics import _FIELDS, SimMetrics
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
