@@ -349,6 +349,11 @@ At least one of GHDL or NVC must be installed. Both can coexist; the active simu
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, quality
 standards, type annotation conventions, and architecture notes for contributors.
 
+## Talks & Presentations
+
+- **Virtual FPGA Boards** — InstallFest 2026
+  [📹 Watch on YouTube](https://youtu.be/v4Fc6HctK1E) · [📄 Slide source (AsciiDoc)](https://raw.githubusercontent.com/Machai-Kydoimos/fpga-board-sim/main/docs/virtual-fpga-boards.adoc)
+
 ## Acknowledgements
 
 This simulator was inspired by these working examples of interactive virtual FPGA boards:
