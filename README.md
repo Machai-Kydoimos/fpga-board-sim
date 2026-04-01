@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Machai-Kydoimos/fpga-board-sim/actions/workflows/ci.yml/badge.svg)](https://github.com/Machai-Kydoimos/fpga-board-sim/actions/workflows/ci.yml)
 
-Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://github.com/ghdl/ghdl) or [NVC](https://github.com/nickg/nvc). Select from 76 real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards)), then run VHDL designs against a virtual board with switches, buttons, and LEDs — all driven by [cocotb](https://github.com/cocotb/cocotb).
+Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://github.com/ghdl/ghdl) or [NVC](https://github.com/nickg/nvc). Select from 75+ real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards)), then run VHDL designs against a virtual board with switches, buttons, and LEDs — all driven by [cocotb](https://github.com/cocotb/cocotb).
 
 ## Quick Start
 
@@ -49,22 +49,41 @@ brew install ghdl
 
 #### NVC
 
-NVC is not in the standard Linux package repositories yet.  Install via Homebrew or build from source:
-
 **macOS / Linux (Homebrew):**
 ```bash
 brew install nvc
 ```
 
-**Linux (from source):**
+**Arch Linux (AUR):**
 ```bash
-# Install build dependencies (Debian/Ubuntu):
+yay -S nvc   # or your preferred AUR helper
+```
+
+**Gentoo:**
+```bash
+sudo emerge sci-electronics/nvc
+```
+
+**FreeBSD:**
+```bash
+sudo pkg install nvc
+```
+
+**Linux (from source — Debian/Ubuntu):**
+```bash
+# Install build dependencies:
 sudo apt install build-essential automake autoconf flex check \
-  llvm-dev pkg-config zlib1g-dev libdw-dev
+  llvm-dev pkg-config zlib1g-dev libdw-dev libffi-dev libzstd-dev
 
 git clone https://github.com/nickg/nvc && cd nvc
 ./autogen.sh && mkdir build && cd build
 ../configure && make -j$(nproc) && sudo make install
+```
+
+**Linux (from source — Fedora/RHEL):**
+```bash
+sudo dnf install autoconf automake flex check llvm-devel \
+  libffi-devel zlib-ng-compat-devel libzstd-devel elfutils-devel
 ```
 
 See the [NVC build guide](https://github.com/nickg/nvc#building-from-source) for full instructions.
@@ -103,7 +122,7 @@ uv run fpga-sim
 
 ### 1. Select a board
 
-A list of 76 FPGA boards appears. Type to filter, click to select.
+A list of 75+ FPGA boards appears. Type to filter, click to select.
 
 ### 2. Preview the board
 
@@ -190,7 +209,7 @@ pyproject.toml             Project metadata and dependencies
 
 ### Board Loading (`board_loader.py`)
 
-The amaranth-boards project defines 76 FPGA boards as Python classes, each with a `resources` list describing LEDs, switches, buttons, clocks, and other peripherals using amaranth's build DSL (`Resource`, `Pins`, `Attrs`, etc.).
+The amaranth-boards project defines 75+ FPGA boards as Python classes, each with a `resources` list describing LEDs, switches, buttons, clocks, and other peripherals using amaranth's build DSL (`Resource`, `Pins`, `Attrs`, etc.).
 
 Rather than requiring the full amaranth toolchain as a dependency, `board_loader.py` provides **lightweight mock classes** that mimic just enough of the amaranth API to execute board definition files. It:
 
@@ -272,7 +291,7 @@ A simple but complete VHDL design that exercises all board I/O:
 - **LED logic**: `led(i) = sw(i) XOR counter(top-i) OR btn(i)`
   - Switches XOR with counter bits → LEDs blink at different rates depending on which switches are on
   - Buttons OR directly → LEDs light immediately while held
-- **Generics**: `NUM_SWITCHES`, `NUM_BUTTONS`, `NUM_LEDS`, `COUNTER_BITS` are set by the simulator to match the selected board. `COUNTER_BITS=17` keeps the blink rate visible at typical board clock frequencies (a 100 MHz board with a 17-bit counter blinks the MSB at ~763 Hz, well within the visible range).
+- **Generics**: `NUM_SWITCHES`, `NUM_BUTTONS`, `NUM_LEDS`, `COUNTER_BITS` are set by the simulator to match the selected board. `COUNTER_BITS` is chosen so the MSB toggle rate produces clearly visible blinking at the simulator's actual throughput — the simulation always runs slower than real time, so a smaller counter is needed compared to what you would use on real hardware.
 
 ### Simulator Backends (`sim_bridge.py`)
 
@@ -285,6 +304,8 @@ A simple but complete VHDL design that exercises all board I/O:
 | Work dir | `--workdir=PATH` | `--work=work:PATH` |
 | VHDL standard | `--std=08` | `--std=2008` |
 | Generics at | `-r` (run time) | `-e` (elaboration) |
+
+> **Interface note:** GHDL supports both VPI (complete) and a partial VHPI (library loading and tracing only; signal read/write is not implemented in GHDL's VHPI). We use GHDL's **VPI** interface because it is complete and production-ready for cocotb integration. NVC provides a comprehensive VHPI implementation covering handle management, signal read/write, callbacks, type introspection, and simulation control — and has **no VPI support at all**. We use NVC's **VHPI** interface accordingly. GHDL additionally supports `--std=19` (VHDL-2019) for analysis; the wrapper here uses `--std=08`.
 
 Because NVC requires generics at elaboration time, `analyze_vhdl()` performs only the `-a` step for NVC; `launch_simulation()` performs `-e` (with board generics) followed by `-r`.
 
@@ -337,12 +358,14 @@ The simulator sets the generics to match the selected board's resource counts an
 | Tool | Version | Purpose |
 |------|---------|---------|
 | Python | 3.10+ | Runtime (must be standalone, not Windows Store) |
-| pygame | 2.5+ | GUI rendering |
+| pygame | 2.6+ | GUI rendering |
 | cocotb | 2.0+ | Python ↔ simulator bridge (VPI/VHPI) |
-| GHDL | 5.0+ | VHDL compilation and simulation (mcode backend) |
-| NVC | 1.11.0+ | Alternative VHDL simulator (LLVM native code; recommended ≥ 1.16.0) |
+| GHDL | 6.0+ | VHDL compilation and simulation (mcode backend) |
+| NVC | 1.11.0+ | Alternative VHDL simulator (LLVM native code; recommended ≥ 1.19.0) |
 
 At least one of GHDL or NVC must be installed. Both can coexist; the active simulator is selected via the UI toggle or `--sim` flag.
+
+> **pygame-ce:** [pygame-ce](https://github.com/pygame-community/pygame-ce) (community edition) is an actively maintained fork that uses the identical `import pygame` API. It cannot coexist with standard `pygame` in the same environment — you must uninstall one before installing the other. It has not been tested with this project, but should work as a drop-in replacement.
 
 ## Contributing
 
