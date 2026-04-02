@@ -10,7 +10,9 @@ Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://g
 
 - **Python 3.10+**
 - **[uv](https://docs.astral.sh/uv/)** (Python package manager)
-- **GHDL** and/or **NVC** (VHDL simulators — at least one required)
+  - Windows: `winget install --id=astral-sh.uv -e`
+  - macOS/Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- **GHDL** and/or **NVC** (VHDL simulators — at least one required; on Windows, GHDL only)
 
 ### Clone the repository
 
@@ -19,7 +21,12 @@ git clone --recurse-submodules https://github.com/Machai-Kydoimos/fpga-board-sim
 cd fpga-board-sim
 ```
 
-> If you already cloned without `--recurse-submodules`, run `git submodule update --init` to populate the `amaranth-boards/` directory.
+> **Required:** the `amaranth-boards/` submodule must be populated before running the app or tests.
+> Verify with `git submodule status` — each line should start with a commit hash, not `-`.
+> If any line starts with `-`, run:
+> ```bash
+> git submodule update --init
+> ```
 
 ### Install a VHDL simulator
 
@@ -48,6 +55,11 @@ brew install ghdl
 ```
 
 #### NVC
+
+**Windows:**
+NVC has no standard Windows package manager install. Check the
+[NVC GitHub releases](https://github.com/nickg/nvc/releases) for any available
+Windows builds. GHDL is the recommended and tested simulator on Windows.
 
 **macOS / Linux (Homebrew):**
 ```bash
@@ -110,13 +122,13 @@ uv run fpga-sim --benchmark 10
 uv run fpga-sim --benchmark 10 --board ArtyA7_35Platform --vhdl hdl/blinky.vhd
 ```
 
-**Windows:**
+**Windows** (PowerShell required — does not work in Command Prompt):
 ```powershell
-# Ensure GHDL is on PATH (if not already after install)
-$env:PATH = "C:\Users\$env:USERNAME\AppData\Local\Microsoft\WinGet\Packages\ghdl.ghdl.ucrt64.mcode_Microsoft.Winget.Source_8wekyb3d8bbwe\bin;$env:PATH"
-
-uv run fpga-sim
+uv run fpga-sim          # GHDL only; NVC is not available on Windows
 ```
+
+> GHDL must be on your `PATH`. If the command above fails with "ghdl not found",
+> see [Windows: GHDL not on PATH](#windows-ghdl-not-on-path-after-winget-install) below.
 
 ## Usage
 
@@ -299,7 +311,7 @@ A simple but complete VHDL design that exercises all board I/O:
 
 | | `_GHDLBackend` | `_NVCBackend` |
 |---|---|---|
-| Interface | VPI (`libcocotbvpi_ghdl.so`) | VHPI (`libcocotbvhpi_nvc.so`) |
+| Interface | VPI (`libcocotbvpi_ghdl.so` / `.dll` on Windows) | VHPI (`libcocotbvhpi_nvc.so`) |
 | Plugin flag | `--vpi=<lib>` on `-r` | `--load=<lib>` on `-r` |
 | Work dir | `--workdir=PATH` | `--work=work:PATH` |
 | VHDL standard | `--std=08` | `--std=2008` |
@@ -322,11 +334,13 @@ Because NVC requires generics at elaboration time, `analyze_vhdl()` performs onl
 uv run pytest
 ```
 
-**Windows:**
+**Windows** (PowerShell required):
 ```powershell
-$env:PATH = "C:\Users\$env:USERNAME\AppData\Local\Microsoft\WinGet\Packages\ghdl.ghdl.ucrt64.mcode_Microsoft.Winget.Source_8wekyb3d8bbwe\bin;$env:PATH"
 uv run pytest
 ```
+
+> GHDL must be on your `PATH`. If tests fail with "ghdl not found",
+> see [Windows: GHDL not on PATH](#windows-ghdl-not-on-path-after-winget-install) below.
 
 Tests cover board loading, JSON serialization, GHDL/NVC analysis, and cocotb simulation — no display needed.
 
@@ -361,11 +375,69 @@ The simulator sets the generics to match the selected board's resource counts an
 | pygame | 2.6+ | GUI rendering |
 | cocotb | 2.0+ | Python ↔ simulator bridge (VPI/VHPI) |
 | GHDL | 6.0+ | VHDL compilation and simulation (mcode backend) |
-| NVC | 1.11.0+ | Alternative VHDL simulator (LLVM native code; recommended ≥ 1.19.0) |
+| NVC | 1.11.0+ | Alternative VHDL simulator (LLVM native code; recommended ≥ 1.19.0; Linux/macOS only) |
 
-At least one of GHDL or NVC must be installed. Both can coexist; the active simulator is selected via the UI toggle or `--sim` flag.
+At least one of GHDL or NVC must be installed. Both can coexist; the active simulator is selected via the UI toggle or `--sim` flag. On Windows, only GHDL is supported.
 
 > **pygame-ce:** [pygame-ce](https://github.com/pygame-community/pygame-ce) (community edition) is an actively maintained fork that uses the identical `import pygame` API. It cannot coexist with standard `pygame` in the same environment — you must uninstall one before installing the other. It has not been tested with this project, but should work as a drop-in replacement.
+
+## Troubleshooting
+
+### Submodule not initialized
+
+If you cloned without `--recurse-submodules`, board-loader tests fail immediately:
+
+```
+AssertionError: Boards path not found: .../amaranth-boards/amaranth_boards
+```
+
+Fix: `git submodule update --init`
+
+### Windows: Python DLL not found (`hon313.dll` / `python313.dll`)
+
+If `test_cocotb_simulation_passes` fails with:
+
+```
+Unable to open lib hon313.dll: The specified module could not be found.
+```
+
+GHDL cannot locate the Python shared library. `sim_bridge.py` auto-detects it via
+`cocotb-config --libpython` on Windows, so this should not occur on current checkouts.
+If you see it on an older checkout, set the path manually before running:
+
+```powershell
+$env:LIBPYTHON_LOC = (uv run cocotb-config --libpython)
+uv run pytest
+```
+
+### Windows: GHDL not on PATH after `winget install`
+
+**Step 1 — open a new PowerShell window.** `winget` updates the system PATH but the
+change is not visible to terminals that were already open.
+
+**Step 2 — if GHDL is still not found**, add it to your PATH permanently:
+
+1. Press **Win + R**, type `sysdm.cpl`, and press Enter.
+2. Go to **Advanced → Environment Variables**.
+3. Under *User variables*, select **Path** and click **Edit → New**.
+4. Paste the path shown by `where.exe ghdl` (or the `bin` directory from the winget
+   package, typically inside
+   `%LOCALAPPDATA%\Microsoft\WinGet\Packages\ghdl.ghdl.ucrt64.mcode_…\bin`).
+5. Click OK, then open a new PowerShell window.
+
+**For a single session only** (no registry change):
+
+```powershell
+$env:PATH = "C:\Users\$env:USERNAME\AppData\Local\Microsoft\WinGet\Packages\ghdl.ghdl.ucrt64.mcode_Microsoft.Winget.Source_8wekyb3d8bbwe\bin;$env:PATH"
+```
+
+**If `winget install ghdl.ghdl.ucrt64.mcode` is unavailable** (the package's presence
+in the Microsoft winget repository is not guaranteed), install via
+[MSYS2](https://www.msys2.org/) instead — open an **MSYS2 UCRT64** shell and run:
+
+```bash
+pacman -S mingw-w64-ucrt-x86_64-ghdl
+```
 
 ## Contributing
 

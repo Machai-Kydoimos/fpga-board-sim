@@ -22,6 +22,18 @@ uv run pre-commit install
 > The `uv sync` in the README installs runtime dependencies only.
 > `uv sync --group dev` is required for the quality tooling.
 
+### Windows notes for contributors
+
+- Use **PowerShell** (not Command Prompt) for all commands.
+- Install uv with `winget install --id=astral-sh.uv -e` if you haven't already.
+- GHDL must be on your `PATH` before running the test suite — see the
+  [Troubleshooting section in README.md](README.md#windows-ghdl-not-on-path-after-winget-install).
+- **NVC is not available on Windows.** NVC-related tests skip automatically
+  (`SKIPPED (NVC is not installed)`) — this is expected and does not block a merge.
+- `sim_bridge.py` owns all Windows-specific environment setup (PATH, PYTHONHOME, DLL
+  discovery). If you add simulator support or change how the subprocess env is built,
+  test it on Windows or note the gap in your PR.
+
 ---
 
 ## Running quality checks
@@ -41,6 +53,9 @@ Running all four at once:
 ```bash
 uv run ruff check . && uv run mypy . && uv run pytest
 ```
+
+> **Windows / PowerShell 5.1:** `&&` is not supported. Run each command separately,
+> or upgrade to [PowerShell 7+](https://aka.ms/powershell) where `&&` works.
 
 ---
 
@@ -146,7 +161,7 @@ setup.  A few things that matter for contributors:
 - **`tests/` has an `__init__.py`**; `sim/` does not.  This matters if
   you add a mypy override — use `"tests.*"` for `tests/` and the bare
   module name `"test_blinky"` for `sim/test_blinky.py`.
-- The test suite must stay at **153/153 passed** before merge.
+- The test suite must stay at **195/195 passed** before merge.
 
 ---
 

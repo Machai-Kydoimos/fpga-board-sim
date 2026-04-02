@@ -206,6 +206,35 @@ def _libpython_name(base_python: str) -> str:
         )
 
 
+def _libpython_via_config(venv_scripts: Path) -> str:
+    """Use cocotb-config --libpython to find the Python DLL on Windows.
+
+    ``find_libpython`` may not locate the DLL when Python is installed via
+    uv's standalone cache rather than a system installation.  The
+    ``cocotb-config`` script, installed into the venv alongside cocotb,
+    performs its own resolution and reliably returns the correct path.
+
+    Returns an empty string if the script is absent, times out, or returns
+    a path that does not exist on disk.
+    """
+    script = venv_scripts / "cocotb-config.exe"
+    if not script.exists():
+        return ""
+    try:
+        result = subprocess.run(
+            [str(script), "--libpython"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        path = result.stdout.strip()
+        if result.returncode == 0 and path and Path(path).exists():
+            return path
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return ""
+
+
 # ── VHDL validation (simulator-independent) ───────────────────────────────────
 
 
@@ -424,7 +453,13 @@ def _build_sim_env(
 
     env["PYTHONPATH"] = os.pathsep.join([project_dir, str(venv_site)])
     env["PYGPI_PYTHON_BIN"] = str(venv_python)
-    env["PYGPI_PYTHON_LIB"] = _libpython_name(base_python)
+    # On Windows, cocotb-config --libpython resolves the DLL path more reliably
+    # than find_libpython when Python is installed via uv's standalone cache.
+    if IS_WINDOWS:
+        libpython = _libpython_via_config(venv_scripts) or _libpython_name(base_python)
+    else:
+        libpython = _libpython_name(base_python)
+    env["PYGPI_PYTHON_LIB"] = libpython
     env["TOPLEVEL_LANG"] = "vhdl"
 
     return env, plugin_lib
