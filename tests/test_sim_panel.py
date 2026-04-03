@@ -28,7 +28,7 @@ def dummy_screen(headless_pygame):
 
 
 def _make_panel(dummy_screen, clock_hz=100e6, clocks_hz=None):
-    from ui.sim_panel import SimPanel
+    from fpga_sim.ui.sim_panel import SimPanel
 
     return SimPanel(dummy_screen, height=120, board_clock_hz=clock_hz, board_clocks_hz=clocks_hz)
 
@@ -38,7 +38,7 @@ def _make_panel(dummy_screen, clock_hz=100e6, clocks_hz=None):
 
 def test_default_clock_options_are_presets(dummy_screen):
     """Without board_clocks_hz, the panel uses the built-in preset list."""
-    from ui.sim_panel import _CLOCK_PRESETS_HZ
+    from fpga_sim.ui.sim_panel import _CLOCK_PRESETS_HZ
 
     panel = _make_panel(dummy_screen, clock_hz=100e6, clocks_hz=None)
     assert panel._clock_options == _CLOCK_PRESETS_HZ
@@ -92,7 +92,7 @@ def test_rolling_average_converges(dummy_screen):
 
 def test_panel_height_scales_with_window(headless_pygame):
     """panel_height must grow proportionally when the window is enlarged."""
-    from ui.sim_panel import _PANEL_H_BASE, SimPanel
+    from fpga_sim.ui.sim_panel import _PANEL_H_BASE, SimPanel
 
     small = headless_pygame.display.set_mode((1024, 700))
     panel_small = SimPanel(small, height=_PANEL_H_BASE, board_clock_hz=100e6)
@@ -107,7 +107,7 @@ def test_panel_height_scales_with_window(headless_pygame):
 
 def test_panel_height_updates_after_resize(headless_pygame):
     """panel_height must reflect the current screen size, not the startup size."""
-    from ui.sim_panel import _PANEL_H_BASE, SimPanel
+    from fpga_sim.ui.sim_panel import _PANEL_H_BASE, SimPanel
 
     screen = headless_pygame.display.set_mode((1024, 700))
     panel = SimPanel(screen, height=_PANEL_H_BASE, board_clock_hz=100e6)
@@ -154,8 +154,8 @@ def test_window_drops_oldest_sample(dummy_screen):
 
 # ── FPGABoard.set_height_offset() ─────────────────────────────────────────────
 
-from board_loader import BoardDef, ComponentInfo  # noqa: E402
-from ui import FPGABoard  # noqa: E402
+from fpga_sim.board_loader import BoardDef, ComponentInfo  # noqa: E402
+from fpga_sim.ui import FPGABoard  # noqa: E402
 
 
 def _sample_board():
@@ -209,7 +209,7 @@ def test_low_frequency_period_ns(dummy_screen):
 
 def test_initial_speed_factor_is_default(dummy_screen):
     """speed_factor must start at _SPEED_DEFAULT (0.1×) on a fresh panel."""
-    from ui.sim_panel import _SPEED_DEFAULT
+    from fpga_sim.ui.sim_panel import _SPEED_DEFAULT
 
     panel = _make_panel(dummy_screen, clock_hz=100e6)
     assert panel.speed_factor == pytest.approx(_SPEED_DEFAULT)

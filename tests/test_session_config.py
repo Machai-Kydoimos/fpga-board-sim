@@ -4,14 +4,14 @@ import json
 
 import pytest
 
-from session_config import load_session, save_session
+from fpga_sim.session_config import load_session, save_session
 
 
 @pytest.fixture
 def session_file(tmp_path, monkeypatch):
     """Redirect SESSION_FILE to a temp location for every test."""
     target = tmp_path / ".fpga_simulator" / "session.json"
-    monkeypatch.setattr("session_config.SESSION_FILE", target)
+    monkeypatch.setattr("fpga_sim.session_config.SESSION_FILE", target)
     return target
 
 
@@ -126,7 +126,7 @@ def test_save_session_does_not_raise_on_oserror(tmp_path, monkeypatch):
     import pathlib
 
     target = tmp_path / ".fpga_simulator" / "session.json"
-    monkeypatch.setattr("session_config.SESSION_FILE", target)
+    monkeypatch.setattr("fpga_sim.session_config.SESSION_FILE", target)
 
     def _raise(self, *args, **kwargs):
         raise OSError("simulated disk full")

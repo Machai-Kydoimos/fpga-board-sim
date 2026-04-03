@@ -2,7 +2,7 @@
 
 import pygame
 
-from ui.constants import SEL_BG, WHITE, _ui_scale, get_font
+from fpga_sim.ui.constants import SEL_BG, WHITE, _ui_scale, get_font
 
 
 class ErrorDialog:

@@ -22,7 +22,7 @@ from collections import deque
 
 import pygame
 
-from ui.constants import DARK_GRAY, GRAY, WHITE, YELLOW, _ui_scale, get_font
+from fpga_sim.ui.constants import DARK_GRAY, GRAY, WHITE, YELLOW, _ui_scale, get_font
 
 # ── Panel height base (pixels at 1.0 scale; actual height scales with window) ─
 

@@ -18,7 +18,8 @@ uv sync --group dev
 
 ### Run the simulator
 ```bash
-uv run python fpga_board.py
+uv run fpga-sim
+# or: uv run python -m fpga_sim
 ```
 
 ### Run tests (no display needed)
@@ -36,10 +37,12 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 
 | File | Role |
 |------|------|
-| `fpga_board.py` | Main entry point; pygame UI with four screens |
-| `board_loader.py` | Parses amaranth-boards `.py` files using mock classes |
-| `sim_bridge.py` | GHDL analysis + simulation launcher; platform-specific VPI env setup |
-| `sim_testbench.py` | cocotb test that runs pygame inside the GHDL simulation |
+| `src/fpga_sim/__main__.py` | Main entry point; pygame UI with four screens |
+| `src/fpga_sim/board_loader.py` | Parses amaranth-boards `.py` files using mock classes |
+| `src/fpga_sim/sim_bridge.py` | GHDL analysis + simulation launcher; platform-specific VPI env setup |
+| `src/fpga_sim/ui/` | pygame UI package (board_selector, board_display, components, etc.) |
+| `sim/sim_testbench.py` | cocotb test that runs pygame inside the GHDL simulation |
+| `sim/sim_wrapper_template.vhd` | VHDL wrapper template; drives clock internally |
 | `hdl/blinky.vhd` | Example VHDL design (use as template for the expected port interface) |
 | `tests/` | pytest integration test suite |
 | `sim/test_blinky.py` | Headless cocotb tests for the blinky design |
@@ -47,15 +50,15 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 
 ### Data Flow
 
-1. `board_loader.py` strips `import` statements from amaranth-boards `.py` files, executes them in a mock namespace, and extracts `BoardDef` objects (containing `ComponentInfo` lists for LEDs, buttons, switches).
+1. `src/fpga_sim/board_loader.py` strips `import` statements from amaranth-boards `.py` files, executes them in a mock namespace, and extracts `BoardDef` objects (containing `ComponentInfo` lists for LEDs, buttons, switches).
 
-2. `fpga_board.py` displays four sequential screens: `BoardSelector` → `FPGABoard` (preview) → `VHDLFilePicker` → simulation start.
+2. `src/fpga_sim/__main__.py` displays four sequential screens: `BoardSelector` → `FPGABoard` (preview) → `VHDLFilePicker` → simulation start.
 
-3. When simulation starts, `fpga_board.py` calls `pygame.quit()`, serializes the `BoardDef` to JSON, and calls `launch_simulation()` in `sim_bridge.py`.
+3. When simulation starts, `__main__.py` calls `pygame.quit()`, serializes the `BoardDef` to JSON, and calls `launch_simulation()` in `src/fpga_sim/sim_bridge.py`.
 
-4. `sim_bridge.py` builds a platform-aware environment (PATH, LD_LIBRARY_PATH/PYTHONHOME, VPI paths) and runs `ghdl -r ... --vpi=cocotbvpi_ghdl.so`. The board JSON is passed via the `FPGA_SIM_BOARD_JSON` env var.
+4. `sim_bridge.py` builds a platform-aware environment (PATH, LD_LIBRARY_PATH/PYTHONHOME, VPI paths) and runs `ghdl -r ... --vpi=cocotbvpi_ghdl.so`. The board JSON is passed via the `FPGA_SIM_BOARD_JSON` env var. Both `src/` and `sim/` are added to `PYTHONPATH` so the subprocess can import `fpga_sim` and find `sim_testbench`.
 
-5. `sim_testbench.py` is loaded by cocotb inside GHDL. It deserializes the `BoardDef`, creates a new `FPGABoard` (pygame), and runs a cooperative loop: `await Timer(2, "us")` advances GHDL simulation, then the test reads `dut.led.value`, updates the display, and processes pygame events.
+5. `sim/sim_testbench.py` is loaded by cocotb inside GHDL. It deserializes the `BoardDef`, creates a new `FPGABoard` (pygame), and runs a cooperative loop: `await Timer(2, "us")` advances GHDL simulation, then the test reads `dut.led.value`, updates the display, and processes pygame events.
 
 ### VHDL Design Contract
 
@@ -88,4 +91,4 @@ The simulator sets generics to match the selected board's resource counts and pr
 
 ### Board Loader Mock Namespace
 
-`board_loader._make_namespace()` provides mock classes (`Resource`, `Subsignal`, `Pins`, `PinsN`, `DiffPairs`, `Attrs`, `Clock`, `Connector`) and stubs for interfaces/memory (UART, SPI, I2C, SDRAM, etc.) that are not simulated. Only resources whose names contain `led`, `button`, `btn`, `switch`, or `sw` are extracted; everything else is stubbed out.
+`fpga_sim.board_loader._make_namespace()` provides mock classes (`Resource`, `Subsignal`, `Pins`, `PinsN`, `DiffPairs`, `Attrs`, `Clock`, `Connector`) and stubs for interfaces/memory (UART, SPI, I2C, SDRAM, etc.) that are not simulated. Only resources whose names contain `led`, `button`, `btn`, `switch`, or `sw` are extracted; everything else is stubbed out.

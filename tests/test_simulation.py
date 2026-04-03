@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from sim_bridge import _build_sim_env, _find_ghdl
+from fpga_sim.sim_bridge import _build_sim_env, _find_ghdl
 
 pytestmark = pytest.mark.slow
 

@@ -4,14 +4,14 @@ import json
 
 import pytest
 
-from sim_session_log import save_session_stats
+from fpga_sim.sim_session_log import save_session_stats
 
 
 @pytest.fixture
 def session_dir(tmp_path, monkeypatch):
     """Redirect _SESSION_DIR to a temp directory for every test."""
     target = tmp_path / "sessions"
-    monkeypatch.setattr("sim_session_log._SESSION_DIR", target)
+    monkeypatch.setattr("fpga_sim.sim_session_log._SESSION_DIR", target)
     return target
 
 

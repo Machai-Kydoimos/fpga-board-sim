@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from sim_metrics import _FIELDS, SimMetrics
+from fpga_sim.sim_metrics import _FIELDS, SimMetrics
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

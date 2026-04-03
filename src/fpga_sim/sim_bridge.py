@@ -317,7 +317,7 @@ def check_vhdl_contract(path: str | Path) -> tuple[bool, str]:
 
 # ── Simulation infrastructure ─────────────────────────────────────────────────
 
-_WRAPPER_TEMPLATE: Path = Path(__file__).parent / "sim" / "sim_wrapper_template.vhd"
+_WRAPPER_TEMPLATE: Path = Path(__file__).parent.parent.parent / "sim" / "sim_wrapper_template.vhd"
 
 
 def _generate_wrapper(toplevel: str, work_dir: str) -> Path:
@@ -415,7 +415,7 @@ def _build_sim_env(
 
     Returns (env_dict, plugin_lib_path).
     """
-    venv_dir = Path(venv_dir or (Path(__file__).parent / ".venv"))
+    venv_dir = Path(venv_dir or (Path(__file__).parent.parent.parent / ".venv"))
     venv_scripts, venv_site, venv_python = _venv_dirs(venv_dir)
     cocotb_libs = venv_site / "cocotb" / "libs"
 
@@ -429,7 +429,9 @@ def _build_sim_env(
     sim_bin, sim_lib = be.sim_bin_lib()
     plugin_lib = str(cocotb_libs / be.plugin_lib_name())
 
-    project_dir = str(Path(__file__).parent.resolve())
+    _root = Path(__file__).resolve().parent.parent.parent
+    _src_dir = str(_root / "src")
+    _sim_dir = str(_root / "sim")
 
     env = os.environ.copy()
 
@@ -451,7 +453,7 @@ def _build_sim_env(
         ld_extra = os.pathsep.join([str(cocotb_libs), sim_lib, base_python + "/lib"])
         env["LD_LIBRARY_PATH"] = ld_extra + os.pathsep + env.get("LD_LIBRARY_PATH", "")
 
-    env["PYTHONPATH"] = os.pathsep.join([project_dir, str(venv_site)])
+    env["PYTHONPATH"] = os.pathsep.join([_sim_dir, _src_dir, str(venv_site)])
     env["PYGPI_PYTHON_BIN"] = str(venv_python)
     # On Windows, cocotb-config --libpython resolves the DLL path more reliably
     # than find_libpython when Python is installed via uv's standalone cache.

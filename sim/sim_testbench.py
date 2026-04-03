@@ -45,10 +45,10 @@ import cocotb
 import pygame
 from cocotb.triggers import Timer
 
-from board_loader import _FALLBACK_CLOCK_HZ, BoardDef, ComponentInfo
-from sim_session_log import save_session_stats
-from ui import FPGABoard, SimPanel
-from ui.sim_panel import _PANEL_H_BASE, _SPEED_DEFAULT
+from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ, BoardDef, ComponentInfo
+from fpga_sim.sim_session_log import save_session_stats
+from fpga_sim.ui import FPGABoard, SimPanel
+from fpga_sim.ui.sim_panel import _PANEL_H_BASE, _SPEED_DEFAULT
 
 # ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
 _METRICS_PATH: str = os.environ.get("FPGA_SIM_METRICS", "")
@@ -216,7 +216,7 @@ async def interactive_sim(dut: object) -> None:
 
     # ── Optional metrics collector ────────────────────────────────────────────
     if _METRICS_PATH:
-        from sim_metrics import SimMetrics  # noqa: PLC0415
+        from fpga_sim.sim_metrics import SimMetrics  # noqa: PLC0415
 
         _metrics_obj = SimMetrics(_METRICS_PATH)
         _metrics_obj.start()
@@ -381,7 +381,7 @@ async def interactive_sim(dut: object) -> None:
         # ── Overlays: info strip + bottom-right Pause/Stop buttons ───────────
         # Drawn last so they are never obscured by board or panel.
         _sw, _sh = screen.get_size()
-        from ui.constants import get_font as _gf  # noqa: PLC0415
+        from fpga_sim.ui.constants import get_font as _gf  # noqa: PLC0415
 
         _ov_s = min(_sw / 1024, _sh / 700)
         _ov_fs = max(10, round(13 * _ov_s))

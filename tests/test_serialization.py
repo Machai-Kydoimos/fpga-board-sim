@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from board_loader import BoardDef, ComponentInfo
+from fpga_sim.board_loader import BoardDef, ComponentInfo
 
 
 @pytest.fixture(scope="module")

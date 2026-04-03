@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from sim_bridge import _find_ghdl, analyze_vhdl
+from fpga_sim.sim_bridge import _find_ghdl, analyze_vhdl
 
 pytestmark = pytest.mark.slow
 
