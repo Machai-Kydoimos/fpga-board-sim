@@ -186,6 +186,46 @@ setup.  A few things that matter for contributors:
 
 ---
 
+## CI pipeline
+
+Every push and pull request runs the following jobs:
+
+| Job | Runner | Simulators installed | Pytest filter |
+|-----|--------|----------------------|---------------|
+| Lint & type-check | ubuntu-latest | none | n/a |
+| Test (matrix) | ubuntu + windows × py3.10 + py3.12 | none | `-m "not slow"` |
+| Test Linux + GHDL | ubuntu-latest | `apt install ghdl` | full suite |
+| Test Linux + NVC | ubuntu-latest | `nickg/setup-nvc` action | full suite |
+| Test Windows + GHDL | windows-latest | GHDL zip from GitHub Releases | full suite |
+
+### The `slow` marker
+
+Tests in `test_ghdl.py`, `test_nvc.py`, `test_simulation.py`, and
+`test_vhdl_validation.py` are marked `@pytest.mark.slow` — they invoke a
+real simulator subprocess.  The pure-Python matrix jobs skip them with
+`-m "not slow"`.
+
+The `ghdl` and `nvc` fixtures both call `pytest.skip()` when the
+respective binary is absent, so running the full suite locally without one
+or both simulators is safe — those tests are skipped, not failed.
+
+### Required checks (branch protection)
+
+A PR cannot be merged until these five checks all pass:
+
+- `Lint & type-check`
+- `Test (ubuntu-latest, Python 3.10)`
+- `Test (ubuntu-latest, Python 3.12)`
+- `Test (windows-latest, Python 3.10)`
+- `Test (windows-latest, Python 3.12)`
+
+The simulator-specific jobs are not required checks — they surface
+regressions but do not block merge on their own.  If you introduce a
+change that touches `sim_bridge.py` or the simulator backends, confirm
+those jobs are green before merging.
+
+---
+
 ## Architecture overview
 
 The README's **How It Works** section covers the architecture in depth.
