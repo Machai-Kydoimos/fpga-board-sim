@@ -226,6 +226,55 @@ those jobs are green before merging.
 
 ---
 
+## Releasing
+
+### Version scheme
+
+This project follows [Semantic Versioning](https://semver.org):
+
+| Bump | When |
+|------|------|
+| `PATCH` (0.x.**y**) | Bug fixes, security patches, documentation-only changes |
+| `MINOR` (0.**x**.0) | New features or meaningful refactors; backward-compatible |
+| `MAJOR` (**x**.0.0) | Breaking changes to the public interface or VHDL design contract |
+
+### Release checklist
+
+1. **Create a release branch** from `main`:
+   ```bash
+   git checkout main && git pull
+   git checkout -b release/vX.Y.Z
+   ```
+
+2. **Update `CHANGELOG.md`** — move items from `[Unreleased]` into a new
+   `[X.Y.Z] - YYYY-MM-DD` section and update the comparison links at the
+   bottom of the file.
+
+3. **Bump the version** in `pyproject.toml`:
+   ```toml
+   version = "X.Y.Z"
+   ```
+
+4. **Commit, push, and open a PR** targeting `main`:
+   ```bash
+   git add CHANGELOG.md pyproject.toml
+   git commit -m "chore: bump version to X.Y.Z and update CHANGELOG"
+   git push -u origin release/vX.Y.Z
+   gh pr create --title "chore: release vX.Y.Z"
+   ```
+
+5. **After the PR is merged**, tag the merge commit and push the tag:
+   ```bash
+   git checkout main && git pull
+   git tag -a vX.Y.Z -m "Release vX.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+6. **Create a GitHub Release** from the tag.  Use the `[X.Y.Z]` section of
+   `CHANGELOG.md` as the release body.
+
+---
+
 ## Architecture overview
 
 The README's **How It Works** section covers the architecture in depth.
