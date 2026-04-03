@@ -121,11 +121,11 @@ uv sync
 uv run fpga-sim                 # use default/saved simulator
 uv run fpga-sim --sim nvc       # force NVC
 uv run fpga-sim --sim ghdl      # force GHDL
-# or: uv run python fpga_board.py [--sim ghdl|nvc]
 
 # Headless benchmark (no window, prints a performance report):
 uv run fpga-sim --benchmark 10
 uv run fpga-sim --benchmark 10 --board ArtyA7_35Platform --vhdl hdl/blinky.vhd
+# or: uv run python -m fpga_sim [--sim ghdl|nvc]
 ```
 
 **Windows** (PowerShell required — does not work in Command Prompt):
@@ -195,31 +195,35 @@ A logarithmic slider from **0.001× to 10×** (default **0.1×**) controls how m
 ## Project Structure
 
 ```
-fpga_board.py              Entry point — screen flow, --benchmark CLI, --sim flag
-board_loader.py            Parses amaranth-boards definitions without the full amaranth toolchain
-sim_bridge.py              GHDL/NVC analysis + cocotb simulation launcher; _GHDLBackend/_NVCBackend classes
-sim_testbench.py           cocotb test that bridges simulator signals ↔ pygame UI; main sim loop
-sim_session_log.py         Writes per-session JSON summaries to ~/.fpga_simulator/sessions/
-sim_metrics.py             Optional per-frame CSV metrics (set FPGA_SIM_METRICS=<path> to enable)
-analyze_metrics.py         Standalone performance report from a sim_metrics CSV
-session_config.py          Session persistence (~/.fpga_simulator/session.json)
-generate_board_images.py   Renders static board previews (used for documentation/thumbnails)
-ui/                        pygame UI package
-ui/constants.py            Color constants and _ui_scale helper (single source of truth)
-ui/components.py           FPGAChip, LED, Switch, Button — low-level board components
-ui/board_selector.py       Board picker screen
-ui/fpga_board.py           Board preview + simulation screen (FPGABoard class)
-ui/sim_panel.py            Stats strip rendered during simulation (SimPanel class)
-ui/vhdl_picker.py          VHDL file browser screen
-ui/error_dialog.py         Error dialog overlay
-hdl/blinky.vhd             Example VHDL design (switches XOR counter → LEDs, buttons OR → LEDs)
-hdl/blinky_alt.vhd         Alternate blinky using independent per-LED counters
-hdl/blinky_counter.vhd     Binary counter displayed on LEDs
-hdl/blinky_morse.vhd       Morse code blinker
-hdl/blinky_pwm.vhd         PWM-based LED brightness control
-hdl/blinky_walking.vhd     Walking-light / knight-rider pattern
-sim/sim_wrapper_template.vhd  VHDL wrapper template — drives the clock internally, instantiates user design
-sim/test_blinky.py         Headless cocotb tests for the blinky design
+src/fpga_sim/              Installable Python package (src layout)
+  __main__.py              Entry point — screen flow, --benchmark CLI, --sim flag
+  board_loader.py          Parses amaranth-boards definitions without the full amaranth toolchain
+  sim_bridge.py            GHDL/NVC analysis + cocotb simulation launcher; _GHDLBackend/_NVCBackend classes
+  sim_session_log.py       Writes per-session JSON summaries to ~/.fpga_simulator/sessions/
+  sim_metrics.py           Optional per-frame CSV metrics (set FPGA_SIM_METRICS=<path> to enable)
+  session_config.py        Session persistence (~/.fpga_simulator/session.json)
+  generate_board_images.py Renders static board previews (used for documentation/thumbnails)
+  ui/                      pygame UI subpackage
+    constants.py           Color constants and _ui_scale helper (single source of truth)
+    components.py          FPGAChip, LED, Switch, Button — low-level board components
+    board_selector.py      Board picker screen
+    board_display.py       Board preview + simulation screen (FPGABoard class)
+    sim_panel.py           Stats strip rendered during simulation (SimPanel class)
+    vhdl_picker.py         VHDL file browser screen
+    error_dialog.py        Error dialog overlay
+sim/                       Simulation infrastructure (not part of the installed package)
+  sim_testbench.py         cocotb test that bridges simulator signals ↔ pygame UI; main sim loop
+  sim_wrapper_template.vhd VHDL wrapper template — drives the clock internally, instantiates user design
+  test_blinky.py           Headless cocotb tests for the blinky design
+hdl/                       Example VHDL designs
+  blinky.vhd               Switches XOR counter → LEDs, buttons OR → LEDs
+  blinky_alt.vhd           Alternate blinky using independent per-LED counters
+  blinky_counter.vhd       Binary counter displayed on LEDs
+  blinky_morse.vhd         Morse code blinker
+  blinky_pwm.vhd           PWM-based LED brightness control
+  blinky_walking.vhd       Walking-light / knight-rider pattern
+scripts/
+  analyze_metrics.py       Standalone performance report from a sim_metrics CSV
 tests/                     pytest integration suite (board loading, serialization, GHDL, NVC, UI, panel)
 amaranth-boards/           Board definitions from amaranth-lang/amaranth-boards
 pyproject.toml             Project metadata and dependencies
@@ -227,11 +231,11 @@ pyproject.toml             Project metadata and dependencies
 
 ## How It Works
 
-### Board Loading (`board_loader.py`)
+### Board Loading (`fpga_sim/board_loader.py`)
 
 The amaranth-boards project defines 75+ FPGA boards as Python classes, each with a `resources` list describing LEDs, switches, buttons, clocks, and other peripherals using amaranth's build DSL (`Resource`, `Pins`, `Attrs`, etc.).
 
-Rather than requiring the full amaranth toolchain as a dependency, `board_loader.py` provides **lightweight mock classes** that mimic just enough of the amaranth API to execute board definition files. It:
+Rather than requiring the full amaranth toolchain as a dependency, `fpga_sim/board_loader.py` provides **lightweight mock classes** that mimic just enough of the amaranth API to execute board definition files. It:
 
 1. Strips `import` statements from each board `.py` file
 2. Executes the file in a namespace containing mock `Resource`, `Pins`, `Attrs`, `Connector`, etc.
@@ -241,7 +245,7 @@ Rather than requiring the full amaranth toolchain as a dependency, `board_loader
 
 The result is a `BoardDef` object per board containing `ComponentInfo` entries with display names (e.g. `LED0`, `BTN2`, `UP0` for named buttons like `button_up`) and hardware metadata (pin names, connector references, IO standard attributes).
 
-### Pygame UI (`ui/` package)
+### Pygame UI (`fpga_sim/ui/` subpackage)
 
 The UI has four screens, each a class with a `run()` method:
 
@@ -251,32 +255,33 @@ The UI has four screens, each a class with a `run()` method:
 
 3. **`VHDLFilePicker`** — minimal file browser that shows directories and `.vhd`/`.vhdl` files. Navigate by clicking directories, select a VHDL file to proceed.
 
-4. **`FPGABoard`** (simulation mode, inside `sim_testbench.py`) — same rendering as preview, but now driven by the simulator. Switch/button callbacks write to DUT inputs; DUT LED outputs update the display each frame.
+4. **`FPGABoard`** (simulation mode, inside `sim/sim_testbench.py`) — same rendering as preview, but now driven by the simulator. Switch/button callbacks write to DUT inputs; DUT LED outputs update the display each frame.
 
 In simulation mode, pygame is the sole interface between the user and the simulator. Mouse events on switches and buttons trigger callbacks that write directly to `dut.sw` / `dut.btn` via cocotb — there is no queue or IPC; the write is synchronous in the event handler. LED state flows the other way: once per frame, after `await Timer(2µs)` has advanced the simulation, `dut.led.value` is read and each LED's display state is updated.
 
-Note that pygame runs in two separate OS processes. The launcher (board selector → file picker) calls `pygame.quit()` before spawning the simulator subprocess; `sim_testbench.py` calls `pygame.init()` fresh inside that subprocess.
+Note that pygame runs in two separate OS processes. The launcher (board selector → file picker) calls `pygame.quit()` before spawning the simulator subprocess; `sim/sim_testbench.py` calls `pygame.init()` fresh inside that subprocess.
 
 ### Simulation Pipeline
 
 When the user clicks "Start Simulation" and picks a VHDL file, the following happens:
 
 ```
-fpga_board.py                    sim_bridge.py                     Simulator + cocotb
-─────────────                    ─────────────                     ──────────────────
+fpga_sim/__main__.py             fpga_sim/sim_bridge.py            Simulator + cocotb
+────────────────────             ──────────────────────            ──────────────────
 1. Serialize BoardDef to JSON
 2. Call launch_simulation() ───→ 3. Analyze VHDL
    pygame.quit()                    (GHDL: also elaborate here;
                                      NVC: elaborate with generics
                                      in the next step)
                                  4. Build env (PATH, PYTHONHOME,
-                                    VPI/VHPI lib paths, cocotb vars)
+                                    VPI/VHPI lib paths, cocotb vars,
+                                    PYTHONPATH includes src/ + sim/)
                                  5. simulator -r --vpi/load=cocotb ─→ 6. Simulator loads VPI/VHPI lib
                                                                       7. cocotb initializes
-                                                                      8. Imports sim_testbench.py
+                                                                      8. Imports sim/sim_testbench.py
 
-                                 sim_testbench.py
-                                 ────────────────
+                                 sim/sim_testbench.py
+                                 ────────────────────
                                  9.  Deserialize BoardDef from env
                                  10. pygame.init(), create FPGABoard + SimPanel
                                  11. Write initial clk_half_ns to dut
@@ -301,7 +306,7 @@ fpga_board.py                    sim_bridge.py                     Simulator + c
 
 The key insight is that **pygame runs inside the cocotb test function**. Each frame, `await Timer(step_ns, unit="ns")` advances the simulation by a configurable number of nanoseconds (controlled by the speed slider), then the test reads outputs and processes pygame events. This cooperative loop gives smooth rendering with live simulation.
 
-The clock is generated entirely inside the VHDL `sim_wrapper` entity rather than by a Python coroutine. This eliminates per-half-period GPI callbacks — the only GPI round-trips per frame are the two endpoints of the single `await Timer(...)` call. The wrapper exposes a `clk_half_ns` port; when the panel's **[-]/[+]** buttons change the virtual clock frequency, `sim_testbench.py` writes the new half-period to `dut.clk_half_ns` and the VHDL process picks it up within one half-cycle.
+The clock is generated entirely inside the VHDL `sim_wrapper` entity rather than by a Python coroutine. This eliminates per-half-period GPI callbacks — the only GPI round-trips per frame are the two endpoints of the single `await Timer(...)` call. The wrapper exposes a `clk_half_ns` port; when the panel's **[-]/[+]** buttons change the virtual clock frequency, `sim/sim_testbench.py` writes the new half-period to `dut.clk_half_ns` and the VHDL process picks it up within one half-cycle.
 
 ### The Blinky Design (`hdl/blinky.vhd`)
 
@@ -313,7 +318,7 @@ A simple but complete VHDL design that exercises all board I/O:
   - Buttons OR directly → LEDs light immediately while held
 - **Generics**: `NUM_SWITCHES`, `NUM_BUTTONS`, `NUM_LEDS`, `COUNTER_BITS` are set by the simulator to match the selected board. `COUNTER_BITS` is chosen so the MSB toggle rate produces clearly visible blinking at the simulator's actual throughput — the simulation always runs slower than real time, so a smaller counter is needed compared to what you would use on real hardware.
 
-### Simulator Backends (`sim_bridge.py`)
+### Simulator Backends (`fpga_sim/sim_bridge.py`)
 
 `sim_bridge.py` contains two private backend classes that encapsulate all simulator-specific details:
 
@@ -409,7 +414,7 @@ If `test_cocotb_simulation_passes` fails with:
 Unable to open lib hon313.dll: The specified module could not be found.
 ```
 
-GHDL cannot locate the Python shared library. `sim_bridge.py` auto-detects it via
+GHDL cannot locate the Python shared library. `fpga_sim/sim_bridge.py` auto-detects it via
 `cocotb-config --libpython` on Windows, so this should not occur on current checkouts.
 If you see it on an older checkout, set the path manually before running:
 

@@ -24,9 +24,9 @@ from pathlib import Path
 
 import pygame
 
-from board_loader import BoardDef, ComponentInfo
-from ui.components import LED, Button, FPGAChip, Switch
-from ui.constants import BG_GREEN, WHITE, _ui_scale, get_font
+from fpga_sim.board_loader import BoardDef, ComponentInfo
+from fpga_sim.ui.components import LED, Button, FPGAChip, Switch
+from fpga_sim.ui.constants import BG_GREEN, WHITE, _ui_scale, get_font
 
 
 class FPGABoard:

@@ -2,7 +2,7 @@
 
 import pytest
 
-from board_loader import (
+from fpga_sim.board_loader import (
     BoardDef,
     discover_boards,
     get_default_boards_path,
@@ -91,7 +91,7 @@ def test_icestick_default_clock_is_12mhz(icestick):
 
 
 def test_inline_board_uses_fallback_clock(inline_board):
-    from board_loader import _FALLBACK_CLOCK_HZ
+    from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ
 
     assert inline_board.default_clock_hz == _FALLBACK_CLOCK_HZ
 
@@ -212,7 +212,7 @@ class NoClkPlatform(LatticeICE40Platform):
 
 def test_board_without_default_clk_uses_fallback():
     """Board with no default_clk attribute must fall back to _FALLBACK_CLOCK_HZ."""
-    from board_loader import _FALLBACK_CLOCK_HZ
+    from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ
 
     boards = load_board_from_source(_NO_CLK_SRC, "<noclk>")
     assert len(boards) == 1

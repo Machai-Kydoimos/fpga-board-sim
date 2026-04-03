@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from sim_bridge import _find_ghdl, analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
+from fpga_sim.sim_bridge import _find_ghdl, analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
 
 HDL = Path(__file__).resolve().parent.parent / "hdl"
 

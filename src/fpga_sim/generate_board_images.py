@@ -10,7 +10,8 @@ without modifying any of it.  The same visual layout and color scheme used
 by the interactive simulator is reproduced faithfully.
 
 Usage:
-    python generate_board_images.py [options]
+    uv run generate-board-images [options]
+    # or: uv run python -m fpga_sim.generate_board_images [options]
 
     --output-dir PATH    Destination directory        (default: ./board_images)
     --width  INT         Image width  in pixels       (default: 1024)
@@ -40,13 +41,9 @@ from typing import cast
 
 import pygame
 
-# Ensure the simulator directory is on the path so board_loader and fpga_board
-# are importable when this script is invoked from another working directory.
-sys.path.insert(0, str(Path(__file__).parent))
-
-from board_loader import BoardDef, discover_boards, get_default_boards_path
-from ui import LED, Button, FPGABoard, FPGAChip, Switch
-from ui.constants import BG_GREEN, BLUE_OFF, GRAY, RED_OFF, WHITE, _ui_scale
+from fpga_sim.board_loader import BoardDef, discover_boards, get_default_boards_path
+from fpga_sim.ui import LED, Button, FPGABoard, FPGAChip, Switch
+from fpga_sim.ui.constants import BG_GREEN, BLUE_OFF, GRAY, RED_OFF, WHITE, _ui_scale
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -248,7 +245,7 @@ def _svg_draw_fpga_chip(
     """Draw the FPGA IC package as SVG elements.
 
     Replicates FPGAChip.draw() and FPGAChip._draw_pin_marks() from
-    fpga_board.py:
+    fpga_sim/ui/components.py:
       - Vendor-colored rounded rectangle with gray border
       - Short tick marks along all four edges (simulated IC package pins)
       - Three centered text labels: vendor name, device ID, package code
@@ -316,7 +313,7 @@ def _svg_draw_led(
 ) -> None:
     """Draw a single LED as an SVG circle with a white border ring and label.
 
-    Replicates LED.draw() from fpga_board.py.  Always renders in the OFF
+    Replicates LED.draw() from fpga_sim/ui/components.py.  Always renders in the OFF
     state (dark red fill) since board images show the default/reset state.
     The radius formula is identical to the pygame version.
     """
@@ -356,7 +353,7 @@ def _svg_draw_switch(
 ) -> None:
     """Draw a toggle switch as an SVG rectangle with a sliding knob and label.
 
-    Replicates Switch.draw() from fpga_board.py.  Always renders in the OFF
+    Replicates Switch.draw() from fpga_sim/ui/components.py.  Always renders in the OFF
     state: BLUE_OFF background, GRAY knob positioned in the lower half of
     the switch body.
     """
@@ -391,7 +388,7 @@ def _svg_draw_button(
 ) -> None:
     """Draw a momentary button as an SVG rectangle with label.
 
-    Replicates Button.draw() from fpga_board.py.  Always renders in the
+    Replicates Button.draw() from fpga_sim/ui/components.py.  Always renders in the
     unpressed state: GRAY fill, white border, rounded corners.
     """
     r = btn.rect
@@ -620,7 +617,7 @@ def main() -> None:
         "--output-dir",
         metavar="PATH",
         type=Path,
-        default=Path(__file__).parent / "board_images",
+        default=Path(__file__).parent.parent.parent / "board_images",
         help="Destination directory for generated images",
     )
     parser.add_argument(

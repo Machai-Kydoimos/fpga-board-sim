@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from sim_bridge import (
+from fpga_sim.sim_bridge import (
     _build_sim_env,
     _NVCBackend,
     analyze_vhdl,

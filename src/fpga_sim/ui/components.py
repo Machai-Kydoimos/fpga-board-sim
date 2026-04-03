@@ -7,8 +7,8 @@ from collections.abc import Callable
 
 import pygame
 
-from board_loader import ComponentInfo
-from ui.constants import (
+from fpga_sim.board_loader import ComponentInfo
+from fpga_sim.ui.constants import (
     BLUE_OFF,
     BLUE_ON,
     GRAY,

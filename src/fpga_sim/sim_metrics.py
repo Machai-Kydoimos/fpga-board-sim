@@ -3,7 +3,7 @@
 Activated by setting the environment variable ``FPGA_SIM_METRICS`` to a
 CSV file path before launching the simulator::
 
-    FPGA_SIM_METRICS=/tmp/sim_metrics.csv uv run python fpga_board.py
+    FPGA_SIM_METRICS=/tmp/sim_metrics.csv uv run fpga-sim
 
 When the variable is unset this module is never imported and has zero
 effect on the simulation loop.

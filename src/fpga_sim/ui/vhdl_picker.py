@@ -4,7 +4,15 @@ from pathlib import Path
 
 import pygame
 
-from ui.constants import SEL_BG, SEL_HOVER, SEL_ROW_A, SEL_ROW_B, WHITE, _ui_scale, get_font
+from fpga_sim.ui.constants import (
+    SEL_BG,
+    SEL_HOVER,
+    SEL_ROW_A,
+    SEL_ROW_B,
+    WHITE,
+    _ui_scale,
+    get_font,
+)
 
 
 class VHDLFilePicker:

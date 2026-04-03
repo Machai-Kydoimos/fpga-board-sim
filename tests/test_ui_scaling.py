@@ -7,7 +7,7 @@ import tempfile
 import pytest
 
 # ── A. Pure math tests (no display needed) ────────────────────────────────────
-from ui.constants import _ui_scale
+from fpga_sim.ui.constants import _ui_scale
 
 
 def test_ui_scale_reference():
@@ -56,7 +56,7 @@ def dummy_screen(headless_pygame):
 
 # ── B. Property tests ─────────────────────────────────────────────────────────
 
-from ui import BoardSelector, VHDLFilePicker  # noqa: E402
+from fpga_sim.ui import BoardSelector, VHDLFilePicker  # noqa: E402
 
 
 class TestBoardSelectorProperties:
@@ -125,8 +125,8 @@ class TestVHDLFilePickerProperties:
 
 # ── C. Smoke render tests ─────────────────────────────────────────────────────
 
-from board_loader import BoardDef, ComponentInfo  # noqa: E402
-from ui import FPGABoard  # noqa: E402
+from fpga_sim.board_loader import BoardDef, ComponentInfo  # noqa: E402
+from fpga_sim.ui import FPGABoard  # noqa: E402
 
 
 def _sample_board_def():

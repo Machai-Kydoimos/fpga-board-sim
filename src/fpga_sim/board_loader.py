@@ -583,4 +583,4 @@ def discover_boards(boards_dir: str | Path) -> list[BoardDef]:
 
 def get_default_boards_path() -> Path:
     """Path to amaranth_boards/ inside the git submodule."""
-    return Path(__file__).parent / "amaranth-boards" / "amaranth_boards"
+    return Path(__file__).parent.parent.parent / "amaranth-boards" / "amaranth_boards"

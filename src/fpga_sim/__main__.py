@@ -1,16 +1,16 @@
 """FPGA Board Simulator - entry point.
 
-All UI logic lives in the ui/ package:
-  ui/constants.py      colours and _ui_scale
-  ui/components.py     FPGAChip, LED, Switch, Button
-  ui/board_selector.py BoardSelector screen
-  ui/fpga_board.py     FPGABoard screen
-  ui/vhdl_picker.py    VHDLFilePicker screen
-  ui/error_dialog.py   ErrorDialog overlay
+All UI logic lives in the fpga_sim.ui package:
+  fpga_sim/ui/constants.py      colours and _ui_scale
+  fpga_sim/ui/components.py     FPGAChip, LED, Switch, Button
+  fpga_sim/ui/board_selector.py BoardSelector screen
+  fpga_sim/ui/board_display.py  FPGABoard screen
+  fpga_sim/ui/vhdl_picker.py    VHDLFilePicker screen
+  fpga_sim/ui/error_dialog.py   ErrorDialog overlay
 
 Usage:
-  uv run python fpga_board.py [--sim ghdl|nvc]
-  uv run python fpga_board.py --benchmark 10 [--board ICEStick] [--vhdl hdl/blinky.vhd]
+  uv run python -m fpga_sim [--sim ghdl|nvc]
+  uv run python -m fpga_sim --benchmark 10 [--board ICEStick] [--vhdl hdl/blinky.vhd]
 """
 
 import argparse
@@ -20,11 +20,11 @@ from pathlib import Path
 
 import pygame
 
-from board_loader import BoardDef, discover_boards, get_default_boards_path
-from session_config import load_session, save_session
-from sim_bridge import detect_simulators
-from ui import BoardSelector, ErrorDialog, FPGABoard, VHDLFilePicker
-from ui.constants import get_font
+from fpga_sim.board_loader import BoardDef, discover_boards, get_default_boards_path
+from fpga_sim.session_config import load_session, save_session
+from fpga_sim.sim_bridge import detect_simulators
+from fpga_sim.ui import BoardSelector, ErrorDialog, FPGABoard, VHDLFilePicker
+from fpga_sim.ui.constants import get_font
 
 
 def _parse_args() -> argparse.Namespace:
@@ -67,7 +67,7 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
 
     Returns 0 on success, 1 on error.
     """
-    from sim_bridge import analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
+    from fpga_sim.sim_bridge import analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
 
     simulator = args.sim if args.sim and args.sim in available_sims else available_sims[0]
     boards_path = get_default_boards_path()
@@ -93,7 +93,7 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
         chosen = boards[0]
 
     # VHDL file selection
-    hdl_dir = Path(__file__).parent / "hdl"
+    hdl_dir = Path(__file__).parent.parent.parent / "hdl"
     vhdl_path = Path(args.vhdl) if args.vhdl else hdl_dir / "blinky.vhd"
     if not vhdl_path.exists():
         print(f"[benchmark] VHDL file not found: {vhdl_path}", file=sys.stderr)
@@ -130,7 +130,7 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
         return 1
 
     # Launch headless simulation
-    from sim_bridge import launch_simulation
+    from fpga_sim.sim_bridge import launch_simulation
 
     board_json = chosen.to_json()
     os.environ["FPGA_SIM_BENCHMARK"] = str(args.benchmark)
@@ -211,7 +211,7 @@ def main() -> None:
     # Set after [Load VHDL], after simulation ends, etc.
     _return_to_board: BoardDef | None = None
 
-    from sim_bridge import analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
+    from fpga_sim.sim_bridge import analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
 
     while True:
         # ── Step 1: pick a board ─────────────────────────────────
@@ -251,7 +251,7 @@ def main() -> None:
 
         if result == "load_vhdl":
             # ── Steps 3-4: pick + validate VHDL ──────────────────────────────
-            hdl_dir = Path(__file__).parent / "hdl"
+            hdl_dir = Path(__file__).parent.parent.parent / "hdl"
 
             # Start dir: current VHDL, then last session path, then hdl/
             _ref_p = (
@@ -349,7 +349,7 @@ def main() -> None:
         get_font.cache_clear()
         pygame.quit()  # cocotb subprocess will start its own pygame
 
-        from sim_bridge import launch_simulation
+        from fpga_sim.sim_bridge import launch_simulation
 
         board_json = chosen.to_json()
         toplevel_sim = Path(current_vhdl_path).stem

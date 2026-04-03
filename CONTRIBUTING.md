@@ -38,7 +38,7 @@ Two supported environments — pick one and use it consistently:
   NVC-related tests may run instead of skipping — confirm they pass or note
   the gap in your PR. If NVC is absent, those tests skip automatically
   (`SKIPPED (NVC is not installed)`) which is expected and does not block a merge.
-- `sim_bridge.py` owns all Windows-specific environment setup (PATH, PYTHONHOME, DLL
+- `src/fpga_sim/sim_bridge.py` owns all Windows-specific environment setup (PATH, PYTHONHOME, DLL
   discovery). If you add simulator support or change how the subprocess env is built,
   test it on Windows or note the gap in your PR.
 
@@ -101,7 +101,7 @@ Configured in `pyproject.toml` under `[tool.ruff]`.  Enabled rule sets:
 
 - `tests/*` — `ANN` and `D` are relaxed; pytest fixtures and test
   functions do not require annotations or docstrings.
-- `sim_testbench.py` — `ANN201` (public return type) is relaxed;
+- `sim/sim_testbench.py` — `ANN201` (public return type) is relaxed;
   cocotb's `@cocotb.test()` decorator makes the return type implicit.
 - `sim/test_blinky.py` — `ANN` is relaxed for the same reason.
 
@@ -233,7 +233,7 @@ A few additional notes for contributors:
 
 **Two pygame processes.**  The launcher (board selector → VHDL picker)
 calls `pygame.quit()` before spawning the simulator subprocess.
-`sim_testbench.py` calls `pygame.init()` fresh inside that subprocess.
+`sim/sim_testbench.py` calls `pygame.init()` fresh inside that subprocess.
 Never assume pygame state persists across the boundary.
 
 **VHDL-side clock.**  The clock is driven by the generated `sim_wrapper`
@@ -243,13 +243,13 @@ per frame (the Timer endpoints).  The wrapper exposes `clk_half_ns`; the
 testbench writes to it when the panel's **[-]/[+]** buttons change the
 virtual clock frequency.
 
-**SimPanel.**  `ui/sim_panel.py` owns the stats strip drawn at the bottom
+**SimPanel.**  `src/fpga_sim/ui/sim_panel.py` owns the stats strip drawn at the bottom
 of the simulation window.  Its `panel_height` is a property that re-evaluates
 `_ui_scale(w, h)` on every access — call `board.set_height_offset(panel.panel_height)`
 whenever the window resizes to keep the board and panel areas in sync.
 `sim_testbench.py` does this check at the top of every frame.
 
-**`board_loader.py` mock namespace.**  Board definition files are
+**`fpga_sim/board_loader.py` mock namespace.**  Board definition files are
 executed via `exec()` in a mock namespace that provides lightweight
 stand-ins for `Resource`, `Pins`, `Attrs`, etc.  The mock classes are
 typed with `object` at variadic boundaries (`*ios: object`, `**kwargs: object`)
@@ -260,4 +260,4 @@ if you need a narrower type after extracting a value from a mock object.
 loaded at startup.  It is intentionally best-effort — load and save
 failures are silently ignored so a corrupt or missing file never breaks
 the app.  After each simulation run, a separate per-session performance
-summary is appended to `~/.fpga_simulator/sessions/` by `sim_session_log.py`.
+summary is appended to `~/.fpga_simulator/sessions/` by `fpga_sim/sim_session_log.py`.
