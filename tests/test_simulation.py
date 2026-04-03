@@ -16,6 +16,10 @@ PROJECT = Path(__file__).resolve().parent.parent
 
 @pytest.fixture(scope="module")
 def ghdl():
+    import shutil
+
+    if not shutil.which("ghdl"):
+        pytest.skip("GHDL is not installed")
     return _find_ghdl()
 
 

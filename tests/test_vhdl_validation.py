@@ -24,6 +24,10 @@ GOOD_BLINKYS = [
 
 @pytest.fixture(scope="module")
 def ghdl():
+    import shutil
+
+    if not shutil.which("ghdl"):
+        pytest.skip("GHDL is not installed")
     return _find_ghdl()
 
 
