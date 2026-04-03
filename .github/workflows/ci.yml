@@ -38,6 +38,47 @@ jobs:
           SDL_AUDIODRIVER: dummy
         run: uv run pytest -m "not slow"
 
+  test-linux-ghdl:
+    name: Test Linux + GHDL (Python 3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+      - uses: astral-sh/setup-uv@v8.0.0
+        with:
+          python-version: "3.12"
+      - run: uv sync --group dev
+      - name: Install GHDL
+        run: sudo apt install -y ghdl
+      - name: Verify GHDL
+        run: ghdl --version
+      - name: Run full test suite
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: uv run pytest
+
+  test-linux-nvc:
+    name: Test Linux + NVC (Python 3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+      - uses: astral-sh/setup-uv@v8.0.0
+        with:
+          python-version: "3.12"
+      - run: uv sync --group dev
+      - uses: nickg/setup-nvc@master
+      - name: Verify NVC
+        run: nvc --version
+      - name: Run full test suite
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: uv run pytest
+
   test-windows-ghdl:
     name: Test Windows + GHDL (Python 3.12)
     runs-on: windows-latest
