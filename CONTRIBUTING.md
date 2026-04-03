@@ -24,15 +24,35 @@ uv run pre-commit install
 
 ### Windows notes for contributors
 
-- Use **PowerShell** (not Command Prompt) for all commands.
+Two supported environments — pick one and use it consistently:
+
+#### Path 1: Native Windows (PowerShell + winget) — recommended for most contributors
+
+- Use **PowerShell 7+** (not Command Prompt; PS 5.1 lacks `&&`).
+  Install from [aka.ms/powershell](https://aka.ms/powershell) if needed.
 - Install uv with `winget install --id=astral-sh.uv -e` if you haven't already.
 - GHDL must be on your `PATH` before running the test suite — see the
   [Troubleshooting section in README.md](README.md#windows-ghdl-not-on-path-after-winget-install).
-- **NVC is not available on Windows.** NVC-related tests skip automatically
-  (`SKIPPED (NVC is not installed)`) — this is expected and does not block a merge.
+- NVC is available via `winget install NickGasson.NVC`, but its cocotb VHPI
+  integration has **not been verified** on Windows. If NVC is installed,
+  NVC-related tests may run instead of skipping — confirm they pass or note
+  the gap in your PR. If NVC is absent, those tests skip automatically
+  (`SKIPPED (NVC is not installed)`) which is expected and does not block a merge.
 - `sim_bridge.py` owns all Windows-specific environment setup (PATH, PYTHONHOME, DLL
   discovery). If you add simulator support or change how the subprocess env is built,
   test it on Windows or note the gap in your PR.
+
+#### Path 2: MSYS2 (UCRT64 shell) — best for NVC or a Linux-like dev experience
+
+MSYS2 gives an environment nearly identical to Linux. Follow the
+[Windows: MSYS2 alternative](README.md#windows-msys2-alternative) section in the
+README to install MSYS2, GHDL, NVC, uv, and Python inside the UCRT64 shell.
+
+Once set up, all contributor commands below work unchanged (run them in the UCRT64
+shell, not PowerShell). `&&` chaining works natively in bash.
+
+> Tools installed in MSYS2 are not visible to PowerShell and vice versa — choose
+> one environment for your dev work and don't mix them.
 
 ---
 
@@ -54,8 +74,9 @@ Running all four at once:
 uv run ruff check . && uv run mypy . && uv run pytest
 ```
 
-> **Windows / PowerShell 5.1:** `&&` is not supported. Run each command separately,
-> or upgrade to [PowerShell 7+](https://aka.ms/powershell) where `&&` works.
+> **Windows / PowerShell 5.1:** `&&` is not supported — upgrade to
+> [PowerShell 7+](https://aka.ms/powershell) or run each command separately.
+> In MSYS2's bash shell, `&&` works natively.
 
 ---
 
