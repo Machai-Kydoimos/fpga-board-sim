@@ -12,7 +12,7 @@ Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://g
 - **[uv](https://docs.astral.sh/uv/)** (Python package manager)
   - Windows: `winget install --id=astral-sh.uv -e`
   - macOS/Linux: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- **GHDL** and/or **NVC** (VHDL simulators — at least one required; on Windows, GHDL only)
+- **GHDL** and/or **NVC** (VHDL simulators — at least one required)
 
 ### Clone the repository
 
@@ -56,10 +56,16 @@ brew install ghdl
 
 #### NVC
 
-**Windows:**
-NVC has no standard Windows package manager install. Check the
-[NVC GitHub releases](https://github.com/nickg/nvc/releases) for any available
-Windows builds. GHDL is the recommended and tested simulator on Windows.
+**Windows (native — PowerShell):**
+```powershell
+winget install NickGasson.NVC
+```
+> NVC is available on Windows but has **not been tested** with this simulator's
+> cocotb VHPI pipeline on Windows. GHDL is the fully tested choice. If you try NVC
+> on Windows, please report results in an issue.
+>
+> For a more Linux-like environment where NVC is more likely to work end-to-end,
+> see [Windows: MSYS2 alternative](#windows-msys2-alternative) below.
 
 **macOS / Linux (Homebrew):**
 ```bash
@@ -124,7 +130,9 @@ uv run fpga-sim --benchmark 10 --board ArtyA7_35Platform --vhdl hdl/blinky.vhd
 
 **Windows** (PowerShell required — does not work in Command Prompt):
 ```powershell
-uv run fpga-sim          # GHDL only; NVC is not available on Windows
+uv run fpga-sim                 # uses saved/default simulator
+uv run fpga-sim --sim ghdl      # force GHDL (fully tested on Windows)
+uv run fpga-sim --sim nvc       # NVC (available via winget; untested on Windows)
 ```
 
 > GHDL must be on your `PATH`. If the command above fails with "ghdl not found",
@@ -375,9 +383,9 @@ The simulator sets the generics to match the selected board's resource counts an
 | pygame | 2.6+ | GUI rendering |
 | cocotb | 2.0+ | Python ↔ simulator bridge (VPI/VHPI) |
 | GHDL | 6.0+ | VHDL compilation and simulation (mcode backend) |
-| NVC | 1.11.0+ | Alternative VHDL simulator (LLVM native code; recommended ≥ 1.19.0; Linux/macOS only) |
+| NVC | 1.11.0+ | Alternative VHDL simulator (LLVM native code; recommended ≥ 1.19.0; Linux/macOS fully tested; Windows available but untested with cocotb VHPI) |
 
-At least one of GHDL or NVC must be installed. Both can coexist; the active simulator is selected via the UI toggle or `--sim` flag. On Windows, only GHDL is supported.
+At least one of GHDL or NVC must be installed. Both can coexist; the active simulator is selected via the UI toggle or `--sim` flag. On Windows, GHDL is fully tested; NVC is available via `winget` but its cocotb VHPI integration has not been verified on Windows.
 
 > **pygame-ce:** [pygame-ce](https://github.com/pygame-community/pygame-ce) (community edition) is an actively maintained fork that uses the identical `import pygame` API. It cannot coexist with standard `pygame` in the same environment — you must uninstall one before installing the other. It has not been tested with this project, but should work as a drop-in replacement.
 
@@ -438,6 +446,55 @@ in the Microsoft winget repository is not guaranteed), install via
 ```bash
 pacman -S mingw-w64-ucrt-x86_64-ghdl
 ```
+
+### Windows: MSYS2 alternative
+
+[MSYS2](https://www.msys2.org/) provides a Linux-like shell environment on Windows.
+It is optional — the native PowerShell path works for GHDL — but it is the best
+choice if you want NVC on Windows, or if you prefer a Unix-style workflow.
+
+**1. Install MSYS2** from [msys2.org](https://www.msys2.org/), then open the
+**UCRT64** shell (search for "MSYS2 UCRT64" in the Start menu).
+
+> Use the **UCRT64** variant (not MINGW64 or CLANG64). It is the recommended
+> modern environment and matches the `ucrt64` GHDL winget package.
+
+**2. Update the package database:**
+```bash
+pacman -Syu
+```
+Close and reopen the UCRT64 shell if prompted, then run `pacman -Syu` again.
+
+**3. Install simulators:**
+```bash
+# GHDL (fully tested):
+pacman -S mingw-w64-ucrt-x86_64-ghdl
+
+# NVC (available; VHPI integration with this simulator is untested on Windows):
+pacman -S mingw-w64-ucrt-x86_64-nvc
+```
+
+**4. Install uv and Python inside MSYS2:**
+```bash
+pacman -S mingw-w64-ucrt-x86_64-python mingw-w64-ucrt-x86_64-uv
+```
+Or use the standalone `uv` installer from inside the MSYS2 shell:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+**5. Clone and run** exactly as on Linux:
+```bash
+git clone --recurse-submodules https://github.com/Machai-Kydoimos/fpga-board-sim.git
+cd fpga-board-sim
+uv sync
+uv run fpga-sim
+```
+
+> **Important:** Tools installed in MSYS2 are not visible to native PowerShell, and
+> vice versa. Pick one environment and use it consistently. If you installed GHDL via
+> `winget` and also install it via `pacman`, they are independent installations on
+> separate `PATH`s.
 
 ## Contributing
 
