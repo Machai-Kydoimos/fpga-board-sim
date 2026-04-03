@@ -1,4 +1,4 @@
-# FPGA Simulator
+# FPGA Board Simulator
 
 [![CI](https://github.com/Machai-Kydoimos/fpga-board-sim/actions/workflows/ci.yml/badge.svg)](https://github.com/Machai-Kydoimos/fpga-board-sim/actions/workflows/ci.yml)
 
