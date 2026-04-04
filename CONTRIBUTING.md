@@ -127,7 +127,7 @@ files are not part of this project's source.
 
 ## Type annotation conventions
 
-### New code
+### Annotating new code
 
 All new functions and methods in source modules must be fully annotated.
 The pre-commit hook enforces this via mypy.
@@ -169,7 +169,7 @@ in place.
 
 ---
 
-## Tests
+## Test suite notes
 
 See the **Running Tests** section in the README for platform-specific
 setup.  A few things that matter for contributors:
