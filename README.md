@@ -114,7 +114,7 @@ See the [NVC build guide](https://github.com/nickg/nvc#building-from-source) for
 uv sync
 ```
 
-### Run
+### Run the simulator
 
 **Linux / macOS:**
 ```bash
@@ -158,7 +158,7 @@ The board renders with LEDs, buttons, and switches matching the real hardware. C
 
 Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains six ready-to-run designs (`blinky.vhd`, `blinky_counter.vhd`, `blinky_morse.vhd`, `blinky_pwm.vhd`, `blinky_walking.vhd`, `blinky_alt.vhd`) as starting points.
 
-### 4. Simulation runs
+### 4. Run the simulation
 
 The selected simulator (GHDL or NVC) compiles and simulates the VHDL design via cocotb, clocked at the board's actual frequency. The pygame UI becomes interactive:
 
@@ -245,7 +245,7 @@ Rather than requiring the full amaranth toolchain as a dependency, `fpga_sim/boa
 
 The result is a `BoardDef` object per board containing `ComponentInfo` entries with display names (e.g. `LED0`, `BTN2`, `UP0` for named buttons like `button_up`) and hardware metadata (pin names, connector references, IO standard attributes).
 
-### Pygame UI (`fpga_sim/ui/` subpackage)
+### pygame UI (`fpga_sim/ui/` subpackage)
 
 The UI has four screens, each a class with a `run()` method:
 
