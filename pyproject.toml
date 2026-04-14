@@ -32,7 +32,7 @@ generate-board-images = "fpga_sim.generate_board_images:main"
 
 [dependency-groups]
 dev = [
-    "pytest>=8",
+    "pytest>=9.0.3",
     "mypy>=1.10",
     "ruff>=0.4",
     "pre-commit>=3",
