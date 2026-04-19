@@ -26,7 +26,7 @@
 -- Teaches : Generic-parameterised combinational decode, segment encoding,
 --           step counter with wraparound, direction reversal.
 --
--- ── 7-SEGMENT PORT CONTRACT (see counter_7seg.vhd for full details) ───────────
+-- -- 7-SEGMENT PORT CONTRACT (see counter_7seg.vhd for full details) -----------
 --
 -- seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)
 --
@@ -44,7 +44,7 @@
 -- bits of seg), and logical digit NUM_SEGS-1 (rightmost) maps to seg slot 0
 -- (bits [7:0]).  See the seg_proc output lines for where this reversal occurs.
 --
--- ──────────────────────────────────────────────────────────────────────────────
+-- ------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
