@@ -340,7 +340,7 @@ A simple but complete VHDL design that exercises all board I/O:
 
 > **Interface note:** GHDL supports both VPI (complete) and a partial VHPI (library loading and tracing only; signal read/write is not implemented in GHDL's VHPI). We use GHDL's **VPI** interface because it is complete and production-ready for cocotb integration. NVC provides a comprehensive VHPI implementation covering handle management, signal read/write, callbacks, type introspection, and simulation control — and has **no VPI support at all**. We use NVC's **VHPI** interface accordingly. GHDL additionally supports `--std=19` (VHDL-2019) for analysis; the wrapper here uses `--std=08`.
 
-Because NVC requires generics at elaboration time, `analyze_vhdl()` performs only the `-a` step for NVC; `launch_simulation()` performs `-e` (with board generics) followed by `-r`.
+Because NVC requires generics at elaboration time, `analyze_vhdl()` performs `-a` followed by a structural `-e` (empty generics) to catch port-width mismatches early. `launch_simulation()` then re-elaborates with the real board generics before running.
 
 `detect_simulators()` returns the list of installed simulators; the UI and CLI use this to know what options to offer.
 
@@ -408,7 +408,7 @@ entity my_design is
 end entity;
 ```
 
-A 7-segment board will happily run any standard design — the `seg` port is simply absent and the digits remain dark. Conversely, loading a 7-seg design on a non-7-seg board passes the contract check but will fail GHDL/NVC analysis, since the standard wrapper has no `seg` connection. The simulator normalises all segment polarities to active-high in VHDL regardless of the board's hardware polarity. See `hdl/counter_7seg.vhd` for a complete working example.
+A 7-segment board will happily run any standard design — the `seg` port is simply absent and the digits remain dark. A 7-seg design loaded on a non-7-seg board also passes both the contract check and GHDL/NVC analysis — the standard wrapper leaves the `seg` output unconnected, so the design compiles and runs but the digits are never driven. The simulator normalises all segment polarities to active-high in VHDL regardless of the board's hardware polarity. See `hdl/counter_7seg.vhd` for a complete working example.
 
 The simulator sets the generics to match the selected board's resource counts and drives `clk` at the board's actual clock frequency (extracted from its `Clock` resource, falling back to 12 MHz). The entity name must match the filename stem (e.g. `my_design.vhd` → entity `my_design`).
 

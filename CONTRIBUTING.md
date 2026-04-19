@@ -65,7 +65,7 @@ ruff and mypy automatically; run them manually at any time:
 uv run ruff check .        # linter — must report 0 errors
 uv run ruff format --check . # formatter check (ruff format . to auto-fix)
 uv run mypy .              # type checker — must report 0 errors
-uv run pytest              # test suite — must be 219/219 fast tests (no display needed)
+uv run pytest              # test suite — must be 224/224 fast tests (no display needed)
 ```
 
 Running all four at once:
@@ -155,12 +155,14 @@ Do not remove these ignores; they will cause mypy errors.
 
 ### Backend dispatch design debt (`sim_bridge.py`)
 
-`_GHDLBackend` and `_NVCBackend` have intentionally different signatures
-for `elaborate_cmd` and `run_cmd` (GHDL passes generics at run time; NVC
-requires them at elaboration time).  The four call sites in
-`launch_simulation()` carry `# type: ignore[call-arg,arg-type]` because
-mypy cannot verify calls through a `type[_GHDLBackend] | type[_NVCBackend]`
-union when the signatures differ.
+`_GHDLBackend` and `_NVCBackend` share a unified `elaborate_cmd(toplevel,
+generics, work_dir)` signature — GHDL simply ignores the generics dict
+(it applies them at run time via `-r`; NVC bakes them in at `-e` time).
+`run_cmd` still differs between backends (GHDL takes no generics; NVC
+requires them).  The two `run_cmd` call sites in `launch_simulation()`
+carry `# type: ignore[call-arg,arg-type]` because mypy cannot verify calls
+through a `type[_GHDLBackend] | type[_NVCBackend]` union when the signatures
+differ.
 
 The calling code uses explicit `if simulator == "nvc":` guards, so the
 dispatch is correct at runtime.  A future refactor should introduce a
