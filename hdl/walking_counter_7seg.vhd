@@ -18,7 +18,7 @@
 -- Teaches : BCD counter with carry/borrow ripple, direction control,
 --           decoupled LED and counter state machines.
 --
--- ── 7-SEGMENT PORT CONTRACT (see counter_7seg.vhd for full details) ───────────
+-- -- 7-SEGMENT PORT CONTRACT (see counter_7seg.vhd for full details) -----------
 --
 -- seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)
 --
@@ -32,7 +32,7 @@
 -- Because digit 0 is already the rightmost slot, no index reversal is needed
 -- in seg_proc; the natural array index matches the seg-slot index directly.
 --
--- ──────────────────────────────────────────────────────────────────────────────
+-- ------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;

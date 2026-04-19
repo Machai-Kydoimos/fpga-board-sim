@@ -13,7 +13,7 @@
 -- Effect  : Hex odometer on the 7-segment displays.
 -- Teaches : The seg port contract, segment LUT construction, VHDL generate.
 --
--- ── 7-SEGMENT PORT CONTRACT ────────────────────────────────────────────────────
+-- -- 7-SEGMENT PORT CONTRACT ----------------------------------------------------
 --
 -- seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)
 --
@@ -53,7 +53,7 @@
 --   Example: digit '2' lights a, b, d, e, g  (bits 0, 1, 3, 4, 6)
 --            => 0b_0101_1011 = 0x5B
 --
--- ──────────────────────────────────────────────────────────────────────────────
+-- ------------------------------------------------------------------------------
 
 library ieee;
 use ieee.std_logic_1164.all;
