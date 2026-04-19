@@ -381,10 +381,13 @@ def analyze_vhdl(
     Steps:
       1. Analyse the user's VHDL file (``-a``).
       2. Generate ``sim_wrapper.vhd`` and analyse it.
-      3. GHDL only: elaborate ``sim_wrapper`` (early error check; generics
-         resolved at run time so defaults are fine here).
-      NVC defers elaboration to ``launch_simulation()`` because it requires
-      generics at elaboration time.
+      3. Elaborate ``sim_wrapper`` with VHDL-default generics as an early
+         error check.  GHDL resolves generics at run time so the defaults
+         used here are discarded.  NVC bakes generics into its elaboration
+         artifact, so ``launch_simulation()`` re-elaborates with the real
+         board generics before running — but this early check still catches
+         structural errors (port-width mismatches, missing libraries, etc.)
+         at validation time rather than at simulation launch.
 
     Returns ``(ok: bool, detail: str)``.  On success *detail* is the work dir.
     """
@@ -420,17 +423,19 @@ def analyze_vhdl(
             print(f"[sim_bridge] sim_wrapper analysis failed:\n{msg}", flush=True)
             return False, msg
 
-        # Step 3: GHDL early elaboration check (generic defaults suffice here)
-        if simulator == "ghdl":
-            elab = subprocess.run(
-                be.elaborate_cmd("sim_wrapper", work_dir),  # type: ignore[call-arg,arg-type]
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            if elab.returncode != 0:
-                combined = (result2.stderr + elab.stderr).strip()
-                return False, combined or "Elaboration of sim_wrapper failed."
+        # Step 3: early elaboration check — VHDL defaults suffice for structural errors.
+        # GHDL: pass only toplevel + work_dir (generics applied at run time).
+        # NVC:  pass empty generics so VHDL defaults are used; launch_simulation()
+        #       will re-elaborate with the real board generics before running.
+        elab_cmd = (
+            be.elaborate_cmd("sim_wrapper", work_dir)  # type: ignore[call-arg]
+            if simulator == "ghdl"
+            else be.elaborate_cmd("sim_wrapper", {}, work_dir)  # type: ignore[call-arg]
+        )
+        elab = subprocess.run(elab_cmd, capture_output=True, text=True, timeout=30)
+        if elab.returncode != 0:
+            combined = (result2.stderr + elab.stderr).strip()
+            return False, combined or "Elaboration of sim_wrapper failed."
 
         return True, work_dir
     except FileNotFoundError:

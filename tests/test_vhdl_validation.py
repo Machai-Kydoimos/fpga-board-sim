@@ -11,6 +11,7 @@ import pytest
 from fpga_sim.sim_bridge import (
     _WRAPPER_7SEG_TEMPLATE,
     _WRAPPER_TEMPLATE,
+    _NVCBackend,
     _choose_wrapper_template,
     _find_ghdl,
     _generate_wrapper,
@@ -38,6 +39,13 @@ def ghdl():
     if not shutil.which("ghdl"):
         pytest.skip("GHDL is not installed")
     return _find_ghdl()
+
+
+@pytest.fixture(scope="module")
+def nvc():
+    if not _NVCBackend.available():
+        pytest.skip("NVC is not installed")
+    return _NVCBackend.find()
 
 
 # ── Stage 1: encoding ─────────────────────────────────────────────────────────
@@ -184,6 +192,23 @@ def test_bad_7seg_extra_seg_passes_stage3_on_plain_board(ghdl):
     f = HDL / "bad_contract_7seg_extra_seg.vhdl"
     ok, detail = analyze_vhdl(f, toplevel=f.stem, board_def=_plain_board())
     assert ok, f"Unexpected GHDL failure on plain board: {detail}"
+
+
+@pytest.mark.slow
+def test_bad_7seg_extra_seg_fails_stage3_on_7seg_board_nvc(nvc):
+    """Wrong seg port width must cause NVC elaboration failure during analyze_vhdl."""
+    f = HDL / "bad_contract_7seg_extra_seg.vhdl"
+    ok, detail = analyze_vhdl(f, toplevel=f.stem, board_def=_7seg_board(), simulator="nvc")
+    assert not ok, "Expected NVC to fail: seg port width mismatch in 7-seg wrapper"
+    assert detail.strip(), "Error detail must be non-empty"
+
+
+@pytest.mark.slow
+def test_bad_7seg_extra_seg_passes_stage3_on_plain_board_nvc(nvc):
+    """Wrong seg port width must not cause NVC failure on a non-7-seg board."""
+    f = HDL / "bad_contract_7seg_extra_seg.vhdl"
+    ok, detail = analyze_vhdl(f, toplevel=f.stem, board_def=_plain_board(), simulator="nvc")
+    assert ok, f"Unexpected NVC failure on plain board: {detail}"
 
 
 # ── 7-seg contract checks ─────────────────────────────────────────────────────
