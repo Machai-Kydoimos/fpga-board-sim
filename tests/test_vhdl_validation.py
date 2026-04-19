@@ -134,6 +134,58 @@ def test_analyze_semantic_error_is_nonempty(ghdl):
     assert detail.strip()  # non-empty, human-readable error
 
 
+# ── bad_* 7-seg fixture checks ────────────────────────────────────────────────
+
+
+def test_bad_7seg_missing_seg_passes_stage1():
+    """bad_contract_7seg_missing_seg.vhdl must be clean ASCII (encoding passes)."""
+    ok, msg = check_vhdl_encoding(HDL / "bad_contract_7seg_missing_seg.vhdl")
+    assert ok, f"Unexpected encoding failure: {msg}"
+
+
+def test_bad_7seg_missing_seg_fails_stage2():
+    """NUM_SEGS generic without a seg port must be rejected by the contract checker."""
+    ok, msg = check_vhdl_contract(HDL / "bad_contract_7seg_missing_seg.vhdl")
+    assert not ok, "Expected contract check to fail: NUM_SEGS declared but no seg port"
+    assert "NUM_SEGS" in msg
+    assert "seg" in msg.lower()
+
+
+def test_bad_7seg_missing_seg_error_names_fix():
+    """The missing-seg error must suggest the correct port declaration."""
+    _, msg = check_vhdl_contract(HDL / "bad_contract_7seg_missing_seg.vhdl")
+    assert "8 * NUM_SEGS" in msg
+
+
+def test_bad_7seg_extra_seg_passes_stage1():
+    """bad_contract_7seg_extra_seg.vhdl must be clean ASCII (encoding passes)."""
+    ok, msg = check_vhdl_encoding(HDL / "bad_contract_7seg_extra_seg.vhdl")
+    assert ok, f"Unexpected encoding failure: {msg}"
+
+
+def test_bad_7seg_extra_seg_passes_stage2():
+    """bad_contract_7seg_extra_seg.vhdl must pass the contract check (seg port present)."""
+    ok, msg = check_vhdl_contract(HDL / "bad_contract_7seg_extra_seg.vhdl")
+    assert ok, f"Unexpected contract rejection: {msg}"
+
+
+@pytest.mark.slow
+def test_bad_7seg_extra_seg_fails_stage3_on_7seg_board(ghdl):
+    """Wrong seg port width must cause GHDL elaboration failure on a 7-seg board."""
+    f = HDL / "bad_contract_7seg_extra_seg.vhdl"
+    ok, detail = analyze_vhdl(f, toplevel=f.stem, board_def=_7seg_board())
+    assert not ok, "Expected GHDL to fail: seg port width mismatch in 7-seg wrapper"
+    assert detail.strip(), "Error detail must be non-empty"
+
+
+@pytest.mark.slow
+def test_bad_7seg_extra_seg_passes_stage3_on_plain_board(ghdl):
+    """Wrong seg port width must not cause failure on a non-7-seg board (seg left open)."""
+    f = HDL / "bad_contract_7seg_extra_seg.vhdl"
+    ok, detail = analyze_vhdl(f, toplevel=f.stem, board_def=_plain_board())
+    assert ok, f"Unexpected GHDL failure on plain board: {detail}"
+
+
 # ── 7-seg contract checks ─────────────────────────────────────────────────────
 
 

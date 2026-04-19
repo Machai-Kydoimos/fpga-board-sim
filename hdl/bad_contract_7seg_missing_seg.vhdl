@@ -1,3 +1,10 @@
+-- bad_contract_7seg_missing_seg.vhdl - Fails Stage 2 (contract check).
+--
+-- DELIBERATE FLAW: the design declares the NUM_SEGS generic, signalling intent
+-- to drive a 7-segment display, but omits the required seg output port.
+-- check_vhdl_contract detects NUM_SEGS without a seg port and rejects the file.
+-- Encoding is clean ASCII and the entity name matches the filename.
+
 library ieee;
 use ieee.std_logic_1164.all;
 

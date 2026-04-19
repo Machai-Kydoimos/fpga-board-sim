@@ -318,6 +318,13 @@ def check_vhdl_contract(
             "The top-level entity must have ports: clk, sw, btn, led."
         )
 
+    # NUM_SEGS without a seg port is a contract error: the generic is meaningless alone
+    if re.search(r"\bNUM_SEGS\b", text, re.IGNORECASE) and not _has_seg_port(text):
+        return False, (
+            f"'{path.name}' declares NUM_SEGS generic but has no 'seg' output port.\n"
+            "Add:  seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)"
+        )
+
     # Warn (non-fatal) about missing generics
     required_generics = ["NUM_SWITCHES", "NUM_BUTTONS", "NUM_LEDS", "COUNTER_BITS"]
     missing_generics = [
