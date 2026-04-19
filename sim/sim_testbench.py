@@ -469,7 +469,7 @@ async def interactive_sim(dut: object) -> None:
 
         # ── "S: stats" hint (bottom-left) when panel is hidden ────────────────
         if not _show_panel:
-            _hint_font = _gf(max(9, round(10 * _ov_s)))
+            _hint_font = _get_font(max(9, round(10 * _ov_s)))
             _hint_surf = _hint_font.render("S: stats", True, (110, 160, 110))
             screen.blit(
                 _hint_surf,
