@@ -57,6 +57,19 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def _build_generics(board: "BoardDef") -> dict[str, str]:
+    """Build the generic map for sim_wrapper from a board definition."""
+    clk_half_ns = max(1, round(5e8 / board.default_clock_hz))
+    num_segs = board.seven_seg.num_digits if board.seven_seg else 0
+    return {
+        "NUM_SWITCHES": str(max(1, len(board.switches))),
+        "NUM_BUTTONS": str(max(1, len(board.buttons))),
+        "NUM_LEDS": str(max(1, len(board.leds))),
+        "COUNTER_BITS": str(max(17, 4 * num_segs)),
+        "CLK_HALF_NS_INIT": str(clk_half_ns),
+    }
+
+
 def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
     """Run a headless benchmark and return an exit code.
 
@@ -116,15 +129,7 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
     print(f"[benchmark] Duration: {args.benchmark}s  (headless)")
 
     # Analyze VHDL
-    clk_half_ns = max(1, round(5e8 / chosen.default_clock_hz))
-    _num_segs = chosen.seven_seg.num_digits if chosen.seven_seg else 0
-    generics = {
-        "NUM_SWITCHES": str(max(1, len(chosen.switches))),
-        "NUM_BUTTONS": str(max(1, len(chosen.buttons))),
-        "NUM_LEDS": str(max(1, len(chosen.leds))),
-        "COUNTER_BITS": str(max(17, 4 * _num_segs)),
-        "CLK_HALF_NS_INIT": str(clk_half_ns),
-    }
+    generics = _build_generics(chosen)
     ok, work_dir = analyze_vhdl(
         vhdl_path, toplevel=toplevel_name, simulator=simulator, board_def=chosen
     )
@@ -372,18 +377,7 @@ def main() -> None:
         board_json = chosen.to_json()
         toplevel_sim = Path(current_vhdl_path).stem
 
-        # Size generics to match the selected board.
-        # CLK_HALF_NS seeds the VHDL wrapper's clock process (sim_wrapper)
-        # and is the initial value written to dut.clk_half_ns by sim_testbench.
-        clk_half_ns = max(1, round(5e8 / chosen.default_clock_hz))
-        _num_segs = chosen.seven_seg.num_digits if chosen.seven_seg else 0
-        generics = {
-            "NUM_SWITCHES": str(max(1, len(chosen.switches))),
-            "NUM_BUTTONS": str(max(1, len(chosen.buttons))),
-            "NUM_LEDS": str(max(1, len(chosen.leds))),
-            "COUNTER_BITS": str(max(17, 4 * _num_segs)),
-            "CLK_HALF_NS_INIT": str(clk_half_ns),
-        }
+        generics = _build_generics(chosen)
 
         _sim_error: str | None = None
         try:
@@ -415,7 +409,8 @@ def main() -> None:
                 current_work_dir = None
                 _return_to_board = None
                 continue
-        _return_to_board = chosen  # skip board selector; re-enter preview
+            # "retry" → fall through to re-enter board preview
+        _return_to_board = chosen
         continue
 
     get_font.cache_clear()

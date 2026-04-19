@@ -48,6 +48,7 @@ from cocotb.triggers import Timer
 from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ, BoardDef, ComponentInfo
 from fpga_sim.sim_session_log import save_session_stats
 from fpga_sim.ui import FPGABoard, SimPanel
+from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.sim_panel import _PANEL_H_BASE, _SPEED_DEFAULT
 
 # ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
@@ -200,6 +201,7 @@ async def interactive_sim(dut: object) -> None:
     pygame.display.set_caption(
         f"FPGA Simulator \u2013 {_board_name} \u2013 {_vhdl_basename} ({_sim_name})"
     )
+    _info_text = "  |  ".join(p for p in (_board_name, _vhdl_basename, _sim_name) if p)
 
     # ── Sync initial clock half-period to the VHDL wrapper ───────────────────
     # The wrapper's CLK_HALF_NS generic seeds the port default; writing it
@@ -395,16 +397,12 @@ async def interactive_sim(dut: object) -> None:
         # ── Overlays: info strip + bottom-right Pause/Stop buttons ───────────
         # Drawn last so they are never obscured by board or panel.
         _sw, _sh = screen.get_size()
-        from fpga_sim.ui.constants import get_font as _gf  # noqa: PLC0415
-
         _ov_s = min(_sw / 1024, _sh / 700)
         _ov_fs = max(10, round(13 * _ov_s))
-        _ov_font = _gf(_ov_fs, bold=True)
+        _ov_font = _get_font(_ov_fs, bold=True)
 
         # ── Info strip (top-left): board | VHDL | simulator ───────────────────
-        _info_font = _gf(max(9, round(11 * _ov_s)))
-        _info_parts = [p for p in (_board_name, _vhdl_basename, _sim_name) if p]
-        _info_text = "  |  ".join(_info_parts)
+        _info_font = _get_font(max(9, round(11 * _ov_s)))
         _info_surf = _info_font.render(_info_text, True, (170, 210, 170))
         _info_bg = pygame.Surface(
             (_info_surf.get_width() + 12, _info_surf.get_height() + 6),

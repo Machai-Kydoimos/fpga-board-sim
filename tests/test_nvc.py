@@ -16,6 +16,7 @@ from fpga_sim.sim_bridge import (
     analyze_vhdl,
     detect_simulators,
 )
+from tests.conftest import _7seg_board
 
 pytestmark = pytest.mark.slow
 
@@ -31,14 +32,6 @@ def test_detect_simulators_returns_list():
     assert isinstance(sims, list)
     assert len(sims) >= 1
     assert all(s in ("ghdl", "nvc") for s in sims)
-
-
-@pytest.fixture(scope="module")
-def nvc():
-    """Return the nvc binary path, or skip if NVC is not installed."""
-    if not _NVCBackend.available():
-        pytest.skip("NVC is not installed")
-    return _NVCBackend.find()
 
 
 def test_nvc_found(nvc):
@@ -172,18 +165,10 @@ def test_nvc_cocotb_simulation_passes(nvc, nvc_sim_env, nvc_work_dir):
 # ── 7-seg: NVC analysis and simulation ───────────────────────────────────────
 
 
-def _7seg_board() -> "object":
-    from fpga_sim.board_loader import BoardDef, SevenSegDef
-
-    return BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, True, False))
-
-
 @pytest.fixture(scope="module")
 def nvc_7seg_work_dir(nvc, nvc_sim_env):
     """Analyse counter_7seg with the 7-seg wrapper into a fresh temp workdir."""
-    from fpga_sim.board_loader import BoardDef, SevenSegDef
-
-    bd = BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, True, False))
+    bd = _7seg_board()
     d = tempfile.mkdtemp(prefix="fpga_nvc_7seg_")
     ok, detail = analyze_vhdl(
         HDL / "counter_7seg.vhd",

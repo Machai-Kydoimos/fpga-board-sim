@@ -11,7 +11,6 @@ import pytest
 from fpga_sim.sim_bridge import (
     _WRAPPER_7SEG_TEMPLATE,
     _WRAPPER_TEMPLATE,
-    _NVCBackend,
     _choose_wrapper_template,
     _find_ghdl,
     _generate_wrapper,
@@ -19,6 +18,7 @@ from fpga_sim.sim_bridge import (
     check_vhdl_contract,
     check_vhdl_encoding,
 )
+from tests.conftest import _7seg_board, _plain_board
 
 HDL = Path(__file__).resolve().parent.parent / "hdl"
 
@@ -39,13 +39,6 @@ def ghdl():
     if not shutil.which("ghdl"):
         pytest.skip("GHDL is not installed")
     return _find_ghdl()
-
-
-@pytest.fixture(scope="module")
-def nvc():
-    if not _NVCBackend.available():
-        pytest.skip("NVC is not installed")
-    return _NVCBackend.find()
 
 
 # ── Stage 1: encoding ─────────────────────────────────────────────────────────
@@ -212,18 +205,6 @@ def test_bad_7seg_extra_seg_passes_stage3_on_plain_board_nvc(nvc):
 
 
 # ── 7-seg contract checks ─────────────────────────────────────────────────────
-
-
-def _7seg_board() -> "object":
-    from fpga_sim.board_loader import BoardDef, SevenSegDef
-
-    return BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, True, False))
-
-
-def _plain_board() -> "object":
-    from fpga_sim.board_loader import BoardDef
-
-    return BoardDef("Arty", "ArtyPlatform")
 
 
 def test_7seg_board_accepts_standard_design():

@@ -215,7 +215,8 @@ class FPGABoard:
 
     def set_seg(self, index: int, bits8: int) -> None:
         """Update the bit pattern for digit *index* of the 7-segment display."""
-        if 0 <= index < len(self._seven_segs):
+        if 0 <= index < len(self._seven_segs) and self._prev_seg_bits[index] != bits8:
+            self._prev_seg_bits[index] = bits8
             self._seven_segs[index].set_bits(bits8)
 
     def set_height_offset(self, offset: int) -> None:

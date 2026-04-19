@@ -58,7 +58,8 @@ class _GHDLBackend:
         return [_GHDLBackend.find(), "-a", "--std=08", f"--workdir={work_dir}", str(vhdl_path)]
 
     @staticmethod
-    def elaborate_cmd(toplevel: str, work_dir: str) -> list[str]:
+    def elaborate_cmd(toplevel: str, generics: dict[str, str], work_dir: str) -> list[str]:
+        # GHDL ignores generics here — they are applied at run (-r) time.
         return [_GHDLBackend.find(), "-e", "--std=08", f"--workdir={work_dir}", toplevel]
 
     @staticmethod
@@ -424,15 +425,11 @@ def analyze_vhdl(
             return False, msg
 
         # Step 3: early elaboration check — VHDL defaults suffice for structural errors.
-        # GHDL: pass only toplevel + work_dir (generics applied at run time).
-        # NVC:  pass empty generics so VHDL defaults are used; launch_simulation()
-        #       will re-elaborate with the real board generics before running.
-        elab_cmd = (
-            be.elaborate_cmd("sim_wrapper", work_dir)  # type: ignore[call-arg]
-            if simulator == "ghdl"
-            else be.elaborate_cmd("sim_wrapper", {}, work_dir)  # type: ignore[call-arg]
+        # NVC will re-elaborate with real board generics in launch_simulation().
+        elab = subprocess.run(
+            be.elaborate_cmd("sim_wrapper", {}, work_dir),
+            capture_output=True, text=True, timeout=30,
         )
-        elab = subprocess.run(elab_cmd, capture_output=True, text=True, timeout=30)
         if elab.returncode != 0:
             combined = (result2.stderr + elab.stderr).strip()
             return False, combined or "Elaboration of sim_wrapper failed."
@@ -581,12 +578,9 @@ def launch_simulation(
         )
 
     if simulator == "nvc":
-        # NVC: elaborate sim_wrapper with generics, then run.
-        # Elaboration is deferred to here (unlike GHDL) because NVC requires the
-        # real generics at elaboration time.  Capture stderr so a failed elaboration
-        # can be surfaced to the user as an error dialog rather than a silent crash.
+        # NVC bakes generics into its elaboration artifact; re-elaborate with real values.
         elab = subprocess.run(
-            be.elaborate_cmd("sim_wrapper", generics, work_dir),  # type: ignore[call-arg,arg-type]
+            be.elaborate_cmd("sim_wrapper", generics, work_dir),
             env=env,
             capture_output=True,
             text=True,
@@ -596,7 +590,7 @@ def launch_simulation(
             raise RuntimeError(elab.stderr.strip() or "NVC elaboration failed.")
         cmd = be.run_cmd("sim_wrapper", plugin_lib, work_dir)  # type: ignore[call-arg,arg-type]
     else:
-        # GHDL: run sim_wrapper with generics inline (-r elaborates implicitly)
+        # GHDL: generics are passed at run time (-r elaborates implicitly)
         cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir)  # type: ignore[call-arg,arg-type]
 
     env["COCOTB_TEST_MODULES"] = "sim_testbench"

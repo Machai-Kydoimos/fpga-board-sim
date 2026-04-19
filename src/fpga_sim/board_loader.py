@@ -562,18 +562,6 @@ def _to_component(resource: _Resource, kind: str) -> ComponentInfo:
     )
 
 
-def _count_ctrl_pins(ctrl: _Resource) -> int:
-    """Count pins in a mux-select companion resource."""
-    pins, _, _, _ = _extract_pins(ctrl)
-    return max(1, len(pins))
-
-
-def _ctrl_is_inverted(ctrl: _Resource) -> bool:
-    """Return True when the companion resource uses PinsN or invert=True."""
-    _, _, inverted, _ = _extract_pins(ctrl)
-    return inverted
-
-
 def _extract_sevenseg(resources: list[_Resource]) -> "SevenSegDef | None":
     """Return a SevenSegDef if any display_7seg resources are present, else None."""
     seg_resources = [r for r in resources if isinstance(r, _Resource) and r.name == "display_7seg"]
@@ -601,12 +589,13 @@ def _extract_sevenseg(resources: list[_Resource]) -> "SevenSegDef | None":
     has_dp = any(getattr(r, "_seg_has_dp", False) for r in seg_resources)
 
     if ctrl_resource is not None:
+        ctrl_pins, _, ctrl_inv, _ = _extract_pins(ctrl_resource)
         return SevenSegDef(
-            num_digits=_count_ctrl_pins(ctrl_resource),
+            num_digits=max(1, len(ctrl_pins)),
             has_dp=has_dp,
             is_multiplexed=True,
             inverted=inverted,
-            select_inverted=_ctrl_is_inverted(ctrl_resource),
+            select_inverted=ctrl_inv,
         )
     return SevenSegDef(
         num_digits=len(seg_resources),

@@ -16,8 +16,6 @@ from fpga_sim.ui.constants import (
     RED_ON,
     WHITE,
     YELLOW,
-)
-from fpga_sim.ui.constants import (
     get_font as _get_font,
 )
 
