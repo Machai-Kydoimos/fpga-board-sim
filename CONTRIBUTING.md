@@ -65,7 +65,7 @@ ruff and mypy automatically; run them manually at any time:
 uv run ruff check .        # linter — must report 0 errors
 uv run ruff format --check . # formatter check (ruff format . to auto-fix)
 uv run mypy .              # type checker — must report 0 errors
-uv run pytest              # test suite — must be 153/153 (no display needed)
+uv run pytest              # test suite — must be 219/219 fast tests (no display needed)
 ```
 
 Running all four at once:
@@ -103,7 +103,7 @@ Configured in `pyproject.toml` under `[tool.ruff]`.  Enabled rule sets:
   functions do not require annotations or docstrings.
 - `sim/sim_testbench.py` — `ANN201` (public return type) is relaxed;
   cocotb's `@cocotb.test()` decorator makes the return type implicit.
-- `sim/test_blinky.py` — `ANN` is relaxed for the same reason.
+- `sim/test_blinky.py`, `sim/test_7seg.py` — `ANN` is relaxed for the same reason.
 
 ### Mypy (type checker)
 
@@ -117,7 +117,7 @@ warn_unused_ignores      = true   # keep type: ignore comments tidy
 ignore_missing_imports   = true   # third-party stubs not required
 ```
 
-Test files (`tests.*`, `test_blinky`) are exempt from `disallow_untyped_defs`
+Test files (`tests.*`, `test_blinky`, `test_7seg`) are exempt from `disallow_untyped_defs`
 via `[[tool.mypy.overrides]]` — consistent with the ruff exemptions above.
 
 The `amaranth-boards/` submodule is excluded from both ruff and mypy; its
@@ -177,12 +177,14 @@ setup.  A few things that matter for contributors:
 - **No display needed.** All tests use `SDL_VIDEODRIVER=dummy` so they
   run headlessly in CI and on servers.
 - **`sim/test_blinky.py`** contains headless cocotb tests for the blinky
-  design.  These run via pytest through a cocotb–pytest integration and
-  require GHDL or NVC to be installed.
+  design.  **`sim/test_7seg.py`** contains the equivalent tests for the
+  `counter_7seg` design.  Both run via pytest through a cocotb–pytest
+  integration and require GHDL or NVC to be installed.
 - **`tests/` has an `__init__.py`**; `sim/` does not.  This matters if
   you add a mypy override — use `"tests.*"` for `tests/` and the bare
-  module name `"test_blinky"` for `sim/test_blinky.py`.
-- The test suite must stay at **195/195 passed** before merge.
+  module name (e.g. `"test_blinky"`) for `sim/` files.
+- The fast test suite (`-m "not slow"`) must stay at **219/219 passed**
+  before merge.
 
 ---
 
@@ -286,11 +288,12 @@ calls `pygame.quit()` before spawning the simulator subprocess.
 Never assume pygame state persists across the boundary.
 
 **VHDL-side clock.**  The clock is driven by the generated `sim_wrapper`
-entity (see `sim/sim_wrapper_template.vhd`), not by a Python coroutine.
-This eliminates per-half-period GPI callbacks — only two GPI calls happen
-per frame (the Timer endpoints).  The wrapper exposes `clk_half_ns`; the
-testbench writes to it when the panel's **[-]/[+]** buttons change the
-virtual clock frequency.
+entity (see `sim/sim_wrapper_template.vhd` for standard boards and
+`sim/sim_wrapper_7seg_template.vhd` for 7-seg boards), not by a Python
+coroutine.  This eliminates per-half-period GPI callbacks — only two GPI
+calls happen per frame (the Timer endpoints).  The wrapper exposes
+`clk_half_ns`; the testbench writes to it when the panel's **[-]/[+]**
+buttons change the virtual clock frequency.
 
 **SimPanel.**  `src/fpga_sim/ui/sim_panel.py` owns the stats strip drawn at the bottom
 of the simulation window.  Its `panel_height` is a property that re-evaluates

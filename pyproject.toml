@@ -72,6 +72,7 @@ ignore = [
 "tests/*" = ["ANN", "D"]        # relax annotations + docstrings in tests
 "sim/sim_testbench.py" = ["ANN201"] # cocotb async test implicit return type
 "sim/test_blinky.py" = ["ANN"]  # cocotb headless tests: dut signals are dynamic
+"sim/test_7seg.py" = ["ANN"]   # cocotb headless tests: dut signals are dynamic
 
 [tool.ruff.format]
 quote-style = "double"
@@ -90,7 +91,7 @@ disallow_untyped_defs = true
 # strict = true  (future: evaluate after feature work settles)
 
 [[tool.mypy.overrides]]
-module = ["tests.*", "test_blinky"]
+module = ["tests.*", "test_blinky", "test_7seg"]
 disallow_untyped_defs = false   # test functions and fixtures are exempt
 
 [build-system]

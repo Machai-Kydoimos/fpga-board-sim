@@ -20,6 +20,7 @@ from fpga_sim.sim_bridge import (
 pytestmark = pytest.mark.slow
 
 PROJECT = Path(__file__).resolve().parent.parent
+HDL = PROJECT / "hdl"
 
 
 # ── Availability ──────────────────────────────────────────────────────────────
@@ -165,4 +166,76 @@ def test_nvc_cocotb_simulation_passes(nvc, nvc_sim_env, nvc_work_dir):
 
     assert "FAIL=0" in output and "PASS=" in output, (
         "cocotb tests did not all pass under NVC.\n" + "\n".join(output.splitlines()[-30:])
+    )
+
+
+# ── 7-seg: NVC analysis and simulation ───────────────────────────────────────
+
+
+def _7seg_board() -> "object":
+    from fpga_sim.board_loader import BoardDef, SevenSegDef
+
+    return BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, True, False))
+
+
+@pytest.fixture(scope="module")
+def nvc_7seg_work_dir(nvc, nvc_sim_env):
+    """Analyse counter_7seg with the 7-seg wrapper into a fresh temp workdir."""
+    from fpga_sim.board_loader import BoardDef, SevenSegDef
+
+    bd = BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, True, False))
+    d = tempfile.mkdtemp(prefix="fpga_nvc_7seg_")
+    ok, detail = analyze_vhdl(
+        HDL / "counter_7seg.vhd",
+        work_dir=d,
+        toplevel="counter_7seg",
+        simulator="nvc",
+        board_def=bd,
+    )
+    assert ok, f"NVC 7-seg analysis fixture failed: {detail}"
+    return d
+
+
+def test_7seg_analyzes_with_nvc(nvc, nvc_7seg_work_dir):
+    """counter_7seg.vhd must analyse cleanly under NVC using the 7-seg wrapper."""
+    assert Path(nvc_7seg_work_dir).is_dir()
+
+
+def test_7seg_nvc_simulation_passes(nvc, nvc_sim_env, nvc_7seg_work_dir):
+    """counter_7seg.vhd must run headlessly under NVC and produce valid seg output.
+
+    Runs test_7seg.py (pure cocotb, no pygame) against the elaborated sim_wrapper,
+    mirroring how test_nvc_cocotb_simulation_passes tests blinky.
+    """
+    env, vhpi_lib = nvc_sim_env
+
+    generics = {
+        "NUM_SWITCHES": "4",
+        "NUM_BUTTONS": "4",
+        "NUM_LEDS": "4",
+        "NUM_SEGS": "4",
+        "COUNTER_BITS": "32",
+    }
+    elab_cmd = _NVCBackend.elaborate_cmd("sim_wrapper", generics, nvc_7seg_work_dir)
+    subprocess.run(elab_cmd, env=env, check=True, cwd=nvc_7seg_work_dir)
+
+    run_cmd = _NVCBackend.run_cmd("sim_wrapper", vhpi_lib, nvc_7seg_work_dir)
+    run_cmd.append("--stop-time=2000000ns")
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_7seg"
+    run_env["TOPLEVEL"] = "sim_wrapper"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+
+    result = subprocess.run(
+        run_cmd, env=run_env, cwd=nvc_7seg_work_dir, capture_output=True, text=True
+    )
+    output = result.stdout + result.stderr
+
+    for line in output.splitlines():
+        if "PASS=" in line or "FAIL=" in line or line.strip().startswith("PASS "):
+            print(line.strip())
+
+    assert "FAIL=0" in output and "PASS=" in output, (
+        "cocotb 7-seg tests did not all pass under NVC.\n" + "\n".join(output.splitlines()[-30:])
     )

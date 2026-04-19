@@ -81,7 +81,7 @@ entity my_design is
 end entity;
 ```
 
-#### 7-segment boards (DE0, DE0-CV, DE1-SoC, DE10-Lite, Nandland-Go, Nexys4-DDR, Mercury, RZ-EasyFPGA-A2/2, StepMXO2)
+#### 7-segment boards (DE0, DE0-CV, DE1-SoC, DE10-Lite, Nandland-Go, Nexys4-DDR, RZ-EasyFPGA-A2/2, StepMXO2)
 
 ```vhdl
 entity my_design is

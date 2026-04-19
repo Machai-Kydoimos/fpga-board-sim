@@ -20,10 +20,14 @@ from amaranth.vendor import IntelPlatform
 class FakeDe0Platform(IntelPlatform):
     resources = [
         *LEDResources(pins="A B C D"),
-        Display7SegResource(0, a="P1",b="P2",c="P3",d="P4",e="P5",f="P6",g="P7",dp="P8",invert=True),
-        Display7SegResource(1, a="Q1",b="Q2",c="Q3",d="Q4",e="Q5",f="Q6",g="Q7",dp="Q8",invert=True),
-        Display7SegResource(2, a="R1",b="R2",c="R3",d="R4",e="R5",f="R6",g="R7",dp="R8",invert=True),
-        Display7SegResource(3, a="S1",b="S2",c="S3",d="S4",e="S5",f="S6",g="S7",dp="S8",invert=True),
+        Display7SegResource(0, a="P1", b="P2", c="P3", d="P4",
+                            e="P5", f="P6", g="P7", dp="P8", invert=True),
+        Display7SegResource(1, a="Q1", b="Q2", c="Q3", d="Q4",
+                            e="Q5", f="Q6", g="Q7", dp="Q8", invert=True),
+        Display7SegResource(2, a="R1", b="R2", c="R3", d="R4",
+                            e="R5", f="R6", g="R7", dp="R8", invert=True),
+        Display7SegResource(3, a="S1", b="S2", c="S3", d="S4",
+                            e="S5", f="S6", g="S7", dp="S8", invert=True),
     ]
 """
 
@@ -90,7 +94,7 @@ def test_inline_8seg_multiplexed():
     assert ssd is not None
     assert ssd.num_digits == 8
     assert ssd.is_multiplexed is True
-    assert ssd.select_inverted is True   # PinsN companion → active-low
+    assert ssd.select_inverted is True  # PinsN companion → active-low
 
 
 def test_inline_no_dp_flag():
@@ -136,14 +140,14 @@ def all_boards():
 _EXPECTED_7SEG = {
     # Board name fragment (must match _prettify_class_name() output)
     # → (num_digits, has_dp, is_multiplexed)
-    "DE0":          (4, True,  False),   # "DE0" board (not DE0 CV)
-    "Nandland Go":  (2, False, False),
-    "DE0 CV":       (6, False, False),   # prettified from DE0CVPlatform
-    "DE1 So":       (6, False, False),   # "DE1 So C" from DE1SoCPlatform
-    "DE10":         (6, True,  False),   # "DE10 Lite"
-    "Nexys4":       (8, True,  True),    # "Nexys4 DDR"
-    "RZEasy":       (4, True,  True),    # "RZEasy FPGAA2-2"
-    "Step MXO2":    (2, True,  True),    # multiplexed, 2 select pins (active-low)
+    "DE0": (4, True, False),  # "DE0" board (not DE0 CV)
+    "Nandland Go": (2, False, False),
+    "DE0 CV": (6, False, False),  # prettified from DE0CVPlatform
+    "DE1 So": (6, False, False),  # "DE1 So C" from DE1SoCPlatform
+    "DE10": (6, True, False),  # "DE10 Lite"
+    "Nexys4": (8, True, True),  # "Nexys4 DDR"
+    "RZEasy": (4, True, True),  # "RZEasy FPGAA2-2"
+    "Step MXO2": (2, True, True),  # multiplexed, 2 select pins (active-low)
     # Mercury: 7-seg is in baseboard_no_sram (not in resources), so not detected
 }
 

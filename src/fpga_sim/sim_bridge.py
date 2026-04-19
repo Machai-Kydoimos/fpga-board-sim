@@ -9,6 +9,8 @@ so that the simulator can load the cocotb module and start Python.
 Works on both Windows and Linux.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -17,6 +19,10 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fpga_sim.board_loader import BoardDef
 
 IS_WINDOWS = sys.platform == "win32"
 
@@ -238,6 +244,11 @@ def _libpython_via_config(venv_scripts: Path) -> str:
 # ── VHDL validation (simulator-independent) ───────────────────────────────────
 
 
+def _has_seg_port(vhdl_text: str) -> bool:
+    """Return True if the VHDL text declares a 'seg' output port."""
+    return bool(re.search(r"\bseg\s*:\s*out\b", vhdl_text, re.IGNORECASE))
+
+
 def check_vhdl_encoding(path: str | Path) -> tuple[bool, str]:
     """Stage 1: encoding check (no simulator needed).
 
@@ -266,7 +277,10 @@ def check_vhdl_encoding(path: str | Path) -> tuple[bool, str]:
     return True, ""
 
 
-def check_vhdl_contract(path: str | Path) -> tuple[bool, str]:
+def check_vhdl_contract(
+    path: str | Path,
+    board_def: BoardDef | None = None,
+) -> tuple[bool, str]:
     """Stage 2: contract validation (text-based, no simulator needed).
 
     Returns (ok: bool, message: str).
@@ -318,16 +332,31 @@ def check_vhdl_contract(path: str | Path) -> tuple[bool, str]:
 # ── Simulation infrastructure ─────────────────────────────────────────────────
 
 _WRAPPER_TEMPLATE: Path = Path(__file__).parent.parent.parent / "sim" / "sim_wrapper_template.vhd"
+_WRAPPER_7SEG_TEMPLATE: Path = (
+    Path(__file__).parent.parent.parent / "sim" / "sim_wrapper_7seg_template.vhd"
+)
 
 
-def _generate_wrapper(toplevel: str, work_dir: str) -> Path:
+def _choose_wrapper_template(board_def: BoardDef | None, design_has_seg: bool = False) -> Path:
+    """Return the 7-seg wrapper template when both board and design use 7-seg."""
+    if board_def is not None and board_def.seven_seg is not None and design_has_seg:
+        return _WRAPPER_7SEG_TEMPLATE
+    return _WRAPPER_TEMPLATE
+
+
+def _generate_wrapper(
+    toplevel: str,
+    work_dir: str,
+    board_def: BoardDef | None = None,
+    design_has_seg: bool = False,
+) -> Path:
     """Write ``sim_wrapper.vhd`` to *work_dir* with ``{toplevel}`` substituted.
 
-    The wrapper drives the clock from VHDL (eliminating GPI callbacks) and
-    exposes ``clk_half_ns`` as a port so sim_testbench can change the virtual
-    clock frequency at runtime without restarting the simulator.
+    Selects the 7-seg wrapper template when both *board_def* has a seven_seg
+    display and the design declares a ``seg`` output port.
     """
-    content = _WRAPPER_TEMPLATE.read_text().replace("{toplevel}", toplevel)
+    template = _choose_wrapper_template(board_def, design_has_seg)
+    content = template.read_text().replace("{toplevel}", toplevel)
     out = Path(work_dir) / "sim_wrapper.vhd"
     out.write_text(content)
     return out
@@ -338,6 +367,7 @@ def analyze_vhdl(
     work_dir: str | None = None,
     toplevel: str | None = None,
     simulator: str = "ghdl",
+    board_def: BoardDef | None = None,
 ) -> tuple[bool, str]:
     """Analyse the user's VHDL and the generated sim_wrapper.
 
@@ -367,7 +397,11 @@ def analyze_vhdl(
             return False, result.stderr.strip()
 
         # Step 2: generate wrapper and analyse it
-        wrapper_path = _generate_wrapper(toplevel, work_dir)
+        _vhdl_text = Path(vhdl_path).read_text(encoding="utf-8", errors="ignore")
+        _design_has_seg = _has_seg_port(_vhdl_text)
+        wrapper_path = _generate_wrapper(
+            toplevel, work_dir, board_def=board_def, design_has_seg=_design_has_seg
+        )
         result2 = subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir),
             capture_output=True,
@@ -476,6 +510,7 @@ def launch_simulation(
     sim_height: int = 700,
     work_dir: str | None = None,
     simulator: str = "ghdl",
+    board_def: BoardDef | None = None,
 ) -> bool:
     """Launch an interactive simulator + cocotb simulation.
 
@@ -492,10 +527,27 @@ def launch_simulation(
 
     This call blocks until the simulation exits.
     """
+    from fpga_sim.board_loader import BoardDef  # noqa: PLC0415
+
     vhdl_path = Path(vhdl_path).resolve()
     be = _backend(simulator)
     env, plugin_lib = _build_sim_env(simulator=simulator)
-    generics = generics or {}
+    generics = dict(generics or {})
+
+    # Resolve board_def from JSON when not passed directly
+    if board_def is None and board_json:
+        try:
+            board_def = BoardDef.from_json(board_json)
+        except Exception:
+            pass
+
+    # Detect seg port once; used for wrapper selection and NUM_SEGS injection.
+    _vhdl_text = vhdl_path.read_text(encoding="utf-8", errors="ignore")
+    _design_has_seg = _has_seg_port(_vhdl_text)
+
+    # Add NUM_SEGS generic only when both board and design use 7-seg
+    if board_def is not None and board_def.seven_seg is not None and _design_has_seg:
+        generics.setdefault("NUM_SEGS", str(board_def.seven_seg.num_digits))
 
     if work_dir is None:
         # Fresh run: analyse user file and wrapper from scratch.
@@ -506,7 +558,9 @@ def launch_simulation(
             check=True,
             cwd=work_dir,
         )
-        wrapper_path = _generate_wrapper(toplevel, work_dir)
+        wrapper_path = _generate_wrapper(
+            toplevel, work_dir, board_def=board_def, design_has_seg=_design_has_seg
+        )
         subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir),
             env=env,

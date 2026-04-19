@@ -43,6 +43,7 @@ import pygame
 
 from fpga_sim.board_loader import BoardDef, discover_boards, get_default_boards_path
 from fpga_sim.ui import LED, Button, FPGABoard, FPGAChip, Switch
+from fpga_sim.ui.components import SevenSeg
 from fpga_sim.ui.constants import BG_GREEN, BLUE_OFF, GRAY, RED_OFF, WHITE, _ui_scale
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -232,6 +233,115 @@ def _svg_line(
             "stroke-width": "1",
         },
     )
+
+
+_SVG_SEG_OFF = "#{:02X}{:02X}{:02X}".format(*SevenSeg.SEG_OFF)
+_SVG_SEG_BG = "#0F0F0F"
+
+
+def _svg_draw_seg_polygon(
+    parent: ET.Element,
+    x0: int,
+    y0: int,
+    dw: int,
+    dh: int,
+    thick: int,
+    gap: int,
+    *,
+    seg: str,
+) -> None:
+    """Emit one segment polygon (OFF/ghost colour) using the same geometry as SevenSeg.draw()."""
+    inner = max(1, dw - 2 * gap - 2 * thick)
+    half = dh // 2
+    ax = x0 + gap + thick
+    _geometry: dict[str, tuple[int, int, int, int, bool]] = {
+        "a": (ax, y0 + gap, inner, thick, True),
+        "b": (x0 + dw - gap - thick, y0 + gap + thick, thick, half - 2 * gap, False),
+        "c": (x0 + dw - gap - thick, y0 + half + gap, thick, half - 2 * gap - thick, False),
+        "d": (ax, y0 + dh - gap - thick, inner, thick, True),
+        "e": (x0 + gap, y0 + half + gap, thick, half - 2 * gap - thick, False),
+        "f": (x0 + gap, y0 + gap + thick, thick, half - 2 * gap, False),
+        "g": (ax, y0 + half - thick // 2, inner, thick, True),
+    }
+    x, y, w, h, horizontal = _geometry[seg]
+    if horizontal:
+        pts = [
+            (x + h // 2, y),
+            (x + w - h // 2, y),
+            (x + w, y + h // 2),
+            (x + w - h // 2, y + h),
+            (x + h // 2, y + h),
+            (x, y + h // 2),
+        ]
+    else:
+        pts = [
+            (x + w // 2, y),
+            (x + w, y + w // 2),
+            (x + w, y + h - w // 2),
+            (x + w // 2, y + h),
+            (x, y + h - w // 2),
+            (x, y + w // 2),
+        ]
+    ET.SubElement(
+        parent,
+        "polygon",
+        {"points": " ".join(f"{px},{py}" for px, py in pts), "fill": _SVG_SEG_OFF},
+    )
+
+
+def _svg_draw_7seg(
+    parent: ET.Element,
+    seg_rect: pygame.Rect,
+    digit_index: int,
+    has_dp: bool,
+) -> None:
+    """Draw a single 7-segment digit outline (all segments OFF) as SVG elements."""
+    dw, dh = seg_rect.width, seg_rect.height
+    thick = max(3, int(dw * 0.12))
+    gap = max(2, int(dw * 0.06))
+    x0, y0 = seg_rect.topleft
+
+    ET.SubElement(
+        parent,
+        "rect",
+        {
+            "x": str(x0),
+            "y": str(y0),
+            "width": str(dw),
+            "height": str(dh),
+            "rx": "3",
+            "fill": _SVG_SEG_BG,
+            "stroke": "#050505",
+            "stroke-width": "1",
+        },
+    )
+    for seg_name in ("a", "b", "c", "d", "e", "f", "g"):
+        _svg_draw_seg_polygon(parent, x0, y0, dw, dh, thick, gap, seg=seg_name)
+
+    if has_dp:
+        r = max(2, thick // 2)
+        ET.SubElement(
+            parent,
+            "circle",
+            {
+                "cx": str(x0 + dw + r + 2),
+                "cy": str(y0 + dh - r - 2),
+                "r": str(r),
+                "fill": "#2D1905",
+            },
+        )
+
+    ET.SubElement(
+        parent,
+        "text",
+        {
+            "x": str(x0 + dw // 2),
+            "y": str(y0 + dh + 12),
+            "text-anchor": "middle",
+            "fill": "#5A5A5A",
+            "font-size": str(max(8, int(dh * 0.18))),
+        },
+    ).text = str(digit_index)
 
 
 # ── SVG component renderers ────────────────────────────────────────────────────
@@ -472,6 +582,22 @@ def build_svg(board: FPGABoard, width: int, height: int) -> str:
             baseline="hanging",
         )
         _svg_draw_fpga_chip(svg, board.fpga_chip, font_size)
+
+    # 7-segment panel — right half of the top section (Option B horizontal split)
+    if board._seven_segs and board.fpga_chip.rect.width >= 20:
+        _svg_text(
+            svg,
+            board._seg_panel_x,
+            board._seven_segs[0].rect.top - title_size - 14,
+            "7-Seg",
+            size=title_size,
+            color=WHITE,
+            bold=True,
+            anchor="start",
+            baseline="hanging",
+        )
+        for _seg_w in board._seven_segs:
+            _svg_draw_7seg(svg, _seg_w.rect, _seg_w.index, _seg_w.has_dp)
 
     # LEDs section — weight 3, gets the most vertical space
     if board.leds:

@@ -347,8 +347,8 @@ class SevenSegDef:
     num_digits: int
     has_dp: bool
     is_multiplexed: bool
-    inverted: bool          # board hardware active-low (metadata; VHDL is active-high)
-    select_inverted: bool   # mux select lines active-low (v2 use)
+    inverted: bool  # board hardware active-low (metadata; VHDL is active-high)
+    select_inverted: bool  # mux select lines active-low (v2 use)
 
     def to_dict(self) -> dict[str, object]:
         """Serialize to a plain dict for inclusion in BoardDef JSON."""
@@ -365,7 +365,7 @@ class SevenSegDef:
         """Deserialize from a dict produced by to_dict()."""
         return cls(
             num_digits=int(d["num_digits"]),  # type: ignore[call-overload]  # strict: required field
-            has_dp=bool(d["has_dp"]),                  # strict: required field
+            has_dp=bool(d["has_dp"]),  # strict: required field
             is_multiplexed=bool(d["is_multiplexed"]),  # strict: required field
             inverted=bool(d.get("inverted", False)),
             select_inverted=bool(d.get("select_inverted", False)),
@@ -576,10 +576,7 @@ def _ctrl_is_inverted(ctrl: _Resource) -> bool:
 
 def _extract_sevenseg(resources: list[_Resource]) -> "SevenSegDef | None":
     """Return a SevenSegDef if any display_7seg resources are present, else None."""
-    seg_resources = [
-        r for r in resources
-        if isinstance(r, _Resource) and r.name == "display_7seg"
-    ]
+    seg_resources = [r for r in resources if isinstance(r, _Resource) and r.name == "display_7seg"]
     if not seg_resources:
         return None
 
@@ -587,7 +584,8 @@ def _extract_sevenseg(resources: list[_Resource]) -> "SevenSegDef | None":
     # Prefix-based so future boards (e.g. "display_7seg_sel") are auto-detected.
     ctrl_resource = next(
         (
-            r for r in resources
+            r
+            for r in resources
             if isinstance(r, _Resource)
             and r.name.startswith("display_7seg_")
             and r.name != "display_7seg"

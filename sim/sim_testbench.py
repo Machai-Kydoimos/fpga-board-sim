@@ -126,6 +126,7 @@ def _write_meta_sidecar(
         "num_leds": num_leds,
         "num_switches": num_switches,
         "num_buttons": num_buttons,
+        "num_segs": board_def.seven_seg.num_digits if board_def and board_def.seven_seg else 0,
         "max_cycles_per_step": _MAX_CYCLES_PER_STEP,
         "real_step_ns": _REAL_STEP_NS,
         "speed_factor_default": _SPEED_DEFAULT,
@@ -274,11 +275,15 @@ async def interactive_sim(dut: object) -> None:
     board.set_switch_callback(_on_switch)
     board.set_button_callback(_on_button)
 
+    # ── 7-segment display state ───────────────────────────────────────────────
+    _seven_seg_def = board_def.seven_seg if board_def else None
+
     # ── Print banner ──────────────────────────────────────────────────────────
     print(f"\n{'=' * 60}")
     print(f"  Simulation running: {_board_name}")
     print(f"  VHDL: {_vhdl_basename}  |  Simulator: {_sim_name}")
-    print(f"  {num_led} LEDs, {num_btn} buttons, {num_sw} switches")
+    _seg_suffix = f", {_seven_seg_def.num_digits}-digit 7-seg" if _seven_seg_def else ""
+    print(f"  {num_led} LEDs, {num_btn} buttons, {num_sw} switches{_seg_suffix}")
     print(f"  Clock: {clk_hz / 1e6:.4g} MHz  |  Speed: {panel.speed_factor:.4g}x")
     print("  Use the panel sliders to adjust speed and virtual clock.")
     print("  S: toggle stats panel  |  Pause/Stop: bottom-right of board")
@@ -346,6 +351,15 @@ async def interactive_sim(dut: object) -> None:
                 board.set_led(i, bool(led_val & (1 << i)))
         except Exception:
             pass
+
+        # ── Read 7-segment outputs ────────────────────────────────────────────
+        if _seven_seg_def is not None:
+            try:
+                seg_raw = int(dut.seg.value)  # type: ignore[attr-defined]
+                for i in range(_seven_seg_def.num_digits):
+                    board.set_seg(i, (seg_raw >> (8 * i)) & 0xFF)
+            except Exception:
+                pass  # X/Z at simulation start; safely ignored
 
         # ── Handle events (board + panel + stop overlay share the same list) ──
         events = pygame.event.get()
