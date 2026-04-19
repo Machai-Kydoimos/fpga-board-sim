@@ -65,7 +65,7 @@ ruff and mypy automatically; run them manually at any time:
 uv run ruff check .        # linter — must report 0 errors
 uv run ruff format --check . # formatter check (ruff format . to auto-fix)
 uv run mypy .              # type checker — must report 0 errors
-uv run pytest              # test suite — must be 224/224 fast tests (no display needed)
+uv run pytest              # test suite — must be 226/226 fast tests (no display needed)
 ```
 
 Running all four at once:
