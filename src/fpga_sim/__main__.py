@@ -385,6 +385,7 @@ def main() -> None:
             "CLK_HALF_NS_INIT": str(clk_half_ns),
         }
 
+        _sim_error: str | None = None
         try:
             launch_simulation(
                 board_json,
@@ -398,14 +399,22 @@ def main() -> None:
                 board_def=chosen,
             )
         except Exception as e:
-            print(f"Simulation error: {e}")
+            _sim_error = str(e)
 
-        # After simulation ends, re-init pygame and return to board preview.
+        # After simulation ends, re-init pygame.
         # current_vhdl_path / current_work_dir persist so user can restart immediately.
         pygame.init()
         screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
         pygame.display.set_caption("FPGA Simulator")
         clock = pygame.time.Clock()
+
+        if _sim_error:
+            _intent = ErrorDialog(screen, "Simulation Error", _sim_error).run(clock)
+            if _intent == "back":
+                current_vhdl_path = None
+                current_work_dir = None
+                _return_to_board = None
+                continue
         _return_to_board = chosen  # skip board selector; re-enter preview
         continue
 

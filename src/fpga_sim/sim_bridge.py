@@ -576,13 +576,19 @@ def launch_simulation(
         )
 
     if simulator == "nvc":
-        # NVC: elaborate sim_wrapper with generics, then run
-        subprocess.run(
+        # NVC: elaborate sim_wrapper with generics, then run.
+        # Elaboration is deferred to here (unlike GHDL) because NVC requires the
+        # real generics at elaboration time.  Capture stderr so a failed elaboration
+        # can be surfaced to the user as an error dialog rather than a silent crash.
+        elab = subprocess.run(
             be.elaborate_cmd("sim_wrapper", generics, work_dir),  # type: ignore[call-arg,arg-type]
             env=env,
-            check=True,
+            capture_output=True,
+            text=True,
             cwd=work_dir,
         )
+        if elab.returncode != 0:
+            raise RuntimeError(elab.stderr.strip() or "NVC elaboration failed.")
         cmd = be.run_cmd("sim_wrapper", plugin_lib, work_dir)  # type: ignore[call-arg,arg-type]
     else:
         # GHDL: run sim_wrapper with generics inline (-r elaborates implicitly)
