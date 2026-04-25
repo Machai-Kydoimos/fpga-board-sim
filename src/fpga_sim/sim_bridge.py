@@ -428,7 +428,9 @@ def analyze_vhdl(
         # NVC will re-elaborate with real board generics in launch_simulation().
         elab = subprocess.run(
             be.elaborate_cmd("sim_wrapper", {}, work_dir),
-            capture_output=True, text=True, timeout=30,
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if elab.returncode != 0:
             combined = (result2.stderr + elab.stderr).strip()

@@ -42,6 +42,4 @@ def test_sim_testbench_full_lint(ruff):
         capture_output=True,
         text=True,
     )
-    assert result.returncode == 0, (
-        "ruff found issues in sim_testbench.py:\n" + result.stdout
-    )
+    assert result.returncode == 0, "ruff found issues in sim_testbench.py:\n" + result.stdout
