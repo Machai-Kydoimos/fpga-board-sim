@@ -190,6 +190,32 @@ def test_layout_leaves_bottom_gap(headless_pygame):
 
 
 @pytest.mark.parametrize("w,h", [(800, 480), (1024, 700), (1280, 800), (1600, 1000), (400, 300)])
+@pytest.mark.parametrize("has_dp", [True, False])
+def test_fpga_board_7seg_draws(headless_pygame, w, h, has_dp):
+    from fpga_sim.board_loader import SevenSegDef
+
+    headless_pygame.display.set_mode((w, h))
+    bd = _sample_board_def()
+    bd = type(bd)(
+        name=bd.name,
+        class_name=bd.class_name,
+        vendor=bd.vendor,
+        device=bd.device,
+        package=bd.package,
+        leds=bd.leds,
+        buttons=bd.buttons,
+        switches=bd.switches,
+        seven_seg=SevenSegDef(
+            4, has_dp=has_dp, is_multiplexed=False, inverted=True, select_inverted=False
+        ),
+    )
+    board = FPGABoard(board_def=bd, width=w, height=h)
+    assert len(board._seven_segs) == 4
+    board.set_seg(0, 0x3F)
+    board._draw()  # must not raise
+
+
+@pytest.mark.parametrize("w,h", [(800, 480), (1024, 700), (1280, 800), (1600, 1000), (400, 300)])
 def test_vhdl_file_picker_draws(headless_pygame, w, h):
     screen = headless_pygame.display.set_mode((w, h))
     picker = VHDLFilePicker(screen, start_dir=tempfile.gettempdir())

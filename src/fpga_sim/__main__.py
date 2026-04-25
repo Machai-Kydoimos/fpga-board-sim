@@ -57,6 +57,19 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+def _build_generics(board: "BoardDef") -> dict[str, str]:
+    """Build the generic map for sim_wrapper from a board definition."""
+    clk_half_ns = max(1, round(5e8 / board.default_clock_hz))
+    num_segs = board.seven_seg.num_digits if board.seven_seg else 0
+    return {
+        "NUM_SWITCHES": str(max(1, len(board.switches))),
+        "NUM_BUTTONS": str(max(1, len(board.buttons))),
+        "NUM_LEDS": str(max(1, len(board.leds))),
+        "COUNTER_BITS": str(max(17, 4 * num_segs)),
+        "CLK_HALF_NS_INIT": str(clk_half_ns),
+    }
+
+
 def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
     """Run a headless benchmark and return an exit code.
 
@@ -105,7 +118,7 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
         print(f"[benchmark] VHDL encoding error: {msg}", file=sys.stderr)
         return 1
     toplevel_name = vhdl_path.stem
-    ok, msg = check_vhdl_contract(vhdl_path)
+    ok, msg = check_vhdl_contract(vhdl_path, board_def=chosen)
     if not ok:
         print(f"[benchmark] VHDL contract error: {msg}", file=sys.stderr)
         return 1
@@ -116,15 +129,10 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
     print(f"[benchmark] Duration: {args.benchmark}s  (headless)")
 
     # Analyze VHDL
-    clk_half_ns = max(1, round(5e8 / chosen.default_clock_hz))
-    generics = {
-        "NUM_SWITCHES": str(max(1, len(chosen.switches))),
-        "NUM_BUTTONS": str(max(1, len(chosen.buttons))),
-        "NUM_LEDS": str(max(1, len(chosen.leds))),
-        "COUNTER_BITS": "17",
-        "CLK_HALF_NS_INIT": str(clk_half_ns),
-    }
-    ok, work_dir = analyze_vhdl(vhdl_path, toplevel=toplevel_name, simulator=simulator)
+    generics = _build_generics(chosen)
+    ok, work_dir = analyze_vhdl(
+        vhdl_path, toplevel=toplevel_name, simulator=simulator, board_def=chosen
+    )
     if not ok:
         print(f"[benchmark] VHDL analysis failed: {work_dir}", file=sys.stderr)
         return 1
@@ -145,6 +153,7 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
             sim_height=700,
             work_dir=work_dir,
             simulator=simulator,
+            board_def=chosen,
         )
     finally:
         os.environ.pop("FPGA_SIM_BENCHMARK", None)
@@ -282,22 +291,24 @@ def main() -> None:
                 # Stage 1+2: encoding and contract checks
                 _toplevel = Path(picked).stem
                 _intent = "retry"
-                _ok = False
-                _detail = ""
-                for _check_fn in [check_vhdl_encoding, check_vhdl_contract]:
-                    _ok, _detail = _check_fn(picked)
+                _ok, _detail = check_vhdl_encoding(picked)
+                if not _ok:
+                    _intent = ErrorDialog(screen, "VHDL Error", _detail).run(clock)
+                else:
+                    _ok, _detail = check_vhdl_contract(picked, board_def=chosen)
                     if not _ok:
                         _intent = ErrorDialog(screen, "VHDL Error", _detail).run(clock)
-                        break
-                else:
-                    # Stage 3: simulator analysis + elaboration
-                    _ok, _detail = analyze_vhdl(picked, toplevel=_toplevel, simulator=simulator)
-                    if _ok:
-                        _new_work_dir = _detail
                     else:
-                        _intent = ErrorDialog(screen, f"{simulator.upper()} Error", _detail).run(
-                            clock
+                        # Stage 3: simulator analysis + elaboration
+                        _ok, _detail = analyze_vhdl(
+                            picked, toplevel=_toplevel, simulator=simulator, board_def=chosen
                         )
+                        if _ok:
+                            _new_work_dir = _detail
+                        else:
+                            _intent = ErrorDialog(
+                                screen, f"{simulator.upper()} Error", _detail
+                            ).run(clock)
 
                 if _ok:
                     _new_path = picked
@@ -325,12 +336,24 @@ def main() -> None:
         # ── Step 5: launch simulation ─────────────────────────────
         assert current_vhdl_path is not None  # Start button only fires when VHDL is set
 
-        # Re-analyse if the user switched simulator since the last analysis.
-        # Each simulator writes its own work directory, so a work_dir produced
-        # by NVC cannot be reused by GHDL and vice-versa.
+        # Re-analyse if the work directory is missing or was produced by a different
+        # simulator.  This also covers the session-restore case (_work_dir_simulator
+        # is None on first launch) where the saved board+VHDL pair may be mismatched
+        # (e.g. a 7-seg board with a standard design or vice-versa).  Always re-run
+        # the contract check here so a stale session cannot bypass it.
         if _work_dir_simulator != simulator:
             _ra_top = Path(current_vhdl_path).stem
-            _ra_ok, _ra_dir = analyze_vhdl(current_vhdl_path, toplevel=_ra_top, simulator=simulator)
+            _cc_ok, _cc_msg = check_vhdl_contract(Path(current_vhdl_path), board_def=chosen)
+            if not _cc_ok:
+                ErrorDialog(screen, "VHDL Error", _cc_msg).run(clock)
+                current_vhdl_path = None
+                current_work_dir = None
+                _work_dir_simulator = None
+                _return_to_board = chosen
+                continue
+            _ra_ok, _ra_dir = analyze_vhdl(
+                current_vhdl_path, toplevel=_ra_top, simulator=simulator, board_def=chosen
+            )
             if _ra_ok:
                 current_work_dir = _ra_dir
                 _work_dir_simulator = simulator
@@ -354,18 +377,9 @@ def main() -> None:
         board_json = chosen.to_json()
         toplevel_sim = Path(current_vhdl_path).stem
 
-        # Size generics to match the selected board.
-        # CLK_HALF_NS seeds the VHDL wrapper's clock process (sim_wrapper)
-        # and is the initial value written to dut.clk_half_ns by sim_testbench.
-        clk_half_ns = max(1, round(5e8 / chosen.default_clock_hz))
-        generics = {
-            "NUM_SWITCHES": str(max(1, len(chosen.switches))),
-            "NUM_BUTTONS": str(max(1, len(chosen.buttons))),
-            "NUM_LEDS": str(max(1, len(chosen.leds))),
-            "COUNTER_BITS": "17",
-            "CLK_HALF_NS_INIT": str(clk_half_ns),
-        }
+        generics = _build_generics(chosen)
 
+        _sim_error: str | None = None
         try:
             launch_simulation(
                 board_json,
@@ -376,17 +390,27 @@ def main() -> None:
                 sim_height=height,
                 work_dir=current_work_dir,
                 simulator=simulator,
+                board_def=chosen,
             )
         except Exception as e:
-            print(f"Simulation error: {e}")
+            _sim_error = str(e)
 
-        # After simulation ends, re-init pygame and return to board preview.
+        # After simulation ends, re-init pygame.
         # current_vhdl_path / current_work_dir persist so user can restart immediately.
         pygame.init()
         screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
         pygame.display.set_caption("FPGA Simulator")
         clock = pygame.time.Clock()
-        _return_to_board = chosen  # skip board selector; re-enter preview
+
+        if _sim_error:
+            _intent = ErrorDialog(screen, "Simulation Error", _sim_error).run(clock)
+            if _intent == "back":
+                current_vhdl_path = None
+                current_work_dir = None
+                _return_to_board = None
+                continue
+            # "retry" → fall through to re-enter board preview
+        _return_to_board = chosen
         continue
 
     get_font.cache_clear()

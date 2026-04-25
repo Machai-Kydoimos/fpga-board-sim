@@ -62,7 +62,8 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 
 ### VHDL Design Contract
 
-VHDL files must have a top-level entity with exactly these generics and ports:
+#### Standard boards (no 7-segment display)
+
 ```vhdl
 entity my_design is
   generic (
@@ -80,7 +81,29 @@ entity my_design is
 end entity;
 ```
 
-The simulator sets generics to match the selected board's resource counts and provides a 100 MHz clock. The entity name must match the filename stem (e.g. `blinky.vhd` → entity `blinky`).
+#### 7-segment boards (DE0, DE0-CV, DE1-SoC, DE10-Lite, Nandland-Go, Nexys4-DDR, RZ-EasyFPGA-A2/2, StepMXO2)
+
+```vhdl
+entity my_design is
+  generic (
+    NUM_SWITCHES : positive := 4;
+    NUM_BUTTONS  : positive := 4;
+    NUM_LEDS     : positive := 4;
+    NUM_SEGS     : positive := 4;   -- number of digits; set by simulator to board value
+    COUNTER_BITS : positive := 32
+  );
+  port (
+    clk : in  std_logic;
+    sw  : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);
+    btn : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0);
+    led : out std_logic_vector(NUM_LEDS     - 1 downto 0);
+    seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)
+    -- digit i occupies bits [8i+7 : 8i] = {dp, g, f, e, d, c, b, a}, active-high
+  );
+end entity;
+```
+
+The simulator sets generics to match the selected board's resource counts and provides a 100 MHz clock. The entity name must match the filename stem (e.g. `blinky.vhd` → entity `blinky`). Use `counter_7seg.vhd` in `hdl/` as a working 7-seg example.
 
 ### Platform Notes
 

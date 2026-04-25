@@ -1,5 +1,7 @@
 """ErrorDialog: modal error overlay with scrollable message and retry/back buttons."""
 
+import sys
+
 import pygame
 
 from fpga_sim.ui.constants import SEL_BG, WHITE, _ui_scale, get_font
@@ -17,6 +19,7 @@ class ErrorDialog:
         self.screen = screen
         self.title = title
         self.message = message
+        print(f"[error] {title}: {message}", file=sys.stderr, flush=True)
         self._bg = screen.copy()
         self._scroll = 0
         self._retry_rect: pygame.Rect | None = None

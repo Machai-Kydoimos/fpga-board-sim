@@ -9,6 +9,8 @@ so that the simulator can load the cocotb module and start Python.
 Works on both Windows and Linux.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import re
@@ -17,6 +19,10 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fpga_sim.board_loader import BoardDef
 
 IS_WINDOWS = sys.platform == "win32"
 
@@ -52,7 +58,8 @@ class _GHDLBackend:
         return [_GHDLBackend.find(), "-a", "--std=08", f"--workdir={work_dir}", str(vhdl_path)]
 
     @staticmethod
-    def elaborate_cmd(toplevel: str, work_dir: str) -> list[str]:
+    def elaborate_cmd(toplevel: str, generics: dict[str, str], work_dir: str) -> list[str]:
+        # GHDL ignores generics here — they are applied at run (-r) time.
         return [_GHDLBackend.find(), "-e", "--std=08", f"--workdir={work_dir}", toplevel]
 
     @staticmethod
@@ -238,6 +245,11 @@ def _libpython_via_config(venv_scripts: Path) -> str:
 # ── VHDL validation (simulator-independent) ───────────────────────────────────
 
 
+def _has_seg_port(vhdl_text: str) -> bool:
+    """Return True if the VHDL text declares a 'seg' output port."""
+    return bool(re.search(r"\bseg\s*:\s*out\b", vhdl_text, re.IGNORECASE))
+
+
 def check_vhdl_encoding(path: str | Path) -> tuple[bool, str]:
     """Stage 1: encoding check (no simulator needed).
 
@@ -266,7 +278,10 @@ def check_vhdl_encoding(path: str | Path) -> tuple[bool, str]:
     return True, ""
 
 
-def check_vhdl_contract(path: str | Path) -> tuple[bool, str]:
+def check_vhdl_contract(
+    path: str | Path,
+    board_def: BoardDef | None = None,
+) -> tuple[bool, str]:
     """Stage 2: contract validation (text-based, no simulator needed).
 
     Returns (ok: bool, message: str).
@@ -304,6 +319,13 @@ def check_vhdl_contract(path: str | Path) -> tuple[bool, str]:
             "The top-level entity must have ports: clk, sw, btn, led."
         )
 
+    # NUM_SEGS without a seg port is a contract error: the generic is meaningless alone
+    if re.search(r"\bNUM_SEGS\b", text, re.IGNORECASE) and not _has_seg_port(text):
+        return False, (
+            f"'{path.name}' declares NUM_SEGS generic but has no 'seg' output port.\n"
+            "Add:  seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)"
+        )
+
     # Warn (non-fatal) about missing generics
     required_generics = ["NUM_SWITCHES", "NUM_BUTTONS", "NUM_LEDS", "COUNTER_BITS"]
     missing_generics = [
@@ -318,16 +340,31 @@ def check_vhdl_contract(path: str | Path) -> tuple[bool, str]:
 # ── Simulation infrastructure ─────────────────────────────────────────────────
 
 _WRAPPER_TEMPLATE: Path = Path(__file__).parent.parent.parent / "sim" / "sim_wrapper_template.vhd"
+_WRAPPER_7SEG_TEMPLATE: Path = (
+    Path(__file__).parent.parent.parent / "sim" / "sim_wrapper_7seg_template.vhd"
+)
 
 
-def _generate_wrapper(toplevel: str, work_dir: str) -> Path:
+def _choose_wrapper_template(board_def: BoardDef | None, design_has_seg: bool = False) -> Path:
+    """Return the 7-seg wrapper template when both board and design use 7-seg."""
+    if board_def is not None and board_def.seven_seg is not None and design_has_seg:
+        return _WRAPPER_7SEG_TEMPLATE
+    return _WRAPPER_TEMPLATE
+
+
+def _generate_wrapper(
+    toplevel: str,
+    work_dir: str,
+    board_def: BoardDef | None = None,
+    design_has_seg: bool = False,
+) -> Path:
     """Write ``sim_wrapper.vhd`` to *work_dir* with ``{toplevel}`` substituted.
 
-    The wrapper drives the clock from VHDL (eliminating GPI callbacks) and
-    exposes ``clk_half_ns`` as a port so sim_testbench can change the virtual
-    clock frequency at runtime without restarting the simulator.
+    Selects the 7-seg wrapper template when both *board_def* has a seven_seg
+    display and the design declares a ``seg`` output port.
     """
-    content = _WRAPPER_TEMPLATE.read_text().replace("{toplevel}", toplevel)
+    template = _choose_wrapper_template(board_def, design_has_seg)
+    content = template.read_text().replace("{toplevel}", toplevel)
     out = Path(work_dir) / "sim_wrapper.vhd"
     out.write_text(content)
     return out
@@ -338,16 +375,20 @@ def analyze_vhdl(
     work_dir: str | None = None,
     toplevel: str | None = None,
     simulator: str = "ghdl",
+    board_def: BoardDef | None = None,
 ) -> tuple[bool, str]:
     """Analyse the user's VHDL and the generated sim_wrapper.
 
     Steps:
       1. Analyse the user's VHDL file (``-a``).
       2. Generate ``sim_wrapper.vhd`` and analyse it.
-      3. GHDL only: elaborate ``sim_wrapper`` (early error check; generics
-         resolved at run time so defaults are fine here).
-      NVC defers elaboration to ``launch_simulation()`` because it requires
-      generics at elaboration time.
+      3. Elaborate ``sim_wrapper`` with VHDL-default generics as an early
+         error check.  GHDL resolves generics at run time so the defaults
+         used here are discarded.  NVC bakes generics into its elaboration
+         artifact, so ``launch_simulation()`` re-elaborates with the real
+         board generics before running — but this early check still catches
+         structural errors (port-width mismatches, missing libraries, etc.)
+         at validation time rather than at simulation launch.
 
     Returns ``(ok: bool, detail: str)``.  On success *detail* is the work dir.
     """
@@ -367,7 +408,11 @@ def analyze_vhdl(
             return False, result.stderr.strip()
 
         # Step 2: generate wrapper and analyse it
-        wrapper_path = _generate_wrapper(toplevel, work_dir)
+        _vhdl_text = Path(vhdl_path).read_text(encoding="utf-8", errors="ignore")
+        _design_has_seg = _has_seg_port(_vhdl_text)
+        wrapper_path = _generate_wrapper(
+            toplevel, work_dir, board_def=board_def, design_has_seg=_design_has_seg
+        )
         result2 = subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir),
             capture_output=True,
@@ -379,17 +424,17 @@ def analyze_vhdl(
             print(f"[sim_bridge] sim_wrapper analysis failed:\n{msg}", flush=True)
             return False, msg
 
-        # Step 3: GHDL early elaboration check (generic defaults suffice here)
-        if simulator == "ghdl":
-            elab = subprocess.run(
-                be.elaborate_cmd("sim_wrapper", work_dir),  # type: ignore[call-arg,arg-type]
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            if elab.returncode != 0:
-                combined = (result2.stderr + elab.stderr).strip()
-                return False, combined or "Elaboration of sim_wrapper failed."
+        # Step 3: early elaboration check — VHDL defaults suffice for structural errors.
+        # NVC will re-elaborate with real board generics in launch_simulation().
+        elab = subprocess.run(
+            be.elaborate_cmd("sim_wrapper", {}, work_dir),
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if elab.returncode != 0:
+            combined = (result2.stderr + elab.stderr).strip()
+            return False, combined or "Elaboration of sim_wrapper failed."
 
         return True, work_dir
     except FileNotFoundError:
@@ -476,6 +521,7 @@ def launch_simulation(
     sim_height: int = 700,
     work_dir: str | None = None,
     simulator: str = "ghdl",
+    board_def: BoardDef | None = None,
 ) -> bool:
     """Launch an interactive simulator + cocotb simulation.
 
@@ -492,10 +538,27 @@ def launch_simulation(
 
     This call blocks until the simulation exits.
     """
+    from fpga_sim.board_loader import BoardDef  # noqa: PLC0415
+
     vhdl_path = Path(vhdl_path).resolve()
     be = _backend(simulator)
     env, plugin_lib = _build_sim_env(simulator=simulator)
-    generics = generics or {}
+    generics = dict(generics or {})
+
+    # Resolve board_def from JSON when not passed directly
+    if board_def is None and board_json:
+        try:
+            board_def = BoardDef.from_json(board_json)
+        except Exception:
+            pass
+
+    # Detect seg port once; used for wrapper selection and NUM_SEGS injection.
+    _vhdl_text = vhdl_path.read_text(encoding="utf-8", errors="ignore")
+    _design_has_seg = _has_seg_port(_vhdl_text)
+
+    # Add NUM_SEGS generic only when both board and design use 7-seg
+    if board_def is not None and board_def.seven_seg is not None and _design_has_seg:
+        generics.setdefault("NUM_SEGS", str(board_def.seven_seg.num_digits))
 
     if work_dir is None:
         # Fresh run: analyse user file and wrapper from scratch.
@@ -506,7 +569,9 @@ def launch_simulation(
             check=True,
             cwd=work_dir,
         )
-        wrapper_path = _generate_wrapper(toplevel, work_dir)
+        wrapper_path = _generate_wrapper(
+            toplevel, work_dir, board_def=board_def, design_has_seg=_design_has_seg
+        )
         subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir),
             env=env,
@@ -515,16 +580,19 @@ def launch_simulation(
         )
 
     if simulator == "nvc":
-        # NVC: elaborate sim_wrapper with generics, then run
-        subprocess.run(
-            be.elaborate_cmd("sim_wrapper", generics, work_dir),  # type: ignore[call-arg,arg-type]
+        # NVC bakes generics into its elaboration artifact; re-elaborate with real values.
+        elab = subprocess.run(
+            be.elaborate_cmd("sim_wrapper", generics, work_dir),
             env=env,
-            check=True,
+            capture_output=True,
+            text=True,
             cwd=work_dir,
         )
+        if elab.returncode != 0:
+            raise RuntimeError(elab.stderr.strip() or "NVC elaboration failed.")
         cmd = be.run_cmd("sim_wrapper", plugin_lib, work_dir)  # type: ignore[call-arg,arg-type]
     else:
-        # GHDL: run sim_wrapper with generics inline (-r elaborates implicitly)
+        # GHDL: generics are passed at run time (-r elaborates implicitly)
         cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir)  # type: ignore[call-arg,arg-type]
 
     env["COCOTB_TEST_MODULES"] = "sim_testbench"

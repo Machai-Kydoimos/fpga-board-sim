@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Machai-Kydoimos/fpga-board-sim/actions/workflows/ci.yml/badge.svg)](https://github.com/Machai-Kydoimos/fpga-board-sim/actions/workflows/ci.yml)
 
-Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://github.com/ghdl/ghdl) or [NVC](https://github.com/nickg/nvc). Select from 75+ real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards)), then run VHDL designs against a virtual board with switches, buttons, and LEDs — all driven by [cocotb](https://github.com/cocotb/cocotb).
+Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://github.com/ghdl/ghdl) or [NVC](https://github.com/nickg/nvc). Select from 75+ real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards)), then run VHDL designs against a virtual board with switches, buttons, LEDs, and 7-segment displays — all driven by [cocotb](https://github.com/cocotb/cocotb).
 
 ## Quick Start
 
@@ -146,7 +146,7 @@ A list of 75+ FPGA boards appears. Type to filter, click to select.
 
 ### 2. Preview the board
 
-The board renders with LEDs, buttons, and switches matching the real hardware. Components show their resource names and pin assignments.
+The board renders with LEDs, buttons, switches, and — on supported boards — a 7-segment display, all matching the real hardware. Components show their resource names and pin assignments.
 
 - **Click switches** to toggle them
 - **Click and hold buttons** to press them
@@ -156,7 +156,7 @@ The board renders with LEDs, buttons, and switches matching the real hardware. C
 
 ### 3. Select a VHDL file
 
-Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains six ready-to-run designs (`blinky.vhd`, `blinky_counter.vhd`, `blinky_morse.vhd`, `blinky_pwm.vhd`, `blinky_walking.vhd`, `blinky_alt.vhd`) as starting points.
+Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains ready-to-run designs as starting points: six standard LED designs (`blinky.vhd`, `blinky_counter.vhd`, `blinky_morse.vhd`, `blinky_pwm.vhd`, `blinky_walking.vhd`, `blinky_alt.vhd`) and three 7-segment designs (`counter_7seg.vhd`, `snake_7seg.vhd`, `walking_counter_7seg.vhd`).
 
 ### 4. Run the simulation
 
@@ -164,6 +164,7 @@ The selected simulator (GHDL or NVC) compiles and simulates the VHDL design via 
 
 - **Switches/buttons** drive FPGA inputs in real time
 - **LEDs** reflect FPGA outputs from the simulation
+- **7-segment digits** show live hex glyphs on supported boards
 - **S** — toggle the stats panel (see below)
 - **ESC** or close window → stops simulation, returns to board list
 
@@ -213,8 +214,10 @@ src/fpga_sim/              Installable Python package (src layout)
     error_dialog.py        Error dialog overlay
 sim/                       Simulation infrastructure (not part of the installed package)
   sim_testbench.py         cocotb test that bridges simulator signals ↔ pygame UI; main sim loop
-  sim_wrapper_template.vhd VHDL wrapper template — drives the clock internally, instantiates user design
+  sim_wrapper_template.vhd VHDL wrapper template — standard boards (no 7-seg port)
+  sim_wrapper_7seg_template.vhd VHDL wrapper template — 7-seg boards (adds NUM_SEGS generic + seg port)
   test_blinky.py           Headless cocotb tests for the blinky design
+  test_7seg.py             Headless cocotb tests for the counter_7seg design
 hdl/                       Example VHDL designs
   blinky.vhd               Switches XOR counter → LEDs, buttons OR → LEDs
   blinky_alt.vhd           Alternate blinky using independent per-LED counters
@@ -222,6 +225,9 @@ hdl/                       Example VHDL designs
   blinky_morse.vhd         Morse code blinker
   blinky_pwm.vhd           PWM-based LED brightness control
   blinky_walking.vhd       Walking-light / knight-rider pattern
+  counter_7seg.vhd         Hex digit counter for 7-segment boards (works on all 8 supported boards)
+  snake_7seg.vhd           Single segment crawls figure-8 across all digits; bouncing LED + decimal point
+  walking_counter_7seg.vhd Bouncing LED + decimal BCD counter on 7-seg digits; switch speed, button direction
 scripts/
   analyze_metrics.py       Standalone performance report from a sim_metrics CSV
 tests/                     pytest integration suite (board loading, serialization, GHDL, NVC, UI, panel)
@@ -255,7 +261,7 @@ The UI has four screens, each a class with a `run()` method:
 
 3. **`VHDLFilePicker`** — minimal file browser that shows directories and `.vhd`/`.vhdl` files. Navigate by clicking directories, select a VHDL file to proceed.
 
-4. **`FPGABoard`** (simulation mode, inside `sim/sim_testbench.py`) — same rendering as preview, but now driven by the simulator. Switch/button callbacks write to DUT inputs; DUT LED outputs update the display each frame.
+4. **`FPGABoard`** (simulation mode, inside `sim/sim_testbench.py`) — same rendering as preview, but now driven by the simulator. Switch/button callbacks write to DUT inputs; DUT LED and seg outputs update the display each frame.
 
 In simulation mode, pygame is the sole interface between the user and the simulator. Mouse events on switches and buttons trigger callbacks that write directly to `dut.sw` / `dut.btn` via cocotb — there is no queue or IPC; the write is synchronous in the event handler. LED state flows the other way: once per frame, after `await Timer(2µs)` has advanced the simulation, `dut.led.value` is read and each LED's display state is updated.
 
@@ -294,8 +300,10 @@ fpga_sim/__main__.py             fpga_sim/sim_bridge.py            Simulator + c
                                                              step = BASE_STEP_NS
                                                               × speed_factor
                                                               capped at MAX_CYCLES
-                                     read dut.led.value    ← get outputs
-                                     set_led() for each    ← update pygame
+                                     read dut.led.value    ← get LED outputs
+                                     set_led() for each    ← update pygame LEDs
+                                     read dut.seg.value    ← get seg outputs (7-seg boards)
+                                     set_seg() for each    ← update pygame digits
                                      _handle_events()      ← process mouse/keyboard
                                      if [-]/[+] clicked:
                                        dut.clk_half_ns ←   ← change virtual clock
@@ -332,7 +340,7 @@ A simple but complete VHDL design that exercises all board I/O:
 
 > **Interface note:** GHDL supports both VPI (complete) and a partial VHPI (library loading and tracing only; signal read/write is not implemented in GHDL's VHPI). We use GHDL's **VPI** interface because it is complete and production-ready for cocotb integration. NVC provides a comprehensive VHPI implementation covering handle management, signal read/write, callbacks, type introspection, and simulation control — and has **no VPI support at all**. We use NVC's **VHPI** interface accordingly. GHDL additionally supports `--std=19` (VHDL-2019) for analysis; the wrapper here uses `--std=08`.
 
-Because NVC requires generics at elaboration time, `analyze_vhdl()` performs only the `-a` step for NVC; `launch_simulation()` performs `-e` (with board generics) followed by `-r`.
+Because NVC requires generics at elaboration time, `analyze_vhdl()` performs `-a` followed by a structural `-e` (empty generics) to catch port-width mismatches early. `launch_simulation()` then re-elaborates with the real board generics before running.
 
 `detect_simulators()` returns the list of installed simulators; the UI and CLI use this to know what options to offer.
 
@@ -359,7 +367,7 @@ Tests cover board loading, JSON serialization, GHDL/NVC analysis, and cocotb sim
 
 ## Writing VHDL for the Simulator
 
-The simulator expects a top-level entity with these ports:
+### Standard boards (no 7-segment display)
 
 ```vhdl
 entity my_design is
@@ -378,7 +386,31 @@ entity my_design is
 end entity;
 ```
 
-The simulator sets the generics to match the selected board's resource counts and drives `clk` at the board's actual clock frequency (extracted from its `Clock` resource, falling back to 12 MHz).
+### 7-segment boards (DE0, DE0-CV, DE1-SoC, DE10-Lite, Nandland-Go, Nexys4-DDR, RZ-EasyFPGA-A2/2, StepMXO2)
+
+```vhdl
+entity my_design is
+  generic (
+    NUM_SWITCHES : positive := 4;
+    NUM_BUTTONS  : positive := 4;
+    NUM_LEDS     : positive := 4;
+    NUM_SEGS     : positive := 4;   -- number of digits; set by simulator to board value
+    COUNTER_BITS : positive := 32
+  );
+  port (
+    clk : in  std_logic;
+    sw  : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);
+    btn : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0);
+    led : out std_logic_vector(NUM_LEDS     - 1 downto 0);
+    seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)
+    -- digit i occupies bits [8i+7 : 8i] = {dp, g, f, e, d, c, b, a}, active-high
+  );
+end entity;
+```
+
+A 7-segment board will happily run any standard design — the `seg` port is simply absent and the digits remain dark. A 7-seg design loaded on a non-7-seg board also passes both the contract check and GHDL/NVC analysis — the standard wrapper leaves the `seg` output unconnected, so the design compiles and runs but the digits are never driven. The simulator normalises all segment polarities to active-high in VHDL regardless of the board's hardware polarity. See `hdl/counter_7seg.vhd` for a complete working example.
+
+The simulator sets the generics to match the selected board's resource counts and drives `clk` at the board's actual clock frequency (extracted from its `Clock` resource, falling back to 12 MHz). The entity name must match the filename stem (e.g. `my_design.vhd` → entity `my_design`).
 
 ## Dependencies
 

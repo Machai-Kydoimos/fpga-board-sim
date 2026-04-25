@@ -190,6 +190,47 @@ def _stub_multi(*args: object, **kwargs: object) -> list[_Resource]:
     return [_Resource("_stub", 0)]
 
 
+def _display7seg_resource(
+    *args: object,
+    a: str,
+    b: str,
+    c: str,
+    d: str,
+    e: str,
+    f: str,
+    g: str,
+    dp: str | None = None,
+    invert: bool = False,
+    conn: str | None = None,
+    attrs: "_Attrs | None" = None,
+) -> "_Resource":
+    """Mock for Display7SegResource — preserves polarity and DP metadata."""
+    subsigs: list[_Subsignal | _Attrs] = [
+        _Subsignal("a", _Pins(a, dir="o")),
+        _Subsignal("b", _Pins(b, dir="o")),
+        _Subsignal("c", _Pins(c, dir="o")),
+        _Subsignal("d", _Pins(d, dir="o")),
+        _Subsignal("e", _Pins(e, dir="o")),
+        _Subsignal("f", _Pins(f, dir="o")),
+        _Subsignal("g", _Pins(g, dir="o")),
+    ]
+    if dp is not None:
+        subsigs.append(_Subsignal("dp", _Pins(dp, dir="o")))
+    if attrs is not None:
+        subsigs.append(attrs)
+    # args is (number,) or (name, number) — mirrors the real amaranth API
+    if len(args) >= 2 and isinstance(args[0], str):
+        number = int(args[1])  # type: ignore[call-overload]
+    elif args:
+        number = int(args[0])  # type: ignore[call-overload]
+    else:
+        number = 0
+    r = _Resource("display_7seg", number, *subsigs)
+    r._seg_invert = invert  # type: ignore[attr-defined]
+    r._seg_has_dp = dp is not None  # type: ignore[attr-defined]
+    return r
+
+
 # ═══════════════════════════════════════════════════════════════════════
 #  Exec namespace
 # ═══════════════════════════════════════════════════════════════════════
@@ -224,8 +265,10 @@ def _make_namespace() -> dict[str, object]:
         "RGBLEDResource": _rgb_led_resource,
         "ButtonResources": _button_resources,
         "SwitchResources": _switch_resources,
-        # Display stubs
-        "Display7SegResource": _stub_single,
+        # Display resources
+        # ULX3S display is behind an I2C GPIO expander (not direct FPGA pins) so
+        # Display7SegResource was correctly omitted for that board by amaranth-boards.
+        "Display7SegResource": _display7seg_resource,
         "VGAResource": _stub_single,
         # Interface stubs
         "UARTResource": _stub_single,
@@ -298,6 +341,38 @@ def _find_default_clock_hz(resources: list, default_clk: str | None) -> float:
 
 
 @dataclass
+class SevenSegDef:
+    """7-segment display capability extracted from a board definition."""
+
+    num_digits: int
+    has_dp: bool
+    is_multiplexed: bool
+    inverted: bool  # board hardware active-low (metadata; VHDL is active-high)
+    select_inverted: bool  # mux select lines active-low (v2 use)
+
+    def to_dict(self) -> dict[str, object]:
+        """Serialize to a plain dict for inclusion in BoardDef JSON."""
+        return {
+            "num_digits": self.num_digits,
+            "has_dp": self.has_dp,
+            "is_multiplexed": self.is_multiplexed,
+            "inverted": self.inverted,
+            "select_inverted": self.select_inverted,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, object]) -> "SevenSegDef":
+        """Deserialize from a dict produced by to_dict()."""
+        return cls(
+            num_digits=int(d["num_digits"]),  # type: ignore[call-overload]  # strict: required field
+            has_dp=bool(d["has_dp"]),  # strict: required field
+            is_multiplexed=bool(d["is_multiplexed"]),  # strict: required field
+            inverted=bool(d.get("inverted", False)),
+            select_inverted=bool(d.get("select_inverted", False)),
+        )
+
+
+@dataclass
 class ComponentInfo:
     """Describes a single LED, button, or switch extracted from a board."""
 
@@ -352,11 +427,19 @@ class BoardDef:
     leds: list = field(default_factory=list)
     buttons: list = field(default_factory=list)
     switches: list = field(default_factory=list)
+    seven_seg: "SevenSegDef | None" = None
 
     @property
     def summary(self) -> str:
         """One-line summary of resource counts for display in the UI."""
-        return f"{len(self.leds)} LEDs, {len(self.buttons)} buttons, {len(self.switches)} switches"
+        parts = [
+            f"{len(self.leds)} LEDs",
+            f"{len(self.buttons)} buttons",
+            f"{len(self.switches)} switches",
+        ]
+        if self.seven_seg:
+            parts.append(f"{self.seven_seg.num_digits}-digit 7-seg")
+        return ", ".join(parts)
 
     def to_json(self) -> str:
         """Serialize to JSON for passing to the cocotb subprocess."""
@@ -384,6 +467,7 @@ class BoardDef:
                 "leds": [_comp(c) for c in self.leds],
                 "buttons": [_comp(c) for c in self.buttons],
                 "switches": [_comp(c) for c in self.switches],
+                "seven_seg": self.seven_seg.to_dict() if self.seven_seg else None,
             }
         )
 
@@ -407,6 +491,7 @@ class BoardDef:
                 for c in items
             ]
 
+        raw_7seg = data.get("seven_seg")
         return cls(
             name=data["name"],
             class_name=data["class_name"],
@@ -418,6 +503,7 @@ class BoardDef:
             leds=_make(data.get("leds", []), "led"),
             buttons=_make(data.get("buttons", []), "button"),
             switches=_make(data.get("switches", []), "switch"),
+            seven_seg=SevenSegDef.from_dict(raw_7seg) if raw_7seg else None,
         )
 
 
@@ -451,7 +537,7 @@ def _extract_pins(
 def _classify(resource: _Resource) -> str | None:
     """Return 'led', 'button', 'switch', or None."""
     n = resource.name.lower()
-    if n == "_stub":
+    if n == "_stub" or n.startswith("display_7seg"):
         return None
     if "led" in n:
         return "led"
@@ -473,6 +559,50 @@ def _to_component(resource: _Resource, kind: str) -> ComponentInfo:
         inverted=inverted,
         connector=connector,  # type: ignore[arg-type]
         attrs={k: v for k, v in resource.attrs.items() if not callable(v)},
+    )
+
+
+def _extract_sevenseg(resources: list[_Resource]) -> "SevenSegDef | None":
+    """Return a SevenSegDef if any display_7seg resources are present, else None."""
+    seg_resources = [r for r in resources if isinstance(r, _Resource) and r.name == "display_7seg"]
+    if not seg_resources:
+        return None
+
+    # Any resource whose name starts with "display_7seg_" is the companion.
+    # Prefix-based so future boards (e.g. "display_7seg_sel") are auto-detected.
+    ctrl_resource = next(
+        (
+            r
+            for r in resources
+            if isinstance(r, _Resource)
+            and r.name.startswith("display_7seg_")
+            and r.name != "display_7seg"
+        ),
+        None,
+    )
+
+    # Check inversion at both resource level (_seg_invert) and pin level (PinsN).
+    res_level_inv = any(getattr(r, "_seg_invert", False) for r in seg_resources)
+    _, _, pin_level_inv, _ = _extract_pins(seg_resources[0])
+    inverted = res_level_inv or pin_level_inv
+
+    has_dp = any(getattr(r, "_seg_has_dp", False) for r in seg_resources)
+
+    if ctrl_resource is not None:
+        ctrl_pins, _, ctrl_inv, _ = _extract_pins(ctrl_resource)
+        return SevenSegDef(
+            num_digits=max(1, len(ctrl_pins)),
+            has_dp=has_dp,
+            is_multiplexed=True,
+            inverted=inverted,
+            select_inverted=ctrl_inv,
+        )
+    return SevenSegDef(
+        num_digits=len(seg_resources),
+        has_dp=has_dp,
+        is_multiplexed=False,
+        inverted=inverted,
+        select_inverted=False,
     )
 
 
@@ -538,6 +668,8 @@ def load_board_from_source(source: str, filename: str = "<string>") -> list[Boar
             elif kind == "switch":
                 switches.append(_to_component(res, "switch"))
 
+        seven_seg = _extract_sevenseg(resources)
+
         if not (leds or buttons or switches):
             continue
 
@@ -558,6 +690,7 @@ def load_board_from_source(source: str, filename: str = "<string>") -> list[Boar
                 leds=leds,
                 buttons=buttons,
                 switches=switches,
+                seven_seg=seven_seg,
             )
         )
 

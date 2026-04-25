@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 .venv/
 *.xml
+work/
 work-obj*.cf
 e~*.exe
 board_images/
