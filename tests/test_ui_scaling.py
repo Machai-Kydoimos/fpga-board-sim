@@ -1,6 +1,7 @@
 """Tests for proportional UI scaling: _ui_scale helper, row_h/_hdr properties,
 and smoke-render tests at various window sizes."""
 
+import dataclasses
 import os
 import tempfile
 
@@ -187,6 +188,24 @@ def test_layout_leaves_bottom_gap(headless_pygame):
         assert rect.bottom + label_allowance <= h - bottom_reserve + label_allowance, (
             f"Component rect bottom {rect.bottom} extends into button reserve zone"
         )
+
+
+@pytest.mark.parametrize("w,h", [(800, 480), (1024, 700), (1280, 800), (1600, 1000), (400, 300)])
+@pytest.mark.parametrize("has_dp", [True, False])
+def test_fpga_board_7seg_draws(headless_pygame, w, h, has_dp):
+    from fpga_sim.board_loader import SevenSegDef
+
+    headless_pygame.display.set_mode((w, h))
+    bd = dataclasses.replace(
+        _sample_board_def(),
+        seven_seg=SevenSegDef(
+            4, has_dp=has_dp, is_multiplexed=False, inverted=True, select_inverted=False
+        ),
+    )
+    board = FPGABoard(board_def=bd, width=w, height=h)
+    assert len(board._seven_segs) == 4
+    board.set_seg(0, 0x3F)
+    board._draw()  # must not raise
 
 
 @pytest.mark.parametrize("w,h", [(800, 480), (1024, 700), (1280, 800), (1600, 1000), (400, 300)])

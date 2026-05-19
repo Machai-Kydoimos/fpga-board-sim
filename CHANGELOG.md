@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- 7-segment display support: 8 boards (DE0, DE0-CV, DE1-SoC, DE10-Lite, Nandland-Go,
+  Nexys4-DDR, RZ-EasyFPGA-A2/2, StepMXO2); Mercury excluded (display behind extension
+  resource list, not in `resources`)
+- `SevenSegDef` dataclass: `num_digits`, `has_dp`, `is_multiplexed`, `inverted`,
+  `select_inverted`; round-trips through `BoardDef` JSON
+- `SevenSeg` pygame widget: amber polygon segments, scales from 24 px to any size
+- `FPGABoard` horizontal split layout: FPGA chip (55 %) + 7-seg panel (45 %) in top section
+- `FPGABoard.set_seg(index, bits8)` method for cocotb readback
+- `sim_wrapper_7seg_template.vhd`: 7-seg wrapper with `NUM_SEGS` generic and `seg` port
+- `counter_7seg.vhd`: hex digit counter, all 8 boards
+- `snake_7seg.vhd`: single segment crawls figure-8 across all digits; bouncing LED + decimal point
+- `walking_counter_7seg.vhd`: bouncing LED with decimal BCD counter on 7-seg digits
+- SVG board previews include 7-seg digit outlines (all-OFF ghost segments)
+- VHDL contract checker enforces `seg` port presence/absence based on board type
+
 ## [0.2.0] - 2026-04-03
 
 ### Added

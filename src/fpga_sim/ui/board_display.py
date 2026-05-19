@@ -25,7 +25,7 @@ from pathlib import Path
 import pygame
 
 from fpga_sim.board_loader import BoardDef, ComponentInfo
-from fpga_sim.ui.components import LED, Button, FPGAChip, Switch
+from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch
 from fpga_sim.ui.constants import BG_GREEN, WHITE, _ui_scale, get_font
 
 
@@ -154,6 +154,16 @@ class FPGABoard:
             self.buttons = [Button(i) for i in range(num_buttons)]
             self.switches = [Switch(i) for i in range(num_switches)]
 
+        if board_def and board_def.seven_seg:
+            ssd = board_def.seven_seg
+            self._seven_segs: list[SevenSeg] = [
+                SevenSeg(i, has_dp=ssd.has_dp) for i in range(ssd.num_digits)
+            ]
+        else:
+            self._seven_segs = []
+        self._prev_seg_bits: list[int] = [0] * len(self._seven_segs)
+        self._seg_panel_x: int = 0
+
         # Default callbacks – print name + connector info
         def _sw_cb(idx: int, state: bool, info: ComponentInfo | None) -> None:
             label = info.display_name if info else f"Switch {idx}"
@@ -202,6 +212,12 @@ class FPGABoard:
         if 0 <= index < len(self.switches):
             return bool(self.switches[index].state)
         return False
+
+    def set_seg(self, index: int, bits8: int) -> None:
+        """Update the bit pattern for digit *index* of the 7-segment display."""
+        if 0 <= index < len(self._seven_segs) and self._prev_seg_bits[index] != bits8:
+            self._prev_seg_bits[index] = bits8
+            self._seven_segs[index].set_bits(bits8)
 
     def set_height_offset(self, offset: int) -> None:
         """Change the panel height reservation and reflow the board layout.
@@ -277,11 +293,32 @@ class FPGABoard:
         total_weight = sum(sec[2] for sec in sections)
         usable_h = h - 2 * margin - section_pad * (len(sections) - 1) - bottom_reserve
 
+        self._seg_panel_x = 0
         y: float = margin
         for name, items, weight in sections:
             sec_h = usable_h * weight / total_weight
             content_h = sec_h - title_h - label_h
-            self._place_items(items, margin, y + title_h, w - 2 * margin, content_h, name, scale=s)
+            avail_w = w - 2 * margin
+
+            if name == "fpga" and self._seven_segs:
+                chip_w = int(avail_w * 0.55)
+                seg_w = avail_w - chip_w - section_pad
+                self._place_items(
+                    [self.fpga_chip], margin, y + title_h, chip_w, content_h, "fpga", scale=s
+                )
+                self._seg_panel_x = int(margin + chip_w + section_pad)
+                self._place_items(
+                    self._seven_segs,
+                    self._seg_panel_x,
+                    y + title_h,
+                    seg_w,
+                    content_h,
+                    "seven_segs",
+                    scale=s,
+                )
+            else:
+                self._place_items(items, margin, y + title_h, avail_w, content_h, name, scale=s)
+
             y += sec_h + section_pad
 
     def _place_items(  # noqa: PLR0913
@@ -306,6 +343,24 @@ class FPGABoard:
             cx = x0 + avail_w / 2
             cy = y0 + avail_h / 2
             items[0].rect = pygame.Rect(cx - size_w / 2, cy - size_h / 2, size_w, size_h)
+            return
+
+        if kind == "seven_segs":
+            min_dw = 24
+            cols = n
+            while cols > 1 and (avail_w / cols) * 0.85 < min_dw:
+                cols = math.ceil(cols / 2)
+            rows = math.ceil(n / cols)
+            cell_w = avail_w / cols
+            cell_h = avail_h / max(1, rows)
+            dw = min(cell_w * 0.85, cell_h * 8 / 13)
+            dh = dw * 13 / 8
+            for i, item in enumerate(items):
+                r = i // cols
+                c = (cols - 1) - (i % cols)
+                cx = x0 + c * cell_w + cell_w / 2
+                cy = y0 + r * cell_h + cell_h / 2
+                item.rect = pygame.Rect(int(cx - dw / 2), int(cy - dh / 2), int(dw), int(dh))
             return
 
         if kind == "leds":
@@ -428,6 +483,10 @@ class FPGABoard:
             self.screen.blit(t, (20, self.fpga_chip.rect.top - font_size - 10))
         self.fpga_chip.draw(self.screen, chip_font)
 
+        if self._seven_segs and self.fpga_chip.rect.width >= 20:
+            t = title_font.render("7-Seg", True, WHITE)
+            self.screen.blit(t, (self._seg_panel_x, self._seven_segs[0].rect.top - font_size - 14))
+
         # Component count summary below the chip.
         # Offset by chip_font.get_linesize() so the count clears the chip's
         # bottom text line (clock freq) even when the chip rect is small.
@@ -440,6 +499,8 @@ class FPGABoard:
             if self.switches:
                 _sw_s = "es" if len(self.switches) != 1 else ""
                 _parts.append(f"{len(self.switches)} Switch{_sw_s}")
+            if self._seven_segs:
+                _parts.append(f"{len(self._seven_segs)}-digit 7-seg")
             if _parts:
                 count_f = get_font(max(11, round(13 * s)))
                 count_surf = count_f.render("  \u00b7  ".join(_parts), True, (180, 220, 180))
@@ -466,6 +527,9 @@ class FPGABoard:
             btn.draw(self.screen, font)
         for sw in self.switches:
             sw.draw(self.screen, font)
+
+        for seg_widget in self._seven_segs:
+            seg_widget.draw(self.screen)
 
         # ── Footer buttons (preview mode only) ───────────────────────
         if not self._show_footer:

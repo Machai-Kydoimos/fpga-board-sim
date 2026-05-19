@@ -17,6 +17,9 @@ from fpga_sim.ui.constants import (
     WHITE,
     YELLOW,
 )
+from fpga_sim.ui.constants import (
+    get_font as _get_font,
+)
 
 # ── Component classes ────────────────────────────────────────────────
 
@@ -227,3 +230,94 @@ class Button:
             self.pressed = False
             if self.callback:
                 self.callback(self.index, False, self.info)
+
+
+class SevenSeg:
+    """Draws one digit of a 7-segment display."""
+
+    SEG_ON: tuple[int, int, int] = (255, 140, 0)  # amber
+    SEG_OFF: tuple[int, int, int] = (45, 25, 5)  # dark amber (ghost segments)
+    BG: tuple[int, int, int] = (15, 15, 15)
+
+    # Bit positions: {dp, g, f, e, d, c, b, a}
+    _BIT: dict[str, int] = {
+        "a": 0,
+        "b": 1,
+        "c": 2,
+        "d": 3,
+        "e": 4,
+        "f": 5,
+        "g": 6,
+        "dp": 7,
+    }
+
+    def __init__(self, index: int, has_dp: bool = False) -> None:
+        """Initialise the digit with its board index and whether a decimal point is present."""
+        self.index = index
+        self.has_dp = has_dp
+        self.bits: int = 0
+        self.rect = pygame.Rect(0, 0, 48, 76)
+
+    def set_bits(self, value8: int) -> None:
+        """Set from an 8-bit value {dp,g,f,e,d,c,b,a}, active-high."""
+        self.bits = value8 & 0xFF
+
+    def _seg(self, name: str) -> bool:
+        """Return True when the named segment is active in the current bit pattern."""
+        return bool(self.bits & (1 << self._BIT[name]))
+
+    def draw(self, surface: pygame.Surface) -> None:
+        """Draw the digit onto *surface* using the current bit pattern."""
+        dw, dh = self.rect.width, self.rect.height
+        thick = max(3, int(dw * 0.12))
+        gap = max(2, int(dw * 0.06))
+        inner = max(1, dw - 2 * gap - 2 * thick)
+        half = dh // 2
+        x0, y0 = self.rect.topleft
+
+        pygame.draw.rect(surface, self.BG, self.rect, border_radius=3)
+        pygame.draw.rect(surface, (5, 5, 5), self.rect, width=1, border_radius=3)
+
+        def colour(n: str) -> tuple[int, int, int]:
+            return self.SEG_ON if self._seg(n) else self.SEG_OFF
+
+        def hrect(x: int, y: int, w: int, h: int, n: str) -> None:
+            c = colour(n)
+            pts: list[tuple[int, int]] = [
+                (x + h // 2, y),
+                (x + w - h // 2, y),
+                (x + w, y + h // 2),
+                (x + w - h // 2, y + h),
+                (x + h // 2, y + h),
+                (x, y + h // 2),
+            ]
+            pygame.draw.polygon(surface, c, pts)
+
+        def vrect(x: int, y: int, w: int, h: int, n: str) -> None:
+            c = colour(n)
+            pts: list[tuple[int, int]] = [
+                (x + w // 2, y),
+                (x + w, y + w // 2),
+                (x + w, y + h - w // 2),
+                (x + w // 2, y + h),
+                (x, y + h - w // 2),
+                (x, y + w // 2),
+            ]
+            pygame.draw.polygon(surface, c, pts)
+
+        ax = x0 + gap + thick
+        hrect(ax, y0 + gap, inner, thick, "a")
+        vrect(x0 + dw - gap - thick, y0 + gap + thick, thick, half - 2 * gap, "b")
+        vrect(x0 + dw - gap - thick, y0 + half + gap, thick, half - 2 * gap - thick, "c")
+        hrect(ax, y0 + dh - gap - thick, inner, thick, "d")
+        vrect(x0 + gap, y0 + half + gap, thick, half - 2 * gap - thick, "e")
+        vrect(x0 + gap, y0 + gap + thick, thick, half - 2 * gap, "f")
+        hrect(ax, y0 + half - thick // 2, inner, thick, "g")
+
+        if self.has_dp:
+            r = max(2, thick // 2)
+            pygame.draw.circle(surface, colour("dp"), (x0 + dw + r + 2, y0 + dh - r - 2), r)
+
+        lbl_sz = max(8, int(dh * 0.18))
+        lbl = _get_font(lbl_sz).render(str(self.index), True, (90, 90, 90))
+        surface.blit(lbl, (x0 + dw // 2 - lbl.get_width() // 2, y0 + dh + 2))

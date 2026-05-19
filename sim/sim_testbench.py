@@ -48,6 +48,7 @@ from cocotb.triggers import Timer
 from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ, BoardDef, ComponentInfo
 from fpga_sim.sim_session_log import save_session_stats
 from fpga_sim.ui import FPGABoard, SimPanel
+from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.sim_panel import _PANEL_H_BASE, _SPEED_DEFAULT
 
 # ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
@@ -126,6 +127,7 @@ def _write_meta_sidecar(
         "num_leds": num_leds,
         "num_switches": num_switches,
         "num_buttons": num_buttons,
+        "num_segs": board_def.seven_seg.num_digits if board_def and board_def.seven_seg else 0,
         "max_cycles_per_step": _MAX_CYCLES_PER_STEP,
         "real_step_ns": _REAL_STEP_NS,
         "speed_factor_default": _SPEED_DEFAULT,
@@ -199,6 +201,7 @@ async def interactive_sim(dut: object) -> None:
     pygame.display.set_caption(
         f"FPGA Simulator \u2013 {_board_name} \u2013 {_vhdl_basename} ({_sim_name})"
     )
+    _info_text = "  |  ".join(p for p in (_board_name, _vhdl_basename, _sim_name) if p)
 
     # ── Sync initial clock half-period to the VHDL wrapper ───────────────────
     # The wrapper's CLK_HALF_NS generic seeds the port default; writing it
@@ -274,11 +277,15 @@ async def interactive_sim(dut: object) -> None:
     board.set_switch_callback(_on_switch)
     board.set_button_callback(_on_button)
 
+    # ── 7-segment display state ───────────────────────────────────────────────
+    _seven_seg_def = board_def.seven_seg if board_def else None
+
     # ── Print banner ──────────────────────────────────────────────────────────
     print(f"\n{'=' * 60}")
     print(f"  Simulation running: {_board_name}")
     print(f"  VHDL: {_vhdl_basename}  |  Simulator: {_sim_name}")
-    print(f"  {num_led} LEDs, {num_btn} buttons, {num_sw} switches")
+    _seg_suffix = f", {_seven_seg_def.num_digits}-digit 7-seg" if _seven_seg_def else ""
+    print(f"  {num_led} LEDs, {num_btn} buttons, {num_sw} switches{_seg_suffix}")
     print(f"  Clock: {clk_hz / 1e6:.4g} MHz  |  Speed: {panel.speed_factor:.4g}x")
     print("  Use the panel sliders to adjust speed and virtual clock.")
     print("  S: toggle stats panel  |  Pause/Stop: bottom-right of board")
@@ -347,6 +354,15 @@ async def interactive_sim(dut: object) -> None:
         except Exception:
             pass
 
+        # ── Read 7-segment outputs ────────────────────────────────────────────
+        if _seven_seg_def is not None:
+            try:
+                seg_raw = int(dut.seg.value)  # type: ignore[attr-defined]
+                for i in range(_seven_seg_def.num_digits):
+                    board.set_seg(i, (seg_raw >> (8 * i)) & 0xFF)
+            except Exception:
+                pass  # X/Z at simulation start; safely ignored
+
         # ── Handle events (board + panel + stop overlay share the same list) ──
         events = pygame.event.get()
         board._handle_events(events)
@@ -381,16 +397,12 @@ async def interactive_sim(dut: object) -> None:
         # ── Overlays: info strip + bottom-right Pause/Stop buttons ───────────
         # Drawn last so they are never obscured by board or panel.
         _sw, _sh = screen.get_size()
-        from fpga_sim.ui.constants import get_font as _gf  # noqa: PLC0415
-
         _ov_s = min(_sw / 1024, _sh / 700)
         _ov_fs = max(10, round(13 * _ov_s))
-        _ov_font = _gf(_ov_fs, bold=True)
+        _ov_font = _get_font(_ov_fs, bold=True)
 
         # ── Info strip (top-left): board | VHDL | simulator ───────────────────
-        _info_font = _gf(max(9, round(11 * _ov_s)))
-        _info_parts = [p for p in (_board_name, _vhdl_basename, _sim_name) if p]
-        _info_text = "  |  ".join(_info_parts)
+        _info_font = _get_font(max(9, round(11 * _ov_s)))
         _info_surf = _info_font.render(_info_text, True, (170, 210, 170))
         _info_bg = pygame.Surface(
             (_info_surf.get_width() + 12, _info_surf.get_height() + 6),
@@ -457,7 +469,7 @@ async def interactive_sim(dut: object) -> None:
 
         # ── "S: stats" hint (bottom-left) when panel is hidden ────────────────
         if not _show_panel:
-            _hint_font = _gf(max(9, round(10 * _ov_s)))
+            _hint_font = _get_font(max(9, round(10 * _ov_s)))
             _hint_surf = _hint_font.render("S: stats", True, (110, 160, 110))
             screen.blit(
                 _hint_surf,
