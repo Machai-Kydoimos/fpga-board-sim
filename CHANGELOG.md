@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-19
+
 ### Added
 - 7-segment display support: 8 boards (DE0, DE0-CV, DE1-SoC, DE10-Lite, Nandland-Go,
   Nexys4-DDR, RZ-EasyFPGA-A2/2, StepMXO2); Mercury excluded (display behind extension
@@ -21,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `walking_counter_7seg.vhd`: bouncing LED with decimal BCD counter on 7-seg digits
 - SVG board previews include 7-seg digit outlines (all-OFF ghost segments)
 - VHDL contract checker enforces `seg` port presence/absence based on board type
+
+### Changed
+- Upgraded ruff 0.15.12 → 0.15.13, mypy 1.20.2 → 2.1.0, pre-commit 4.5.1 → 4.6.0
+- amaranth-boards submodule advanced to include Tang Mega 138k Pro Dock
 
 ## [0.2.0] - 2026-04-03
 
