@@ -142,7 +142,12 @@ def test_nvc_cocotb_simulation_passes(nvc, nvc_sim_env, nvc_work_dir):
     subprocess.run(elab_cmd, env=env, check=True, cwd=nvc_work_dir)
 
     # Run with VHPI + stop-time to prevent infinite simulation
-    run_cmd = _NVCBackend.run_cmd("blinky", vhpi_lib, nvc_work_dir)
+    run_cmd = _NVCBackend.run_cmd(
+        "blinky",
+        {"NUM_SWITCHES": "4", "NUM_BUTTONS": "4", "NUM_LEDS": "4", "COUNTER_BITS": "10"},
+        vhpi_lib,
+        nvc_work_dir,
+    )
     run_cmd.append("--stop-time=100000ns")
 
     run_env = env.copy()
@@ -204,7 +209,7 @@ def test_7seg_nvc_simulation_passes(nvc, nvc_sim_env, nvc_7seg_work_dir):
     elab_cmd = _NVCBackend.elaborate_cmd("sim_wrapper", generics, nvc_7seg_work_dir)
     subprocess.run(elab_cmd, env=env, check=True, cwd=nvc_7seg_work_dir)
 
-    run_cmd = _NVCBackend.run_cmd("sim_wrapper", vhpi_lib, nvc_7seg_work_dir)
+    run_cmd = _NVCBackend.run_cmd("sim_wrapper", generics, vhpi_lib, nvc_7seg_work_dir)
     run_cmd.append("--stop-time=2000000ns")
 
     run_env = env.copy()

@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Unified `_NVCBackend.run_cmd` signature with `_GHDLBackend` (`generics` parameter
+  added, ignored at runtime since NVC bakes them in at elaboration); introduced
+  `_SimBackend` Protocol; removed the two remaining `# type: ignore[call-arg]`
+  suppressions from `launch_simulation()` (closes #30)
+
 ## [0.3.0] - 2026-05-19
 
 ### Added
