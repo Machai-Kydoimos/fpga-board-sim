@@ -19,7 +19,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from fpga_sim.board_loader import BoardDef
@@ -28,6 +28,38 @@ IS_WINDOWS = sys.platform == "win32"
 
 
 # ── Simulator backend classes ─────────────────────────────────────────────────
+
+
+class _SimBackend(Protocol):
+    """Structural interface that all simulator backends must satisfy."""
+
+    NAME: str
+
+    @staticmethod
+    def find() -> str: ...
+
+    @staticmethod
+    def available() -> bool: ...
+
+    @staticmethod
+    def lib_dir() -> str: ...
+
+    @staticmethod
+    def plugin_lib_name() -> str: ...
+
+    @staticmethod
+    def analyze_cmd(vhdl_path: Path, work_dir: str) -> list[str]: ...
+
+    @staticmethod
+    def elaborate_cmd(toplevel: str, generics: dict[str, str], work_dir: str) -> list[str]: ...
+
+    @staticmethod
+    def run_cmd(
+        toplevel: str, generics: dict[str, str], plugin_lib: str, work_dir: str
+    ) -> list[str]: ...
+
+    @staticmethod
+    def sim_bin_lib() -> tuple[str, str]: ...
 
 
 class _GHDLBackend:
@@ -126,7 +158,10 @@ class _NVCBackend:
         return cmd
 
     @staticmethod
-    def run_cmd(toplevel: str, plugin_lib: str, work_dir: str) -> list[str]:
+    def run_cmd(
+        toplevel: str, generics: dict[str, str], plugin_lib: str, work_dir: str
+    ) -> list[str]:
+        # generics were baked in at elaboration (-e); ignored here
         return [
             _NVCBackend.find(),
             f"--work=work:{work_dir}",
@@ -143,7 +178,10 @@ class _NVCBackend:
 
 
 def _backend(simulator: str) -> type[_GHDLBackend] | type[_NVCBackend]:
-    """Return the backend class for the given simulator name."""
+    """Return the backend class for the given simulator name.
+
+    Both classes satisfy the ``_SimBackend`` Protocol.
+    """
     return _NVCBackend if simulator == "nvc" else _GHDLBackend
 
 
@@ -590,10 +628,9 @@ def launch_simulation(
         )
         if elab.returncode != 0:
             raise RuntimeError(elab.stderr.strip() or "NVC elaboration failed.")
-        cmd = be.run_cmd("sim_wrapper", plugin_lib, work_dir)  # type: ignore[call-arg]
-    else:
-        # GHDL: generics are passed at run time (-r elaborates implicitly)
-        cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir)  # type: ignore[call-arg,arg-type]
+
+    # Both backends share the same run_cmd signature; NVC ignores generics (already baked in).
+    cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir)
 
     env["COCOTB_TEST_MODULES"] = "sim_testbench"
     env["TOPLEVEL"] = "sim_wrapper"

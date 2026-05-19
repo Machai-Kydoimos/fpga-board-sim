@@ -153,21 +153,19 @@ led_val = int(dut.led.value)       # type: ignore[attr-defined]
 
 Do not remove these ignores; they will cause mypy errors.
 
-### Backend dispatch design debt (`sim_bridge.py`)
+### Backend dispatch design (`sim_bridge.py`)
 
-`_GHDLBackend` and `_NVCBackend` share a unified `elaborate_cmd(toplevel,
-generics, work_dir)` signature — GHDL simply ignores the generics dict
-(it applies them at run time via `-r`; NVC bakes them in at `-e` time).
-`run_cmd` still differs between backends (GHDL takes no generics; NVC
-requires them).  The two `run_cmd` call sites in `launch_simulation()`
-carry `# type: ignore[call-arg,arg-type]` because mypy cannot verify calls
-through a `type[_GHDLBackend] | type[_NVCBackend]` union when the signatures
-differ.
+`_GHDLBackend` and `_NVCBackend` both satisfy the `_SimBackend` Protocol.
+Their `elaborate_cmd` and `run_cmd` signatures are fully unified:
 
-The calling code uses explicit `if simulator == "nvc":` guards, so the
-dispatch is correct at runtime.  A future refactor should introduce a
-shared `Protocol` for the two backends; until then, leave these ignores
-in place.
+- `elaborate_cmd(toplevel, generics, work_dir)` — GHDL ignores generics (applies at
+  run time via `-r`); NVC bakes them into the elaboration artifact.
+- `run_cmd(toplevel, generics, plugin_lib, work_dir)` — GHDL injects `-gKEY=VALUE`
+  flags; NVC ignores generics (already applied during elaboration).
+
+`_backend()` returns `type[_GHDLBackend] | type[_NVCBackend]`.  Because both backends
+share identical method signatures, mypy resolves all call sites in `launch_simulation()`
+without any `# type: ignore` suppressions.
 
 ---
 
