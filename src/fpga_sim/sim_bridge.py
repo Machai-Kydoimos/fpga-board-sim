@@ -590,7 +590,7 @@ def launch_simulation(
         )
         if elab.returncode != 0:
             raise RuntimeError(elab.stderr.strip() or "NVC elaboration failed.")
-        cmd = be.run_cmd("sim_wrapper", plugin_lib, work_dir)  # type: ignore[call-arg,arg-type]
+        cmd = be.run_cmd("sim_wrapper", plugin_lib, work_dir)  # type: ignore[call-arg]
     else:
         # GHDL: generics are passed at run time (-r elaborates implicitly)
         cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir)  # type: ignore[call-arg,arg-type]
