@@ -58,7 +58,14 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _build_generics(board: "BoardDef") -> dict[str, str]:
-    """Build the generic map for sim_wrapper from a board definition."""
+    """Build the generic map for sim_wrapper from a board definition.
+
+    NUM_SEGS is absent here: it is conditionally injected by launch_simulation()
+    only when both the board has a 7-seg display and the design declares a
+    ``seg`` output port (which also selects the 7-seg wrapper template).
+    Passing NUM_SEGS to the standard wrapper (which lacks that generic) would
+    cause NVC to error during elaboration.
+    """
     clk_half_ns = max(1, round(5e8 / board.default_clock_hz))
     num_segs = board.seven_seg.num_digits if board.seven_seg else 0
     return {

@@ -236,7 +236,7 @@ def _svg_line(
 
 
 _SVG_SEG_OFF = "#{:02X}{:02X}{:02X}".format(*SevenSeg.SEG_OFF)
-_SVG_SEG_BG = "#0F0F0F"
+_SVG_SEG_BG = "#{:02X}{:02X}{:02X}".format(*SevenSeg.BG)
 
 
 def _svg_draw_seg_polygon(

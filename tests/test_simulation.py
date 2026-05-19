@@ -7,20 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from fpga_sim.sim_bridge import _build_sim_env, _find_ghdl
+from fpga_sim.sim_bridge import _build_sim_env
 
 pytestmark = pytest.mark.slow
 
 PROJECT = Path(__file__).resolve().parent.parent
-
-
-@pytest.fixture(scope="module")
-def ghdl():
-    import shutil
-
-    if not shutil.which("ghdl"):
-        pytest.skip("GHDL is not installed")
-    return _find_ghdl()
 
 
 @pytest.fixture(scope="module")

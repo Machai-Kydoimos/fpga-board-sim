@@ -571,13 +571,7 @@ def _extract_sevenseg(resources: list[_Resource]) -> "SevenSegDef | None":
     # Any resource whose name starts with "display_7seg_" is the companion.
     # Prefix-based so future boards (e.g. "display_7seg_sel") are auto-detected.
     ctrl_resource = next(
-        (
-            r
-            for r in resources
-            if isinstance(r, _Resource)
-            and r.name.startswith("display_7seg_")
-            and r.name != "display_7seg"
-        ),
+        (r for r in resources if isinstance(r, _Resource) and r.name.startswith("display_7seg_")),
         None,
     )
 

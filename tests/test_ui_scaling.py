@@ -1,6 +1,7 @@
 """Tests for proportional UI scaling: _ui_scale helper, row_h/_hdr properties,
 and smoke-render tests at various window sizes."""
 
+import dataclasses
 import os
 import tempfile
 
@@ -195,16 +196,8 @@ def test_fpga_board_7seg_draws(headless_pygame, w, h, has_dp):
     from fpga_sim.board_loader import SevenSegDef
 
     headless_pygame.display.set_mode((w, h))
-    bd = _sample_board_def()
-    bd = type(bd)(
-        name=bd.name,
-        class_name=bd.class_name,
-        vendor=bd.vendor,
-        device=bd.device,
-        package=bd.package,
-        leds=bd.leds,
-        buttons=bd.buttons,
-        switches=bd.switches,
+    bd = dataclasses.replace(
+        _sample_board_def(),
         seven_seg=SevenSegDef(
             4, has_dp=has_dp, is_multiplexed=False, inverted=True, select_inverted=False
         ),

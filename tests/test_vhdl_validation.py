@@ -12,7 +12,6 @@ from fpga_sim.sim_bridge import (
     _WRAPPER_7SEG_TEMPLATE,
     _WRAPPER_TEMPLATE,
     _choose_wrapper_template,
-    _find_ghdl,
     _generate_wrapper,
     analyze_vhdl,
     check_vhdl_contract,
@@ -30,15 +29,6 @@ GOOD_BLINKYS = [
     "blinky_pwm.vhd",
     "blinky_walking.vhd",
 ]
-
-
-@pytest.fixture(scope="module")
-def ghdl():
-    import shutil
-
-    if not shutil.which("ghdl"):
-        pytest.skip("GHDL is not installed")
-    return _find_ghdl()
 
 
 # ── Stage 1: encoding ─────────────────────────────────────────────────────────

@@ -185,7 +185,7 @@ setup.  A few things that matter for contributors:
 - **`tests/` has an `__init__.py`**; `sim/` does not.  This matters if
   you add a mypy override — use `"tests.*"` for `tests/` and the bare
   module name (e.g. `"test_blinky"`) for `sim/` files.
-- The fast test suite (`-m "not slow"`) must stay at **219/219 passed**
+- The fast test suite (`-m "not slow"`) must stay at **226/226 passed**
   before merge.
 
 ---

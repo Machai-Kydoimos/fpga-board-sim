@@ -2,7 +2,7 @@
 
 import pytest
 
-from fpga_sim.sim_bridge import _NVCBackend
+from fpga_sim.sim_bridge import _find_ghdl, _NVCBackend
 
 
 def _7seg_board():
@@ -15,6 +15,16 @@ def _plain_board():
     from fpga_sim.board_loader import BoardDef
 
     return BoardDef("Arty", "ArtyPlatform")
+
+
+@pytest.fixture(scope="module")
+def ghdl():
+    """Return the ghdl binary path, or skip if GHDL is not installed."""
+    import shutil
+
+    if not shutil.which("ghdl"):
+        pytest.skip("GHDL is not installed")
+    return _find_ghdl()
 
 
 @pytest.fixture(scope="module")
