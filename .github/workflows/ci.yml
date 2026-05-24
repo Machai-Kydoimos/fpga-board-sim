@@ -5,13 +5,21 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Lint & type-check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
       - run: uv sync --group dev
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -20,15 +28,16 @@ jobs:
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
         python-version: ["3.10", "3.12"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
         with:
           submodules: true
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
           python-version: ${{ matrix.python-version }}
       - run: uv sync --group dev
@@ -41,11 +50,12 @@ jobs:
   test-linux-ghdl:
     name: Test Linux + GHDL (Python 3.12)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
         with:
           submodules: true
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
           python-version: "3.12"
       - run: uv sync --group dev
@@ -62,15 +72,16 @@ jobs:
   test-linux-nvc:
     name: Test Linux + NVC (Python 3.12)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
         with:
           submodules: true
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
           python-version: "3.12"
       - run: uv sync --group dev
-      - uses: nickg/setup-nvc@master
+      - uses: nickg/setup-nvc@b63bf358b7120f089f1c6da184f29bc8413ef470  # master
       - name: Verify NVC
         run: nvc --version
       - name: Run full test suite
@@ -82,11 +93,12 @@ jobs:
   test-windows-ghdl:
     name: Test Windows + GHDL (Python 3.12)
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
         with:
           submodules: true
-      - uses: astral-sh/setup-uv@v8.1.0
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
           python-version: "3.12"
       - run: uv sync --group dev
@@ -96,6 +108,9 @@ jobs:
           $ver = "6.0.0"
           $url = "https://github.com/ghdl/ghdl/releases/download/v$ver/ghdl-mcode-$ver-ucrt64.zip"
           Invoke-WebRequest -Uri $url -OutFile ghdl.zip
+          $expected = "76E160CEEC35834C73ADA6E4E484416D13AED4B64CBC7C74C5CCA53A7EF60E41"
+          $actual = (Get-FileHash ghdl.zip -Algorithm SHA256).Hash
+          if ($actual -ne $expected) { throw "GHDL checksum mismatch: expected $expected, got $actual" }
           Expand-Archive ghdl.zip -DestinationPath C:\ghdl
           $bin = Get-ChildItem -Recurse C:\ghdl -Filter ghdl.exe |
                    Select-Object -First 1 -ExpandProperty DirectoryName
