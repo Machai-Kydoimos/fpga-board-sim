@@ -41,14 +41,15 @@ class BoardSelector:
         if preselect_class:
             # Match on (class_name, source) first; fall back to class_name only
             idx = next(
-                (i for i, b in enumerate(boards)
-                 if b.class_name == preselect_class and b.source == preselect_source),
+                (
+                    i
+                    for i, b in enumerate(boards)
+                    if b.class_name == preselect_class and b.source == preselect_source
+                ),
                 -1,
             )
             if idx < 0:
-                idx = next(
-                    (i for i, b in enumerate(boards) if b.class_name == preselect_class), -1
-                )
+                idx = next((i for i, b in enumerate(boards) if b.class_name == preselect_class), -1)
             if idx >= 0:
                 self.hovered = idx
                 viewport_h = self.height - self._hdr

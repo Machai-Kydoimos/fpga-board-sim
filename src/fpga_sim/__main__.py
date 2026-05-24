@@ -241,7 +241,8 @@ def main() -> None:
             _return_to_board = None
         else:
             chosen = BoardSelector(
-                boards, screen,
+                boards,
+                screen,
                 preselect_class=last_board_class,
                 preselect_source=last_board_source,
             ).run(clock)
