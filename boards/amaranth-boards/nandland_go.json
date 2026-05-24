@@ -1,0 +1,118 @@
+{
+  "name": "Nandland Go",
+  "class_name": "NandlandGoPlatform",
+  "vendor": "Lattice",
+  "device": "iCE40HX1K",
+  "package": "VQ100",
+  "clocks": [
+    25000000.0
+  ],
+  "default_clock_hz": 25000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "56"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "57"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "59"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "60"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "53"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "51"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "54"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "52"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "switches": [],
+  "seven_seg": {
+    "num_digits": 2,
+    "has_dp": false,
+    "is_multiplexed": false,
+    "inverted": true,
+    "select_inverted": false
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "nandland_go.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

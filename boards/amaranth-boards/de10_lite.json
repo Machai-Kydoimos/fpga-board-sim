@@ -1,0 +1,317 @@
+{
+  "name": "DE10 Lite",
+  "class_name": "DE10LitePlatform",
+  "vendor": "Intel",
+  "device": "10M50DA",
+  "package": "F484",
+  "clocks": [
+    50000000.0
+  ],
+  "default_clock_hz": 50000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "A8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "A9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "A10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "B10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "D13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "C13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "E14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "D14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 8,
+      "pins": [
+        "A11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 9,
+      "pins": [
+        "B11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "B8"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "A7"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "C10"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "C11"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "D12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "C12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 4,
+      "pins": [
+        "A12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 5,
+      "pins": [
+        "B12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 6,
+      "pins": [
+        "A13"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 7,
+      "pins": [
+        "A14"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 8,
+      "pins": [
+        "B14"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 9,
+      "pins": [
+        "F15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "seven_seg": {
+    "num_digits": 6,
+    "has_dp": true,
+    "is_multiplexed": false,
+    "inverted": true,
+    "select_inverted": false
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "de10_lite.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

@@ -6,14 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Setup
 ```bash
-# Initialize board definitions submodule (required)
-git submodule update --init
-
 # Install runtime dependencies
 uv sync
 
 # Install with dev dependencies (includes pytest)
 uv sync --group dev
+
+# (Optional) Re-sync board definitions from upstream amaranth-boards
+uv run python scripts/sync_boards.py
 ```
 
 ### Run the simulator
@@ -38,19 +38,21 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | File | Role |
 |------|------|
 | `src/fpga_sim/__main__.py` | Main entry point; pygame UI with four screens |
-| `src/fpga_sim/board_loader.py` | Parses amaranth-boards `.py` files using mock classes |
+| `src/fpga_sim/board_loader.py` | Loads board definitions from JSON; also has mock classes for sync script |
 | `src/fpga_sim/sim_bridge.py` | GHDL analysis + simulation launcher; platform-specific VPI env setup |
 | `src/fpga_sim/ui/` | pygame UI package (board_selector, board_display, components, etc.) |
+| `boards/` | JSON board definitions (multi-source: `amaranth-boards/`, `custom/`) |
+| `boards/schema/board.schema.json` | JSON Schema for board definition validation |
+| `scripts/sync_boards.py` | Syncs board definitions from amaranth-boards GitHub repo |
 | `sim/sim_testbench.py` | cocotb test that runs pygame inside the GHDL simulation |
 | `sim/sim_wrapper_template.vhd` | VHDL wrapper template; drives clock internally |
 | `hdl/blinky.vhd` | Example VHDL design (use as template for the expected port interface) |
 | `tests/` | pytest integration test suite |
 | `sim/test_blinky.py` | Headless cocotb tests for the blinky design |
-| `amaranth-boards/` | Git submodule with 74+ real board definitions |
 
 ### Data Flow
 
-1. `src/fpga_sim/board_loader.py` strips `import` statements from amaranth-boards `.py` files, executes them in a mock namespace, and extracts `BoardDef` objects (containing `ComponentInfo` lists for LEDs, buttons, switches).
+1. `src/fpga_sim/board_loader.py` reads JSON board definitions from `boards/` subdirectories (each subdirectory is a "source": `amaranth-boards/`, `custom/`, etc.) and constructs `BoardDef` objects. The mock-exec pipeline for parsing amaranth-boards `.py` files is retained for use by `scripts/sync_boards.py`.
 
 2. `src/fpga_sim/__main__.py` displays four sequential screens: `BoardSelector` → `FPGABoard` (preview) → `VHDLFilePicker` → simulation start.
 
@@ -112,6 +114,15 @@ The simulator sets generics to match the selected board's resource counts and pr
 - On Windows, all DLL directories must be on PATH; Windows Store Python is unsupported — use a standalone Python installed via `uv`
 - `find_libpython` is used to locate the Python shared library for cocotb VPI
 
-### Board Loader Mock Namespace
+### Board Definition Sources
 
-`fpga_sim.board_loader._make_namespace()` provides mock classes (`Resource`, `Subsignal`, `Pins`, `PinsN`, `DiffPairs`, `Attrs`, `Clock`, `Connector`) and stubs for interfaces/memory (UART, SPI, I2C, SDRAM, etc.) that are not simulated. Only resources whose names contain `led`, `button`, `btn`, `switch`, or `sw` are extracted; everything else is stubbed out.
+Board definitions live in `boards/` as JSON files, organized by source:
+- `boards/amaranth-boards/` — auto-generated from the [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) project via `scripts/sync_boards.py`
+- `boards/custom/` — manually maintained boards (e.g., DE10-Standard)
+- Additional source directories can be added freely; the loader discovers them automatically
+
+To add a new board, create a JSON file in `boards/custom/` following the schema at `boards/schema/board.schema.json`. The JSON format includes optional `peripherals` and `port_conventions` sections for future use.
+
+### Board Loader Mock Namespace (sync script only)
+
+`fpga_sim.board_loader._make_namespace()` provides mock classes (`Resource`, `Subsignal`, `Pins`, `PinsN`, `DiffPairs`, `Attrs`, `Clock`, `Connector`) and stubs for interfaces/memory (UART, SPI, I2C, SDRAM, etc.) that are not simulated. These are used only by `scripts/sync_boards.py` to parse upstream amaranth-boards Python files into JSON. Only resources whose names contain `led`, `button`, `btn`, `switch`, or `sw` are extracted; everything else is stubbed out.

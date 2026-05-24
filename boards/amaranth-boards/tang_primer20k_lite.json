@@ -1,0 +1,78 @@
+{
+  "name": "Tang Primer20k Lite",
+  "class_name": "TangPrimer20kLitePlatform",
+  "vendor": "Gowin",
+  "device": "",
+  "package": "",
+  "clocks": [
+    27000000.0
+  ],
+  "default_clock_hz": 27000000.0,
+  "leds": [],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "T10"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "T2"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS15"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "D7"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "PULL_MODE": "NONE",
+        "IO_TYPE": "LVCMOS15"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "C7"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "PULL_MODE": "NONE",
+        "IO_TYPE": "LVCMOS15"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "tang_primer_20k.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

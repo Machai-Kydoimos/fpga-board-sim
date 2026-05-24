@@ -94,7 +94,10 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
     boards = discover_boards(boards_path)
 
     if not boards:
-        print("[benchmark] No boards found. Run: git submodule update --init", file=sys.stderr)
+        print(
+            "[benchmark] No boards found. Run: uv run python scripts/sync_boards.py",
+            file=sys.stderr,
+        )
         return 1
 
     # Board selection
@@ -186,8 +189,8 @@ def main() -> None:
     boards = discover_boards(get_default_boards_path())
 
     if not boards:
-        print("No amaranth-boards found; using generic board.")
-        print("Run  git submodule update --init  to load board definitions.")
+        print("No board definitions found; using generic board.")
+        print("Run  uv run python scripts/sync_boards.py  to generate board files.")
         FPGABoard(width=width, height=height).run()
         get_font.cache_clear()
         pygame.quit()
@@ -199,6 +202,7 @@ def main() -> None:
 
     session = load_session()
     last_board_class = session.get("board_class", "")
+    last_board_source = session.get("board_source", "")
     last_vhdl_path = session.get("vhdl_path", "")
 
     # CLI flag overrides session; session overrides default; default is first available
@@ -236,7 +240,11 @@ def main() -> None:
             chosen = _return_to_board
             _return_to_board = None
         else:
-            chosen = BoardSelector(boards, screen, preselect_class=last_board_class).run(clock)
+            chosen = BoardSelector(
+                boards, screen,
+                preselect_class=last_board_class,
+                preselect_source=last_board_source,
+            ).run(clock)
             if chosen is None:
                 break
         assert chosen is not None  # both branches above guarantee non-None here
@@ -369,8 +377,9 @@ def main() -> None:
                 _return_to_board = chosen
                 continue
 
-        save_session(chosen.class_name, current_vhdl_path, simulator)
+        save_session(chosen.class_name, current_vhdl_path, simulator, chosen.source)
         last_board_class = chosen.class_name
+        last_board_source = chosen.source
         last_vhdl_path = current_vhdl_path
 
         # Capture final window size before quitting pygame so the

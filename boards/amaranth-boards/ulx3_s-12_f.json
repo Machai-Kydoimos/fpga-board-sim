@@ -1,0 +1,375 @@
+{
+  "name": "ULX3 S-12 F-",
+  "class_name": "ULX3S_12F_Platform",
+  "vendor": "Lattice",
+  "device": "LFE5U-12F",
+  "package": "BG381",
+  "clocks": [
+    25000000.0
+  ],
+  "default_clock_hz": 25000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "B2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "DRIVE": "4"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "C2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "DRIVE": "4"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "C1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "DRIVE": "4"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "D2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "DRIVE": "4"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "D1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "DRIVE": "4"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "E2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "DRIVE": "4"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "E1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "DRIVE": "4"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "H3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "DRIVE": "4"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "R1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "T1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "R18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "V1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "button",
+      "number": 4,
+      "pins": [
+        "U1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "button",
+      "number": 5,
+      "pins": [
+        "H16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "button_pwr",
+      "number": 0,
+      "pins": [
+        "D6"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "UP"
+      }
+    },
+    {
+      "name": "button_fire",
+      "number": 0,
+      "pins": [
+        "R1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "button_fire",
+      "number": 1,
+      "pins": [
+        "T1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "button_up",
+      "number": 0,
+      "pins": [
+        "R18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "button_down",
+      "number": 0,
+      "pins": [
+        "V1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "button_left",
+      "number": 0,
+      "pins": [
+        "U1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "button_right",
+      "number": 0,
+      "pins": [
+        "H16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "E8"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "D8"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "D7"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "E7"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "DOWN"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "ulx3s.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

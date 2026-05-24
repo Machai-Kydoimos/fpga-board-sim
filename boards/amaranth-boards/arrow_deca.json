@@ -1,0 +1,182 @@
+{
+  "name": "Arrow DECA",
+  "class_name": "ArrowDECAPlatform",
+  "vendor": "Intel",
+  "device": "10M50DA",
+  "package": "F484",
+  "clocks": [
+    10000000.0,
+    50000000.0
+  ],
+  "default_clock_hz": 50000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "C7"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "1.2 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "C8"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "1.2 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "A6"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "1.2 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "B7"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "1.2 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "C4"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "1.2 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "A5"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "1.2 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "B4"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "1.2 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "C5"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "1.2 V"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "H21"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "1.5 V"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "H22"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "1.5 V"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "J21"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "1.5 V"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "J22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "1.5 V"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "arrow_deca.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

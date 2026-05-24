@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Machai-Kydoimos/fpga-board-sim/boards/schema/board.schema.json",
+  "title": "FPGA Board Definition",
+  "description": "Board definition for the Virtual FPGA Board Simulator",
+  "type": "object",
+  "required": ["name", "class_name", "vendor", "device", "clocks", "default_clock_hz", "leds", "buttons", "switches"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference for IDE autocompletion"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable board name, e.g. 'Arty A7-35'"
+    },
+    "class_name": {
+      "type": "string",
+      "description": "Original platform class name, e.g. 'ArtyA7_35Platform'"
+    },
+    "vendor": {
+      "type": "string",
+      "description": "FPGA vendor: 'Xilinx', 'Intel', 'Lattice', 'Gowin', 'QuickLogic'"
+    },
+    "device": {
+      "type": "string",
+      "description": "FPGA device part number, e.g. 'xc7a35ti'"
+    },
+    "package": {
+      "type": "string",
+      "default": "",
+      "description": "FPGA package code, e.g. 'csg324'"
+    },
+    "clocks": {
+      "type": "array",
+      "description": "Clock sources — either flat Hz values or richer objects",
+      "items": {
+        "oneOf": [
+          { "type": "number" },
+          { "$ref": "#/$defs/clock_object" }
+        ]
+      }
+    },
+    "default_clock_hz": {
+      "type": "number",
+      "description": "Default clock frequency in Hz used by the simulator"
+    },
+    "leds": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/component" },
+      "description": "LED components on the board"
+    },
+    "buttons": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/component" },
+      "description": "Button components on the board"
+    },
+    "switches": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/component" },
+      "description": "Switch components on the board"
+    },
+    "seven_seg": {
+      "oneOf": [
+        { "$ref": "#/$defs/seven_seg" },
+        { "type": "null" }
+      ],
+      "default": null,
+      "description": "7-segment display definition, or null if absent"
+    },
+    "source": {
+      "$ref": "#/$defs/source",
+      "description": "Provenance tracking for this board definition"
+    },
+    "peripherals": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/peripheral" },
+      "default": [],
+      "description": "Future: typed peripheral definitions (VGA, audio, ADC, etc.)"
+    },
+    "port_conventions": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/port_convention" },
+      "default": {},
+      "description": "Future: named presets mapping generic ports to vendor-specific port names"
+    }
+  },
+  "$defs": {
+    "clock_object": {
+      "type": "object",
+      "required": ["hz"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Clock resource name, e.g. 'clk50'"
+        },
+        "hz": {
+          "type": "number",
+          "description": "Frequency in Hz"
+        },
+        "pin": {
+          "type": "string",
+          "description": "FPGA pin assignment for this clock input"
+        },
+        "is_default": {
+          "type": "boolean",
+          "default": false,
+          "description": "True if this is the board's default clock"
+        }
+      }
+    },
+    "component": {
+      "type": "object",
+      "required": ["name", "number"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Resource name, e.g. 'led', 'button_up', 'rgb_led'"
+        },
+        "number": {
+          "type": "integer",
+          "description": "Resource index"
+        },
+        "pins": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "FPGA pin assignments"
+        },
+        "direction": {
+          "type": "string",
+          "default": "",
+          "description": "Pin direction: 'i', 'o', 'io'"
+        },
+        "inverted": {
+          "type": "boolean",
+          "default": false,
+          "description": "True if the component uses active-low logic"
+        },
+        "connector": {
+          "oneOf": [
+            {
+              "type": "array",
+              "prefixItems": [{ "type": "string" }, { "type": "integer" }],
+              "items": false,
+              "minItems": 2,
+              "maxItems": 2
+            },
+            { "type": "null" }
+          ],
+          "default": null,
+          "description": "Connector reference as [name, number], or null"
+        },
+        "attrs": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [{ "type": "string" }, { "type": "integer" }]
+          },
+          "default": {},
+          "description": "IO standard and other attributes"
+        }
+      }
+    },
+    "seven_seg": {
+      "type": "object",
+      "required": ["num_digits", "has_dp", "is_multiplexed"],
+      "properties": {
+        "num_digits": { "type": "integer", "minimum": 1 },
+        "has_dp": { "type": "boolean" },
+        "is_multiplexed": { "type": "boolean" },
+        "inverted": { "type": "boolean", "default": false },
+        "select_inverted": { "type": "boolean", "default": false }
+      }
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "type": "string",
+          "description": "Where this definition came from, e.g. 'amaranth-boards' or 'custom'"
+        },
+        "upstream_file": {
+          "type": "string",
+          "description": "Original Python filename, e.g. 'arty_a7.py'"
+        },
+        "sync_commit": {
+          "type": "string",
+          "description": "Git commit SHA of the source at sync time"
+        },
+        "sync_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of when this file was generated"
+        },
+        "reference_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL to board documentation or vendor page"
+        }
+      }
+    },
+    "peripheral": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Peripheral type: 'vga', 'audio', 'adc', 'uart', 'spi', 'i2c', 'sdram', 'gpio', 'ir', 'ps2'"
+        },
+        "name": {
+          "type": "string",
+          "description": "Device identifier, e.g. 'ADV7123', 'WM8731'"
+        }
+      },
+      "additionalProperties": true
+    },
+    "port_convention": {
+      "type": "object",
+      "description": "Maps generic port names to board-specific names for a known convention",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of this convention"
+        },
+        "clk": { "type": "string" },
+        "leds": { "$ref": "#/$defs/port_mapping" },
+        "buttons": { "$ref": "#/$defs/port_mapping" },
+        "switches": { "$ref": "#/$defs/port_mapping" },
+        "seven_seg": { "$ref": "#/$defs/seg_port_mapping" }
+      }
+    },
+    "port_mapping": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "width": { "type": "integer" },
+        "active_low": { "type": "boolean", "default": false }
+      }
+    },
+    "seg_port_mapping": {
+      "type": "object",
+      "properties": {
+        "style": {
+          "type": "string",
+          "enum": ["packed_vector", "individual"]
+        },
+        "name": { "type": "string" },
+        "names": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "width_per_digit": { "type": "integer" },
+        "active_low": { "type": "boolean", "default": false }
+      }
+    }
+  }
+}
