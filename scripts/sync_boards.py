@@ -46,7 +46,7 @@ def resolve_commit_sha(ref: str) -> str:
     req = urllib.request.Request(url, headers={"Accept": "application/vnd.github.sha"})
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
-            return resp.read().decode().strip()
+            return str(resp.read().decode().strip())
     except Exception:
         return ref
 
@@ -56,7 +56,7 @@ def download_archive(ref: str) -> bytes:
     url = f"https://github.com/amaranth-lang/amaranth-boards/archive/{ref}.tar.gz"
     print(f"Downloading {url} ...")
     with urllib.request.urlopen(url, timeout=60) as resp:
-        return resp.read()
+        return bytes(resp.read())
 
 
 def extract_board_files(archive_bytes: bytes) -> dict[str, str]:
