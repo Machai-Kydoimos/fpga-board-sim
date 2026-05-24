@@ -8,8 +8,8 @@ everything a developer needs beyond the user-facing [README](README.md).
 ## Development setup
 
 ```bash
-# Clone with the board-definitions submodule
-git clone --recurse-submodules https://github.com/Machai-Kydoimos/fpga-board-sim.git
+# Clone the repository
+git clone https://github.com/Machai-Kydoimos/fpga-board-sim.git
 cd fpga-board-sim
 
 # Install runtime + dev dependencies (pytest, ruff, mypy, pre-commit)
@@ -120,8 +120,8 @@ ignore_missing_imports   = true   # third-party stubs not required
 Test files (`tests.*`, `test_blinky`, `test_7seg`) are exempt from `disallow_untyped_defs`
 via `[[tool.mypy.overrides]]` — consistent with the ruff exemptions above.
 
-The `amaranth-boards/` submodule is excluded from both ruff and mypy; its
-files are not part of this project's source.
+The `boards/` directory (JSON board definitions) is excluded from both ruff
+and mypy; its files are data, not source code.
 
 ---
 

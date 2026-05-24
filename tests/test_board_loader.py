@@ -352,6 +352,20 @@ def test_clocks_object_format(tmp_path):
     assert boards[0].default_clock_hz == 50000000
 
 
+def test_clocks_empty_array(tmp_path):
+    """Empty clocks array is preserved as-is."""
+    import json
+
+    data = json.loads(_SAMPLE_BOARD_JSON)
+    data["clocks"] = []
+
+    src = tmp_path / "test"
+    src.mkdir()
+    (src / "board.json").write_text(json.dumps(data))
+    boards = discover_boards(tmp_path)
+    assert boards[0].clocks == []
+
+
 def test_schema_dir_excluded(tmp_path):
     """The schema/ subdirectory is not treated as a source."""
     schema_dir = tmp_path / "schema"
