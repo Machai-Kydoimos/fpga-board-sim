@@ -75,7 +75,7 @@
   },
   "source": {
     "origin": "custom",
-    "reference_url": "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=139&No=502"
+    "reference_url": "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=165&No=1020"
   },
   "peripherals": [
     { "type": "sdram", "name": "SDRAM", "size_mb": 128, "bus_width": 32 },
