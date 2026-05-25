@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-25
+
 ### Changed
 - Migrated board definitions from amaranth-boards git submodule to self-contained
   JSON files in `boards/` — no submodule initialization required
@@ -27,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - `amaranth-boards/` git submodule (replaced by `boards/amaranth-boards/` JSON files)
+
+### Security
+- Hardened CI workflow: pinned actions to commit SHAs, added `permissions` blocks,
+  restricted token scopes
 
 ## [0.3.1] - 2026-05-19
 
@@ -77,7 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
-[Unreleased]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.1.0...v0.2.0
