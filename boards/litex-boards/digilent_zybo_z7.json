@@ -4,8 +4,15 @@
   "vendor": "Xilinx",
   "device": "",
   "package": "",
-  "clocks": [],
-  "default_clock_hz": 12000000.0,
+  "clocks": [
+    {
+      "name": "clk125",
+      "hz": 125000000.0,
+      "pin": "",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 125000000.0,
   "leds": [
     {
       "name": "led",
@@ -120,7 +127,7 @@
   "source": {
     "origin": "litex-boards",
     "upstream_file": "digilent_zybo_z7.py",
-    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
-    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
+    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
   }
 }

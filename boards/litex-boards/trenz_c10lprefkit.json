@@ -1,14 +1,15 @@
 {
   "name": "Trenz C10lprefkit",
   "class_name": "TrenzC10lprefkitPlatform",
-  "vendor": "Xilinx",
-  "device": "",
+  "vendor": "Intel",
+  "device": "10CL055YU484A7G",
   "package": "",
   "clocks": [
     {
       "name": "clk12",
       "hz": 12000000.0,
-      "pin": "G21"
+      "pin": "G21",
+      "is_default": true
     },
     {
       "name": "clk25",
@@ -177,7 +178,7 @@
   "source": {
     "origin": "litex-boards",
     "upstream_file": "trenz_c10lprefkit.py",
-    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
-    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
+    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
   }
 }

@@ -1,0 +1,41 @@
+{
+  "name": "Qmtech Xc7a35t",
+  "class_name": "QmtechXc7a35tPlatform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk50",
+      "hz": 50000000.0,
+      "pin": "N11",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 50000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "E6"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "qmtech_xc7a35t.py",
+    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
+    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
+  }
+}

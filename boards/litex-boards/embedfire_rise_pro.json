@@ -8,10 +8,11 @@
     {
       "name": "clk50",
       "hz": 50000000.0,
-      "pin": "W19"
+      "pin": "W19",
+      "is_default": true
     }
   ],
-  "default_clock_hz": 12000000.0,
+  "default_clock_hz": 50000000.0,
   "leds": [
     {
       "name": "led",
@@ -57,6 +58,19 @@
       "number": 3,
       "pins": [
         "K22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "P20"
       ],
       "direction": "o",
       "inverted": false,
@@ -126,7 +140,7 @@
   "source": {
     "origin": "litex-boards",
     "upstream_file": "embedfire_rise_pro.py",
-    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
-    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
+    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
   }
 }

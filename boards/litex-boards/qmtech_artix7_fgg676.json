@@ -1,0 +1,54 @@
+{
+  "name": "Qmtech Artix7 Fgg676",
+  "class_name": "QmtechArtix7Fgg676Platform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk50",
+      "hz": 50000000.0,
+      "pin": "U22",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 50000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "T23"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "R23"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "qmtech_artix7_fgg676.py",
+    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
+    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
+  }
+}
