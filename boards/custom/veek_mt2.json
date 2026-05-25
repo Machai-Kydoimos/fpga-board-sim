@@ -1,0 +1,118 @@
+{
+  "$schema": "../schema/board.schema.json",
+  "name": "VEEK-MT2",
+  "class_name": "VEEKMT2Platform",
+  "vendor": "Intel",
+  "device": "EP4CE115",
+  "package": "F29",
+  "clocks": [
+    { "name": "clock_50", "hz": 50000000, "pin": "Y2", "is_default": true },
+    { "name": "clock2_50", "hz": 50000000, "pin": "AG14" },
+    { "name": "clock3_50", "hz": 50000000, "pin": "AG15" }
+  ],
+  "default_clock_hz": 50000000,
+  "leds": [
+    { "name": "led", "number": 0, "pins": ["G19"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 1, "pins": ["F19"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 2, "pins": ["E19"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 3, "pins": ["F21"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 4, "pins": ["F18"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 5, "pins": ["E18"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 6, "pins": ["J19"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 7, "pins": ["H19"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 8, "pins": ["J17"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 9, "pins": ["G17"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 10, "pins": ["J15"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 11, "pins": ["H16"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 12, "pins": ["J16"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 13, "pins": ["H17"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 14, "pins": ["F15"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 15, "pins": ["G15"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 16, "pins": ["G16"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led", "number": 17, "pins": ["H15"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led_g", "number": 0, "pins": ["E21"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led_g", "number": 1, "pins": ["E22"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led_g", "number": 2, "pins": ["E25"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led_g", "number": 3, "pins": ["E24"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led_g", "number": 4, "pins": ["H21"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led_g", "number": 5, "pins": ["G20"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led_g", "number": 6, "pins": ["G22"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led_g", "number": 7, "pins": ["G21"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "led_g", "number": 8, "pins": ["F17"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } }
+  ],
+  "buttons": [
+    { "name": "button", "number": 0, "pins": ["M23"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "button", "number": 1, "pins": ["M21"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "button", "number": 2, "pins": ["N21"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "button", "number": 3, "pins": ["R24"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "2.5 V" } }
+  ],
+  "switches": [
+    { "name": "switch", "number": 0, "pins": ["AB28"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 1, "pins": ["AC28"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 2, "pins": ["AC27"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 3, "pins": ["AD27"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 4, "pins": ["AB27"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 5, "pins": ["AC26"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 6, "pins": ["AD26"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 7, "pins": ["AB26"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 8, "pins": ["AC25"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 9, "pins": ["AB25"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 10, "pins": ["AC24"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 11, "pins": ["AB24"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 12, "pins": ["AB23"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 13, "pins": ["AA24"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 14, "pins": ["AA23"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 15, "pins": ["AA22"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 16, "pins": ["Y24"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 17, "pins": ["Y23"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } }
+  ],
+  "seven_seg": {
+    "num_digits": 8,
+    "has_dp": false,
+    "is_multiplexed": false,
+    "inverted": true,
+    "select_inverted": false
+  },
+  "source": {
+    "origin": "custom",
+    "reference_url": "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=139&No=502"
+  },
+  "peripherals": [
+    { "type": "sdram", "name": "SDRAM", "size_mb": 128, "bus_width": 32 },
+    { "type": "sram", "name": "SRAM", "size_mb": 2, "bus_width": 16 },
+    { "type": "flash", "name": "Flash", "size_mb": 8, "bus_width": 8 },
+    { "type": "vga", "name": "ADV7123", "bits_per_channel": 8 },
+    { "type": "lcd", "name": "7-inch TFT (800x480)", "width": 800, "height": 480, "bits_per_channel": 8 },
+    { "type": "camera", "name": "OV8865 (8 megapixel MIPI)", "data_width": 14, "decoder": "TC358746AXBG" },
+    { "type": "touch", "name": "Capacitive multi-touch", "interface": "i2c" },
+    { "type": "audio", "name": "WM8731", "interface": "i2s" },
+    { "type": "imu", "name": "MPU9250", "interface": "spi" },
+    { "type": "light_sensor", "name": "APDS-9300", "interface": "i2c" },
+    { "type": "ethernet", "name": "Marvell 88E1111", "speed": "10/100/1000", "count": 2 },
+    { "type": "usb", "name": "ISP1362", "interface": "otg" },
+    { "type": "video_in", "name": "TV decoder", "interface": "ntsc_pal" },
+    { "type": "uart", "name": "RS-232", "interface": "db9" },
+    { "type": "ps2", "name": "PS/2", "count": 2 },
+    { "type": "ir", "name": "IrDA", "has_rx": true, "has_tx": false },
+    { "type": "sd_card", "name": "SD card", "interface": "spi_4bit" },
+    { "type": "eeprom", "name": "EEPROM", "size_kbit": 32, "interface": "i2c" },
+    { "type": "char_lcd", "name": "16x2 LCD (HD44780)", "rows": 2, "cols": 16 },
+    { "type": "gpio", "name": "GPIO", "pin_count": 40 }
+  ],
+  "port_conventions": {
+    "terasic": {
+      "description": "Terasic DE2-115 / VEEK-MT2 golden_top reference design",
+      "clk": "CLOCK_50",
+      "leds": { "name": "LEDR", "width": 18 },
+      "buttons": { "name": "KEY", "width": 4, "active_low": true },
+      "switches": { "name": "SW", "width": 18 },
+      "leds_green": { "name": "LEDG", "width": 9 },
+      "seven_seg": {
+        "style": "individual",
+        "names": ["HEX0", "HEX1", "HEX2", "HEX3", "HEX4", "HEX5", "HEX6", "HEX7"],
+        "width_per_digit": 7,
+        "active_low": true
+      }
+    }
+  }
+}
