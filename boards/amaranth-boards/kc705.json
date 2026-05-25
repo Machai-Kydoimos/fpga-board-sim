@@ -1,0 +1,127 @@
+{
+  "name": "KC705",
+  "class_name": "KC705Platform",
+  "vendor": "Xilinx",
+  "device": "xc7k325t",
+  "package": "ffg900",
+  "clocks": [
+    156000000.0
+  ],
+  "default_clock_hz": 156000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "AB8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "AA8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "AC9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "AB9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "AE26"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "G19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "E18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "F16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "kc705.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

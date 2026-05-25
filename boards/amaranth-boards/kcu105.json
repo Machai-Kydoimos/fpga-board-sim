@@ -1,0 +1,127 @@
+{
+  "name": "KCU105",
+  "class_name": "KCU105Platform",
+  "vendor": "Xilinx",
+  "device": "xcku040",
+  "package": "ffva1156",
+  "clocks": [
+    125000000.0
+  ],
+  "default_clock_hz": 125000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "AP8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "H23"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "P20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "P21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "N22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "M22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "R23"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "P23"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "kcu105.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

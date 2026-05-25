@@ -236,3 +236,153 @@ def test_discover_boards_skips_unparseable_file(tmp_path):
     (tmp_path / "also_broken.py").write_text("def ???(): pass\n")
     boards = discover_boards(tmp_path)
     assert isinstance(boards, list)  # no exception; result may be empty
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  JSON board loading tests
+# ═══════════════════════════════════════════════════════════════════════
+
+_SAMPLE_BOARD_JSON = """{
+  "name": "Test Board",
+  "class_name": "TestBoardPlatform",
+  "vendor": "Xilinx",
+  "device": "xc7test",
+  "package": "csg324",
+  "clocks": [100000000],
+  "default_clock_hz": 100000000,
+  "leds": [{"name": "led", "number": 0, "pins": ["A1"], "direction": "o",
+            "inverted": false, "connector": null, "attrs": {}}],
+  "buttons": [{"name": "button", "number": 0, "pins": ["B1"], "direction": "i",
+               "inverted": true, "connector": null, "attrs": {}}],
+  "switches": []
+}"""
+
+_SAMPLE_BOARD2_JSON = """{
+  "name": "Other Board",
+  "class_name": "OtherPlatform",
+  "vendor": "Lattice",
+  "device": "ice40",
+  "package": "",
+  "clocks": [12000000],
+  "default_clock_hz": 12000000,
+  "leds": [{"name": "led", "number": 0}],
+  "buttons": [],
+  "switches": [{"name": "switch", "number": 0}]
+}"""
+
+
+def test_discover_boards_json_basic(tmp_path):
+    """discover_boards() loads JSON files from source subdirectories."""
+    src = tmp_path / "source_a"
+    src.mkdir()
+    (src / "test.json").write_text(_SAMPLE_BOARD_JSON)
+    boards = discover_boards(tmp_path)
+    assert len(boards) == 1
+    assert boards[0].name == "Test Board"
+    assert boards[0].vendor == "Xilinx"
+    assert len(boards[0].leds) == 1
+
+
+def test_all_sources_loaded(tmp_path):
+    """All sources are loaded; no masking on class_name collision."""
+    src_a = tmp_path / "source_a"
+    src_b = tmp_path / "source_b"
+    src_a.mkdir()
+    src_b.mkdir()
+    (src_a / "board.json").write_text(_SAMPLE_BOARD_JSON)
+    (src_b / "board.json").write_text(_SAMPLE_BOARD_JSON)
+    boards = discover_boards(tmp_path)
+    assert len(boards) == 2
+    assert boards[0].class_name == boards[1].class_name
+
+
+def test_source_field_set(tmp_path):
+    """BoardDef.source is set to the subdirectory name."""
+    src = tmp_path / "my-source"
+    src.mkdir()
+    (src / "board.json").write_text(_SAMPLE_BOARD_JSON)
+    boards = discover_boards(tmp_path)
+    assert boards[0].source == "my-source"
+
+
+def test_discover_boards_json_skips_invalid(tmp_path):
+    """Malformed JSON files are silently skipped."""
+    src = tmp_path / "upstream"
+    src.mkdir()
+    (src / "bad.json").write_text("not valid json {{{")
+    (src / "good.json").write_text(_SAMPLE_BOARD_JSON)
+    boards = discover_boards(tmp_path)
+    assert len(boards) == 1
+
+
+def test_json_extra_fields_ignored(tmp_path):
+    """Extra fields (source, peripherals, port_conventions) are ignored."""
+    import json
+
+    data = json.loads(_SAMPLE_BOARD_JSON)
+    data["source"] = {"origin": "custom", "reference_url": "https://example.com"}
+    data["peripherals"] = [{"type": "vga", "name": "test"}]
+    data["port_conventions"] = {"vendor": {"clk": "CLK50"}}
+    data["$schema"] = "../schema/board.schema.json"
+
+    src = tmp_path / "custom"
+    src.mkdir()
+    (src / "board.json").write_text(json.dumps(data))
+    boards = discover_boards(tmp_path)
+    assert len(boards) == 1
+    assert boards[0].name == "Test Board"
+
+
+def test_clocks_object_format(tmp_path):
+    """Richer clock format [{name, hz, pin, is_default}] is normalized to Hz list."""
+    import json
+
+    data = json.loads(_SAMPLE_BOARD_JSON)
+    data["clocks"] = [
+        {"name": "clk50", "hz": 50000000, "pin": "AF14", "is_default": True},
+        {"name": "clk50_1", "hz": 50000000, "pin": "AA16"},
+    ]
+    data["default_clock_hz"] = 50000000
+
+    src = tmp_path / "test"
+    src.mkdir()
+    (src / "board.json").write_text(json.dumps(data))
+    boards = discover_boards(tmp_path)
+    assert boards[0].clocks == [50000000, 50000000]
+    assert boards[0].default_clock_hz == 50000000
+
+
+def test_clocks_empty_array(tmp_path):
+    """Empty clocks array is preserved as-is."""
+    import json
+
+    data = json.loads(_SAMPLE_BOARD_JSON)
+    data["clocks"] = []
+
+    src = tmp_path / "test"
+    src.mkdir()
+    (src / "board.json").write_text(json.dumps(data))
+    boards = discover_boards(tmp_path)
+    assert boards[0].clocks == []
+
+
+def test_schema_dir_excluded(tmp_path):
+    """The schema/ subdirectory is not treated as a source."""
+    schema_dir = tmp_path / "schema"
+    schema_dir.mkdir()
+    (schema_dir / "board.schema.json").write_text('{"type": "object"}')
+    src = tmp_path / "upstream"
+    src.mkdir()
+    (src / "board.json").write_text(_SAMPLE_BOARD_JSON)
+    boards = discover_boards(tmp_path)
+    assert len(boards) == 1
+
+
+def test_metadata_files_skipped(tmp_path):
+    """Files starting with _ (like _sync_metadata.json) are skipped."""
+    src = tmp_path / "upstream"
+    src.mkdir()
+    (src / "_sync_metadata.json").write_text('{"source_commit": "abc123"}')
+    (src / "board.json").write_text(_SAMPLE_BOARD_JSON)
+    boards = discover_boards(tmp_path)
+    assert len(boards) == 1

@@ -1,0 +1,38 @@
+{
+  "name": "Orange Crab R0-1",
+  "class_name": "OrangeCrabR0_1Platform",
+  "vendor": "Lattice",
+  "device": "LFE5U-25F",
+  "package": "MG285",
+  "clocks": [
+    48000000.0
+  ],
+  "default_clock_hz": 48000000.0,
+  "leds": [
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "V17",
+        "T17",
+        "J3"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "orangecrab_r0_1.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

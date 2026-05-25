@@ -1,0 +1,158 @@
+{
+  "name": "ICE40 UP5 KBEVN",
+  "class_name": "ICE40UP5KBEVNPlatform",
+  "vendor": "Lattice",
+  "device": "iCE40UP5K",
+  "package": "SG48",
+  "clocks": [
+    12000000.0
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "39"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "40"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "41"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led_b",
+      "number": 0,
+      "pins": [
+        "39"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led_g",
+      "number": 0,
+      "pins": [
+        "40"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led_r",
+      "number": 0,
+      "pins": [
+        "41"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "23"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS",
+        "PULLUP": 1
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "25"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS",
+        "PULLUP": 1
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "34"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS",
+        "PULLUP": 1
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "43"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS",
+        "PULLUP": 1
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "ice40_up5k_b_evn.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

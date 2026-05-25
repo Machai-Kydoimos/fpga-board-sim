@@ -1,0 +1,52 @@
+{
+  "name": "Orange Crab R0-2-85 F",
+  "class_name": "OrangeCrabR0_2_85FPlatform",
+  "vendor": "Lattice",
+  "device": "LFE5U-85F",
+  "package": "MG285",
+  "clocks": [
+    48000000.0
+  ],
+  "default_clock_hz": 48000000.0,
+  "leds": [
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "K4",
+        "M3",
+        "J3"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "J17"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "SSTL135_I"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "orangecrab_r0_2.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

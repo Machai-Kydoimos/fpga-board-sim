@@ -25,7 +25,12 @@ def load_session() -> dict[str, Any]:
         return {}
 
 
-def save_session(board_class: str, vhdl_path: str, simulator: str = "ghdl") -> None:
+def save_session(
+    board_class: str,
+    vhdl_path: str,
+    simulator: str = "ghdl",
+    board_source: str = "",
+) -> None:
     """Persist the board class name, VHDL file path, and simulator choice.
 
     Creates ~/.fpga_simulator/ if it does not exist.
@@ -37,6 +42,7 @@ def save_session(board_class: str, vhdl_path: str, simulator: str = "ghdl") -> N
             json.dumps(
                 {
                     "board_class": board_class,
+                    "board_source": board_source,
                     "vhdl_path": vhdl_path,
                     "simulator": simulator,
                 },

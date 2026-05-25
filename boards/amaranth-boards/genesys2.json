@@ -1,0 +1,291 @@
+{
+  "name": "Genesys2",
+  "class_name": "Genesys2Platform",
+  "vendor": "Xilinx",
+  "device": "xc7k325t",
+  "package": "ffg900",
+  "clocks": [
+    200000000.0
+  ],
+  "default_clock_hz": 200000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "T28"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "V19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "U30"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "U29"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "V20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "V26"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "W24"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "W23"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "oled",
+      "number": 0,
+      "pins": [
+        "AC17",
+        "AG17",
+        "AB22"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "E18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "B19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "C19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "M19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button",
+      "number": 4,
+      "pins": [
+        "M20"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "G19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "G25"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "H24"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "K19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 4,
+      "pins": [
+        "N19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 5,
+      "pins": [
+        "P19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 6,
+      "pins": [
+        "P26"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 7,
+      "pins": [
+        "P27"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "genesys2.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

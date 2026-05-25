@@ -1,0 +1,36 @@
+{
+  "name": "ICESugar Nano",
+  "class_name": "ICESugarNanoPlatform",
+  "vendor": "Lattice",
+  "device": "iCE40LP1K",
+  "package": "CM36",
+  "clocks": [
+    12000000.0
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "B6"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "icesugar_nano.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

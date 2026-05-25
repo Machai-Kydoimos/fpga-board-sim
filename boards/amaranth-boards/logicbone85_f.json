@@ -1,0 +1,90 @@
+{
+  "name": "Logicbone85 F",
+  "class_name": "Logicbone85FPlatform",
+  "vendor": "Lattice",
+  "device": "LFE5UM5G-85F",
+  "package": "BG381",
+  "clocks": [
+    25000000.0,
+    125000000.0
+  ],
+  "default_clock_hz": 25000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "D16"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "C15"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "C13"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "B13"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "U2"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "logicbone.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

@@ -22,6 +22,7 @@ class BoardSelector:
         boards: list[BoardDef],
         screen: pygame.Surface,
         preselect_class: str = "",
+        preselect_source: str = "",
     ) -> None:
         """Initialise the selector with a board list and optional pre-selected class name."""
         self.boards = boards
@@ -31,8 +32,24 @@ class BoardSelector:
         self.hovered = -1
         self.filter_text = ""
 
+        # Detect which board names appear more than once (from different sources)
+        name_counts: dict[str, int] = {}
+        for b in boards:
+            name_counts[b.name] = name_counts.get(b.name, 0) + 1
+        self._duplicate_names = {n for n, c in name_counts.items() if c > 1}
+
         if preselect_class:
-            idx = next((i for i, b in enumerate(boards) if b.class_name == preselect_class), -1)
+            # Match on (class_name, source) first; fall back to class_name only
+            idx = next(
+                (
+                    i
+                    for i, b in enumerate(boards)
+                    if b.class_name == preselect_class and b.source == preselect_source
+                ),
+                -1,
+            )
+            if idx < 0:
+                idx = next((i for i, b in enumerate(boards) if b.class_name == preselect_class), -1)
             if idx >= 0:
                 self.hovered = idx
                 viewport_h = self.height - self._hdr
@@ -123,7 +140,10 @@ class BoardSelector:
             pygame.draw.rect(self.screen, bg, (10, y, self.width - 20, self.row_h - 2))
             nm = item_f.render(b.name, True, (220, 220, 255))
             self.screen.blit(nm, (20, y + 4))
-            sm = detail_f.render(b.summary, True, (150, 150, 150))
+            detail = b.summary
+            if b.source and b.name in self._duplicate_names:
+                detail = f"{detail}  ·  {b.source}"
+            sm = detail_f.render(detail, True, (150, 150, 150))
             self.screen.blit(sm, (20, y + 4 + item_f.get_height() + 2))
 
         # Header overlay (hides items that scrolled behind header)

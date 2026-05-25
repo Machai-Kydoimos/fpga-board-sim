@@ -36,6 +36,7 @@ dev = [
     "mypy>=2.1.0",
     "ruff>=0.15.13",
     "pre-commit>=3",
+    "jsonschema>=4.0",
 ]
 
 [tool.pytest.ini_options]
@@ -50,7 +51,7 @@ markers = [
 [tool.ruff]
 target-version = "py310"
 line-length = 100
-exclude = ["amaranth-boards/"]
+exclude = ["amaranth-boards/", "boards/"]
 
 [tool.ruff.lint]
 select = [
@@ -85,7 +86,7 @@ python_version = "3.10"
 warn_return_any = true
 warn_unused_ignores = true
 ignore_missing_imports = true
-exclude = ["amaranth-boards/"]
+exclude = ["amaranth-boards/", "boards/"]
 disallow_incomplete_defs = true
 disallow_untyped_defs = true
 # strict = true  (future: evaluate after feature work settles)

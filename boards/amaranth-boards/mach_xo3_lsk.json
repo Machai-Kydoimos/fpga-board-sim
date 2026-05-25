@@ -1,0 +1,194 @@
+{
+  "name": "Mach XO3 LSK",
+  "class_name": "MachXO3LSKPlatform",
+  "vendor": "Lattice",
+  "device": "LCMXO3L-6900C",
+  "package": "BG256",
+  "clocks": [
+    12000000.0
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "H11"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "J13"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "J11"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "L12"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "K11"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "L13"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "N15"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "P16"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "B3"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "N2"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "P1"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "M3"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "N1"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "machxo3_sk.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

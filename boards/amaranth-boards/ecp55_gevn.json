@@ -1,0 +1,212 @@
+{
+  "name": "ECP55 GEVN",
+  "class_name": "ECP55GEVNPlatform",
+  "vendor": "Lattice",
+  "device": "LFE5UM5G-85F",
+  "package": "BG381",
+  "clocks": [
+    12000000.0
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "A13"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "A12"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "B19"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "A18"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "B18"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "C17"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "A17"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "B17"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "P4"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "J1"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "H1"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "K1"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 4,
+      "pins": [
+        "E15"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 5,
+      "pins": [
+        "D16"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 6,
+      "pins": [
+        "B16"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 7,
+      "pins": [
+        "C16"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 8,
+      "pins": [
+        "A16"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "ecp5_5g_evn.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

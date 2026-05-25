@@ -1,0 +1,207 @@
+{
+  "name": "DE0 Nano",
+  "class_name": "DE0NanoPlatform",
+  "vendor": "Intel",
+  "device": "EP4CE22",
+  "package": "F17",
+  "clocks": [
+    50000000.0
+  ],
+  "default_clock_hz": 50000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "A15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "A13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "B13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "A11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "D1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "F3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "B1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "L3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "J15"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "E1"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "M1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "T8"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "B9"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "M15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVCMOS"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "de0nano.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

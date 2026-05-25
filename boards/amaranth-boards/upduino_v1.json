@@ -1,0 +1,99 @@
+{
+  "name": "Upduino V1",
+  "class_name": "UpduinoV1Platform",
+  "vendor": "Lattice",
+  "device": "iCE40UP5K",
+  "package": "SG48",
+  "clocks": [],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "39"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "40"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "41"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led_g",
+      "number": 0,
+      "pins": [
+        "39"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led_b",
+      "number": 0,
+      "pins": [
+        "40"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led_r",
+      "number": 0,
+      "pins": [
+        "41"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "upduino_v1.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "name": "Quickfeather",
+  "class_name": "QuickfeatherPlatform",
+  "vendor": "QuickLogic",
+  "device": "ql-eos-s3_wlcsp",
+  "package": "PU64",
+  "clocks": [],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "34",
+        "39",
+        "38"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "62"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "switches": [
+    {
+      "name": "swd",
+      "number": 0,
+      "pins": [
+        "54",
+        "53"
+      ],
+      "direction": "io",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "quickfeather.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

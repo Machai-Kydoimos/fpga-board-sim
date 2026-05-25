@@ -1,0 +1,127 @@
+{
+  "name": "ICE40 HX8 KBEVN",
+  "class_name": "ICE40HX8KBEVNPlatform",
+  "vendor": "Lattice",
+  "device": "iCE40HX8K",
+  "package": "CT256",
+  "clocks": [
+    12000000.0
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "C3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "B3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "C4"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "C5"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "A1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "A2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "B4"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "B5"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "ice40_hx8k_b_evn.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

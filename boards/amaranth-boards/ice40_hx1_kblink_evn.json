@@ -1,0 +1,75 @@
+{
+  "name": "ICE40 HX1 KBlink EVN",
+  "class_name": "ICE40HX1KBlinkEVNPlatform",
+  "vendor": "Lattice",
+  "device": "iCE40HX1K",
+  "package": "VQ100",
+  "clocks": [
+    3300000.0
+  ],
+  "default_clock_hz": 3300000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "59"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "56"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "53"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "51"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "ice40_hx1k_blink_evn.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

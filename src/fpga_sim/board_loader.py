@@ -428,6 +428,7 @@ class BoardDef:
     buttons: list = field(default_factory=list)
     switches: list = field(default_factory=list)
     seven_seg: "SevenSegDef | None" = None
+    source: str = ""
 
     @property
     def summary(self) -> str:
@@ -491,6 +492,10 @@ class BoardDef:
                 for c in items
             ]
 
+        raw_clocks = data.get("clocks", [])
+        if raw_clocks and isinstance(raw_clocks[0], dict):
+            raw_clocks = [c["hz"] for c in raw_clocks]
+
         raw_7seg = data.get("seven_seg")
         return cls(
             name=data["name"],
@@ -498,7 +503,7 @@ class BoardDef:
             vendor=data.get("vendor", ""),
             device=data.get("device", ""),
             package=data.get("package", ""),
-            clocks=data.get("clocks", []),
+            clocks=raw_clocks,
             default_clock_hz=data.get("default_clock_hz", _FALLBACK_CLOCK_HZ),
             leds=_make(data.get("leds", []), "led"),
             buttons=_make(data.get("buttons", []), "button"),
@@ -691,12 +696,32 @@ def load_board_from_source(source: str, filename: str = "<string>") -> list[Boar
     return boards
 
 
-def discover_boards(boards_dir: str | Path) -> list[BoardDef]:
+def _discover_boards_json(boards_dir: Path) -> list[BoardDef]:
+    """Read JSON board files from all source subdirectories.
+
+    Every subdirectory under boards_dir (except 'schema') is a source.
+    All boards from all sources are returned -- no deduplication.
+    """
+    all_boards: list[BoardDef] = []
+    for source_dir in sorted(boards_dir.iterdir()):
+        if not source_dir.is_dir() or source_dir.name == "schema":
+            continue
+        source_name = source_dir.name
+        for json_file in sorted(source_dir.glob("*.json")):
+            if json_file.name.startswith("_"):
+                continue
+            try:
+                board = BoardDef.from_json(json_file.read_text(encoding="utf-8"))
+                board.source = source_name
+                all_boards.append(board)
+            except Exception:
+                continue
+    return all_boards
+
+
+def _discover_boards_legacy(boards_dir: Path) -> list[BoardDef]:
     """Scan a directory of board .py files and return all BoardDefs."""
-    boards_dir = Path(boards_dir)
-    if not boards_dir.is_dir():
-        return []
-    all_boards = []
+    all_boards: list[BoardDef] = []
     for py_file in sorted(boards_dir.glob("*.py")):
         if py_file.name.startswith("_"):
             continue
@@ -708,6 +733,28 @@ def discover_boards(boards_dir: str | Path) -> list[BoardDef]:
     return all_boards
 
 
+def discover_boards(boards_dir: str | Path) -> list[BoardDef]:
+    """Scan a directory for board definitions and return all BoardDefs.
+
+    Checks for JSON board files first (source subdirectories).
+    Falls back to legacy .py file scanning if no subdirectories are found.
+    """
+    boards_dir = Path(boards_dir)
+    if not boards_dir.is_dir():
+        return []
+    subdirs = [d for d in boards_dir.iterdir() if d.is_dir() and d.name != "schema"]
+    if subdirs:
+        return _discover_boards_json(boards_dir)
+    return _discover_boards_legacy(boards_dir)
+
+
 def get_default_boards_path() -> Path:
-    """Path to amaranth_boards/ inside the git submodule."""
+    """Path to the boards/ directory containing JSON board definitions.
+
+    Falls back to the legacy amaranth-boards submodule path if the
+    JSON boards directory does not exist.
+    """
+    json_path = Path(__file__).parent.parent.parent / "boards"
+    if json_path.is_dir():
+        return json_path
     return Path(__file__).parent.parent.parent / "amaranth-boards" / "amaranth_boards"

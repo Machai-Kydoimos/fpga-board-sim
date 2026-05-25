@@ -1,0 +1,330 @@
+{
+  "name": "DE0",
+  "class_name": "DE0Platform",
+  "vendor": "Intel",
+  "device": "EP3C16",
+  "package": "F484",
+  "clocks": [
+    50000000.0
+  ],
+  "default_clock_hz": 50000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "J1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "J2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "J3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "H1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "F2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "E1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "C1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "C2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 8,
+      "pins": [
+        "B2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 9,
+      "pins": [
+        "B1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "H2"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "G3"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "F1"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "J6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "H5"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "H6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "G4"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 4,
+      "pins": [
+        "G5"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 5,
+      "pins": [
+        "J7"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 6,
+      "pins": [
+        "H7"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 7,
+      "pins": [
+        "E3"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 8,
+      "pins": [
+        "E4"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 9,
+      "pins": [
+        "D2"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "seven_seg": {
+    "num_digits": 4,
+    "has_dp": true,
+    "is_multiplexed": false,
+    "inverted": true,
+    "select_inverted": false
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "de0.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

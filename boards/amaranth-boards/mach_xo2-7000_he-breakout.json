@@ -1,0 +1,109 @@
+{
+  "name": "Mach XO2-7000 HE-Breakout",
+  "class_name": "MachXO2_7000HE_BreakoutPlatform",
+  "vendor": "Lattice",
+  "device": "LCMXO2-7000HE",
+  "package": "TG144",
+  "clocks": [],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "97"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "98"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "99"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "100"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "104"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "105"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "106"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "107"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "machxo2_breakout.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

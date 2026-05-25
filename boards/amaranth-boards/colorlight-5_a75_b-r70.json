@@ -1,0 +1,52 @@
+{
+  "name": "Colorlight-5 A75 B-R70",
+  "class_name": "Colorlight_5A75B_R70Platform",
+  "vendor": "Lattice",
+  "device": "LFE5U-25F",
+  "package": "BG256",
+  "clocks": [
+    25000000.0
+  ],
+  "default_clock_hz": 25000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "P11"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "DRIVE": "4"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "M13"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "UP"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "colorlight_5a75b_r7_0.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}

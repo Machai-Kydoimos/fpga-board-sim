@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Migrated board definitions from amaranth-boards git submodule to self-contained
+  JSON files in `boards/` — no submodule initialization required
+- Board loader discovers JSON sources automatically; each subdirectory under
+  `boards/` is an independent source (`amaranth-boards/`, `custom/`, etc.)
+- Multiple sources may define the same board; all definitions are shown in the
+  board selector with source annotations when names collide
+- Session persistence now tracks board source for disambiguation
+
+### Added
+- `boards/schema/board.schema.json` — JSON Schema for board definition validation
+- `boards/custom/de10_standard.json` — Terasic DE10-Standard (Cyclone V SX SoC,
+  10 LEDs, 4 buttons, 10 switches, 6-digit 7-seg); includes `peripherals` and
+  `port_conventions` sections for future use
+- `scripts/sync_boards.py` — downloads and converts board definitions from the
+  amaranth-boards GitHub repository without requiring a local clone
+- Support for richer clock format in JSON (objects with name, Hz, pin, is_default)
+- `jsonschema` added to dev dependencies for CI validation
+
+### Removed
+- `amaranth-boards/` git submodule (replaced by `boards/amaranth-boards/` JSON files)
+
 ## [0.3.1] - 2026-05-19
 
 ### Changed

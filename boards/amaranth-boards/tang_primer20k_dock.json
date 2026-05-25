@@ -1,0 +1,253 @@
+{
+  "name": "Tang Primer20k Dock",
+  "class_name": "TangPrimer20kDockPlatform",
+  "vendor": "Gowin",
+  "device": "",
+  "package": "",
+  "clocks": [
+    27000000.0,
+    50000000.0
+  ],
+  "default_clock_hz": 27000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "C13"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "A13"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "N16"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "N14"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "L14"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "L16"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "mic_led",
+      "number": 0,
+      "pins": [
+        "P9",
+        "T9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "T10"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "T3"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS15"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "T2"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS15"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "D7"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS15"
+      }
+    },
+    {
+      "name": "button",
+      "number": 4,
+      "pins": [
+        "C7"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS15"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "B10"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "PULL_MODE": "DOWN",
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "E9"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "PULL_MODE": "DOWN",
+        "IO_TYPE": "LVCMOS15"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "E8"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "PULL_MODE": "DOWN",
+        "IO_TYPE": "LVCMOS15"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "T4"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "PULL_MODE": "DOWN",
+        "IO_TYPE": "LVCMOS15"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 4,
+      "pins": [
+        "T5"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "PULL_MODE": "DOWN",
+        "IO_TYPE": "LVCMOS15"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "tang_primer_20k.py",
+    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
+    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  }
+}
