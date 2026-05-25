@@ -1,0 +1,62 @@
+{
+  "$schema": "../schema/board.schema.json",
+  "name": "VEEK-MT-SoCKit",
+  "class_name": "VEEKMTSoCKitPlatform",
+  "vendor": "Intel",
+  "device": "5CSXFC6D6",
+  "package": "F31",
+  "clocks": [
+    { "name": "osc_50_b3b", "hz": 50000000, "pin": "AF14", "is_default": true },
+    { "name": "osc_50_b4a", "hz": 50000000, "pin": "AA16" },
+    { "name": "osc_50_b5b", "hz": 50000000, "pin": "Y26" },
+    { "name": "osc_50_b8a", "hz": 50000000, "pin": "K14" }
+  ],
+  "default_clock_hz": 50000000,
+  "leds": [
+    { "name": "led", "number": 0, "pins": ["AF10"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "led", "number": 1, "pins": ["AD10"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "led", "number": 2, "pins": ["AE11"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "led", "number": 3, "pins": ["AD7"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } }
+  ],
+  "buttons": [
+    { "name": "button", "number": 0, "pins": ["AE9"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "button", "number": 1, "pins": ["AE12"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "button", "number": 2, "pins": ["AD9"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "button", "number": 3, "pins": ["AD11"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } }
+  ],
+  "switches": [
+    { "name": "switch", "number": 0, "pins": ["W25"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 1, "pins": ["V25"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 2, "pins": ["AC28"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } },
+    { "name": "switch", "number": 3, "pins": ["AC29"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5 V" } }
+  ],
+  "seven_seg": null,
+  "source": {
+    "origin": "custom",
+    "reference_url": "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=167&No=882"
+  },
+  "peripherals": [
+    { "type": "ddr3", "name": "DDR3 SDRAM (FPGA)", "size_mb": 1024, "bus_width": 32 },
+    { "type": "ddr3", "name": "DDR3 SDRAM (HPS)", "size_mb": 1024, "bus_width": 32 },
+    { "type": "vga", "name": "ADV7123", "bits_per_channel": 8 },
+    { "type": "lcd", "name": "7-inch TFT (800x480)", "width": 800, "height": 480, "bits_per_channel": 8 },
+    { "type": "camera", "name": "D5M (5 megapixel)", "data_width": 12 },
+    { "type": "touch", "name": "Capacitive multi-touch", "interface": "i2c" },
+    { "type": "audio", "name": "SSM2603", "interface": "i2s" },
+    { "type": "accelerometer", "name": "ADXL345", "interface": "spi" },
+    { "type": "light_sensor", "name": "APDS-9300", "interface": "i2c" },
+    { "type": "temperature", "name": "Temperature sensor", "interface": "spi" },
+    { "type": "clock_gen", "name": "SI5338", "interface": "i2c" },
+    { "type": "ethernet", "name": "KSZ9021RN", "speed": "10/100/1000" },
+    { "type": "fan", "name": "Fan control", "interface": "pwm" }
+  ],
+  "port_conventions": {
+    "terasic": {
+      "description": "Terasic VEEK-MT-SoCKit / SoCKit reference design",
+      "clk": "OSC_50_B3B",
+      "leds": { "name": "LED", "width": 4 },
+      "buttons": { "name": "KEY", "width": 4, "active_low": true },
+      "switches": { "name": "SW", "width": 4 }
+    }
+  }
+}
