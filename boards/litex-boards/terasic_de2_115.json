@@ -1,14 +1,15 @@
 {
   "name": "Terasic De2 115",
   "class_name": "TerasicDe2115Platform",
-  "vendor": "Xilinx",
-  "device": "",
+  "vendor": "Intel",
+  "device": "EP4CE115F29C7",
   "package": "",
   "clocks": [
     {
       "name": "clk50",
       "hz": 50000000.0,
-      "pin": "Y2"
+      "pin": "Y2",
+      "is_default": true
     },
     {
       "name": "clk25",
@@ -16,7 +17,7 @@
       "pin": "A14"
     }
   ],
-  "default_clock_hz": 12000000.0,
+  "default_clock_hz": 50000000.0,
   "leds": [
     {
       "name": "led",
@@ -260,7 +261,7 @@
   "source": {
     "origin": "litex-boards",
     "upstream_file": "terasic_de2_115.py",
-    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
-    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
+    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
   }
 }

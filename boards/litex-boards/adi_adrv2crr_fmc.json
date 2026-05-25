@@ -2,16 +2,17 @@
   "name": "Adi Adrv2crr Fmc",
   "class_name": "AdiAdrv2crrFmcPlatform",
   "vendor": "Xilinx",
-  "device": "",
+  "device": "xczu11eg-ffvf1517-2-i",
   "package": "",
   "clocks": [
     {
       "name": "clk122m88",
-      "hz": 122000000.0,
-      "pin": "AN17"
+      "hz": 122879999.99999999,
+      "pin": "AN17",
+      "is_default": true
     }
   ],
-  "default_clock_hz": 12000000.0,
+  "default_clock_hz": 122879999.99999999,
   "leds": [
     {
       "name": "led",
@@ -179,7 +180,7 @@
   "source": {
     "origin": "litex-boards",
     "upstream_file": "adi_adrv2crr_fmc.py",
-    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
-    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
+    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
   }
 }

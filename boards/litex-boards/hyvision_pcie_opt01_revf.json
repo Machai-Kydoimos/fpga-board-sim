@@ -2,7 +2,7 @@
   "name": "Hyvision Pcie Opt01 Revf",
   "class_name": "HyvisionPcieOpt01RevfPlatform",
   "vendor": "Xilinx",
-  "device": "",
+  "device": "xc7k70t-fbg676-1",
   "package": "",
   "clocks": [
     {
@@ -13,10 +13,11 @@
     {
       "name": "clk200",
       "hz": 200000000.0,
-      "pin": "AA10"
+      "pin": "AA10",
+      "is_default": true
     }
   ],
-  "default_clock_hz": 12000000.0,
+  "default_clock_hz": 200000000.0,
   "leds": [
     {
       "name": "led",
@@ -261,7 +262,7 @@
   "source": {
     "origin": "litex-boards",
     "upstream_file": "hyvision_pcie_opt01_revf.py",
-    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
-    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
+    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
   }
 }

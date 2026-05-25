@@ -8,10 +8,21 @@
     {
       "name": "clk100",
       "hz": 100000000.0,
-      "pin": "G12"
+      "pin": "G12",
+      "is_default": true
+    },
+    {
+      "name": "clk300",
+      "hz": 300000000.0,
+      "pin": "AR20"
+    },
+    {
+      "name": "clk300",
+      "hz": 300000000.0,
+      "pin": "G17"
     }
   ],
-  "default_clock_hz": 12000000.0,
+  "default_clock_hz": 100000000.0,
   "leds": [
     {
       "name": "led",
@@ -24,6 +35,21 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "AN14",
+        "C13",
+        "B26"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
       }
     },
     {
@@ -40,6 +66,21 @@
       }
     },
     {
+      "name": "rgb_led",
+      "number": 1,
+      "pins": [
+        "AP16",
+        "D14",
+        "E24"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
       "name": "led",
       "number": 2,
       "pins": [
@@ -50,6 +91,21 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 2,
+      "pins": [
+        "AP14",
+        "D12",
+        "G26"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
       }
     },
     {
@@ -66,10 +122,40 @@
       }
     },
     {
+      "name": "rgb_led",
+      "number": 3,
+      "pins": [
+        "AU16",
+        "D13",
+        "J23"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
       "name": "led",
       "number": 4,
       "pins": [
         "AW18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 4,
+      "pins": [
+        "AW12",
+        "AW18",
+        "L24"
       ],
       "direction": "o",
       "inverted": false,
@@ -92,10 +178,40 @@
       }
     },
     {
+      "name": "rgb_led",
+      "number": 5,
+      "pins": [
+        "AY16",
+        "AV18",
+        "P21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
       "name": "led",
       "number": 6,
       "pins": [
         "BA19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 6,
+      "pins": [
+        "BB12",
+        "BA19",
+        "AV21"
       ],
       "direction": "o",
       "inverted": false,
@@ -116,16 +232,97 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS12"
       }
+    },
+    {
+      "name": "rgb_led",
+      "number": 7,
+      "pins": [
+        "E25",
+        "AP21",
+        "AR21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
     }
   ],
-  "buttons": [],
+  "buttons": [
+    {
+      "name": "button__c",
+      "number": 0,
+      "pins": [
+        "K11"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "J11"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button__s",
+      "number": 0,
+      "pins": [
+        "H10"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button__w",
+      "number": 0,
+      "pins": [
+        "K12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button__e",
+      "number": 0,
+      "pins": [
+        "J12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    }
+  ],
   "switches": [],
   "seven_seg": null,
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "litex-boards",
     "upstream_file": "xilinx_zcu216.py",
-    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
-    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
+    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
   }
 }

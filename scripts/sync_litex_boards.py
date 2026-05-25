@@ -413,12 +413,14 @@ def parse_litex_board(source: str, filename: str) -> list[dict]:
     except Exception:
         return []
 
-    # Find the Platform class
+    # Find the Platform class (skip injected mock base classes)
     platform_class = None
     for obj_name, obj in ns.items():
         if not isinstance(obj, type):
             continue
         if obj_name.startswith("_"):
+            continue
+        if obj_name in _PLATFORM_VENDORS:
             continue
         vendor = ""
         for base in getattr(obj, "__mro__", []):
@@ -426,7 +428,7 @@ def parse_litex_board(source: str, filename: str) -> list[dict]:
             if v and v != "Unknown":
                 vendor = v
                 break
-        if vendor and obj_name != "MockPlatform":
+        if vendor:
             platform_class = obj
             break
 

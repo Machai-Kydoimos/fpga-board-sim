@@ -2,13 +2,14 @@
   "name": "Alinx Axau15",
   "class_name": "AlinxAxau15Platform",
   "vendor": "Xilinx",
-  "device": "",
+  "device": "xcau15p-ffvb676-2-i",
   "package": "",
   "clocks": [
     {
       "name": "clk200",
       "hz": 200000000.0,
-      "pin": "T24"
+      "pin": "T24",
+      "is_default": true
     },
     {
       "name": "clk156p25",
@@ -16,7 +17,7 @@
       "pin": "T7"
     }
   ],
-  "default_clock_hz": 12000000.0,
+  "default_clock_hz": 200000000.0,
   "leds": [
     {
       "name": "led",
@@ -79,7 +80,7 @@
   "source": {
     "origin": "litex-boards",
     "upstream_file": "alinx_axau15.py",
-    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
-    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
+    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
   }
 }

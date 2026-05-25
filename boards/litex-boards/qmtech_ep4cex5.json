@@ -1,18 +1,33 @@
 {
   "name": "Qmtech Ep4cex5",
   "class_name": "QmtechEp4cex5Platform",
-  "vendor": "Xilinx",
-  "device": "",
+  "vendor": "Intel",
+  "device": "EP4CE15F23C8",
   "package": "",
   "clocks": [
     {
       "name": "clk50",
       "hz": 50000000.0,
-      "pin": "T2"
+      "pin": "T2",
+      "is_default": true
     }
   ],
-  "default_clock_hz": 12000000.0,
-  "leds": [],
+  "default_clock_hz": 50000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "E4"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    }
+  ],
   "buttons": [
     {
       "name": "button",
@@ -47,7 +62,7 @@
   "source": {
     "origin": "litex-boards",
     "upstream_file": "qmtech_ep4cex5.py",
-    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
-    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
+    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
   }
 }

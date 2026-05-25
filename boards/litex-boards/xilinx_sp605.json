@@ -2,13 +2,14 @@
   "name": "Xilinx Sp605",
   "class_name": "XilinxSp605Platform",
   "vendor": "Xilinx",
-  "device": "",
+  "device": "xc6slx45t-fgg484-3",
   "package": "",
   "clocks": [
     {
       "name": "clk200",
       "hz": 200000000.0,
-      "pin": "K21"
+      "pin": "K21",
+      "is_default": true
     },
     {
       "name": "clk27",
@@ -16,7 +17,7 @@
       "pin": "AB13"
     }
   ],
-  "default_clock_hz": 12000000.0,
+  "default_clock_hz": 200000000.0,
   "leds": [
     {
       "name": "led",
@@ -125,13 +126,66 @@
       }
     }
   ],
-  "switches": [],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "C18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "Y6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "W6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "E4"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    }
+  ],
   "seven_seg": null,
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "litex-boards",
     "upstream_file": "xilinx_sp605.py",
-    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
-    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
+    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
   }
 }
