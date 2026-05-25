@@ -21,8 +21,13 @@ from pathlib import Path
 
 
 class _Pins:
-    def __init__(self, pins_str: str = "", dir: str = "io", conn: object = None,
-                 assert_width: int | None = None) -> None:
+    def __init__(
+        self,
+        pins_str: str = "",
+        dir: str = "io",
+        conn: object = None,
+        assert_width: int | None = None,
+    ) -> None:
         self.names = pins_str.split() if isinstance(pins_str, str) else []
         self.dir = dir
         self.conn = conn
@@ -45,16 +50,23 @@ class _Misc:
 
 
 class _DiffPairs:
-    def __init__(self, p: str = "", n: str = "", dir: str = "io",
-                 conn: object = None, assert_width: int | None = None) -> None:
+    def __init__(
+        self,
+        p: str = "",
+        n: str = "",
+        dir: str = "io",
+        conn: object = None,
+        assert_width: int | None = None,
+    ) -> None:
         self.p = p.split() if isinstance(p, str) else list(p)
         self.n = n.split() if isinstance(n, str) else list(n)
         self.dir = dir
 
 
 class _Connector:
-    def __init__(self, name: str = "", number: int = 0, pins: str | dict = "",
-                 **kwargs: object) -> None:
+    def __init__(
+        self, name: str = "", number: int = 0, pins: str | dict = "", **kwargs: object
+    ) -> None:
         self.name = name
         self.number = number
         if isinstance(pins, str):
@@ -117,8 +129,13 @@ def _make_mock_platform(name: str, vendor: str) -> type:
     class MockPlatform:
         _vendor = vendor
 
-        def __init__(self, device: object = "", io: object = None,
-                     connectors: object = None, **kwargs: object) -> None:
+        def __init__(
+            self,
+            device: object = "",
+            io: object = None,
+            connectors: object = None,
+            **kwargs: object,
+        ) -> None:
             self.device = str(device) if device else ""
             self._captured_io: list[tuple] = list(io) if isinstance(io, (list, tuple)) else []
 
@@ -164,11 +181,18 @@ def _make_litex_namespace() -> dict[str, object]:
         **{
             name: type(name, (), {"__init__": lambda self, *a, **kw: None})
             for name in (
-                "OpenOCD", "USBBlaster", "VivadoProgrammer",
-                "TinyFpgaBProgrammer", "IceStormProgrammer",
-                "LatticeProgrammer", "EfinixProgrammer",
-                "GowinProgrammer", "OpenFPGALoader",
-                "DFUProg", "UJProg", "GenericProgrammer",
+                "OpenOCD",
+                "USBBlaster",
+                "VivadoProgrammer",
+                "TinyFpgaBProgrammer",
+                "IceStormProgrammer",
+                "LatticeProgrammer",
+                "EfinixProgrammer",
+                "GowinProgrammer",
+                "OpenFPGALoader",
+                "DFUProg",
+                "UJProg",
+                "GenericProgrammer",
             )
         },
         # Stdlib
@@ -246,9 +270,7 @@ def _extract_io_pins(ios: tuple) -> tuple[list[str], str, str, object]:
     return pin_names, iostandard, direction, connector
 
 
-def _parse_io_as_component(
-    res_name: str, res_num: int, ios: tuple, kind: str
-) -> dict:
+def _parse_io_as_component(res_name: str, res_num: int, ios: tuple, kind: str) -> dict:
     """Convert a single _io tuple into a component dict."""
     pin_names, iostandard, direction, connector = _extract_io_pins(ios)
 
@@ -272,7 +294,7 @@ def _parse_io_as_component(
         elif res_name == "user_dip_btn":
             name = "button"
         elif res_name.startswith("user_btn"):
-            suffix = res_name[len("user_btn"):]
+            suffix = res_name[len("user_btn") :]
             if suffix:
                 name = f"button_{suffix}"
             else:
@@ -295,9 +317,7 @@ def _parse_io_as_component(
     }
 
 
-def _parse_clock_info(
-    res_name: str, ios: tuple
-) -> dict:
+def _parse_clock_info(res_name: str, ios: tuple) -> dict:
     """Extract clock info from a clock resource tuple."""
     pin_names, _, _, _ = _extract_io_pins(ios)
 
@@ -317,9 +337,7 @@ def _parse_clock_info(
     }
 
 
-def _build_seven_seg_def(
-    seg_tuples: list[tuple], ctrl_tuples: list[tuple]
-) -> dict | None:
+def _build_seven_seg_def(seg_tuples: list[tuple], ctrl_tuples: list[tuple]) -> dict | None:
     """Build a seven_seg definition from segment and control tuples."""
     if not seg_tuples:
         return None
@@ -486,10 +504,7 @@ def parse_litex_board(source: str, filename: str) -> list[dict]:
 
     # Calculate clock frequency
     default_clock_hz: float | None = None
-    if (
-        isinstance(default_clk_period, (int, float))
-        and default_clk_period > 0
-    ):
+    if isinstance(default_clk_period, (int, float)) and default_clk_period > 0:
         default_clock_hz = 1e9 / default_clk_period
 
     # Build clock list
@@ -506,12 +521,14 @@ def parse_litex_board(source: str, filename: str) -> list[dict]:
             clocks.append(entry)
 
     if not clocks and default_clock_hz and default_clk_name:
-        clocks.append({
-            "name": default_clk_name,
-            "hz": default_clock_hz,
-            "pin": "",
-            "is_default": True,
-        })
+        clocks.append(
+            {
+                "name": default_clk_name,
+                "hz": default_clock_hz,
+                "pin": "",
+                "is_default": True,
+            }
+        )
 
     # 7-segment
     seven_seg = _build_seven_seg_def(seg_tuples, seg_ctrl_tuples)

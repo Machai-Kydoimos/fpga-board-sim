@@ -174,27 +174,15 @@ _NAMED_BUTTONS: dict[str, tuple[str, int]] = {
 _RE_SECTION = re.compile(r"^#{2,}\s*(.+?)\s*$")
 
 # -dict format: set_property -dict { PACKAGE_PIN X IOSTANDARD Y } [get_ports {port}]
-_RE_SET_PROP_BRACES = re.compile(
-    r"set_property\s+-dict\s*\{([^}]+)\}\s*\[get_ports\s+\{([^}]+)\}"
-)
+_RE_SET_PROP_BRACES = re.compile(r"set_property\s+-dict\s*\{([^}]+)\}\s*\[get_ports\s+\{([^}]+)\}")
 # -dict format without braces on port: [get_ports port]
-_RE_SET_PROP_BARE = re.compile(
-    r"set_property\s+-dict\s*\{([^}]+)\}\s*\[get_ports\s+(\w+)\s*\]"
-)
+_RE_SET_PROP_BARE = re.compile(r"set_property\s+-dict\s*\{([^}]+)\}\s*\[get_ports\s+(\w+)\s*\]")
 # Separate-line PACKAGE_PIN: set_property PACKAGE_PIN X [get_ports {port}]
-_RE_PKG_PIN_BRACES = re.compile(
-    r"set_property\s+PACKAGE_PIN\s+(\w+)\s*\[get_ports\s+\{([^}]+)\}"
-)
-_RE_PKG_PIN_BARE = re.compile(
-    r"set_property\s+PACKAGE_PIN\s+(\w+)\s*\[get_ports\s+(\w+)\s*\]"
-)
+_RE_PKG_PIN_BRACES = re.compile(r"set_property\s+PACKAGE_PIN\s+(\w+)\s*\[get_ports\s+\{([^}]+)\}")
+_RE_PKG_PIN_BARE = re.compile(r"set_property\s+PACKAGE_PIN\s+(\w+)\s*\[get_ports\s+(\w+)\s*\]")
 # Separate-line IOSTANDARD: set_property IOSTANDARD X [get_ports {port}]
-_RE_IOS_BRACES = re.compile(
-    r"set_property\s+IOSTANDARD\s+(\w+)\s*\[get_ports\s+\{([^}]+)\}"
-)
-_RE_IOS_BARE = re.compile(
-    r"set_property\s+IOSTANDARD\s+(\w+)\s*\[get_ports\s+(\w+)\s*\]"
-)
+_RE_IOS_BRACES = re.compile(r"set_property\s+IOSTANDARD\s+(\w+)\s*\[get_ports\s+\{([^}]+)\}")
+_RE_IOS_BARE = re.compile(r"set_property\s+IOSTANDARD\s+(\w+)\s*\[get_ports\s+(\w+)\s*\]")
 
 _RE_PACKAGE_PIN = re.compile(r"PACKAGE_PIN\s+(\w+)")
 _RE_IOSTANDARD = re.compile(r"IOSTANDARD\s+(\w+)")
@@ -458,9 +446,7 @@ def _build_seven_seg(pin_entries: list[dict]) -> dict | None:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def _build_port_conventions(
-    parsed: dict, board_key: str
-) -> dict[str, dict]:
+def _build_port_conventions(parsed: dict, board_key: str) -> dict[str, dict]:
     """Build port_conventions from parsed XDC data."""
     pins = parsed["pins"]
     convention: dict[str, object] = {
