@@ -65,7 +65,7 @@ ruff and mypy automatically; run them manually at any time:
 uv run ruff check .        # linter — must report 0 errors
 uv run ruff format --check . # formatter check (ruff format . to auto-fix)
 uv run mypy .              # type checker — must report 0 errors
-uv run pytest              # test suite — must be 226/226 fast tests (no display needed)
+uv run pytest              # test suite — all fast tests must pass (no display needed)
 ```
 
 Running all four at once:
@@ -183,7 +183,7 @@ setup.  A few things that matter for contributors:
 - **`tests/` has an `__init__.py`**; `sim/` does not.  This matters if
   you add a mypy override — use `"tests.*"` for `tests/` and the bare
   module name (e.g. `"test_blinky"`) for `sim/` files.
-- The fast test suite (`-m "not slow"`) must stay at **226/226 passed**
+- The fast test suite (`-m "not slow"`) must pass with zero failures
   before merge.
 
 ---
@@ -301,11 +301,26 @@ of the simulation window.  Its `panel_height` is a property that re-evaluates
 whenever the window resizes to keep the board and panel areas in sync.
 `sim_testbench.py` does this check at the top of every frame.
 
-**`fpga_sim/board_loader.py` mock namespace.**  Board definition files are
-executed via `exec()` in a mock namespace that provides lightweight
-stand-ins for `Resource`, `Pins`, `Attrs`, etc.  The mock classes are
+**Board sync scripts.**  Three scripts in `scripts/` download upstream
+board definitions and convert them to our JSON schema:
+
+| Script | Source | Approach |
+|--------|--------|----------|
+| `sync_boards.py` | [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) | Mock-exec: strips imports, injects mock `Resource`/`Pins`/`Attrs` classes, `exec()`s each `.py` file |
+| `sync_litex_boards.py` | [litex-boards](https://github.com/litex-hub/litex-boards) | Mock-exec: same pattern but with LiteX's `_io` tuple format and mock vendor platform classes |
+| `sync_digilent_xdc.py` | [Digilent XDC](https://github.com/Digilent/digilent-xdc) | Regex parsing of `.xdc` constraint files; device/package from a hardcoded lookup table |
+
+All three download a tarball via `--ref` (default: `main`/`master`), support
+`--dry-run`, and write to their respective `boards/<source>/` subdirectory.
+The Digilent XDC script also auto-generates `port_conventions` from XDC port
+names.  To add a new upstream source, follow the same pattern: download,
+parse, emit JSON conforming to `boards/schema/board.schema.json`.
+
+**`fpga_sim/board_loader.py` mock namespace.**  The amaranth-boards and
+litex-boards sync scripts both use mock-exec: strip imports, inject mock
+classes into a namespace, and `exec()` the board file.  The mock classes are
 typed with `object` at variadic boundaries (`*ios: object`, `**kwargs: object`)
-because the amaranth API accepts heterogeneous arguments.  Use `cast()`
+because the upstream APIs accept heterogeneous arguments.  Use `cast()`
 if you need a narrower type after extracting a value from a mock object.
 
 **Session state** is stored in `~/.fpga_simulator/session.json` and

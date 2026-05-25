@@ -1,0 +1,266 @@
+{
+  "name": "Terasic De2 115",
+  "class_name": "TerasicDe2115Platform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk50",
+      "hz": 50000000.0,
+      "pin": "Y2"
+    },
+    {
+      "name": "clk25",
+      "hz": 25000000.0,
+      "pin": "A14"
+    }
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "G19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "F19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "E19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "F21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "F18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "E18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "J19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "H19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 8,
+      "pins": [
+        "J17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 9,
+      "pins": [
+        "G17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 10,
+      "pins": [
+        "J15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 11,
+      "pins": [
+        "H16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 12,
+      "pins": [
+        "J16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 13,
+      "pins": [
+        "H17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 14,
+      "pins": [
+        "F15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 15,
+      "pins": [
+        "G15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 16,
+      "pins": [
+        "G16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 17,
+      "pins": [
+        "H15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "2.5 V"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "terasic_de2_115.py",
+    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
+    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+  }
+}

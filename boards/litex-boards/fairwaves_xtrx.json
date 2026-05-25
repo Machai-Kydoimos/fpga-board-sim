@@ -1,0 +1,71 @@
+{
+  "name": "Fairwaves Xtrx",
+  "class_name": "FairwavesXtrxPlatform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk60",
+      "hz": 60000000.0,
+      "pin": "C16"
+    }
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "N18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "G3",
+        "M2",
+        "G2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "P1",
+        "K3",
+        "J3"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "fairwaves_xtrx.py",
+    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
+    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+  }
+}

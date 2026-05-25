@@ -1,0 +1,252 @@
+{
+  "name": "Efinix Trion T120 Bga576 Dev Kit",
+  "class_name": "EfinixTrionT120Bga576DevKitPlatform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk40",
+      "hz": 40000000.0,
+      "pin": "P19"
+    },
+    {
+      "name": "clk50",
+      "hz": 50000000.0,
+      "pin": "AA8"
+    },
+    {
+      "name": "clk20",
+      "hz": 20000000.0,
+      "pin": "AA9"
+    },
+    {
+      "name": "clk74_25",
+      "hz": 74000000.0,
+      "pin": "J9"
+    }
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "AB16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "AA16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "AA15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "Y15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "Y16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "W16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "AD16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "AC16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "AD15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 1,
+      "pins": [
+        "AC15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 2,
+      "pins": [
+        "W15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 3,
+      "pins": [
+        "V15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "U16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "T16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "T15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "U15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "efinix_trion_t120_bga576_dev_kit.py",
+    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
+    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+  }
+}

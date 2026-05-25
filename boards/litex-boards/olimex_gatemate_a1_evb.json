@@ -1,0 +1,44 @@
+{
+  "name": "Olimex Gatemate A1 Evb",
+  "class_name": "OlimexGatemateA1EvbPlatform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "IO_SB_B6"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "IO_SB_B7"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "olimex_gatemate_a1_evb.py",
+    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
+    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+  }
+}

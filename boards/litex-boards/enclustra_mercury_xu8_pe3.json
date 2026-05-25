@@ -1,0 +1,45 @@
+{
+  "name": "Enclustra Mercury Xu8 Pe3",
+  "class_name": "EnclustraMercuryXu8Pe3Platform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk33",
+      "hz": 33000000.0,
+      "pin": "P19"
+    },
+    {
+      "name": "clk100",
+      "hz": 100000000.0,
+      "pin": "AJ6"
+    }
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "AF13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "enclustra_mercury_xu8_pe3.py",
+    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
+    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+  }
+}

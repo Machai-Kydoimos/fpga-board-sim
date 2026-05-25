@@ -1,0 +1,114 @@
+{
+  "$schema": "../schema/board.schema.json",
+  "name": "USB104 A7-100T",
+  "class_name": "USB104A7100TPlatform",
+  "vendor": "Xilinx",
+  "device": "xc7a100t",
+  "package": "csg324",
+  "clocks": [],
+  "default_clock_hz": 100000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "R17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "P15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "R15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "T14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "V16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "U17"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "source": {
+    "origin": "digilent-xdc",
+    "upstream_file": "USB104-A7-100T-Master.xdc",
+    "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
+    "sync_timestamp": "2026-05-25T04:03:40.986208+00:00"
+  },
+  "port_conventions": {
+    "digilent": {
+      "description": "Digilent USB104-A7-100T Master XDC port names",
+      "leds": {
+        "name": "led",
+        "width": 4
+      },
+      "buttons": {
+        "name": "btn",
+        "width": 2,
+        "active_low": false
+      }
+    }
+  }
+}

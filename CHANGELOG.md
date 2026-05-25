@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-25
+
+### Added
+- **litex-boards sync** — `scripts/sync_litex_boards.py` downloads and converts
+  board definitions from [litex-hub/litex-boards](https://github.com/litex-hub/litex-boards),
+  adding ~147 boards across Xilinx, Intel, Lattice, Gowin, Efinix, and CologneChip
+- **Digilent XDC sync** — `scripts/sync_digilent_xdc.py` parses Digilent master XDC
+  constraint files from [Digilent/digilent-xdc](https://github.com/Digilent/digilent-xdc),
+  adding ~26 boards (Basys 3, Nexys A7, Arty, Zybo, etc.) with auto-generated
+  `port_conventions` for future board-native VHDL mode (U21)
+- 7-segment display detection in both new sources (multiplexed and non-multiplexed)
+- Board count increased from ~80 to ~250 across four sources
+
+### Changed
+- Board selector now shows boards from all four sources: `amaranth-boards`,
+  `litex-boards`, `digilent-xdc`, and `custom`
+- Test `test_arty_a7_found` updated to allow multi-source board matches
+
 ## [0.4.0] - 2026-05-25
 
 ### Changed

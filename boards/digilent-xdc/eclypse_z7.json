@@ -1,0 +1,88 @@
+{
+  "$schema": "../schema/board.schema.json",
+  "name": "Eclypse Z7",
+  "class_name": "EclypseZ7Platform",
+  "vendor": "Xilinx",
+  "device": "xc7z020",
+  "package": "clg484",
+  "clocks": [],
+  "default_clock_hz": 125000000.0,
+  "leds": [
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "B17",
+        "B16",
+        "A17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 1,
+      "pins": [
+        "A19",
+        "A18",
+        "A16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "C17"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "C18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "source": {
+    "origin": "digilent-xdc",
+    "upstream_file": "Eclypse-Z7-Master.xdc",
+    "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
+    "sync_timestamp": "2026-05-25T04:03:40.979232+00:00"
+  },
+  "port_conventions": {
+    "digilent": {
+      "description": "Digilent Eclypse-Z7 Master XDC port names",
+      "buttons": {
+        "name": "btn",
+        "width": 2,
+        "active_low": false
+      }
+    }
+  }
+}

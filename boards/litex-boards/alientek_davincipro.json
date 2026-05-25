@@ -1,0 +1,132 @@
+{
+  "name": "Alientek Davincipro",
+  "class_name": "AlientekDavinciproPlatform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk50",
+      "hz": 50000000.0,
+      "pin": "R4"
+    }
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "V9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "Y8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "Y7"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "W7"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "T4"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "T3"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "R6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "T6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "alientek_davincipro.py",
+    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
+    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+  }
+}

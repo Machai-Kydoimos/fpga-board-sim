@@ -1,0 +1,158 @@
+{
+  "name": "Trenz Max1000",
+  "class_name": "TrenzMax1000Platform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk12",
+      "hz": 12000000.0,
+      "pin": "H6"
+    }
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "A8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "A9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "A11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "A10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "B10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "C9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "C10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "D8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "E6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "E7"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "trenz_max1000.py",
+    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
+    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+  }
+}

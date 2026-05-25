@@ -1,0 +1,328 @@
+{
+  "$schema": "../schema/board.schema.json",
+  "name": "Genesys 2",
+  "class_name": "Genesys2Platform",
+  "vendor": "Xilinx",
+  "device": "xc7k325t",
+  "package": "ffg900",
+  "clocks": [],
+  "default_clock_hz": 100000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "T28"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "V19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "U30"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "U29"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "V20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "V26"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "W24"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "W23"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button_center",
+      "number": 0,
+      "pins": [
+        "E18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "button_up",
+      "number": 1,
+      "pins": [
+        "B19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "button_down",
+      "number": 2,
+      "pins": [
+        "M19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "button_left",
+      "number": 3,
+      "pins": [
+        "M20"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "button_right",
+      "number": 4,
+      "pins": [
+        "C19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "button",
+      "number": 5,
+      "pins": [
+        "R19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "G19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "G25"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "H24"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "K19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 4,
+      "pins": [
+        "N19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 5,
+      "pins": [
+        "P19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 6,
+      "pins": [
+        "P26"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 7,
+      "pins": [
+        "P27"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "source": {
+    "origin": "digilent-xdc",
+    "upstream_file": "Genesys-2-Master.xdc",
+    "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
+    "sync_timestamp": "2026-05-25T04:03:40.979924+00:00"
+  },
+  "port_conventions": {
+    "digilent": {
+      "description": "Digilent Genesys-2 Master XDC port names",
+      "clk": "sysclk_n",
+      "leds": {
+        "name": "led",
+        "width": 8
+      },
+      "switches": {
+        "name": "sw",
+        "width": 8
+      },
+      "buttons": {
+        "name": "btn",
+        "width": 6,
+        "active_low": false
+      }
+    }
+  }
+}

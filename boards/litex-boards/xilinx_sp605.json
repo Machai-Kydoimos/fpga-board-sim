@@ -1,0 +1,137 @@
+{
+  "name": "Xilinx Sp605",
+  "class_name": "XilinxSp605Platform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk200",
+      "hz": 200000000.0,
+      "pin": "K21"
+    },
+    {
+      "name": "clk27",
+      "hz": 27000000.0,
+      "pin": "AB13"
+    }
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "D17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "AB4"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "D21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "W15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "F3"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "G6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "F5"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "C1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "xilinx_sp605.py",
+    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
+    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+  }
+}

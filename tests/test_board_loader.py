@@ -32,7 +32,7 @@ def test_discovers_enough_boards(all_boards):
 
 def test_arty_a7_found(all_boards):
     matches = [b for b in all_boards if "Arty A7-35" in b.name]
-    assert len(matches) == 1
+    assert len(matches) >= 1
 
 
 @pytest.fixture(scope="module")

@@ -1,0 +1,111 @@
+{
+  "$schema": "../schema/board.schema.json",
+  "name": "Cmod A7",
+  "class_name": "CmodA7Platform",
+  "vendor": "Xilinx",
+  "device": "xc7a35t",
+  "package": "cpg236",
+  "clocks": [
+    {
+      "name": "sysclk",
+      "hz": 12000480.019200768,
+      "pin": "L17",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 12000480.019200768,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "A17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "C16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "C17",
+        "B16",
+        "B17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "A18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "B18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "source": {
+    "origin": "digilent-xdc",
+    "upstream_file": "Cmod-A7-Master.xdc",
+    "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
+    "sync_timestamp": "2026-05-25T04:03:40.978264+00:00"
+  },
+  "port_conventions": {
+    "digilent": {
+      "description": "Digilent Cmod-A7 Master XDC port names",
+      "clk": "sysclk",
+      "leds": {
+        "name": "led",
+        "width": 2
+      },
+      "buttons": {
+        "name": "btn",
+        "width": 2,
+        "active_low": false
+      }
+    }
+  }
+}

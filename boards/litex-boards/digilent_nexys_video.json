@@ -1,0 +1,333 @@
+{
+  "name": "Digilent Nexys Video",
+  "class_name": "DigilentNexysVideoPlatform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk100",
+      "hz": 100000000.0,
+      "pin": "R4"
+    }
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "T14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "oled",
+      "number": 0,
+      "pins": [
+        "W22",
+        "U21",
+        "W21",
+        "Y22",
+        "P20",
+        "V22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "T15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "T16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "U16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "V15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "W16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "W15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "Y13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "B22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "D22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "C22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "D14"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "button",
+      "number": 4,
+      "pins": [
+        "F15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "button",
+      "number": 5,
+      "pins": [
+        "G4"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "E22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "F21"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "G21"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "G22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 4,
+      "pins": [
+        "H17"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 5,
+      "pins": [
+        "J16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 6,
+      "pins": [
+        "K13"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 7,
+      "pins": [
+        "M17"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "digilent_nexys_video.py",
+    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
+    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+  }
+}

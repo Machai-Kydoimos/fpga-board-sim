@@ -1,0 +1,149 @@
+{
+  "name": "Intergalaktik Ulx5m Gs",
+  "class_name": "IntergalaktikUlx5mGsPlatform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk25",
+      "hz": 25000000.0,
+      "pin": "IO_SB_A8"
+    }
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "IO_SB_A0"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "IO_SB_B0"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "IO_SB_A1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "IO_SB_B1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "IO_SB_A2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "IO_SB_B2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "IO_SB_A3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "IO_SB_B3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "IO_EA_B4"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button__n",
+      "number": 1,
+      "pins": [
+        "IO_EA_A4"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button__n",
+      "number": 2,
+      "pins": [
+        "IO_EA_B3"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "intergalaktik_ulx5m_gs.py",
+    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
+    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+  }
+}
