@@ -1,0 +1,73 @@
+{
+  "$schema": "../schema/board.schema.json",
+  "name": "Cmod S7-25",
+  "class_name": "CmodS725Platform",
+  "vendor": "Xilinx",
+  "device": "xc7s25",
+  "package": "csga225",
+  "clocks": [],
+  "default_clock_hz": 12000480.019200768,
+  "leds": [
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "F2",
+        "D3",
+        "F1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "D2"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "D1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "source": {
+    "origin": "digilent-xdc",
+    "upstream_file": "Cmod-S7-25-Master.xdc",
+    "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
+    "sync_timestamp": "2026-05-25T04:03:40.978453+00:00"
+  },
+  "port_conventions": {
+    "digilent": {
+      "description": "Digilent Cmod-S7-25 Master XDC port names",
+      "buttons": {
+        "name": "btn",
+        "width": 2,
+        "active_low": false
+      }
+    }
+  }
+}

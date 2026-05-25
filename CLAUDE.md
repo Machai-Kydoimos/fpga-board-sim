@@ -12,8 +12,10 @@ uv sync
 # Install with dev dependencies (includes pytest)
 uv sync --group dev
 
-# (Optional) Re-sync board definitions from upstream amaranth-boards
-uv run python scripts/sync_boards.py
+# (Optional) Re-sync board definitions from upstream sources
+uv run python scripts/sync_boards.py          # amaranth-boards
+uv run python scripts/sync_litex_boards.py     # litex-boards
+uv run python scripts/sync_digilent_xdc.py     # Digilent XDC
 ```
 
 ### Run the simulator
@@ -41,9 +43,11 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `src/fpga_sim/board_loader.py` | Loads board definitions from JSON; also has mock classes for sync script |
 | `src/fpga_sim/sim_bridge.py` | GHDL analysis + simulation launcher; platform-specific VPI env setup |
 | `src/fpga_sim/ui/` | pygame UI package (board_selector, board_display, components, etc.) |
-| `boards/` | JSON board definitions (multi-source: `amaranth-boards/`, `custom/`) |
+| `boards/` | JSON board definitions (multi-source: `amaranth-boards/`, `litex-boards/`, `digilent-xdc/`, `custom/`) |
 | `boards/schema/board.schema.json` | JSON Schema for board definition validation |
 | `scripts/sync_boards.py` | Syncs board definitions from amaranth-boards GitHub repo |
+| `scripts/sync_litex_boards.py` | Syncs board definitions from litex-boards GitHub repo |
+| `scripts/sync_digilent_xdc.py` | Syncs board definitions from Digilent master XDC files (with port_conventions) |
 | `sim/sim_testbench.py` | cocotb test that runs pygame inside the GHDL simulation |
 | `sim/sim_wrapper_template.vhd` | VHDL wrapper template; drives clock internally |
 | `hdl/blinky.vhd` | Example VHDL design (use as template for the expected port interface) |
@@ -52,7 +56,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 
 ### Data Flow
 
-1. `src/fpga_sim/board_loader.py` reads JSON board definitions from `boards/` subdirectories (each subdirectory is a "source": `amaranth-boards/`, `custom/`, etc.) and constructs `BoardDef` objects. The mock-exec pipeline for parsing amaranth-boards `.py` files is retained for use by `scripts/sync_boards.py`.
+1. `src/fpga_sim/board_loader.py` reads JSON board definitions from `boards/` subdirectories (each subdirectory is a "source": `amaranth-boards/`, `litex-boards/`, `digilent-xdc/`, `custom/`, etc.) and constructs `BoardDef` objects. The mock-exec pipeline for parsing upstream Python board files is used by `scripts/sync_boards.py` and `scripts/sync_litex_boards.py`.
 
 2. `src/fpga_sim/__main__.py` displays four sequential screens: `BoardSelector` → `FPGABoard` (preview) → `VHDLFilePicker` → simulation start.
 
@@ -117,7 +121,9 @@ The simulator sets generics to match the selected board's resource counts and pr
 ### Board Definition Sources
 
 Board definitions live in `boards/` as JSON files, organized by source:
-- `boards/amaranth-boards/` — auto-generated from the [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) project via `scripts/sync_boards.py`
+- `boards/amaranth-boards/` — auto-generated from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via `scripts/sync_boards.py`
+- `boards/litex-boards/` — auto-generated from [litex-boards](https://github.com/litex-hub/litex-boards) via `scripts/sync_litex_boards.py`
+- `boards/digilent-xdc/` — auto-generated from [Digilent XDC](https://github.com/Digilent/digilent-xdc) via `scripts/sync_digilent_xdc.py` (includes `port_conventions`)
 - `boards/custom/` — manually maintained boards (e.g., DE10-Standard)
 - Additional source directories can be added freely; the loader discovers them automatically
 

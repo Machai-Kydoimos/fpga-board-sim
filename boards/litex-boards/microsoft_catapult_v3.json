@@ -1,0 +1,144 @@
+{
+  "name": "Microsoft Catapult V3",
+  "class_name": "MicrosoftCatapultV3Platform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk100",
+      "hz": 100000000.0,
+      "pin": "AP20"
+    }
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "AM17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "AH18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "AJ18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "AH17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "AJ16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "AK17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "AK16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "AK18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 8,
+      "pins": [
+        "AL18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8 V"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "microsoft_catapult_v3.py",
+    "sync_commit": "313c5fd3365483154190317b23b33e034ab307cd",
+    "sync_timestamp": "2026-05-25T04:03:42.614595+00:00"
+  }
+}

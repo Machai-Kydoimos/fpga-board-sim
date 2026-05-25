@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Machai-Kydoimos/fpga-board-sim/actions/workflows/ci.yml/badge.svg)](https://github.com/Machai-Kydoimos/fpga-board-sim/actions/workflows/ci.yml)
 
-Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://github.com/ghdl/ghdl) or [NVC](https://github.com/nickg/nvc). Select from 75+ real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) and custom JSON definitions), then run VHDL designs against a virtual board with switches, buttons, LEDs, and 7-segment displays — all driven by [cocotb](https://github.com/cocotb/cocotb).
+Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://github.com/ghdl/ghdl) or [NVC](https://github.com/nickg/nvc). Select from 250+ real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards), [litex-boards](https://github.com/litex-hub/litex-boards), [Digilent XDC](https://github.com/Digilent/digilent-xdc), and custom JSON definitions), then run VHDL designs against a virtual board with switches, buttons, LEDs, and 7-segment displays — all driven by [cocotb](https://github.com/cocotb/cocotb).
 
 ## Quick Start
 
@@ -193,7 +193,7 @@ A logarithmic slider from **0.001× to 10×** (default **0.1×**) controls how m
 ```
 src/fpga_sim/              Installable Python package (src layout)
   __main__.py              Entry point — screen flow, --benchmark CLI, --sim flag
-  board_loader.py          Parses amaranth-boards definitions without the full amaranth toolchain
+  board_loader.py          Parses board definitions from JSON; mock classes for sync scripts
   sim_bridge.py            GHDL/NVC analysis + cocotb simulation launcher; _GHDLBackend/_NVCBackend classes
   sim_session_log.py       Writes per-session JSON summaries to ~/.fpga_simulator/sessions/
   sim_metrics.py           Optional per-frame CSV metrics (set FPGA_SIM_METRICS=<path> to enable)
@@ -224,10 +224,15 @@ hdl/                       Example VHDL designs
   snake_7seg.vhd           Single segment crawls figure-8 across all digits; bouncing LED + decimal point
   walking_counter_7seg.vhd Bouncing LED + decimal BCD counter on 7-seg digits; switch speed, button direction
 scripts/
+  sync_boards.py           Syncs board definitions from amaranth-boards
+  sync_litex_boards.py     Syncs board definitions from litex-boards (147 boards)
+  sync_digilent_xdc.py     Syncs board definitions from Digilent XDC files (26 boards + port_conventions)
   analyze_metrics.py       Standalone performance report from a sim_metrics CSV
 tests/                     pytest integration suite (board loading, serialization, GHDL, NVC, UI, panel)
 boards/
   amaranth-boards/         Board definitions synced from amaranth-lang/amaranth-boards
+  litex-boards/            Board definitions synced from litex-hub/litex-boards
+  digilent-xdc/            Board definitions synced from Digilent master XDC files (with port_conventions)
   custom/                  Manually maintained boards (e.g. DE10-Standard)
   schema/                  JSON Schema for board definition validation
 pyproject.toml             Project metadata and dependencies
@@ -239,12 +244,20 @@ pyproject.toml             Project metadata and dependencies
 
 Board definitions are stored as JSON files in `boards/`, organized by source:
 
-- **`boards/amaranth-boards/`** — auto-synced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via `scripts/sync_boards.py`
+- **`boards/amaranth-boards/`** — auto-synced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via `scripts/sync_boards.py` (~77 boards)
+- **`boards/litex-boards/`** — auto-synced from [litex-boards](https://github.com/litex-hub/litex-boards) via `scripts/sync_litex_boards.py` (~147 boards across Xilinx, Intel, Lattice, Gowin, Efinix)
+- **`boards/digilent-xdc/`** — auto-synced from [Digilent XDC](https://github.com/Digilent/digilent-xdc) via `scripts/sync_digilent_xdc.py` (~26 Digilent boards with `port_conventions` for future board-native VHDL mode)
 - **`boards/custom/`** — manually maintained boards (new boards go here)
 
 Each subdirectory under `boards/` is a "source." The loader scans all sources and returns every board — if two sources define the same board, both appear in the selector with a source annotation.
 
-To add a new board, create a JSON file in `boards/custom/` following the schema at `boards/schema/board.schema.json`. To re-sync from the upstream amaranth-boards project, run `uv run python scripts/sync_boards.py`.
+To add a new board, create a JSON file in `boards/custom/` following the schema at `boards/schema/board.schema.json`. To re-sync from upstream sources:
+
+```bash
+uv run python scripts/sync_boards.py          # amaranth-boards
+uv run python scripts/sync_litex_boards.py     # litex-boards
+uv run python scripts/sync_digilent_xdc.py     # Digilent XDC
+```
 
 The result is a `BoardDef` object per board containing `ComponentInfo` entries with display names (e.g. `LED0`, `BTN2`, `UP0` for named buttons like `button_up`) and hardware metadata (pin names, connector references, IO standard attributes).
 
@@ -433,7 +446,13 @@ If the `boards/` directory is missing or empty:
 No board definitions found; using generic board.
 ```
 
-Fix: `uv run python scripts/sync_boards.py`
+Fix: run one or more sync scripts:
+
+```bash
+uv run python scripts/sync_boards.py          # amaranth-boards
+uv run python scripts/sync_litex_boards.py     # litex-boards
+uv run python scripts/sync_digilent_xdc.py     # Digilent XDC
+```
 
 ### Windows: Python DLL not found (`hon313.dll` / `python313.dll`)
 
@@ -550,4 +569,4 @@ This simulator was inspired by these working examples of interactive virtual FPG
 
 ## License
 
-Board definitions in `boards/amaranth-boards/` are derived from [amaranth-lang/amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) (BSD-2-Clause).
+Board definitions in `boards/amaranth-boards/` are derived from [amaranth-lang/amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) (BSD-2-Clause). Board definitions in `boards/litex-boards/` are derived from [litex-hub/litex-boards](https://github.com/litex-hub/litex-boards) (BSD-2-Clause). Board definitions in `boards/digilent-xdc/` are derived from [Digilent/digilent-xdc](https://github.com/Digilent/digilent-xdc) (MIT).
