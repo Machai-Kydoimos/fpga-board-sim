@@ -1,7 +1,7 @@
 # 7-Segment Display Support — Implementation Plan v2
 
-*Status: ready for implementation, 2026-04-18. Updated 2026-04-18: added NVC tests (§5.7), generate\_board\_images SVG (§6.4), ruff/mypy compliance note (§2.5), and 11 precision corrections (COUNTER\_BITS=32, regex tightening, `_prev_seg_bits` instance variable, NVC headless note, closure type annotations, `from_dict` dict type, cocotb bit-width, SVG polygon helper spec, bad-contract fixture content, CHANGELOG, `_layout()` guidance).*
-*Supersedes: `7seg_display_plan_draft.md` (draft research document, retained for reference).*
+*Status: **implemented** in v0.3.0 (2026-05-19). Retained for design rationale and decision history.*
+*Originally drafted 2026-04-18. Supersedes: `7seg_display_plan_draft.md` (draft research document, retained for reference).*
 
 ---
 
@@ -21,7 +21,7 @@
 
 ## 1. Research Summary
 
-Nine boards in the `amaranth-boards` submodule define `Display7SegResource` entries.
+Nine boards in the `amaranth-boards` source define `Display7SegResource` entries.
 All nine are currently silently dropped by the `_stub_single` handler in `board_loader.py:228`.
 
 ### Independent boards (N separate digit resources per board)
@@ -275,8 +275,8 @@ end architecture;
 **Files touched**: `src/fpga_sim/board_loader.py`,
 `tests/test_board_loader_sevenseg.py`, `tests/test_sevenseg_json.py`
 
-**Completion gate**: all inline tests pass without submodule; parametric real-board tests
-pass with submodule; existing tests unchanged.
+**Completion gate**: all inline tests pass; parametric real-board tests
+pass with board JSON definitions present; existing tests unchanged.
 
 ### 4.1 `SevenSegDef` dataclass
 
@@ -465,7 +465,7 @@ Pass `seven_seg=seven_seg` to the `BoardDef(...)` constructor.
 
 ### 4.7 Tests — `tests/test_board_loader_sevenseg.py`
 
-#### Hermetic inline-source tests (no submodule, always run)
+#### Hermetic inline-source tests (always run)
 
 ```python
 _INLINE_4SEG_INDEPENDENT = """
@@ -538,7 +538,7 @@ def test_inline_no_sevenseg():
     assert boards[0].seven_seg is None
 ```
 
-#### Real-submodule parametric test (integration, requires submodule)
+#### Real-board parametric test (integration, requires board JSON definitions)
 
 ```python
 _EXPECTED_7SEG = {
@@ -556,7 +556,7 @@ _EXPECTED_7SEG = {
 def test_real_board_sevenseg(all_boards, name_frag, expected):
     matches = [b for b in all_boards if name_frag.lower() in b.name.lower()]
     if not matches:
-        pytest.skip(f"{name_frag} not in submodule")
+        pytest.skip(f"{name_frag} not found in board definitions")
     ssd = matches[0].seven_seg
     assert ssd is not None, f"{name_frag}: expected SevenSegDef, got None"
     num_digits, has_dp, is_mux = expected
@@ -567,7 +567,7 @@ def test_real_board_sevenseg(all_boards, name_frag, expected):
 def test_arty_has_no_sevenseg(all_boards):
     arty = next((b for b in all_boards if "Arty A7-35" in b.name), None)
     if arty is None:
-        pytest.skip("Arty not in submodule")
+        pytest.skip("Arty not found in board definitions")
     assert arty.seven_seg is None
 ```
 
@@ -1338,7 +1338,7 @@ which is combined with other optional peripherals into `baseboard_no_sram`. This
 `platform.add_resources(platform.baseboard_no_sram)`. The board loader only reads
 `getattr(obj, "resources", None)`, so it never sees `_sevenseg`.
 
-**Boards affected (confirmed as of submodule snapshot, 2026-04-18).** Only Mercury.
+**Boards affected (confirmed as of amaranth-boards source, 2026-04-18).** Only Mercury.
 ULX3S is separately excluded because its display is I2C-indirect (no direct FPGA pins at all).
 All other 7-seg boards (DE0, DE0-CV, DE1-SoC, DE10-Lite, Nandland-Go, Nexys4-DDR,
 RZ-EasyFPGA-A2/2, StepMXO2) have their `Display7SegResource` entries directly in
