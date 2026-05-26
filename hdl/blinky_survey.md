@@ -2,8 +2,8 @@
 
 A categorized survey of `blinky.vhd` / `blinky.vhdl` patterns found across FPGA
 tutorials, vendor documentation, and open-source repositories.  The project supports
-80 boards spanning Xilinx, Lattice iCE40/ECP5/MachXO, Intel/Altera, and Gowin
-families; examples from all ecosystems are represented.
+275+ boards spanning Xilinx, Lattice iCE40/ECP5/MachXO, Intel/Altera, Gowin, Efinix,
+and CologneChip families; examples from all ecosystems are represented.
 
 ---
 
@@ -417,6 +417,10 @@ Key properties:
 - No reset — unsigned counter wraps correctly; VHDL initializer covers simulation
 - LED output process is correctly sensitive to `sw`, `btn`, and `counter`
 
+The project also defines a 7-segment variant of the design contract (adding `NUM_SEGS`
+generic and `seg` output port) for boards with 7-segment displays.  See `hdl/counter_7seg.vhd`
+and the README for the full 7-seg entity template.
+
 ---
 
 ## Summary Comparison Table
@@ -457,5 +461,5 @@ Key properties:
    use Verilog or Amaranth; VHDL dominates Xilinx and Intel university programs.
 
 5. **`hdl/blinky.vhd` (Category 12) is best-in-class** among tutorials — fully
-   board-agnostic, parametric, interactive, and correct for all 80 boards in this
-   project's submodule without modification.
+   board-agnostic, parametric, interactive, and correct for all 275+ boards in this
+   project's board definition catalogue without modification.

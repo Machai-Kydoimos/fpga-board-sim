@@ -137,7 +137,7 @@ uv run fpga-sim --sim nvc       # NVC (available via winget; untested on Windows
 
 ### 1. Select a board
 
-A list of 75+ FPGA boards appears. Type to filter, click to select.
+A list of 250+ FPGA boards appears. Type to filter, click to select.
 
 ### 2. Preview the board
 
@@ -568,5 +568,7 @@ This simulator was inspired by these working examples of interactive virtual FPG
 - **[ghdl-vpi-virtual-board](https://gitlab.ensta-bretagne.fr/bollenth/ghdl-vpi-virtual-board)** by bollenth (ENSTA Bretagne) — a polished FPGA virtual board simulator built on GHDL VPI (without Python). A beautiful piece of work worth admiring.
 
 ## License
+
+This project is licensed under the [MIT License](LICENSE).
 
 Board definitions in `boards/amaranth-boards/` are derived from [amaranth-lang/amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) (BSD-2-Clause). Board definitions in `boards/litex-boards/` are derived from [litex-hub/litex-boards](https://github.com/litex-hub/litex-boards) (BSD-2-Clause). Board definitions in `boards/digilent-xdc/` are derived from [Digilent/digilent-xdc](https://github.com/Digilent/digilent-xdc) (MIT).

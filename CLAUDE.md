@@ -49,10 +49,13 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `scripts/sync_litex_boards.py` | Syncs board definitions from litex-boards GitHub repo |
 | `scripts/sync_digilent_xdc.py` | Syncs board definitions from Digilent master XDC files (with port_conventions) |
 | `sim/sim_testbench.py` | cocotb test that runs pygame inside the GHDL simulation |
-| `sim/sim_wrapper_template.vhd` | VHDL wrapper template; drives clock internally |
+| `sim/sim_wrapper_template.vhd` | VHDL wrapper template for standard boards; drives clock internally |
+| `sim/sim_wrapper_7seg_template.vhd` | VHDL wrapper template for 7-seg boards; adds NUM_SEGS generic + seg port |
+| `src/fpga_sim/sim_session_log.py` | Writes per-session JSON summaries to ~/.fpga_simulator/sessions/ |
 | `hdl/blinky.vhd` | Example VHDL design (use as template for the expected port interface) |
 | `tests/` | pytest integration test suite |
 | `sim/test_blinky.py` | Headless cocotb tests for the blinky design |
+| `sim/test_7seg.py` | Headless cocotb tests for the counter_7seg design |
 
 ### Data Flow
 
@@ -64,7 +67,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 
 4. `sim_bridge.py` builds a platform-aware environment (PATH, LD_LIBRARY_PATH/PYTHONHOME, VPI paths) and runs `ghdl -r ... --vpi=cocotbvpi_ghdl.so`. The board JSON is passed via the `FPGA_SIM_BOARD_JSON` env var. Both `src/` and `sim/` are added to `PYTHONPATH` so the subprocess can import `fpga_sim` and find `sim_testbench`.
 
-5. `sim/sim_testbench.py` is loaded by cocotb inside GHDL. It deserializes the `BoardDef`, creates a new `FPGABoard` (pygame), and runs a cooperative loop: `await Timer(2, "us")` advances GHDL simulation, then the test reads `dut.led.value`, updates the display, and processes pygame events.
+5. `sim/sim_testbench.py` is loaded by cocotb inside GHDL. It deserializes the `BoardDef`, creates a new `FPGABoard` (pygame), and runs a cooperative loop: `await Timer(sim_step_ns, unit="ns")` advances simulation by a configurable step (controlled by the speed slider), then the test reads `dut.led.value` and `dut.seg.value`, updates the display, and processes pygame events.
 
 ### VHDL Design Contract
 
