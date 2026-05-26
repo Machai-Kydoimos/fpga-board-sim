@@ -1,0 +1,77 @@
+{
+  "$schema": "../schema/board.schema.json",
+  "name": "DE23-Lite",
+  "class_name": "DE23LitePlatform",
+  "vendor": "Intel",
+  "device": "A3CZ135BB18AE7S",
+  "package": "VPBGA",
+  "clocks": [
+    { "name": "clock0_50", "hz": 50000000, "pin": "K43", "is_default": true },
+    { "name": "clock1_50", "hz": 50000000, "pin": "A8" }
+  ],
+  "default_clock_hz": 50000000,
+  "leds": [
+    { "name": "led", "number": 0, "pins": ["B39"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "led", "number": 1, "pins": ["B42"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "led", "number": 2, "pins": ["K35"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "led", "number": 3, "pins": ["F32"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "led", "number": 4, "pins": ["A19"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "led", "number": 5, "pins": ["B24"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "led", "number": 6, "pins": ["A24"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "led", "number": 7, "pins": ["A44"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "led", "number": 8, "pins": ["B34"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "led", "number": 9, "pins": ["D40"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2-V" } }
+  ],
+  "buttons": [
+    { "name": "button", "number": 0, "pins": ["K26"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.3-V LVCMOS" } },
+    { "name": "button", "number": 1, "pins": ["K27"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.3-V LVCMOS" } },
+    { "name": "button", "number": 2, "pins": ["BK10"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.3-V LVCMOS" } },
+    { "name": "button", "number": 3, "pins": ["W12"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.3-V LVCMOS" } }
+  ],
+  "switches": [
+    { "name": "switch", "number": 0, "pins": ["A37"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "switch", "number": 1, "pins": ["B37"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "switch", "number": 2, "pins": ["B26"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "switch", "number": 3, "pins": ["A42"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "switch", "number": 4, "pins": ["K32"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "switch", "number": 5, "pins": ["A26"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "switch", "number": 6, "pins": ["B27"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "switch", "number": 7, "pins": ["A29"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "switch", "number": 8, "pins": ["D32"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2-V" } },
+    { "name": "switch", "number": 9, "pins": ["A34"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2-V" } }
+  ],
+  "seven_seg": {
+    "num_digits": 6,
+    "has_dp": false,
+    "is_multiplexed": false,
+    "inverted": true,
+    "select_inverted": false
+  },
+  "source": {
+    "origin": "custom",
+    "reference_url": "https://de23-lite.terasic.com"
+  },
+  "peripherals": [
+    { "type": "sdram", "name": "IS42VM32160G", "size_mb": 64, "bus_width": 32 },
+    { "type": "hdmi", "name": "ADV7513", "data_width": 24 },
+    { "type": "adc", "name": "TLA2528", "resolution_bits": 12, "interface": "i2c" },
+    { "type": "uart", "name": "FT2232H", "count": 1 },
+    { "type": "i2c", "name": "i2c", "count": 1 },
+    { "type": "gpio", "name": "gpio_0", "pin_count": 36 }
+  ],
+  "port_conventions": {
+    "terasic": {
+      "description": "Terasic DE23-Lite golden_top reference design",
+      "clk": "CLOCK0_50",
+      "leds": { "name": "LEDR", "width": 10, "active_low": true },
+      "buttons": { "name": "KEY", "width": 4, "active_low": true },
+      "switches": { "name": "SW", "width": 10 },
+      "seven_seg": {
+        "style": "individual",
+        "names": ["HEX0", "HEX1", "HEX2", "HEX3", "HEX4", "HEX5"],
+        "width_per_digit": 7,
+        "active_low": true
+      }
+    }
+  }
+}
