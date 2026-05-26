@@ -1,0 +1,84 @@
+{
+  "$schema": "../schema/board.schema.json",
+  "name": "DE25-Standard",
+  "class_name": "DE25StandardPlatform",
+  "vendor": "Intel",
+  "device": "A5ED013BB32AE4S",
+  "package": "VPBGA",
+  "clocks": [
+    { "name": "clock0_50", "hz": 50000000, "pin": "CH128", "is_default": true },
+    { "name": "clock1_50", "hz": 50000000, "pin": "D8" },
+    { "name": "clock2_50", "hz": 50000000, "pin": "BM71" }
+  ],
+  "default_clock_hz": 50000000,
+  "leds": [
+    { "name": "led", "number": 0, "pins": ["CC71"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "number": 1, "pins": ["BH78"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "number": 2, "pins": ["CH69"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "number": 3, "pins": ["CF69"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "number": 4, "pins": ["CA62"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "number": 5, "pins": ["CC62"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "number": 6, "pins": ["CF62"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "number": 7, "pins": ["BM69"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "number": 8, "pins": ["CA71"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "number": 9, "pins": ["BR62"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } }
+  ],
+  "buttons": [
+    { "name": "button", "number": 0, "pins": ["BW59"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "button", "number": 1, "pins": ["CA59"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "button", "number": 2, "pins": ["CF71"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "button", "number": 3, "pins": ["CH71"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } }
+  ],
+  "switches": [
+    { "name": "switch", "number": 0, "pins": ["BM62"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "switch", "number": 1, "pins": ["BP62"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "switch", "number": 2, "pins": ["BH62"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "switch", "number": 3, "pins": ["BH59"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "switch", "number": 4, "pins": ["BM59"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "switch", "number": 5, "pins": ["BK59"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "switch", "number": 6, "pins": ["BU62"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "switch", "number": 7, "pins": ["CF59"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "switch", "number": 8, "pins": ["BU59"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "switch", "number": 9, "pins": ["BR59"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "1.2 V" } }
+  ],
+  "seven_seg": {
+    "num_digits": 6,
+    "has_dp": false,
+    "is_multiplexed": false,
+    "inverted": true,
+    "select_inverted": false
+  },
+  "source": {
+    "origin": "custom",
+    "reference_url": "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&No=1354&PartNo=4"
+  },
+  "peripherals": [
+    { "type": "sdram", "name": "IS42VM16320E", "size_mb": 64, "bus_width": 16 },
+    { "type": "ddr4", "name": "IS43QR16256B", "size_mb": 1024, "bus_width": 32 },
+    { "type": "hdmi", "name": "ADV7513", "data_width": 24 },
+    { "type": "video_in", "name": "ADV7180", "data_width": 8 },
+    { "type": "audio", "name": "SSM2603", "interface": "i2s" },
+    { "type": "adc", "name": "TLA2518", "resolution_bits": 12, "interface": "spi" },
+    { "type": "ir", "name": "ir", "has_rx": true, "has_tx": true },
+    { "type": "ethernet", "name": "KSZ9031RNX", "speed": "10/100/1000" },
+    { "type": "usb", "name": "USB2512B", "interface": "host", "ports": 2 },
+    { "type": "mipi", "name": "MIPI CSI/DSI", "lanes": 2 },
+    { "type": "i2c", "name": "i2c", "count": 1 },
+    { "type": "gpio", "name": "gpio_0", "pin_count": 36 }
+  ],
+  "port_conventions": {
+    "terasic": {
+      "description": "Terasic DE25-Standard golden_top reference design",
+      "clk": "CLOCK0_50",
+      "leds": { "name": "LEDR", "width": 10, "active_low": true },
+      "buttons": { "name": "KEY", "width": 4, "active_low": true },
+      "switches": { "name": "SW", "width": 10 },
+      "seven_seg": {
+        "style": "individual",
+        "names": ["HEX0", "HEX1", "HEX2", "HEX3", "HEX4", "HEX5"],
+        "width_per_digit": 7,
+        "active_low": true
+      }
+    }
+  }
+}
