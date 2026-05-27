@@ -204,6 +204,9 @@ def main() -> None:
     last_board_class = session.get("board_class", "")
     last_board_source = session.get("board_source", "")
     last_vhdl_path = session.get("vhdl_path", "")
+    last_board_sort = session.get("board_sort", "")
+    last_component_filters: list[str] = session.get("component_filters", [])
+    last_vendor_filters: list[str] = session.get("vendor_filters", [])
 
     # CLI flag overrides session; session overrides default; default is first available
     if args.sim and args.sim in available_sims:
@@ -240,12 +243,19 @@ def main() -> None:
             chosen = _return_to_board
             _return_to_board = None
         else:
-            chosen = BoardSelector(
+            selector = BoardSelector(
                 boards,
                 screen,
                 preselect_class=last_board_class,
                 preselect_source=last_board_source,
-            ).run(clock)
+                initial_sort=last_board_sort,
+                initial_component_filters=last_component_filters,
+                initial_vendor_filters=last_vendor_filters,
+            )
+            chosen = selector.run(clock)
+            last_board_sort = selector.sort_key
+            last_component_filters = selector.component_filters
+            last_vendor_filters = selector.vendor_filters
             if chosen is None:
                 break
         assert chosen is not None  # both branches above guarantee non-None here
@@ -268,8 +278,6 @@ def main() -> None:
             break
 
         if result == "back":
-            # User chose a new board — clear VHDL state so stale path isn't shown
-            current_vhdl_path = None
             current_work_dir = None
             _work_dir_simulator = None
             continue
@@ -335,9 +343,8 @@ def main() -> None:
                 # "retry" → loop
 
             if _back_to_boards:
-                # "Back to Boards" in error dialog → go to board selector
-                current_vhdl_path = None
                 current_work_dir = None
+                _work_dir_simulator = None
                 pygame.display.set_caption("FPGA Simulator")
                 continue
             if _new_path is not None:
@@ -378,7 +385,15 @@ def main() -> None:
                 _return_to_board = chosen
                 continue
 
-        save_session(chosen.class_name, current_vhdl_path, simulator, chosen.source)
+        save_session(
+            chosen.class_name,
+            current_vhdl_path,
+            simulator,
+            chosen.source,
+            last_board_sort,
+            last_component_filters,
+            last_vendor_filters,
+        )
         last_board_class = chosen.class_name
         last_board_source = chosen.source
         last_vhdl_path = current_vhdl_path
@@ -422,8 +437,8 @@ def main() -> None:
         if _sim_error:
             _intent = ErrorDialog(screen, "Simulation Error", _sim_error).run(clock)
             if _intent == "back":
-                current_vhdl_path = None
                 current_work_dir = None
+                _work_dir_simulator = None
                 _return_to_board = None
                 continue
             # "retry" → fall through to re-enter board preview

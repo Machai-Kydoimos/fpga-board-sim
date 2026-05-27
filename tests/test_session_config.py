@@ -133,3 +133,61 @@ def test_save_session_does_not_raise_on_oserror(tmp_path, monkeypatch):
 
     monkeypatch.setattr(pathlib.Path, "write_text", _raise)
     save_session("BoardA", "/path/a.vhd")  # must not propagate OSError
+
+
+# ── Sort and filter persistence ──────────────────────────────────────────────
+
+
+def test_save_board_sort(session_file):
+    save_session("MyBoard", "/path/b.vhd", board_sort="leds")
+    data = json.loads(session_file.read_text())
+    assert data["board_sort"] == "leds"
+
+
+def test_save_component_filters(session_file):
+    save_session(
+        "MyBoard", "/path/b.vhd",
+        component_filters=["has_leds", "has_7seg"],
+    )
+    data = json.loads(session_file.read_text())
+    assert data["component_filters"] == ["has_leds", "has_7seg"]
+
+
+def test_save_vendor_filters(session_file):
+    save_session(
+        "MyBoard", "/path/b.vhd",
+        vendor_filters=["Xilinx", "Lattice"],
+    )
+    data = json.loads(session_file.read_text())
+    assert data["vendor_filters"] == ["Xilinx", "Lattice"]
+
+
+def test_filter_fields_default_to_empty(session_file):
+    save_session("MyBoard", "/path/b.vhd")
+    data = json.loads(session_file.read_text())
+    assert data["board_sort"] == ""
+    assert data["component_filters"] == []
+    assert data["vendor_filters"] == []
+
+
+def test_filter_roundtrip(session_file):
+    save_session(
+        "B", "/p.vhd", board_sort="vendor",
+        component_filters=["has_switches"],
+        vendor_filters=["Intel"],
+    )
+    result = load_session()
+    assert result["board_sort"] == "vendor"
+    assert result["component_filters"] == ["has_switches"]
+    assert result["vendor_filters"] == ["Intel"]
+
+
+def test_load_old_session_without_filter_keys(session_file):
+    """Old session files without filter keys load without error."""
+    session_file.parent.mkdir(parents=True)
+    session_file.write_text(
+        json.dumps({"board_class": "X", "vhdl_path": "y", "simulator": "ghdl"})
+    )
+    result = load_session()
+    assert "component_filters" not in result
+    assert "vendor_filters" not in result
