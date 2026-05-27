@@ -69,7 +69,7 @@ class TestBoardSelectorProperties:
     def test_hdr_reference(self, dummy_screen):
         sel = BoardSelector([], dummy_screen)
         sel.width, sel.height = 1024, 700
-        assert sel._hdr == 80
+        assert sel._hdr == 121
 
     def test_row_h_double(self, dummy_screen):
         sel = BoardSelector([], dummy_screen)
@@ -79,7 +79,7 @@ class TestBoardSelectorProperties:
     def test_hdr_double(self, dummy_screen):
         sel = BoardSelector([], dummy_screen)
         sel.width, sel.height = 2048, 1400
-        assert sel._hdr == 160
+        assert sel._hdr == 185
 
     def test_row_h_floor(self, dummy_screen):
         sel = BoardSelector([], dummy_screen)

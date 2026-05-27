@@ -30,8 +30,11 @@ def save_session(
     vhdl_path: str,
     simulator: str = "ghdl",
     board_source: str = "",
+    board_sort: str = "",
+    component_filters: list[str] | None = None,
+    vendor_filters: list[str] | None = None,
 ) -> None:
-    """Persist the board class name, VHDL file path, and simulator choice.
+    """Persist the board class name, VHDL file path, simulator, and filter state.
 
     Creates ~/.fpga_simulator/ if it does not exist.
     Silently ignores write failures (read-only filesystem, etc.).
@@ -45,6 +48,9 @@ def save_session(
                     "board_source": board_source,
                     "vhdl_path": vhdl_path,
                     "simulator": simulator,
+                    "board_sort": board_sort,
+                    "component_filters": component_filters or [],
+                    "vendor_filters": vendor_filters or [],
                 },
                 indent=2,
             )

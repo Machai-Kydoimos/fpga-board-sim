@@ -125,6 +125,8 @@ class VHDLFilePicker:
         item_f = get_font(max(10, round(14 * s)))
 
         hdr = self._hdr
+        max_scroll = max(0, len(self.entries) * self.row_h - (self.height - hdr))
+        self.scroll = min(self.scroll, max_scroll)
 
         for i, (name, _path, is_dir) in enumerate(self.entries):
             y = hdr + i * self.row_h - self.scroll

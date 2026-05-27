@@ -1,6 +1,6 @@
 # Virtual FPGA Boards — Improvement Roadmap
 
-*Drafted 2026-05-19 · Updated 2026-05-26 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
+*Drafted 2026-05-19 · Updated 2026-05-27 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
 
 A comprehensive, impact-weighted roadmap covering improvements from two perspectives:
 
@@ -13,7 +13,7 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~5,800 LOC across 10+ Python modules, 19 test files (840+ tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 275 board definitions from four sources (272 loadable), performance heavily tuned (PR #31), v0.5.0 released.
+The simulator is mature: ~5,800 LOC across 10+ Python modules, 20 test files (880+ tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 275 board definitions from four sources (272 loadable), performance heavily tuned (PR #31), v0.5.0 released.
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically and now show four patterns:
 
@@ -30,7 +30,9 @@ This document inventories all viable improvements and ranks them by impact.
 
 ### Tier 1 — High impact, ship first
 
-#### U0. Board selector — faceted filtering and sort
+#### U0. Board selector — faceted filtering and sort ✅
+- **Completed:** 2026-05-27 (PR #75).
+- **Delivered:** filter chips (4 component + data-driven vendor chips with "Other" grouping), sort dropdown with 7 modes (Name, Vendor, LEDs, Switches, Buttons, 7-seg, Total), active filter counter ("N of 272 boards"), and session persistence of all filter/sort state. Also fixed: preselect scroll with active filters, scroll clamping in both list screens, and VHDL path unnecessarily cleared on board navigation. 42 new tests.
 - **Why:** 272 boards across 7 vendors with only name-substring filtering makes discoverability poor. A user who wants "a board with switches and 7-seg" must scroll the entire list reading summaries. Component distribution is highly varied: 176 boards have zero switches; only 24 have 7-seg; LED counts range from 0 to 34. The current text filter (`_filtered()` at line 68) matches on `name` and `class_name` only.
 - **What:** Three additions to the board selector header area:
   1. **Filter chips** — clickable toggles below the text filter: `Has LEDs`, `Has Switches`, `Has Buttons`, `Has 7-seg`, and vendor chips (Xilinx / Lattice / Intel / Other). These compose with the existing text filter (AND logic).
@@ -367,7 +369,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 | Sprint | Theme | Items |
 |---|---|---|
-| **1a** | Quickest wins + foundations | U0 Board filtering · U11 Reset key · U12 Board summary format · D1 Wrapper template merge · D9 Literal types · D11 Mock-class docstrings |
+| **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · U11 Reset key · U12 Board summary format · D1 Wrapper template merge · D9 Literal types · D11 Mock-class docstrings |
 | **1b** | Small features | U1 Help dialog · U2 Analysis spinner · D2 Backend base class · D4 Shared button helper |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
@@ -413,7 +415,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (842 tests across 19 files including UI scaling, board loader, both backends, 7-seg). All sprints must keep this green.
+1. **Tests** — `uv run pytest` (884 tests across 20 files including UI scaling, board selector filtering, board loader, both backends, 7-seg). All sprints must keep this green.
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy src/` (the latter tightens under D8).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).
