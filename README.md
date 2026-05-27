@@ -209,8 +209,7 @@ src/fpga_sim/              Installable Python package (src layout)
     error_dialog.py        Error dialog overlay
 sim/                       Simulation infrastructure (not part of the installed package)
   sim_testbench.py         cocotb test that bridges simulator signals ↔ pygame UI; main sim loop
-  sim_wrapper_template.vhd VHDL wrapper template — standard boards (no 7-seg port)
-  sim_wrapper_7seg_template.vhd VHDL wrapper template — 7-seg boards (adds NUM_SEGS generic + seg port)
+  sim_wrapper_template.vhd VHDL wrapper template — seg port/generic spliced in when needed
   test_blinky.py           Headless cocotb tests for the blinky design
   test_7seg.py             Headless cocotb tests for the counter_7seg design
 hdl/                       Example VHDL designs

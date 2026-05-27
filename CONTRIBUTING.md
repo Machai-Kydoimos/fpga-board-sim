@@ -288,9 +288,7 @@ calls `pygame.quit()` before spawning the simulator subprocess.
 Never assume pygame state persists across the boundary.
 
 **VHDL-side clock.**  The clock is driven by the generated `sim_wrapper`
-entity (see `sim/sim_wrapper_template.vhd` for standard boards and
-`sim/sim_wrapper_7seg_template.vhd` for 7-seg boards), not by a Python
-coroutine.  This eliminates per-half-period GPI callbacks — only two GPI
+entity (see `sim/sim_wrapper_template.vhd`), not by a Python coroutine.  This eliminates per-half-period GPI callbacks — only two GPI
 calls happen per frame (the Timer endpoints).  The wrapper exposes
 `clk_half_ns`; the testbench writes to it when the panel's **[-]/[+]**
 buttons change the virtual clock frequency.

@@ -1,6 +1,6 @@
 # Virtual FPGA Boards — Improvement Roadmap
 
-*Drafted 2026-05-19 · Updated 2026-05-27 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
+*Drafted 2026-05-19 · Updated 2026-05-28 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
 
 A comprehensive, impact-weighted roadmap covering improvements from two perspectives:
 
@@ -19,7 +19,7 @@ It is feature-complete for experienced FPGA users, but the codebase and UX have 
 
 1. **Board discovery at scale.** With 272 boards from 7 vendors, the flat scrolling list with text-only filtering is no longer adequate. Users cannot filter by component type, vendor, or capability — they must already know the board name.
 2. **Onboarding & discoverability gaps.** README is excellent (~545 lines) but unreachable from inside the app. New users cannot easily find shortcuts, the design contract, or feature locations.
-3. **DRY drift.** Two near-identical VHDL wrapper templates, two near-identical backend classes, three component classes with identical structure, and a 264-line main function with stringly-typed screen results.
+3. **DRY drift.** Two near-identical backend classes, three component classes with identical structure, and a 264-line main function with stringly-typed screen results. *(VHDL wrapper templates unified in D1.)*
 4. **Roadmap gravity.** Several features have been queued in memory for months (PWM LEDs, splash, settings screen, waveforms, Verilog, in-sim navigation) but never sequenced.
 
 This document inventories all viable improvements and ranks them by impact.
@@ -160,17 +160,17 @@ This document inventories all viable improvements and ranks them by impact.
   1. **Contract checker** — when the user's VHDL ports don't match the generic contract, attempt to match them against the board's `port_conventions`. If a convention matches, accept the file and record which convention was used.
   2. **Wrapper generator** — generate a port-adapter wrapper that maps between cocotb's signal names (`sw`, `btn`, `led`, `seg`) and the user's actual port names (`KEY`, `LEDR`, `HEX0`-`HEX5`). Handle polarity differences (the convention records `active_low` flags). Handle decomposed 7-seg ports (`individual` style: 6 separate `HEX` ports vs. one packed `seg` vector).
   3. **cocotb testbench** — no change needed if the wrapper does the adaptation; cocotb continues reading `dut.sw`, `dut.btn`, `dut.led`, `dut.seg` from the wrapper, which internally connects to the user's port names.
-- **Touches:** `src/fpga_sim/sim_bridge.py` (`check_vhdl_contract`, `_generate_wrapper`, `_choose_wrapper_template`), `sim/sim_wrapper_template.vhd` (or a new template), `boards/schema/board.schema.json` (port_conventions already defined).
+- **Touches:** `src/fpga_sim/sim_bridge.py` (`check_vhdl_contract`, `_generate_wrapper`), `sim/sim_wrapper_template.vhd` (add port-adapter placeholders), `boards/schema/board.schema.json` (port_conventions already defined).
 - **Sync script merge logic:** When this feature lands, `scripts/sync_boards.py` needs a shallow-merge update: before writing a board JSON, read the existing file (if any) and preserve top-level keys the script didn't generate (`port_conventions`, `peripherals`, etc.). This lets users add conventions directly to `boards/amaranth-boards/*.json` without losing them on re-sync. ~10 lines: read existing -> update auto-generated keys -> write back.
-- **Dependencies:** **Requires D1** (single wrapper template) to avoid duplicating the adapter logic across multiple templates.
+- **Dependencies:** D1 ✅ (unified wrapper template is in place).
 - **Effort:** L/XL (contract matching is moderate; the wrapper generator for decomposed 7-seg ports is the hard part).
 - **Done when:** a DE10-Standard-style VHDL file with native port names (`CLOCK_50`, `KEY`, `LEDR`, `HEX0`-`HEX5`) simulates without modification.
 
 #### U22. 7-segment v2 — physical mux mode
 - **Why:** Queued in memory (#8); current v1 is logical-only. v2 enables the hardware-accurate scan interface on Nexys4-DDR, RZ-EasyFPGA, StepMXO2.
-- **What:** Third wrapper template, updated testbench readback, new `physical_mux: bool` toggle per board.
+- **What:** New conditional placeholders in the unified wrapper template, updated testbench readback, new `physical_mux: bool` toggle per board.
 - **Effort:** L.
-- **Dependencies:** **Requires D1** (single wrapper template) — without it, this creates a third copy-paste template file.
+- **Dependencies:** D1 ✅ (unified wrapper template is in place).
 - **Done when:** a muxed 7-seg board (e.g. Nexys4-DDR) shows correct digits via the physical scan interface.
 
 ### Performance (mostly already done)
@@ -187,16 +187,11 @@ This document inventories all viable improvements and ranks them by impact.
 
 ### Tier 1 — DRY: collapse the duplications
 
-#### D1. Generate the VHDL wrapper from one source
-- **Why:** `sim/sim_wrapper_template.vhd` (62 LOC) and `sim/sim_wrapper_7seg_template.vhd` (55 LOC) share ~80 % of their content — identical clock generation, identical entity boilerplate, only the `seg` port and its mapping differ. Two templates means every wrapper change must be made twice; v2 physical-mux (U22) would make a third file.
-- **What:** Pick one approach:
-  - **(a) Single template + Python conditional substitution** — keep one `.vhd`, splice the `seg` port + mapping when `design_has_seg`; existing `_generate_wrapper()` already does string substitution.
-  - **(b) Jinja2** — heavier dependency, but better fits future mux v2.
-- **Recommendation:** (a) — already aligned with current `{toplevel}` placeholder pattern in `sim_bridge.py:405`. Reserve Jinja2 for when there are >=3 wrapper variants.
-- **Touches:** delete `sim/sim_wrapper_7seg_template.vhd`; extend `_generate_wrapper()` in `src/fpga_sim/sim_bridge.py:393-408`; remove `_choose_wrapper_template()`.
-- **Effort:** S/M.
+#### D1. Generate the VHDL wrapper from one source ✅
+- **Completed:** 2026-05-28.
+- **Delivered:** Merged `sim_wrapper_template.vhd` and `sim_wrapper_7seg_template.vhd` into a single template with conditional placeholders (`{seg_generic}`, `{seg_port}`, `{seg_generic_map}`, `{seg_port_map}`). `_generate_wrapper()` splices the 7-seg lines when both board and design use seg; otherwise they are omitted. Deleted `sim_wrapper_7seg_template.vhd` and `_choose_wrapper_template()`. All 882 tests pass.
+- **Why:** `sim/sim_wrapper_template.vhd` (62 LOC) and `sim/sim_wrapper_7seg_template.vhd` (55 LOC) shared ~80 % of their content — identical clock generation, identical entity boilerplate, only the `seg` port and its mapping differed. Two templates meant every wrapper change had to be made twice; v2 physical-mux (U22) would have made a third file.
 - **Dependencies:** None. But **U21** and **U22** both depend on this.
-- **Done when:** only one wrapper template file exists; 7-seg and non-7-seg boards both simulate correctly via the unified generator; `_choose_wrapper_template()` is deleted.
 
 #### D2. Backend base class with override-only differences
 - **Why:** `_GHDLBackend` and `_NVCBackend` (`sim_bridge.py:65-177`) duplicate 8 method signatures; bodies share structure (`find()` = `shutil.which(self.NAME)`; `lib_dir()` is identical logic in both; `available()` is identical). The `_SimBackend` Protocol declares the shape but does not share implementation.
@@ -323,8 +318,8 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 | **U18** (Recent files) | **U5** (Settings dialog) | Consumes `recent[]` from U5's schema |
 | **U19** (Metrics checkbox) | **U5** (Settings dialog) | Metrics toggle lives in Settings |
 | **U20** (Verilog support) | **D2** (Backend ABC) | Third backend class would be a third copy-paste without ABC |
-| **U21** (Board-native VHDL) | **D1** (Wrapper merge) | Adapter logic in a single template, not duplicated |
-| **U22** (7-seg physical mux) | **D1** (Wrapper merge) | Would create a third template file without D1 |
+| ~~**U21** (Board-native VHDL)~~ | ~~**D1** (Wrapper merge)~~ ✅ | Adapter logic in unified template |
+| ~~**U22** (7-seg physical mux)~~ | ~~**D1** (Wrapper merge)~~ ✅ | Placeholders in unified template |
 | **D6b** (ScreenController) | **D6a** (Screen-result enum) | Enum enables type-safe transitions in the controller |
 
 ### Soft dependencies
@@ -342,9 +337,7 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 ### Dependency graph (hard dependencies only)
 
 ```
-D1 (wrapper merge)
- ├──> U21 (board-native VHDL)
- └──> U22 (7-seg physical mux)
+D1 (wrapper merge) ✅ — U21 and U22 are now unblocked
 
 D2 (backend ABC)
  └──> U20 (Verilog support)
@@ -359,7 +352,7 @@ D6a (screen-result enum)
  └──> D6b (ScreenController)
 ```
 
-All other items (U0, U1, U2, U3, U4, U7, U8, U9, U11-U17, U23-U25, D3-D5, D7-D14) are independently shippable.
+All other items (U0, U1, U2, U3, U4, U7, U8, U9, U11-U17, U21-U25, D3-D5, D7-D14) are independently shippable.
 
 ---
 
@@ -369,7 +362,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 | Sprint | Theme | Items |
 |---|---|---|
-| **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · U11 Reset key · U12 Board summary format · D1 Wrapper template merge · D9 Literal types · D11 Mock-class docstrings |
+| **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · U11 Reset key · U12 Board summary format · ~~D1 Wrapper template merge~~ ✅ · D9 Literal types · D11 Mock-class docstrings |
 | **1b** | Small features | U1 Help dialog · U2 Analysis spinner · D2 Backend base class · D4 Shared button helper |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
@@ -392,8 +385,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/ui/vhdl_picker.py` — U13, U18
 - `src/fpga_sim/ui/error_dialog.py` — U4
 - New: `src/fpga_sim/ui/help_dialog.py` (U1), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4), `src/fpga_sim/controller.py` (D6)
-- `sim/sim_wrapper_template.vhd` — D1 (absorbs 7seg template)
-- `sim/sim_wrapper_7seg_template.vhd` — D1 (deleted)
+- `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U7, U9, U14, U22
 - `pyproject.toml` — D8
 - `.pre-commit-config.yaml`, new `.editorconfig` — D10
@@ -403,7 +395,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 - `ErrorDialog` modal pattern (`ui/error_dialog.py`) -> reuse layout for help / settings / tooltip dialogs.
 - `get_font()` LRU cache (`ui/constants.py:41-49`) -> already used everywhere; pre-allocation in U17 just primes it.
-- `_choose_wrapper_template()` / `_generate_wrapper()` (`sim_bridge.py:386-408`) -> already does template substitution; D1 extends it instead of replacing.
+- `_generate_wrapper()` (`sim_bridge.py:386-414`) -> unified template substitution with conditional 7-seg splicing (D1 ✅).
 - `_SimBackend` Protocol (`sim_bridge.py:33-63`) -> becomes ABC base in D2 with no caller changes.
 - `session_config.save_session` / `load_session` (`session_config.py`) -> extend schema for U5; existing call sites unchanged.
 - `sim_metrics.py` / `scripts/analyze_metrics.py` -> consumed by U19; no new infra needed.
