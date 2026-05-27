@@ -56,35 +56,63 @@ def boards():
     """
     return [
         BoardDef(
-            name="Alpha", class_name="AlphaPlatform", vendor="Xilinx",
-            leds=_leds(4), buttons=_buttons(2), switches=[],
+            name="Alpha",
+            class_name="AlphaPlatform",
+            vendor="Xilinx",
+            leds=_leds(4),
+            buttons=_buttons(2),
+            switches=[],
         ),
         BoardDef(
-            name="Beta", class_name="BetaPlatform", vendor="Lattice",
-            leds=_leds(8), buttons=[], switches=_switches(4),
+            name="Beta",
+            class_name="BetaPlatform",
+            vendor="Lattice",
+            leds=_leds(8),
+            buttons=[],
+            switches=_switches(4),
             seven_seg=_seg(4),
         ),
         BoardDef(
-            name="Gamma", class_name="GammaPlatform", vendor="Xilinx",
-            leds=_leds(16), buttons=_buttons(4), switches=_switches(10),
+            name="Gamma",
+            class_name="GammaPlatform",
+            vendor="Xilinx",
+            leds=_leds(16),
+            buttons=_buttons(4),
+            switches=_switches(10),
         ),
         BoardDef(
-            name="Delta", class_name="DeltaPlatform", vendor="Intel",
-            leds=_leds(2), buttons=_buttons(1), switches=_switches(2),
+            name="Delta",
+            class_name="DeltaPlatform",
+            vendor="Intel",
+            leds=_leds(2),
+            buttons=_buttons(1),
+            switches=_switches(2),
         ),
         BoardDef(
-            name="Epsilon", class_name="EpsilonPlatform", vendor="Lattice",
-            leds=[], buttons=_buttons(3), switches=_switches(6),
+            name="Epsilon",
+            class_name="EpsilonPlatform",
+            vendor="Lattice",
+            leds=[],
+            buttons=_buttons(3),
+            switches=_switches(6),
             seven_seg=_seg(6),
         ),
         BoardDef(
-            name="Zeta", class_name="ZetaPlatform", vendor="Xilinx",
-            leds=_leds(6), buttons=_buttons(2), switches=_switches(4),
+            name="Zeta",
+            class_name="ZetaPlatform",
+            vendor="Xilinx",
+            leds=_leds(6),
+            buttons=_buttons(2),
+            switches=_switches(4),
             seven_seg=_seg(2),
         ),
         BoardDef(
-            name="Eta", class_name="EtaPlatform", vendor="Gowin",
-            leds=_leds(3), buttons=_buttons(1), switches=_switches(1),
+            name="Eta",
+            class_name="EtaPlatform",
+            vendor="Gowin",
+            leds=_leds(3),
+            buttons=_buttons(1),
+            switches=_switches(1),
         ),
     ]
 
@@ -121,9 +149,7 @@ class TestComponentFiltering:
         assert names == {"Beta", "Epsilon", "Zeta"}
 
     def test_filters_compose_with_and(self, screen, boards):
-        sel = BoardSelector(
-            boards, screen, initial_component_filters=["has_leds", "has_7seg"]
-        )
+        sel = BoardSelector(boards, screen, initial_component_filters=["has_leds", "has_7seg"])
         names = {b.name for b in sel._filtered()}
         assert names == {"Beta", "Zeta"}
 
@@ -132,7 +158,10 @@ class TestComponentFiltering:
             boards,
             screen,
             initial_component_filters=[
-                "has_leds", "has_switches", "has_buttons", "has_7seg",
+                "has_leds",
+                "has_switches",
+                "has_buttons",
+                "has_7seg",
             ],
         )
         names = {b.name for b in sel._filtered()}
@@ -149,9 +178,7 @@ class TestVendorFiltering:
         assert names == {"Alpha", "Gamma", "Zeta"}
 
     def test_multiple_vendors_compose_with_or(self, screen, boards):
-        sel = BoardSelector(
-            boards, screen, initial_vendor_filters=["Xilinx", "Intel"]
-        )
+        sel = BoardSelector(boards, screen, initial_vendor_filters=["Xilinx", "Intel"])
         names = {b.name for b in sel._filtered()}
         assert names == {"Alpha", "Gamma", "Zeta", "Delta"}
 
@@ -215,8 +242,13 @@ class TestSorting:
         sel = BoardSelector(boards, screen, initial_sort="vendor")
         vendors = [b.vendor for b in sel._filtered()]
         assert vendors == [
-            "Gowin", "Intel", "Lattice", "Lattice",
-            "Xilinx", "Xilinx", "Xilinx",
+            "Gowin",
+            "Intel",
+            "Lattice",
+            "Lattice",
+            "Xilinx",
+            "Xilinx",
+            "Xilinx",
         ]
 
     def test_sort_total(self, screen, boards):
@@ -252,21 +284,15 @@ class TestSelectorState:
         assert sel.sort_key == "name"
 
     def test_component_filters_property_sorted(self, screen, boards):
-        sel = BoardSelector(
-            boards, screen, initial_component_filters=["has_7seg", "has_leds"]
-        )
+        sel = BoardSelector(boards, screen, initial_component_filters=["has_7seg", "has_leds"])
         assert sel.component_filters == ["has_7seg", "has_leds"]
 
     def test_vendor_filters_property_sorted(self, screen, boards):
-        sel = BoardSelector(
-            boards, screen, initial_vendor_filters=["Xilinx", "Intel"]
-        )
+        sel = BoardSelector(boards, screen, initial_vendor_filters=["Xilinx", "Intel"])
         assert sel.vendor_filters == ["Intel", "Xilinx"]
 
     def test_invalid_filter_key_harmless(self, screen, boards):
-        sel = BoardSelector(
-            boards, screen, initial_component_filters=["bogus"]
-        )
+        sel = BoardSelector(boards, screen, initial_component_filters=["bogus"])
         assert len(sel._filtered()) == 7
 
     def test_vendor_chips_above_threshold(self, screen, boards):
@@ -285,15 +311,11 @@ class TestSelectorState:
         assert sel._has_active_filters
 
     def test_has_active_filters_with_component(self, screen, boards):
-        sel = BoardSelector(
-            boards, screen, initial_component_filters=["has_leds"]
-        )
+        sel = BoardSelector(boards, screen, initial_component_filters=["has_leds"])
         assert sel._has_active_filters
 
     def test_has_active_filters_with_vendor(self, screen, boards):
-        sel = BoardSelector(
-            boards, screen, initial_vendor_filters=["Xilinx"]
-        )
+        sel = BoardSelector(boards, screen, initial_vendor_filters=["Xilinx"])
         assert sel._has_active_filters
 
 
@@ -333,9 +355,7 @@ class TestPreselectWithFilters:
 
 class TestScrollClamping:
     def test_oversized_scroll_clamped(self, screen, boards):
-        sel = BoardSelector(
-            boards, screen, initial_component_filters=["has_7seg"]
-        )
+        sel = BoardSelector(boards, screen, initial_component_filters=["has_7seg"])
         sel.scroll = 99999
         sel._draw()
         assert sel.scroll == 0

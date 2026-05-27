@@ -79,9 +79,7 @@ class BoardSelector:
             v = b.vendor or "Other"
             vendor_counts[v] = vendor_counts.get(v, 0) + 1
         self._vendors = sorted(
-            v
-            for v, c in vendor_counts.items()
-            if c >= _VENDOR_CHIP_THRESHOLD and v != "Other"
+            v for v, c in vendor_counts.items() if c >= _VENDOR_CHIP_THRESHOLD and v != "Other"
         )
         named = set(self._vendors)
         self._has_other = any((b.vendor or "Other") not in named for b in boards)
@@ -105,26 +103,19 @@ class BoardSelector:
                 (
                     i
                     for i, b in enumerate(visible)
-                    if b.class_name == preselect_class
-                    and b.source == preselect_source
+                    if b.class_name == preselect_class and b.source == preselect_source
                 ),
                 -1,
             )
             if idx < 0:
                 idx = next(
-                    (
-                        i
-                        for i, b in enumerate(visible)
-                        if b.class_name == preselect_class
-                    ),
+                    (i for i, b in enumerate(visible) if b.class_name == preselect_class),
                     -1,
                 )
             if idx >= 0:
                 self.hovered = idx
                 viewport_h = self.height - self._hdr
-                self.scroll = max(
-                    0, idx * self.row_h - viewport_h // 2 + self.row_h // 2
-                )
+                self.scroll = max(0, idx * self.row_h - viewport_h // 2 + self.row_h // 2)
 
     @property
     def sort_key(self) -> str:
@@ -155,20 +146,14 @@ class BoardSelector:
 
     @property
     def _has_active_filters(self) -> bool:
-        return bool(
-            self.filter_text or self._component_filters or self._vendor_filters
-        )
+        return bool(self.filter_text or self._component_filters or self._vendor_filters)
 
     def _filtered(self) -> list[BoardDef]:
         boards = self.boards
 
         if self.filter_text:
             ft = self.filter_text.lower()
-            boards = [
-                b
-                for b in boards
-                if ft in b.name.lower() or ft in b.class_name.lower()
-            ]
+            boards = [b for b in boards if ft in b.name.lower() or ft in b.class_name.lower()]
 
         if "has_leds" in self._component_filters:
             boards = [b for b in boards if b.leds]
@@ -185,10 +170,7 @@ class BoardSelector:
                 b
                 for b in boards
                 if (b.vendor or "Other") in self._vendor_filters
-                or (
-                    "Other" in self._vendor_filters
-                    and (b.vendor or "Other") not in named
-                )
+                or ("Other" in self._vendor_filters and (b.vendor or "Other") not in named)
             ]
 
         if self._sort_key == "vendor":
@@ -196,13 +178,9 @@ class BoardSelector:
         elif self._sort_key == "leds":
             boards = sorted(boards, key=lambda b: len(b.leds), reverse=True)
         elif self._sort_key == "switches":
-            boards = sorted(
-                boards, key=lambda b: len(b.switches), reverse=True
-            )
+            boards = sorted(boards, key=lambda b: len(b.switches), reverse=True)
         elif self._sort_key == "buttons":
-            boards = sorted(
-                boards, key=lambda b: len(b.buttons), reverse=True
-            )
+            boards = sorted(boards, key=lambda b: len(b.buttons), reverse=True)
         elif self._sort_key == "7seg":
             boards = sorted(
                 boards,
@@ -303,9 +281,7 @@ class BoardSelector:
         for rect, chip_type, key in self._chip_rects:
             if rect.collidepoint(pos):
                 target = (
-                    self._component_filters
-                    if chip_type == "component"
-                    else self._vendor_filters
+                    self._component_filters if chip_type == "component" else self._vendor_filters
                 )
                 if key in target:
                     target.discard(key)
@@ -341,9 +317,7 @@ class BoardSelector:
         bg = _CHIP_ACTIVE if active else (_CHIP_HOVER if hovered else _CHIP_INACTIVE)
         rect = pygame.Rect(x, y, chip_w, chip_h)
         pygame.draw.rect(self.screen, bg, rect, border_radius=3)
-        self.screen.blit(
-            text_surf, (x + 6, y + (chip_h - text_surf.get_height()) // 2)
-        )
+        self.screen.blit(text_surf, (x + 6, y + (chip_h - text_surf.get_height()) // 2))
         return rect
 
     def _draw(self) -> None:
@@ -366,14 +340,8 @@ class BoardSelector:
             y = hdr + i * self.row_h - self.scroll
             if y + self.row_h < hdr or y > self.height:
                 continue
-            bg = (
-                SEL_HOVER
-                if i == self.hovered
-                else (SEL_ROW_A if i % 2 == 0 else SEL_ROW_B)
-            )
-            pygame.draw.rect(
-                self.screen, bg, (10, y, self.width - 20, self.row_h - 2)
-            )
+            bg = SEL_HOVER if i == self.hovered else (SEL_ROW_A if i % 2 == 0 else SEL_ROW_B)
+            pygame.draw.rect(self.screen, bg, (10, y, self.width - 20, self.row_h - 2))
             nm = item_f.render(b.name, True, (220, 220, 255))
             self.screen.blit(nm, (20, y + 4))
             detail = b.summary
@@ -384,18 +352,12 @@ class BoardSelector:
 
         # Header overlay (hides items that scrolled behind header)
         pygame.draw.rect(self.screen, SEL_BG, (0, 0, self.width, hdr))
-        title = title_f.render(
-            "FPGA Simulator — Select Board", True, WHITE
-        )
+        title = title_f.render("FPGA Simulator — Select Board", True, WHITE)
         self.screen.blit(title, (20, 8))
 
         # Filter text box
         filter_y = 8 + title_f.get_height() + 4
-        stxt = (
-            f"Filter: {self.filter_text}_"
-            if self.filter_text
-            else "Type to filter boards..."
-        )
+        stxt = f"Filter: {self.filter_text}_" if self.filter_text else "Type to filter boards..."
         srch = item_f.render(stxt, True, (180, 180, 180))
         pygame.draw.rect(
             self.screen,
@@ -411,9 +373,7 @@ class BoardSelector:
         else:
             cnt_text = f"{len(filtered)} boards"
         cnt = detail_f.render(cnt_text, True, (120, 120, 120))
-        self.screen.blit(
-            cnt, (self.width - cnt.get_width() - 20, filter_y + 4)
-        )
+        self.screen.blit(cnt, (self.width - cnt.get_width() - 20, filter_y + 4))
 
         # Component filter chips
         chip1_y = filter_y + 34
@@ -422,29 +382,21 @@ class BoardSelector:
         for key, label in _COMPONENT_CHIPS:
             active = key in self._component_filters
             hovered = self._hovered_chip == key
-            rect = self._draw_chip(
-                x, chip1_y, label, active, hovered, chip_h, chip_f
-            )
+            rect = self._draw_chip(x, chip1_y, label, active, hovered, chip_h, chip_f)
             chip_rects.append((rect, "component", key))
             x = rect.right + chip_gap
 
         # Sort dropdown trigger (right-aligned on component chip row)
-        active_label = next(
-            lb for k, lb in _SORT_OPTIONS if k == self._sort_key
-        )
+        active_label = next(lb for k, lb in _SORT_OPTIONS if k == self._sort_key)
         arrow = "▴" if self._sort_open else "▾"
         sort_label = f"Sort: {active_label} {arrow}"
         sort_surf = chip_f.render(sort_label, True, _SORT_TEXT)
         sort_w = sort_surf.get_width() + 16
         sort_x = self.width - sort_w - 20
         sort_hovered = self._hovered_chip == "_sort"
-        sort_bg = (
-            _SORT_HOVER if (sort_hovered or self._sort_open) else _SORT_BG
-        )
+        sort_bg = _SORT_HOVER if (sort_hovered or self._sort_open) else _SORT_BG
         self._sort_rect = pygame.Rect(sort_x, chip1_y, sort_w, chip_h)
-        pygame.draw.rect(
-            self.screen, sort_bg, self._sort_rect, border_radius=3
-        )
+        pygame.draw.rect(self.screen, sort_bg, self._sort_rect, border_radius=3)
         self.screen.blit(
             sort_surf,
             (sort_x + 8, chip1_y + (chip_h - sort_surf.get_height()) // 2),
@@ -456,17 +408,13 @@ class BoardSelector:
         for vendor in self._vendors:
             active = vendor in self._vendor_filters
             hovered = self._hovered_chip == vendor
-            rect = self._draw_chip(
-                x, chip2_y, vendor, active, hovered, chip_h, chip_f
-            )
+            rect = self._draw_chip(x, chip2_y, vendor, active, hovered, chip_h, chip_f)
             chip_rects.append((rect, "vendor", vendor))
             x = rect.right + chip_gap
         if self._has_other:
             active = "Other" in self._vendor_filters
             hovered = self._hovered_chip == "Other"
-            rect = self._draw_chip(
-                x, chip2_y, "Other", active, hovered, chip_h, chip_f
-            )
+            rect = self._draw_chip(x, chip2_y, "Other", active, hovered, chip_h, chip_f)
             chip_rects.append((rect, "vendor", "Other"))
 
         self._chip_rects = chip_rects
@@ -474,9 +422,7 @@ class BoardSelector:
         # Sort dropdown menu (drawn last so it overlays everything)
         if self._sort_open:
             menu_item_h = chip_h + 2
-            item_surfs = [
-                chip_f.render(lb, True, _CHIP_TEXT) for _, lb in _SORT_OPTIONS
-            ]
+            item_surfs = [chip_f.render(lb, True, _CHIP_TEXT) for _, lb in _SORT_OPTIONS]
             max_text_w = max(sf.get_width() for sf in item_surfs)
             menu_w = max(self._sort_rect.w, max_text_w + 24)
             menu_x = max(0, self._sort_rect.right - menu_w)
@@ -484,9 +430,7 @@ class BoardSelector:
             menu_h = len(_SORT_OPTIONS) * menu_item_h + 4
 
             menu_rect = pygame.Rect(menu_x, menu_y, menu_w, menu_h)
-            pygame.draw.rect(
-                self.screen, _DROPDOWN_BG, menu_rect, border_radius=4
-            )
+            pygame.draw.rect(self.screen, _DROPDOWN_BG, menu_rect, border_radius=4)
             pygame.draw.rect(
                 self.screen,
                 _DROPDOWN_BORDER,
@@ -502,18 +446,12 @@ class BoardSelector:
                 is_active = key == self._sort_key
                 is_hovered = i == self._hovered_sort_item
                 if is_active:
-                    pygame.draw.rect(
-                        self.screen, _CHIP_ACTIVE, ir, border_radius=2
-                    )
+                    pygame.draw.rect(self.screen, _CHIP_ACTIVE, ir, border_radius=2)
                 elif is_hovered:
-                    pygame.draw.rect(
-                        self.screen, _DROPDOWN_HOVER, ir, border_radius=2
-                    )
+                    pygame.draw.rect(self.screen, _DROPDOWN_HOVER, ir, border_radius=2)
                 tc = _CHIP_TEXT_ACTIVE if is_active else _CHIP_TEXT
                 ts = chip_f.render(label, True, tc)
-                self.screen.blit(
-                    ts, (ir.x + 8, iy + (menu_item_h - ts.get_height()) // 2)
-                )
+                self.screen.blit(ts, (ir.x + 8, iy + (menu_item_h - ts.get_height()) // 2))
                 sort_item_rects.append(ir)
             self._sort_item_rects = sort_item_rects
         else:

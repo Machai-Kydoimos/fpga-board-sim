@@ -146,7 +146,8 @@ def test_save_board_sort(session_file):
 
 def test_save_component_filters(session_file):
     save_session(
-        "MyBoard", "/path/b.vhd",
+        "MyBoard",
+        "/path/b.vhd",
         component_filters=["has_leds", "has_7seg"],
     )
     data = json.loads(session_file.read_text())
@@ -155,7 +156,8 @@ def test_save_component_filters(session_file):
 
 def test_save_vendor_filters(session_file):
     save_session(
-        "MyBoard", "/path/b.vhd",
+        "MyBoard",
+        "/path/b.vhd",
         vendor_filters=["Xilinx", "Lattice"],
     )
     data = json.loads(session_file.read_text())
@@ -172,7 +174,9 @@ def test_filter_fields_default_to_empty(session_file):
 
 def test_filter_roundtrip(session_file):
     save_session(
-        "B", "/p.vhd", board_sort="vendor",
+        "B",
+        "/p.vhd",
+        board_sort="vendor",
         component_filters=["has_switches"],
         vendor_filters=["Intel"],
     )
@@ -185,9 +189,7 @@ def test_filter_roundtrip(session_file):
 def test_load_old_session_without_filter_keys(session_file):
     """Old session files without filter keys load without error."""
     session_file.parent.mkdir(parents=True)
-    session_file.write_text(
-        json.dumps({"board_class": "X", "vhdl_path": "y", "simulator": "ghdl"})
-    )
+    session_file.write_text(json.dumps({"board_class": "X", "vhdl_path": "y", "simulator": "ghdl"}))
     result = load_session()
     assert "component_filters" not in result
     assert "vendor_filters" not in result
