@@ -378,16 +378,6 @@ def check_vhdl_contract(
 # ── Simulation infrastructure ─────────────────────────────────────────────────
 
 _WRAPPER_TEMPLATE: Path = Path(__file__).parent.parent.parent / "sim" / "sim_wrapper_template.vhd"
-_WRAPPER_7SEG_TEMPLATE: Path = (
-    Path(__file__).parent.parent.parent / "sim" / "sim_wrapper_7seg_template.vhd"
-)
-
-
-def _choose_wrapper_template(board_def: BoardDef | None, design_has_seg: bool = False) -> Path:
-    """Return the 7-seg wrapper template when both board and design use 7-seg."""
-    if board_def is not None and board_def.seven_seg is not None and design_has_seg:
-        return _WRAPPER_7SEG_TEMPLATE
-    return _WRAPPER_TEMPLATE
 
 
 def _generate_wrapper(
@@ -396,13 +386,31 @@ def _generate_wrapper(
     board_def: BoardDef | None = None,
     design_has_seg: bool = False,
 ) -> Path:
-    """Write ``sim_wrapper.vhd`` to *work_dir* with ``{toplevel}`` substituted.
+    """Write ``sim_wrapper.vhd`` to *work_dir* with placeholders substituted.
 
-    Selects the 7-seg wrapper template when both *board_def* has a seven_seg
-    display and the design declares a ``seg`` output port.
+    When both *board_def* has a seven_seg display and the design declares a
+    ``seg`` output port, the generated wrapper includes the ``NUM_SEGS``
+    generic and ``seg`` port.  Otherwise those lines are omitted.
     """
-    template = _choose_wrapper_template(board_def, design_has_seg)
-    content = template.read_text().replace("{toplevel}", toplevel)
+    use_seg = board_def is not None and board_def.seven_seg is not None and design_has_seg
+    if use_seg:
+        seg_generic = "    NUM_SEGS         : positive := 4;\n"
+        seg_port = "    seg         : out std_logic_vector(8 * NUM_SEGS - 1 downto 0);\n"
+        seg_generic_map = "      NUM_SEGS     => NUM_SEGS,\n"
+        seg_port_map = "      seg => seg,\n"
+    else:
+        seg_generic = ""
+        seg_port = ""
+        seg_generic_map = ""
+        seg_port_map = ""
+
+    content = _WRAPPER_TEMPLATE.read_text().format(
+        toplevel=toplevel,
+        seg_generic=seg_generic,
+        seg_port=seg_port,
+        seg_generic_map=seg_generic_map,
+        seg_port_map=seg_port_map,
+    )
     out = Path(work_dir) / "sim_wrapper.vhd"
     out.write_text(content)
     return out

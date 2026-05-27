@@ -49,8 +49,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `scripts/sync_litex_boards.py` | Syncs board definitions from litex-boards GitHub repo |
 | `scripts/sync_digilent_xdc.py` | Syncs board definitions from Digilent master XDC files (with port_conventions) |
 | `sim/sim_testbench.py` | cocotb test that runs pygame inside the GHDL simulation |
-| `sim/sim_wrapper_template.vhd` | VHDL wrapper template for standard boards; drives clock internally |
-| `sim/sim_wrapper_7seg_template.vhd` | VHDL wrapper template for 7-seg boards; adds NUM_SEGS generic + seg port |
+| `sim/sim_wrapper_template.vhd` | Unified VHDL wrapper template; seg port/generic spliced in by `_generate_wrapper()` when needed |
 | `src/fpga_sim/sim_session_log.py` | Writes per-session JSON summaries to ~/.fpga_simulator/sessions/ |
 | `hdl/blinky.vhd` | Example VHDL design (use as template for the expected port interface) |
 | `tests/` | pytest integration test suite |

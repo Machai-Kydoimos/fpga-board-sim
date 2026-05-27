@@ -9,9 +9,6 @@ from pathlib import Path
 import pytest
 
 from fpga_sim.sim_bridge import (
-    _WRAPPER_7SEG_TEMPLATE,
-    _WRAPPER_TEMPLATE,
-    _choose_wrapper_template,
     _generate_wrapper,
     analyze_vhdl,
     check_vhdl_contract,
@@ -224,23 +221,6 @@ def test_non7seg_board_accepts_standard_design():
 # ── Wrapper template selection (no GHDL required) ────────────────────────────
 
 
-def test_choose_wrapper_template_non_7seg():
-    """Without a 7-seg board, the standard wrapper template must be selected."""
-    assert _choose_wrapper_template(None) == _WRAPPER_TEMPLATE
-
-
-def test_choose_wrapper_template_7seg():
-    """With a 7-seg board and a seg-bearing design, the 7-seg template is selected."""
-    bd = _7seg_board()
-    assert _choose_wrapper_template(bd, design_has_seg=True) == _WRAPPER_7SEG_TEMPLATE
-
-
-def test_choose_wrapper_template_7seg_board_no_seg_design():
-    """7-seg board + standard design must still use the standard template."""
-    bd = _7seg_board()
-    assert _choose_wrapper_template(bd, design_has_seg=False) == _WRAPPER_TEMPLATE
-
-
 def test_generate_wrapper_7seg_has_seg_port(tmp_path):
     """Generated wrapper for a 7-seg board + seg design must contain seg and NUM_SEGS."""
     out = _generate_wrapper(
@@ -255,6 +235,12 @@ def test_generate_wrapper_7seg_has_seg_port(tmp_path):
 def test_generate_wrapper_non7seg_no_seg_port(tmp_path):
     """Generated wrapper for a standard board must not contain NUM_SEGS."""
     out = _generate_wrapper("blinky", str(tmp_path), board_def=None)
+    assert "NUM_SEGS" not in out.read_text()
+
+
+def test_generate_wrapper_7seg_board_no_seg_design(tmp_path):
+    """7-seg board + standard design must not inject seg ports or generics."""
+    out = _generate_wrapper("blinky", str(tmp_path), board_def=_7seg_board(), design_has_seg=False)
     assert "NUM_SEGS" not in out.read_text()
 
 
