@@ -1,10 +1,11 @@
 """Unit tests for _SimBackend Protocol conformance and backend dispatch."""
 
 import inspect
+from typing import cast, get_args
 
 import pytest
 
-from fpga_sim.sim_bridge import _backend, _GHDLBackend, _NVCBackend, _SimBackend
+from fpga_sim.sim_bridge import Simulator, _backend, _GHDLBackend, _NVCBackend, _SimBackend
 
 # ── Protocol conformance ──────────────────────────────────────────────────────
 
@@ -87,7 +88,25 @@ def test_backend_dispatch_nvc() -> None:
 
 
 def test_backend_dispatch_default_is_ghdl() -> None:
-    assert _backend("anything_else") is _GHDLBackend
+    # An out-of-domain value can still reach _backend at runtime (e.g. a corrupt
+    # session.json or FPGA_SIM_SIMULATOR env var); it must fall back to GHDL.  The
+    # cast simulates that boundary, since the Simulator Literal forbids it statically.
+    assert _backend(cast(Simulator, "anything_else")) is _GHDLBackend
+
+
+# ── Simulator Literal contract ────────────────────────────────────────────────
+
+
+def test_simulator_literal_members() -> None:
+    """Simulator enumerates exactly the supported backends (extend for U20 iverilog)."""
+    assert set(get_args(Simulator)) == {"ghdl", "nvc"}
+
+
+def test_detect_simulators_within_literal() -> None:
+    """detect_simulators() only ever returns valid Simulator members."""
+    from fpga_sim.sim_bridge import detect_simulators
+
+    assert set(detect_simulators()) <= set(get_args(Simulator))
 
 
 # ── NAME attribute ────────────────────────────────────────────────────────────

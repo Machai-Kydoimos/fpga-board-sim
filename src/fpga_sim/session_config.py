@@ -6,9 +6,14 @@ so the user doesn't have to re-navigate on every launch.
 Session file: ~/.fpga_simulator/session.json
 """
 
+from __future__ import annotations
+
 import json
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from fpga_sim.sim_bridge import Simulator
 
 SESSION_FILE = Path.home() / ".fpga_simulator" / "session.json"
 
@@ -28,7 +33,7 @@ def load_session() -> dict[str, Any]:
 def save_session(
     board_class: str,
     vhdl_path: str,
-    simulator: str = "ghdl",
+    simulator: Simulator = "ghdl",
     board_source: str = "",
     board_sort: str = "",
     component_filters: list[str] | None = None,
