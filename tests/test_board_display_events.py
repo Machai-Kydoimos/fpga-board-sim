@@ -28,9 +28,9 @@ def _sample_board() -> BoardDef:
         vendor="TestVendor",
         device="TestDevice",
         package="QFP100",
-        leds=[ComponentInfo(f"led{i}", f"LED{i}", "", "") for i in range(4)],
-        buttons=[ComponentInfo(f"btn{i}", f"BTN{i}", "", "") for i in range(3)],
-        switches=[ComponentInfo(f"sw{i}", f"SW{i}", "", "") for i in range(4)],
+        leds=[ComponentInfo("led", "led", i, []) for i in range(4)],
+        buttons=[ComponentInfo("button", "button", i, []) for i in range(3)],
+        switches=[ComponentInfo("switch", "switch", i, []) for i in range(4)],
     )
 
 
