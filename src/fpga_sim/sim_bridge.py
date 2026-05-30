@@ -39,7 +39,7 @@ Simulator = Literal["ghdl", "nvc"]
 class _SimBackend(Protocol):
     """Structural interface that all simulator backends must satisfy."""
 
-    NAME: str
+    NAME: Simulator
 
     @staticmethod
     def find() -> str: ...
@@ -71,7 +71,7 @@ class _SimBackend(Protocol):
 class _GHDLBackend:
     """GHDL simulator backend – uses the VPI interface."""
 
-    NAME = "ghdl"
+    NAME: Simulator = "ghdl"
 
     @staticmethod
     def find() -> str:
@@ -130,7 +130,7 @@ class _NVCBackend:
       - Plugin loaded via ``--load=<lib>`` (VHPI) instead of ``--vpi=<lib>``
     """
 
-    NAME = "nvc"
+    NAME: Simulator = "nvc"
 
     @staticmethod
     def find() -> str:

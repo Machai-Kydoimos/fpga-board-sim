@@ -231,7 +231,7 @@ def main() -> None:
     current_work_dir: str | None = None
     # Track which simulator produced current_work_dir so we can re-analyse
     # automatically when the user switches simulators before hitting Start.
-    _work_dir_simulator: str | None = None
+    _work_dir_simulator: Simulator | None = None
 
     # When set, skip BoardSelector and re-enter FPGABoard with this board.
     # Set after [Load VHDL], after simulation ends, etc.
