@@ -435,12 +435,12 @@ class BoardDef:
         """One-line summary of resource counts for display in the UI."""
         parts = [
             f"{len(self.leds)} LEDs",
-            f"{len(self.buttons)} buttons",
-            f"{len(self.switches)} switches",
+            f"{len(self.buttons)} BTN",
+            f"{len(self.switches)} SW",
         ]
         if self.seven_seg:
             parts.append(f"{self.seven_seg.num_digits}-digit 7-seg")
-        return ", ".join(parts)
+        return " · ".join(parts)
 
     def to_json(self) -> str:
         """Serialize to JSON for passing to the cocotb subprocess."""

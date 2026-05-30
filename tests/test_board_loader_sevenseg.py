@@ -126,6 +126,35 @@ def test_summary_without_7seg():
     assert "7-seg" not in boards[0].summary
 
 
+def test_summary_uses_middle_dot_separator():
+    """Compact format uses ' · ' between parts, not ', '."""
+    boards = load_board_from_source(_INLINE_NO_SEG)
+    s = boards[0].summary
+    assert " · " in s
+    assert ", " not in s
+
+
+def test_summary_uses_btn_and_sw_abbreviations():
+    """Compact format abbreviates 'buttons'/'switches' to 'BTN'/'SW'."""
+    boards = load_board_from_source(_INLINE_NO_SEG)
+    s = boards[0].summary
+    assert " BTN" in s
+    assert " SW" in s
+    assert "buttons" not in s
+    assert "switches" not in s
+
+
+def test_summary_full_format_with_7seg():
+    """End-to-end check of the compact format with a 7-seg board."""
+    boards = load_board_from_source(_INLINE_4SEG_INDEPENDENT)
+    b = boards[0]
+    expected = (
+        f"{len(b.leds)} LEDs · {len(b.buttons)} BTN · "
+        f"{len(b.switches)} SW · {b.seven_seg.num_digits}-digit 7-seg"
+    )
+    assert b.summary == expected
+
+
 # ── Real-submodule parametric tests ───────────────────────────────────────────
 
 
