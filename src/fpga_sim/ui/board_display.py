@@ -408,6 +408,15 @@ class FPGABoard:
                 self._go_back = True
                 self.running = False
 
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+                for sw in self.switches:
+                    if sw.state:
+                        sw.state = False
+                        if sw.callback:
+                            sw.callback(sw.index, False, sw.info)
+                for btn in self.buttons:
+                    btn.handle_release()
+
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 if self.vhdl_path is not None:
                     self._simulate = True
