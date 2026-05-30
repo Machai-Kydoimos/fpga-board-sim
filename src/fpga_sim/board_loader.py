@@ -1,7 +1,19 @@
-"""Board Loader – discovers and parses amaranth-boards definitions.
+"""Board Loader – load board JSON definitions and parse upstream board files.
 
-Uses lightweight mock classes to evaluate board files without
-requiring the full amaranth toolchain.
+The primary runtime path is JSON: :func:`discover_boards` reads the board
+definitions under ``boards/`` into :class:`BoardDef` objects, with no amaranth
+dependency.
+
+The mock machinery below serves the other path — turning amaranth-style board
+``.py`` files into ``BoardDef`` objects without importing amaranth.  Such files
+are written against the amaranth build DSL (``Resource``, ``Pins``, ``Connector``,
+platform base classes, …), so :func:`load_board_from_source` strips their imports
+and ``exec``'s them in the namespace from :func:`_make_namespace`, where every DSL
+name resolves to a lightweight mock (or inert stub) defined here.  The mocks
+capture just enough to extract LED / button / switch / 7-seg resources; everything
+else is stubbed.  This path is used by the ``scripts/sync_*.py`` regenerators and
+by :func:`discover_boards`' legacy fallback for a ``boards/`` tree that still holds
+raw ``.py`` files.
 """
 
 import json
@@ -15,11 +27,15 @@ from pathlib import Path
 
 
 class _Attrs(dict):
+    """Mock of amaranth ``Attrs`` — pin attributes (e.g. ``IOStandard``), kept on the resource."""
+
     def __init__(self, **kwargs: str) -> None:
         super().__init__(**kwargs)
 
 
 class _Pins:
+    """Mock of amaranth ``Pins`` — a whitespace- or list-specified set of pin names."""
+
     def __init__(
         self,
         names: str | list[str],
@@ -36,12 +52,16 @@ class _Pins:
 
 
 class _PinsN(_Pins):
+    """Mock of amaranth ``PinsN`` — like :class:`_Pins` but active-low (``invert=True``)."""
+
     def __init__(self, names: str | list[str], **kwargs: object) -> None:
         kwargs["invert"] = True
         super().__init__(names, **kwargs)  # type: ignore[arg-type]
 
 
 class _DiffPairs:
+    """Mock of amaranth ``DiffPairs`` — a differential pin pair (p and n)."""
+
     def __init__(
         self,
         p: str | list[str],
@@ -58,17 +78,23 @@ class _DiffPairs:
 
 
 class _Clock:
+    """Mock of amaranth ``Clock`` — a clock-frequency annotation."""
+
     def __init__(self, freq: float) -> None:
         self.freq = freq
 
 
 class _Subsignal:
+    """Mock of amaranth ``Subsignal`` — a named sub-signal grouping one or more pin sets."""
+
     def __init__(self, name: str, *ios: object, **kwargs: object) -> None:
         self.name = name
         self.ios = [io for io in ios if io is not None]
 
 
 class _Connector:
+    """Mock of amaranth ``Connector`` — an expansion header's pin-number → pin-name map."""
+
     def __init__(
         self,
         name: str,
@@ -90,6 +116,8 @@ class _Connector:
 
 
 class _Resource:
+    """Mock of amaranth ``Resource`` — a named board resource with its I/O list and attrs."""
+
     def __init__(self, name: str, number: int, *ios: object) -> None:
         self.name = name
         self.number = number
@@ -136,6 +164,7 @@ def _split_resources(
     default_name: str,
     dir: str,
 ) -> list[_Resource]:
+    """Expand a pins spec into one :class:`_Resource` per pin (mirrors amaranth's helper)."""
     if isinstance(pins, str):
         pins = pins.split()
     if isinstance(pins, list):
@@ -150,6 +179,7 @@ def _split_resources(
 
 
 def _led_resources(*args: object, **kwargs: object) -> list[_Resource]:
+    """Mock of amaranth ``LEDResources`` — one output resource named ``led`` per pin."""
     return _split_resources(*args, **kwargs, default_name="led", dir="o")  # type: ignore[arg-type]
 
 
@@ -162,6 +192,7 @@ def _rgb_led_resource(
     conn: str | None = None,
     attrs: "_Attrs | None" = None,
 ) -> _Resource:
+    """Mock of amaranth ``RGBLEDResource`` — a single ``rgb_led`` with r/g/b sub-signals."""
     ios: list[_Subsignal | _Attrs] = [
         _Subsignal("r", _Pins(r, dir="o", invert=invert, conn=conn, assert_width=1)),
         _Subsignal("g", _Pins(g, dir="o", invert=invert, conn=conn, assert_width=1)),
@@ -173,10 +204,12 @@ def _rgb_led_resource(
 
 
 def _button_resources(*args: object, **kwargs: object) -> list[_Resource]:
+    """Mock of amaranth ``ButtonResources`` — one input resource named ``button`` per pin."""
     return _split_resources(*args, **kwargs, default_name="button", dir="i")  # type: ignore[arg-type]
 
 
 def _switch_resources(*args: object, **kwargs: object) -> list[_Resource]:
+    """Mock of amaranth ``SwitchResources`` — one input resource named ``switch`` per pin."""
     return _split_resources(*args, **kwargs, default_name="switch", dir="i")  # type: ignore[arg-type]
 
 
@@ -250,6 +283,16 @@ _PLATFORM_VENDORS: dict[str, str] = {
 
 
 def _make_namespace() -> dict[str, object]:
+    """Build the global namespace used to ``exec`` an upstream board ``.py`` file.
+
+    Maps every amaranth build-DSL name a board file might reference to a mock or
+    stub in this module: the core DSL (``Resource``, ``Pins``, …), the resource
+    helpers we actually parse (LEDs / buttons / switches / 7-seg), inert stubs for
+    interfaces and memories we don't simulate, a few stdlib modules, and a
+    dynamically generated platform base class per vendor.  ``__name__`` is set to
+    a sentinel so any ``if __name__ == "__main__"`` guard in the board file stays
+    dormant.
+    """
     ns: dict[str, object] = {
         # Core build DSL
         "Resource": _Resource,

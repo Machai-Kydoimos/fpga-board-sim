@@ -270,13 +270,13 @@ This document inventories all viable improvements and ranks them by impact.
 
 ### Tier 4 — Documentation
 
-#### D11. Module + mock-class docstrings
+#### D11. Module + mock-class docstrings ✅
 - **Why:** `board_loader.py:17-124` mock classes (`_Attrs`, `_Pins`, `_PinsN`, `_DiffPairs`, `_Clock`, `_Subsignal`, `_Connector`, `_Resource`) are ~108 LOC with no docstrings — they are the most arcane code in the project (they exist to fool amaranth-boards `.py` files into executing in a mock namespace). Future maintainers will burn an hour reverse-engineering them.
-- **What:** Module docstring on `board_loader.py` explaining the mock-namespace strategy; one-line docstring on each mock class.
-- **Touches:** `src/fpga_sim/board_loader.py:17-124`; `src/fpga_sim/sim_metrics.py` (currently placeholder); `src/fpga_sim/ui/sim_panel.py` (no module docstring).
+- **What:** Expanded the `board_loader.py` module docstring to explain the exec-in-mock-namespace strategy; added one-line docstrings on the eight mock classes, the resource helpers (`_split_resources` + the led/button/switch/rgb wrappers), and `_make_namespace()`.
+- **Touches:** `src/fpga_sim/board_loader.py` only. (The card originally also listed `sim_metrics.py` "(currently placeholder)" and `ui/sim_panel.py` "(no module docstring)", but both already had full module docstrings — those claims were stale and were dropped.)
 - **Effort:** S.
 - **Dependencies:** None.
-- **Done when:** every mock class has a one-line docstring; `board_loader.py` module docstring explains the mock-namespace strategy.
+- **Done when:** every mock class, resource helper, and `_make_namespace()` has a docstring; the module docstring explains the exec-in-mock-namespace strategy and when it runs (the `sync_*` scripts and `discover_boards`' legacy `.py` fallback, vs. the primary JSON path).
 
 #### D12. Architecture diagram in CONTRIBUTING.md
 - **Why:** CLAUDE.md has a great file-role table; CONTRIBUTING.md has install steps but no architecture overview for contributors. An ASCII data-flow diagram would lower the on-ramp.
@@ -362,7 +362,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 | Sprint | Theme | Items |
 |---|---|---|
-| **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · D11 Mock-class docstrings |
+| **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
 | **1b** | Small features | U1 Help dialog · U2 Analysis spinner · D2 Backend base class · D4 Shared button helper |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
@@ -375,13 +375,13 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 - `src/fpga_sim/__main__.py` — U1, U2, U7, D6, D9 ✅
 - `src/fpga_sim/sim_bridge.py` — U4, U10, U21, D1, D2, D5, D7, D9 ✅ (defines `Simulator`)
-- `src/fpga_sim/board_loader.py` — U12, D11
+- `src/fpga_sim/board_loader.py` — U12, D11 ✅
 - `src/fpga_sim/session_config.py` — U5, U18, D9 ✅, D14
 - `src/fpga_sim/ui/constants.py` — U6, U17
 - `src/fpga_sim/ui/components.py` — U3, U9, D3
 - `src/fpga_sim/ui/board_display.py` — U1, U3, U11, U16, D3, D4, D9 ✅ (simulator round-trips through `FPGABoard`)
 - `src/fpga_sim/ui/board_selector.py` — U0, U1, U8, U12, U13
-- `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4, D11
+- `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4
 - `src/fpga_sim/ui/vhdl_picker.py` — U13, U18
 - `src/fpga_sim/ui/error_dialog.py` — U4
 - New: `src/fpga_sim/ui/help_dialog.py` (U1), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4), `src/fpga_sim/controller.py` (D6)
