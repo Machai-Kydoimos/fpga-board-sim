@@ -147,6 +147,7 @@ The board renders with LEDs, buttons, switches, and — on supported boards — 
 - **Click and hold buttons** to press them
 - **`SIM: GHDL` / `SIM: NVC`** toggle → cycle between installed simulators
 - **"Start Simulation"** button → opens the VHDL file picker
+- **R** → reset all switches off and release any held buttons
 - **ESC** → back to board list
 
 ### 3. Select a VHDL file
@@ -160,6 +161,7 @@ The selected simulator (GHDL or NVC) compiles and simulates the VHDL design via 
 - **Switches/buttons** drive FPGA inputs in real time
 - **LEDs** reflect FPGA outputs from the simulation
 - **7-segment digits** show live hex glyphs on supported boards
+- **R** — reset all switches off and release any held buttons (inputs only; design state is unaffected)
 - **S** — toggle the stats panel (see below)
 - **ESC** or close window → stops simulation, returns to board list
 

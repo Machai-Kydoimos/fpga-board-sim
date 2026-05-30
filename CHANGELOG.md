@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **R key** resets all switches off and releases any held buttons; works
+  in both the board preview screen and during live simulation. Inputs
+  only — the design's internal state (counters, registers) is unaffected
+  (U11)
+
+### Changed
+- Unified the two VHDL wrapper templates (`sim_wrapper_template.vhd` and
+  the deleted `sim_wrapper_7seg_template.vhd`) into a single template with
+  conditional placeholders that `_generate_wrapper()` splices in when the
+  board and design both use 7-seg. Removes ~73 lines and unblocks U21
+  (board-native VHDL) and U22 (7-seg physical mux) (D1)
+
 ## [0.5.0] - 2026-05-25
 
 ### Added
