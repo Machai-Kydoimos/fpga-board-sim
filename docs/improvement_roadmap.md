@@ -254,7 +254,7 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** None.
 - **Done when:** `uv run mypy src/` passes with `strict = true` and CI enforces it.
 
-#### D9. `Literal` types for stringly-typed identifiers
+#### D9. `Literal` types for stringly-typed identifiers ✅
 - **Why:** `simulator: str = "ghdl"` everywhere; nothing prevents a typo passing through.
 - **What:** Define `Simulator = Literal["ghdl", "nvc"]`; thread through `analyze_vhdl`, `launch_simulation`, `_backend`, `detect_simulators` return type, session config.
 - **Touches:** `src/fpga_sim/sim_bridge.py`, `src/fpga_sim/session_config.py`, `src/fpga_sim/__main__.py`.
@@ -331,7 +331,7 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 | **U5** (Settings dialog) | **D4** (Shared button helper) | Reuse button rendering in dialog |
 | **U7** (In-sim toolbar) | **D4** (Shared button helper) | Consistent toolbar button styling |
 | **U8** (Splash) | **U0** (Board filtering) | Left panel already has filter chips |
-| **D9** (Literal types) | — | Extend to `"iverilog"` when U20 lands |
+| ~~**D9** (Literal types)~~ ✅ | — | Extend the `Simulator` alias in `sim_bridge.py` to add `"iverilog"` when U20 lands |
 | **D13** (Env tests) | **D5** (Path helper) | Cleaner branches are easier to test |
 
 ### Dependency graph (hard dependencies only)
@@ -362,7 +362,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 | Sprint | Theme | Items |
 |---|---|---|
-| **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · D9 Literal types · D11 Mock-class docstrings |
+| **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · D11 Mock-class docstrings |
 | **1b** | Small features | U1 Help dialog · U2 Analysis spinner · D2 Backend base class · D4 Shared button helper |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
@@ -373,13 +373,13 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 ## Critical files modified across the roadmap
 
-- `src/fpga_sim/__main__.py` — U1, U2, U7, D6, D9
-- `src/fpga_sim/sim_bridge.py` — U4, U10, U21, D1, D2, D5, D7, D9
+- `src/fpga_sim/__main__.py` — U1, U2, U7, D6, D9 ✅
+- `src/fpga_sim/sim_bridge.py` — U4, U10, U21, D1, D2, D5, D7, D9 ✅ (defines `Simulator`)
 - `src/fpga_sim/board_loader.py` — U12, D11
-- `src/fpga_sim/session_config.py` — U5, U18, D9, D14
+- `src/fpga_sim/session_config.py` — U5, U18, D9 ✅, D14
 - `src/fpga_sim/ui/constants.py` — U6, U17
 - `src/fpga_sim/ui/components.py` — U3, U9, D3
-- `src/fpga_sim/ui/board_display.py` — U1, U3, U11, U16, D3, D4
+- `src/fpga_sim/ui/board_display.py` — U1, U3, U11, U16, D3, D4, D9 ✅ (simulator round-trips through `FPGABoard`)
 - `src/fpga_sim/ui/board_selector.py` — U0, U1, U8, U12, U13
 - `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4, D11
 - `src/fpga_sim/ui/vhdl_picker.py` — U13, U18

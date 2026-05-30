@@ -22,7 +22,7 @@ import pygame
 
 from fpga_sim.board_loader import BoardDef, discover_boards, get_default_boards_path
 from fpga_sim.session_config import load_session, save_session
-from fpga_sim.sim_bridge import detect_simulators
+from fpga_sim.sim_bridge import Simulator, detect_simulators
 from fpga_sim.ui import BoardSelector, ErrorDialog, FPGABoard, VHDLFilePicker
 from fpga_sim.ui.constants import get_font
 
@@ -77,7 +77,7 @@ def _build_generics(board: "BoardDef") -> dict[str, str]:
     }
 
 
-def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
+def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) -> int:
     """Run a headless benchmark and return an exit code.
 
     Discovers the board, analyzes the VHDL, then launches the simulation
@@ -89,7 +89,9 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[str]) -> int:
     """
     from fpga_sim.sim_bridge import analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
 
-    simulator = args.sim if args.sim and args.sim in available_sims else available_sims[0]
+    simulator: Simulator = (
+        args.sim if args.sim and args.sim in available_sims else available_sims[0]
+    )
     boards_path = get_default_boards_path()
     boards = discover_boards(boards_path)
 
@@ -209,6 +211,7 @@ def main() -> None:
     last_vendor_filters: list[str] = session.get("vendor_filters", [])
 
     # CLI flag overrides session; session overrides default; default is first available
+    simulator: Simulator
     if args.sim and args.sim in available_sims:
         simulator = args.sim
     elif args.sim:
@@ -228,7 +231,7 @@ def main() -> None:
     current_work_dir: str | None = None
     # Track which simulator produced current_work_dir so we can re-analyse
     # automatically when the user switches simulators before hitting Start.
-    _work_dir_simulator: str | None = None
+    _work_dir_simulator: Simulator | None = None
 
     # When set, skip BoardSelector and re-enter FPGABoard with this board.
     # Set after [Load VHDL], after simulation ends, etc.

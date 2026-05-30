@@ -18,15 +18,21 @@ The active simulator can be toggled via [SIM:…].  Read ``board.simulator``
 after run() returns to discover the user's choice.
 """
 
+from __future__ import annotations
+
 import math
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pygame
 
 from fpga_sim.board_loader import BoardDef, ComponentInfo
 from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch
 from fpga_sim.ui.constants import BG_GREEN, WHITE, _ui_scale, get_font
+
+if TYPE_CHECKING:
+    from fpga_sim.sim_bridge import Simulator
 
 
 class FPGABoard:
@@ -40,9 +46,9 @@ class FPGABoard:
         Fallback counts when no BoardDef is provided.
     width, height: int
         Initial window size (resizable).
-    simulator : str
+    simulator : Simulator
         Currently selected simulator ('ghdl' or 'nvc').
-    available_simulators : list[str]
+    available_simulators : list[Simulator]
         Simulators that are installed.  If the list has more than one
         entry the footer shows a toggle button.
     vhdl_path : str or Path or None
@@ -61,8 +67,8 @@ class FPGABoard:
         num_leds: int = 16,
         width: int = 0,
         height: int = 0,
-        simulator: str = "ghdl",
-        available_simulators: list[str] | None = None,
+        simulator: Simulator = "ghdl",
+        available_simulators: list[Simulator] | None = None,
         height_offset: int = 0,
         vhdl_path: str | Path | None = None,
         show_footer: bool = True,
@@ -125,7 +131,7 @@ class FPGABoard:
         self.running = False
 
         self.simulator = simulator
-        self.available_simulators = available_simulators or ["ghdl"]
+        self.available_simulators: list[Simulator] = available_simulators or ["ghdl"]
 
         if board_def:
             _vhdl_sfx = f" \u2013 {self.vhdl_path.name}" if self.vhdl_path else ""

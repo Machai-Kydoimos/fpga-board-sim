@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `"4 LEDs · 2 BTN · 4 SW · 4-digit 7-seg"` (middle-dot separator,
   abbreviated `BTN`/`SW`) instead of `"4 LEDs, 2 buttons, 4 switches,
   4-digit 7-seg"` (U12)
+- Internal: simulator backend identifiers are now typed with a
+  `Simulator = Literal["ghdl", "nvc"]` alias (threaded through `sim_bridge`,
+  `session_config`, `__main__`, and `FPGABoard`) so mypy rejects typos like
+  `_backend("gdhl")`; no behavior change (D9)
 
 ## [0.5.0] - 2026-05-25
 

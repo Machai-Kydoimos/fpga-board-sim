@@ -19,12 +19,18 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
 
 if TYPE_CHECKING:
     from fpga_sim.board_loader import BoardDef
 
 IS_WINDOWS = sys.platform == "win32"
+
+# Supported simulator backend identifiers.  Using a Literal (rather than a bare
+# ``str``) lets mypy reject typos such as ``_backend("gdhl")`` at type-check
+# time and gives the simulator domain a single source of truth.  Extend this
+# with ``"iverilog"`` when Verilog support (U20) lands.
+Simulator = Literal["ghdl", "nvc"]
 
 
 # ── Simulator backend classes ─────────────────────────────────────────────────
@@ -33,7 +39,7 @@ IS_WINDOWS = sys.platform == "win32"
 class _SimBackend(Protocol):
     """Structural interface that all simulator backends must satisfy."""
 
-    NAME: str
+    NAME: Simulator
 
     @staticmethod
     def find() -> str: ...
@@ -65,7 +71,7 @@ class _SimBackend(Protocol):
 class _GHDLBackend:
     """GHDL simulator backend – uses the VPI interface."""
 
-    NAME = "ghdl"
+    NAME: Simulator = "ghdl"
 
     @staticmethod
     def find() -> str:
@@ -124,7 +130,7 @@ class _NVCBackend:
       - Plugin loaded via ``--load=<lib>`` (VHPI) instead of ``--vpi=<lib>``
     """
 
-    NAME = "nvc"
+    NAME: Simulator = "nvc"
 
     @staticmethod
     def find() -> str:
@@ -177,7 +183,7 @@ class _NVCBackend:
         return str(Path(_NVCBackend.find()).resolve().parent), _NVCBackend.lib_dir()
 
 
-def _backend(simulator: str) -> type[_GHDLBackend] | type[_NVCBackend]:
+def _backend(simulator: Simulator) -> type[_GHDLBackend] | type[_NVCBackend]:
     """Return the backend class for the given simulator name.
 
     Both classes satisfy the ``_SimBackend`` Protocol.
@@ -193,13 +199,13 @@ def _find_ghdl() -> str:
     return _GHDLBackend.find()
 
 
-def detect_simulators() -> list[str]:
+def detect_simulators() -> list[Simulator]:
     """Return a list of installed simulator names, e.g. ['ghdl', 'nvc'].
 
     Always returns at least one entry; falls back to ['ghdl'] even when
     no simulator is found so the error surfaces at analysis time.
     """
-    available = []
+    available: list[Simulator] = []
     if _GHDLBackend.available():
         available.append("ghdl")
     if _NVCBackend.available():
@@ -420,7 +426,7 @@ def analyze_vhdl(
     vhdl_path: str | Path,
     work_dir: str | None = None,
     toplevel: str | None = None,
-    simulator: str = "ghdl",
+    simulator: Simulator = "ghdl",
     board_def: BoardDef | None = None,
 ) -> tuple[bool, str]:
     """Analyse the user's VHDL and the generated sim_wrapper.
@@ -499,7 +505,7 @@ def analyze_vhdl(
 
 
 def _build_sim_env(
-    simulator: str = "ghdl",
+    simulator: Simulator = "ghdl",
     venv_dir: str | Path | None = None,
 ) -> tuple[dict[str, str], str]:
     """Build the environment dict needed for the simulator + cocotb VPI/VHPI.
@@ -566,7 +572,7 @@ def launch_simulation(
     sim_width: int = 1024,
     sim_height: int = 700,
     work_dir: str | None = None,
-    simulator: str = "ghdl",
+    simulator: Simulator = "ghdl",
     board_def: BoardDef | None = None,
 ) -> bool:
     """Launch an interactive simulator + cocotb simulation.
