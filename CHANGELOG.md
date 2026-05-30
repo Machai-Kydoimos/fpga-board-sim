@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   conditional placeholders that `_generate_wrapper()` splices in when the
   board and design both use 7-seg. Removes ~73 lines and unblocks U21
   (board-native VHDL) and U22 (7-seg physical mux) (D1)
+- **Board summary format** in the board selector is now compact:
+  `"4 LEDs · 2 BTN · 4 SW · 4-digit 7-seg"` (middle-dot separator,
+  abbreviated `BTN`/`SW`) instead of `"4 LEDs, 2 buttons, 4 switches,
+  4-digit 7-seg"` (U12)
 
 ## [0.5.0] - 2026-05-25
 
