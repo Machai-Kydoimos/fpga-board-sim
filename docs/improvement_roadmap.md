@@ -131,7 +131,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 | ID | Item | Files | Effort |
 |---|---|---|---|
-| U11 | `R` key to reset switches/buttons to default | `ui/board_display.py:402-468` | XS |
+| ~~U11~~ | ~~`R` key to reset switches/buttons to default~~ ✅ | `ui/board_display.py` | XS |
 | U12 | Compact board summary format (e.g. `"4 LEDs · 2 BTN · 4 SW · 4-digit 7-seg"`) | `board_loader.py:433-443` (`BoardDef.summary`), `board_selector.py:143` (display) | XS |
 | U13 | Arrow / Page-Up / Page-Down navigation in board + file lists | `ui/board_selector.py`, `ui/vhdl_picker.py` | S |
 | U14 | `P` key to pause/resume simulation; pause indicator in SimPanel | `sim/sim_testbench.py`, `ui/sim_panel.py` | S |
@@ -362,7 +362,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 | Sprint | Theme | Items |
 |---|---|---|
-| **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · U11 Reset key · U12 Board summary format · ~~D1 Wrapper template merge~~ ✅ · D9 Literal types · D11 Mock-class docstrings |
+| **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · U12 Board summary format · ~~D1 Wrapper template merge~~ ✅ · D9 Literal types · D11 Mock-class docstrings |
 | **1b** | Small features | U1 Help dialog · U2 Analysis spinner · D2 Backend base class · D4 Shared button helper |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
