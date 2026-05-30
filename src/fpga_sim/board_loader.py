@@ -1,17 +1,19 @@
 """Board Loader – load board JSON definitions and parse upstream board files.
 
-Two paths share this module:
+The primary runtime path is JSON: :func:`discover_boards` reads the board
+definitions under ``boards/`` into :class:`BoardDef` objects, with no amaranth
+dependency.
 
-* **Runtime:** :func:`discover_boards` reads the JSON board definitions under
-  ``boards/`` into :class:`BoardDef` objects.  This path needs no amaranth.
-* **Sync scripts only:** ``scripts/sync_*.py`` regenerate that JSON from upstream
-  amaranth-boards / litex-boards ``.py`` files, which are written against the
-  amaranth build DSL (``Resource``, ``Pins``, ``Connector``, platform base
-  classes, …).  Rather than depend on amaranth, each board file is ``exec``'d
-  with the namespace from :func:`_make_namespace`, where every DSL name resolves
-  to a lightweight mock defined below.  The mocks capture just enough to extract
-  LED / button / switch / 7-seg resources; everything else resolves to an inert
-  stub.
+The mock machinery below serves the other path — turning amaranth-style board
+``.py`` files into ``BoardDef`` objects without importing amaranth.  Such files
+are written against the amaranth build DSL (``Resource``, ``Pins``, ``Connector``,
+platform base classes, …), so :func:`load_board_from_source` strips their imports
+and ``exec``'s them in the namespace from :func:`_make_namespace`, where every DSL
+name resolves to a lightweight mock (or inert stub) defined here.  The mocks
+capture just enough to extract LED / button / switch / 7-seg resources; everything
+else is stubbed.  This path is used by the ``scripts/sync_*.py`` regenerators and
+by :func:`discover_boards`' legacy fallback for a ``boards/`` tree that still holds
+raw ``.py`` files.
 """
 
 import json
@@ -25,7 +27,7 @@ from pathlib import Path
 
 
 class _Attrs(dict):
-    """Mock of amaranth ``Attrs`` — arbitrary pin attributes, stored but unused."""
+    """Mock of amaranth ``Attrs`` — pin attributes (e.g. ``IOStandard``), kept on the resource."""
 
     def __init__(self, **kwargs: str) -> None:
         super().__init__(**kwargs)
@@ -58,7 +60,7 @@ class _PinsN(_Pins):
 
 
 class _DiffPairs:
-    """Mock of amaranth ``DiffPairs`` — a differential pin pair (p/n); structural only."""
+    """Mock of amaranth ``DiffPairs`` — a differential pin pair (p and n)."""
 
     def __init__(
         self,

@@ -276,7 +276,7 @@ This document inventories all viable improvements and ranks them by impact.
 - **Touches:** `src/fpga_sim/board_loader.py` only. (The card originally also listed `sim_metrics.py` "(currently placeholder)" and `ui/sim_panel.py` "(no module docstring)", but both already had full module docstrings — those claims were stale and were dropped.)
 - **Effort:** S.
 - **Dependencies:** None.
-- **Done when:** every mock class, resource helper, and `_make_namespace()` has a docstring; the module docstring explains the exec-in-mock-namespace strategy and its sync-script-only role.
+- **Done when:** every mock class, resource helper, and `_make_namespace()` has a docstring; the module docstring explains the exec-in-mock-namespace strategy and when it runs (the `sync_*` scripts and `discover_boards`' legacy `.py` fallback, vs. the primary JSON path).
 
 #### D12. Architecture diagram in CONTRIBUTING.md
 - **Why:** CLAUDE.md has a great file-role table; CONTRIBUTING.md has install steps but no architecture overview for contributors. An ASCII data-flow diagram would lower the on-ramp.
