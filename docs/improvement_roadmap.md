@@ -262,7 +262,8 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** None. Soft: should be extended to include `"iverilog"` when U20 lands.
 - **Done when:** `Simulator` is a `Literal` type; mypy catches `_backend("typo")` at type-check time.
 
-#### D10. Pin pre-commit hooks consistently; add `.editorconfig`
+#### D10. Pin pre-commit hooks consistently; add `.editorconfig` ✅
+- **Completed:** Sprint 1a cleanup — added `.editorconfig` (Python 4-space / 100-col, matching ruff); hooks were already pinned to exact versions (`ruff v0.15.13`, `mypy v2.1.0`).
 - **Touches:** `.pre-commit-config.yaml`; new `.editorconfig`.
 - **Effort:** XS.
 - **Dependencies:** None.
@@ -362,7 +363,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 | Sprint | Theme | Items |
 |---|---|---|
-| **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
+| **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
 | **1b** | Small features | U1 Help dialog · U2 Analysis spinner · D2 Backend base class · D4 Shared button helper |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
@@ -388,7 +389,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U7, U9, U14, U22
 - `pyproject.toml` — D8
-- `.pre-commit-config.yaml`, new `.editorconfig` — D10
+- `.pre-commit-config.yaml`, new `.editorconfig` — D10 ✅
 - `CONTRIBUTING.md` — D12
 
 ## Existing utilities to reuse
