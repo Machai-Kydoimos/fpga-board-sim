@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Board selector filtering & sort** — filter chips (Has LEDs / Switches /
+  Buttons / 7-seg, plus per-vendor chips with an "Other" group) that compose
+  with the text filter, a sort control with 7 modes (Name, Vendor, LEDs,
+  Switches, Buttons, 7-seg, Total), an active-filter count ("N of 272 boards"),
+  and session persistence of all filter/sort state (U0)
 - **R key** resets all switches off and releases any held buttons; works
   in both the board preview screen and during live simulation. Inputs
   only — the design's internal state (counters, registers) is unaffected
