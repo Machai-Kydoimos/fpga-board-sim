@@ -1,6 +1,6 @@
 # Virtual FPGA Boards — Improvement Roadmap
 
-*Drafted 2026-05-19 · Updated 2026-05-28 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
+*Drafted 2026-05-19 · Updated 2026-05-31 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
 
 A comprehensive, impact-weighted roadmap covering improvements from two perspectives:
 
@@ -43,22 +43,28 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** None.
 - **Done when:** filter chips render in the header, compose with the text filter, the board count updates to show "N of 272 boards", and sort cycles through all three modes.
 
-#### U1. Help / About overlay (F1 or `?` key)
+#### U1. Help / About overlay (clickable `(?)` button · F1 · `?`)
 - **Why:** Currently nothing in-app teaches the user the workflow or shortcuts; README is great but invisible at runtime.
-- **What:** Modal overlay with a 4-step workflow diagram, keyboard shortcut legend (ESC, Enter, F1, R, P, arrows, S), the design-contract summary, and a pointer to `hdl/blinky.vhd` as a working example.
-- **Touches:** new `src/fpga_sim/ui/help_dialog.py`; hotkey handler additions in `board_selector.py` (~line 95) and `board_display.py` (~line 407); reuse the `ErrorDialog` modal structure for layout.
-- **Effort:** S/M.
-- **Dependencies:** Soft: benefits from D4 (shared button helper) for consistent "Close" button styling.
-- **Done when:** pressing F1 on any screen shows a modal with all shortcuts listed; ESC or clicking outside dismisses it.
+- **What:** Modal overlay with a 4-step workflow diagram, keyboard shortcut legend, the design-contract summary, and a pointer to `hdl/blinky.vhd` as a working example.
+- **Triggers (decided 2026-05-31): a clickable `(?)` button + F1 + `?`, all opening the same overlay.** Three triggers because the audience is mixed — new users need a *visible* affordance, power users want a hotkey:
+  - **`(?)` button** — the primary *discovery* path (U1 targets onboarding; a hidden hotkey is invisible to exactly those users). Top-right of the selector header (the title row at `board_selector.py:355-356` has free space on the right) and in the preview (corner `(?)` or via the footer). Render with the D4 shared button helper.
+  - **F1** — universal GUI convention; non-printable, so it never conflicts on any screen.
+  - **`?`** — keyboard-app convention (Gmail / GitHub / Vim / `less`). Already free on the preview, picker, and sim screens (no text input there). On the **selector** it must be intercepted *before* the type-to-filter append at `board_selector.py:232` (`self.filter_text += ev.unicode`); match on `ev.unicode == "?"` (keyboard-layout-independent, unlike `Shift+/`) so it never reaches the filter. Reserving `?` costs nothing — no board name contains it.
+- **Legend must reflect shortcuts that actually exist when U1 ships.** As of 2026-05-31 the real shortcuts are: F1 / `?` (this overlay), ESC (back/cancel, all screens), Enter (Start Simulation on the preview; "Try Another File" in ErrorDialog), R (reset switches/buttons — preview only, `board_display.py:417`), S (toggle SimPanel — *simulation screen only*, `sim_testbench.py:370`), plus type-to-filter and mouse-wheel scroll on the selector. **U13 (arrow/Page nav + Enter-to-select) is now scheduled earlier in 1b**, so once it merges the legend should also list ↑/↓/PgUp/PgDn (navigate) and Enter (select) on the selector + picker — confirm U13 is in before finalising the legend. **P (pause) still does NOT exist** — it's a mouse-only overlay button in the sim screen, and the P key is U14, so omit P unless U14 lands first. **Implementation:** render the legend from a single `SHORTCUTS` constant so every future key (U13/U14/U15) has one obvious place to update — the structural guard against the legend drifting from the real handlers.
+- **Touches:** new `src/fpga_sim/ui/help_dialog.py` (register in `ui/__init__.py`), reusing the `ErrorDialog` snapshot-dim-centred-panel structure (`error_dialog.py`) for layout. Key wiring — match F1 and `?` in each `KEYDOWN` block: `board_selector.py:222-235` (intercept `?` *above* the printable-append branch at `:232`), `board_display.py:413-429` (`_handle_events`), `vhdl_picker.py:95-97` (ESC-only today). Button — add a hit-rect + draw in `board_selector._draw()` header and `board_display._draw()` footer, with click handling in `BoardSelector._click()` and `FPGABoard._handle_events()`.
+- **Scope note:** The simulation screen is a *separate pygame process* (`sim/sim_testbench.py`, its own event loop at line ~367). Decide whether F1 / `?` help is in scope there too; if so it needs a fourth handler in `sim_testbench.py`. The launcher screens (selector / preview / picker) are the minimum.
+- **Effort:** M (modal + three trigger types across three screens + a `(?)` button widget).
+- **Dependencies:** Soft: **D4** (shared button helper) — the `(?)` trigger button and the overlay's Close button should both use it; landing D4 first avoids open-coding two more buttons.
+- **Done when:** the `(?)` button (selector + preview), F1, and `?` each open the help overlay on the launcher screens; while it is open the underlying screen receives no input (run it as its own blocking loop like `ErrorDialog`, so a keystroke can't leak into the board filter); the overlay lists the shortcuts that exist at ship time; ESC, the Close button, or clicking outside dismisses it.
 
 #### U2. Inline analysis spinner during VHDL load
-- **Why:** `analyze_vhdl()` can hang silently for 5–10 s with no UI feedback; users assume the app is frozen.
-- **What:** Non-blocking "Analyzing <file>..." overlay with a rotating spinner while `check_vhdl_contract()` + `analyze_vhdl()` run.
-- **Risk:** pygame is not thread-safe for rendering. Do **not** use a background thread that touches the display surface. Instead, use `subprocess.Popen` with non-blocking polling (`poll()` in the event loop) so the main thread can render the spinner between poll checks. The analysis subprocess is already a `subprocess.run()` call — converting to `Popen` + poll loop is straightforward.
-- **Touches:** `src/fpga_sim/__main__.py:307-327` (analysis call site); new helper in `ui/`.
+- **Why:** `analyze_vhdl()` can hang silently for 5–10 s with no UI feedback; users assume the app is frozen. (`check_vhdl_encoding()` / `check_vhdl_contract()` are text-only and instant — only `analyze_vhdl()` is slow, so the spinner only needs to cover that call.)
+- **What:** Non-blocking "Analyzing <file>..." overlay with a rotating spinner while `analyze_vhdl()` runs.
+- **Risk / correction:** pygame is not thread-safe for rendering. Do **not** use a background thread that touches the display surface. ⚠️ The previous draft said "the analysis subprocess is already a `subprocess.run()` call — converting to `Popen` + poll loop is straightforward." That is **no longer accurate**: `analyze_vhdl()` (`sim_bridge.py:425-505`) makes **three** sequential `subprocess.run()` calls — analyse user VHDL (`:453`), analyse the generated wrapper (`:468`), elaborate (`:481`) — interleaved with Python file I/O (`_generate_wrapper`). So you cannot simply swap one `subprocess.run` for `Popen`. Two viable approaches: **(a)** run the whole `analyze_vhdl()` on a worker thread (it touches no pygame — only subprocesses + file I/O) and poll the thread/`Future` from the main loop, rendering the spinner on the main thread; or **(b)** have `analyze_vhdl()` accept an optional progress callback and convert its three steps to `Popen` + `poll()` internally. (a) is the smaller change and keeps the "no bg thread touches the display" rule intact.
+- **Touches:** `src/fpga_sim/__main__.py` has **two** launcher call sites for `analyze_vhdl()`: the Load-VHDL path at `:330-332` (inside the picker `while` loop, encoding/contract checks at `:321-327`) and the re-analyse-before-simulate path at `:380-382`. Cover both for consistent feedback. New spinner helper in `ui/`. (The benchmark path `:145` is headless and needs no spinner.)
 - **Effort:** M.
 - **Dependencies:** None.
-- **Done when:** a spinner/overlay is visible during VHDL analysis and disappears when analysis completes or fails.
+- **Done when:** a spinner/overlay is visible during VHDL analysis at both call sites and disappears when analysis completes or fails.
 
 #### U3. Component tooltips on hover (preview & sim)
 - **Why:** Hovering an LED/switch/button currently does nothing visible; net names and pin assignments live only in stdout `print()` callbacks.
@@ -145,6 +151,8 @@ This document inventories all viable improvements and ranks them by impact.
 
 **Note on U18/U19:** Both require U5 (Settings dialog) for the `recent[]` data source and metrics toggle location respectively.
 
+**Note on U13 (scheduled in Sprint 1b, before U1):** Verified 2026-05-31 — neither list screen has keyboard selection today: `board_selector.run()` (`board_selector.py:222-235`) handles only ESC / Backspace / type-to-filter, and `vhdl_picker.run()` (`:95-97`) handles only ESC. So U13 is more than scrolling; it must add **(a)** ↑/↓/PgUp/PgDn to move the existing `self.hovered` cursor and keep it visible via `self.scroll`/`row_h`/`_hdr`, and **(b) Enter to activate the hovered row** (select board / open dir / pick file) — new on *both* screens. Arrow/Page keys are non-printable, so they don't collide with the selector's type-to-filter branch (`:232`). Sequenced before U1 so U1's legend can list ↑/↓/PgUp/PgDn + Enter as real shortcuts.
+
 ### Tier 4 — Larger features (long-horizon)
 
 #### U20. Verilog / SystemVerilog support
@@ -194,12 +202,14 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** None. But **U21** and **U22** both depend on this.
 
 #### D2. Backend base class with override-only differences
-- **Why:** `_GHDLBackend` and `_NVCBackend` (`sim_bridge.py:65-177`) duplicate 8 method signatures; bodies share structure (`find()` = `shutil.which(self.NAME)`; `lib_dir()` is identical logic in both; `available()` is identical). The `_SimBackend` Protocol declares the shape but does not share implementation.
-- **What:** Convert `_SimBackend` from Protocol -> ABC; move `find()`, `available()`, `lib_dir()`, `sim_bin_lib()` into the ABC; subclasses override only `NAME`, `plugin_lib_name()`, `analyze_cmd()`, `elaborate_cmd()`, `run_cmd()`.
-- **Touches:** `src/fpga_sim/sim_bridge.py:33-178`. Net reduction ~50 LOC.
-- **Effort:** S/M. Existing test suite (`tests/test_sim_bridge_backend.py`) already covers both backends — refactor is safe under it.
+- **Why:** `_GHDLBackend` (`sim_bridge.py:71-120`) and `_NVCBackend` (`:123-183`) duplicate 8 method signatures; bodies share structure. `find()` differs only by the executable name (`shutil.which("ghdl")` vs `shutil.which("nvc")`, both equal to `NAME`); `available()`, `lib_dir()`, and `sim_bin_lib()` are byte-for-byte identical apart from the `_GHDLBackend.find()` / `_NVCBackend.find()` call inside them. The `_SimBackend` Protocol (`:39-68`) declares the shape but does not share implementation.
+- **What:** Convert `_SimBackend` from Protocol -> ABC; move `find()`, `available()`, `lib_dir()`, `sim_bin_lib()` into the ABC; subclasses override only `NAME`, `plugin_lib_name()`, `analyze_cmd()`, `elaborate_cmd()`, `run_cmd()`. Optionally narrow `_backend()`'s return type (`:186`) from `type[_GHDLBackend] | type[_NVCBackend]` to `type[_SimBackend]`.
+- **⚠️ `@staticmethod` -> `@classmethod` conversion required.** Today *every* backend method is a `@staticmethod` and hardcodes its own class (e.g. `lib_dir()` calls `_GHDLBackend.find()`). To hoist the four shared methods into the ABC they must read `cls.NAME` / call `cls.find()`, so they become `@classmethod`. Callers already use class-level access (`be.find()` where `be = _backend(...)`), so this is source-compatible at the call sites.
+- **⚠️ This refactor is NOT safe under the current test suite — a test must change.** `tests/test_sim_bridge_backend.py:24-34` (`test_backend_has_all_protocol_methods`) explicitly asserts, via `inspect.getattr_static`, that **all 8 protocol methods are `@staticmethod`**. Converting `find`/`available`/`lib_dir`/`sim_bin_lib` to `@classmethod` makes that assertion fail. Update the test to allow `staticmethod` *or* `classmethod` for the hoisted methods (the `run_cmd`/`elaborate_cmd` signature-parity tests at `:40-53` are unaffected since those stay as subclass overrides).
+- **Touches:** `src/fpga_sim/sim_bridge.py:39-191` (Protocol + both backends + `_backend()`); `tests/test_sim_bridge_backend.py` (relax the staticmethod assertion). Net reduction ~30-50 LOC in `sim_bridge.py`.
+- **Effort:** S/M.
 - **Dependencies:** None. But **U20** depends on this.
-- **Done when:** `_SimBackend` is an ABC with shared implementations; `_GHDLBackend` and `_NVCBackend` override only the 4-5 methods that differ; all backend tests pass.
+- **Done when:** `_SimBackend` is an ABC with shared implementations; `_GHDLBackend` and `_NVCBackend` override only the 5 members that differ (`NAME` + 4 methods); the staticmethod assertion in `test_sim_bridge_backend.py` is updated; all backend tests pass.
 
 #### D3. UIComponent base class
 - **Why:** `LED`, `Switch`, `Button` in `components.py:116-233` share an identical `__init__(index, info)` signature, identical `label` property logic, and an identical `callback` attribute pattern. `SevenSeg` is similar but uses `(index, has_dp)`.
@@ -210,12 +220,18 @@ This document inventories all viable improvements and ranks them by impact.
 - **Done when:** `LED`, `Switch`, `Button` inherit from `UIComponent`; no duplicate `__init__` / `label` code; all component tests pass.
 
 #### D4. Shared button-drawing helper
-- **Why:** Footer buttons in `board_display.py:553-616` and `sim_panel.py` zone draws redraw rectangles with near-identical code; styling drift is already visible (different hover colours).
-- **What:** Extract `ui/widgets/button.py: Button.draw_rect(surface, rect, label, state)` with consistent hover/pressed colours. Reuse in the board_display footer, sim_panel zones, and the new help/settings dialogs.
-- **Touches:** new file; replace open-coded draws in two callers.
-- **Effort:** S.
-- **Dependencies:** None. Soft: **U1, U5, U7** should consume it for consistent styling.
-- **Done when:** both `board_display.py` footer and `sim_panel.py` zones use the shared helper; hover colours are consistent.
+- **Why:** Four button-drawing sites (across *both* processes) hand-roll rounded-rect buttons with near-identical but drifting code — even the corner radius varies (3 / 5 / 6 / 10). The drift is real and visible:
+  - `board_display.py:568-644` — four footer buttons (Select Board `:571-579`, Load VHDL `:582-590`, Start Simulation `:596-612`, SIM toggle `:614-631`), each with its **own** hover colour scheme (teal / blue / green / purple) and a disabled state.
+  - `error_dialog.py:160-182` — Try-Another-File / Back-to-Boards buttons, open-coded with hover.
+  - `sim_panel.py:538-559` — already factored into a local `_draw_btn()` helper, but **enabled/disabled only, no hover at all** (the [-]/[+] clock buttons).
+  - `sim/sim_testbench.py:439-466` — the `[■ Stop]` / `[Pause]` overlay buttons (with hover), in the **simulation subprocess**. (The previous draft missed both this caller and `error_dialog`.)
+  So it is not "two open-coded callers." D4 should unify all four onto one helper and delete `sim_panel._draw_btn`.
+- **Cross-process note:** `sim_testbench.py` runs in the GHDL/cocotb subprocess but already imports `fpga_sim` (its `src/` is on `PYTHONPATH` — see `sim_bridge._build_sim_env`), so a `fpga_sim.ui.widgets.button` helper is importable there; the Stop/Pause buttons can use it too.
+- **What:** Extract `ui/widgets/button.py` (new `widgets/` subpackage — does not exist yet). The signature needs more than `(surface, rect, label, state)`: the callers use **different base colours**, so pass an explicit colour set (base / hover / border / fg) or named variants, plus flags for `hovered` and `enabled`. A bare `state` enum can't capture the per-button theming that exists today.
+- **Touches:** new `src/fpga_sim/ui/widgets/button.py` (+ `widgets/__init__.py`); replace open-coded draws in `board_display.py`, `error_dialog.py`, and `sim/sim_testbench.py`; replace `sim_panel.py`'s `_draw_btn`. Add a unit test for the helper (colour/hover/disabled variants render without error and respect the passed rect).
+- **Effort:** S/M (four callers across two processes).
+- **Dependencies:** None. Soft: **U1, U5, U7** should consume it for consistent styling. **Land D4 first in 1b** — U1's `(?)` + Close buttons ride on it, and the same pass gives the sim Stop/Pause + clock buttons consistent styling.
+- **Done when:** the board_display footer, error_dialog buttons, sim_panel clock buttons, and the sim Stop/Pause overlay all render through the shared helper; hover behaviour is consistent (and the sim_panel clock buttons gain the hover feedback they lack today).
 
 #### D5. Platform-aware path helper
 - **Why:** `_build_sim_env()` (`sim_bridge.py:493-550`) repeats the PATH-prepend pattern for Windows and Linux; the `IS_WINDOWS` branching is interleaved with logic that doesn't actually differ.
@@ -364,7 +380,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | Sprint | Theme | Items |
 |---|---|---|
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
-| **1b** | Small features | U1 Help dialog · U2 Analysis spinner · D2 Backend base class · D4 Shared button helper |
+| **1b** | Small features + DRY foundations | **D4 Shared button helper** (first — unblocks the buttons below) → U13 Arrow/Page nav → U1 Help dialog · U2 Analysis spinner · D2 Backend base class |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
@@ -383,8 +399,8 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/ui/board_display.py` — U1, U3, U11, U16, D3, D4, D9 ✅ (simulator round-trips through `FPGABoard`)
 - `src/fpga_sim/ui/board_selector.py` — U0, U1, U8, U12, U13
 - `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4
-- `src/fpga_sim/ui/vhdl_picker.py` — U13, U18
-- `src/fpga_sim/ui/error_dialog.py` — U4
+- `src/fpga_sim/ui/vhdl_picker.py` — U1, U13, U18
+- `src/fpga_sim/ui/error_dialog.py` — U4, D4
 - New: `src/fpga_sim/ui/help_dialog.py` (U1), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4), `src/fpga_sim/controller.py` (D6)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U7, U9, U14, U22
