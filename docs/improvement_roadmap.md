@@ -19,7 +19,7 @@ It is feature-complete for experienced FPGA users, but the codebase and UX have 
 
 1. **Board discovery at scale.** With 272 boards from 7 vendors, the flat scrolling list with text-only filtering is no longer adequate. Users cannot filter by component type, vendor, or capability — they must already know the board name.
 2. **Onboarding & discoverability gaps.** README is excellent (~545 lines) but unreachable from inside the app. New users cannot easily find shortcuts, the design contract, or feature locations.
-3. **DRY drift.** Two near-identical backend classes, three component classes with identical structure, and a 264-line main function with stringly-typed screen results. *(VHDL wrapper templates unified in D1.)*
+3. **DRY drift.** Two near-identical backend classes, three component classes with identical structure, and a 264-line main function with stringly-typed screen results. Colour definitions have likewise drifted out of their single source of truth: 14 named shades in `ui/constants.py` vs ~98 distinct inline RGB literals across 8 files (D15). *(VHDL wrapper templates unified in D1.)*
 4. **Roadmap gravity.** Several features have been queued in memory for months (PWM LEDs, splash, settings screen, waveforms, Verilog, in-sim navigation) but never sequenced.
 
 This document inventories all viable improvements and ranks them by impact.
@@ -93,12 +93,12 @@ This document inventories all viable improvements and ranks them by impact.
 ### Tier 2 — High impact, larger initiatives
 
 #### U6. Theme system (light / dark / high-contrast)
-- **Why:** All colours hard-coded in `ui/constants.py`; the green PCB clashes with the dark selector; accessibility (high-contrast) is impossible today.
-- **What:** Move colours into a `Theme` dataclass, load from JSON, ship 3 presets (`pcb-green` default, `dark`, `high-contrast`). Toggle in the new Settings dialog (U5).
-- **Touches:** rewrite `src/fpga_sim/ui/constants.py:14-27`; all `ui/` modules reference `theme.COLOR_X` instead of module constants.
-- **Effort:** L (broad reach but mechanical).
-- **Dependencies:** **Requires U5** (theme toggle lives in Settings dialog).
-- **Done when:** three themes are selectable in Settings and all UI screens (selector, preview, sim, dialogs) render correctly with each.
+- **Why:** The green PCB clashes with the dark selector, and accessibility (high-contrast) is impossible today. **Premise correction (2026-05-31):** an earlier draft said "all colours hard-coded in `ui/constants.py`" — they are *not*. Only 14 of ~98 shades live there; the rest are scattered across 8 files (see D15). A theme switch cannot work until the palette is centralised, so this now builds on D15.
+- **What:** Once D15 has consolidated the palette, move it into a `Theme` dataclass, load from JSON, and ship 3 presets (`pcb-green` default, `dark`, `high-contrast`). Toggle in the new Settings dialog (U5).
+- **Touches:** `src/fpga_sim/ui/constants.py` (D15's consolidated palette → `Theme`); all `ui/` modules **and** `sim/sim_testbench.py` reference `theme.COLOR_X` instead of module constants.
+- **Effort:** L **assuming D15 lands first** (then it is the broad-but-mechanical pass). Without D15 it is XL and would ship visibly broken — ~88 % of colours would stay hard-coded and silently fail to retheme.
+- **Dependencies:** **Requires U5** (theme toggle lives in Settings dialog) **and D15** (palette must be centralised before it can be themed).
+- **Done when:** three themes are selectable in Settings; all UI screens (selector, preview, sim, dialogs) render correctly with each; no themed screen reads a colour literal outside the `Theme`.
 
 #### U7. In-simulation navigation toolbar
 - **Why:** Already queued in `project_enhancements.md` (#2). Currently the only way out of sim is ESC; users cannot reload VHDL or change board without restarting.
@@ -242,6 +242,17 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** None.
 - **Done when:** `_build_sim_env()` has no interleaved `if IS_WINDOWS` blocks; platform differences are isolated to the `extra` path lists.
 
+#### D15. Consolidate scattered colours into the single source of truth
+- **Why:** `ui/constants.py` was created as the one home for colours, but it has drifted: as of 2026-05-31 it names **14** shades while **~98 distinct** shades (102 inline RGB literals) live across 8 other files (`board_display.py`, `sim_panel.py`, `board_selector.py`, `components.py`, `error_dialog.py`, `vhdl_picker.py`, `sim/sim_testbench.py`, `generate_board_images.py`) — the source of truth holds ~12 % of the palette. The drift has three shapes, each with a different fix:
+  - **(a) Exact-duplicate regressions (~12 literals).** A name exists and was ignored: `GRAY=(180,180,180)` hard-coded 3×, `RED_OFF=(80,0,0)` 2×, `SEL_BG=(30,30,40)` 2×, plus `BLACK`/`WHITE`/`BLUE_ON`/`SEL_ROW_A`/`DARK_GRAY`/`SEL_HOVER` once each. Changing the constant today silently desyncs these call sites.
+  - **(b) Parallel constant blocks.** `board_selector.py:16-26` defines 11 module-level `_CHIP_*`/`_SORT_*`/`_DROPDOWN_*` colours; `board_display.py:38-65` defines `_STYLE_*` `ButtonStyle` tuples. The right *grouping* instinct in the wrong *location*.
+  - **(c) Cross-process copy-paste.** The PCB-blue gradient pair `(20,60,110)`/`(30,80,140)` is hand-typed in **both** the launcher (`board_display.py`) and the sim subprocess (`sim/sim_testbench.py`), even though `sim_testbench` already imports `fpga_sim`.
+- **What:** Re-centralise in three passes: **(1)** replace the ~12 exact-duplicate literals with their existing constant names; **(2)** lift shared shades — starting with the cross-process gradient pair — into `constants.py` and import them in both processes; **(3)** restructure the flat list into a small **palette + semantic roles** (fold the `_CHIP_*`/`_STYLE_*` families in as namespaced groups), deciding per one-off whether it earns a name or is genuinely single-use (a truly local shade may stay inline with a comment). The grouped structure is deliberately the shape U6's `Theme` dataclass wants, so this de-risks U6. (Optional: if the palette grows large, split a dedicated `ui/theme.py` and re-export from `constants.py` for compatibility.)
+- **Touches:** `src/fpga_sim/ui/constants.py` (grouped palette); colour call sites in `ui/board_display.py`, `ui/board_selector.py`, `ui/sim_panel.py`, `ui/components.py`, `ui/error_dialog.py`, `ui/vhdl_picker.py`, `sim/sim_testbench.py`, `src/fpga_sim/generate_board_images.py`.
+- **Effort:** S/M. Pass (1) is mechanical; the judgement is in pass (3)'s grouping — worth a short design note in the PR.
+- **Dependencies:** None. But **U6** builds directly on it (see Dependencies).
+- **Done when:** no inline literal duplicates a named constant; the cross-process gradient pair is defined once and imported in both processes; `constants.py` exposes a grouped palette; a grep for RGB tuples outside `constants.py` returns only genuinely single-use shades, each commented as such.
+
 ### Tier 2 — Architecture & state
 
 #### D6. Extract a `ScreenController` from `__main__.py`
@@ -332,6 +343,7 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 | Blocked item | Requires | Reason |
 |---|---|---|
 | **U6** (Theme system) | **U5** (Settings dialog) | Theme toggle lives in Settings |
+| **U6** (Theme system) | **D15** (Colour consolidation) | Palette must live in one place before it can be themed |
 | **U10** (Waveform capture) | **U5** (Settings dialog) | Waveform toggle lives in Settings |
 | **U18** (Recent files) | **U5** (Settings dialog) | Consumes `recent[]` from U5's schema |
 | **U19** (Metrics checkbox) | **U5** (Settings dialog) | Metrics toggle lives in Settings |
@@ -361,16 +373,19 @@ D2 (backend ABC)
  └──> U20 (Verilog support)
 
 U5 (settings dialog)
- ├──> U6  (theme system)
+ ├──> U6  (theme system)        # U6 also requires D15 (below)
  ├──> U10 (waveform capture)
  ├──> U18 (recent files)
  └──> U19 (metrics checkbox)
+
+D15 (colour consolidation)
+ └──> U6  (theme system)
 
 D6a (screen-result enum)
  └──> D6b (ScreenController)
 ```
 
-All other items (U0, U1, U2, U3, U4, U7, U8, U9, U11-U17, U21-U25, D3-D5, D7-D14) are independently shippable.
+All other items (U0, U1, U2, U3, U4, U7, U8, U9, U11-U17, U21-U25, D3-D5, D7-D15) are independently shippable.
 
 ---
 
@@ -382,7 +397,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 |---|---|---|
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
 | **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → U13 Arrow/Page nav → U1 Help dialog · U2 Analysis spinner · D2 Backend base class |
-| **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · U5 Settings dialog + extended session · D8 mypy strict |
+| **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · D15 Colour consolidation · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
@@ -395,16 +410,16 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/sim_bridge.py` — U4, U10, U21, D1, D2, D5, D7, D9 ✅ (defines `Simulator`)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅
 - `src/fpga_sim/session_config.py` — U5, U18, D9 ✅, D14
-- `src/fpga_sim/ui/constants.py` — U6, U17
-- `src/fpga_sim/ui/components.py` — U3, U9, D3
-- `src/fpga_sim/ui/board_display.py` — U1, U3, U11, U16, D3, D4 ✅, D9 ✅ (simulator round-trips through `FPGABoard`)
-- `src/fpga_sim/ui/board_selector.py` — U0, U1, U8, U12, U13
-- `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4 ✅
-- `src/fpga_sim/ui/vhdl_picker.py` — U1, U13, U18
-- `src/fpga_sim/ui/error_dialog.py` — U4, D4 ✅
+- `src/fpga_sim/ui/constants.py` — D15, U6, U17
+- `src/fpga_sim/ui/components.py` — U3, U9, D3, D15
+- `src/fpga_sim/ui/board_display.py` — U1, U3, U11, U16, D3, D4 ✅, D9 ✅ (simulator round-trips through `FPGABoard`), D15
+- `src/fpga_sim/ui/board_selector.py` — U0, U1, U8, U12, U13, D15
+- `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4 ✅, D15
+- `src/fpga_sim/ui/vhdl_picker.py` — U1, U13, U18, D15
+- `src/fpga_sim/ui/error_dialog.py` — U4, D4 ✅, D15
 - New: `src/fpga_sim/ui/help_dialog.py` (U1), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/controller.py` (D6)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
-- `sim/sim_testbench.py` — U7, U9, U14, U22
+- `sim/sim_testbench.py` — U7, U9, U14, U22, D15
 - `pyproject.toml` — D8
 - `.pre-commit-config.yaml`, new `.editorconfig` — D10 ✅
 - `CONTRIBUTING.md` — D12
@@ -418,6 +433,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `session_config.save_session` / `load_session` (`session_config.py`) -> extend schema for U5; existing call sites unchanged.
 - `sim_metrics.py` / `scripts/analyze_metrics.py` -> consumed by U19; no new infra needed.
 - `BoardDef.summary` property (`board_loader.py:433-443`) -> update format for U12; extend for U0 filter logic.
+- `ui/constants.py` colour names (`WHITE`, `GRAY`, `SEL_BG`, …) -> consolidate the ~98 scattered literals onto these in D15, then wrap the grouped palette in a `Theme` for U6.
 
 ---
 
