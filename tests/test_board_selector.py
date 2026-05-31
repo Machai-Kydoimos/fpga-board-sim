@@ -5,7 +5,7 @@ import os
 import pytest
 
 from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
-from fpga_sim.ui.board_selector import BoardSelector
+from fpga_sim.ui.board_selector import _SORT_OPTIONS, BoardSelector
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -370,3 +370,166 @@ class TestScrollClamping:
         sel.scroll = 500
         sel._draw()
         assert sel.scroll == 0
+
+
+# ── Keyboard navigation ──────────────────────────────────────────────────────
+
+
+def _key(pygame, key, unicode=""):
+    """Build a synthetic KEYDOWN event."""
+    return pygame.event.Event(pygame.KEYDOWN, key=key, unicode=unicode)
+
+
+class TestKeyboardNav:
+    def test_down_from_unset_selects_first(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.hovered = -1
+        exit_loop, result = sel._handle_keydown(_key(headless_pygame, headless_pygame.K_DOWN))
+        assert exit_loop is False
+        assert result is None
+        assert sel.hovered == 0
+
+    def test_up_from_unset_selects_last(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.hovered = -1
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_UP))
+        assert sel.hovered == len(boards) - 1
+
+    def test_down_advances_then_clamps_at_end(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.hovered = 0
+        for _ in range(50):
+            sel._handle_keydown(_key(headless_pygame, headless_pygame.K_DOWN))
+        assert sel.hovered == len(boards) - 1
+
+    def test_up_clamps_at_zero(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.hovered = 2
+        for _ in range(10):
+            sel._handle_keydown(_key(headless_pygame, headless_pygame.K_UP))
+        assert sel.hovered == 0
+
+    def test_enter_returns_hovered_board(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.hovered = 2
+        exit_loop, result = sel._handle_keydown(_key(headless_pygame, headless_pygame.K_RETURN))
+        assert exit_loop is True
+        assert result is sel._filtered()[2]
+
+    def test_kp_enter_also_selects(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.hovered = 1
+        exit_loop, result = sel._handle_keydown(_key(headless_pygame, headless_pygame.K_KP_ENTER))
+        assert exit_loop is True
+        assert result is sel._filtered()[1]
+
+    def test_enter_with_no_selection_continues(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.hovered = -1
+        exit_loop, result = sel._handle_keydown(_key(headless_pygame, headless_pygame.K_RETURN))
+        assert exit_loop is False
+        assert result is None
+
+    def test_escape_quits(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        exit_loop, result = sel._handle_keydown(_key(headless_pygame, headless_pygame.K_ESCAPE))
+        assert exit_loop is True
+        assert result is None
+
+    def test_nav_indexes_filtered_list(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen, initial_component_filters=["has_7seg"])
+        assert len(sel._filtered()) == 3
+        sel.hovered = -1
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_UP))  # last of filtered
+        assert sel.hovered == 2
+        exit_loop, result = sel._handle_keydown(_key(headless_pygame, headless_pygame.K_RETURN))
+        assert exit_loop is True
+        assert result is sel._filtered()[2]
+        assert result.name in {"Beta", "Epsilon", "Zeta"}
+
+    def test_typing_appends_and_resets_cursor(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.hovered = 3
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_g, unicode="g"))
+        assert sel.filter_text == "g"
+        assert sel.hovered == -1
+
+    def test_backspace_edits_filter_and_resets_cursor(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.filter_text = "ab"
+        sel.hovered = 2
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_BACKSPACE))
+        assert sel.filter_text == "a"
+        assert sel.hovered == -1
+
+    def test_pagedown_moves_by_a_page(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.hovered = 0
+        page = sel._page_rows()
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_PAGEDOWN))
+        assert sel.hovered == min(page, len(boards) - 1)
+
+    def test_nav_on_empty_list_is_safe(self, headless_pygame, screen, boards):
+        sel = BoardSelector(
+            boards,
+            screen,
+            initial_component_filters=["has_7seg"],
+            initial_vendor_filters=["Intel"],
+        )
+        assert sel._filtered() == []
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_DOWN))
+        assert sel.hovered == -1
+        exit_loop, result = sel._handle_keydown(_key(headless_pygame, headless_pygame.K_RETURN))
+        assert exit_loop is False
+        assert result is None
+
+
+class TestSortDropdownKeyboard:
+    def test_arrows_drive_dropdown_not_list(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel._sort_open = True
+        sel.hovered = 1
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_DOWN))
+        # The list cursor is untouched; the dropdown reveals the active option.
+        assert sel.hovered == 1
+        assert sel._hovered_sort_item == 0  # "name" is active by default
+
+    def test_dropdown_advances_after_reveal(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel._sort_open = True
+        sel._hovered_sort_item = -1
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_DOWN))  # reveal active (0)
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_DOWN))  # -> 1
+        assert sel._hovered_sort_item == 1
+
+    def test_dropdown_wraps_at_end(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel._sort_open = True
+        sel._hovered_sort_item = len(_SORT_OPTIONS) - 1
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_DOWN))
+        assert sel._hovered_sort_item == 0
+
+    def test_enter_selects_sort_and_closes_without_quitting(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel._sort_open = True
+        sel._hovered_sort_item = 1  # "vendor"
+        exit_loop, result = sel._handle_keydown(_key(headless_pygame, headless_pygame.K_RETURN))
+        assert exit_loop is False
+        assert result is None
+        assert sel._sort_open is False
+        assert sel.sort_key == _SORT_OPTIONS[1][0]
+
+    def test_escape_closes_dropdown_without_quitting(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel._sort_open = True
+        exit_loop, result = sel._handle_keydown(_key(headless_pygame, headless_pygame.K_ESCAPE))
+        assert exit_loop is False
+        assert result is None
+        assert sel._sort_open is False
+
+    def test_typing_while_open_closes_and_filters(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel._sort_open = True
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_g, unicode="g"))
+        assert sel._sort_open is False
+        assert sel.filter_text == "g"

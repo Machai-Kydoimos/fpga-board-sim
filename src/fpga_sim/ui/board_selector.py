@@ -220,22 +220,96 @@ class BoardSelector:
                         step = max(20, round(self.row_h * 3))
                         self.scroll += step
                 elif ev.type == pygame.KEYDOWN:
-                    if ev.key == pygame.K_ESCAPE:
-                        if self._sort_open:
-                            self._sort_open = False
-                        else:
-                            return None
-                    elif ev.key == pygame.K_BACKSPACE:
-                        self._sort_open = False
-                        self.filter_text = self.filter_text[:-1]
-                        self.scroll = 0
-                    elif ev.unicode and ev.unicode.isprintable():
-                        self._sort_open = False
-                        self.filter_text += ev.unicode
-                        self.scroll = 0
+                    exit_loop, result = self._handle_keydown(ev)
+                    if exit_loop:
+                        return result
 
             self._draw()
             clock.tick(30)
+
+    def _handle_keydown(self, ev: pygame.event.Event) -> tuple[bool, BoardDef | None]:
+        """Handle one KEYDOWN event.
+
+        Returns ``(exit_loop, value)``: when ``exit_loop`` is True the caller
+        should return ``value`` from :meth:`run` (a selected board, or None to
+        quit); when False the loop keeps running.
+        """
+        if ev.key == pygame.K_ESCAPE:
+            if self._sort_open:
+                self._sort_open = False
+                return False, None
+            return True, None
+
+        # While the sort dropdown is open, arrows/Enter drive it (mouse still works).
+        if self._sort_open and ev.key in (pygame.K_UP, pygame.K_DOWN):
+            self._move_sort_cursor(-1 if ev.key == pygame.K_UP else 1)
+        elif self._sort_open and ev.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+            if 0 <= self._hovered_sort_item < len(_SORT_OPTIONS):
+                self._sort_key = _SORT_OPTIONS[self._hovered_sort_item][0]
+            self._sort_open = False
+        elif ev.key == pygame.K_BACKSPACE:
+            self._sort_open = False
+            self.filter_text = self.filter_text[:-1]
+            self.scroll = 0
+            self.hovered = -1
+        elif ev.key in (pygame.K_UP, pygame.K_DOWN):
+            self._move_cursor(-1 if ev.key == pygame.K_UP else 1)
+        elif ev.key in (pygame.K_PAGEUP, pygame.K_PAGEDOWN):
+            page = self._page_rows()
+            self._move_cursor(-page if ev.key == pygame.K_PAGEUP else page)
+        elif ev.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+            f = self._filtered()
+            if 0 <= self.hovered < len(f):
+                return True, f[self.hovered]
+        elif ev.unicode and ev.unicode.isprintable():
+            self._sort_open = False
+            self.filter_text += ev.unicode
+            self.scroll = 0
+            self.hovered = -1
+        return False, None
+
+    def _page_rows(self) -> int:
+        """Return the number of fully visible rows — the Page Up/Down jump distance."""
+        viewport_h = self.height - self._hdr
+        return max(1, viewport_h // self.row_h)
+
+    def _ensure_visible(self, idx: int) -> None:
+        """Scroll the minimum amount needed to bring row ``idx`` fully into view."""
+        viewport_h = self.height - self._hdr
+        top = idx * self.row_h
+        if top < self.scroll:
+            self.scroll = top
+        elif top + self.row_h > self.scroll + viewport_h:
+            self.scroll = top + self.row_h - viewport_h
+        self.scroll = max(0, self.scroll)
+
+    def _move_cursor(self, delta: int) -> None:
+        """Move the keyboard cursor ``delta`` rows over the filtered list.
+
+        Clamps to the list bounds and auto-scrolls to keep the cursor visible.
+        With no current selection, Down enters at the top and Up at the bottom.
+        """
+        n = len(self._filtered())
+        if n == 0:
+            self.hovered = -1
+            return
+        if self.hovered < 0:
+            self.hovered = 0 if delta > 0 else n - 1
+        else:
+            self.hovered = max(0, min(n - 1, self.hovered + delta))
+        self._ensure_visible(self.hovered)
+
+    def _move_sort_cursor(self, delta: int) -> None:
+        """Move the highlight within the open sort dropdown, wrapping at the ends.
+
+        The first keypress reveals the currently active option; further presses move.
+        """
+        if self._hovered_sort_item < 0:
+            self._hovered_sort_item = next(
+                (i for i, (k, _) in enumerate(_SORT_OPTIONS) if k == self._sort_key), 0
+            )
+        else:
+            self._hovered_sort_item = (self._hovered_sort_item + delta) % len(_SORT_OPTIONS)
 
     def _hover(self, pos: tuple[int, int]) -> None:
         if self._sort_open:

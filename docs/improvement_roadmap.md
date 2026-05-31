@@ -1,6 +1,6 @@
 # Virtual FPGA Boards — Improvement Roadmap
 
-*Drafted 2026-05-19 · Updated 2026-05-31 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
+*Drafted 2026-05-19 · Updated 2026-06-01 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
 
 A comprehensive, impact-weighted roadmap covering improvements from two perspectives:
 
@@ -49,9 +49,9 @@ This document inventories all viable improvements and ranks them by impact.
 - **Triggers (decided 2026-05-31): a clickable `(?)` button + F1 + `?`, all opening the same overlay.** Three triggers because the audience is mixed — new users need a *visible* affordance, power users want a hotkey:
   - **`(?)` button** — the primary *discovery* path (U1 targets onboarding; a hidden hotkey is invisible to exactly those users). Top-right of the selector header (the title row at `board_selector.py:355-356` has free space on the right) and in the preview (corner `(?)` or via the footer). Render with the D4 shared button helper.
   - **F1** — universal GUI convention; non-printable, so it never conflicts on any screen.
-  - **`?`** — keyboard-app convention (Gmail / GitHub / Vim / `less`). Already free on the preview, picker, and sim screens (no text input there). On the **selector** it must be intercepted *before* the type-to-filter append at `board_selector.py:232` (`self.filter_text += ev.unicode`); match on `ev.unicode == "?"` (keyboard-layout-independent, unlike `Shift+/`) so it never reaches the filter. Reserving `?` costs nothing — no board name contains it.
-- **Legend must reflect shortcuts that actually exist when U1 ships.** As of 2026-05-31 the real shortcuts are: F1 / `?` (this overlay), ESC (back/cancel, all screens), Enter (Start Simulation on the preview; "Try Another File" in ErrorDialog), R (reset switches/buttons — preview only, `board_display.py:417`), S (toggle SimPanel — *simulation screen only*, `sim_testbench.py:370`), plus type-to-filter and mouse-wheel scroll on the selector. **U13 (arrow/Page nav + Enter-to-select) is now scheduled earlier in 1b**, so once it merges the legend should also list ↑/↓/PgUp/PgDn (navigate) and Enter (select) on the selector + picker — confirm U13 is in before finalising the legend. **P (pause) still does NOT exist** — it's a mouse-only overlay button in the sim screen, and the P key is U14, so omit P unless U14 lands first. **Implementation:** render the legend from a single `SHORTCUTS` constant so every future key (U13/U14/U15) has one obvious place to update — the structural guard against the legend drifting from the real handlers.
-- **Touches:** new `src/fpga_sim/ui/help_dialog.py` (register in `ui/__init__.py`), reusing the `ErrorDialog` snapshot-dim-centred-panel structure (`error_dialog.py`) for layout. Key wiring — match F1 and `?` in each `KEYDOWN` block: `board_selector.py:222-235` (intercept `?` *above* the printable-append branch at `:232`), `board_display.py:413-429` (`_handle_events`), `vhdl_picker.py:95-97` (ESC-only today). Button — add a hit-rect + draw in `board_selector._draw()` header and `board_display._draw()` footer, with click handling in `BoardSelector._click()` and `FPGABoard._handle_events()`.
+  - **`?`** — keyboard-app convention (Gmail / GitHub / Vim / `less`). Already free on the preview, picker, and sim screens (no text input there). On the **selector** it must be intercepted in `BoardSelector._handle_keydown()` *before* the printable-append branch (`self.filter_text += ev.unicode`); match on `ev.unicode == "?"` (keyboard-layout-independent, unlike `Shift+/`) so it never reaches the filter. Reserving `?` costs nothing — no board name contains it.
+- **Legend must reflect shortcuts that actually exist when U1 ships.** As of 2026-05-31 the real shortcuts are: F1 / `?` (this overlay), ESC (back/cancel, all screens), Enter (Start Simulation on the preview; "Try Another File" in ErrorDialog), R (reset switches/buttons — preview only, `board_display.py:417`), S (toggle SimPanel — *simulation screen only*, `sim_testbench.py:370`), plus type-to-filter and mouse-wheel scroll on the selector. **U13 (arrow/Page nav + Enter-to-select) shipped 2026-06-01**, so the legend must now list ↑/↓/PgUp/PgDn (navigate) and Enter (select) on the selector + picker as real, existing shortcuts. **P (pause) still does NOT exist** — it's a mouse-only overlay button in the sim screen, and the P key is U14, so omit P unless U14 lands first. **Implementation:** render the legend from a single `SHORTCUTS` constant so every future key (U13/U14/U15) has one obvious place to update — the structural guard against the legend drifting from the real handlers.
+- **Touches:** new `src/fpga_sim/ui/help_dialog.py` (register in `ui/__init__.py`), reusing the `ErrorDialog` snapshot-dim-centred-panel structure (`error_dialog.py`) for layout. Key wiring — match F1 and `?` in each screen's keydown handler (U13 extracted `_handle_keydown()` on both list screens): `BoardSelector._handle_keydown()` (intercept `?` *above* the printable-append branch), `board_display.py:413-429` (`_handle_events`), `VHDLFilePicker._handle_keydown()` (ESC / arrows / Enter today). Button — add a hit-rect + draw in `board_selector._draw()` header and `board_display._draw()` footer, with click handling in `BoardSelector._click()` and `FPGABoard._handle_events()`.
 - **Scope note:** The simulation screen is a *separate pygame process* (`sim/sim_testbench.py`, its own event loop at line ~367). Decide whether F1 / `?` help is in scope there too; if so it needs a fourth handler in `sim_testbench.py`. The launcher screens (selector / preview / picker) are the minimum.
 - **Effort:** M (modal + three trigger types across three screens + a `(?)` button widget).
 - **Dependencies:** Soft: **D4** (shared button helper) — the `(?)` trigger button and the overlay's Close button should both use it; landing D4 first avoids open-coding two more buttons.
@@ -139,7 +139,7 @@ This document inventories all viable improvements and ranks them by impact.
 |---|---|---|---|
 | ~~U11~~ | ~~`R` key to reset switches/buttons to default~~ ✅ | `ui/board_display.py` | XS |
 | ~~U12~~ | ~~Compact board summary format (e.g. `"4 LEDs · 2 BTN · 4 SW · 4-digit 7-seg"`)~~ ✅ | `board_loader.py` (`BoardDef.summary`) | XS |
-| U13 | Arrow / Page-Up / Page-Down navigation in board + file lists | `ui/board_selector.py`, `ui/vhdl_picker.py` | S |
+| ~~U13~~ | ~~Arrow / Page-Up / Page-Down navigation in board + file lists~~ ✅ | `ui/board_selector.py`, `ui/vhdl_picker.py` | S |
 | U14 | `P` key to pause/resume simulation; pause indicator in SimPanel | `sim/sim_testbench.py`, `ui/sim_panel.py` | S |
 | U15 | Compact mode for `SimPanel` (toggle via existing `S` shortcut family) | `ui/sim_panel.py:282-308` | S |
 | U16 | Enforce minimum window size (800x600) with friendly warning | `__main__.py:184-187` | XS |
@@ -151,7 +151,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 **Note on U18/U19:** Both require U5 (Settings dialog) for the `recent[]` data source and metrics toggle location respectively.
 
-**Note on U13 (scheduled in Sprint 1b, before U1):** Verified 2026-05-31 — neither list screen has keyboard selection today: `board_selector.run()` (`board_selector.py:222-235`) handles only ESC / Backspace / type-to-filter, and `vhdl_picker.run()` (`:95-97`) handles only ESC. So U13 is more than scrolling; it must add **(a)** ↑/↓/PgUp/PgDn to move the existing `self.hovered` cursor and keep it visible via `self.scroll`/`row_h`/`_hdr`, and **(b) Enter to activate the hovered row** (select board / open dir / pick file) — new on *both* screens. Arrow/Page keys are non-printable, so they don't collide with the selector's type-to-filter branch (`:232`). Sequenced before U1 so U1's legend can list ↑/↓/PgUp/PgDn + Enter as real shortcuts.
+**Note on U13 — done (2026-06-01):** Shipped keyboard navigation on both list screens. `board_selector.run()` and `vhdl_picker.run()` now delegate each KEYDOWN to a unit-testable `_handle_keydown()` returning `(exit_loop, value)`; `↑`/`↓` and `PgUp`/`PgDn` move the `self.hovered` cursor (auto-scrolled into view via the new `_ensure_visible`/`_page_rows` helpers, with no selection Down enters at top / Up at bottom), and `Enter`/`KP_Enter` activates the hovered row (select board · open dir · pick file). On the selector an open sort dropdown captures `↑`/`↓`/`Enter` while mouse interaction still works, and typing/Backspace still close it and edit the filter (cursor resets on filter change). The picker's click and Enter paths now share one `_activate()` helper. 32 new tests across `test_board_selector.py` + new `test_vhdl_picker.py`.
 
 ### Tier 4 — Larger features (long-horizon)
 
@@ -396,7 +396,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | Sprint | Theme | Items |
 |---|---|---|
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
-| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → U13 Arrow/Page nav → U1 Help dialog · U2 Analysis spinner · D2 Backend base class |
+| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → U1 Help dialog · U2 Analysis spinner · D2 Backend base class |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · D15 Colour consolidation · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
@@ -413,9 +413,9 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/ui/constants.py` — D15, U6, U17
 - `src/fpga_sim/ui/components.py` — U3, U9, D3, D15
 - `src/fpga_sim/ui/board_display.py` — U1, U3, U11, U16, D3, D4 ✅, D9 ✅ (simulator round-trips through `FPGABoard`), D15
-- `src/fpga_sim/ui/board_selector.py` — U0, U1, U8, U12, U13, D15
+- `src/fpga_sim/ui/board_selector.py` — U0, U1, U8, U12, U13 ✅, D15
 - `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4 ✅, D15
-- `src/fpga_sim/ui/vhdl_picker.py` — U1, U13, U18, D15
+- `src/fpga_sim/ui/vhdl_picker.py` — U1, U13 ✅, U18, D15
 - `src/fpga_sim/ui/error_dialog.py` — U4, D4 ✅, D15
 - New: `src/fpga_sim/ui/help_dialog.py` (U1), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/controller.py` (D6)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
