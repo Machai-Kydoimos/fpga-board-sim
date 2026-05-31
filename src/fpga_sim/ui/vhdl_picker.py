@@ -79,11 +79,7 @@ class VHDLFilePicker:
                     self._hover(ev.pos)
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
                     if ev.button == 1:
-                        result = self._click()
-                        if result == "rescan":
-                            self.scroll = 0
-                            self.hovered = -1
-                            continue
+                        result = self._activate()
                         if result is not None:
                             return result
                     elif ev.button == 4:
@@ -93,10 +89,75 @@ class VHDLFilePicker:
                         step = max(20, round(self.row_h * 3))
                         self.scroll += step
                 elif ev.type == pygame.KEYDOWN:
-                    if ev.key == pygame.K_ESCAPE:
-                        return None
+                    exit_loop, result = self._handle_keydown(ev)
+                    if exit_loop:
+                        return result
             self._draw()
             clock.tick(30)
+
+    def _activate(self) -> str | None:
+        """Act on the hovered row.
+
+        Open a directory (rescans and returns None) or return the selected
+        file's path. Returns None when nothing is hovered.
+        """
+        result = self._click()
+        if result == "rescan":
+            self.scroll = 0
+            self.hovered = -1
+            return None
+        return result
+
+    def _handle_keydown(self, ev: pygame.event.Event) -> tuple[bool, str | None]:
+        """Handle one KEYDOWN event.
+
+        Returns ``(exit_loop, value)``: when ``exit_loop`` is True the caller
+        should return ``value`` from :meth:`run` (a file path, or None to
+        cancel); when False the loop keeps running.
+        """
+        if ev.key == pygame.K_ESCAPE:
+            return True, None
+        if ev.key in (pygame.K_UP, pygame.K_DOWN):
+            self._move_cursor(-1 if ev.key == pygame.K_UP else 1)
+        elif ev.key in (pygame.K_PAGEUP, pygame.K_PAGEDOWN):
+            page = self._page_rows()
+            self._move_cursor(-page if ev.key == pygame.K_PAGEUP else page)
+        elif ev.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+            result = self._activate()
+            if result is not None:
+                return True, result
+        return False, None
+
+    def _page_rows(self) -> int:
+        """Return the number of fully visible rows — the Page Up/Down jump distance."""
+        viewport_h = self.height - self._hdr
+        return max(1, viewport_h // self.row_h)
+
+    def _ensure_visible(self, idx: int) -> None:
+        """Scroll the minimum amount needed to bring row ``idx`` fully into view."""
+        viewport_h = self.height - self._hdr
+        top = idx * self.row_h
+        if top < self.scroll:
+            self.scroll = top
+        elif top + self.row_h > self.scroll + viewport_h:
+            self.scroll = top + self.row_h - viewport_h
+        self.scroll = max(0, self.scroll)
+
+    def _move_cursor(self, delta: int) -> None:
+        """Move the keyboard cursor ``delta`` rows over the entry list.
+
+        Clamps to the list bounds and auto-scrolls to keep the cursor visible.
+        With no current selection, Down enters at the top and Up at the bottom.
+        """
+        n = len(self.entries)
+        if n == 0:
+            self.hovered = -1
+            return
+        if self.hovered < 0:
+            self.hovered = 0 if delta > 0 else n - 1
+        else:
+            self.hovered = max(0, min(n - 1, self.hovered + delta))
+        self._ensure_visible(self.hovered)
 
     def _hover(self, pos: tuple[int, int]) -> None:
         hdr = self._hdr

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Keyboard navigation** in the board selector and VHDL file picker —
+  **↑ / ↓** and **Page Up / Page Down** move the highlight and **Enter**
+  selects; on the selector, **Enter** also drives the sort dropdown when it is
+  open (U13)
 - **Board selector filtering & sort** — filter chips (Has LEDs / Switches /
   Buttons / 7-seg, plus per-vendor chips with an "Other" group) that compose
   with the text filter, a sort control with 7 modes (Name, Vendor, LEDs,
