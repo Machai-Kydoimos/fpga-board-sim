@@ -30,9 +30,39 @@ import pygame
 from fpga_sim.board_loader import BoardDef, ComponentInfo
 from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch
 from fpga_sim.ui.constants import BG_GREEN, WHITE, _ui_scale, get_font
+from fpga_sim.ui.widgets import ButtonStyle, draw_button
 
 if TYPE_CHECKING:
     from fpga_sim.sim_bridge import Simulator
+
+# ── Footer button styles ─────────────────────────────────────────────────────
+# Teal/slate for [Select Board] to set it apart from the blue file actions.
+_STYLE_SELECT_BOARD = ButtonStyle(bg=(15, 75, 90), bg_hover=(20, 100, 115))
+_STYLE_LOAD_VHDL = ButtonStyle(bg=(20, 60, 110), bg_hover=(30, 80, 140))
+_STYLE_START_SIM = ButtonStyle(
+    bg=(20, 90, 40),
+    bg_hover=(30, 120, 60),
+    bg_disabled=(30, 55, 35),
+    fg_disabled=(100, 140, 105),
+    border_disabled=(70, 100, 75),
+)
+# SIM toggle: GHDL = blue, NVC = purple.  When only one simulator is installed
+# the button is disabled (greyed) — except NVC keeps its purple fill, matching
+# the prior behaviour.
+_STYLE_SIM_TOGGLE_GHDL = ButtonStyle(
+    bg=(20, 60, 110),
+    bg_hover=(30, 80, 140),
+    bg_disabled=(50, 50, 60),
+    fg_disabled=(140, 140, 150),
+    border_disabled=(100, 100, 110),
+)
+_STYLE_SIM_TOGGLE_NVC = ButtonStyle(
+    bg=(80, 30, 100),
+    bg_hover=(100, 40, 130),
+    bg_disabled=(80, 30, 100),
+    fg_disabled=(140, 140, 150),
+    border_disabled=(100, 100, 110),
+)
 
 
 class FPGABoard:
@@ -558,77 +588,64 @@ class FPGABoard:
         mouse_pos = pygame.mouse.get_pos()
         gap = max(8, round(10 * s))
 
-        # Compute shared button height from font metrics
-        _sample = btn_font.render("X", True, WHITE)
-        btn_h = _sample.get_height() + 14
-
-        # Button row Y
+        # Shared button height from font metrics; button row pinned to the bottom.
+        btn_h = btn_font.get_height() + 14
         btn_y = self.height - btn_h - btn_margin_y
 
         # ── Left side: [Select Board]  [Load VHDL File] ───────────────────────
-
-        # [Select Board] — leftmost; uses teal/slate to distinguish from blue actions
-        sel_surf = btn_font.render("Select Board", True, WHITE)
-        sel_w = sel_surf.get_width() + 30
-        sel_x = btn_margin_x
-        self._select_board_btn_rect = pygame.Rect(sel_x, btn_y, sel_w, btn_h)
-        sb_hov = self._select_board_btn_rect.collidepoint(mouse_pos)
-        sel_bg = (20, 100, 115) if sb_hov else (15, 75, 90)
-        pygame.draw.rect(self.screen, sel_bg, self._select_board_btn_rect, border_radius=6)
-        pygame.draw.rect(self.screen, WHITE, self._select_board_btn_rect, 2, border_radius=6)
-        self.screen.blit(sel_surf, (sel_x + 15, btn_y + 7))
-
-        # [Load VHDL File] — right of Select Board
-        load_surf = btn_font.render("Load VHDL File", True, WHITE)
-        load_w = load_surf.get_width() + 30
-        load_x = sel_x + sel_w + gap
-        self._load_vhdl_btn_rect = pygame.Rect(load_x, btn_y, load_w, btn_h)
-        l_hov = self._load_vhdl_btn_rect.collidepoint(mouse_pos)
-        load_bg = (30, 80, 140) if l_hov else (20, 60, 110)
-        pygame.draw.rect(self.screen, load_bg, self._load_vhdl_btn_rect, border_radius=6)
-        pygame.draw.rect(self.screen, WHITE, self._load_vhdl_btn_rect, 2, border_radius=6)
-        self.screen.blit(load_surf, (load_x + 15, btn_y + 7))
-
-        # ── Right side: [SIM: GHDL]  [Start Simulation] ───────────────────────
-
-        can_simulate = self.vhdl_path is not None
-
-        # [Start Simulation] — rightmost, greyed when no VHDL loaded
-        start_w = btn_font.render("Start Simulation", True, WHITE).get_width() + 30
-        start_x = self.width - start_w - btn_margin_x
-        self._sim_btn_rect = pygame.Rect(start_x, btn_y, start_w, btn_h)
-        s_hov = can_simulate and self._sim_btn_rect.collidepoint(mouse_pos)
-        if can_simulate:
-            sim_bg = (30, 120, 60) if s_hov else (20, 90, 40)
-            sim_border, sim_fg = WHITE, WHITE
-        else:
-            sim_bg = (30, 55, 35)
-            sim_border = (70, 100, 75)
-            sim_fg = (100, 140, 105)
-        pygame.draw.rect(self.screen, sim_bg, self._sim_btn_rect, border_radius=6)
-        pygame.draw.rect(self.screen, sim_border, self._sim_btn_rect, 2, border_radius=6)
-        self.screen.blit(
-            btn_font.render("Start Simulation", True, sim_fg), (start_x + 15, btn_y + 7)
+        sel_w = btn_font.size("Select Board")[0] + 30
+        self._select_board_btn_rect = pygame.Rect(btn_margin_x, btn_y, sel_w, btn_h)
+        draw_button(
+            self.screen,
+            self._select_board_btn_rect,
+            "Select Board",
+            btn_font,
+            _STYLE_SELECT_BOARD,
+            hovered=self._select_board_btn_rect.collidepoint(mouse_pos),
         )
 
-        # [SIM: GHDL/NVC] toggle — left of Start Simulation
+        load_w = btn_font.size("Load VHDL File")[0] + 30
+        load_x = self._select_board_btn_rect.right + gap
+        self._load_vhdl_btn_rect = pygame.Rect(load_x, btn_y, load_w, btn_h)
+        draw_button(
+            self.screen,
+            self._load_vhdl_btn_rect,
+            "Load VHDL File",
+            btn_font,
+            _STYLE_LOAD_VHDL,
+            hovered=self._load_vhdl_btn_rect.collidepoint(mouse_pos),
+        )
+
+        # ── Right side: [SIM: …]  [Start Simulation] ──────────────────────────
+        can_simulate = self.vhdl_path is not None
+        start_w = btn_font.size("Start Simulation")[0] + 30
+        start_x = self.width - start_w - btn_margin_x
+        self._sim_btn_rect = pygame.Rect(start_x, btn_y, start_w, btn_h)
+        draw_button(
+            self.screen,
+            self._sim_btn_rect,
+            "Start Simulation",
+            btn_font,
+            _STYLE_START_SIM,
+            hovered=self._sim_btn_rect.collidepoint(mouse_pos),
+            enabled=can_simulate,
+        )
+
         toggle_label = f"SIM: {self.simulator.upper()}"
-        toggle_w = btn_font.render(toggle_label, True, WHITE).get_width() + 24
+        toggle_w = btn_font.size(toggle_label)[0] + 24
         toggle_x = start_x - toggle_w - gap
         self._sim_toggle_rect = pygame.Rect(toggle_x, btn_y, toggle_w, btn_h)
         can_toggle = len(self.available_simulators) > 1
-        t_hov = can_toggle and self._sim_toggle_rect.collidepoint(mouse_pos)
-        if self.simulator == "nvc":
-            toggle_bg = (100, 40, 130) if t_hov else (80, 30, 100)
-        elif can_toggle:
-            toggle_bg = (30, 80, 140) if t_hov else (20, 60, 110)
-        else:
-            toggle_bg = (50, 50, 60)
-        pygame.draw.rect(self.screen, toggle_bg, self._sim_toggle_rect, border_radius=6)
-        t_border = WHITE if can_toggle else (100, 100, 110)
-        pygame.draw.rect(self.screen, t_border, self._sim_toggle_rect, 2, border_radius=6)
-        t_fg = WHITE if can_toggle else (140, 140, 150)
-        self.screen.blit(btn_font.render(toggle_label, True, t_fg), (toggle_x + 12, btn_y + 7))
+        toggle_style = _STYLE_SIM_TOGGLE_NVC if self.simulator == "nvc" else _STYLE_SIM_TOGGLE_GHDL
+        draw_button(
+            self.screen,
+            self._sim_toggle_rect,
+            toggle_label,
+            btn_font,
+            toggle_style,
+            hovered=self._sim_toggle_rect.collidepoint(mouse_pos),
+            enabled=can_toggle,
+        )
 
         # ── VHDL status line (above button row) ───────────────────────────────
         status_f = get_font(max(10, round(13 * s)))

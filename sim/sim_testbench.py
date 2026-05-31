@@ -50,6 +50,33 @@ from fpga_sim.sim_session_log import save_session_stats
 from fpga_sim.ui import FPGABoard, SimPanel
 from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.sim_panel import _PANEL_H_BASE, _SPEED_DEFAULT
+from fpga_sim.ui.widgets import ButtonStyle, draw_button
+
+# ── Simulation-overlay button styles (Stop / Pause / Resume) ─────────────────
+_STOP_STYLE = ButtonStyle(
+    bg=(110, 28, 28),
+    bg_hover=(160, 40, 40),
+    fg=(240, 100, 100),
+    border=(220, 90, 90),
+    border_width=1,
+    radius=5,
+)
+_PAUSE_STYLE = ButtonStyle(
+    bg=(20, 60, 110),
+    bg_hover=(30, 80, 140),
+    fg=(255, 220, 80),
+    border=(80, 140, 220),
+    border_width=1,
+    radius=5,
+)
+_RESUME_STYLE = ButtonStyle(
+    bg=(100, 80, 20),
+    bg_hover=(130, 110, 30),
+    fg=(255, 220, 80),
+    border=(200, 180, 80),
+    border_width=1,
+    radius=5,
+)
 
 # ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
 _METRICS_PATH: str = os.environ.get("FPGA_SIM_METRICS", "")
@@ -421,15 +448,15 @@ async def interactive_sim(dut: object) -> None:
         # Board area bottom: top of panel when visible, else screen bottom
         _board_bottom = _sh - _board_offset
 
-        # Pause button text changes when paused
+        # Pause button label + style change when paused
         _pause_label = "[RESUME]" if panel.paused else "[PAUSE]"
-        _pause_surf = _ov_font.render(_pause_label, True, (255, 220, 80))
-        _pause_bw = _pause_surf.get_width() + _ov_pad_x * 2
-        _pause_bh = _pause_surf.get_height() + _ov_pad_y * 2
+        _pause_style = _RESUME_STYLE if panel.paused else _PAUSE_STYLE
+        _pause_bw = _ov_font.size(_pause_label)[0] + _ov_pad_x * 2
+        _pause_bh = _ov_font.get_height() + _ov_pad_y * 2
 
-        _stop_surf_ov = _ov_font.render("\u25a0 Stop", True, (240, 100, 100))
-        _stop_bw = _stop_surf_ov.get_width() + _ov_pad_x * 2
-        _stop_bh = _stop_surf_ov.get_height() + _ov_pad_y * 2
+        _stop_label = "\u25a0 Stop"
+        _stop_bw = _ov_font.size(_stop_label)[0] + _ov_pad_x * 2
+        _stop_bh = _ov_font.get_height() + _ov_pad_y * 2
 
         _btn_h = max(_pause_bh, _stop_bh)
         _btn_py = _board_bottom - _btn_h - _ov_margin
@@ -437,34 +464,25 @@ async def interactive_sim(dut: object) -> None:
         # Stop button (rightmost)
         _stop_bx = _sw - _stop_bw - _ov_margin
         _stop_btn_rect = pygame.Rect(_stop_bx, _btn_py, _stop_bw, _btn_h)
-        _stop_hov = _stop_btn_rect.collidepoint(pygame.mouse.get_pos())
-        _stop_bg = (160, 40, 40) if _stop_hov else (110, 28, 28)
-        pygame.draw.rect(screen, _stop_bg, _stop_btn_rect, border_radius=5)
-        pygame.draw.rect(screen, (220, 90, 90), _stop_btn_rect, 1, border_radius=5)
-        screen.blit(
-            _stop_surf_ov,
-            (
-                _stop_btn_rect.centerx - _stop_surf_ov.get_width() // 2,
-                _stop_btn_rect.centery - _stop_surf_ov.get_height() // 2,
-            ),
+        draw_button(
+            screen,
+            _stop_btn_rect,
+            _stop_label,
+            _ov_font,
+            _STOP_STYLE,
+            hovered=_stop_btn_rect.collidepoint(pygame.mouse.get_pos()),
         )
 
         # Pause button (left of Stop)
         _pause_bx = _stop_bx - _ov_gap - _pause_bw
         _pause_btn_rect = pygame.Rect(_pause_bx, _btn_py, _pause_bw, _btn_h)
-        _pause_hov = _pause_btn_rect.collidepoint(pygame.mouse.get_pos())
-        _pause_bg_base = (100, 80, 20) if panel.paused else (20, 60, 110)
-        _pause_bg_hot = (130, 110, 30) if panel.paused else (30, 80, 140)
-        _pause_bg = _pause_bg_hot if _pause_hov else _pause_bg_base
-        _pause_border = (200, 180, 80) if panel.paused else (80, 140, 220)
-        pygame.draw.rect(screen, _pause_bg, _pause_btn_rect, border_radius=5)
-        pygame.draw.rect(screen, _pause_border, _pause_btn_rect, 1, border_radius=5)
-        screen.blit(
-            _pause_surf,
-            (
-                _pause_btn_rect.centerx - _pause_surf.get_width() // 2,
-                _pause_btn_rect.centery - _pause_surf.get_height() // 2,
-            ),
+        draw_button(
+            screen,
+            _pause_btn_rect,
+            _pause_label,
+            _ov_font,
+            _pause_style,
+            hovered=_pause_btn_rect.collidepoint(pygame.mouse.get_pos()),
         )
 
         # ── "S: stats" hint (bottom-left) when panel is hidden ────────────────
