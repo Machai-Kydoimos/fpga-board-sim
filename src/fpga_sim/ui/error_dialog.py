@@ -4,7 +4,12 @@ import sys
 
 import pygame
 
-from fpga_sim.ui.constants import SEL_BG, WHITE, _ui_scale, get_font
+from fpga_sim.ui.constants import SEL_BG, _ui_scale, get_font
+from fpga_sim.ui.widgets import ButtonStyle, draw_button
+
+# Try-Another-File = green (default white border); Back-to-Boards = red.
+_STYLE_RETRY = ButtonStyle(bg=(25, 70, 25), bg_hover=(40, 110, 40))
+_STYLE_BACK = ButtonStyle(bg=(55, 25, 25), bg_hover=(90, 40, 40), border=(200, 100, 100))
 
 
 class ErrorDialog:
@@ -158,28 +163,24 @@ class ErrorDialog:
         mouse = pygame.mouse.get_pos()
 
         self._retry_rect = pygame.Rect(btn_start_x, btn_y, retry_w, btn_h)
-        retry_hov = self._retry_rect.collidepoint(mouse)
-        pygame.draw.rect(
+        draw_button(
             self.screen,
-            (40, 110, 40) if retry_hov else (25, 70, 25),
             self._retry_rect,
-            border_radius=6,
+            "Try Another File",
+            btn_f,
+            _STYLE_RETRY,
+            hovered=self._retry_rect.collidepoint(mouse),
         )
-        pygame.draw.rect(self.screen, WHITE, self._retry_rect, 2, border_radius=6)
-        rt = btn_f.render("Try Another File", True, WHITE)
-        self.screen.blit(rt, rt.get_rect(center=self._retry_rect.center))
 
         self._back_rect = pygame.Rect(btn_start_x + retry_w + btn_gap, btn_y, back_w, btn_h)
-        back_hov = self._back_rect.collidepoint(mouse)
-        pygame.draw.rect(
+        draw_button(
             self.screen,
-            (90, 40, 40) if back_hov else (55, 25, 25),
             self._back_rect,
-            border_radius=6,
+            "Back to Boards",
+            btn_f,
+            _STYLE_BACK,
+            hovered=self._back_rect.collidepoint(mouse),
         )
-        pygame.draw.rect(self.screen, (200, 100, 100), self._back_rect, 2, border_radius=6)
-        bt = btn_f.render("Back to Boards", True, WHITE)
-        self.screen.blit(bt, bt.get_rect(center=self._back_rect.center))
 
         # Keyboard shortcut hint below the panel
         hint_f = get_font(max(12, round(14 * s)))

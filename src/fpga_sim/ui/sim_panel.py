@@ -23,6 +23,20 @@ from collections import deque
 import pygame
 
 from fpga_sim.ui.constants import DARK_GRAY, GRAY, WHITE, YELLOW, _ui_scale, get_font
+from fpga_sim.ui.widgets import ButtonStyle, draw_button
+
+# Clock [-]/[+] stepper buttons (small, 1 px border).  Hover feedback added in D4.
+_STYLE_CLOCK = ButtonStyle(
+    bg=(55, 80, 55),
+    bg_hover=(75, 105, 75),
+    fg=WHITE,
+    border=(90, 130, 90),
+    border_width=1,
+    radius=3,
+    bg_disabled=(38, 50, 38),
+    fg_disabled=GRAY,
+    border_disabled=DARK_GRAY,
+)
 
 # ── Panel height base (pixels at 1.0 scale; actual height scales with window) ─
 
@@ -503,17 +517,34 @@ class SimPanel:
         btn_h = max(16, round(20 * s))
         btn_y = y0 + max(20, round(27 * s))
         cx = x + w // 2
+        mouse = pygame.mouse.get_pos()
 
         # [-] button
         minus_rect = pygame.Rect(cx - btn_w * 2 - 6, btn_y, btn_w, btn_h)
         can_dec = self._preset_idx > 0
-        _draw_btn(self.screen, minus_rect, "-", bold, enabled=can_dec)
+        draw_button(
+            self.screen,
+            minus_rect,
+            "-",
+            bold,
+            _STYLE_CLOCK,
+            hovered=can_dec and minus_rect.collidepoint(mouse),
+            enabled=can_dec,
+        )
         self._minus_rect = minus_rect
 
         # [+] button
         plus_rect = pygame.Rect(cx + btn_w + 6, btn_y, btn_w, btn_h)
         can_inc = self._preset_idx < len(self._clock_options) - 1
-        _draw_btn(self.screen, plus_rect, "+", bold, enabled=can_inc)
+        draw_button(
+            self.screen,
+            plus_rect,
+            "+",
+            bold,
+            _STYLE_CLOCK,
+            hovered=can_inc and plus_rect.collidepoint(mouse),
+            enabled=can_inc,
+        )
         self._plus_rect = plus_rect
 
         # Current clock label (between buttons)
@@ -530,30 +561,3 @@ class SimPanel:
         eff_y = btn_y + btn_h + max(3, round(5 * s))
         eff_surf = font.render(f"Eff: {_fmt_hz(self.effective_hz)}", True, (100, 200, 255))
         self.screen.blit(eff_surf, (x + (w - eff_surf.get_width()) // 2, eff_y))
-
-
-# ── Utility ───────────────────────────────────────────────────────────────────
-
-
-def _draw_btn(
-    screen: pygame.Surface,
-    rect: pygame.Rect,
-    label: str,
-    font: pygame.font.Font,
-    *,
-    enabled: bool = True,
-) -> None:
-    """Draw a small rectangular button with a centred label."""
-    bg = (55, 80, 55) if enabled else (38, 50, 38)
-    border = (90, 130, 90) if enabled else DARK_GRAY
-    fg = WHITE if enabled else GRAY
-    pygame.draw.rect(screen, bg, rect, border_radius=3)
-    pygame.draw.rect(screen, border, rect, 1, border_radius=3)
-    surf = font.render(label, True, fg)
-    screen.blit(
-        surf,
-        (
-            rect.centerx - surf.get_width() // 2,
-            rect.centery - surf.get_height() // 2,
-        ),
-    )

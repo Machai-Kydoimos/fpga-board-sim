@@ -31,6 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Simulator = Literal["ghdl", "nvc"]` alias (threaded through `sim_bridge`,
   `session_config`, `__main__`, and `FPGABoard`) so mypy rejects typos like
   `_backend("gdhl")`; no behavior change (D9)
+- Internal: extracted a shared `ui/widgets/button.py` (`ButtonStyle` +
+  `draw_button`) and routed all four open-coded button sites through it — the
+  board-preview footer, the error dialog, the simulation-speed panel's clock
+  steppers, and the sim Stop/Pause overlay. Removes the per-site styling drift
+  (each had hand-rolled hover/border/radius); the clock steppers now show hover
+  feedback. No other visual change (D4)
 
 ## [0.5.0] - 2026-05-25
 

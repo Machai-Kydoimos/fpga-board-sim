@@ -219,7 +219,8 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** None. Soft: simplifies U3 (tooltips can use unified hit-testing).
 - **Done when:** `LED`, `Switch`, `Button` inherit from `UIComponent`; no duplicate `__init__` / `label` code; all component tests pass.
 
-#### D4. Shared button-drawing helper
+#### D4. Shared button-drawing helper ✅
+- **Completed:** 2026-05-31. Added `src/fpga_sim/ui/widgets/button.py` (`ButtonStyle` + `draw_button`) and routed all four sites through it — board_display footer, error_dialog, sim_panel clock steppers, and the sim `[■ Stop]`/`[Pause]` overlay; deleted `sim_panel._draw_btn`. The clock steppers gained hover feedback; visuals otherwise preserved. New `tests/test_button_widget.py` (7 tests); full suite (900 tests) green.
 - **Why:** Four button-drawing sites (across *both* processes) hand-roll rounded-rect buttons with near-identical but drifting code — even the corner radius varies (3 / 5 / 6 / 10). The drift is real and visible:
   - `board_display.py:568-644` — four footer buttons (Select Board `:571-579`, Load VHDL `:582-590`, Start Simulation `:596-612`, SIM toggle `:614-631`), each with its **own** hover colour scheme (teal / blue / green / purple) and a disabled state.
   - `error_dialog.py:160-182` — Try-Another-File / Back-to-Boards buttons, open-coded with hover.
@@ -343,10 +344,10 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 
 | Item | Benefits from | Reason |
 |---|---|---|
-| **U1** (Help dialog) | **D4** (Shared button helper) | Consistent "Close" button styling |
+| **U1** (Help dialog) | **D4** (Shared button helper) ✅ | Consistent "Close" button styling |
 | **U3** (Tooltips) | **D3** (UIComponent base) | Unified hit-testing across component types |
-| **U5** (Settings dialog) | **D4** (Shared button helper) | Reuse button rendering in dialog |
-| **U7** (In-sim toolbar) | **D4** (Shared button helper) | Consistent toolbar button styling |
+| **U5** (Settings dialog) | **D4** (Shared button helper) ✅ | Reuse button rendering in dialog |
+| **U7** (In-sim toolbar) | **D4** (Shared button helper) ✅ | Consistent toolbar button styling |
 | **U8** (Splash) | **U0** (Board filtering) | Left panel already has filter chips |
 | ~~**D9** (Literal types)~~ ✅ | — | Extend the `Simulator` alias in `sim_bridge.py` to add `"iverilog"` when U20 lands |
 | **D13** (Env tests) | **D5** (Path helper) | Cleaner branches are easier to test |
@@ -380,7 +381,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | Sprint | Theme | Items |
 |---|---|---|
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
-| **1b** | Small features + DRY foundations | **D4 Shared button helper** (first — unblocks the buttons below) → U13 Arrow/Page nav → U1 Help dialog · U2 Analysis spinner · D2 Backend base class |
+| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → U13 Arrow/Page nav → U1 Help dialog · U2 Analysis spinner · D2 Backend base class |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
@@ -396,12 +397,12 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/session_config.py` — U5, U18, D9 ✅, D14
 - `src/fpga_sim/ui/constants.py` — U6, U17
 - `src/fpga_sim/ui/components.py` — U3, U9, D3
-- `src/fpga_sim/ui/board_display.py` — U1, U3, U11, U16, D3, D4, D9 ✅ (simulator round-trips through `FPGABoard`)
+- `src/fpga_sim/ui/board_display.py` — U1, U3, U11, U16, D3, D4 ✅, D9 ✅ (simulator round-trips through `FPGABoard`)
 - `src/fpga_sim/ui/board_selector.py` — U0, U1, U8, U12, U13
-- `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4
+- `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4 ✅
 - `src/fpga_sim/ui/vhdl_picker.py` — U1, U13, U18
-- `src/fpga_sim/ui/error_dialog.py` — U4, D4
-- New: `src/fpga_sim/ui/help_dialog.py` (U1), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4), `src/fpga_sim/controller.py` (D6)
+- `src/fpga_sim/ui/error_dialog.py` — U4, D4 ✅
+- New: `src/fpga_sim/ui/help_dialog.py` (U1), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/controller.py` (D6)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U7, U9, U14, U22
 - `pyproject.toml` — D8
