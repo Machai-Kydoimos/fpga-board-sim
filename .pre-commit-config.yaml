@@ -5,7 +5,17 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.1.0
+  # mypy runs as a local hook (not mirrors-mypy) so it uses the project venv,
+  # where pygame / find_libpython / cocotb are importable. The isolated env that
+  # mirrors-mypy builds lacks those deps, degrading expressions to Any and
+  # tripping warn_return_any — false failures that CI's `uv run mypy .` never
+  # sees. Running the exact CI command keeps local and CI in lockstep; the mypy
+  # version is pinned by uv.lock rather than a hook rev.
+  - repo: local
     hooks:
       - id: mypy
+        name: mypy
+        entry: uv run mypy .
+        language: system
+        types: [python]
+        pass_filenames: false
