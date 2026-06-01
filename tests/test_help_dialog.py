@@ -1,11 +1,8 @@
 """Tests for HelpDialog: dismiss logic, rendering, content table, trigger button."""
 
-import os
-
 import pygame
 import pytest
 
-from fpga_sim.ui.constants import get_font
 from fpga_sim.ui.help_dialog import (
     CONTRACT,
     SHORTCUTS,
@@ -13,20 +10,6 @@ from fpga_sim.ui.help_dialog import (
     HelpDialog,
     draw_help_button,
 )
-
-
-@pytest.fixture(scope="module")
-def headless_pygame():
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    pygame.init()
-    # The get_font LRU cache outlives pygame.quit(); a Font cached under a prior
-    # module's pygame is stale after re-init and segfaults on render.  Clear it
-    # on the way in (don't inherit stale fonts) and out (don't leak ours).
-    get_font.cache_clear()
-    yield pygame
-    get_font.cache_clear()
-    pygame.quit()
 
 
 @pytest.fixture(scope="module")
