@@ -3,22 +3,7 @@
 Currently covers the R key (reset switches off, release held buttons).
 """
 
-import os
-
-import pytest
-
 from fpga_sim.board_loader import BoardDef, ComponentInfo
-
-
-@pytest.fixture(scope="module")
-def headless_pygame():
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    import pygame
-
-    pygame.init()
-    yield pygame
-    pygame.quit()
 
 
 def _sample_board() -> BoardDef:

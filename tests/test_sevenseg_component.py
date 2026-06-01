@@ -1,21 +1,12 @@
 """Tests for the SevenSeg UI widget (components.py)."""
 
-import os
-
 import pygame
 import pytest
 
 
 @pytest.fixture(scope="module")
-def surface():
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    pygame.init()
-    yield pygame.Surface((400, 300))
-    from fpga_sim.ui.constants import get_font
-
-    get_font.cache_clear()
-    pygame.quit()
+def surface(headless_pygame):
+    return pygame.Surface((400, 300))
 
 
 def test_zero_glyph_middle_bar_off():

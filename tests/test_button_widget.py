@@ -1,7 +1,5 @@
 """Tests for the shared button widget (ui/widgets/button.py)."""
 
-import os
-
 import pygame
 import pytest
 
@@ -10,14 +8,8 @@ from fpga_sim.ui.widgets import ButtonStyle, draw_button
 
 
 @pytest.fixture(scope="module")
-def screen():
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    pygame.init()
-    surf = pygame.display.set_mode((200, 120))
-    yield surf
-    get_font.cache_clear()
-    pygame.quit()
+def screen(headless_pygame):
+    return headless_pygame.display.set_mode((200, 120))
 
 
 def _fill_rgb(screen, style, **kwargs):
