@@ -2,7 +2,6 @@
 and smoke-render tests at various window sizes."""
 
 import dataclasses
-import os
 import tempfile
 
 import pytest
@@ -37,17 +36,6 @@ def test_ui_scale_small():
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
-
-
-@pytest.fixture(scope="module")
-def headless_pygame():
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    import pygame
-
-    pygame.init()
-    yield pygame
-    pygame.quit()
 
 
 @pytest.fixture(scope="module")

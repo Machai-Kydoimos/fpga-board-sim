@@ -1,23 +1,10 @@
 """Tests for VHDLFilePicker: scanning, keyboard navigation, and activation."""
 
-import os
-
 import pytest
 
 from fpga_sim.ui.vhdl_picker import VHDLFilePicker
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
-
-
-@pytest.fixture(scope="module")
-def headless_pygame():
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    import pygame
-
-    pygame.init()
-    yield pygame
-    pygame.quit()
 
 
 @pytest.fixture(scope="module")
