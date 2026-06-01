@@ -13,6 +13,7 @@ from fpga_sim.ui.constants import (
     _ui_scale,
     get_font,
 )
+from fpga_sim.ui.help_dialog import HelpDialog
 
 
 class VHDLFilePicker:
@@ -30,6 +31,8 @@ class VHDLFilePicker:
         self.scroll = 0
         self.hovered = -1
         self.current_dir = Path(start_dir or Path.cwd())
+        # Set by F1 / ?; consumed by run() to open the help overlay.
+        self._help_requested = False
         self._scan()
 
         if preselect_name:
@@ -92,6 +95,9 @@ class VHDLFilePicker:
                     exit_loop, result = self._handle_keydown(ev)
                     if exit_loop:
                         return result
+            if self._help_requested:
+                self._help_requested = False
+                HelpDialog(self.screen).run(clock)
             self._draw()
             clock.tick(30)
 
@@ -117,6 +123,9 @@ class VHDLFilePicker:
         """
         if ev.key == pygame.K_ESCAPE:
             return True, None
+        if ev.key == pygame.K_F1 or ev.unicode == "?":
+            self._help_requested = True
+            return False, None
         if ev.key in (pygame.K_UP, pygame.K_DOWN):
             self._move_cursor(-1 if ev.key == pygame.K_UP else 1)
         elif ev.key in (pygame.K_PAGEUP, pygame.K_PAGEDOWN):

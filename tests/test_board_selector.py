@@ -533,3 +533,42 @@ class TestSortDropdownKeyboard:
         sel._handle_keydown(_key(headless_pygame, headless_pygame.K_g, unicode="g"))
         assert sel._sort_open is False
         assert sel.filter_text == "g"
+
+
+class TestHelpTrigger:
+    def test_f1_requests_help_without_filtering(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        exit_loop, result = sel._handle_keydown(_key(headless_pygame, headless_pygame.K_F1))
+        assert (exit_loop, result) == (False, None)
+        assert sel._help_requested is True
+        assert sel.filter_text == ""
+
+    def test_question_mark_requests_help_not_filter(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        # `?` is intercepted above the printable-append branch, so it must not
+        # leak into the board filter.
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_SLASH, unicode="?"))
+        assert sel._help_requested is True
+        assert sel.filter_text == ""
+
+    def test_question_mark_preserves_existing_filter(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.filter_text = "art"
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_SLASH, unicode="?"))
+        assert sel._help_requested is True
+        assert sel.filter_text == "art"
+
+    def test_question_mark_closes_open_dropdown(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel._sort_open = True
+        sel._handle_keydown(_key(headless_pygame, headless_pygame.K_SLASH, unicode="?"))
+        assert sel._help_requested is True
+        assert sel._sort_open is False
+
+    def test_help_button_click_requests_help(self, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel._draw()  # populates self._help_rect
+        assert sel._help_rect is not None
+        result = sel._click(sel._help_rect.center)
+        assert result is None
+        assert sel._help_requested is True

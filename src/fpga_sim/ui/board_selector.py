@@ -12,6 +12,7 @@ from fpga_sim.ui.constants import (
     _ui_scale,
     get_font,
 )
+from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
 
 _CHIP_ACTIVE = (45, 110, 55)
 _CHIP_INACTIVE = (50, 50, 60)
@@ -88,8 +89,12 @@ class BoardSelector:
         self._chip_rects: list[tuple[pygame.Rect, str, str]] = []
         self._sort_rect = pygame.Rect(0, 0, 0, 0)
         self._sort_item_rects: list[pygame.Rect] = []
+        self._help_rect: pygame.Rect | None = None
         self._hovered_chip: str | None = None
         self._hovered_sort_item = -1
+
+        # Set by the (?) button / F1 / ?; consumed by run() to open the overlay.
+        self._help_requested = False
 
         # Detect which board names appear more than once (from different sources)
         name_counts: dict[str, int] = {}
@@ -224,6 +229,10 @@ class BoardSelector:
                     if exit_loop:
                         return result
 
+            if self._help_requested:
+                self._help_requested = False
+                HelpDialog(self.screen).run(clock)
+
             self._draw()
             clock.tick(30)
 
@@ -239,6 +248,13 @@ class BoardSelector:
                 self._sort_open = False
                 return False, None
             return True, None
+
+        # Help overlay: F1 (non-printable) or `?`.  Match `?` here, above the
+        # printable-append branch below, so it opens help instead of filtering.
+        if ev.key == pygame.K_F1 or ev.unicode == "?":
+            self._help_requested = True
+            self._sort_open = False
+            return False, None
 
         # While the sort dropdown is open, arrows/Enter drive it (mouse still works).
         if self._sort_open and ev.key in (pygame.K_UP, pygame.K_DOWN):
@@ -323,6 +339,10 @@ class BoardSelector:
             return
 
         self._hovered_chip = None
+        if self._help_rect and self._help_rect.collidepoint(pos):
+            self._hovered_chip = "_help"
+            self.hovered = -1
+            return
         for rect, _, key in self._chip_rects:
             if rect.collidepoint(pos):
                 self._hovered_chip = key
@@ -343,6 +363,11 @@ class BoardSelector:
         self.hovered = idx if 0 <= idx < len(f) else -1
 
     def _click(self, pos: tuple[int, int]) -> BoardDef | None:
+        if self._help_rect and self._help_rect.collidepoint(pos):
+            self._help_requested = True
+            self._sort_open = False
+            return None
+
         if self._sort_open:
             for i, rect in enumerate(self._sort_item_rects):
                 if rect.collidepoint(pos):
@@ -428,6 +453,16 @@ class BoardSelector:
         pygame.draw.rect(self.screen, SEL_BG, (0, 0, self.width, hdr))
         title = title_f.render("FPGA Simulator — Select Board", True, WHITE)
         self.screen.blit(title, (20, 8))
+
+        # Help (?) button — top-right of the title row.
+        help_size = max(22, round(28 * s))
+        self._help_rect = draw_help_button(
+            self.screen,
+            right=self.width - 20,
+            top=8,
+            size=help_size,
+            mouse=pygame.mouse.get_pos(),
+        )
 
         # Filter text box
         filter_y = 8 + title_f.get_height() + 4
