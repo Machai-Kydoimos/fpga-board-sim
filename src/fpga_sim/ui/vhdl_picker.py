@@ -98,8 +98,22 @@ class VHDLFilePicker:
             if self._help_requested:
                 self._help_requested = False
                 HelpDialog(self.screen).run(clock)
+                self._sync_to_surface()
             self._draw()
             clock.tick(30)
+
+    def _sync_to_surface(self) -> None:
+        """Re-sync to the live surface size after the help overlay closes.
+
+        A WINDOWRESIZED that arrives while HelpDialog owns the event loop never
+        reaches the picker, leaving its cached width/height stale even though
+        the display surface has already auto-resized.  Reconcile from the
+        surface; reset scroll only on a real size change.
+        """
+        w, h = self.screen.get_size()
+        if (w, h) != (self.width, self.height):
+            self.width, self.height = w, h
+            self.scroll = 0
 
     def _activate(self) -> str | None:
         """Act on the hovered row.

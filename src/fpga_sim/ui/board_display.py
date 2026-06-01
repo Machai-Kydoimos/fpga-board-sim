@@ -301,6 +301,7 @@ class FPGABoard:
             if self._help_requested:
                 self._help_requested = False
                 HelpDialog(self.screen).run(self.clock)
+                self._sync_to_surface()
             self._draw()
             self.clock.tick(60)
         if self._simulate:
@@ -308,6 +309,24 @@ class FPGABoard:
         if self._load_vhdl:
             return "load_vhdl"
         return "back" if self._go_back else "quit"
+
+    def _resize(self, win_w: int, win_h: int) -> None:
+        """Apply a new *window* size: update dimensions and reflow the layout."""
+        self.width = win_w
+        self.height = win_h - self._height_offset
+        self._layout()
+
+    def _sync_to_surface(self) -> None:
+        """Reflow to the live surface size after a blocking overlay closes.
+
+        A resize that happens while HelpDialog owns the event loop never
+        reaches this screen, so its cached size and component layout go stale
+        even though the display surface has already auto-resized.  Reconcile
+        from the surface so the board re-scales the moment help is dismissed.
+        """
+        scr_w, scr_h = self.screen.get_size()
+        if (scr_w, scr_h) != (self.width, self.height + self._height_offset):
+            self._resize(scr_w, scr_h)
 
     # ── layout engine ────────────────────────────────────────────────
 
@@ -471,8 +490,7 @@ class FPGABoard:
                     self.running = False
 
             elif event.type == pygame.WINDOWRESIZED:
-                self.width, self.height = event.x, event.y - self._height_offset
-                self._layout()
+                self._resize(event.x, event.y)
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 # Help (?) button

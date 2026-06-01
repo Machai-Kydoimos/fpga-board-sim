@@ -572,3 +572,23 @@ class TestHelpTrigger:
         result = sel._click(sel._help_rect.center)
         assert result is None
         assert sel._help_requested is True
+
+
+class TestHelpResizeReconcile:
+    """A resize while the help overlay is open must reflow the selector on close."""
+
+    def test_sync_picks_up_resized_surface(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.scroll = 120
+        # Simulate the display surface having auto-resized while help was open.
+        sel.screen = headless_pygame.Surface((1400, 950))
+        sel._sync_to_surface()
+        assert (sel.width, sel.height) == (1400, 950)
+        assert sel.scroll == 0  # reset on a real size change
+
+    def test_sync_without_resize_preserves_scroll(self, headless_pygame, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.scroll = 120
+        sel._sync_to_surface()  # surface unchanged (1024x700)
+        assert (sel.width, sel.height) == (1024, 700)
+        assert sel.scroll == 120

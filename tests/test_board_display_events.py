@@ -164,3 +164,24 @@ def test_help_button_click_requests_help(headless_pygame):
     )
     board._handle_events([click])
     assert board._help_requested is True
+
+
+# ── Resize reconciliation after the help overlay closes ──────────────────────
+
+
+def test_help_sync_reflows_to_resized_surface(headless_pygame):
+    """A resize during help must reflow the board layout once help closes."""
+    board = _make_board(headless_pygame)
+    before = board.leds[0].rect.copy()
+    board.screen = headless_pygame.Surface((1500, 1000))  # auto-resized display
+    board._sync_to_surface()
+    assert (board.width, board.height) == (1500, 1000)  # _height_offset is 0 here
+    assert board.leds[0].rect != before  # layout reflowed to the new size
+
+
+def test_help_sync_without_resize_is_stable(headless_pygame):
+    board = _make_board(headless_pygame)
+    before = board.leds[0].rect.copy()
+    board._sync_to_surface()  # surface unchanged (1024x700)
+    assert (board.width, board.height) == (1024, 700)
+    assert board.leds[0].rect == before

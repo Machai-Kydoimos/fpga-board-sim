@@ -232,9 +232,24 @@ class BoardSelector:
             if self._help_requested:
                 self._help_requested = False
                 HelpDialog(self.screen).run(clock)
+                self._sync_to_surface()
 
             self._draw()
             clock.tick(30)
+
+    def _sync_to_surface(self) -> None:
+        """Re-sync to the live surface size after a blocking overlay closes.
+
+        A WINDOWRESIZED that arrives while HelpDialog owns the event loop never
+        reaches the selector, so its cached width/height go stale even though
+        the display surface has already auto-resized.  Reconcile from the
+        surface; reset scroll only on a real size change so simply opening and
+        closing help never jostles the user's scroll position.
+        """
+        w, h = self.screen.get_size()
+        if (w, h) != (self.width, self.height):
+            self.width, self.height = w, h
+            self.scroll = 0
 
     def _handle_keydown(self, ev: pygame.event.Event) -> tuple[bool, BoardDef | None]:
         """Handle one KEYDOWN event.
