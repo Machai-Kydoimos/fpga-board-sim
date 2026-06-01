@@ -1,24 +1,11 @@
 """Tests for BoardSelector: faceted filtering, sorting, and scroll behaviour."""
 
-import os
-
 import pytest
 
 from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
 from fpga_sim.ui.board_selector import _SORT_OPTIONS, BoardSelector
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
-
-
-@pytest.fixture(scope="module")
-def headless_pygame():
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    import pygame
-
-    pygame.init()
-    yield pygame
-    pygame.quit()
 
 
 @pytest.fixture(scope="module")

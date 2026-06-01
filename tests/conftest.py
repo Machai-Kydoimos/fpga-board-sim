@@ -1,8 +1,36 @@
 """Shared pytest fixtures and helpers for all test modules."""
 
+import os
+
 import pytest
 
 from fpga_sim.sim_bridge import _find_ghdl, _NVCBackend
+
+
+@pytest.fixture(scope="session")
+def headless_pygame():
+    """Initialise pygame once per session with the dummy SDL drivers.
+
+    Centralising init/quit here (rather than per-module) keeps pygame alive
+    for the whole session, so the module-global ``get_font`` LRU cache never
+    holds ``Font`` objects across a ``pygame.quit()`` / ``init()`` boundary —
+    a stale ``Font`` rendered after a re-init segfaults the interpreter.  The
+    cache is cleared once, just before the single quit at session end.
+
+    Requested by name from the UI test modules (directly, or via their
+    ``screen`` / ``surface`` fixtures); non-UI tests never trigger it, so
+    pygame is only imported and initialised when a test actually needs it.
+    """
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+    import pygame
+
+    pygame.init()
+    yield pygame
+    from fpga_sim.ui.constants import get_font
+
+    get_font.cache_clear()
+    pygame.quit()
 
 
 def _7seg_board():

@@ -1,22 +1,9 @@
 """Tests for SimPanel: clock options, update_timing rolling averages,
 and FPGABoard.set_height_offset()."""
 
-import os
-
 import pytest
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
-
-
-@pytest.fixture(scope="module")
-def headless_pygame():
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-    os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
-    import pygame
-
-    pygame.init()
-    yield pygame
-    pygame.quit()
 
 
 @pytest.fixture(scope="module")
