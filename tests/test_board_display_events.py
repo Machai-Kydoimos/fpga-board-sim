@@ -110,3 +110,63 @@ def test_r_resets_switches_and_buttons_together(headless_pygame):
     board._handle_events([_r_keydown(headless_pygame)])
     assert all(not sw.state for sw in board.switches)
     assert all(not btn.pressed for btn in board.buttons)
+
+
+# ── Help overlay triggers (F1 / ? / the (?) button) ──────────────────────────
+
+
+def _keydown(pygame, key, unicode=""):
+    return pygame.event.Event(pygame.KEYDOWN, {"key": key, "mod": 0, "unicode": unicode})
+
+
+def test_f1_requests_help(headless_pygame):
+    board = _make_board(headless_pygame)
+    board._handle_events([_keydown(headless_pygame, headless_pygame.K_F1)])
+    assert board._help_requested is True
+
+
+def test_question_mark_requests_help(headless_pygame):
+    board = _make_board(headless_pygame)
+    board._handle_events([_keydown(headless_pygame, headless_pygame.K_SLASH, "?")])
+    assert board._help_requested is True
+
+
+def test_r_key_without_unicode_does_not_crash(headless_pygame):
+    """A sparse synthetic event (no .unicode) must not raise in the F1/? guard."""
+    board = _make_board(headless_pygame)
+    board.switches[0].state = True
+    board._handle_events([_r_keydown(headless_pygame)])  # event has no 'unicode'
+    assert board._help_requested is False
+    assert all(not sw.state for sw in board.switches)
+
+
+def test_help_button_click_requests_help(headless_pygame):
+    board = _make_board(headless_pygame)
+    board._draw()  # populates self._help_btn_rect
+    assert board._help_btn_rect is not None
+    click = headless_pygame.event.Event(
+        headless_pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": board._help_btn_rect.center}
+    )
+    board._handle_events([click])
+    assert board._help_requested is True
+
+
+# ── Resize reconciliation after the help overlay closes ──────────────────────
+
+
+def test_help_sync_reflows_to_resized_surface(headless_pygame):
+    """A resize during help must reflow the board layout once help closes."""
+    board = _make_board(headless_pygame)
+    before = board.leds[0].rect.copy()
+    board.screen = headless_pygame.Surface((1500, 1000))  # auto-resized display
+    board._sync_to_surface()
+    assert (board.width, board.height) == (1500, 1000)  # _height_offset is 0 here
+    assert board.leds[0].rect != before  # layout reflowed to the new size
+
+
+def test_help_sync_without_resize_is_stable(headless_pygame):
+    board = _make_board(headless_pygame)
+    before = board.leds[0].rect.copy()
+    board._sync_to_surface()  # surface unchanged (1024x700)
+    assert (board.width, board.height) == (1024, 700)
+    assert board.leds[0].rect == before

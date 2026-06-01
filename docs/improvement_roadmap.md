@@ -13,7 +13,7 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~5,800 LOC across 10+ Python modules, 20 test files (880+ tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 275 board definitions from four sources (272 loadable), performance heavily tuned (PR #31), v0.5.0 released.
+The simulator is mature: ~5,800 LOC across 10+ Python modules, 24 test files (960 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 275 board definitions from four sources (272 loadable), performance heavily tuned (PR #31), v0.5.0 released.
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically and now show four patterns:
 
@@ -43,7 +43,10 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** None.
 - **Done when:** filter chips render in the header, compose with the text filter, the board count updates to show "N of 272 boards", and sort cycles through all three modes.
 
-#### U1. Help / About overlay (clickable `(?)` button · F1 · `?`)
+#### U1. Help / About overlay (clickable `(?)` button · F1 · `?`) ✅
+- **Completed:** 2026-06-01.
+- **Delivered:** New `src/fpga_sim/ui/help_dialog.py` — a blocking `HelpDialog` (snapshot-dim-centred-panel, reusing the D4 button helper) with a 4-step workflow, a two-column keyboard-shortcut legend, and the VHDL design-contract summary (scrollable + scrollbar for small windows). The legend renders from a single module-level `SHORTCUTS` table (plus `WORKFLOW` / `CONTRACT`) so it can't drift from the real handlers; it lists the shortcuts that exist today (incl. U13's ↑/↓/PgUp/PgDn + Enter) and omits P (still U14). Triggers wired on all three launcher screens — F1 and `?` (intercepted in `BoardSelector._handle_keydown` *above* the printable-append branch, and via `getattr(ev, "unicode", "")` in `FPGABoard._handle_events`) — plus a shared circular `(?)` button (`draw_help_button` / `HELP_BUTTON_STYLE`) in the selector header and the preview corner. Dismiss via Esc/F1/`?`, the Close button, or a click outside; the overlay runs its own loop so no keystroke leaks into the filter. Because that loop also swallows `WINDOWRESIZED`, each parent screen reconciles to the live surface size (`_sync_to_surface()`, reflowing `FPGABoard`'s layout) when the overlay closes — a resize while help is open re-scales the underlying screen the moment it's dismissed, instead of leaving the old layout clipped to the new window. Registered in `ui/__init__.py`. 36 new tests (`test_help_dialog.py` + selector/picker/display additions); full suite 966 green.
+- **Scope note:** Delivered on the three launcher screens (selector / preview / picker), the stated minimum. The simulation subprocess (`sim/sim_testbench.py`) is intentionally out of scope (separate process, own loop); F1/`?` set an inert flag there that nothing consumes.
 - **Why:** Currently nothing in-app teaches the user the workflow or shortcuts; README is great but invisible at runtime.
 - **What:** Modal overlay with a 4-step workflow diagram, keyboard shortcut legend, the design-contract summary, and a pointer to `hdl/blinky.vhd` as a working example.
 - **Triggers (decided 2026-05-31): a clickable `(?)` button + F1 + `?`, all opening the same overlay.** Three triggers because the audience is mixed — new users need a *visible* affordance, power users want a hotkey:
@@ -396,7 +399,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | Sprint | Theme | Items |
 |---|---|---|
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
-| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → U1 Help dialog · U2 Analysis spinner · D2 Backend base class |
+| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → U2 Analysis spinner · D2 Backend base class |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · D15 Colour consolidation · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
@@ -406,18 +409,18 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 ## Critical files modified across the roadmap
 
-- `src/fpga_sim/__main__.py` — U1, U2, U7, D6, D9 ✅
+- `src/fpga_sim/__main__.py` — U2, U7, D6, D9 ✅
 - `src/fpga_sim/sim_bridge.py` — U4, U10, U21, D1, D2, D5, D7, D9 ✅ (defines `Simulator`)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅
 - `src/fpga_sim/session_config.py` — U5, U18, D9 ✅, D14
 - `src/fpga_sim/ui/constants.py` — D15, U6, U17
 - `src/fpga_sim/ui/components.py` — U3, U9, D3, D15
-- `src/fpga_sim/ui/board_display.py` — U1, U3, U11, U16, D3, D4 ✅, D9 ✅ (simulator round-trips through `FPGABoard`), D15
-- `src/fpga_sim/ui/board_selector.py` — U0, U1, U8, U12, U13 ✅, D15
+- `src/fpga_sim/ui/board_display.py` — U1 ✅, U3, U11, U16, D3, D4 ✅, D9 ✅ (simulator round-trips through `FPGABoard`), D15
+- `src/fpga_sim/ui/board_selector.py` — U0, U1 ✅, U8, U12, U13 ✅, D15
 - `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4 ✅, D15
-- `src/fpga_sim/ui/vhdl_picker.py` — U1, U13 ✅, U18, D15
+- `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15
 - `src/fpga_sim/ui/error_dialog.py` — U4, D4 ✅, D15
-- New: `src/fpga_sim/ui/help_dialog.py` (U1), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/controller.py` (D6)
+- New: `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/controller.py` (D6)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U7, U9, U14, U22, D15
 - `pyproject.toml` — D8
@@ -441,7 +444,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (884 tests across 20 files including UI scaling, board selector filtering, board loader, both backends, 7-seg). All sprints must keep this green.
+1. **Tests** — `uv run pytest` (960 tests across 24 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, help overlay). All sprints must keep this green.
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy src/` (the latter tightens under D8).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).

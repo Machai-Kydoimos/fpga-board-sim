@@ -139,6 +139,8 @@ uv run fpga-sim --sim nvc       # NVC (available via winget; untested on Windows
 
 A list of 250+ FPGA boards appears. Type to filter, click to select.
 
+Need a refresher at any launcher screen? Press **F1** or **?**, or click the **(?)** button (top-right of the selector header and the preview corner) to open an in-app help overlay covering the workflow, keyboard shortcuts, and the VHDL design contract.
+
 ### 2. Preview the board
 
 The board renders with LEDs, buttons, switches, and — on supported boards — a 7-segment display, all matching the real hardware. Components show their resource names and pin assignments.
@@ -148,6 +150,7 @@ The board renders with LEDs, buttons, switches, and — on supported boards — 
 - **`SIM: GHDL` / `SIM: NVC`** toggle → cycle between installed simulators
 - **"Start Simulation"** button → opens the VHDL file picker
 - **R** → reset all switches off and release any held buttons
+- **F1 / ? / (?)** → open the help overlay
 - **ESC** → back to board list
 
 ### 3. Select a VHDL file

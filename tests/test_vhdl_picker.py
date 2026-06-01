@@ -125,3 +125,36 @@ class TestPickerKeyboardNav:
         page = p._page_rows()
         p._handle_keydown(_key(headless_pygame, headless_pygame.K_PAGEDOWN))
         assert p.hovered == min(page, len(p.entries) - 1)
+
+
+class TestPickerHelpTrigger:
+    def test_f1_requests_help(self, headless_pygame, screen, workdir):
+        p = VHDLFilePicker(screen, start_dir=workdir)
+        exit_loop, result = p._handle_keydown(_key(headless_pygame, headless_pygame.K_F1))
+        assert (exit_loop, result) == (False, None)
+        assert p._help_requested is True
+
+    def test_question_mark_requests_help(self, headless_pygame, screen, workdir):
+        p = VHDLFilePicker(screen, start_dir=workdir)
+        exit_loop, result = p._handle_keydown(
+            _key(headless_pygame, headless_pygame.K_SLASH, unicode="?")
+        )
+        assert (exit_loop, result) == (False, None)
+        assert p._help_requested is True
+
+
+class TestPickerHelpResizeReconcile:
+    def test_sync_picks_up_resized_surface(self, headless_pygame, screen, workdir):
+        p = VHDLFilePicker(screen, start_dir=workdir)
+        p.scroll = 90
+        p.screen = headless_pygame.Surface((1500, 1000))
+        p._sync_to_surface()
+        assert (p.width, p.height) == (1500, 1000)
+        assert p.scroll == 0
+
+    def test_sync_without_resize_preserves_scroll(self, headless_pygame, screen, workdir):
+        p = VHDLFilePicker(screen, start_dir=workdir)
+        p.scroll = 90
+        p._sync_to_surface()
+        assert (p.width, p.height) == (1024, 700)
+        assert p.scroll == 90

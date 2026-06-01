@@ -30,6 +30,7 @@ import pygame
 from fpga_sim.board_loader import BoardDef, ComponentInfo
 from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch
 from fpga_sim.ui.constants import BG_GREEN, WHITE, _ui_scale, get_font
+from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
 from fpga_sim.ui.widgets import ButtonStyle, draw_button
 
 if TYPE_CHECKING:
@@ -220,6 +221,9 @@ class FPGABoard:
         self._load_vhdl_btn_rect: pygame.Rect | None = None
         self._select_board_btn_rect: pygame.Rect | None = None
         self._sim_toggle_rect: pygame.Rect | None = None
+        self._help_btn_rect: pygame.Rect | None = None
+        # Set by the (?) button / F1 / ?; consumed by run() to open the overlay.
+        self._help_requested = False
         self._layout()
 
     # ── public API ───────────────────────────────────────────────────
@@ -294,6 +298,10 @@ class FPGABoard:
         self._load_vhdl = False
         while self.running:
             self._handle_events()
+            if self._help_requested:
+                self._help_requested = False
+                HelpDialog(self.screen).run(self.clock)
+                self._sync_to_surface()
             self._draw()
             self.clock.tick(60)
         if self._simulate:
@@ -301,6 +309,24 @@ class FPGABoard:
         if self._load_vhdl:
             return "load_vhdl"
         return "back" if self._go_back else "quit"
+
+    def _resize(self, win_w: int, win_h: int) -> None:
+        """Apply a new *window* size: update dimensions and reflow the layout."""
+        self.width = win_w
+        self.height = win_h - self._height_offset
+        self._layout()
+
+    def _sync_to_surface(self) -> None:
+        """Reflow to the live surface size after a blocking overlay closes.
+
+        A resize that happens while HelpDialog owns the event loop never
+        reaches this screen, so its cached size and component layout go stale
+        even though the display surface has already auto-resized.  Reconcile
+        from the surface so the board re-scales the moment help is dismissed.
+        """
+        scr_w, scr_h = self.screen.get_size()
+        if (scr_w, scr_h) != (self.width, self.height + self._height_offset):
+            self._resize(scr_w, scr_h)
 
     # ── layout engine ────────────────────────────────────────────────
 
@@ -444,6 +470,11 @@ class FPGABoard:
                 self._go_back = True
                 self.running = False
 
+            elif event.type == pygame.KEYDOWN and (
+                event.key == pygame.K_F1 or getattr(event, "unicode", "") == "?"
+            ):
+                self._help_requested = True
+
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 for sw in self.switches:
                     if sw.state:
@@ -459,10 +490,14 @@ class FPGABoard:
                     self.running = False
 
             elif event.type == pygame.WINDOWRESIZED:
-                self.width, self.height = event.x, event.y - self._height_offset
-                self._layout()
+                self._resize(event.x, event.y)
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                # Help (?) button
+                if self._help_btn_rect and self._help_btn_rect.collidepoint(event.pos):
+                    self._help_requested = True
+                    return
+
                 # Simulator toggle (cycle to next available simulator)
                 if (
                     self._sim_toggle_rect
@@ -587,6 +622,16 @@ class FPGABoard:
         btn_margin_y = max(15, round(20 * s))
         mouse_pos = pygame.mouse.get_pos()
         gap = max(8, round(10 * s))
+
+        # Help (?) button — top-right corner.
+        help_margin = max(12, round(16 * s))
+        self._help_btn_rect = draw_help_button(
+            self.screen,
+            right=self.width - help_margin,
+            top=help_margin,
+            size=max(24, round(30 * s)),
+            mouse=mouse_pos,
+        )
 
         # Shared button height from font metrics; button row pinned to the bottom.
         btn_h = btn_font.get_height() + 14
