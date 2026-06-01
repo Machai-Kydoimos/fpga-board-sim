@@ -176,6 +176,17 @@ setup.  A few things that matter for contributors:
 
 - **No display needed.** All tests use `SDL_VIDEODRIVER=dummy` so they
   run headlessly in CI and on servers.
+- **Randomized order (`pytest-randomly`).** Tests run in a random order
+  each session — the seed is printed as `Using --randomly-seed=N` — which
+  guards against hidden inter-test coupling (global state leaking across
+  modules). To reproduce a failure, re-run with that exact seed:
+  `uv run pytest -p randomly --randomly-seed=N`; to force the old
+  deterministic collection order, use `uv run pytest -p no:randomly`. A
+  test that only fails under some seeds is a real ordering bug — fix the
+  shared state, don't pin the seed. (Concretely: never give a test module
+  its own pygame `init`/`quit` fixture — use the shared session
+  `headless_pygame` in `tests/conftest.py`. A mid-session `pygame.quit()`
+  invalidates the cached fonts other modules render with.)
 - **`sim/test_blinky.py`** contains headless cocotb tests for the blinky
   design.  **`sim/test_7seg.py`** contains the equivalent tests for the
   `counter_7seg` design.  Both run via pytest through a cocotb–pytest
