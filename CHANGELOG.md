@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **In-app help overlay** — a Help / About modal reachable from every
+  launcher screen via **F1**, **?**, or a **(?)** button (board-selector
+  header and preview corner). Shows a 4-step workflow, a keyboard-shortcut
+  legend (rendered from a single source of truth), and the VHDL
+  design-contract summary; dismiss with Esc / F1 / ?, the Close button, or a
+  click outside. Resizing the window while it is open re-scales the screen
+  beneath on close (U1)
 - **Keyboard navigation** in the board selector and VHDL file picker —
   **↑ / ↓** and **Page Up / Page Down** move the highlight and **Enter**
   selects; on the selector, **Enter** also drives the sort dropdown when it is
