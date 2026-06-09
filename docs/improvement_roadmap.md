@@ -448,5 +448,5 @@ Per-item verification is described in each entry's "Done when" criterion above. 
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy src/` (the latter tightens under D8).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).
-5. **Headless CI** — every PR runs the existing Linux + Windows x GHDL + NVC x Py 3.10-3.12 matrix.
+5. **Headless CI** — every PR runs the existing Linux + Windows x GHDL + NVC x Py 3.10-3.13 matrix.
 6. **Visual checks** — for UI work, screenshot the affected screen on Linux and attach to the PR; no automated visual diff today.
