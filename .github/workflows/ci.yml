@@ -32,7 +32,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.10", "3.12"]
+        python-version: ["3.10", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
@@ -47,7 +47,7 @@ jobs:
 
   test-linux-ghdl:
     name: Test Linux + GHDL (Python 3.12)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned: matches the ubuntu24.04 GHDL release binary below
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
@@ -55,8 +55,20 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --group dev
-      - name: Install GHDL
-        run: sudo apt install -y ghdl
+      - name: Install GHDL v6.0.0 (pinned release, matches Windows job)
+        run: |
+          ver="6.0.0"
+          url="https://github.com/ghdl/ghdl/releases/download/v$ver/ghdl-mcode-$ver-ubuntu24.04-x86_64.tar.gz"
+          curl -sSL -o ghdl.tar.gz "$url"
+          expected="30d6a977b8456d140bbafecbbe64b1947a3d92eeae8f5e6d9f528a174f9566e7"
+          actual="$(sha256sum ghdl.tar.gz | cut -d' ' -f1)"
+          if [ "$actual" != "$expected" ]; then
+            echo "GHDL checksum mismatch: expected $expected, got $actual" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/ghdl"
+          tar -xzf ghdl.tar.gz -C "$HOME/ghdl"
+          dirname "$(find "$HOME/ghdl" -name ghdl -type f | head -1)" >> "$GITHUB_PATH"
       - name: Verify GHDL
         run: ghdl --version
       - name: Run full test suite
@@ -75,7 +87,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --group dev
-      - uses: nickg/setup-nvc@b63bf358b7120f089f1c6da184f29bc8413ef470  # master
+      - uses: nickg/setup-nvc@b63bf358b7120f089f1c6da184f29bc8413ef470  # v1
       - name: Verify NVC
         run: nvc --version
       - name: Run full test suite

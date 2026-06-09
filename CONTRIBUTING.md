@@ -206,8 +206,8 @@ Every push and pull request runs the following jobs:
 | Job | Runner | Simulators installed | Pytest filter |
 |-----|--------|----------------------|---------------|
 | Lint & type-check | ubuntu-latest | none | n/a |
-| Test (matrix) | ubuntu + windows × py3.10 + py3.12 | none | `-m "not slow"` |
-| Test Linux + GHDL | ubuntu-latest | `apt install ghdl` | full suite |
+| Test (matrix) | ubuntu + windows × py3.10 + py3.12 + py3.13 | none | `-m "not slow"` |
+| Test Linux + GHDL | ubuntu-24.04 | GHDL tarball from GitHub Releases (pinned v6.0.0) | full suite |
 | Test Linux + NVC | ubuntu-latest | `nickg/setup-nvc` action | full suite |
 | Test Windows + GHDL | windows-latest | GHDL zip from GitHub Releases | full suite |
 
@@ -232,6 +232,8 @@ A PR cannot be merged until these five checks all pass:
 - `Test (windows-latest, Python 3.10)`
 - `Test (windows-latest, Python 3.12)`
 
+The `Python 3.13` matrix jobs also run on every PR but are not yet required
+checks (add them to branch protection once they have reported at least once).
 The simulator-specific jobs are not required checks — they surface
 regressions but do not block merge on their own.  If you introduce a
 change that touches `sim_bridge.py` or the simulator backends, confirm
