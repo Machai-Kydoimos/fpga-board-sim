@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for contributing to the FPGA Simulator.  This document covers
+Thank you for contributing to the FPGA Simulator. This document covers
 everything a developer needs beyond the user-facing [README](README.md).
 
 ---
@@ -58,20 +58,21 @@ shell, not PowerShell). `&&` chaining works natively in bash.
 
 ## Running quality checks
 
-All three must pass before a PR is merged.  The pre-commit hooks enforce
-ruff and mypy automatically; run them manually at any time:
+All of these must pass before a PR is merged. The pre-commit hooks enforce
+ruff, mypy, and rumdl automatically; run them manually at any time:
 
 ```bash
 uv run ruff check .        # linter — must report 0 errors
 uv run ruff format --check . # formatter check (ruff format . to auto-fix)
 uv run mypy .              # type checker — must report 0 errors
+uv run rumdl check .       # Markdown linter (rumdl check --fix to auto-fix)
 uv run pytest              # test suite — all fast tests must pass (no display needed)
 ```
 
-Running all four at once:
+Running them all at once:
 
 ```bash
-uv run ruff check . && uv run mypy . && uv run pytest
+uv run ruff check . && uv run mypy . && uv run rumdl check . && uv run pytest
 ```
 
 > **Windows / PowerShell 5.1:** `&&` is not supported — upgrade to
@@ -84,7 +85,7 @@ uv run ruff check . && uv run mypy . && uv run pytest
 
 ### Ruff (linter + formatter)
 
-Configured in `pyproject.toml` under `[tool.ruff]`.  Enabled rule sets:
+Configured in `pyproject.toml` under `[tool.ruff]`. Enabled rule sets:
 
 | Set | Rules | Purpose |
 |-----|-------|---------|
@@ -107,7 +108,7 @@ Configured in `pyproject.toml` under `[tool.ruff]`.  Enabled rule sets:
 
 ### Mypy (type checker)
 
-Configured in `pyproject.toml` under `[tool.mypy]`.  Current strictness:
+Configured in `pyproject.toml` under `[tool.mypy]`. Current strictness:
 
 ```toml
 disallow_untyped_defs    = true   # all functions must be annotated
@@ -123,6 +124,23 @@ via `[[tool.mypy.overrides]]` — consistent with the ruff exemptions above.
 The `boards/` directory (JSON board definitions) is excluded from both ruff
 and mypy; its files are data, not source code.
 
+### rumdl (Markdown linter)
+
+[rumdl](https://github.com/rvben/rumdl) lints and formats the repo's Markdown,
+configured in `pyproject.toml` under `[tool.rumdl]`. It respects `.gitignore`,
+so untracked files (e.g. `memory/`) are skipped automatically.
+
+Two rules are disabled project-wide:
+
+- **MD013** (line length) — prose, tables, and long links read fine unwrapped,
+  and hard-wrapping Markdown hurts diffs without improving rendering.
+- **MD036** (emphasis-as-heading) — its autofix rewrites bold/italic lead-ins
+  and bylines into real headings, changing document structure and the TOC.
+
+`rumdl check --fix` (or `rumdl fmt`) auto-corrects the remaining issues — mostly
+blank lines around code fences and lists, fenced-block languages, and stray
+whitespace.
+
 ---
 
 ## Type annotation conventions
@@ -134,7 +152,7 @@ The pre-commit hook enforces this via mypy.
 
 ### pygame and cocotb boundaries
 
-pygame's type stubs are incomplete.  Where mypy cannot verify a type
+pygame's type stubs are incomplete. Where mypy cannot verify a type
 across a pygame call, use `cast()` rather than `# type: ignore`:
 
 ```python
@@ -143,7 +161,7 @@ surface = cast(pygame.Surface, board.screen.copy())
 ```
 
 cocotb DUT signal attributes (`dut.sw`, `dut.btn`, `dut.led`, `dut.clk_half_ns`)
-are resolved dynamically at simulation time.  All DUT attribute accesses
+are resolved dynamically at simulation time. All DUT attribute accesses
 carry `# type: ignore[attr-defined]` — this is correct, not a workaround:
 
 ```python
@@ -172,7 +190,7 @@ without any `# type: ignore` suppressions.
 ## Test suite notes
 
 See the **Running Tests** section in the README for platform-specific
-setup.  A few things that matter for contributors:
+setup. A few things that matter for contributors:
 
 - **No display needed.** All tests use `SDL_VIDEODRIVER=dummy` so they
   run headlessly in CI and on servers.
@@ -188,10 +206,10 @@ setup.  A few things that matter for contributors:
   `headless_pygame` in `tests/conftest.py`. A mid-session `pygame.quit()`
   invalidates the cached fonts other modules render with.)
 - **`sim/test_blinky.py`** contains headless cocotb tests for the blinky
-  design.  **`sim/test_7seg.py`** contains the equivalent tests for the
-  `counter_7seg` design.  Both run via pytest through a cocotb–pytest
+  design. **`sim/test_7seg.py`** contains the equivalent tests for the
+  `counter_7seg` design. Both run via pytest through a cocotb–pytest
   integration and require GHDL or NVC to be installed.
-- **`tests/` has an `__init__.py`**; `sim/` does not.  This matters if
+- **`tests/` has an `__init__.py`**; `sim/` does not. This matters if
   you add a mypy override — use `"tests.*"` for `tests/` and the bare
   module name (e.g. `"test_blinky"`) for `sim/` files.
 - The fast test suite (`-m "not slow"`) must pass with zero failures
@@ -215,7 +233,7 @@ Every push and pull request runs the following jobs:
 
 Tests in `test_ghdl.py`, `test_nvc.py`, `test_simulation.py`, and
 `test_vhdl_validation.py` are marked `@pytest.mark.slow` — they invoke a
-real simulator subprocess.  The pure-Python matrix jobs skip them with
+real simulator subprocess. The pure-Python matrix jobs skip them with
 `-m "not slow"`.
 
 The `ghdl` and `nvc` fixtures both call `pytest.skip()` when the
@@ -235,7 +253,7 @@ A PR cannot be merged until these five checks all pass:
 The `Python 3.13` matrix jobs also run on every PR but are not yet required
 checks (add them to branch protection once they have reported at least once).
 The simulator-specific jobs are not required checks — they surface
-regressions but do not block merge on their own.  If you introduce a
+regressions but do not block merge on their own. If you introduce a
 change that touches `sim_bridge.py` or the simulator backends, confirm
 those jobs are green before merging.
 
@@ -256,6 +274,7 @@ This project follows [Semantic Versioning](https://semver.org):
 ### Release checklist
 
 1. **Create a release branch** from `main`:
+
    ```bash
    git checkout main && git pull
    git checkout -b release/vX.Y.Z
@@ -266,11 +285,13 @@ This project follows [Semantic Versioning](https://semver.org):
    bottom of the file.
 
 3. **Bump the version** in `pyproject.toml`:
+
    ```toml
    version = "X.Y.Z"
    ```
 
 4. **Commit, push, and open a PR** targeting `main`:
+
    ```bash
    git add CHANGELOG.md pyproject.toml
    git commit -m "chore: bump version to X.Y.Z and update CHANGELOG"
@@ -279,13 +300,14 @@ This project follows [Semantic Versioning](https://semver.org):
    ```
 
 5. **After the PR is merged**, tag the merge commit and push the tag:
+
    ```bash
    git checkout main && git pull
    git tag -a vX.Y.Z -m "Release vX.Y.Z"
    git push origin vX.Y.Z
    ```
 
-6. **Create a GitHub Release** from the tag.  Use the `[X.Y.Z]` section of
+6. **Create a GitHub Release** from the tag. Use the `[X.Y.Z]` section of
    `CHANGELOG.md` as the release body.
 
 ---
@@ -295,24 +317,24 @@ This project follows [Semantic Versioning](https://semver.org):
 The README's **How It Works** section covers the architecture in depth.
 A few additional notes for contributors:
 
-**Two pygame processes.**  The launcher (board selector → VHDL picker)
+**Two pygame processes.** The launcher (board selector → VHDL picker)
 calls `pygame.quit()` before spawning the simulator subprocess.
 `sim/sim_testbench.py` calls `pygame.init()` fresh inside that subprocess.
 Never assume pygame state persists across the boundary.
 
-**VHDL-side clock.**  The clock is driven by the generated `sim_wrapper`
-entity (see `sim/sim_wrapper_template.vhd`), not by a Python coroutine.  This eliminates per-half-period GPI callbacks — only two GPI
-calls happen per frame (the Timer endpoints).  The wrapper exposes
+**VHDL-side clock.** The clock is driven by the generated `sim_wrapper`
+entity (see `sim/sim_wrapper_template.vhd`), not by a Python coroutine. This eliminates per-half-period GPI callbacks — only two GPI
+calls happen per frame (the Timer endpoints). The wrapper exposes
 `clk_half_ns`; the testbench writes to it when the panel's **[-]/[+]**
 buttons change the virtual clock frequency.
 
-**SimPanel.**  `src/fpga_sim/ui/sim_panel.py` owns the stats strip drawn at the bottom
-of the simulation window.  Its `panel_height` is a property that re-evaluates
+**SimPanel.** `src/fpga_sim/ui/sim_panel.py` owns the stats strip drawn at the bottom
+of the simulation window. Its `panel_height` is a property that re-evaluates
 `_ui_scale(w, h)` on every access — call `board.set_height_offset(panel.panel_height)`
 whenever the window resizes to keep the board and panel areas in sync.
 `sim_testbench.py` does this check at the top of every frame.
 
-**Board sync scripts.**  Three scripts in `scripts/` download upstream
+**Board sync scripts.** Three scripts in `scripts/` download upstream
 board definitions and convert them to our JSON schema:
 
 | Script | Source | Approach |
@@ -324,18 +346,18 @@ board definitions and convert them to our JSON schema:
 All three download a tarball via `--ref` (default: `main`/`master`), support
 `--dry-run`, and write to their respective `boards/<source>/` subdirectory.
 The Digilent XDC script also auto-generates `port_conventions` from XDC port
-names.  To add a new upstream source, follow the same pattern: download,
+names. To add a new upstream source, follow the same pattern: download,
 parse, emit JSON conforming to `boards/schema/board.schema.json`.
 
-**`fpga_sim/board_loader.py` mock namespace.**  The amaranth-boards and
+**`fpga_sim/board_loader.py` mock namespace.** The amaranth-boards and
 litex-boards sync scripts both use mock-exec: strip imports, inject mock
-classes into a namespace, and `exec()` the board file.  The mock classes are
+classes into a namespace, and `exec()` the board file. The mock classes are
 typed with `object` at variadic boundaries (`*ios: object`, `**kwargs: object`)
-because the upstream APIs accept heterogeneous arguments.  Use `cast()`
+because the upstream APIs accept heterogeneous arguments. Use `cast()`
 if you need a narrower type after extracting a value from a mock object.
 
 **Session state** is stored in `~/.fpga_simulator/session.json` and
-loaded at startup.  It is intentionally best-effort — load and save
+loaded at startup. It is intentionally best-effort — load and save
 failures are silently ignored so a corrupt or missing file never breaks
-the app.  After each simulation run, a separate per-session performance
+the app. After each simulation run, a separate per-session performance
 summary is appended to `~/.fpga_simulator/sessions/` by `fpga_sim/sim_session_log.py`.

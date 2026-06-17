@@ -25,26 +25,30 @@ Board definitions ship as JSON files in `boards/` — no submodule initializatio
 
 ### Install a VHDL simulator
 
-Install **GHDL**, **NVC**, or both.  GHDL is the default and is available in most package managers; NVC compiles designs to native machine code via LLVM and may be faster on complex designs.
+Install **GHDL**, **NVC**, or both. GHDL is the default and is available in most package managers; NVC compiles designs to native machine code via LLVM and may be faster on complex designs.
 
 #### GHDL
 
 **Windows:**
+
 ```powershell
 winget install ghdl.ghdl.ucrt64.mcode
 ```
 
 **Linux (Ubuntu/Debian):**
+
 ```bash
 sudo apt install ghdl
 ```
 
 **Linux (Fedora):**
+
 ```bash
 sudo dnf install ghdl
 ```
 
 **macOS:**
+
 ```bash
 brew install ghdl
 ```
@@ -52,9 +56,11 @@ brew install ghdl
 #### NVC
 
 **Windows (native — PowerShell):**
+
 ```powershell
 winget install NickGasson.NVC
 ```
+
 > NVC is available on Windows but has **not been tested** with this simulator's
 > cocotb VHPI pipeline on Windows. GHDL is the fully tested choice. If you try NVC
 > on Windows, please report results in an issue.
@@ -63,26 +69,31 @@ winget install NickGasson.NVC
 > see [Windows: MSYS2 alternative](#windows-msys2-alternative) below.
 
 **macOS / Linux (Homebrew):**
+
 ```bash
 brew install nvc
 ```
 
 **Arch Linux (AUR):**
+
 ```bash
 yay -S nvc   # or your preferred AUR helper
 ```
 
 **Gentoo:**
+
 ```bash
 sudo emerge sci-electronics/nvc
 ```
 
 **FreeBSD:**
+
 ```bash
 sudo pkg install nvc
 ```
 
 **Linux (from source — Debian/Ubuntu):**
+
 ```bash
 # Install build dependencies:
 sudo apt install build-essential automake autoconf flex check \
@@ -94,6 +105,7 @@ git clone https://github.com/nickg/nvc && cd nvc
 ```
 
 **Linux (from source — Fedora/RHEL):**
+
 ```bash
 sudo dnf install autoconf automake flex check llvm-devel \
   libffi-devel zlib-ng-compat-devel libzstd-devel elfutils-devel
@@ -112,6 +124,7 @@ uv sync
 ### Run the simulator
 
 **Linux / macOS:**
+
 ```bash
 uv run fpga-sim                 # use default/saved simulator
 uv run fpga-sim --sim nvc       # force NVC
@@ -124,6 +137,7 @@ uv run fpga-sim --benchmark 10 --board ArtyA7_35Platform --vhdl hdl/blinky.vhd
 ```
 
 **Windows** (PowerShell required — does not work in Command Prompt):
+
 ```powershell
 uv run fpga-sim                 # uses saved/default simulator
 uv run fpga-sim --sim ghdl      # force GHDL (fully tested on Windows)
@@ -191,11 +205,11 @@ A logarithmic slider from **0.001× to 10×** (default **0.1×**) controls how m
 
 **[-] / [+]** cycle through the clock frequencies declared in the board's amaranth-boards definition. The new half-period is written directly to the VHDL wrapper; the clock changes within one half-period without restarting the simulator. A **[PAUSE] / [RESUME]** button freezes simulation while keeping the simulator process alive.
 
-> **Session persistence:** The last-used board, VHDL file, and simulator choice are saved to `~/.fpga_simulator/session.json` and pre-selected on the next run.  After each simulation session a compact performance summary is also written to `~/.fpga_simulator/sessions/<timestamp>_<board>.json` (board, simulator, duration, avg FPS, simulated time, G/D/I breakdown).
+> **Session persistence:** The last-used board, VHDL file, and simulator choice are saved to `~/.fpga_simulator/session.json` and pre-selected on the next run. After each simulation session a compact performance summary is also written to `~/.fpga_simulator/sessions/<timestamp>_<board>.json` (board, simulator, duration, avg FPS, simulated time, G/D/I breakdown).
 
 ## Project Structure
 
-```
+```text
 src/fpga_sim/              Installable Python package (src layout)
   __main__.py              Entry point — screen flow, --benchmark CLI, --sim flag
   board_loader.py          Parses board definitions from JSON; mock classes for sync scripts
@@ -285,7 +299,7 @@ Note that pygame runs in two separate OS processes. The launcher (board selector
 
 When the user clicks "Start Simulation" and picks a VHDL file, the following happens:
 
-```
+```text
 fpga_sim/__main__.py             fpga_sim/sim_bridge.py            Simulator + cocotb
 ────────────────────             ──────────────────────            ──────────────────
 1. Serialize BoardDef to JSON
@@ -365,11 +379,13 @@ Because NVC requires generics at elaboration time, `analyze_vhdl()` performs `-a
 ## Running Tests
 
 **Linux / macOS:**
+
 ```bash
 uv run pytest
 ```
 
 **Windows** (PowerShell required):
+
 ```powershell
 uv run pytest
 ```
@@ -446,7 +462,7 @@ At least one of GHDL or NVC must be installed. Both can coexist; the active simu
 
 If the `boards/` directory is missing or empty:
 
-```
+```text
 No board definitions found; using generic board.
 ```
 
@@ -462,7 +478,7 @@ uv run python scripts/sync_digilent_xdc.py     # Digilent XDC
 
 If `test_cocotb_simulation_passes` fails with:
 
-```
+```text
 Unable to open lib hon313.dll: The specified module could not be found.
 ```
 
@@ -517,12 +533,15 @@ choice if you want NVC on Windows, or if you prefer a Unix-style workflow.
 > modern environment and matches the `ucrt64` GHDL winget package.
 
 **2. Update the package database:**
+
 ```bash
 pacman -Syu
 ```
+
 Close and reopen the UCRT64 shell if prompted, then run `pacman -Syu` again.
 
 **3. Install simulators:**
+
 ```bash
 # GHDL (fully tested):
 pacman -S mingw-w64-ucrt-x86_64-ghdl
@@ -532,15 +551,19 @@ pacman -S mingw-w64-ucrt-x86_64-nvc
 ```
 
 **4. Install uv and Python inside MSYS2:**
+
 ```bash
 pacman -S mingw-w64-ucrt-x86_64-python mingw-w64-ucrt-x86_64-uv
 ```
+
 Or use the standalone `uv` installer from inside the MSYS2 shell:
+
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 **5. Clone and run** exactly as on Linux:
+
 ```bash
 git clone https://github.com/Machai-Kydoimos/fpga-board-sim.git
 cd fpga-board-sim

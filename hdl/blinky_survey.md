@@ -1,7 +1,7 @@
 # VHDL Blinky Survey
 
 A categorized survey of `blinky.vhd` / `blinky.vhdl` patterns found across FPGA
-tutorials, vendor documentation, and open-source repositories.  The project supports
+tutorials, vendor documentation, and open-source repositories. The project supports
 275+ boards spanning Xilinx, Lattice iCE40/ECP5/MachXO, Intel/Altera, Gowin, Efinix,
 and CologneChip families; examples from all ecosystems are represented.
 
@@ -22,7 +22,7 @@ begin
 end architecture;
 ```
 
-Technically not a blinky — it turns one LED permanently on.  Occasionally labeled
+Technically not a blinky — it turns one LED permanently on. Occasionally labeled
 "blinky" in slide decks as the first synthesisable VHDL file a student writes.
 
 ---
@@ -61,7 +61,7 @@ end architecture;
 
 **Blink rate formula**
 
-```
+```text
 f_blink = f_clk / 2^N     (N = counter bit width)
 ```
 
@@ -108,7 +108,7 @@ begin
 end architecture;
 ```
 
-Teaches `constant` declarations and exact frequency specification.  Downside: requires
+Teaches `constant` declarations and exact frequency specification. Downside: requires
 updating `CLK_FREQ` per board and does not adapt automatically to different clocks.
 
 ---
@@ -144,7 +144,7 @@ begin
 end architecture;
 ```
 
-Intel Quartus style-guide mandates explicit reset for all registers.  An asynchronous
+Intel Quartus style-guide mandates explicit reset for all registers. An asynchronous
 variant (reset checked outside `rising_edge`) is common in textbooks but complicates
 timing closure and is disfavored in modern synthesis practice.
 
@@ -178,7 +178,7 @@ end architecture;
 ```
 
 Upper 8 bits of a 32-bit counter advance slowly enough to be visible (~0.4 Hz per bit
-at 100 MHz).  Effect: LEDs display a rippling binary count.
+at 100 MHz). Effect: LEDs display a rippling binary count.
 
 **Walking-LED variant** (Knight Rider precursor):
 
@@ -247,7 +247,7 @@ begin
 end architecture;
 ```
 
-Structurally equivalent to Category 2 but expressed as a `case` statement.  Adds one
+Structurally equivalent to Category 2 but expressed as a `case` statement. Adds one
 state register with no functional benefit for a simple blinky — used purely to
 introduce `type`, enumerated states, and `case` syntax.
 
@@ -309,7 +309,7 @@ component MMCME2_BASE
 end component;
 ```
 
-Adds ~50 LUTs and a PLL block for zero improvement to LED blink quality.  Appropriate
+Adds ~50 LUTs and a PLL block for zero improvement to LED blink quality. Appropriate
 only when the tutorial is about clock synthesis, not blinking.
 
 ---
@@ -342,7 +342,7 @@ end architecture behave;
 ```
 
 **Distinctive style choices**: `r_` prefix for registers, `i_`/`o_` prefix for ports,
-named processes (`p_blink`), `architecture behave`.  This naming convention is taught
+named processes (`p_blink`), `architecture behave`. This naming convention is taught
 consistently throughout the Nandland FPGA course and is visible in many student
 GitHub repositories.
 
@@ -411,6 +411,7 @@ end entity blinky;
 ```
 
 Key properties:
+
 - `COUNTER_BITS` generic scales blink frequency to any board clock
 - `NUM_LEDS / NUM_SWITCHES / NUM_BUTTONS` generics match any board's resources
 - `for i in 0 to minimum(...) - 1` loops handle boards with mismatched counts
@@ -418,7 +419,7 @@ Key properties:
 - LED output process is correctly sensitive to `sw`, `btn`, and `counter`
 
 The project also defines a 7-segment variant of the design contract (adding `NUM_SEGS`
-generic and `seg` output port) for boards with 7-segment displays.  See `hdl/counter_7seg.vhd`
+generic and `seg` output port) for boards with 7-segment displays. See `hdl/counter_7seg.vhd`
 and the README for the full 7-seg entity template.
 
 ---
@@ -445,7 +446,7 @@ and the README for the full 7-seg entity template.
 ## Key Observations
 
 1. **Category 2 dominates** — approximately 80 % of real-world tutorials use the
-   free-running MSB counter.  It is the simplest correct synthesisable VHDL.
+   free-running MSB counter. It is the simplest correct synthesisable VHDL.
 
 2. **No reset is idiomatic** — VHDL FPGA flip-flops have defined power-on state;
    the counter signal initializer `(others => '0')` is sufficient for simulation.

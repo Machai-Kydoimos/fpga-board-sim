@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Setup
+
 ```bash
 # Install runtime dependencies
 uv sync
@@ -19,12 +20,14 @@ uv run python scripts/sync_digilent_xdc.py     # Digilent XDC
 ```
 
 ### Run the simulator
+
 ```bash
 uv run fpga-sim
 # or: uv run python -m fpga_sim
 ```
 
 ### Run tests (no display needed)
+
 ```bash
 uv run pytest
 ```
@@ -123,6 +126,7 @@ The simulator sets generics to match the selected board's resource counts and pr
 ### Board Definition Sources
 
 Board definitions live in `boards/` as JSON files, organized by source:
+
 - `boards/amaranth-boards/` — auto-generated from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via `scripts/sync_boards.py`
 - `boards/litex-boards/` — auto-generated from [litex-boards](https://github.com/litex-hub/litex-boards) via `scripts/sync_litex_boards.py`
 - `boards/digilent-xdc/` — auto-generated from [Digilent XDC](https://github.com/Digilent/digilent-xdc) via `scripts/sync_digilent_xdc.py` (includes `port_conventions`)
