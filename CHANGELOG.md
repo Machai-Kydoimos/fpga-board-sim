@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - **In-app help overlay** — a Help / About modal reachable from every
   launcher screen via **F1**, **?**, or a **(?)** button (board-selector
   header and preview corner). Shows a 4-step workflow, a keyboard-shortcut
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (U11)
 
 ### Changed
+
 - Unified the two VHDL wrapper templates (`sim_wrapper_template.vhd` and
   the deleted `sim_wrapper_7seg_template.vhd`) into a single template with
   conditional placeholders that `_generate_wrapper()` splices in when the
@@ -48,10 +50,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   steppers, and the sim Stop/Pause overlay. Removes the per-site styling drift
   (each had hand-rolled hover/border/radius); the clock steppers now show hover
   feedback. No other visual change (D4)
+- Tooling: added [rumdl](https://github.com/rvben/rumdl) as a Markdown linter —
+  wired into the pre-commit hooks and the CI lint job, configured under
+  `[tool.rumdl]` (MD013 line-length and MD036 emphasis-as-heading disabled), and
+  applied a one-time `rumdl fmt` pass across the repo's Markdown
 
 ## [0.5.0] - 2026-05-25
 
 ### Added
+
 - **litex-boards sync** — `scripts/sync_litex_boards.py` downloads and converts
   board definitions from [litex-hub/litex-boards](https://github.com/litex-hub/litex-boards),
   adding ~147 boards across Xilinx, Intel, Lattice, Gowin, Efinix, and CologneChip
@@ -63,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Board count increased from ~80 to ~250 across four sources
 
 ### Changed
+
 - Board selector now shows boards from all four sources: `amaranth-boards`,
   `litex-boards`, `digilent-xdc`, and `custom`
 - Test `test_arty_a7_found` updated to allow multi-source board matches
@@ -70,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0] - 2026-05-25
 
 ### Changed
+
 - Migrated board definitions from amaranth-boards git submodule to self-contained
   JSON files in `boards/` — no submodule initialization required
 - Board loader discovers JSON sources automatically; each subdirectory under
@@ -79,6 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Session persistence now tracks board source for disambiguation
 
 ### Added
+
 - `boards/schema/board.schema.json` — JSON Schema for board definition validation
 - `boards/custom/de10_standard.json` — Terasic DE10-Standard (Cyclone V SX SoC,
   10 LEDs, 4 buttons, 10 switches, 6-digit 7-seg); includes `peripherals` and
@@ -89,15 +99,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `jsonschema` added to dev dependencies for CI validation
 
 ### Removed
+
 - `amaranth-boards/` git submodule (replaced by `boards/amaranth-boards/` JSON files)
 
 ### Security
+
 - Hardened CI workflow: pinned actions to commit SHAs, added `permissions` blocks,
   restricted token scopes
 
 ## [0.3.1] - 2026-05-19
 
 ### Changed
+
 - Unified `_NVCBackend.run_cmd` signature with `_GHDLBackend` (`generics` parameter
   added, ignored at runtime since NVC bakes them in at elaboration); introduced
   `_SimBackend` Protocol; removed the two remaining `# type: ignore[call-arg]`
@@ -106,6 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - 2026-05-19
 
 ### Added
+
 - 7-segment display support: 8 boards (DE0, DE0-CV, DE1-SoC, DE10-Lite, Nandland-Go,
   Nexys4-DDR, RZ-EasyFPGA-A2/2, StepMXO2); Mercury excluded (display behind extension
   resource list, not in `resources`)
@@ -122,22 +136,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - VHDL contract checker enforces `seg` port presence/absence based on board type
 
 ### Changed
+
 - Upgraded ruff 0.15.12 → 0.15.13, mypy 1.20.2 → 2.1.0, pre-commit 4.5.1 → 4.6.0
 - amaranth-boards submodule advanced to include Tang Mega 138k Pro Dock
 
 ## [0.2.0] - 2026-04-03
 
 ### Added
+
 - Windows support: NVC simulator works via MSYS2; auto-detect Python DLL with `cocotb-config` (#52)
 - CI: Windows test matrix (pure-Python + GHDL) (#54)
 - CI: Linux GHDL and NVC full-suite jobs (#55)
 
 ### Changed
+
 - Migrated to `src/` layout (`fpga_sim` package under `src/`) (#56)
 - Improved README accuracy: board count, NVC install, VPI/VHPI details (#49)
 - Corrected docs: NVC is available on Windows via MSYS2 (#53)
 
 ### Fixed
+
 - Bumped Pygments 2.19.2 → 2.20.0 to resolve CVE-2026-4539 (#51)
 
 ## [0.1.0] - 2026-03-30

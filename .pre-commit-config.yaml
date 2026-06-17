@@ -19,3 +19,11 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+      # rumdl runs as a local hook (not the upstream rumdl-pre-commit repo) so it
+      # uses the uv.lock-pinned version, keeping local and CI in lockstep — same
+      # rationale as the mypy hook above. --fix auto-corrects fixable issues.
+      - id: rumdl
+        name: rumdl
+        entry: uv run rumdl check --fix
+        language: system
+        types: [markdown]

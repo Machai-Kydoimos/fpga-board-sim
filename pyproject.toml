@@ -38,6 +38,7 @@ dev = [
     "pre-commit>=3",
     "jsonschema>=4.0",
     "pytest-randomly>=4.1.0",
+    "rumdl>=0.2.18",
 ]
 
 [tool.pytest.ini_options]
@@ -95,6 +96,16 @@ disallow_untyped_defs = true
 [[tool.mypy.overrides]]
 module = ["tests.*", "test_blinky", "test_7seg"]
 disallow_untyped_defs = false   # test functions and fixtures are exempt
+
+# ── rumdl (Markdown linter + formatter) ──────────────────────────────────────
+[tool.rumdl]
+# MD013 (line length): prose, tables, and long links read fine unwrapped, and
+# hard-wrapping Markdown hurts diffs without helping rendering.
+# MD036 (emphasis-as-heading): would rewrite bold/italic lead-ins and bylines
+# into real headings, changing document structure and the TOC. Left to authors.
+disable = ["MD013", "MD036"]
+respect-gitignore = true         # skips memory/, .venv/, .pytest_cache/, etc.
+exclude = [".git", ".github"]
 
 [build-system]
 requires = ["hatchling"]

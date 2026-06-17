@@ -105,7 +105,7 @@ type annotations and docstrings from the start. Budget ~20 min per phase to run
 
 ### Display layout — horizontal split (Option B)
 
-```
+```text
 ┌─────────────────┬────────────────────┐
 │                 │   [0] [1] [2]      │
 │   FPGA Chip     │   [3] [4] [5]      │  top section split 55/45
@@ -334,11 +334,13 @@ class BoardDef:
 ```
 
 `to_json()` addition:
+
 ```python
 "seven_seg": self.seven_seg.to_dict() if self.seven_seg else None,
 ```
 
 `from_json()` addition:
+
 ```python
 seven_seg=(SevenSegDef.from_dict(data["seven_seg"])
            if data.get("seven_seg") else None),
@@ -783,6 +785,7 @@ def launch_simulation(
 #### `__main__.py` call sites
 
 Two one-line changes:
+
 1. `check_vhdl_contract(vhdl_path)` → `check_vhdl_contract(vhdl_path, board_def=selected_board)`
 2. `analyze_vhdl(vhdl_path, ...)` → `analyze_vhdl(vhdl_path, ..., board_def=selected_board)`
 
