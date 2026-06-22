@@ -324,6 +324,7 @@ This document inventories all viable improvements and ranks them by impact.
 - **Effort:** XS.
 - **Dependencies:** None.
 - **Done when:** all hooks are pinned to exact versions; `.editorconfig` is consistent with existing ruff/formatter config.
+- **Superseded (2026-06-22):** hooks are no longer pinned by `rev:` — ruff/ruff-format/mypy/rumdl all run as local hooks tracking `uv.lock` (single source of truth); see #102.
 
 ### Tier 4 — Documentation
 

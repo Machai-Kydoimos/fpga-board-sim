@@ -54,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wired into the pre-commit hooks and the CI lint job, configured under
   `[tool.rumdl]` (MD013 line-length and MD036 emphasis-as-heading disabled), and
   applied a one-time `rumdl fmt` pass across the repo's Markdown
+- Tooling: ruff and ruff-format now run as local pre-commit hooks (via
+  `uv run`), like mypy and rumdl, so they use the `uv.lock`-pinned ruff rather
+  than a separate `astral-sh/ruff-pre-commit` `rev:`. Removes silent drift
+  between the pre-commit ruff and the version CI / `uv run` use
 
 ## [0.5.0] - 2026-05-25
 

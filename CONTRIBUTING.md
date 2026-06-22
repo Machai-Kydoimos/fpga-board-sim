@@ -15,7 +15,7 @@ cd fpga-board-sim
 # Install runtime + dev dependencies (pytest, ruff, mypy, pre-commit)
 uv sync --group dev
 
-# Install the pre-commit hooks (runs ruff + mypy on every commit)
+# Install the pre-commit hooks (runs ruff, mypy, and rumdl on every commit)
 uv run pre-commit install
 ```
 
@@ -140,6 +140,19 @@ Two rules are disabled project-wide:
 `rumdl check --fix` (or `rumdl fmt`) auto-corrects the remaining issues — mostly
 blank lines around code fences and lists, fenced-block languages, and stray
 whitespace.
+
+### Pre-commit hooks track `uv.lock`
+
+All four hooks — `ruff`, `ruff-format`, `mypy`, and `rumdl` — are local hooks
+that run `uv run <tool>`, so they use the exact versions pinned in `uv.lock`
+(the same ones CI and the manual commands above use). One source of truth for
+tool versions; the hooks can never silently drift from CI.
+
+This is deliberate and diverges from Astral's recommended
+`astral-sh/ruff-pre-commit` mirror, which pins ruff by a separate hook `rev:`
+that Dependabot doesn't track. **Please don't convert the ruff hook back to the
+mirror** — it reintroduces a second, drift-prone version pin. Full rationale is
+in the comment block atop `.pre-commit-config.yaml`.
 
 ---
 
