@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-22
+
 ### Added
 
 - **In-app help overlay** — a Help / About modal reachable from every
@@ -28,6 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in both the board preview screen and during live simulation. Inputs
   only — the design's internal state (counters, registers) is unaffected
   (U11)
+- **Five new boards** in `boards/custom/`: **DE2-115** (Intel Cyclone IV E
+  — 27 LEDs, 18 switches, 4 buttons, 8-digit 7-seg), **VEEK-MT2** (the
+  DE2-115's EP4CE115 base on the VEEK-MT2 carrier), **DE23-Lite** (Intel
+  Agilex 3 — 10 LEDs, 10 switches, 4 buttons, 6-digit 7-seg),
+  **DE25-Standard** (Intel Agilex 5, same layout as DE23-Lite), and
+  **VEEK-MT-SoCKit** (Intel Cyclone V SX — 4 LEDs, 4 switches, 4 buttons)
+- Python 3.13 added to the CI test matrix
 
 ### Changed
 
@@ -58,6 +67,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `uv run`), like mypy and rumdl, so they use the `uv.lock`-pinned ruff rather
   than a separate `astral-sh/ruff-pre-commit` `rev:`. Removes silent drift
   between the pre-commit ruff and the version CI / `uv run` use
+- Internal: documented `board_loader.py`'s exec-in-mock-namespace strategy
+  and added docstrings to the eight mock classes and the resource helpers
+  (D11)
+- Tooling: the test suite now runs in randomized order via `pytest-randomly`
+  to surface inter-test state leakage
+
+### Fixed
+
+- **litex-boards sync** selected the wrong platform class for non-Xilinx
+  boards. The corrected re-sync updates ~148 board definitions and adds 16
+  more litex boards (Colorlight, OrangeCrab, ButterStick, Logicbone,
+  Machdyne, QMTech, etc.). Combined with the five new custom boards above,
+  the catalogue is now 275 definitions (272 loadable) across four sources
+  (#67)
 
 ## [0.5.0] - 2026-05-25
 
@@ -166,7 +189,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
-[Unreleased]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.3.0...v0.3.1
