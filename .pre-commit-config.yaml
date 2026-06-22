@@ -1,18 +1,40 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.16
-    hooks:
-      - id: ruff
-        args: [--fix]
-      - id: ruff-format
-  # mypy runs as a local hook (not mirrors-mypy) so it uses the project venv,
-  # where pygame / find_libpython / cocotb are importable. The isolated env that
-  # mirrors-mypy builds lacks those deps, degrading expressions to Any and
-  # tripping warn_return_any — false failures that CI's `uv run mypy .` never
-  # sees. Running the exact CI command keeps local and CI in lockstep; the mypy
-  # version is pinned by uv.lock rather than a hook rev.
+  # Every lint/format/type hook runs as a *local* hook that invokes the
+  # uv.lock-pinned tool via `uv run`, so the version pre-commit uses is always
+  # identical to CI's (`uv run ruff/mypy/rumdl ...`) and to the project venv —
+  # one source of truth (uv.lock), zero drift.
+  #
+  # This is a deliberate divergence from Astral's documented recommendation
+  # (https://docs.astral.sh/ruff/integrations/), which shows only the
+  # `astral-sh/ruff-pre-commit` mirror pinned by a hook `rev:`. That `rev:` is
+  # separate from uv.lock and is NOT tracked by Dependabot, so the two silently
+  # drift apart on every ruff bump (e.g. uv.lock at 0.15.18 while the rev lagged
+  # at 0.15.16). Folding ruff in here — as mypy and rumdl already are — removes
+  # that drift class entirely. Trade-off: pre-commit now needs the uv
+  # environment, already a hard requirement for this repo (CI + the hooks
+  # below); `uv run` auto-syncs the venv, so first run is self-healing.
   - repo: local
     hooks:
+      # ruff lint runs before ruff-format (per Astral's ordering guidance) so
+      # `--fix` output is then reformatted. Scoped to python/pyi — this repo has
+      # no Jupyter notebooks. pass_filenames stays default (true): only changed
+      # files are linted/formatted, unlike the whole-repo mypy hook below.
+      - id: ruff
+        name: ruff
+        entry: uv run ruff check --fix
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: ruff-format
+        entry: uv run ruff format
+        language: system
+        types_or: [python, pyi]
+      # mypy runs as a local hook (not mirrors-mypy) so it uses the project venv,
+      # where pygame / find_libpython / cocotb are importable. The isolated env that
+      # mirrors-mypy builds lacks those deps, degrading expressions to Any and
+      # tripping warn_return_any — false failures that CI's `uv run mypy .` never
+      # sees. Running the exact CI command keeps local and CI in lockstep; the mypy
+      # version is pinned by uv.lock rather than a hook rev.
       - id: mypy
         name: mypy
         entry: uv run mypy .
