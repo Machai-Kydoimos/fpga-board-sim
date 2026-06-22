@@ -88,7 +88,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --group dev
-      - uses: nickg/setup-nvc@b63bf358b7120f089f1c6da184f29bc8413ef470  # v1
+      - uses: nickg/setup-nvc@48f966dfc9b27bf13e873a473fcf1649ef8f5a0f  # v1
       - name: Verify NVC
         run: nvc --version
       - name: Run full test suite
