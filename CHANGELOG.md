@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **6 new boards** synced from upstream (272 → 278 loadable): amaranth Cora
+  Z7-07S / Cora Z7-10; litex Adiuvo Forgix, Altera Agilex5e 065B Premium DevKit,
+  Brisbanesilicon BRS-100, Trenz TEL0025. Each headless-spot-checked on NVC.
+- **Parser unit tests** for litex and digilent (`tests/test_litex_parser.py`,
+  `tests/test_digilent_parser.py`), closing the coverage gap on the two
+  previously-untested parsers (~70% of the board catalog).
+
 ### Changed
 
 - **Decoupled the amaranth-boards sync from the runtime board loader.** The
@@ -15,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `scripts/sync_amaranth_boards.py` (parallel to `sync_litex_boards.py` /
   `sync_digilent_xdc.py`). `board_loader.py` is now a pure JSON runtime loader
   (804 → 241 lines); generated board JSON is byte-for-byte unchanged.
+- **Modularized the litex and digilent sync scripts** (parallel to the amaranth
+  split): the parsers moved into dedicated `scripts/litex_parser.py` /
+  `scripts/digilent_parser.py`; the `sync_*.py` scripts are now thin
+  download/output/CLI wrappers. Generated board JSON is byte-for-byte unchanged.
 
 ### Removed
 

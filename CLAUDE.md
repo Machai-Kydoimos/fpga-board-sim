@@ -51,7 +51,9 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `scripts/sync_amaranth_boards.py` | Syncs board definitions from amaranth-boards GitHub repo |
 | `scripts/amaranth_parser.py` | Mock-exec parser: amaranth `.py` board files → `BoardDef` (used by `sync_amaranth_boards.py`) |
 | `scripts/sync_litex_boards.py` | Syncs board definitions from litex-boards GitHub repo |
+| `scripts/litex_parser.py` | Mock-exec parser: litex `_io` platform files → board dicts (used by `sync_litex_boards.py`) |
 | `scripts/sync_digilent_xdc.py` | Syncs board definitions from Digilent master XDC files (with port_conventions) |
+| `scripts/digilent_parser.py` | XDC regex parser → board dicts + `port_conventions` (used by `sync_digilent_xdc.py`) |
 | `sim/sim_testbench.py` | cocotb test that runs pygame inside the GHDL simulation |
 | `sim/sim_wrapper_template.vhd` | Unified VHDL wrapper template; seg port/generic spliced in by `_generate_wrapper()` when needed |
 | `src/fpga_sim/sim_session_log.py` | Writes per-session JSON summaries to ~/.fpga_simulator/sessions/ |
@@ -62,7 +64,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 
 ### Data Flow
 
-1. `src/fpga_sim/board_loader.py` reads JSON board definitions from `boards/` subdirectories (each subdirectory is a "source": `amaranth-boards/`, `litex-boards/`, `digilent-xdc/`, `custom/`, etc.) and constructs `BoardDef` objects. The offline mock-exec pipeline for parsing upstream amaranth `.py` board files lives in `scripts/amaranth_parser.py` (used by `scripts/sync_amaranth_boards.py`); `sync_litex_boards.py` and `sync_digilent_xdc.py` carry their own self-contained parsers.
+1. `src/fpga_sim/board_loader.py` reads JSON board definitions from `boards/` subdirectories (each subdirectory is a "source": `amaranth-boards/`, `litex-boards/`, `digilent-xdc/`, `custom/`, etc.) and constructs `BoardDef` objects. The offline mock-exec pipeline for parsing upstream amaranth `.py` board files lives in `scripts/amaranth_parser.py` (used by `scripts/sync_amaranth_boards.py`); the litex and digilent parsers live in `scripts/litex_parser.py` and `scripts/digilent_parser.py` (self-contained, no `fpga_sim` dependency).
 
 2. `src/fpga_sim/__main__.py` displays four sequential screens: `BoardSelector` → `FPGABoard` (preview) → `VHDLFilePicker` → simulation start.
 
