@@ -352,7 +352,7 @@ board definitions and convert them to our JSON schema:
 
 | Script | Source | Approach |
 |--------|--------|----------|
-| `sync_boards.py` | [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) | Mock-exec: strips imports, injects mock `Resource`/`Pins`/`Attrs` classes, `exec()`s each `.py` file |
+| `sync_amaranth_boards.py` | [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) | Mock-exec (parser in `amaranth_parser.py`): strips imports, injects mock `Resource`/`Pins`/`Attrs` classes, `exec()`s each `.py` file |
 | `sync_litex_boards.py` | [litex-boards](https://github.com/litex-hub/litex-boards) | Mock-exec: same pattern but with LiteX's `_io` tuple format and mock vendor platform classes |
 | `sync_digilent_xdc.py` | [Digilent XDC](https://github.com/Digilent/digilent-xdc) | Regex parsing of `.xdc` constraint files; device/package from a hardcoded lookup table |
 
@@ -362,8 +362,8 @@ The Digilent XDC script also auto-generates `port_conventions` from XDC port
 names. To add a new upstream source, follow the same pattern: download,
 parse, emit JSON conforming to `boards/schema/board.schema.json`.
 
-**`fpga_sim/board_loader.py` mock namespace.** The amaranth-boards and
-litex-boards sync scripts both use mock-exec: strip imports, inject mock
+**Sync-script mock namespaces.** The amaranth parser (`scripts/amaranth_parser.py`)
+and the litex sync script both use mock-exec: strip imports, inject mock
 classes into a namespace, and `exec()` the board file. The mock classes are
 typed with `object` at variadic boundaries (`*ios: object`, `**kwargs: object`)
 because the upstream APIs accept heterogeneous arguments. Use `cast()`

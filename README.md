@@ -242,7 +242,8 @@ hdl/                       Example VHDL designs
   snake_7seg.vhd           Single segment crawls figure-8 across all digits; bouncing LED + decimal point
   walking_counter_7seg.vhd Bouncing LED + decimal BCD counter on 7-seg digits; switch speed, button direction
 scripts/
-  sync_boards.py           Syncs board definitions from amaranth-boards
+  sync_amaranth_boards.py  Syncs board definitions from amaranth-boards
+  amaranth_parser.py       Mock-exec parser used by sync_amaranth_boards.py
   sync_litex_boards.py     Syncs board definitions from litex-boards (147 boards)
   sync_digilent_xdc.py     Syncs board definitions from Digilent XDC files (26 boards + port_conventions)
   analyze_metrics.py       Standalone performance report from a sim_metrics CSV
@@ -262,7 +263,7 @@ pyproject.toml             Project metadata and dependencies
 
 Board definitions are stored as JSON files in `boards/`, organized by source:
 
-- **`boards/amaranth-boards/`** — auto-synced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via `scripts/sync_boards.py` (~77 boards)
+- **`boards/amaranth-boards/`** — auto-synced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via `scripts/sync_amaranth_boards.py` (~77 boards)
 - **`boards/litex-boards/`** — auto-synced from [litex-boards](https://github.com/litex-hub/litex-boards) via `scripts/sync_litex_boards.py` (~147 boards across Xilinx, Intel, Lattice, Gowin, Efinix)
 - **`boards/digilent-xdc/`** — auto-synced from [Digilent XDC](https://github.com/Digilent/digilent-xdc) via `scripts/sync_digilent_xdc.py` (~26 Digilent boards with `port_conventions` for future board-native VHDL mode)
 - **`boards/custom/`** — manually maintained boards (new boards go here)
@@ -272,7 +273,7 @@ Each subdirectory under `boards/` is a "source." The loader scans all sources an
 To add a new board, create a JSON file in `boards/custom/` following the schema at `boards/schema/board.schema.json`. To re-sync from upstream sources:
 
 ```bash
-uv run python scripts/sync_boards.py          # amaranth-boards
+uv run python scripts/sync_amaranth_boards.py  # amaranth-boards
 uv run python scripts/sync_litex_boards.py     # litex-boards
 uv run python scripts/sync_digilent_xdc.py     # Digilent XDC
 ```
@@ -469,7 +470,7 @@ No board definitions found; using generic board.
 Fix: run one or more sync scripts:
 
 ```bash
-uv run python scripts/sync_boards.py          # amaranth-boards
+uv run python scripts/sync_amaranth_boards.py  # amaranth-boards
 uv run python scripts/sync_litex_boards.py     # litex-boards
 uv run python scripts/sync_digilent_xdc.py     # Digilent XDC
 ```
