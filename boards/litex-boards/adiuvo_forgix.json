@@ -1,0 +1,67 @@
+{
+  "name": "Adiuvo Forgix",
+  "class_name": "AdiuvoForgixPlatform",
+  "vendor": "Efinix",
+  "device": "T8F49C2",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk32",
+      "hz": 32000000.0,
+      "pin": "B4",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 32000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "E1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "F1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "G1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "adiuvo_forgix.py",
+    "sync_commit": "08e6a063e365a8baebc0cd92ebee6d9e97ce0a50",
+    "sync_timestamp": "2026-06-23T08:11:25.262005+00:00"
+  }
+}

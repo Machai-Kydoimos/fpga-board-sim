@@ -1,0 +1,80 @@
+{
+  "name": "Cora Z7-07 S",
+  "class_name": "CoraZ7_07SPlatform",
+  "vendor": "Xilinx",
+  "device": "xc7z007s",
+  "package": "clg400",
+  "clocks": [
+    125000000.0
+  ],
+  "default_clock_hz": 125000000.0,
+  "leds": [
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "N15",
+        "G17",
+        "L15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 1,
+      "pins": [
+        "M15",
+        "L14",
+        "G14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "D19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "D20"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "cora_z7.py",
+    "sync_commit": "fd2f0df811a8dbcf6aa0b94ac0788dc71ac79e1e",
+    "sync_timestamp": "2026-06-23T02:31:22.563354+00:00"
+  }
+}

@@ -1,147 +1,116 @@
 {
-  "name": "Bochenjingxin Kintex7 Basec",
-  "class_name": "BochenjingxinKintex7BasecPlatform",
-  "vendor": "Xilinx",
-  "device": "xc7k325tffg676-2",
+  "name": "Brisbanesilicon Brs 100 Gw1nr9",
+  "class_name": "BrisbanesiliconBrs100Gw1nr9Platform",
+  "vendor": "Gowin",
+  "device": "",
   "package": "",
   "clocks": [
     {
-      "name": "clk50",
-      "hz": 50000000.0,
-      "pin": "G22",
+      "name": "clk27",
+      "hz": 27000000.0,
+      "pin": "52",
       "is_default": true
     }
   ],
-  "default_clock_hz": 50000000.0,
+  "default_clock_hz": 27000000.0,
   "leds": [
     {
       "name": "led",
       "number": 0,
       "pins": [
-        "A23"
+        "16"
       ],
       "direction": "o",
       "inverted": false,
       "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "oled",
-      "number": 0,
-      "pins": [
-        "J24",
-        "J25",
-        "H22",
-        "J21"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
+      "attrs": {}
     },
     {
       "name": "led",
       "number": 1,
       "pins": [
-        "A24"
+        "15"
       ],
       "direction": "o",
       "inverted": false,
       "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
+      "attrs": {}
     },
     {
       "name": "led",
       "number": 2,
       "pins": [
-        "D23"
+        "14"
       ],
       "direction": "o",
       "inverted": false,
       "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
+      "attrs": {}
     },
     {
       "name": "led",
       "number": 3,
       "pins": [
-        "C24"
+        "13"
       ],
       "direction": "o",
       "inverted": false,
       "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
+      "attrs": {}
     },
     {
       "name": "led",
       "number": 4,
       "pins": [
-        "C26"
+        "11"
       ],
       "direction": "o",
       "inverted": false,
       "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
+      "attrs": {}
     },
     {
       "name": "led",
       "number": 5,
       "pins": [
-        "D24"
+        "10"
       ],
       "direction": "o",
       "inverted": false,
       "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led",
-      "number": 6,
-      "pins": [
-        "D25"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led",
-      "number": 7,
-      "pins": [
-        "E25"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
+      "attrs": {}
     }
   ],
-  "buttons": [],
+  "buttons": [
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "3"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button__n",
+      "number": 1,
+      "pins": [
+        "4"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
   "switches": [],
   "seven_seg": null,
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "litex-boards",
-    "upstream_file": "bochenjingxin_kintex7_basec.py",
+    "upstream_file": "brisbaneSilicon_brs_100_gw1nr9.py",
     "sync_commit": "08e6a063e365a8baebc0cd92ebee6d9e97ce0a50",
     "sync_timestamp": "2026-06-23T08:11:25.262005+00:00"
   }
