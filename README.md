@@ -212,7 +212,7 @@ A logarithmic slider from **0.001× to 10×** (default **0.1×**) controls how m
 ```text
 src/fpga_sim/              Installable Python package (src layout)
   __main__.py              Entry point — screen flow, --benchmark CLI, --sim flag
-  board_loader.py          Parses board definitions from JSON; mock classes for sync scripts
+  board_loader.py          Loads board definitions from JSON into BoardDef objects
   sim_bridge.py            GHDL/NVC analysis + cocotb simulation launcher; _GHDLBackend/_NVCBackend classes
   sim_session_log.py       Writes per-session JSON summaries to ~/.fpga_simulator/sessions/
   sim_metrics.py           Optional per-frame CSV metrics (set FPGA_SIM_METRICS=<path> to enable)
@@ -244,7 +244,7 @@ hdl/                       Example VHDL designs
 scripts/
   sync_amaranth_boards.py  Syncs board definitions from amaranth-boards
   amaranth_parser.py       Mock-exec parser used by sync_amaranth_boards.py
-  sync_litex_boards.py     Syncs board definitions from litex-boards (147 boards)
+  sync_litex_boards.py     Syncs board definitions from litex-boards (167 boards)
   litex_parser.py          Mock-exec parser used by sync_litex_boards.py
   sync_digilent_xdc.py     Syncs board definitions from Digilent XDC files (26 boards + port_conventions)
   digilent_parser.py       XDC regex parser used by sync_digilent_xdc.py
@@ -266,8 +266,8 @@ pyproject.toml             Project metadata and dependencies
 
 Board definitions are stored as JSON files in `boards/`, organized by source:
 
-- **`boards/amaranth-boards/`** — auto-synced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via `scripts/sync_amaranth_boards.py` (~77 boards)
-- **`boards/litex-boards/`** — auto-synced from [litex-boards](https://github.com/litex-hub/litex-boards) via `scripts/sync_litex_boards.py` (~147 boards across Xilinx, Intel, Lattice, Gowin, Efinix)
+- **`boards/amaranth-boards/`** — auto-synced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via `scripts/sync_amaranth_boards.py` (~79 boards)
+- **`boards/litex-boards/`** — auto-synced from [litex-boards](https://github.com/litex-hub/litex-boards) via `scripts/sync_litex_boards.py` (~167 boards across Xilinx, Intel, Lattice, Gowin, Efinix)
 - **`boards/digilent-xdc/`** — auto-synced from [Digilent XDC](https://github.com/Digilent/digilent-xdc) via `scripts/sync_digilent_xdc.py` (~26 Digilent boards with `port_conventions` for future board-native VHDL mode)
 - **`boards/custom/`** — manually maintained boards (new boards go here)
 
