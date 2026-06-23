@@ -28,6 +28,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   split): the parsers moved into dedicated `scripts/litex_parser.py` /
   `scripts/digilent_parser.py`; the `sync_*.py` scripts are now thin
   download/output/CLI wrappers. Generated board JSON is byte-for-byte unchanged.
+- **Extracted shared sync scaffolding** into `scripts/sync_common.py` (download,
+  ref resolution, filesystem-safe naming, JSON/metadata output) used by all three
+  `sync_*.py` scripts; also gives the digilent script the filename-collision dedup
+  it previously lacked. Output byte-for-byte unchanged.
 
 ### Removed
 
