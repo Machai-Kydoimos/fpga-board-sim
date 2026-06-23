@@ -353,8 +353,8 @@ board definitions and convert them to our JSON schema:
 | Script | Source | Approach |
 |--------|--------|----------|
 | `sync_amaranth_boards.py` | [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) | Mock-exec (parser in `amaranth_parser.py`): strips imports, injects mock `Resource`/`Pins`/`Attrs` classes, `exec()`s each `.py` file |
-| `sync_litex_boards.py` | [litex-boards](https://github.com/litex-hub/litex-boards) | Mock-exec: same pattern but with LiteX's `_io` tuple format and mock vendor platform classes |
-| `sync_digilent_xdc.py` | [Digilent XDC](https://github.com/Digilent/digilent-xdc) | Regex parsing of `.xdc` constraint files; device/package from a hardcoded lookup table |
+| `sync_litex_boards.py` | [litex-boards](https://github.com/litex-hub/litex-boards) | Mock-exec (parser in `litex_parser.py`): same pattern but with LiteX's `_io` tuple format and mock vendor platform classes |
+| `sync_digilent_xdc.py` | [Digilent XDC](https://github.com/Digilent/digilent-xdc) | Regex parsing (parser in `digilent_parser.py`) of `.xdc` constraint files; device/package from a hardcoded lookup table |
 
 All three download a tarball via `--ref` (default: `main`/`master`), support
 `--dry-run`, and write to their respective `boards/<source>/` subdirectory.
@@ -362,12 +362,14 @@ The Digilent XDC script also auto-generates `port_conventions` from XDC port
 names. To add a new upstream source, follow the same pattern: download,
 parse, emit JSON conforming to `boards/schema/board.schema.json`.
 
-**Sync-script mock namespaces.** The amaranth parser (`scripts/amaranth_parser.py`)
-and the litex sync script both use mock-exec: strip imports, inject mock
-classes into a namespace, and `exec()` the board file. The mock classes are
-typed with `object` at variadic boundaries (`*ios: object`, `**kwargs: object`)
-because the upstream APIs accept heterogeneous arguments. Use `cast()`
-if you need a narrower type after extracting a value from a mock object.
+**Sync-script parsers.** Each upstream source has a dedicated parser module in
+`scripts/`, imported by its thin `sync_*.py` script: `amaranth_parser.py` and
+`litex_parser.py` use mock-exec (strip imports, inject mock classes into a
+namespace, `exec()` the board file); `digilent_parser.py` uses section-aware
+regex over XDC text. The mock classes are typed with `object` at variadic
+boundaries (`*ios: object`, `**kwargs: object`) because the upstream APIs accept
+heterogeneous arguments. Use `cast()` if you need a narrower type after
+extracting a value from a mock object.
 
 **Session state** is stored in `~/.fpga_simulator/session.json` and
 loaded at startup. It is intentionally best-effort — load and save

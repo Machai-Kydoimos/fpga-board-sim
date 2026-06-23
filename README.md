@@ -245,7 +245,9 @@ scripts/
   sync_amaranth_boards.py  Syncs board definitions from amaranth-boards
   amaranth_parser.py       Mock-exec parser used by sync_amaranth_boards.py
   sync_litex_boards.py     Syncs board definitions from litex-boards (147 boards)
+  litex_parser.py          Mock-exec parser used by sync_litex_boards.py
   sync_digilent_xdc.py     Syncs board definitions from Digilent XDC files (26 boards + port_conventions)
+  digilent_parser.py       XDC regex parser used by sync_digilent_xdc.py
   analyze_metrics.py       Standalone performance report from a sim_metrics CSV
 tests/                     pytest integration suite (board loading, serialization, GHDL, NVC, UI, panel)
 boards/
