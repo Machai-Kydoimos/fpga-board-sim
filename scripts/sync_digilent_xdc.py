@@ -10,36 +10,22 @@ import io
 import json
 import sys
 import tarfile
-import urllib.request
-from datetime import datetime, timezone
 from pathlib import Path
 
 from digilent_parser import build_board_json  # noqa: E402
+from sync_common import (  # noqa: E402
+    download_archive,
+    resolve_commit_sha,
+    sanitize_filename,
+    unique_name,
+    write_outputs,
+)
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Archive handling
 # ═══════════════════════════════════════════════════════════════════════
 
 _REPO = "Digilent/digilent-xdc"
-
-
-def resolve_commit_sha(ref: str) -> str:
-    """Resolve a git ref to a commit SHA via the GitHub API."""
-    url = f"https://api.github.com/repos/{_REPO}/commits/{ref}"
-    req = urllib.request.Request(url, headers={"Accept": "application/vnd.github.sha"})
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return str(resp.read().decode().strip())
-    except Exception:
-        return ref
-
-
-def download_archive(ref: str) -> bytes:
-    """Download the digilent-xdc archive for the given git ref."""
-    url = f"https://github.com/{_REPO}/archive/{ref}.tar.gz"
-    print(f"Downloading {url} ...")
-    with urllib.request.urlopen(url, timeout=60) as resp:
-        return bytes(resp.read())
 
 
 def extract_xdc_files(archive_bytes: bytes) -> dict[str, str]:
@@ -55,53 +41,6 @@ def extract_xdc_files(archive_bytes: bytes) -> dict[str, str]:
                 if f is not None:
                     xdc_files[name] = f.read().decode("utf-8")
     return xdc_files
-
-
-# ═══════════════════════════════════════════════════════════════════════
-#  Output
-# ═══════════════════════════════════════════════════════════════════════
-
-
-def sanitize_filename(name: str) -> str:
-    """Convert a board name to a filesystem-safe base name."""
-    result: list[str] = []
-    for ch in name.lower():
-        result.append(ch if (ch.isalnum() or ch == "-") else "_")
-    safe = "".join(result)
-    while "__" in safe or "--" in safe:
-        safe = safe.replace("__", "_").replace("--", "-")
-    return safe.strip("_-")
-
-
-def write_outputs(
-    output_dir: Path,
-    board_jsons: dict[str, str],
-    commit_sha: str,
-    dry_run: bool = False,
-) -> None:
-    """Write JSON files and sync metadata to the output directory."""
-    if not dry_run:
-        output_dir.mkdir(parents=True, exist_ok=True)
-
-    for filename, content in sorted(board_jsons.items()):
-        out_path = output_dir / filename
-        if dry_run:
-            print(f"  [dry-run] Would write {out_path}")
-        else:
-            out_path.write_text(content, encoding="utf-8")
-
-    metadata = {
-        "source_repo": f"https://github.com/{_REPO}",
-        "source_commit": commit_sha,
-        "sync_timestamp": datetime.now(timezone.utc).isoformat(),
-        "board_count": len(board_jsons),
-        "files_written": sorted(board_jsons.keys()),
-    }
-    meta_path = output_dir / "_sync_metadata.json"
-    if dry_run:
-        print(f"  [dry-run] Would write {meta_path} ({len(board_jsons)} boards)")
-    else:
-        meta_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -133,11 +72,11 @@ def main() -> int:
     args = parser.parse_args()
 
     print(f"Resolving ref '{args.ref}' ...")
-    commit_sha = resolve_commit_sha(args.ref)
+    commit_sha = resolve_commit_sha(_REPO, args.ref)
     print(f"Commit: {commit_sha}")
 
     try:
-        archive_bytes = download_archive(args.ref)
+        archive_bytes = download_archive(_REPO, args.ref)
     except Exception as e:
         print(f"Error downloading archive: {e}", file=sys.stderr)
         return 1
@@ -152,6 +91,7 @@ def main() -> int:
 
     print("Generating JSON definitions ...")
     board_jsons: dict[str, str] = {}
+    seen: dict[str, int] = {}
     for filename, content in sorted(xdc_files.items()):
         try:
             board = build_board_json(content, filename, commit_sha)
@@ -163,7 +103,7 @@ def main() -> int:
             print(f"  [skip] {filename}: no simulatable resources")
             continue
 
-        out_name = sanitize_filename(board["name"])
+        out_name = unique_name(sanitize_filename(board["name"]), seen)
         board_jsons[f"{out_name}.json"] = json.dumps(board, indent=2) + "\n"
         seg_info = ""
         if board.get("seven_seg"):
@@ -178,7 +118,7 @@ def main() -> int:
     print(f"Generated {len(board_jsons)} board definitions.")
 
     print(f"\nWriting to {args.output_dir} ...")
-    write_outputs(args.output_dir, board_jsons, commit_sha, dry_run=args.dry_run)
+    write_outputs(args.output_dir, board_jsons, commit_sha, _REPO, dry_run=args.dry_run)
 
     print("\nDone.")
     return 0

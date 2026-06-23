@@ -54,6 +54,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `scripts/litex_parser.py` | Mock-exec parser: litex `_io` platform files → board dicts (used by `sync_litex_boards.py`) |
 | `scripts/sync_digilent_xdc.py` | Syncs board definitions from Digilent master XDC files (with port_conventions) |
 | `scripts/digilent_parser.py` | XDC regex parser → board dicts + `port_conventions` (used by `sync_digilent_xdc.py`) |
+| `scripts/sync_common.py` | Shared sync scaffolding (download, ref-resolve, naming, JSON/metadata output) for all three `sync_*.py` |
 | `sim/sim_testbench.py` | cocotb test that runs pygame inside the GHDL simulation |
 | `sim/sim_wrapper_template.vhd` | Unified VHDL wrapper template; seg port/generic spliced in by `_generate_wrapper()` when needed |
 | `src/fpga_sim/sim_session_log.py` | Writes per-session JSON summaries to ~/.fpga_simulator/sessions/ |
