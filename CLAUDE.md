@@ -14,7 +14,7 @@ uv sync
 uv sync --group dev
 
 # (Optional) Re-sync board definitions from upstream sources
-uv run python scripts/sync_boards.py          # amaranth-boards
+uv run python scripts/sync_amaranth_boards.py  # amaranth-boards
 uv run python scripts/sync_litex_boards.py     # litex-boards
 uv run python scripts/sync_digilent_xdc.py     # Digilent XDC
 ```
@@ -48,7 +48,8 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `src/fpga_sim/ui/` | pygame UI package (board_selector, board_display, components, etc.) |
 | `boards/` | JSON board definitions (multi-source: `amaranth-boards/`, `litex-boards/`, `digilent-xdc/`, `custom/`) |
 | `boards/schema/board.schema.json` | JSON Schema for board definition validation |
-| `scripts/sync_boards.py` | Syncs board definitions from amaranth-boards GitHub repo |
+| `scripts/sync_amaranth_boards.py` | Syncs board definitions from amaranth-boards GitHub repo |
+| `scripts/amaranth_parser.py` | Mock-exec parser: amaranth `.py` board files → `BoardDef` (used by `sync_amaranth_boards.py`) |
 | `scripts/sync_litex_boards.py` | Syncs board definitions from litex-boards GitHub repo |
 | `scripts/sync_digilent_xdc.py` | Syncs board definitions from Digilent master XDC files (with port_conventions) |
 | `sim/sim_testbench.py` | cocotb test that runs pygame inside the GHDL simulation |
@@ -61,7 +62,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 
 ### Data Flow
 
-1. `src/fpga_sim/board_loader.py` reads JSON board definitions from `boards/` subdirectories (each subdirectory is a "source": `amaranth-boards/`, `litex-boards/`, `digilent-xdc/`, `custom/`, etc.) and constructs `BoardDef` objects. The mock-exec pipeline for parsing upstream Python board files is used by `scripts/sync_boards.py` and `scripts/sync_litex_boards.py`.
+1. `src/fpga_sim/board_loader.py` reads JSON board definitions from `boards/` subdirectories (each subdirectory is a "source": `amaranth-boards/`, `litex-boards/`, `digilent-xdc/`, `custom/`, etc.) and constructs `BoardDef` objects. The offline mock-exec pipeline for parsing upstream amaranth `.py` board files lives in `scripts/amaranth_parser.py` (used by `scripts/sync_amaranth_boards.py`); `sync_litex_boards.py` and `sync_digilent_xdc.py` carry their own self-contained parsers.
 
 2. `src/fpga_sim/__main__.py` displays four sequential screens: `BoardSelector` → `FPGABoard` (preview) → `VHDLFilePicker` → simulation start.
 
@@ -127,7 +128,7 @@ The simulator sets generics to match the selected board's resource counts and pr
 
 Board definitions live in `boards/` as JSON files, organized by source:
 
-- `boards/amaranth-boards/` — auto-generated from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via `scripts/sync_boards.py`
+- `boards/amaranth-boards/` — auto-generated from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via `scripts/sync_amaranth_boards.py`
 - `boards/litex-boards/` — auto-generated from [litex-boards](https://github.com/litex-hub/litex-boards) via `scripts/sync_litex_boards.py`
 - `boards/digilent-xdc/` — auto-generated from [Digilent XDC](https://github.com/Digilent/digilent-xdc) via `scripts/sync_digilent_xdc.py` (includes `port_conventions`)
 - `boards/custom/` — manually maintained boards (e.g., DE10-Standard)
@@ -135,6 +136,6 @@ Board definitions live in `boards/` as JSON files, organized by source:
 
 To add a new board, create a JSON file in `boards/custom/` following the schema at `boards/schema/board.schema.json`. The JSON format includes optional `peripherals` and `port_conventions` sections for future use.
 
-### Board Loader Mock Namespace (sync script only)
+### Amaranth Parser Mock Namespace (sync script only)
 
-`fpga_sim.board_loader._make_namespace()` provides mock classes (`Resource`, `Subsignal`, `Pins`, `PinsN`, `DiffPairs`, `Attrs`, `Clock`, `Connector`) and stubs for interfaces/memory (UART, SPI, I2C, SDRAM, etc.) that are not simulated. These are used only by `scripts/sync_boards.py` to parse upstream amaranth-boards Python files into JSON. Only resources whose names contain `led`, `button`, `btn`, `switch`, or `sw` are extracted; everything else is stubbed out.
+`scripts/amaranth_parser._make_namespace()` provides mock classes (`Resource`, `Subsignal`, `Pins`, `PinsN`, `DiffPairs`, `Attrs`, `Clock`, `Connector`) and stubs for interfaces/memory (UART, SPI, I2C, SDRAM, etc.) that are not simulated. These are used only by `scripts/sync_amaranth_boards.py` to parse upstream amaranth-boards Python files into JSON. The parser imports the `BoardDef` / `ComponentInfo` / `SevenSegDef` data classes from `fpga_sim.board_loader` (one-way; the runtime loader never imports the parser). Only resources whose names contain `led`, `button`, `btn`, `switch`, or `sw` are extracted; everything else is stubbed out.

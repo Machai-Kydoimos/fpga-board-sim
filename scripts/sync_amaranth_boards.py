@@ -17,7 +17,7 @@ from pathlib import Path
 # Ensure the project src/ is importable
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from fpga_sim.board_loader import load_board_from_source  # noqa: E402
+from amaranth_parser import load_board_from_source  # noqa: E402
 
 
 def sanitize_filename(name: str) -> str:

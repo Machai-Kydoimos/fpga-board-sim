@@ -1,10 +1,16 @@
 """Shared pytest fixtures and helpers for all test modules."""
 
 import os
+import sys
+from pathlib import Path
 
 import pytest
 
-from fpga_sim.sim_bridge import _find_ghdl, _NVCBackend
+# Make the offline sync tooling under scripts/ importable by tests
+# (e.g. amaranth_parser, sync_amaranth_boards).
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
+
+from fpga_sim.sim_bridge import _find_ghdl, _NVCBackend  # noqa: E402
 
 
 @pytest.fixture(scope="session")

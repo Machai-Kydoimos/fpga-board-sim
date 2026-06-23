@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Decoupled the amaranth-boards sync from the runtime board loader.** The
+  mock-exec parser that turns upstream amaranth `.py` board files into
+  `BoardDef`s moved out of `src/fpga_sim/board_loader.py` into a dedicated
+  `scripts/amaranth_parser.py`, and `scripts/sync_boards.py` was renamed to
+  `scripts/sync_amaranth_boards.py` (parallel to `sync_litex_boards.py` /
+  `sync_digilent_xdc.py`). `board_loader.py` is now a pure JSON runtime loader
+  (804 → 241 lines); generated board JSON is byte-for-byte unchanged.
+
+### Removed
+
+- Dead pre-JSON discovery fallbacks in `board_loader.py`
+  (`_discover_boards_legacy` and the amaranth-boards submodule path),
+  unreachable since board definitions moved to JSON.
+
 ## [0.6.0] - 2026-06-22
 
 ### Added

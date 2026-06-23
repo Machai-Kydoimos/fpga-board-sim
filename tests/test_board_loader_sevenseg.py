@@ -5,11 +5,11 @@ Parametric real-board tests are skipped when the submodule is absent.
 """
 
 import pytest
+from amaranth_parser import load_board_from_source
 
 from fpga_sim.board_loader import (
     discover_boards,
     get_default_boards_path,
-    load_board_from_source,
 )
 
 # ── Inline source fixtures ─────────────────────────────────────────────────────
