@@ -43,7 +43,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | File | Role |
 |------|------|
 | `src/fpga_sim/__main__.py` | Main entry point; pygame UI with four screens |
-| `src/fpga_sim/board_loader.py` | Loads board definitions from JSON; also has mock classes for sync script |
+| `src/fpga_sim/board_loader.py` | Loads board definitions from JSON into `BoardDef` objects (runtime loader) |
 | `src/fpga_sim/sim_bridge.py` | GHDL analysis + simulation launcher; platform-specific VPI env setup |
 | `src/fpga_sim/ui/` | pygame UI package (board_selector, board_display, components, etc.) |
 | `boards/` | JSON board definitions (multi-source: `amaranth-boards/`, `litex-boards/`, `digilent-xdc/`, `custom/`) |
