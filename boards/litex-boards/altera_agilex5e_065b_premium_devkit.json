@@ -1,0 +1,197 @@
+{
+  "name": "Altera Agilex5e 065b Premium Devkit",
+  "class_name": "AlteraAgilex5e065bPremiumDevkitPlatform",
+  "vendor": "Intel",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk100",
+      "hz": 100000000.0,
+      "pin": "D8",
+      "is_default": true
+    },
+    {
+      "name": "clk100",
+      "hz": 100000000.0,
+      "pin": "BF111",
+      "is_default": true
+    },
+    {
+      "name": "clk125",
+      "hz": 125000000.0,
+      "pin": "A23"
+    }
+  ],
+  "default_clock_hz": 100000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "BM59"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.1 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "BH59"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.1 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "BH62"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.1 V"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "BK59"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.1 V"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "BK31"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "BP22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "BK28"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "BR22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVCMOS"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "CH12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "BU22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "BW19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVCMOS"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "BH28"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVCMOS"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "altera_agilex5e_065b_premium_devkit.py",
+    "sync_commit": "08e6a063e365a8baebc0cd92ebee6d9e97ce0a50",
+    "sync_timestamp": "2026-06-23T08:11:25.262005+00:00"
+  }
+}

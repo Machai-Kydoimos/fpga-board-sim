@@ -1,24 +1,24 @@
 {
-  "name": "Alibaba Xcku3p",
-  "class_name": "AlibabaXcku3pPlatform",
-  "vendor": "Xilinx",
-  "device": "xcku3p-ffvb676-2-e",
+  "name": "Trenz Tel0025",
+  "class_name": "TrenzTel0025Platform",
+  "vendor": "Lattice",
+  "device": "",
   "package": "",
   "clocks": [
     {
-      "name": "clk100",
-      "hz": 100000000.0,
-      "pin": "E18",
+      "name": "clk25",
+      "hz": 25000000.0,
+      "pin": "G1",
       "is_default": true
     }
   ],
-  "default_clock_hz": 100000000.0,
+  "default_clock_hz": 25000000.0,
   "leds": [
     {
       "name": "led",
       "number": 0,
       "pins": [
-        "B11"
+        "A7"
       ],
       "direction": "o",
       "inverted": false,
@@ -28,25 +28,12 @@
       }
     },
     {
-      "name": "led",
+      "name": "rgb_led",
       "number": 0,
       "pins": [
-        "A13",
-        "A12",
-        "B9"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "sfp_led",
-      "number": 0,
-      "pins": [
-        "B12"
+        "A7",
+        "A8",
+        "B8"
       ],
       "direction": "o",
       "inverted": false,
@@ -59,20 +46,7 @@
       "name": "led",
       "number": 1,
       "pins": [
-        "C11"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "sfp_led",
-      "number": 1,
-      "pins": [
-        "C12"
+        "A8"
       ],
       "direction": "o",
       "inverted": false,
@@ -85,20 +59,7 @@
       "name": "led",
       "number": 2,
       "pins": [
-        "A10"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led",
-      "number": 3,
-      "pins": [
-        "B10"
+        "B8"
       ],
       "direction": "o",
       "inverted": false,
@@ -108,13 +69,27 @@
       }
     }
   ],
-  "buttons": [],
+  "buttons": [
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "C8"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
   "switches": [],
   "seven_seg": null,
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "litex-boards",
-    "upstream_file": "alibaba_xcku3p.py",
+    "upstream_file": "trenz_tel0025.py",
     "sync_commit": "08e6a063e365a8baebc0cd92ebee6d9e97ce0a50",
     "sync_timestamp": "2026-06-23T08:11:25.262005+00:00"
   }
