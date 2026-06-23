@@ -792,7 +792,10 @@ def main() -> None:
     boards = discover_boards(boards_dir)
 
     if not boards:
-        print("No boards found.  Run:  uv run python scripts/sync_boards.py", file=sys.stderr)
+        print(
+            "No boards found.  Run:  uv run python scripts/sync_amaranth_boards.py",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     # Apply optional name filter

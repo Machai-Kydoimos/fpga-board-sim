@@ -1,12 +1,12 @@
 """Tests for board_loader: discovery, parsing, and spot-checks."""
 
 import pytest
+from amaranth_parser import load_board_from_source
 
 from fpga_sim.board_loader import (
     BoardDef,
     discover_boards,
     get_default_boards_path,
-    load_board_from_source,
 )
 
 
@@ -230,12 +230,12 @@ def test_to_json_with_empty_components_is_valid():
     assert data["switches"] == []
 
 
-def test_discover_boards_skips_unparseable_file(tmp_path):
-    """discover_boards() must silently skip files with syntax errors."""
-    (tmp_path / "broken_board.py").write_text("class Broken(: pass\n")
-    (tmp_path / "also_broken.py").write_text("def ???(): pass\n")
+def test_discover_boards_ignores_stray_root_files(tmp_path):
+    """discover_boards() ignores stray files in the boards root; only subdirs are sources."""
+    (tmp_path / "stray.json").write_text("not valid json {{{")
+    (tmp_path / "notes.txt").write_text("hello\n")
     boards = discover_boards(tmp_path)
-    assert isinstance(boards, list)  # no exception; result may be empty
+    assert boards == []  # no source subdirectories → nothing discovered
 
 
 # ═══════════════════════════════════════════════════════════════════════

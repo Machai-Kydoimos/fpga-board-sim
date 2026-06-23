@@ -97,7 +97,7 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) ->
 
     if not boards:
         print(
-            "[benchmark] No boards found. Run: uv run python scripts/sync_boards.py",
+            "[benchmark] No boards found. Run: uv run python scripts/sync_amaranth_boards.py",
             file=sys.stderr,
         )
         return 1
@@ -192,7 +192,7 @@ def main() -> None:
 
     if not boards:
         print("No board definitions found; using generic board.")
-        print("Run  uv run python scripts/sync_boards.py  to generate board files.")
+        print("Run  uv run python scripts/sync_amaranth_boards.py  to generate board files.")
         FPGABoard(width=width, height=height).run()
         get_font.cache_clear()
         pygame.quit()
