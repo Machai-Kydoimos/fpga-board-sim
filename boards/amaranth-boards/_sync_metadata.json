@@ -1,8 +1,8 @@
 {
   "source_repo": "https://github.com/amaranth-lang/amaranth-boards",
-  "source_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
-  "sync_timestamp": "2026-05-24T22:41:53.819344+00:00",
-  "board_count": 77,
+  "source_commit": "fd2f0df811a8dbcf6aa0b94ac0788dc71ac79e1e",
+  "sync_timestamp": "2026-06-23T02:31:22.624692+00:00",
+  "board_count": 79,
   "files_written": [
     "alchitry_au.json",
     "alchitry_pt_v2.json",
@@ -22,6 +22,8 @@
     "cmod_a7-35.json",
     "cmod_s7.json",
     "colorlight-5_a75_b-r70.json",
+    "cora_z7-07_s.json",
+    "cora_z7-10.json",
     "de0.json",
     "de0_cv.json",
     "de0_nano.json",
