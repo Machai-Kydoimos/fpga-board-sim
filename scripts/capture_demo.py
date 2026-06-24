@@ -80,10 +80,13 @@ def _parse_args() -> argparse.Namespace:
         "--fps", type=int, default=None, help="GIF playback fps (default: scenario-tuned)"
     )
     p.add_argument(
-        "--end-cycles", type=int, default=5, help="snake: stop after this many snake cycles"
+        "--end-cycles", type=int, default=6, help="snake: stop after this many snake cycles"
     )
     p.add_argument(
-        "--hold-frames", type=int, default=6, help="snake: frames a button stays pressed"
+        "--hold-frames", type=int, default=11, help="snake: frames a button stays pressed"
+    )
+    p.add_argument(
+        "--tail-frames", type=int, default=12, help="snake: extra frames after the speed-up"
     )
     p.add_argument("--frames", type=int, default=80, help="plain: number of frames to capture")
     p.add_argument("--every", type=int, default=1, help="plain: Timer steps between saved frames")
@@ -124,9 +127,9 @@ def main() -> None:
     args = _parse_args()
     simulator = cast(Simulator, args.sim)
     snake = args.scenario == "snake"
-    step_ns = args.step_ns if args.step_ns is not None else (14000 if snake else 2000)
+    step_ns = args.step_ns if args.step_ns is not None else (12000 if snake else 2000)
     counter_bits = args.counter_bits if args.counter_bits is not None else (12 if snake else 24)
-    fps = args.fps if args.fps is not None else (18 if snake else 25)
+    fps = args.fps if args.fps is not None else (24 if snake else 25)
 
     board_json_path = _resolve_board(args.board)
     board_def = BoardDef.from_json(board_json_path.read_text())
@@ -180,13 +183,19 @@ def main() -> None:
                 "CAPTURE_COUNTER_BITS": str(counter_bits),
                 "CAPTURE_END_CYCLES": str(args.end_cycles),
                 "CAPTURE_HOLD_FRAMES": str(args.hold_frames),
+                "CAPTURE_TAIL_FRAMES": str(args.tail_frames),
                 "CAPTURE_FRAMES": str(args.frames),
                 "CAPTURE_EVERY": str(args.every),
                 "CAPTURE_SW": str((1 << args.switches) - 1 if args.switches > 0 else 0),
                 "CAPTURE_W": str(args.width),
                 "CAPTURE_H": str(args.height),
                 "PYTHONPATH": os.pathsep.join(
-                    [str(_ROOT / "src"), str(_ROOT / "sim"), run_env.get("PYTHONPATH", "")]
+                    [
+                        str(_ROOT / "src"),
+                        str(_ROOT / "sim"),
+                        str(_ROOT / "scripts"),
+                        run_env.get("PYTHONPATH", ""),
+                    ]
                 ),
             }
         )

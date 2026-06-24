@@ -16,7 +16,8 @@ environment variables set by the orchestrator:
     Directory to receive ``frame_NNNN.png`` files (created if absent).
 ``CAPTURE_SCENARIO``
     ``plain`` (default) — fixed-length capture; or ``snake`` — a scripted
-    interactive storyboard for ``snake_7seg`` (button taps + a switch toggle).
+    interactive storyboard for ``snake_7seg`` (a faux cursor taps the buttons
+    and a switch, with captions).
 ``CAPTURE_STEP_NS``
     Nanoseconds per ``await Timer`` step (default ``2000``).
 ``CAPTURE_W`` / ``CAPTURE_H``
@@ -24,18 +25,20 @@ environment variables set by the orchestrator:
 
 Plain scenario only: ``CAPTURE_FRAMES`` (default 80), ``CAPTURE_EVERY`` (default 1),
 ``CAPTURE_SW`` (default 0).  Snake scenario only: ``CAPTURE_COUNTER_BITS``,
-``CAPTURE_END_CYCLES`` (default 5), ``CAPTURE_HOLD_FRAMES`` (default 6),
-``CAPTURE_MAX_FRAMES`` (safety cap, default 400).
+``CAPTURE_END_CYCLES`` (default 6), ``CAPTURE_HOLD_FRAMES`` (default 11, frames a
+press is held), ``CAPTURE_TAIL_FRAMES`` (default 12, extra time after the speed-up).
 """
 
 import os
 
 import cocotb
 import pygame
+from capture_common import draw_caption, draw_cursor
 from cocotb.triggers import Timer
 
 from fpga_sim.board_loader import BoardDef
 from fpga_sim.ui import FPGABoard
+from fpga_sim.ui.constants import get_font
 
 # Fixed wrapper clock half-period (ns).  The absolute clock rate is irrelevant
 # for capture; pinning it makes "clocks advanced per frame" = CAPTURE_STEP_NS / 10,
@@ -86,78 +89,154 @@ async def _run_plain(
         _save_frame(board, outdir, frame)
 
 
+class _SnakeDemo:
+    """Drives the interactive ``snake_7seg`` storyboard: eased cursor, captions, taps.
+
+    Each ``_tick`` advances the sim one frame, eases the faux cursor toward its
+    target, draws the board + cursor + caption, and saves a PNG.  The snake step
+    count is tracked deterministically (step period = ``2**step_idx`` clocks; each
+    active switch lowers ``step_idx`` by 2) so we know when each full cycle ends.
+    """
+
+    def __init__(
+        self, dut: object, board: FPGABoard, outdir: str, num_leds: int, num_segs: int
+    ) -> None:
+        """Capture references + tuning, park the cursor, and zero the inputs."""
+        self.dut = dut
+        self.board = board
+        self.outdir = outdir
+        self.num_leds = num_leds
+        self.num_segs = num_segs
+        self.step_ns = _env_int("CAPTURE_STEP_NS", 12000)
+        self.hold = _env_int("CAPTURE_HOLD_FRAMES", 11)
+        self.base_idx = min(_env_int("CAPTURE_COUNTER_BITS", 12) - 1, 16)
+        self.clocks_per_frame = self.step_ns / (2 * _CLK_HALF_NS)
+        self.steps_per_cycle = 4 * num_segs + 4 if num_segs else 16
+        center = num_leds // 2
+        self.central_mask = ((1 << center) | (1 << max(0, center - 1))) if num_leds else 0
+        self.font = get_font(20, bold=True)
+
+        w, h = board.screen.get_size()
+        self.park = (w * 0.5, h * 0.44)
+        self.cx, self.cy = self.park
+        self.tx, self.ty = self.park
+        self.pressed = False
+        self.caption = ""
+        self.sw_value = 0
+        self.steps_done = 0.0
+        self.frame = 0
+        self.dut.sw.value = 0  # type: ignore[attr-defined]
+        self.dut.btn.value = 0  # type: ignore[attr-defined]
+
+    @property
+    def cycle(self) -> int:
+        """Number of full snake cycles completed so far."""
+        return int(self.steps_done // self.steps_per_cycle)
+
+    async def _tick(self) -> None:
+        """Advance one frame: step, mirror, ease the cursor, draw + save."""
+        await Timer(self.step_ns, unit="ns")
+        _mirror_outputs(self.dut, self.board, self.num_leds, self.num_segs)
+        step_idx = max(1, self.base_idx - 2 * self.sw_value.bit_count())
+        self.steps_done += self.clocks_per_frame / float(1 << step_idx)
+        self.cx += (self.tx - self.cx) * 0.34
+        self.cy += (self.ty - self.cy) * 0.34
+        if abs(self.tx - self.cx) < 0.5 and abs(self.ty - self.cy) < 0.5:
+            self.cx, self.cy = self.tx, self.ty  # snap when arrived so parked frames dedup
+        self.board._draw(flip=False)
+        draw_cursor(self.board.screen, (self.cx, self.cy), pressed=self.pressed)
+        draw_caption(self.board.screen, self.caption, self.font)
+        pygame.image.save(
+            self.board.screen, os.path.join(self.outdir, f"frame_{self.frame:04d}.png")
+        )
+        self.frame += 1
+
+    def _aim(self, rect: pygame.Rect) -> None:
+        """Point the cursor's target at the centre of *rect*."""
+        self.tx, self.ty = float(rect.centerx), float(rect.centery)
+
+    async def _travel(self) -> None:
+        """Tick until the cursor has eased onto its target (capped for safety)."""
+        for _ in range(40):
+            if (self.tx - self.cx) ** 2 + (self.ty - self.cy) ** 2 < 9.0:
+                return
+            await self._tick()
+
+    async def run_to_cycle(self, target: int, *, cap: int = 900) -> None:
+        """Park the cursor and run the snake until *target* full cycles have elapsed."""
+        self.tx, self.ty = self.park
+        self.caption = ""
+        while self.cycle < target and self.frame < cap:
+            await self._tick()
+
+    async def _wait_central_led(self) -> None:
+        """Tick until a central LED is lit (capped), so a tap reads clearly."""
+        for _ in range(40):
+            if int(self.dut.led.value) & self.central_mask:  # type: ignore[attr-defined]
+                return
+            await self._tick()
+
+    async def tap_button(self, idx: int, caption: str) -> None:
+        """Move to button *idx*, hold it pressed (with *caption*), then release."""
+        if idx >= len(self.board.buttons):
+            return
+        self._aim(self.board.buttons[idx].rect)
+        await self._travel()
+        await self._wait_central_led()
+        self.board.buttons[idx].pressed = True
+        self.dut.btn.value = 1 << idx  # type: ignore[attr-defined]
+        self.pressed = True
+        self.caption = caption
+        for _ in range(self.hold):
+            await self._tick()
+        self.board.buttons[idx].pressed = False
+        self.dut.btn.value = 0  # type: ignore[attr-defined]
+        self.pressed = False
+        for _ in range(5):  # let the caption linger a moment after release
+            await self._tick()
+        self.caption = ""
+
+    async def toggle_switch(self, idx: int, caption: str) -> None:
+        """Move to switch *idx*, flip it on (with *caption*), and hold a beat."""
+        if idx >= len(self.board.switches):
+            return
+        self._aim(self.board.switches[idx].rect)
+        await self._travel()
+        self.board.switches[idx].state = True
+        self.sw_value |= 1 << idx
+        self.dut.sw.value = self.sw_value  # type: ignore[attr-defined]
+        self.pressed = True
+        self.caption = caption
+        for _ in range(self.hold):
+            await self._tick()
+        self.pressed = False
+        for _ in range(6):
+            await self._tick()
+        self.caption = ""
+
+    async def coast(self, frames: int) -> None:
+        """Park the cursor and run *frames* more frames (no interaction)."""
+        self.tx, self.ty = self.park
+        self.caption = ""
+        for _ in range(frames):
+            await self._tick()
+
+
 async def _run_snake(
     dut: object, board: FPGABoard, outdir: str, num_leds: int, num_segs: int
 ) -> None:
-    """Interactive storyboard for ``snake_7seg``: button taps + a switch speed-up.
-
-    Timeline (deterministic snake-cycle tracking, with the button taps gated on a
-    central LED being lit so the interaction reads clearly):
-
-    * cycle 1 done -> tap ``btn0`` (reverses the snake) while a central LED is lit
-    * cycle 2 done -> tap ``btn1`` (lights every segment) while a central LED is lit
-    * cycle 3 done -> toggle ``SW0`` (each switch doubles the step rate -> faster)
-    * run to ``CAPTURE_END_CYCLES`` so the speed-up is visible, then stop
-    """
-    step_ns = _env_int("CAPTURE_STEP_NS", 14000)
-    counter_bits = _env_int("CAPTURE_COUNTER_BITS", 12)
-    end_cycles = _env_int("CAPTURE_END_CYCLES", 5)
-    hold = _env_int("CAPTURE_HOLD_FRAMES", 6)
-    max_frames = _env_int("CAPTURE_MAX_FRAMES", 400)
-
-    steps_per_cycle = 4 * num_segs + 4 if num_segs else 16
-    base_idx = min(counter_bits - 1, 16)
-    clocks_per_frame = step_ns / (2 * _CLK_HALF_NS)
-    center = num_leds // 2
-    central_mask = ((1 << center) | (1 << max(0, center - 1))) if num_leds else 0
-    n_buttons = len(board.buttons)
-
-    dut.sw.value = 0  # type: ignore[attr-defined]
-    dut.btn.value = 0  # type: ignore[attr-defined]
-
-    sw_value = 0
-    steps_done = 0.0
-    done = {"btn0": False, "btn1": False, "sw0": False}
-    pulse_idx = -1
-    pulse_left = 0
-
-    frame = 0
-    while True:
-        await Timer(step_ns, unit="ns")
-        led_val = _mirror_outputs(dut, board, num_leds, num_segs)
-
-        # Accrue snake steps so we know when each full cycle completes.  The step
-        # period is 2**step_idx clocks; each active switch lowers step_idx by 2.
-        step_idx = max(1, base_idx - 2 * sw_value.bit_count())
-        steps_done += clocks_per_frame / float(1 << step_idx)
-        cycles_done = int(steps_done // steps_per_cycle)
-        central = bool(led_val & central_mask)
-
-        if pulse_left > 0:
-            pulse_left -= 1
-            if pulse_left == 0:
-                board.buttons[pulse_idx].pressed = False
-                dut.btn.value = 0  # type: ignore[attr-defined]
-                done["btn0" if pulse_idx == 0 else "btn1"] = True
-                pulse_idx = -1
-        elif not done["btn0"] and cycles_done >= 1 and central and n_buttons > 0:
-            pulse_idx, pulse_left = 0, hold
-            board.buttons[0].pressed = True
-            dut.btn.value = 1  # type: ignore[attr-defined]
-        elif not done["btn1"] and cycles_done >= 2 and central and n_buttons > 1:
-            pulse_idx, pulse_left = 1, hold
-            board.buttons[1].pressed = True
-            dut.btn.value = 2  # type: ignore[attr-defined]
-        elif not done["sw0"] and cycles_done >= 3 and len(board.switches) > 0:
-            sw_value |= 1
-            board.switches[0].state = True
-            dut.sw.value = sw_value  # type: ignore[attr-defined]
-            done["sw0"] = True
-
-        _save_frame(board, outdir, frame)
-        frame += 1
-        if cycles_done >= end_cycles or frame >= max_frames:
-            break
+    """Scripted interactive demo: BTN0 reverses, BTN1 lights all, SW0 speeds up."""
+    demo = _SnakeDemo(dut, board, outdir, num_leds, num_segs)
+    end_cycle = _env_int("CAPTURE_END_CYCLES", 6)
+    tail = _env_int("CAPTURE_TAIL_FRAMES", 12)
+    await demo.run_to_cycle(1)
+    await demo.tap_button(0, "BTN0  ·  reverse the snake")
+    await demo.run_to_cycle(2)
+    await demo.tap_button(1, "BTN1  ·  light every segment")
+    await demo.run_to_cycle(3)
+    await demo.toggle_switch(0, "SW0  ·  2x update rate")
+    await demo.run_to_cycle(end_cycle)
+    await demo.coast(tail)
 
 
 @cocotb.test()

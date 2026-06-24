@@ -464,14 +464,17 @@ class BoardSelector:
             mouse=pygame.mouse.get_pos(),
         )
 
-        # Filter text box
+        # Filter text box — leave room on the right for the board-count readout,
+        # sized to the worst case ("258 of 278 boards"), so they never overlap.
         filter_y = 8 + title_f.get_height() + 4
+        count_reserve = detail_f.size("000 of 000 boards")[0]
+        input_w = self.width - 54 - count_reserve
         stxt = f"Filter: {self.filter_text}_" if self.filter_text else "Type to filter boards..."
         srch = item_f.render(stxt, True, GRAY)
         pygame.draw.rect(
             self.screen,
             THEME.input_bg,
-            (20, filter_y, self.width - 140, 24),
+            (20, filter_y, input_w, 24),
             border_radius=3,
         )
         self.screen.blit(srch, (26, filter_y + 2))
