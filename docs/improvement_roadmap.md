@@ -36,7 +36,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### U1. Help / About overlay (clickable `(?)` button · F1 · `?`) ✅
 
-- ✅ **2026-06-01 (PR #88).** New `ui/help_dialog.py` — a blocking `HelpDialog` (4-step workflow, keyboard-shortcut legend, VHDL contract summary) opened by F1, `?`, or a circular `(?)` button on all three launcher screens; the legend renders from a single `SHORTCUTS` / `WORKFLOW` / `CONTRACT` source so it can't drift from the real handlers; 36 new tests. Carried-forward gotchas in the [Delivery log](#delivery-log).
+- ✅ **2026-06-01 (PR #88).** New `ui/help_dialog.py` — a blocking `HelpDialog` (4-step workflow, keyboard-shortcut legend, VHDL contract summary) opened by F1, `?`, or a circular `(?)` button on all three launcher screens; the legend renders from a single `SHORTCUTS` / `WORKFLOW` / `CONTRACT` source so it can't drift from the real handlers; 36 new tests. Carried-forward gotchas now noted on **U5** / **U7** / **U14** (and the [Delivery log](#delivery-log)).
 
 #### U2. Inline analysis spinner during VHDL load
 
@@ -73,6 +73,7 @@ This document inventories all viable improvements and ranks them by impact.
 - **Touches:** `src/fpga_sim/session_config.py`; `ui/board_display.py` header; new `ui/settings_dialog.py`.
 - **Effort:** M/L.
 - **Dependencies:** None. But **U6, U10, U18, U19** all depend on this (see Dependencies section).
+- ⚠ **Carried-forward (from U1 ✅ / D4 ✅):** the settings dialog is a *blocking overlay* opened inside a live screen's loop — like `HelpDialog` it swallows `WINDOWRESIZED`, so it must reconcile the parent to the live surface after closing (`_sync_to_surface()`, reflowing `FPGABoard._layout`) or the layout stays stale on a resize. Reuse `ui/widgets/button.py` for its buttons.
 - **Done when:** settings dialog opens from a gear icon, persists window size / speed / theme across restarts, and `recent[]` is populated on each simulation run.
 
 #### U26. Visual README — hero GIF + screenshot (docs / marketing)
@@ -99,6 +100,7 @@ This document inventories all viable improvements and ranks them by impact.
 - **Touches:** `src/fpga_sim/ui/theme.py` (alternate `Theme` instances + a `set_theme`/selection mechanism); `ui/settings_dialog.py` (U5) for the toggle; `sim_bridge.py` / `sim/sim_testbench.py` to carry the choice across the process boundary. Call sites already read `THEME` (D15), so they don't change.
 - **Effort:** M now that D15 has shipped the `Theme` container and routed every call site through `THEME`; the remaining work is the alternate palettes, the Settings toggle, persistence, and the subprocess plumbing.
 - **Dependencies:** **Requires U5** (theme toggle lives in Settings dialog). ~~**D15** (palette centralised)~~ ✅ — the `Theme` object is in place.
+- ⚠ **Carried-forward (from D15 ✅):** the swappable `THEME` container is already in place — keep the import graph acyclic (`constants ← widgets.button ← theme`). Verify the default (`pcb-green`) theme stays **pixel-identical** by regenerating the board images and diffing them byte-for-byte against `main` (the `generate_board_images.py` SVG check D15 used to prove zero visual change).
 - **Done when:** three themes are selectable in Settings; all UI screens (selector, preview, sim, dialogs) render correctly with each; no themed screen reads a colour literal outside the `Theme`.
 
 #### U7. In-simulation navigation toolbar
@@ -108,6 +110,7 @@ This document inventories all viable improvements and ranks them by impact.
 - **Touches:** `sim/sim_testbench.py`, `src/fpga_sim/sim_bridge.py` (return code signalling intent), `src/fpga_sim/__main__.py:351-430` (handle new intents).
 - **Effort:** L.
 - **Dependencies:** Soft: benefits from D4 (shared button helper).
+- ⚠ **Carried-forward (from D4 ✅ / U1 ✅):** reuse `ui/widgets/button.py` for the toolbar buttons (it is importable in the sim subprocess too). Also note the sim screen already has an *inert* F1/`?` help stub (set by U1 but currently unconsumed) — wire it to `HelpDialog` if you want in-sim help alongside the toolbar.
 - **Done when:** all three buttons work during simulation; [Reload VHDL] re-analyses and restarts without returning to the launcher.
 
 #### U8. Splash screen with random board preview
@@ -153,6 +156,8 @@ This document inventories all viable improvements and ranks them by impact.
 | U19 | Metrics-enable checkbox surfacing `FPGA_SIM_METRICS` env var | `ui/sim_panel.py` or Settings dialog | XS |
 
 **Note on U12:** `BoardDef.summary` already includes 7-seg digit count as of v0.5.0. Remaining work is the formatting change (dot separators, abbreviated labels).
+
+**Note on U14 — carried-forward (from U1 ✅):** Register the new `P` key in the single `SHORTCUTS` table in `ui/help_dialog.py` (alongside ESC/S/etc.) so the help legend can't drift from the real handlers. When unit-testing the key handler, note that synthetic pygame KEYDOWN events lack `.unicode` — read it via `getattr(ev, "unicode", "")` (as `FPGABoard._handle_events` does).
 
 **Note on U18/U19:** Both require U5 (Settings dialog) for the `recent[]` data source and metrics toggle location respectively.
 
@@ -244,7 +249,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### D15. Consolidate scattered colours into the single source of truth ✅
 
-- ✅ **2026-06-24 (PR #109).** New `ui/theme.py` — a frozen `Theme` dataclass (~80 semantic colour roles + the vendor-colour map, defaults = today's pcb-green) and a single swappable `THEME` instance; `constants.py` keeps only base neutrals + `get_font` / `_ui_scale`; ~112 inline RGB literals across 9 files now read `THEME.<role>`. Shipped **pixel-identical** (all 278 board SVGs byte-for-byte unchanged), import graph kept acyclic (`constants ← widgets.button ← theme`); 12 new tests. Front-loads **U6**'s container shape. Note in the [Delivery log](#delivery-log).
+- ✅ **2026-06-24 (PR #109).** New `ui/theme.py` — a frozen `Theme` dataclass (~80 semantic colour roles + the vendor-colour map, defaults = today's pcb-green) and a single swappable `THEME` instance; `constants.py` keeps only base neutrals + `get_font` / `_ui_scale`; ~112 inline RGB literals across 9 files now read `THEME.<role>`. Shipped **pixel-identical** (all 278 board SVGs byte-for-byte unchanged), import graph kept acyclic (`constants ← widgets.button ← theme`); 12 new tests. Front-loads **U6**'s container shape (see U6's ⚠ carried-forward note).
 
 ### Tier 2 — Architecture & state
 
@@ -444,10 +449,6 @@ Per-item verification is described in each entry's "Done when" criterion above. 
 
 ## Delivery log
 
-Condensed completion records sit inline next to each ✅ item above; full per-PR detail is in `CHANGELOG.md` and the linked PRs. This section preserves only the **cross-cutting notes from completed work that later items still depend on**:
+Full per-PR detail for every ✅ item is in `CHANGELOG.md`, the linked PRs, and this file's own git history (`git show <merge-commit>:docs/improvement_roadmap.md` returns the pre-condense card). The forward-relevant gotchas from completed work now live as **⚠ Carried-forward** notes on the open cards they affect (**U5**, **U6**, **U7**) and in the Tier-3 note on **U14**. The one cross-cutting note without a single home:
 
-- **Modal overlays (from U1 ✅ — applies to U5 settings dialog and any future blocking overlay).** An overlay opened inside a live screen's `run()` loop swallows `WINDOWRESIZED`, so the parent's cached size + layout go stale while the display surface auto-resizes in place. Reconcile with a `_sync_to_surface()` after the overlay returns (reflowing `FPGABoard._layout`); see `ui/help_dialog.py`. On the selector, `?` must be intercepted *above* the printable-append branch so it never leaks into the text filter.
-- **Shortcut-legend single source (from U1 ✅ — applies to U14 / U15).** The help legend renders from `SHORTCUTS` / `WORKFLOW` / `CONTRACT` in `ui/help_dialog.py`; add every new key there so the legend can't drift from the real handlers.
-- **Theme container (from D15 ✅ — applies to U6 theme system).** All call sites route through one swappable `THEME` object (`ui/theme.py`); `constants.py` holds only base neutrals. Keep the import graph acyclic (`constants ← widgets.button ← theme`). D15 shipped pixel-identical, so U6's remaining work is alternate `Theme` instances + a selector + persistence + subprocess plumbing.
-- **Shared button widget (from D4 ✅ — applies to U5 / U7).** `ui/widgets/button.py` (`ButtonStyle` + `draw_button`) is importable in *both* the launcher and the sim subprocess; new buttons should use it for consistent hover / disabled styling.
-- **Pre-commit hooks (from D10 ✅, superseded by #102).** ruff / ruff-format / mypy / rumdl run as *local* hooks tracking `uv.lock`; they are not `rev:`-pinned.
+- **Selector key handling (from U1 ✅).** Any new *printable* keyboard shortcut on the board selector must be intercepted in `BoardSelector._handle_keydown()` *above* the `filter_text += ev.unicode` branch (match on `ev.unicode`), or the keystroke leaks into the text filter — this is how `?` and type-to-filter coexist.
