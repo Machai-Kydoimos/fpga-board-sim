@@ -18,30 +18,13 @@ from __future__ import annotations
 
 import pygame
 
-from fpga_sim.ui.constants import SEL_BG, _ui_scale, get_font
-from fpga_sim.ui.widgets import ButtonStyle, draw_button
-
-# ── Palette (info-blue accents, vs ErrorDialog's red) ────────────────────────
-_PANEL_BG = (30, 30, 40)
-_PANEL_BORDER = (90, 130, 200)
-_TITLE_COLOR = (150, 200, 255)
-_HEADER_COLOR = (140, 205, 150)
-_BODY_COLOR = (220, 220, 220)
-_KEY_COLOR = (255, 225, 120)
-_DIM_COLOR = (150, 150, 160)
-_SCROLL_TRACK = (80, 80, 100)
-_SCROLL_THUMB = (160, 160, 200)
-
-_STYLE_CLOSE = ButtonStyle(bg=(45, 50, 70), bg_hover=(65, 75, 110))
+from fpga_sim.ui.constants import _ui_scale, get_font
+from fpga_sim.ui.theme import THEME
+from fpga_sim.ui.widgets import draw_button
 
 #: Style for the ``(?)`` trigger button shared by the selector header and the
-#: preview corner.  Large radius → the square hit-rect renders as a circle.
-HELP_BUTTON_STYLE = ButtonStyle(
-    bg=(45, 50, 70),
-    bg_hover=(70, 85, 120),
-    border=(120, 135, 170),
-    radius=99,
-)
+#: preview corner (sourced from the Theme).  Exported for ``draw_help_button``.
+HELP_BUTTON_STYLE = THEME.btn_help
 
 # ── Content (data-driven; the legend's single source of truth) ───────────────
 WORKFLOW: list[tuple[str, str]] = [
@@ -124,7 +107,7 @@ class HelpDialog:
                     return
                 if ev.type == pygame.WINDOWRESIZED:
                     self._bg = pygame.Surface((ev.x, ev.y))
-                    self._bg.fill(SEL_BG)
+                    self._bg.fill(THEME.sel_bg)
                     self._scroll = 0
                 elif ev.type == pygame.KEYDOWN:
                     if self._is_dismiss_key(ev):
@@ -160,19 +143,19 @@ class HelpDialog:
         spacer = max(4, line_h // 2)
 
         def header(text: str) -> None:
-            rows.append((head_h, [(header_f.render(text, True, _HEADER_COLOR), 0)]))
+            rows.append((head_h, [(header_f.render(text, True, THEME.header_text), 0)]))
 
         def body(text: str, indent: int = 0) -> None:
             for line in _wrap(text, body_f, content_w - indent):
-                rows.append((line_h, [(body_f.render(line, True, _BODY_COLOR), indent)]))
+                rows.append((line_h, [(body_f.render(line, True, THEME.body_text), indent)]))
 
         # Workflow — numbered, with a hanging indent on wrapped continuations.
         header("Workflow")
         for num, desc in WORKFLOW:
-            nsurf = body_f.render(f"{num}.", True, _KEY_COLOR)
+            nsurf = body_f.render(f"{num}.", True, THEME.key_text)
             indent = nsurf.get_width() + max(6, body_f.size(" ")[0])
             for i, line in enumerate(_wrap(desc, body_f, content_w - indent)):
-                lsurf = body_f.render(line, True, _BODY_COLOR)
+                lsurf = body_f.render(line, True, THEME.body_text)
                 segs = [(nsurf, 0), (lsurf, indent)] if i == 0 else [(lsurf, indent)]
                 rows.append((line_h, segs))
         rows.append((spacer, []))
@@ -181,8 +164,8 @@ class HelpDialog:
         header("Keyboard shortcuts")
         key_col_w = max(key_f.size(k)[0] for k, _ in SHORTCUTS) + body_f.size("MM")[0]
         for keys, desc in SHORTCUTS:
-            ksurf = key_f.render(keys, True, _KEY_COLOR)
-            dsurf = body_f.render(desc, True, _BODY_COLOR)
+            ksurf = key_f.render(keys, True, THEME.key_text)
+            dsurf = body_f.render(desc, True, THEME.body_text)
             rows.append((line_h, [(ksurf, 0), (dsurf, key_col_w)]))
         rows.append((spacer, []))
 
@@ -228,12 +211,14 @@ class HelpDialog:
         self.screen.blit(overlay, (0, 0))
 
         # Panel.
-        pygame.draw.rect(self.screen, _PANEL_BG, self._panel_rect, border_radius=10)
-        pygame.draw.rect(self.screen, _PANEL_BORDER, self._panel_rect, 2, border_radius=10)
+        pygame.draw.rect(self.screen, THEME.panel_bg, self._panel_rect, border_radius=10)
+        pygame.draw.rect(
+            self.screen, THEME.panel_border_info, self._panel_rect, 2, border_radius=10
+        )
 
         # Title.
         self.screen.blit(
-            title_f.render("FPGA Simulator — Help", True, _TITLE_COLOR), (px + pad, py + pad)
+            title_f.render("FPGA Simulator — Help", True, THEME.title_info), (px + pad, py + pad)
         )
 
         # Scrollable content.
@@ -257,12 +242,15 @@ class HelpDialog:
             thumb_y = content_top + (self._scroll * (viewport_h - thumb_h) // max(1, max_scroll))
             pygame.draw.rect(
                 self.screen,
-                _SCROLL_TRACK,
+                THEME.scroll_track,
                 pygame.Rect(sb_x, content_top, 5, viewport_h),
                 border_radius=2,
             )
             pygame.draw.rect(
-                self.screen, _SCROLL_THUMB, pygame.Rect(sb_x, thumb_y, 5, thumb_h), border_radius=2
+                self.screen,
+                THEME.scroll_thumb,
+                pygame.Rect(sb_x, thumb_y, 5, thumb_h),
+                border_radius=2,
             )
 
         # Close button.
@@ -275,13 +263,13 @@ class HelpDialog:
             self._close_rect,
             "Close",
             btn_f,
-            _STYLE_CLOSE,
+            THEME.btn_help_close,
             hovered=self._close_rect.collidepoint(pygame.mouse.get_pos()),
         )
 
         # Dismiss hint below the panel.
         hint_f = get_font(max(12, round(14 * s)))
-        hint = hint_f.render("Esc / F1 / ?  or click outside to close", True, _DIM_COLOR)
+        hint = hint_f.render("Esc / F1 / ?  or click outside to close", True, THEME.dim_text)
         self.screen.blit(hint, hint.get_rect(centerx=px + panel_w // 2, top=py + panel_h + 8))
 
         pygame.display.flip()

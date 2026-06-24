@@ -50,33 +50,8 @@ from fpga_sim.sim_session_log import save_session_stats
 from fpga_sim.ui import FPGABoard, SimPanel
 from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.sim_panel import _PANEL_H_BASE, _SPEED_DEFAULT
-from fpga_sim.ui.widgets import ButtonStyle, draw_button
-
-# ── Simulation-overlay button styles (Stop / Pause / Resume) ─────────────────
-_STOP_STYLE = ButtonStyle(
-    bg=(110, 28, 28),
-    bg_hover=(160, 40, 40),
-    fg=(240, 100, 100),
-    border=(220, 90, 90),
-    border_width=1,
-    radius=5,
-)
-_PAUSE_STYLE = ButtonStyle(
-    bg=(20, 60, 110),
-    bg_hover=(30, 80, 140),
-    fg=(255, 220, 80),
-    border=(80, 140, 220),
-    border_width=1,
-    radius=5,
-)
-_RESUME_STYLE = ButtonStyle(
-    bg=(100, 80, 20),
-    bg_hover=(130, 110, 30),
-    fg=(255, 220, 80),
-    border=(200, 180, 80),
-    border_width=1,
-    radius=5,
-)
+from fpga_sim.ui.theme import THEME
+from fpga_sim.ui.widgets import draw_button
 
 # ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
 _METRICS_PATH: str = os.environ.get("FPGA_SIM_METRICS", "")
@@ -430,7 +405,7 @@ async def interactive_sim(dut: object) -> None:
 
         # ── Info strip (top-left): board | VHDL | simulator ───────────────────
         _info_font = _get_font(max(9, round(11 * _ov_s)))
-        _info_surf = _info_font.render(_info_text, True, (170, 210, 170))
+        _info_surf = _info_font.render(_info_text, True, THEME.sim_info)
         _info_bg = pygame.Surface(
             (_info_surf.get_width() + 12, _info_surf.get_height() + 6),
             pygame.SRCALPHA,
@@ -450,7 +425,7 @@ async def interactive_sim(dut: object) -> None:
 
         # Pause button label + style change when paused
         _pause_label = "[RESUME]" if panel.paused else "[PAUSE]"
-        _pause_style = _RESUME_STYLE if panel.paused else _PAUSE_STYLE
+        _pause_style = THEME.btn_sim_resume if panel.paused else THEME.btn_sim_pause
         _pause_bw = _ov_font.size(_pause_label)[0] + _ov_pad_x * 2
         _pause_bh = _ov_font.get_height() + _ov_pad_y * 2
 
@@ -469,7 +444,7 @@ async def interactive_sim(dut: object) -> None:
             _stop_btn_rect,
             _stop_label,
             _ov_font,
-            _STOP_STYLE,
+            THEME.btn_sim_stop,
             hovered=_stop_btn_rect.collidepoint(pygame.mouse.get_pos()),
         )
 
@@ -488,7 +463,7 @@ async def interactive_sim(dut: object) -> None:
         # ── "S: stats" hint (bottom-left) when panel is hidden ────────────────
         if not _show_panel:
             _hint_font = _get_font(max(9, round(10 * _ov_s)))
-            _hint_surf = _hint_font.render("S: stats", True, (110, 160, 110))
+            _hint_surf = _hint_font.render("S: stats", True, THEME.sim_hint)
             screen.blit(
                 _hint_surf,
                 (

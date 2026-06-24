@@ -29,41 +29,13 @@ import pygame
 
 from fpga_sim.board_loader import BoardDef, ComponentInfo
 from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch
-from fpga_sim.ui.constants import BG_GREEN, WHITE, _ui_scale, get_font
+from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
-from fpga_sim.ui.widgets import ButtonStyle, draw_button
+from fpga_sim.ui.theme import THEME
+from fpga_sim.ui.widgets import draw_button
 
 if TYPE_CHECKING:
     from fpga_sim.sim_bridge import Simulator
-
-# ── Footer button styles ─────────────────────────────────────────────────────
-# Teal/slate for [Select Board] to set it apart from the blue file actions.
-_STYLE_SELECT_BOARD = ButtonStyle(bg=(15, 75, 90), bg_hover=(20, 100, 115))
-_STYLE_LOAD_VHDL = ButtonStyle(bg=(20, 60, 110), bg_hover=(30, 80, 140))
-_STYLE_START_SIM = ButtonStyle(
-    bg=(20, 90, 40),
-    bg_hover=(30, 120, 60),
-    bg_disabled=(30, 55, 35),
-    fg_disabled=(100, 140, 105),
-    border_disabled=(70, 100, 75),
-)
-# SIM toggle: GHDL = blue, NVC = purple.  When only one simulator is installed
-# the button is disabled (greyed) — except NVC keeps its purple fill, matching
-# the prior behaviour.
-_STYLE_SIM_TOGGLE_GHDL = ButtonStyle(
-    bg=(20, 60, 110),
-    bg_hover=(30, 80, 140),
-    bg_disabled=(50, 50, 60),
-    fg_disabled=(140, 140, 150),
-    border_disabled=(100, 100, 110),
-)
-_STYLE_SIM_TOGGLE_NVC = ButtonStyle(
-    bg=(80, 30, 100),
-    bg_hover=(100, 40, 130),
-    bg_disabled=(80, 30, 100),
-    fg_disabled=(140, 140, 150),
-    border_disabled=(100, 100, 110),
-)
 
 
 class FPGABoard:
@@ -550,7 +522,7 @@ class FPGABoard:
     # ── drawing ──────────────────────────────────────────────────────
 
     def _draw(self, *, flip: bool = True) -> None:
-        self.screen.fill(BG_GREEN)
+        self.screen.fill(THEME.pcb_bg)
 
         s = _ui_scale(self.width, self.height)
         font_size = max(10, round(13 * s))
@@ -583,7 +555,7 @@ class FPGABoard:
                 _parts.append(f"{len(self._seven_segs)}-digit 7-seg")
             if _parts:
                 count_f = get_font(max(11, round(13 * s)))
-                count_surf = count_f.render("  \u00b7  ".join(_parts), True, (180, 220, 180))
+                count_surf = count_f.render("  \u00b7  ".join(_parts), True, THEME.info_green)
                 _chip_r = self.fpga_chip.rect
                 count_x = _chip_r.centerx - count_surf.get_width() // 2
                 # Start below the chip rect plus a gap equal to one chip-font line
@@ -645,7 +617,7 @@ class FPGABoard:
             self._select_board_btn_rect,
             "Select Board",
             btn_font,
-            _STYLE_SELECT_BOARD,
+            THEME.btn_select_board,
             hovered=self._select_board_btn_rect.collidepoint(mouse_pos),
         )
 
@@ -657,7 +629,7 @@ class FPGABoard:
             self._load_vhdl_btn_rect,
             "Load VHDL File",
             btn_font,
-            _STYLE_LOAD_VHDL,
+            THEME.btn_load_vhdl,
             hovered=self._load_vhdl_btn_rect.collidepoint(mouse_pos),
         )
 
@@ -671,7 +643,7 @@ class FPGABoard:
             self._sim_btn_rect,
             "Start Simulation",
             btn_font,
-            _STYLE_START_SIM,
+            THEME.btn_start_sim,
             hovered=self._sim_btn_rect.collidepoint(mouse_pos),
             enabled=can_simulate,
         )
@@ -681,7 +653,9 @@ class FPGABoard:
         toggle_x = start_x - toggle_w - gap
         self._sim_toggle_rect = pygame.Rect(toggle_x, btn_y, toggle_w, btn_h)
         can_toggle = len(self.available_simulators) > 1
-        toggle_style = _STYLE_SIM_TOGGLE_NVC if self.simulator == "nvc" else _STYLE_SIM_TOGGLE_GHDL
+        toggle_style = (
+            THEME.btn_sim_toggle_nvc if self.simulator == "nvc" else THEME.btn_sim_toggle_ghdl
+        )
         draw_button(
             self.screen,
             self._sim_toggle_rect,
@@ -696,12 +670,12 @@ class FPGABoard:
         status_f = get_font(max(10, round(13 * s)))
         status_y = btn_y - status_f.get_linesize() - max(4, round(5 * s))
         if self.vhdl_path is not None:
-            status_txt = status_f.render(f"VHDL: {self.vhdl_path.name}", True, (140, 220, 140))
+            status_txt = status_f.render(f"VHDL: {self.vhdl_path.name}", True, THEME.vhdl_ok)
         else:
             status_txt = status_f.render(
                 "No VHDL file loaded  \u2013  use [Load VHDL File] to select one",
                 True,
-                (210, 170, 70),
+                THEME.warning,
             )
         self.screen.blit(status_txt, (btn_margin_x, status_y))
 
