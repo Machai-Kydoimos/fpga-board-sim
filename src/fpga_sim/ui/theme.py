@@ -61,6 +61,8 @@ class Theme:
     seg_on: RGB = (255, 140, 0)  # amber
     seg_off: RGB = (45, 25, 5)  # ghost segments
     seg_bg: RGB = (15, 15, 15)
+    seg_bezel: RGB = (5, 5, 5)  # near-black digit bezel (pygame + SVG)
+    seg_digit_label: RGB = (90, 90, 90)  # dim per-digit index label (pygame + SVG)
 
     # ── FPGA chip package ───────────────────────────────────────────────────
     chip_default: RGB = (40, 40, 40)  # vendor fallback fill

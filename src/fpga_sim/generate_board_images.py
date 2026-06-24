@@ -238,6 +238,8 @@ def _svg_line(
 
 _SVG_SEG_OFF = "#{:02X}{:02X}{:02X}".format(*SevenSeg.SEG_OFF)
 _SVG_SEG_BG = "#{:02X}{:02X}{:02X}".format(*SevenSeg.BG)
+_SVG_SEG_BEZEL = "#{:02X}{:02X}{:02X}".format(*THEME.seg_bezel)
+_SVG_SEG_LABEL = "#{:02X}{:02X}{:02X}".format(*THEME.seg_digit_label)
 
 
 def _svg_draw_seg_polygon(
@@ -312,7 +314,7 @@ def _svg_draw_7seg(
             "height": str(dh),
             "rx": "3",
             "fill": _SVG_SEG_BG,
-            "stroke": "#050505",
+            "stroke": _SVG_SEG_BEZEL,
             "stroke-width": "1",
         },
     )
@@ -328,7 +330,7 @@ def _svg_draw_7seg(
                 "cx": str(x0 + dw + r + 2),
                 "cy": str(y0 + dh - r - 2),
                 "r": str(r),
-                "fill": "#2D1905",
+                "fill": _SVG_SEG_OFF,
             },
         )
 
@@ -339,7 +341,7 @@ def _svg_draw_7seg(
             "x": str(x0 + dw // 2),
             "y": str(y0 + dh + 12),
             "text-anchor": "middle",
-            "fill": "#5A5A5A",
+            "fill": _SVG_SEG_LABEL,
             "font-size": str(max(8, int(dh * 0.18))),
         },
     ).text = str(digit_index)

@@ -264,7 +264,7 @@ class SevenSeg:
         x0, y0 = self.rect.topleft
 
         pygame.draw.rect(surface, self.BG, self.rect, border_radius=3)
-        pygame.draw.rect(surface, (5, 5, 5), self.rect, width=1, border_radius=3)  # bezel (one-off)
+        pygame.draw.rect(surface, THEME.seg_bezel, self.rect, width=1, border_radius=3)
 
         def colour(n: str) -> tuple[int, int, int]:
             return self.SEG_ON if self._seg(n) else self.SEG_OFF
@@ -307,6 +307,5 @@ class SevenSeg:
             pygame.draw.circle(surface, colour("dp"), (x0 + dw + r + 2, y0 + dh - r - 2), r)
 
         lbl_sz = max(8, int(dh * 0.18))
-        idx_color = (90, 90, 90)  # dim index label (one-off)
-        lbl = _get_font(lbl_sz).render(str(self.index), True, idx_color)
+        lbl = _get_font(lbl_sz).render(str(self.index), True, THEME.seg_digit_label)
         surface.blit(lbl, (x0 + dw // 2 - lbl.get_width() // 2, y0 + dh + 2))
