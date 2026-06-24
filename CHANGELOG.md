@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Visual README** — the project page now opens with an animated GIF of a live
+  simulation (`hdl/snake_7seg.vhd` on the DE10-Lite) and a board-selector
+  screenshot, so the UI is visible at a glance. Both are reproducible via new
+  maintainer tools `scripts/capture_demo.py` (headless sim → optimised GIF) and
+  `scripts/capture_screenshot.py`; Pillow was added to the `dev` group.
 - **6 new boards** synced from upstream (272 → 278 loadable): amaranth Cora
   Z7-07S / Cora Z7-10; litex Adiuvo Forgix, Altera Agilex5e 065B Premium DevKit,
   Brisbanesilicon BRS-100, Trenz TEL0025. Each headless-spot-checked on NVC.

@@ -4,6 +4,14 @@
 
 Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://github.com/ghdl/ghdl) or [NVC](https://github.com/nickg/nvc). Select from 250+ real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards), [litex-boards](https://github.com/litex-hub/litex-boards), [Digilent XDC](https://github.com/Digilent/digilent-xdc), and custom JSON definitions), then run VHDL designs against a virtual board with switches, buttons, LEDs, and 7-segment displays — all driven by [cocotb](https://github.com/cocotb/cocotb).
 
+![A snake of light crawling across the DE10-Lite's six 7-segment displays with a bouncing red LED, driven by a live VHDL simulation](docs/assets/demo.gif)
+
+*Above — `hdl/snake_7seg.vhd` running live on the DE10-Lite: the crawling segment, bouncing decimal point, and bouncing LED are all driven by the actual VHDL simulation (GHDL / NVC + cocotb), not a pre-rendered animation. Captured headlessly via [`scripts/capture_demo.py`](scripts/capture_demo.py). ▶ [Watch the full talk](https://youtu.be/v4Fc6HctK1E).*
+
+Choose from **278 real FPGA boards** (Xilinx, Intel, Lattice, Gowin, Efinix, and more) — filter live by component or vendor:
+
+![Board-selector screen: a filterable, sortable list of 278 FPGA boards with component (LEDs / switches / buttons / 7-seg) and per-vendor filter chips](docs/assets/board_selector.png)
+
 ## Quick Start
 
 ### Prerequisites

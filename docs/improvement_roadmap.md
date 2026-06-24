@@ -1,6 +1,6 @@
 # Virtual FPGA Boards — Improvement Roadmap
 
-*Drafted 2026-05-19 · Updated 2026-06-01 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
+*Drafted 2026-05-19 · Updated 2026-06-24 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
 
 A comprehensive, impact-weighted roadmap covering improvements from two perspectives:
 
@@ -13,14 +13,14 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~5,800 LOC across 10+ Python modules, 24 test files (960 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 275 board definitions from four sources (272 loadable), performance heavily tuned (PR #31), v0.5.0 released.
+The simulator is mature: ~5,700 LOC across 10+ Python modules (≈6,400 incl. `sim/`), 27 test files (1001 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 281 board definitions from four sources (278 loadable), performance heavily tuned (PR #31), v0.6.0 released (2026-06-22).
 
-It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically and now show four patterns:
+It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
-1. **Board discovery at scale.** With 272 boards from 7 vendors, the flat scrolling list with text-only filtering is no longer adequate. Users cannot filter by component type, vendor, or capability — they must already know the board name.
-2. **Onboarding & discoverability gaps.** README is excellent (~545 lines) but unreachable from inside the app. New users cannot easily find shortcuts, the design contract, or feature locations.
-3. **DRY drift.** Two near-identical backend classes, three component classes with identical structure, and a 264-line main function with stringly-typed screen results. Colour definitions had likewise drifted (14 named shades in `ui/constants.py` vs ~112 inline RGB literals across 9 files); **D15 ✅** consolidated the palette into a `Theme` object (`ui/theme.py`). *(VHDL wrapper templates unified in D1.)*
-4. **Roadmap gravity.** Several features have been queued in memory for months (PWM LEDs, splash, settings screen, waveforms, Verilog, in-sim navigation) but never sequenced.
+1. **Board discovery at scale.** With 278 boards from 7 vendors, the original flat scrolling list with text-only filtering was inadequate — users could not filter by component type, vendor, or capability. **U0 ✅** added faceted filtering + sort, largely resolving this.
+2. **Onboarding & discoverability gaps.** README is excellent (~605 lines) but historically unreachable from inside the app. **U1 ✅** added an in-app help overlay (workflow, shortcuts, design contract); the README itself is still not surfaced in-app.
+3. **DRY drift.** Two near-identical backend classes (D2, open), three component classes with identical structure (D3, open), and a 264-line main function with stringly-typed screen results (D6, open) remain. Colour/button drift is resolved: **D4 ✅** unified button drawing and **D15 ✅** consolidated ~112 inline RGB literals into a `Theme` object (`ui/theme.py`). *(VHDL wrapper templates unified in D1 ✅.)*
+4. **Roadmap gravity.** Features queued in memory for months (PWM LEDs, splash, settings screen, waveforms, Verilog, in-sim navigation) are now sequenced below.
 
 This document inventories all viable improvements and ranks them by impact.
 
@@ -32,35 +32,11 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### U0. Board selector — faceted filtering and sort ✅
 
-- **Completed:** 2026-05-27 (PR #75).
-- **Delivered:** filter chips (4 component + data-driven vendor chips with "Other" grouping), sort dropdown with 7 modes (Name, Vendor, LEDs, Switches, Buttons, 7-seg, Total), active filter counter ("N of 272 boards"), and session persistence of all filter/sort state. Also fixed: preselect scroll with active filters, scroll clamping in both list screens, and VHDL path unnecessarily cleared on board navigation. 42 new tests.
-- **Why:** 272 boards across 7 vendors with only name-substring filtering makes discoverability poor. A user who wants "a board with switches and 7-seg" must scroll the entire list reading summaries. Component distribution is highly varied: 176 boards have zero switches; only 24 have 7-seg; LED counts range from 0 to 34. The current text filter (`_filtered()` at line 68) matches on `name` and `class_name` only.
-- **What:** Three additions to the board selector header area:
-  1. **Filter chips** — clickable toggles below the text filter: `Has LEDs`, `Has Switches`, `Has Buttons`, `Has 7-seg`, and vendor chips (Xilinx / Lattice / Intel / Other). These compose with the existing text filter (AND logic).
-  2. **Sort control** — a cycle button: Name (default) → LED count descending → total component count descending → Name.
-  3. **Active filter summary** — replace the static "272 boards" counter with "42 of 272 boards" when filters are active.
-- **Touches:** `src/fpga_sim/ui/board_selector.py` (expand `_filtered()` logic at line 67, add chip rendering in `_draw()` header at lines 125-163, add click handling for chips in `_click()` / `_hover()`).
-- **Effort:** M. The current header has room (only title + text filter); the hard part is fitting chips into small windows gracefully.
-- **Dependencies:** None.
-- **Done when:** filter chips render in the header, compose with the text filter, the board count updates to show "N of 272 boards", and sort cycles through all three modes.
+- ✅ **2026-05-27 (PR #75).** Filter chips (4 component + data-driven vendor chips with an "Other" group), a 7-mode sort dropdown (Name, Vendor, LEDs, Switches, Buttons, 7-seg, Total), an active-filter counter, and session persistence of all filter/sort state; 42 new tests. Touched `ui/board_selector.py`.
 
 #### U1. Help / About overlay (clickable `(?)` button · F1 · `?`) ✅
 
-- **Completed:** 2026-06-01.
-- **Delivered:** New `src/fpga_sim/ui/help_dialog.py` — a blocking `HelpDialog` (snapshot-dim-centred-panel, reusing the D4 button helper) with a 4-step workflow, a two-column keyboard-shortcut legend, and the VHDL design-contract summary (scrollable + scrollbar for small windows). The legend renders from a single module-level `SHORTCUTS` table (plus `WORKFLOW` / `CONTRACT`) so it can't drift from the real handlers; it lists the shortcuts that exist today (incl. U13's ↑/↓/PgUp/PgDn + Enter) and omits P (still U14). Triggers wired on all three launcher screens — F1 and `?` (intercepted in `BoardSelector._handle_keydown` *above* the printable-append branch, and via `getattr(ev, "unicode", "")` in `FPGABoard._handle_events`) — plus a shared circular `(?)` button (`draw_help_button` / `HELP_BUTTON_STYLE`) in the selector header and the preview corner. Dismiss via Esc/F1/`?`, the Close button, or a click outside; the overlay runs its own loop so no keystroke leaks into the filter. Because that loop also swallows `WINDOWRESIZED`, each parent screen reconciles to the live surface size (`_sync_to_surface()`, reflowing `FPGABoard`'s layout) when the overlay closes — a resize while help is open re-scales the underlying screen the moment it's dismissed, instead of leaving the old layout clipped to the new window. Registered in `ui/__init__.py`. 36 new tests (`test_help_dialog.py` + selector/picker/display additions); full suite 966 green.
-- **Scope note:** Delivered on the three launcher screens (selector / preview / picker), the stated minimum. The simulation subprocess (`sim/sim_testbench.py`) is intentionally out of scope (separate process, own loop); F1/`?` set an inert flag there that nothing consumes.
-- **Why:** Currently nothing in-app teaches the user the workflow or shortcuts; README is great but invisible at runtime.
-- **What:** Modal overlay with a 4-step workflow diagram, keyboard shortcut legend, the design-contract summary, and a pointer to `hdl/blinky.vhd` as a working example.
-- **Triggers (decided 2026-05-31): a clickable `(?)` button + F1 + `?`, all opening the same overlay.** Three triggers because the audience is mixed — new users need a *visible* affordance, power users want a hotkey:
-  - **`(?)` button** — the primary *discovery* path (U1 targets onboarding; a hidden hotkey is invisible to exactly those users). Top-right of the selector header (the title row at `board_selector.py:355-356` has free space on the right) and in the preview (corner `(?)` or via the footer). Render with the D4 shared button helper.
-  - **F1** — universal GUI convention; non-printable, so it never conflicts on any screen.
-  - **`?`** — keyboard-app convention (Gmail / GitHub / Vim / `less`). Already free on the preview, picker, and sim screens (no text input there). On the **selector** it must be intercepted in `BoardSelector._handle_keydown()` *before* the printable-append branch (`self.filter_text += ev.unicode`); match on `ev.unicode == "?"` (keyboard-layout-independent, unlike `Shift+/`) so it never reaches the filter. Reserving `?` costs nothing — no board name contains it.
-- **Legend must reflect shortcuts that actually exist when U1 ships.** As of 2026-05-31 the real shortcuts are: F1 / `?` (this overlay), ESC (back/cancel, all screens), Enter (Start Simulation on the preview; "Try Another File" in ErrorDialog), R (reset switches/buttons — preview only, `board_display.py:417`), S (toggle SimPanel — *simulation screen only*, `sim_testbench.py:370`), plus type-to-filter and mouse-wheel scroll on the selector. **U13 (arrow/Page nav + Enter-to-select) shipped 2026-06-01**, so the legend must now list ↑/↓/PgUp/PgDn (navigate) and Enter (select) on the selector + picker as real, existing shortcuts. **P (pause) still does NOT exist** — it's a mouse-only overlay button in the sim screen, and the P key is U14, so omit P unless U14 lands first. **Implementation:** render the legend from a single `SHORTCUTS` constant so every future key (U13/U14/U15) has one obvious place to update — the structural guard against the legend drifting from the real handlers.
-- **Touches:** new `src/fpga_sim/ui/help_dialog.py` (register in `ui/__init__.py`), reusing the `ErrorDialog` snapshot-dim-centred-panel structure (`error_dialog.py`) for layout. Key wiring — match F1 and `?` in each screen's keydown handler (U13 extracted `_handle_keydown()` on both list screens): `BoardSelector._handle_keydown()` (intercept `?` *above* the printable-append branch), `board_display.py:413-429` (`_handle_events`), `VHDLFilePicker._handle_keydown()` (ESC / arrows / Enter today). Button — add a hit-rect + draw in `board_selector._draw()` header and `board_display._draw()` footer, with click handling in `BoardSelector._click()` and `FPGABoard._handle_events()`.
-- **Scope note:** The simulation screen is a *separate pygame process* (`sim/sim_testbench.py`, its own event loop at line ~367). Decide whether F1 / `?` help is in scope there too; if so it needs a fourth handler in `sim_testbench.py`. The launcher screens (selector / preview / picker) are the minimum.
-- **Effort:** M (modal + three trigger types across three screens + a `(?)` button widget).
-- **Dependencies:** Soft: **D4** (shared button helper) — the `(?)` trigger button and the overlay's Close button should both use it; landing D4 first avoids open-coding two more buttons.
-- **Done when:** the `(?)` button (selector + preview), F1, and `?` each open the help overlay on the launcher screens; while it is open the underlying screen receives no input (run it as its own blocking loop like `ErrorDialog`, so a keystroke can't leak into the board filter); the overlay lists the shortcuts that exist at ship time; ESC, the Close button, or clicking outside dismisses it.
+- ✅ **2026-06-01 (PR #88).** New `ui/help_dialog.py` — a blocking `HelpDialog` (4-step workflow, keyboard-shortcut legend, VHDL contract summary) opened by F1, `?`, or a circular `(?)` button on all three launcher screens; the legend renders from a single `SHORTCUTS` / `WORKFLOW` / `CONTRACT` source so it can't drift from the real handlers; 36 new tests. Carried-forward gotchas in the [Delivery log](#delivery-log).
 
 #### U2. Inline analysis spinner during VHDL load
 
@@ -98,6 +74,21 @@ This document inventories all viable improvements and ranks them by impact.
 - **Effort:** M/L.
 - **Dependencies:** None. But **U6, U10, U18, U19** all depend on this (see Dependencies section).
 - **Done when:** settings dialog opens from a gear icon, persists window size / speed / theme across restarts, and `recent[]` is populated on each simulation run.
+
+#### U26. Visual README — hero GIF + screenshot (docs / marketing)
+
+- **Why:** The README has **zero embedded images** — only a CI badge at the top and a 1-hour YouTube *talk* link at the very bottom. A visitor to the GitHub project cannot tell what the app looks like. This is the single highest-leverage adoption/marketing fix, and the headless capture infrastructure already exists.
+- **What:**
+  1. New `scripts/capture_demo.py` — a maintainer tool (sibling to `src/fpga_sim/generate_board_images.py`) that runs the *real* sim pipeline **headless** (`SDL_VIDEODRIVER=dummy`), steps a design, dumps frames of the `FPGABoard` surface (optionally with `SimPanel`), and assembles an optimised GIF.
+  2. A **hero GIF** of a running simulation — a 7-seg design (`hdl/counter_7seg.vhd` or `hdl/snake_7seg.vhd`) on a 7-seg board (e.g. DE10-Lite); most visually distinctive (digits counting + LEDs animating). Size-optimised (~800 px wide, target **< ~3 MB**).
+  3. One **static screenshot** — the board selector (showing the 278-board catalogue + U0 filter chips) or a board preview.
+  4. Embed both near the **top of `README.md`** (after the intro paragraph, before Quick Start), with alt text and a caption surfacing the existing YouTube talk higher up.
+- **Reuse:** the headless screenshot recipe (cocotb + pygame, proven); `generate_board_images.py`'s `setup_pygame_headless()` / `render_board_raster()` / `save_png()`; `sim_bridge._backend` / `_build_sim_env` / `_generate_wrapper` / `_has_seg_port` for the build pipeline.
+- **GIF assembly:** add **Pillow** to the `dev` group (`uv add --group dev pillow`) so the tool is self-contained and CI-reproducible; runtime deps (`pygame`, `cocotb`, `find_libpython`) stay untouched. (System `ffmpeg` / ImageMagick are an optional fallback for maximum compression.)
+- **Touches:** new `scripts/capture_demo.py`; new `docs/assets/` (committed GIF + PNG); `README.md` (top-of-file embed); `pyproject.toml` (`dev` group gains Pillow).
+- **Effort:** M.
+- **Dependencies:** None. Soft: the headless renderer can later feed **U8** (splash screen).
+- **Done when:** the README shows a running-sim GIF + a static screenshot above the fold; `scripts/capture_demo.py` regenerates the GIF reproducibly; the committed GIF is size-optimised (< ~3 MB).
 
 ### Tier 2 — High impact, larger initiatives
 
@@ -165,7 +156,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 **Note on U18/U19:** Both require U5 (Settings dialog) for the `recent[]` data source and metrics toggle location respectively.
 
-**Note on U13 — done (2026-06-01):** Shipped keyboard navigation on both list screens. `board_selector.run()` and `vhdl_picker.run()` now delegate each KEYDOWN to a unit-testable `_handle_keydown()` returning `(exit_loop, value)`; `↑`/`↓` and `PgUp`/`PgDn` move the `self.hovered` cursor (auto-scrolled into view via the new `_ensure_visible`/`_page_rows` helpers, with no selection Down enters at top / Up at bottom), and `Enter`/`KP_Enter` activates the hovered row (select board · open dir · pick file). On the selector an open sort dropdown captures `↑`/`↓`/`Enter` while mouse interaction still works, and typing/Backspace still close it and edit the filter (cursor resets on filter change). The picker's click and Enter paths now share one `_activate()` helper. 32 new tests across `test_board_selector.py` + new `test_vhdl_picker.py`.
+**Note on U13 — done (2026-06-01, PR #85):** Keyboard navigation on both list screens — `↑`/`↓` + `PgUp`/`PgDn` move the cursor (auto-scrolled into view) and `Enter` activates the row; each screen's KEYDOWN now routes through a unit-testable `_handle_keydown()`. 32 new tests.
 
 ### Tier 4 — Larger features (long-horizon)
 
@@ -198,6 +189,8 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** D1 ✅ (unified wrapper template is in place).
 - **Done when:** a muxed 7-seg board (e.g. Nexys4-DDR) shows correct digits via the physical scan interface.
 
+**Parked (not scheduled):** *LCD / OLED display support* — a stretch goal from the original `prompt_info` vision (alongside 7-seg, which shipped). No board JSON models a character LCD / OLED today and no user has requested it; recorded here for completeness only.
+
 ### Performance (mostly already done)
 
 `memory/project_sim_performance.md` documents PR #31's tuning (37.7 fps, 0.0036x real-time on Arty A7-35; GHDL dominates at 98.4 %). Remaining cheap wins:
@@ -214,10 +207,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### D1. Generate the VHDL wrapper from one source ✅
 
-- **Completed:** 2026-05-28.
-- **Delivered:** Merged `sim_wrapper_template.vhd` and `sim_wrapper_7seg_template.vhd` into a single template with conditional placeholders (`{seg_generic}`, `{seg_port}`, `{seg_generic_map}`, `{seg_port_map}`). `_generate_wrapper()` splices the 7-seg lines when both board and design use seg; otherwise they are omitted. Deleted `sim_wrapper_7seg_template.vhd` and `_choose_wrapper_template()`. All 882 tests pass.
-- **Why:** `sim/sim_wrapper_template.vhd` (62 LOC) and `sim/sim_wrapper_7seg_template.vhd` (55 LOC) shared ~80 % of their content — identical clock generation, identical entity boilerplate, only the `seg` port and its mapping differed. Two templates meant every wrapper change had to be made twice; v2 physical-mux (U22) would have made a third file.
-- **Dependencies:** None. But **U21** and **U22** both depend on this.
+- ✅ **2026-05-28.** Merged `sim_wrapper_template.vhd` + `sim_wrapper_7seg_template.vhd` into one template with conditional seg placeholders spliced by `_generate_wrapper()`; deleted the 7-seg template and `_choose_wrapper_template()`. Unblocks **U21** / **U22**.
 
 #### D2. Backend base class with override-only differences
 
@@ -241,19 +231,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### D4. Shared button-drawing helper ✅
 
-- **Completed:** 2026-05-31. Added `src/fpga_sim/ui/widgets/button.py` (`ButtonStyle` + `draw_button`) and routed all four sites through it — board_display footer, error_dialog, sim_panel clock steppers, and the sim `[■ Stop]`/`[Pause]` overlay; deleted `sim_panel._draw_btn`. The clock steppers gained hover feedback; visuals otherwise preserved. New `tests/test_button_widget.py` (7 tests); full suite (900 tests) green.
-- **Why:** Four button-drawing sites (across *both* processes) hand-roll rounded-rect buttons with near-identical but drifting code — even the corner radius varies (3 / 5 / 6 / 10). The drift is real and visible:
-  - `board_display.py:568-644` — four footer buttons (Select Board `:571-579`, Load VHDL `:582-590`, Start Simulation `:596-612`, SIM toggle `:614-631`), each with its **own** hover colour scheme (teal / blue / green / purple) and a disabled state.
-  - `error_dialog.py:160-182` — Try-Another-File / Back-to-Boards buttons, open-coded with hover.
-  - `sim_panel.py:538-559` — already factored into a local `_draw_btn()` helper, but **enabled/disabled only, no hover at all** (the [-]/[+] clock buttons).
-  - `sim/sim_testbench.py:439-466` — the `[■ Stop]` / `[Pause]` overlay buttons (with hover), in the **simulation subprocess**. (The previous draft missed both this caller and `error_dialog`.)
-  So it is not "two open-coded callers." D4 should unify all four onto one helper and delete `sim_panel._draw_btn`.
-- **Cross-process note:** `sim_testbench.py` runs in the GHDL/cocotb subprocess but already imports `fpga_sim` (its `src/` is on `PYTHONPATH` — see `sim_bridge._build_sim_env`), so a `fpga_sim.ui.widgets.button` helper is importable there; the Stop/Pause buttons can use it too.
-- **What:** Extract `ui/widgets/button.py` (new `widgets/` subpackage — does not exist yet). The signature needs more than `(surface, rect, label, state)`: the callers use **different base colours**, so pass an explicit colour set (base / hover / border / fg) or named variants, plus flags for `hovered` and `enabled`. A bare `state` enum can't capture the per-button theming that exists today.
-- **Touches:** new `src/fpga_sim/ui/widgets/button.py` (+ `widgets/__init__.py`); replace open-coded draws in `board_display.py`, `error_dialog.py`, and `sim/sim_testbench.py`; replace `sim_panel.py`'s `_draw_btn`. Add a unit test for the helper (colour/hover/disabled variants render without error and respect the passed rect).
-- **Effort:** S/M (four callers across two processes).
-- **Dependencies:** None. Soft: **U1, U5, U7** should consume it for consistent styling. **Land D4 first in 1b** — U1's `(?)` + Close buttons ride on it, and the same pass gives the sim Stop/Pause + clock buttons consistent styling.
-- **Done when:** the board_display footer, error_dialog buttons, sim_panel clock buttons, and the sim Stop/Pause overlay all render through the shared helper; hover behaviour is consistent (and the sim_panel clock buttons gain the hover feedback they lack today).
+- ✅ **2026-05-31 (PR #83).** Added `ui/widgets/button.py` (`ButtonStyle` + `draw_button`) and routed all four sites through it (board_display footer, error_dialog, sim_panel clock steppers, the sim Stop/Pause overlay — across *both* processes); deleted `sim_panel._draw_btn`; the clock steppers gained hover feedback. 7 new tests. Consumed by **U1 ✅**; **U5 / U7** should reuse it.
 
 #### D5. Platform-aware path helper
 
@@ -266,17 +244,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### D15. Consolidate scattered colours into the single source of truth ✅
 
-- **Completed:** 2026-06-24. New `src/fpga_sim/ui/theme.py` — a frozen `Theme` dataclass of ~80 semantic colour roles (defaults = today's "pcb-green" values), a single `THEME` instance, and the vendor-colour map; reuses D4's `ButtonStyle` for the ~13 composite button roles and defines the cross-process PCB-blue gradient once. `ui/constants.py` keeps only the base neutral palette (`WHITE`/`BLACK`/`GRAY`/`DARK_GRAY`/`YELLOW`) + `get_font`/`_ui_scale`; every other colour call site across **9 files** (`components`, `board_display`, `board_selector`, `sim_panel`, `help_dialog`, `error_dialog`, `vhdl_picker`, `sim/sim_testbench`, `generate_board_images`) now reads `THEME.<role>`. Palette-in-constants + roles-in-theme keeps the import graph acyclic (`constants ← widgets.button ← theme`). New `tests/test_theme.py` (12 tests); suite 1001 green.
-- **Deviation from the roadmap split (intentional):** front-loaded U6's *container shape* — all call sites route through one swappable `THEME` object — so U6 swaps its contents without re-touching call sites. Shipped **pixel-identical** with no alternate themes/toggle (those stay in U6, gated on U5). The counts in the original Why below were stale (pre-U1): actual at ship was 9 files / ~112 inline literals, not 8 / ~98. **Verified:** all 278 board SVGs byte-for-byte match `main`; all 81 role/button/vendor values equal the pre-refactor literals.
-- **Why:** `ui/constants.py` was created as the one home for colours, but it has drifted: as of 2026-05-31 it names **14** shades while **~98 distinct** shades (102 inline RGB literals) live across 8 other files (`board_display.py`, `sim_panel.py`, `board_selector.py`, `components.py`, `error_dialog.py`, `vhdl_picker.py`, `sim/sim_testbench.py`, `generate_board_images.py`) — the source of truth holds ~12 % of the palette. The drift has three shapes, each with a different fix:
-  - **(a) Exact-duplicate regressions (~12 literals).** A name exists and was ignored: `GRAY=(180,180,180)` hard-coded 3×, `RED_OFF=(80,0,0)` 2×, `SEL_BG=(30,30,40)` 2×, plus `BLACK`/`WHITE`/`BLUE_ON`/`SEL_ROW_A`/`DARK_GRAY`/`SEL_HOVER` once each. Changing the constant today silently desyncs these call sites.
-  - **(b) Parallel constant blocks.** `board_selector.py:16-26` defines 11 module-level `_CHIP_*`/`_SORT_*`/`_DROPDOWN_*` colours; `board_display.py:38-65` defines `_STYLE_*` `ButtonStyle` tuples. The right *grouping* instinct in the wrong *location*.
-  - **(c) Cross-process copy-paste.** The PCB-blue gradient pair `(20,60,110)`/`(30,80,140)` is hand-typed in **both** the launcher (`board_display.py`) and the sim subprocess (`sim/sim_testbench.py`), even though `sim_testbench` already imports `fpga_sim`.
-- **What:** Re-centralise in three passes: **(1)** replace the ~12 exact-duplicate literals with their existing constant names; **(2)** lift shared shades — starting with the cross-process gradient pair — into `constants.py` and import them in both processes; **(3)** restructure the flat list into a small **palette + semantic roles** (fold the `_CHIP_*`/`_STYLE_*` families in as namespaced groups), deciding per one-off whether it earns a name or is genuinely single-use (a truly local shade may stay inline with a comment). The grouped structure is deliberately the shape U6's `Theme` dataclass wants, so this de-risks U6. (Optional: if the palette grows large, split a dedicated `ui/theme.py` and re-export from `constants.py` for compatibility.)
-- **Touches:** `src/fpga_sim/ui/constants.py` (grouped palette); colour call sites in `ui/board_display.py`, `ui/board_selector.py`, `ui/sim_panel.py`, `ui/components.py`, `ui/error_dialog.py`, `ui/vhdl_picker.py`, `sim/sim_testbench.py`, `src/fpga_sim/generate_board_images.py`.
-- **Effort:** S/M. Pass (1) is mechanical; the judgement is in pass (3)'s grouping — worth a short design note in the PR.
-- **Dependencies:** None. But **U6** builds directly on it (see Dependencies).
-- **Done when:** no inline literal duplicates a named constant; the cross-process gradient pair is defined once and imported in both processes; `constants.py` exposes a grouped palette; a grep for RGB tuples outside `constants.py` returns only genuinely single-use shades, each commented as such.
+- ✅ **2026-06-24 (PR #109).** New `ui/theme.py` — a frozen `Theme` dataclass (~80 semantic colour roles + the vendor-colour map, defaults = today's pcb-green) and a single swappable `THEME` instance; `constants.py` keeps only base neutrals + `get_font` / `_ui_scale`; ~112 inline RGB literals across 9 files now read `THEME.<role>`. Shipped **pixel-identical** (all 278 board SVGs byte-for-byte unchanged), import graph kept acyclic (`constants ← widgets.button ← theme`); 12 new tests. Front-loads **U6**'s container shape. Note in the [Delivery log](#delivery-log).
 
 ### Tier 2 — Architecture & state
 
@@ -312,32 +280,17 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### D9. `Literal` types for stringly-typed identifiers ✅
 
-- **Why:** `simulator: str = "ghdl"` everywhere; nothing prevents a typo passing through.
-- **What:** Define `Simulator = Literal["ghdl", "nvc"]`; thread through `analyze_vhdl`, `launch_simulation`, `_backend`, `detect_simulators` return type, session config.
-- **Touches:** `src/fpga_sim/sim_bridge.py`, `src/fpga_sim/session_config.py`, `src/fpga_sim/__main__.py`.
-- **Effort:** S.
-- **Dependencies:** None. Soft: should be extended to include `"iverilog"` when U20 lands.
-- **Done when:** `Simulator` is a `Literal` type; mypy catches `_backend("typo")` at type-check time.
+- ✅ Defined `Simulator = Literal["ghdl", "nvc"]` (in `sim_bridge.py`) and threaded it through `analyze_vhdl` / `launch_simulation` / `_backend` / `detect_simulators` / session config. Extend with `"iverilog"` when **U20** lands.
 
 #### D10. Pin pre-commit hooks consistently; add `.editorconfig` ✅
 
-- **Completed:** Sprint 1a cleanup — added `.editorconfig` (Python 4-space / 100-col, matching ruff); hooks were already pinned to exact versions (`ruff v0.15.13`, `mypy v2.1.0`).
-- **Touches:** `.pre-commit-config.yaml`; new `.editorconfig`.
-- **Effort:** XS.
-- **Dependencies:** None.
-- **Done when:** all hooks are pinned to exact versions; `.editorconfig` is consistent with existing ruff/formatter config.
-- **Superseded (2026-06-22):** hooks are no longer pinned by `rev:` — ruff/ruff-format/mypy/rumdl all run as local hooks tracking `uv.lock` (single source of truth); see #102.
+- ✅ Added `.editorconfig` (Python 4-space / 100-col, matching ruff). **Superseded (2026-06-22, #102):** hooks are no longer `rev:`-pinned — ruff / ruff-format / mypy / rumdl run as *local* hooks tracking `uv.lock` as the single source of truth.
 
 ### Tier 4 — Documentation
 
 #### D11. Module + mock-class docstrings ✅
 
-- **Why:** `board_loader.py:17-124` mock classes (`_Attrs`, `_Pins`, `_PinsN`, `_DiffPairs`, `_Clock`, `_Subsignal`, `_Connector`, `_Resource`) are ~108 LOC with no docstrings — they are the most arcane code in the project (they exist to fool amaranth-boards `.py` files into executing in a mock namespace). Future maintainers will burn an hour reverse-engineering them.
-- **What:** Expanded the `board_loader.py` module docstring to explain the exec-in-mock-namespace strategy; added one-line docstrings on the eight mock classes, the resource helpers (`_split_resources` + the led/button/switch/rgb wrappers), and `_make_namespace()`.
-- **Touches:** `src/fpga_sim/board_loader.py` only. (The card originally also listed `sim_metrics.py` "(currently placeholder)" and `ui/sim_panel.py` "(no module docstring)", but both already had full module docstrings — those claims were stale and were dropped.)
-- **Effort:** S.
-- **Dependencies:** None.
-- **Done when:** every mock class, resource helper, and `_make_namespace()` has a docstring; the module docstring explains the exec-in-mock-namespace strategy and when it runs (the `sync_*` scripts and `discover_boards`' legacy `.py` fallback, vs. the primary JSON path).
+- ✅ Added the module docstring explaining the exec-in-mock-namespace strategy, plus one-line docstrings on the eight mock classes, the resource helpers, and `_make_namespace()`. *(The mock-exec parser later moved out to `scripts/amaranth_parser.py` in #104.)*
 
 #### D12. Architecture diagram in CONTRIBUTING.md
 
@@ -431,11 +384,13 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | Sprint | Theme | Items |
 |---|---|---|
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
-| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → U2 Analysis spinner · D2 Backend base class |
+| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → U2 Analysis spinner · D2 Backend base class · **U26 Visual README** |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · ~~D15 Colour consolidation~~ ✅ · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
+
+**Status (2026-06-24).** Sprint 1a is fully shipped. **Sprint 1b is in progress — D4 / U13 / U1 ✅ done; U2 and D2 remain open, so 1b is not yet closed.** One Sprint-2 item, **D15 ✅** (colour consolidation), was pulled forward and shipped early (#109); it is the only out-of-order completion and is harmless (it front-loads U6's container shape). The phases otherwise remain correctly ordered. **U26 (Visual README)** is newly added and slotted into 1b as the headline user-visible win for the next release (v0.7.0): it is independent, cheap, and high-visibility, so it should not wait behind the refactors.
 
 ---
 
@@ -453,10 +408,11 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4 ✅, D15
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15
 - `src/fpga_sim/ui/error_dialog.py` — U4, D4 ✅, D15
-- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/controller.py` (D6)
+- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/controller.py` (D6), `scripts/capture_demo.py` (U26), `docs/assets/` (U26 — committed GIF + screenshot)
+- `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U7, U9, U14, U22, D15
-- `pyproject.toml` — D8
+- `pyproject.toml` — D8, U26 (`dev` group gains Pillow)
 - `.pre-commit-config.yaml`, new `.editorconfig` — D10 ✅
 - `CONTRIBUTING.md` — D12
 
@@ -477,9 +433,21 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (1001 tests across 25 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, help overlay, theme value-preservation). All sprints must keep this green.
+1. **Tests** — `uv run pytest` (1001 tests across 27 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, help overlay, theme value-preservation). All sprints must keep this green.
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy src/` (the latter tightens under D8).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).
 5. **Headless CI** — every PR runs the existing Linux + Windows x GHDL + NVC x Py 3.10-3.13 matrix.
 6. **Visual checks** — for UI work, screenshot the affected screen on Linux and attach to the PR; no automated visual diff today.
+
+---
+
+## Delivery log
+
+Condensed completion records sit inline next to each ✅ item above; full per-PR detail is in `CHANGELOG.md` and the linked PRs. This section preserves only the **cross-cutting notes from completed work that later items still depend on**:
+
+- **Modal overlays (from U1 ✅ — applies to U5 settings dialog and any future blocking overlay).** An overlay opened inside a live screen's `run()` loop swallows `WINDOWRESIZED`, so the parent's cached size + layout go stale while the display surface auto-resizes in place. Reconcile with a `_sync_to_surface()` after the overlay returns (reflowing `FPGABoard._layout`); see `ui/help_dialog.py`. On the selector, `?` must be intercepted *above* the printable-append branch so it never leaks into the text filter.
+- **Shortcut-legend single source (from U1 ✅ — applies to U14 / U15).** The help legend renders from `SHORTCUTS` / `WORKFLOW` / `CONTRACT` in `ui/help_dialog.py`; add every new key there so the legend can't drift from the real handlers.
+- **Theme container (from D15 ✅ — applies to U6 theme system).** All call sites route through one swappable `THEME` object (`ui/theme.py`); `constants.py` holds only base neutrals. Keep the import graph acyclic (`constants ← widgets.button ← theme`). D15 shipped pixel-identical, so U6's remaining work is alternate `Theme` instances + a selector + persistence + subprocess plumbing.
+- **Shared button widget (from D4 ✅ — applies to U5 / U7).** `ui/widgets/button.py` (`ButtonStyle` + `draw_button`) is importable in *both* the launcher and the sim subprocess; new buttons should use it for consistent hover / disabled styling.
+- **Pre-commit hooks (from D10 ✅, superseded by #102).** ruff / ruff-format / mypy / rumdl run as *local* hooks tracking `uv.lock`; they are not `rev:`-pinned.
