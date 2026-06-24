@@ -44,7 +44,8 @@ import pygame
 from fpga_sim.board_loader import BoardDef, discover_boards, get_default_boards_path
 from fpga_sim.ui import LED, Button, FPGABoard, FPGAChip, Switch
 from fpga_sim.ui.components import SevenSeg
-from fpga_sim.ui.constants import BG_GREEN, BLUE_OFF, GRAY, RED_OFF, WHITE, _ui_scale
+from fpga_sim.ui.constants import GRAY, WHITE, _ui_scale
+from fpga_sim.ui.theme import THEME
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -111,7 +112,7 @@ def render_board_raster(board: FPGABoard) -> pygame.Surface:
     """Render the board to its pygame Surface and return a snapshot copy.
 
     Calls FPGABoard._draw() — a private but stable method — which fills
-    the screen with BG_GREEN and draws all sections (FPGA chip, LEDs,
+    the screen with the board background and draws all sections (FPGA chip, LEDs,
     buttons, switches) plus the "Start Simulation" button and ESC hint.
 
     Those UI-chrome elements will appear in the raster images.  A future
@@ -368,7 +369,7 @@ def _svg_draw_fpga_chip(
         return  # Guard matches FPGAChip.draw() early-exit condition
 
     # Main body — vendor-specific fill with gray border
-    fill = FPGAChip._VENDOR_COLORS.get(chip.vendor, (40, 40, 40))
+    fill = FPGAChip._VENDOR_COLORS.get(chip.vendor, THEME.chip_default)
     _svg_rect(parent, r, fill, stroke=FPGAChip._BORDER_COLOR, stroke_width=2, radius=6)
 
     # Pin tick marks — replicates _draw_pin_marks() count formula exactly
@@ -437,7 +438,7 @@ def _svg_draw_led(
             "cx": str(cx),
             "cy": str(cy),
             "r": str(radius),
-            "fill": _svg_color(RED_OFF),
+            "fill": _svg_color(THEME.led_off),
             "stroke": _svg_color(WHITE),
             "stroke-width": "1",
         },
@@ -464,13 +465,13 @@ def _svg_draw_switch(
     """Draw a toggle switch as an SVG rectangle with a sliding knob and label.
 
     Replicates Switch.draw() from fpga_sim/ui/components.py.  Always renders in the OFF
-    state: BLUE_OFF background, GRAY knob positioned in the lower half of
+    state: switch-off background, neutral knob positioned in the lower half of
     the switch body.
     """
     r = sw.rect
 
     # Switch body with white border
-    _svg_rect(parent, r, BLUE_OFF, stroke=WHITE, stroke_width=2, radius=4)
+    _svg_rect(parent, r, THEME.switch_off, stroke=WHITE, stroke_width=2, radius=4)
 
     # Knob — lower half when off: rect.bottom - knob_h - 2 (same as pygame)
     knob_h = r.height // 2
@@ -564,7 +565,7 @@ def build_svg(board: FPGABoard, width: int, height: int) -> str:
         {
             "width": str(width),
             "height": str(height),
-            "fill": _svg_color(BG_GREEN),
+            "fill": _svg_color(THEME.pcb_bg),
         },
     )
 

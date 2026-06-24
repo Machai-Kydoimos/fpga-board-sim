@@ -22,21 +22,9 @@ from collections import deque
 
 import pygame
 
-from fpga_sim.ui.constants import DARK_GRAY, GRAY, WHITE, YELLOW, _ui_scale, get_font
-from fpga_sim.ui.widgets import ButtonStyle, draw_button
-
-# Clock [-]/[+] stepper buttons (small, 1 px border).  Hover feedback added in D4.
-_STYLE_CLOCK = ButtonStyle(
-    bg=(55, 80, 55),
-    bg_hover=(75, 105, 75),
-    fg=WHITE,
-    border=(90, 130, 90),
-    border_width=1,
-    radius=3,
-    bg_disabled=(38, 50, 38),
-    fg_disabled=GRAY,
-    border_disabled=DARK_GRAY,
-)
+from fpga_sim.ui.constants import DARK_GRAY, WHITE, YELLOW, _ui_scale, get_font
+from fpga_sim.ui.theme import THEME
+from fpga_sim.ui.widgets import draw_button
 
 # ── Panel height base (pixels at 1.0 scale; actual height scales with window) ─
 
@@ -306,9 +294,9 @@ class SimPanel:
         y0 = sh - ph
 
         # Panel background + separator line
-        bg = (24, 96, 24)
+        bg = THEME.accent_bar
         pygame.draw.rect(self.screen, bg, pygame.Rect(0, y0, sw, self.panel_height))
-        pygame.draw.line(self.screen, (80, 160, 80), (0, y0), (sw, y0), 1)
+        pygame.draw.line(self.screen, THEME.divider, (0, y0), (sw, y0), 1)
 
         fs = max(9, round(11 * s))
         font = get_font(fs)
@@ -365,7 +353,7 @@ class SimPanel:
         lpad = max(10, round(14 * s))
         line_h = font.get_linesize() + max(1, round(2 * s))
 
-        hdr = bold.render("INFO", True, (180, 220, 180))
+        hdr = bold.render("INFO", True, THEME.info_green)
         self.screen.blit(hdr, (x + lpad, y0 + max(4, round(5 * s))))
         ty = y0 + hdr.get_height() + max(5, round(7 * s))
 
@@ -374,15 +362,15 @@ class SimPanel:
         d_pct = int(self._draw_us / total_us * 100)
         i_pct = 100 - g_pct - d_pct
         rows: list[tuple[str, str, tuple[int, int, int]]] = [
-            ("Board clk:", _fmt_hz(self._board_clock_hz), (150, 190, 150)),
+            ("Board clk:", _fmt_hz(self._board_clock_hz), THEME.val_clk),
             ("Sim time: ", _fmt_time(self._sim_elapsed_ns), WHITE),
             ("Clk/frame:", f"{self._clocks_per_frame:.1f}", WHITE),
-            ("Eff. rate:", _fmt_hz(self.effective_hz), (100, 200, 255)),
-            ("GUI FPS:  ", f"{self._fps:.1f}", (200, 200, 100)),
-            ("G/D/I %:  ", f"{g_pct}/{d_pct}/{i_pct}", (180, 150, 100)),
+            ("Eff. rate:", _fmt_hz(self.effective_hz), THEME.val_rate),
+            ("GUI FPS:  ", f"{self._fps:.1f}", THEME.val_fps),
+            ("G/D/I %:  ", f"{g_pct}/{d_pct}/{i_pct}", THEME.val_gdi),
         ]
         for label, value, color in rows:
-            lbl_surf = font.render(label, True, (150, 185, 150))
+            lbl_surf = font.render(label, True, THEME.panel_label)
             val_surf = bold.render(value, True, color)
             self.screen.blit(lbl_surf, (x + lpad, ty))
             self.screen.blit(val_surf, (x + lpad + lbl_surf.get_width() + 4, ty))
@@ -399,7 +387,7 @@ class SimPanel:
         small: pygame.font.Font,
         s: float,
     ) -> None:
-        hdr = bold.render("SIMULATION SPEED", True, (180, 220, 180))
+        hdr = bold.render("SIMULATION SPEED", True, THEME.info_green)
         self.screen.blit(hdr, (x + (w - hdr.get_width()) // 2, y0 + max(4, round(5 * s))))
 
         # Track
@@ -416,7 +404,7 @@ class SimPanel:
         if filled_w:
             pygame.draw.rect(
                 self.screen,
-                (60, 160, 60),
+                THEME.speed_fill,
                 pygame.Rect(track.left, track.top, filled_w, track_h),
                 border_radius=2,
             )
@@ -445,7 +433,7 @@ class SimPanel:
         for val, lbl in ticks:
             tf = _speed_to_frac(val)
             tx = track.left + int(track.width * tf)
-            col = YELLOW if val == 1.0 else (130, 170, 130)
+            col = YELLOW if val == 1.0 else THEME.speed_normal
             pygame.draw.line(self.screen, col, (tx, track.top - 2), (tx, track.bottom + 2), 1)
             t = small.render(lbl, True, col)
             self.screen.blit(t, (tx - t.get_width() // 2, tick_y))
@@ -458,10 +446,10 @@ class SimPanel:
         # For slow boards (< ~576 kHz) REAL genuinely means 1:1 real-time.
         cv_y = tick_y + small.get_linesize() + max(2, round(3 * s))
         if self.paused:
-            cv = bold.render("PAUSED", True, (255, 100, 100))
+            cv = bold.render("PAUSED", True, THEME.status_paused)
             self.screen.blit(cv, (x + (w - cv.get_width()) // 2, cv_y))
         elif self.at_max_throughput:
-            cv = bold.render("MAX SPEED", True, (255, 210, 80))
+            cv = bold.render("MAX SPEED", True, THEME.status_max)
             self.screen.blit(cv, (x + (w - cv.get_width()) // 2, cv_y))
             if self._fps > 0:
                 actual_factor = self._clocks_per_frame * self._fps / self._board_clock_hz
@@ -470,13 +458,13 @@ class SimPanel:
                     note = small.render(
                         f"actual {actual_factor:.3g}x  (faster than real-time)",
                         True,
-                        (100, 240, 120),
+                        THEME.speed_marker_hi,
                     )
                 else:
                     note = small.render(
                         f"actual {actual_factor:.3g}x  (at max throughput)",
                         True,
-                        (140, 200, 140),
+                        THEME.speed_marker_mid,
                     )
                 self.screen.blit(note, (x + (w - note.get_width()) // 2, cv_y2))
         else:
@@ -490,13 +478,13 @@ class SimPanel:
                     note = small.render(
                         f"actual {actual_factor:.3g}x  (CPU-limited)",
                         True,
-                        (255, 180, 80),
+                        THEME.speed_marker_warn,
                     )
                 else:
                     note = small.render(
                         f"actual {actual_factor:.3g}x",
                         True,
-                        (140, 200, 140),
+                        THEME.speed_marker_mid,
                     )
                 self.screen.blit(note, (x + (w - note.get_width()) // 2, cv_y2))
 
@@ -510,7 +498,7 @@ class SimPanel:
         bold: pygame.font.Font,
         s: float,
     ) -> None:
-        hdr = bold.render("VIRTUAL CLOCK", True, (180, 220, 180))
+        hdr = bold.render("VIRTUAL CLOCK", True, THEME.info_green)
         self.screen.blit(hdr, (x + (w - hdr.get_width()) // 2, y0 + max(4, round(5 * s))))
 
         btn_w = max(22, round(30 * s))
@@ -527,7 +515,7 @@ class SimPanel:
             minus_rect,
             "-",
             bold,
-            _STYLE_CLOCK,
+            THEME.btn_sim_clock,
             hovered=can_dec and minus_rect.collidepoint(mouse),
             enabled=can_dec,
         )
@@ -541,7 +529,7 @@ class SimPanel:
             plus_rect,
             "+",
             bold,
-            _STYLE_CLOCK,
+            THEME.btn_sim_clock,
             hovered=can_inc and plus_rect.collidepoint(mouse),
             enabled=can_inc,
         )
@@ -559,5 +547,5 @@ class SimPanel:
 
         # Effective rate
         eff_y = btn_y + btn_h + max(3, round(5 * s))
-        eff_surf = font.render(f"Eff: {_fmt_hz(self.effective_hz)}", True, (100, 200, 255))
+        eff_surf = font.render(f"Eff: {_fmt_hz(self.effective_hz)}", True, THEME.val_rate)
         self.screen.blit(eff_surf, (x + (w - eff_surf.get_width()) // 2, eff_y))

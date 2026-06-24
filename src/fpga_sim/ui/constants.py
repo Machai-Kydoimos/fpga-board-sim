@@ -1,7 +1,9 @@
-"""Shared UI constants: colours and the scaling helper.
+"""Shared UI primitives: the base neutral palette, fonts, and the scaling helper.
 
-All other ui/ modules import from here so visual parameters have a single
-source of truth (both the pygame renderer and the SVG generator stay in sync).
+The neutral colours here (WHITE / BLACK / GRAY / …) are the raw palette; the
+semantic colour *roles* the renderer reads live in :mod:`fpga_sim.ui.theme`.
+Neutrals stay here (not in theme.py) to keep the import graph acyclic: theme.py
+imports ``ButtonStyle`` from ``ui.widgets.button``, which imports ``WHITE`` here.
 """
 
 from __future__ import annotations
@@ -10,21 +12,13 @@ import functools
 
 import pygame
 
-# ── Colours ──────────────────────────────────────────────────────────
-BG_GREEN = (34, 139, 34)
+# ── Base neutral palette ─────────────────────────────────────────────
+# Raw neutrals reused across the UI; semantic colour roles live in theme.py.
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-RED_ON = (255, 30, 30)
-RED_OFF = (80, 0, 0)
 GRAY = (180, 180, 180)
 DARK_GRAY = (80, 80, 80)
 YELLOW = (255, 230, 50)
-BLUE_ON = (80, 140, 255)
-BLUE_OFF = (40, 50, 80)
-SEL_BG = (30, 30, 40)
-SEL_ROW_A = (40, 40, 50)
-SEL_ROW_B = (35, 35, 45)
-SEL_HOVER = (50, 70, 50)
 
 # ── UI scaling ────────────────────────────────────────────────────────
 _BASE_W, _BASE_H = 1024, 700

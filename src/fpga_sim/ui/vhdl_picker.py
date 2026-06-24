@@ -4,16 +4,9 @@ from pathlib import Path
 
 import pygame
 
-from fpga_sim.ui.constants import (
-    SEL_BG,
-    SEL_HOVER,
-    SEL_ROW_A,
-    SEL_ROW_B,
-    WHITE,
-    _ui_scale,
-    get_font,
-)
+from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog
+from fpga_sim.ui.theme import THEME
 
 
 class VHDLFilePicker:
@@ -202,7 +195,7 @@ class VHDLFilePicker:
         return None
 
     def _draw(self) -> None:
-        self.screen.fill(SEL_BG)
+        self.screen.fill(THEME.sel_bg)
         s = _ui_scale(self.width, self.height)
         title_f = get_font(max(13, round(20 * s)), bold=True)
         path_f = get_font(max(9, round(12 * s)))
@@ -216,17 +209,21 @@ class VHDLFilePicker:
             y = hdr + i * self.row_h - self.scroll
             if y + self.row_h < hdr or y > self.height:
                 continue
-            bg = SEL_HOVER if i == self.hovered else (SEL_ROW_A if i % 2 == 0 else SEL_ROW_B)
+            bg = (
+                THEME.sel_hover
+                if i == self.hovered
+                else (THEME.sel_row_a if i % 2 == 0 else THEME.sel_row_b)
+            )
             pygame.draw.rect(self.screen, bg, (10, y, self.width - 20, self.row_h - 2))
-            colour = (180, 180, 255) if is_dir else (220, 255, 220)
+            colour = THEME.dir_entry if is_dir else THEME.file_entry
             nm = item_f.render(name, True, colour)
             self.screen.blit(nm, (24, y + 8))
 
         # Header
-        pygame.draw.rect(self.screen, SEL_BG, (0, 0, self.width, hdr))
+        pygame.draw.rect(self.screen, THEME.sel_bg, (0, 0, self.width, hdr))
         title = title_f.render("Select VHDL File", True, WHITE)
         self.screen.blit(title, (20, 10))
-        pd = path_f.render(str(self.current_dir), True, (150, 150, 150))
+        pd = path_f.render(str(self.current_dir), True, THEME.muted_text)
         self.screen.blit(pd, (20, 10 + title_f.get_height() + 4))
 
         pygame.display.flip()

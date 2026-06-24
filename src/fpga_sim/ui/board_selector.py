@@ -3,28 +3,9 @@
 import pygame
 
 from fpga_sim.board_loader import BoardDef
-from fpga_sim.ui.constants import (
-    SEL_BG,
-    SEL_HOVER,
-    SEL_ROW_A,
-    SEL_ROW_B,
-    WHITE,
-    _ui_scale,
-    get_font,
-)
+from fpga_sim.ui.constants import GRAY, WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
-
-_CHIP_ACTIVE = (45, 110, 55)
-_CHIP_INACTIVE = (50, 50, 60)
-_CHIP_HOVER = (60, 75, 65)
-_CHIP_TEXT = (200, 200, 210)
-_CHIP_TEXT_ACTIVE = (230, 255, 230)
-_SORT_BG = (50, 55, 75)
-_SORT_HOVER = (65, 70, 90)
-_SORT_TEXT = (180, 190, 220)
-_DROPDOWN_BG = (42, 42, 55)
-_DROPDOWN_HOVER = (55, 65, 55)
-_DROPDOWN_BORDER = (70, 70, 85)
+from fpga_sim.ui.theme import THEME
 
 _SORT_OPTIONS: list[tuple[str, str]] = [
     ("name", "Name"),
@@ -425,17 +406,17 @@ class BoardSelector:
         chip_h: int,
         font: pygame.font.Font,
     ) -> pygame.Rect:
-        text_color = _CHIP_TEXT_ACTIVE if active else _CHIP_TEXT
+        text_color = THEME.chip_text_active if active else THEME.chip_text
         text_surf = font.render(label, True, text_color)
         chip_w = text_surf.get_width() + 12
-        bg = _CHIP_ACTIVE if active else (_CHIP_HOVER if hovered else _CHIP_INACTIVE)
+        bg = THEME.chip_active if active else (THEME.chip_hover if hovered else THEME.chip_inactive)
         rect = pygame.Rect(x, y, chip_w, chip_h)
         pygame.draw.rect(self.screen, bg, rect, border_radius=3)
         self.screen.blit(text_surf, (x + 6, y + (chip_h - text_surf.get_height()) // 2))
         return rect
 
     def _draw(self) -> None:
-        self.screen.fill(SEL_BG)
+        self.screen.fill(THEME.sel_bg)
         s = _ui_scale(self.width, self.height)
         title_f = get_font(max(14, round(22 * s)), bold=True)
         item_f = get_font(max(11, round(15 * s)))
@@ -454,18 +435,22 @@ class BoardSelector:
             y = hdr + i * self.row_h - self.scroll
             if y + self.row_h < hdr or y > self.height:
                 continue
-            bg = SEL_HOVER if i == self.hovered else (SEL_ROW_A if i % 2 == 0 else SEL_ROW_B)
+            bg = (
+                THEME.sel_hover
+                if i == self.hovered
+                else (THEME.sel_row_a if i % 2 == 0 else THEME.sel_row_b)
+            )
             pygame.draw.rect(self.screen, bg, (10, y, self.width - 20, self.row_h - 2))
-            nm = item_f.render(b.name, True, (220, 220, 255))
+            nm = item_f.render(b.name, True, THEME.board_name)
             self.screen.blit(nm, (20, y + 4))
             detail = b.summary
             if b.source and b.name in self._duplicate_names:
                 detail = f"{detail}  ·  {b.source}"
-            sm = detail_f.render(detail, True, (150, 150, 150))
+            sm = detail_f.render(detail, True, THEME.muted_text)
             self.screen.blit(sm, (20, y + 4 + item_f.get_height() + 2))
 
         # Header overlay (hides items that scrolled behind header)
-        pygame.draw.rect(self.screen, SEL_BG, (0, 0, self.width, hdr))
+        pygame.draw.rect(self.screen, THEME.sel_bg, (0, 0, self.width, hdr))
         title = title_f.render("FPGA Simulator — Select Board", True, WHITE)
         self.screen.blit(title, (20, 8))
 
@@ -482,10 +467,10 @@ class BoardSelector:
         # Filter text box
         filter_y = 8 + title_f.get_height() + 4
         stxt = f"Filter: {self.filter_text}_" if self.filter_text else "Type to filter boards..."
-        srch = item_f.render(stxt, True, (180, 180, 180))
+        srch = item_f.render(stxt, True, GRAY)
         pygame.draw.rect(
             self.screen,
-            (50, 50, 60),
+            THEME.input_bg,
             (20, filter_y, self.width - 140, 24),
             border_radius=3,
         )
@@ -496,7 +481,7 @@ class BoardSelector:
             cnt_text = f"{len(filtered)} of {len(self.boards)} boards"
         else:
             cnt_text = f"{len(filtered)} boards"
-        cnt = detail_f.render(cnt_text, True, (120, 120, 120))
+        cnt = detail_f.render(cnt_text, True, THEME.board_count)
         self.screen.blit(cnt, (self.width - cnt.get_width() - 20, filter_y + 4))
 
         # Component filter chips
@@ -514,11 +499,11 @@ class BoardSelector:
         active_label = next(lb for k, lb in _SORT_OPTIONS if k == self._sort_key)
         arrow = "▴" if self._sort_open else "▾"
         sort_label = f"Sort: {active_label} {arrow}"
-        sort_surf = chip_f.render(sort_label, True, _SORT_TEXT)
+        sort_surf = chip_f.render(sort_label, True, THEME.sort_text)
         sort_w = sort_surf.get_width() + 16
         sort_x = self.width - sort_w - 20
         sort_hovered = self._hovered_chip == "_sort"
-        sort_bg = _SORT_HOVER if (sort_hovered or self._sort_open) else _SORT_BG
+        sort_bg = THEME.sort_hover if (sort_hovered or self._sort_open) else THEME.sort_bg
         self._sort_rect = pygame.Rect(sort_x, chip1_y, sort_w, chip_h)
         pygame.draw.rect(self.screen, sort_bg, self._sort_rect, border_radius=3)
         self.screen.blit(
@@ -546,7 +531,7 @@ class BoardSelector:
         # Sort dropdown menu (drawn last so it overlays everything)
         if self._sort_open:
             menu_item_h = chip_h + 2
-            item_surfs = [chip_f.render(lb, True, _CHIP_TEXT) for _, lb in _SORT_OPTIONS]
+            item_surfs = [chip_f.render(lb, True, THEME.chip_text) for _, lb in _SORT_OPTIONS]
             max_text_w = max(sf.get_width() for sf in item_surfs)
             menu_w = max(self._sort_rect.w, max_text_w + 24)
             menu_x = max(0, self._sort_rect.right - menu_w)
@@ -554,10 +539,10 @@ class BoardSelector:
             menu_h = len(_SORT_OPTIONS) * menu_item_h + 4
 
             menu_rect = pygame.Rect(menu_x, menu_y, menu_w, menu_h)
-            pygame.draw.rect(self.screen, _DROPDOWN_BG, menu_rect, border_radius=4)
+            pygame.draw.rect(self.screen, THEME.dropdown_bg, menu_rect, border_radius=4)
             pygame.draw.rect(
                 self.screen,
-                _DROPDOWN_BORDER,
+                THEME.dropdown_border,
                 menu_rect,
                 width=1,
                 border_radius=4,
@@ -570,10 +555,10 @@ class BoardSelector:
                 is_active = key == self._sort_key
                 is_hovered = i == self._hovered_sort_item
                 if is_active:
-                    pygame.draw.rect(self.screen, _CHIP_ACTIVE, ir, border_radius=2)
+                    pygame.draw.rect(self.screen, THEME.chip_active, ir, border_radius=2)
                 elif is_hovered:
-                    pygame.draw.rect(self.screen, _DROPDOWN_HOVER, ir, border_radius=2)
-                tc = _CHIP_TEXT_ACTIVE if is_active else _CHIP_TEXT
+                    pygame.draw.rect(self.screen, THEME.dropdown_hover, ir, border_radius=2)
+                tc = THEME.chip_text_active if is_active else THEME.chip_text
                 ts = chip_f.render(label, True, tc)
                 self.screen.blit(ts, (ir.x + 8, iy + (menu_item_h - ts.get_height()) // 2))
                 sort_item_rects.append(ir)

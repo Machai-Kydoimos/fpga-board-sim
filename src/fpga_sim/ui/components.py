@@ -8,18 +8,9 @@ from collections.abc import Callable
 import pygame
 
 from fpga_sim.board_loader import ComponentInfo
-from fpga_sim.ui.constants import (
-    BLUE_OFF,
-    BLUE_ON,
-    GRAY,
-    RED_OFF,
-    RED_ON,
-    WHITE,
-    YELLOW,
-)
-from fpga_sim.ui.constants import (
-    get_font as _get_font,
-)
+from fpga_sim.ui.constants import GRAY, WHITE
+from fpga_sim.ui.constants import get_font as _get_font
+from fpga_sim.ui.theme import THEME
 
 # ── Component classes ────────────────────────────────────────────────
 
@@ -27,18 +18,13 @@ from fpga_sim.ui.constants import (
 class FPGAChip:
     """Visual representation of the FPGA IC package on the board."""
 
-    _VENDOR_COLORS = {
-        "Xilinx": (20, 60, 140),
-        "Intel": (0, 90, 50),
-        "Lattice": (90, 20, 90),
-        "QuickLogic": (130, 60, 0),
-        "Gowin": (70, 70, 0),
-    }
-    _BORDER_COLOR = (180, 180, 180)
-    _DEVICE_COLOR = (200, 200, 200)
-    _PACKAGE_COLOR = (150, 150, 150)
-    _CLOCK_COLOR = (120, 200, 120)
-    _PIN_COLOR = (120, 120, 120)
+    # Chip palette, sourced from the shared Theme (also read by generate_board_images).
+    _VENDOR_COLORS = THEME.vendor_colors
+    _BORDER_COLOR = GRAY
+    _DEVICE_COLOR = THEME.chip_device
+    _PACKAGE_COLOR = THEME.chip_package
+    _CLOCK_COLOR = THEME.chip_clock
+    _PIN_COLOR = THEME.chip_pin
     _PIN_LENGTH = 5
 
     def __init__(
@@ -65,7 +51,7 @@ class FPGAChip:
         if self.rect.width < 20:
             return
         r = self.rect
-        color = self._VENDOR_COLORS.get(self.vendor, (40, 40, 40))
+        color = self._VENDOR_COLORS.get(self.vendor, THEME.chip_default)
 
         pygame.draw.rect(surface, color, r, border_radius=6)
         pygame.draw.rect(surface, self._BORDER_COLOR, r, 2, border_radius=6)
@@ -135,11 +121,13 @@ class LED:
 
         if self.state:
             glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
-            pygame.draw.circle(glow, (255, 40, 40, 50), (r * 2, r * 2), r * 2)
+            pygame.draw.circle(
+                glow, (255, 40, 40, 50), (r * 2, r * 2), r * 2
+            )  # glow halo (RGBA, one-off)
             surface.blit(glow, (cx - r * 2, cy - r * 2))
-            pygame.draw.circle(surface, RED_ON, (cx, cy), r)
+            pygame.draw.circle(surface, THEME.led_on, (cx, cy), r)
         else:
-            pygame.draw.circle(surface, RED_OFF, (cx, cy), r)
+            pygame.draw.circle(surface, THEME.led_off, (cx, cy), r)
 
         pygame.draw.circle(surface, WHITE, (cx, cy), r, 1)
 
@@ -165,7 +153,7 @@ class Switch:
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         """Draw the toggle switch body, knob, and label."""
-        colour = BLUE_ON if self.state else BLUE_OFF
+        colour = THEME.switch_on if self.state else THEME.switch_off
         pygame.draw.rect(surface, colour, self.rect, border_radius=4)
         pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=4)
 
@@ -207,9 +195,9 @@ class Button:
         """Draw the push-button with a highlight when pressed, plus its label."""
         if self.pressed:
             inner = self.rect.inflate(-4, -4)
-            pygame.draw.rect(surface, YELLOW, inner, border_radius=6)
+            pygame.draw.rect(surface, THEME.push_on, inner, border_radius=6)
         else:
-            pygame.draw.rect(surface, GRAY, self.rect, border_radius=6)
+            pygame.draw.rect(surface, THEME.push_off, self.rect, border_radius=6)
         pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=6)
 
         lbl = font.render(self.label, True, WHITE)
@@ -235,9 +223,9 @@ class Button:
 class SevenSeg:
     """Draws one digit of a 7-segment display."""
 
-    SEG_ON: tuple[int, int, int] = (255, 140, 0)  # amber
-    SEG_OFF: tuple[int, int, int] = (45, 25, 5)  # dark amber (ghost segments)
-    BG: tuple[int, int, int] = (15, 15, 15)
+    SEG_ON: tuple[int, int, int] = THEME.seg_on  # amber
+    SEG_OFF: tuple[int, int, int] = THEME.seg_off  # dark amber (ghost segments)
+    BG: tuple[int, int, int] = THEME.seg_bg
 
     # Bit positions: {dp, g, f, e, d, c, b, a}
     _BIT: dict[str, int] = {
@@ -276,7 +264,7 @@ class SevenSeg:
         x0, y0 = self.rect.topleft
 
         pygame.draw.rect(surface, self.BG, self.rect, border_radius=3)
-        pygame.draw.rect(surface, (5, 5, 5), self.rect, width=1, border_radius=3)
+        pygame.draw.rect(surface, (5, 5, 5), self.rect, width=1, border_radius=3)  # bezel (one-off)
 
         def colour(n: str) -> tuple[int, int, int]:
             return self.SEG_ON if self._seg(n) else self.SEG_OFF
@@ -319,5 +307,6 @@ class SevenSeg:
             pygame.draw.circle(surface, colour("dp"), (x0 + dw + r + 2, y0 + dh - r - 2), r)
 
         lbl_sz = max(8, int(dh * 0.18))
-        lbl = _get_font(lbl_sz).render(str(self.index), True, (90, 90, 90))
+        idx_color = (90, 90, 90)  # dim index label (one-off)
+        lbl = _get_font(lbl_sz).render(str(self.index), True, idx_color)
         surface.blit(lbl, (x0 + dw // 2 - lbl.get_width() // 2, y0 + dh + 2))

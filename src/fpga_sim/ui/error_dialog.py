@@ -4,12 +4,9 @@ import sys
 
 import pygame
 
-from fpga_sim.ui.constants import SEL_BG, _ui_scale, get_font
-from fpga_sim.ui.widgets import ButtonStyle, draw_button
-
-# Try-Another-File = green (default white border); Back-to-Boards = red.
-_STYLE_RETRY = ButtonStyle(bg=(25, 70, 25), bg_hover=(40, 110, 40))
-_STYLE_BACK = ButtonStyle(bg=(55, 25, 25), bg_hover=(90, 40, 40), border=(200, 100, 100))
+from fpga_sim.ui.constants import _ui_scale, get_font
+from fpga_sim.ui.theme import THEME
+from fpga_sim.ui.widgets import draw_button
 
 
 class ErrorDialog:
@@ -39,7 +36,7 @@ class ErrorDialog:
                 elif ev.type == pygame.WINDOWRESIZED:
                     # Rebuild background at new size so the dim overlay fills correctly
                     self._bg = pygame.Surface((ev.x, ev.y))
-                    self._bg.fill(SEL_BG)
+                    self._bg.fill(THEME.sel_bg)
                     self._scroll = 0
                 elif ev.type == pygame.KEYDOWN:
                     if ev.key == pygame.K_ESCAPE:
@@ -113,11 +110,11 @@ class ErrorDialog:
 
         # Panel background
         panel_rect = pygame.Rect(px, py, panel_w, panel_h)
-        pygame.draw.rect(self.screen, (30, 30, 40), panel_rect, border_radius=10)
-        pygame.draw.rect(self.screen, (200, 60, 60), panel_rect, 2, border_radius=10)
+        pygame.draw.rect(self.screen, THEME.panel_bg, panel_rect, border_radius=10)
+        pygame.draw.rect(self.screen, THEME.panel_border_error, panel_rect, 2, border_radius=10)
 
         # Title
-        t = title_f.render(self.title, True, (255, 100, 100))
+        t = title_f.render(self.title, True, THEME.title_error)
         self.screen.blit(t, (px + pad, py + pad))
 
         # Scrollable body text
@@ -131,7 +128,7 @@ class ErrorDialog:
             ly = body_top + i * line_h - self._scroll
             if ly + line_h < body_top or ly > body_top + viewport_h:
                 continue
-            surf = body_f.render(line, True, (220, 220, 220))
+            surf = body_f.render(line, True, THEME.body_text)
             self.screen.blit(surf, (px + pad, ly))
         self.screen.set_clip(None)
 
@@ -142,13 +139,13 @@ class ErrorDialog:
             thumb_y = body_top + (self._scroll * (viewport_h - thumb_h) // max(1, max_scroll))
             pygame.draw.rect(
                 self.screen,
-                (80, 80, 100),
+                THEME.scroll_track,
                 pygame.Rect(sb_x, body_top, 5, viewport_h),
                 border_radius=2,
             )
             pygame.draw.rect(
                 self.screen,
-                (160, 160, 200),
+                THEME.scroll_thumb,
                 pygame.Rect(sb_x, thumb_y, 5, thumb_h),
                 border_radius=2,
             )
@@ -168,7 +165,7 @@ class ErrorDialog:
             self._retry_rect,
             "Try Another File",
             btn_f,
-            _STYLE_RETRY,
+            THEME.btn_error_retry,
             hovered=self._retry_rect.collidepoint(mouse),
         )
 
@@ -178,14 +175,14 @@ class ErrorDialog:
             self._back_rect,
             "Back to Boards",
             btn_f,
-            _STYLE_BACK,
+            THEME.btn_error_back,
             hovered=self._back_rect.collidepoint(mouse),
         )
 
         # Keyboard shortcut hint below the panel
         hint_f = get_font(max(12, round(14 * s)))
         hint = hint_f.render(
-            "Enter: Try Another File    Esc: Back to Boards", True, (140, 140, 140)
+            "Enter: Try Another File    Esc: Back to Boards", True, THEME.footer_hint
         )
         self.screen.blit(hint, hint.get_rect(centerx=px + panel_w // 2, top=py + panel_h + 8))
 
