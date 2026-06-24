@@ -82,7 +82,7 @@ This document inventories all viable improvements and ranks them by impact.
 - **What:**
   1. New `scripts/capture_demo.py` — a maintainer tool (sibling to `src/fpga_sim/generate_board_images.py`) that runs the *real* sim pipeline **headless** (`SDL_VIDEODRIVER=dummy`), steps a design, dumps frames of the `FPGABoard` surface (optionally with `SimPanel`), and assembles an optimised GIF.
   2. A **hero GIF** of a running simulation — a 7-seg design (`hdl/counter_7seg.vhd` or `hdl/snake_7seg.vhd`) on a 7-seg board (e.g. DE10-Lite); most visually distinctive (digits counting + LEDs animating). Size-optimised (~800 px wide, target **< ~3 MB**).
-  3. One **static screenshot** — the board selector (showing the 278-board catalogue + U0 filter chips) or a board preview.
+  3. A short **board-selector GIF** — toggling the filter chips so the 278-board catalogue visibly narrows (U0 component + vendor filtering, count updating per click).
   4. Embed both near the **top of `README.md`** (after the intro paragraph, before Quick Start), with alt text and a caption surfacing the existing YouTube talk higher up.
 - **Reuse:** the headless screenshot recipe (cocotb + pygame, proven); `generate_board_images.py`'s `setup_pygame_headless()` / `render_board_raster()` / `save_png()`; `sim_bridge._backend` / `_build_sim_env` / `_generate_wrapper` / `_has_seg_port` for the build pipeline.
 - **GIF assembly:** add **Pillow** to the `dev` group (`uv add --group dev pillow`) so the tool is self-contained and CI-reproducible; runtime deps (`pygame`, `cocotb`, `find_libpython`) stay untouched. (System `ffmpeg` / ImageMagick are an optional fallback for maximum compression.)
@@ -413,7 +413,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4 ✅, D15
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15
 - `src/fpga_sim/ui/error_dialog.py` — U4, D4 ✅, D15
-- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/controller.py` (D6), `scripts/capture_demo.py` (U26), `docs/assets/` (U26 — committed GIF + screenshot)
+- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/controller.py` (D6), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
 - `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U7, U9, U14, U22, D15

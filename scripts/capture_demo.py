@@ -9,17 +9,21 @@ This is a maintainer / documentation tool (a sibling to
 package, and Pillow lives in the ``dev`` dependency group rather than in the
 runtime dependencies.
 
+The default ``snake`` scenario captures a scripted, interactive demo on the
+DE10-Lite: the snake animation runs, then ``btn0`` (reverse), ``btn1`` (all
+segments), and ``SW0`` (speed-up) are exercised as a user would.
+
 Examples
 --------
-Regenerate the README hero GIF (snake animation on the DE10-Lite)::
+Regenerate the README hero GIF::
 
     uv run python scripts/capture_demo.py
 
-Capture a different board / design::
+Capture a plain (non-interactive) clip of another board / design::
 
-    uv run python scripts/capture_demo.py \
-        --board arty_a7-35 --vhdl hdl/blinky.vhd --sim ghdl \
-        --out docs/assets/blinky.gif
+    uv run python scripts/capture_demo.py --scenario plain \
+        --board arty_a7-35 --vhdl hdl/blinky.vhd --sim ghdl --step-ns 2000 \
+        --counter-bits 24 --out docs/assets/blinky.gif
 
 """
 
@@ -33,6 +37,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 from typing import cast
+
+from capture_common import assemble_gif
 
 from fpga_sim.board_loader import BoardDef
 from fpga_sim.sim_bridge import (
@@ -52,8 +58,9 @@ def _parse_args() -> argparse.Namespace:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     p.add_argument(
-        "--board", default="de10_lite", help="board JSON path or name stem (default: de10_lite)"
+        "--scenario", default="snake", choices=["snake", "plain"], help="capture scenario"
     )
+    p.add_argument("--board", default="de10_lite", help="board JSON path or name stem")
     p.add_argument(
         "--vhdl", type=Path, default=_ROOT / "hdl" / "snake_7seg.vhd", help="VHDL design file"
     )
@@ -63,16 +70,28 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--out", type=Path, default=_ROOT / "docs" / "assets" / "demo.gif", help="output GIF path"
     )
-    p.add_argument("--frames", type=int, default=90, help="number of frames to capture")
-    p.add_argument("--every", type=int, default=1, help="Timer steps advanced between saved frames")
-    p.add_argument("--step-ns", type=int, default=2000, help="nanoseconds per Timer step")
     p.add_argument(
-        "--switches", type=int, default=4, help="number of low switches to hold high (snake speed)"
+        "--step-ns", type=int, default=None, help="ns per Timer step (default: scenario-tuned)"
     )
-    p.add_argument("--counter-bits", type=int, default=24, help="COUNTER_BITS generic")
+    p.add_argument(
+        "--counter-bits", type=int, default=None, help="COUNTER_BITS (default: scenario-tuned)"
+    )
+    p.add_argument(
+        "--fps", type=int, default=None, help="GIF playback fps (default: scenario-tuned)"
+    )
+    p.add_argument(
+        "--end-cycles", type=int, default=5, help="snake: stop after this many snake cycles"
+    )
+    p.add_argument(
+        "--hold-frames", type=int, default=6, help="snake: frames a button stays pressed"
+    )
+    p.add_argument("--frames", type=int, default=80, help="plain: number of frames to capture")
+    p.add_argument("--every", type=int, default=1, help="plain: Timer steps between saved frames")
+    p.add_argument(
+        "--switches", type=int, default=0, help="plain: number of low switches to hold high"
+    )
     p.add_argument("--width", type=int, default=900, help="board surface width in px")
     p.add_argument("--height", type=int, default=640, help="board surface height in px")
-    p.add_argument("--fps", type=int, default=25, help="GIF playback frames per second")
     p.add_argument(
         "--colors", type=int, default=128, help="GIF palette size (fewer = smaller file)"
     )
@@ -100,31 +119,14 @@ def _run_step(cmd: list[str], env: dict[str, str], cwd: str, what: str) -> None:
         )
 
 
-def _assemble_gif(frame_paths: list[str], out: Path, *, fps: int, colors: int) -> None:
-    """Quantise the PNG frames and write an optimised looping GIF to *out*."""
-    from PIL import Image
-
-    out.parent.mkdir(parents=True, exist_ok=True)
-    frames = [
-        Image.open(p).convert("RGB").quantize(colors=colors, method=Image.Quantize.MEDIANCUT)
-        for p in frame_paths
-    ]
-    duration_ms = max(20, round(1000 / fps))
-    frames[0].save(
-        out,
-        save_all=True,
-        append_images=frames[1:],
-        duration=duration_ms,
-        loop=0,
-        optimize=True,
-        disposal=2,
-    )
-
-
 def main() -> None:
     """Build the design, capture frames, and assemble the demo GIF."""
     args = _parse_args()
     simulator = cast(Simulator, args.sim)
+    snake = args.scenario == "snake"
+    step_ns = args.step_ns if args.step_ns is not None else (14000 if snake else 2000)
+    counter_bits = args.counter_bits if args.counter_bits is not None else (12 if snake else 24)
+    fps = args.fps if args.fps is not None else (18 if snake else 25)
 
     board_json_path = _resolve_board(args.board)
     board_def = BoardDef.from_json(board_json_path.read_text())
@@ -136,7 +138,7 @@ def main() -> None:
         "NUM_SWITCHES": str(len(board_def.switches)),
         "NUM_BUTTONS": str(len(board_def.buttons)),
         "NUM_LEDS": str(len(board_def.leds)),
-        "COUNTER_BITS": str(args.counter_bits),
+        "COUNTER_BITS": str(counter_bits),
     }
     if board_def.seven_seg is not None and design_has_seg:
         generics["NUM_SEGS"] = str(board_def.seven_seg.num_digits)
@@ -173,9 +175,13 @@ def main() -> None:
                 "SDL_VIDEODRIVER": "dummy",
                 "SDL_AUDIODRIVER": "dummy",
                 "CAPTURE_OUTDIR": frames_dir,
+                "CAPTURE_SCENARIO": args.scenario,
+                "CAPTURE_STEP_NS": str(step_ns),
+                "CAPTURE_COUNTER_BITS": str(counter_bits),
+                "CAPTURE_END_CYCLES": str(args.end_cycles),
+                "CAPTURE_HOLD_FRAMES": str(args.hold_frames),
                 "CAPTURE_FRAMES": str(args.frames),
                 "CAPTURE_EVERY": str(args.every),
-                "CAPTURE_STEP_NS": str(args.step_ns),
                 "CAPTURE_SW": str((1 << args.switches) - 1 if args.switches > 0 else 0),
                 "CAPTURE_W": str(args.width),
                 "CAPTURE_H": str(args.height),
@@ -184,7 +190,7 @@ def main() -> None:
                 ),
             }
         )
-        print(f"Capturing {toplevel} on {board_json_path.name} [{simulator}] x{args.frames}")
+        print(f"Capturing {toplevel} on {board_json_path.name} [{simulator}, {args.scenario}]...")
         _run_step(
             backend.run_cmd("sim_wrapper", generics, plugin_lib, work_dir),
             run_env,
@@ -196,7 +202,9 @@ def main() -> None:
         if not frame_paths:
             raise SystemExit("No frames were captured.")
 
-        _assemble_gif(frame_paths, args.out, fps=args.fps, colors=args.colors)
+        assemble_gif(
+            frame_paths, args.out, durations=max(20, round(1000 / fps)), colors=args.colors
+        )
         size_kib = args.out.stat().st_size // 1024
         print(f"Wrote {args.out} ({len(frame_paths)} frames, {size_kib} KiB)")
     finally:
