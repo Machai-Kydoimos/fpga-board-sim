@@ -38,7 +38,7 @@ def draw_cursor(surface: pygame.Surface, pos: tuple[float, float], *, pressed: b
 
 
 def draw_caption(surface: pygame.Surface, text: str, font: pygame.font.Font) -> None:
-    """Draw a centred caption banner near the bottom of *surface* (no-op if empty)."""
+    """Draw a centered caption banner near the bottom of *surface* (no-op if empty)."""
     if not text:
         return
     import pygame
@@ -75,7 +75,7 @@ def assemble_gif(
     durations: int | list[int],
     colors: int = 128,
 ) -> None:
-    """Quantise the PNG frames and write an optimised looping GIF to *out*.
+    """Quantize the PNG frames and write an optimized looping GIF to *out*.
 
     *durations* is milliseconds per frame: a single int for a uniform rate, or a
     list with one entry per frame for a scripted timeline.  Requires Pillow

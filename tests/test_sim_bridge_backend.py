@@ -53,7 +53,7 @@ def test_elaborate_cmd_signatures_match() -> None:
     )
 
 
-# ── run_cmd behaviour ─────────────────────────────────────────────────────────
+# ── run_cmd behavior ─────────────────────────────────────────────────────────
 
 
 def test_nvc_run_cmd_ignores_generics() -> None:

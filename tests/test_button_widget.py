@@ -13,7 +13,7 @@ def screen(headless_pygame):
 
 
 def _fill_rgb(screen, style, **kwargs):
-    """Draw a borderless button with an empty label; return the centre pixel RGB."""
+    """Draw a borderless button with an empty label; return the center pixel RGB."""
     screen.fill((1, 2, 3))
     rect = pygame.Rect(20, 20, 120, 60)
     draw_button(screen, rect, "", get_font(14), style, **kwargs)

@@ -19,7 +19,7 @@ It is feature-complete for experienced FPGA users, but the codebase and UX have 
 
 1. **Board discovery at scale.** With 278 boards from 7 vendors, the original flat scrolling list with text-only filtering was inadequate — users could not filter by component type, vendor, or capability. **U0 ✅** added faceted filtering + sort, largely resolving this.
 2. **Onboarding & discoverability gaps.** README is excellent (~605 lines) but historically unreachable from inside the app. **U1 ✅** added an in-app help overlay (workflow, shortcuts, design contract); the README itself is still not surfaced in-app.
-3. **DRY drift.** Two near-identical backend classes (D2, open), three component classes with identical structure (D3, open), and a 264-line main function with stringly-typed screen results (D6, open) remain. Colour/button drift is resolved: **D4 ✅** unified button drawing and **D15 ✅** consolidated ~112 inline RGB literals into a `Theme` object (`ui/theme.py`). *(VHDL wrapper templates unified in D1 ✅.)*
+3. **DRY drift.** Two near-identical backend classes (D2, open), three component classes with identical structure (D3, open), and a 264-line main function with stringly-typed screen results (D6, open) remain. Color/button drift is resolved: **D4 ✅** unified button drawing and **D15 ✅** consolidated ~112 inline RGB literals into a `Theme` object (`ui/theme.py`). *(VHDL wrapper templates unified in D1 ✅.)*
 4. **Roadmap gravity.** Features queued in memory for months (PWM LEDs, splash, settings screen, waveforms, Verilog, in-sim navigation) are now sequenced below.
 
 This document inventories all viable improvements and ranks them by impact.
@@ -42,8 +42,8 @@ This document inventories all viable improvements and ranks them by impact.
 
 - **Why:** `analyze_vhdl()` can hang silently for 5–10 s with no UI feedback; users assume the app is frozen. (`check_vhdl_encoding()` / `check_vhdl_contract()` are text-only and instant — only `analyze_vhdl()` is slow, so the spinner only needs to cover that call.)
 - **What:** Non-blocking "Analyzing <file>..." overlay with a rotating spinner while `analyze_vhdl()` runs.
-- **Risk / correction:** pygame is not thread-safe for rendering. Do **not** use a background thread that touches the display surface. ⚠️ The previous draft said "the analysis subprocess is already a `subprocess.run()` call — converting to `Popen` + poll loop is straightforward." That is **no longer accurate**: `analyze_vhdl()` (`sim_bridge.py:425-505`) makes **three** sequential `subprocess.run()` calls — analyse user VHDL (`:453`), analyse the generated wrapper (`:468`), elaborate (`:481`) — interleaved with Python file I/O (`_generate_wrapper`). So you cannot simply swap one `subprocess.run` for `Popen`. Two viable approaches: **(a)** run the whole `analyze_vhdl()` on a worker thread (it touches no pygame — only subprocesses + file I/O) and poll the thread/`Future` from the main loop, rendering the spinner on the main thread; or **(b)** have `analyze_vhdl()` accept an optional progress callback and convert its three steps to `Popen` + `poll()` internally. (a) is the smaller change and keeps the "no bg thread touches the display" rule intact.
-- **Touches:** `src/fpga_sim/__main__.py` has **two** launcher call sites for `analyze_vhdl()`: the Load-VHDL path at `:330-332` (inside the picker `while` loop, encoding/contract checks at `:321-327`) and the re-analyse-before-simulate path at `:380-382`. Cover both for consistent feedback. New spinner helper in `ui/`. (The benchmark path `:145` is headless and needs no spinner.)
+- **Risk / correction:** pygame is not thread-safe for rendering. Do **not** use a background thread that touches the display surface. ⚠️ The previous draft said "the analysis subprocess is already a `subprocess.run()` call — converting to `Popen` + poll loop is straightforward." That is **no longer accurate**: `analyze_vhdl()` (`sim_bridge.py:425-505`) makes **three** sequential `subprocess.run()` calls — analyze user VHDL (`:453`), analyze the generated wrapper (`:468`), elaborate (`:481`) — interleaved with Python file I/O (`_generate_wrapper`). So you cannot simply swap one `subprocess.run` for `Popen`. Two viable approaches: **(a)** run the whole `analyze_vhdl()` on a worker thread (it touches no pygame — only subprocesses + file I/O) and poll the thread/`Future` from the main loop, rendering the spinner on the main thread; or **(b)** have `analyze_vhdl()` accept an optional progress callback and convert its three steps to `Popen` + `poll()` internally. (a) is the smaller change and keeps the "no bg thread touches the display" rule intact.
+- **Touches:** `src/fpga_sim/__main__.py` has **two** launcher call sites for `analyze_vhdl()`: the Load-VHDL path at `:330-332` (inside the picker `while` loop, encoding/contract checks at `:321-327`) and the re-analyze-before-simulate path at `:380-382`. Cover both for consistent feedback. New spinner helper in `ui/`. (The benchmark path `:145` is headless and needs no spinner.)
 - **Effort:** M.
 - **Dependencies:** None.
 - **Done when:** a spinner/overlay is visible during VHDL analysis at both call sites and disappears when analysis completes or fails.
@@ -90,7 +90,7 @@ This document inventories all viable improvements and ranks them by impact.
 - **Effort:** M now that D15 has shipped the `Theme` container and routed every call site through `THEME`; the remaining work is the alternate palettes, the Settings toggle, persistence, and the subprocess plumbing.
 - **Dependencies:** **Requires U5** (theme toggle lives in Settings dialog). ~~**D15** (palette centralised)~~ ✅ — the `Theme` object is in place.
 - ⚠ **Carried-forward (from D15 ✅):** the swappable `THEME` container is already in place — keep the import graph acyclic (`constants ← widgets.button ← theme`). Verify the default (`pcb-green`) theme stays **pixel-identical** by regenerating the board images and diffing them byte-for-byte against `main` (the `generate_board_images.py` SVG check D15 used to prove zero visual change).
-- **Done when:** three themes are selectable in Settings; all UI screens (selector, preview, sim, dialogs) render correctly with each; no themed screen reads a colour literal outside the `Theme`.
+- **Done when:** three themes are selectable in Settings; all UI screens (selector, preview, sim, dialogs) render correctly with each; no themed screen reads a color literal outside the `Theme`.
 
 #### U7. In-simulation navigation toolbar
 
@@ -100,11 +100,11 @@ This document inventories all viable improvements and ranks them by impact.
 - **Effort:** L.
 - **Dependencies:** Soft: benefits from D4 (shared button helper).
 - ⚠ **Carried-forward (from D4 ✅ / U1 ✅):** reuse `ui/widgets/button.py` for the toolbar buttons (it is importable in the sim subprocess too). Also note the sim screen already has an *inert* F1/`?` help stub (set by U1 but currently unconsumed) — wire it to `HelpDialog` if you want in-sim help alongside the toolbar.
-- **Done when:** all three buttons work during simulation; [Reload VHDL] re-analyses and restarts without returning to the launcher.
+- **Done when:** all three buttons work during simulation; [Reload VHDL] re-analyzes and restarts without returning to the launcher.
 
 #### U8. Splash screen with random board preview
 
-- **Why:** Queued in memory (#3). Adds polish + visual marketing of the board catalogue.
+- **Why:** Queued in memory (#3). Adds polish + visual marketing of the board catalog.
 - **What:** Replace the bare `BoardSelector` first paint with a two-panel layout: left = filter list, right = randomly-cycling board preview image from `board_images/`.
 - **Touches:** `src/fpga_sim/ui/board_selector.py`.
 - **Effort:** M.
@@ -115,10 +115,10 @@ This document inventories all viable improvements and ranks them by impact.
 
 - **Why:** Queued in memory (#4). Today LEDs are binary; PWM designs (`hdl/blinky_pwm.vhd` already exists) look broken.
 - **What:** Sample LED state N times per displayed frame (e.g. 10 sub-steps), average to a `LED.brightness in [0,1]` float, use to interpolate `RED_OFF` -> `RED_ON`.
-- **Risk:** Multiple `dut.led.value` reads per frame changes the simulation timing model. Each read requires a cocotb `Timer` await, so N sub-steps per frame multiplies the per-frame simulation cost by N. This will reduce the current 37.7 fps baseline. Mitigate by making sub-step count configurable (default 1 = current behaviour, opt-in to N > 1 for PWM designs). Benchmark before/after.
+- **Risk:** Multiple `dut.led.value` reads per frame changes the simulation timing model. Each read requires a cocotb `Timer` await, so N sub-steps per frame multiplies the per-frame simulation cost by N. This will reduce the current 37.7 fps baseline. Mitigate by making sub-step count configurable (default 1 = current behavior, opt-in to N > 1 for PWM designs). Benchmark before/after.
 - **Touches:** `sim/sim_testbench.py` (multiple `dut.led.value` reads per draw), `src/fpga_sim/ui/components.py:116-148` (`LED.draw`).
 - **Effort:** M.
-- **Dependencies:** None (opt-in, so no regression to existing behaviour).
+- **Dependencies:** None (opt-in, so no regression to existing behavior).
 - **Done when:** a PWM-driven LED shows intermediate brightness proportional to duty cycle, and the default (1 sub-step) matches current performance.
 
 #### U10. Waveform capture
@@ -236,9 +236,9 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** None.
 - **Done when:** `_build_sim_env()` has no interleaved `if IS_WINDOWS` blocks; platform differences are isolated to the `extra` path lists.
 
-#### D15. Consolidate scattered colours into the single source of truth ✅
+#### D15. Consolidate scattered colors into the single source of truth ✅
 
-- ✅ **2026-06-24 (PR #109).** New `ui/theme.py` — a frozen `Theme` dataclass (~80 semantic colour roles + the vendor-colour map, defaults = today's pcb-green) and a single swappable `THEME` instance; `constants.py` keeps only base neutrals + `get_font` / `_ui_scale`; ~112 inline RGB literals across 9 files now read `THEME.<role>`. Shipped **pixel-identical** (all 278 board SVGs byte-for-byte unchanged), import graph kept acyclic (`constants ← widgets.button ← theme`); 12 new tests. Front-loads **U6**'s container shape (see U6's ⚠ carried-forward note).
+- ✅ **2026-06-24 (PR #109).** New `ui/theme.py` — a frozen `Theme` dataclass (~80 semantic color roles + the vendor-color map, defaults = today's pcb-green) and a single swappable `THEME` instance; `constants.py` keeps only base neutrals + `get_font` / `_ui_scale`; ~112 inline RGB literals across 9 files now read `THEME.<role>`. Shipped **pixel-identical** (all 278 board SVGs byte-for-byte unchanged), import graph kept acyclic (`constants ← widgets.button ← theme`); 12 new tests. Front-loads **U6**'s container shape (see U6's ⚠ carried-forward note).
 
 ### Tier 2 — Architecture & state
 
@@ -325,7 +325,7 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 | Blocked item | Requires | Reason |
 |---|---|---|
 | **U6** (Theme system) | **U5** (Settings dialog) | Theme toggle lives in Settings |
-| **U6** (Theme system) | ~~**D15** (Colour consolidation)~~ ✅ | Palette now lives in the `Theme` object; U6 swaps its contents |
+| **U6** (Theme system) | ~~**D15** (Color consolidation)~~ ✅ | Palette now lives in the `Theme` object; U6 swaps its contents |
 | **U10** (Waveform capture) | **U5** (Settings dialog) | Waveform toggle lives in Settings |
 | **U18** (Recent files) | **U5** (Settings dialog) | Consumes `recent[]` from U5's schema |
 | **U19** (Metrics checkbox) | **U5** (Settings dialog) | Metrics toggle lives in Settings |
@@ -360,7 +360,7 @@ U5 (settings dialog)
  ├──> U18 (recent files)
  └──> U19 (metrics checkbox)
 
-D15 (colour consolidation) ✅ — Theme object in place; U6 swaps its contents
+D15 (color consolidation) ✅ — Theme object in place; U6 swaps its contents
  └──> U6  (theme system)
 
 D6a (screen-result enum)
@@ -379,12 +379,12 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 |---|---|---|
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
 | **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → U2 Analysis spinner · D2 Backend base class · ~~U26 Visual README~~ ✅ |
-| **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · ~~D15 Colour consolidation~~ ✅ · U5 Settings dialog + extended session · D8 mypy strict |
+| **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · ~~D15 Color consolidation~~ ✅ · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-06-25).** Sprint 1a is fully shipped. **Sprint 1b is in progress — D4 / U13 / U1 / U26 ✅ done; U2 and D2 remain open, so 1b is not yet closed.** One Sprint-2 item, **D15 ✅** (colour consolidation), was pulled forward and shipped early (#109) — harmless (it front-loads U6's container shape). **U26 ✅** (Visual README, #110) was the headline user-visible win and shipped ahead of the remaining 1b refactors. The phases otherwise remain correctly ordered.
+**Status (2026-06-25).** Sprint 1a is fully shipped. **Sprint 1b is in progress — D4 / U13 / U1 / U26 ✅ done; U2 and D2 remain open, so 1b is not yet closed.** One Sprint-2 item, **D15 ✅** (color consolidation), was pulled forward and shipped early (#109) — harmless (it front-loads U6's container shape). **U26 ✅** (Visual README, #110) was the headline user-visible win and shipped ahead of the remaining 1b refactors. The phases otherwise remain correctly ordered.
 
 ---
 

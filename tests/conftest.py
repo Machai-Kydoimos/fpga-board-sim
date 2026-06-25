@@ -15,7 +15,7 @@ from fpga_sim.sim_bridge import _find_ghdl, _NVCBackend  # noqa: E402
 
 @pytest.fixture(scope="session")
 def headless_pygame():
-    """Initialise pygame once per session with the dummy SDL drivers.
+    """Initialize pygame once per session with the dummy SDL drivers.
 
     Centralising init/quit here (rather than per-module) keeps pygame alive
     for the whole session, so the module-global ``get_font`` LRU cache never
@@ -25,7 +25,7 @@ def headless_pygame():
 
     Requested by name from the UI test modules (directly, or via their
     ``screen`` / ``surface`` fixtures); non-UI tests never trigger it, so
-    pygame is only imported and initialised when a test actually needs it.
+    pygame is only imported and initialized when a test actually needs it.
     """
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("SDL_AUDIODRIVER", "dummy")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""analyze_metrics.py – Analyse a sim_metrics CSV and report performance.
+"""analyze_metrics.py – Analyze a sim_metrics CSV and report performance.
 
 Usage::
 
@@ -79,7 +79,7 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
             rows.append({str(k): float(v) for k, v in row.items()})
 
     if not rows:
-        print("CSV is empty — nothing to analyse.")
+        print("CSV is empty — nothing to analyze.")
         return
 
     meta = _load_meta(path)

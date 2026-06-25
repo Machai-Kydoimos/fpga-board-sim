@@ -1,4 +1,4 @@
-"""Tests for BoardSelector: faceted filtering, sorting, and scroll behaviour."""
+"""Tests for BoardSelector: faceted filtering, sorting, and scroll behavior."""
 
 import pytest
 

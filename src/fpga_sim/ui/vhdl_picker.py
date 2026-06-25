@@ -18,7 +18,7 @@ class VHDLFilePicker:
         start_dir: Path | str | None = None,
         preselect_name: str = "",
     ) -> None:
-        """Initialise the picker for the given directory, optionally pre-selecting a file."""
+        """Initialize the picker for the given directory, optionally pre-selecting a file."""
         self.screen = screen
         self.width, self.height = screen.get_size()
         self.scroll = 0
@@ -215,8 +215,8 @@ class VHDLFilePicker:
                 else (THEME.sel_row_a if i % 2 == 0 else THEME.sel_row_b)
             )
             pygame.draw.rect(self.screen, bg, (10, y, self.width - 20, self.row_h - 2))
-            colour = THEME.dir_entry if is_dir else THEME.file_entry
-            nm = item_f.render(name, True, colour)
+            color = THEME.dir_entry if is_dir else THEME.file_entry
+            nm = item_f.render(name, True, color)
             self.screen.blit(nm, (24, y + 8))
 
         # Header

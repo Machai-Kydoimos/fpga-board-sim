@@ -1,7 +1,7 @@
 """Shared UI primitives: the base neutral palette, fonts, and the scaling helper.
 
-The neutral colours here (WHITE / BLACK / GRAY / …) are the raw palette; the
-semantic colour *roles* the renderer reads live in :mod:`fpga_sim.ui.theme`.
+The neutral colors here (WHITE / BLACK / GRAY / …) are the raw palette; the
+semantic color *roles* the renderer reads live in :mod:`fpga_sim.ui.theme`.
 Neutrals stay here (not in theme.py) to keep the import graph acyclic: theme.py
 imports ``ButtonStyle`` from ``ui.widgets.button``, which imports ``WHITE`` here.
 """
@@ -13,7 +13,7 @@ import functools
 import pygame
 
 # ── Base neutral palette ─────────────────────────────────────────────
-# Raw neutrals reused across the UI; semantic colour roles live in theme.py.
+# Raw neutrals reused across the UI; semantic color roles live in theme.py.
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GRAY = (180, 180, 180)

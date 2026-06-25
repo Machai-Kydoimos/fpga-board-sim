@@ -429,11 +429,11 @@ def analyze_vhdl(
     simulator: Simulator = "ghdl",
     board_def: BoardDef | None = None,
 ) -> tuple[bool, str]:
-    """Analyse the user's VHDL and the generated sim_wrapper.
+    """Analyze the user's VHDL and the generated sim_wrapper.
 
     Steps:
-      1. Analyse the user's VHDL file (``-a``).
-      2. Generate ``sim_wrapper.vhd`` and analyse it.
+      1. Analyze the user's VHDL file (``-a``).
+      2. Generate ``sim_wrapper.vhd`` and analyze it.
       3. Elaborate ``sim_wrapper`` with VHDL-default generics as an early
          error check.  GHDL resolves generics at run time so the defaults
          used here are discarded.  NVC bakes generics into its elaboration
@@ -449,7 +449,7 @@ def analyze_vhdl(
     if toplevel is None:
         toplevel = Path(vhdl_path).stem
     try:
-        # Step 1: analyse user's VHDL
+        # Step 1: analyze user's VHDL
         result = subprocess.run(
             be.analyze_cmd(Path(vhdl_path), work_dir),
             capture_output=True,
@@ -459,7 +459,7 @@ def analyze_vhdl(
         if result.returncode != 0:
             return False, result.stderr.strip()
 
-        # Step 2: generate wrapper and analyse it
+        # Step 2: generate wrapper and analyze it
         _vhdl_text = Path(vhdl_path).read_text(encoding="utf-8", errors="ignore")
         _design_has_seg = _has_seg_port(_vhdl_text)
         wrapper_path = _generate_wrapper(
@@ -613,7 +613,7 @@ def launch_simulation(
         generics.setdefault("NUM_SEGS", str(board_def.seven_seg.num_digits))
 
     if work_dir is None:
-        # Fresh run: analyse user file and wrapper from scratch.
+        # Fresh run: analyze user file and wrapper from scratch.
         work_dir = tempfile.mkdtemp(prefix="fpga_sim_run_")
         subprocess.run(
             be.analyze_cmd(vhdl_path, work_dir),

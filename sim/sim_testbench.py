@@ -214,7 +214,7 @@ async def interactive_sim(dut: object) -> None:
     except AttributeError:
         pass
 
-    # ── Initialise inputs ─────────────────────────────────────────────────────
+    # ── Initialize inputs ─────────────────────────────────────────────────────
     num_sw = len(board.switches)
     num_btn = len(board.buttons)
     num_led = len(board.leds)

@@ -41,7 +41,7 @@ class BoardSelector:
         initial_component_filters: list[str] | None = None,
         initial_vendor_filters: list[str] | None = None,
     ) -> None:
-        """Initialise the selector with a board list and optional pre-selected class name."""
+        """Initialize the selector with a board list and optional pre-selected class name."""
         self.boards = boards
         self.screen = screen
         self.width, self.height = screen.get_size()

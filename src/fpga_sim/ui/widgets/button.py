@@ -4,7 +4,7 @@ A single :func:`draw_button` entry point replaces the open-coded button draws
 that had drifted across ``board_display``, ``error_dialog``, ``sim_panel`` and
 the simulation overlay (each hand-rolled its own hover handling, border width
 and corner radius).  Every button's appearance is declared once as a
-:class:`ButtonStyle`; the resting / hover / disabled colour resolution lives
+:class:`ButtonStyle`; the resting / hover / disabled color resolution lives
 here so all callers behave consistently.
 """
 
@@ -21,10 +21,10 @@ RGB = tuple[int, int, int]
 
 @dataclass(frozen=True)
 class ButtonStyle:
-    """Colours and geometry describing one button's appearance.
+    """Colors and geometry describing one button's appearance.
 
-    ``bg`` / ``fg`` / ``border`` are the resting colours and ``bg_hover`` is
-    used while the pointer is over the button.  The ``*_disabled`` colours
+    ``bg`` / ``fg`` / ``border`` are the resting colors and ``bg_hover`` is
+    used while the pointer is over the button.  The ``*_disabled`` colors
     apply when the button is drawn with ``enabled=False``; each falls back to
     its enabled counterpart when left ``None``.
     """
@@ -50,11 +50,11 @@ def draw_button(
     hovered: bool = False,
     enabled: bool = True,
 ) -> None:
-    """Draw a rounded-rect button with a centred label.
+    """Draw a rounded-rect button with a centered label.
 
-    The fill, border and text colours are resolved from *style* according to
+    The fill, border and text colors are resolved from *style* according to
     *enabled* and *hovered* (a disabled button ignores *hovered*), then the
-    rectangle, its border and the centred *label* are painted onto *surface*.
+    rectangle, its border and the centered *label* are painted onto *surface*.
     """
     if not enabled:
         bg = style.bg_disabled or style.bg

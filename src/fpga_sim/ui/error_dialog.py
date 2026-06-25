@@ -17,7 +17,7 @@ class ErrorDialog:
     """
 
     def __init__(self, screen: pygame.Surface, title: str, message: str) -> None:
-        """Initialise the dialog with a screen snapshot, title, and message text."""
+        """Initialize the dialog with a screen snapshot, title, and message text."""
         self.screen = screen
         self.title = title
         self.message = message

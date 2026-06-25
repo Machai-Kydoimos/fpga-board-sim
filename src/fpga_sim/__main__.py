@@ -1,7 +1,7 @@
 """FPGA Board Simulator - entry point.
 
 All UI logic lives in the fpga_sim.ui package:
-  fpga_sim/ui/constants.py      colours and _ui_scale
+  fpga_sim/ui/constants.py      colors and _ui_scale
   fpga_sim/ui/components.py     FPGAChip, LED, Switch, Button
   fpga_sim/ui/board_selector.py BoardSelector screen
   fpga_sim/ui/board_display.py  FPGABoard screen
@@ -229,7 +229,7 @@ def main() -> None:
         last_vhdl_path if last_vhdl_path and Path(last_vhdl_path).exists() else None
     )
     current_work_dir: str | None = None
-    # Track which simulator produced current_work_dir so we can re-analyse
+    # Track which simulator produced current_work_dir so we can re-analyze
     # automatically when the user switches simulators before hitting Start.
     _work_dir_simulator: Simulator | None = None
 
@@ -362,7 +362,7 @@ def main() -> None:
         # ── Step 5: launch simulation ─────────────────────────────
         assert current_vhdl_path is not None  # Start button only fires when VHDL is set
 
-        # Re-analyse if the work directory is missing or was produced by a different
+        # Re-analyze if the work directory is missing or was produced by a different
         # simulator.  This also covers the session-restore case (_work_dir_simulator
         # is None on first launch) where the saved board+VHDL pair may be mismatched
         # (e.g. a 7-seg board with a standard design or vice-versa).  Always re-run
