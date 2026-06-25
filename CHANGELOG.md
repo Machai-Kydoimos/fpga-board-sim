@@ -26,6 +26,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `sim_bridge.py` and clears the way for a future third backend. No behavior
   change.
 
+### Fixed
+
+- **NVC no longer aborts on large designs with a cryptic out-of-memory error.**
+  NVC's global heap defaults to 16 MB, which deep / many-instance designs
+  exhausted mid-elaboration (`** Fatal: (init): out of memory … increase with
+  the -H option`). The NVC backend now passes `-H 512m` on elaboration and run,
+  raising the cap — it is a ceiling the heap grows into on demand, not an
+  up-front reservation, so small designs are unaffected (measured peak RSS for
+  a trivial design is within ~1 MB of the default). In testing this lifted the
+  practical ceiling several-fold (a synthetic 64-hart multi-core that previously
+  failed now elaborates cleanly); designs with hundreds of instances may
+  additionally need NVC's `-M` design-unit-heap option.
+
 ## [0.7.0] - 2026-06-25
 
 ### Added

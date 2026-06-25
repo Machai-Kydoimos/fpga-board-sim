@@ -1,11 +1,19 @@
 """Unit tests for _SimBackend ABC conformance and backend dispatch."""
 
 import inspect
+from pathlib import Path
 from typing import cast, get_args
 
 import pytest
 
-from fpga_sim.sim_bridge import Simulator, _backend, _GHDLBackend, _NVCBackend, _SimBackend
+from fpga_sim.sim_bridge import (
+    _NVC_HEAP,
+    Simulator,
+    _backend,
+    _GHDLBackend,
+    _NVCBackend,
+    _SimBackend,
+)
 
 # ── ABC conformance ───────────────────────────────────────────────────────────
 
@@ -91,6 +99,35 @@ def test_ghdl_run_cmd_empty_generics() -> None:
     """GHDL run_cmd with an empty generics dict must not add any -g flags."""
     cmd = _GHDLBackend.run_cmd("top", {}, "/lib/vpi.so", "/work")
     assert not any(a.startswith("-g") for a in cmd)
+
+
+# ── NVC elaboration/run heap cap (-H) ─────────────────────────────────────────
+
+
+def test_nvc_elaborate_cmd_raises_heap() -> None:
+    """NVC elaboration lifts the 16M default global-heap cap via -H."""
+    cmd = _NVCBackend.elaborate_cmd("top", {}, "/work")
+    assert cmd[cmd.index("-H") + 1] == _NVC_HEAP
+    # -H is a global option: it must precede the -e subcommand.
+    assert cmd.index("-H") < cmd.index("-e")
+
+
+def test_nvc_run_cmd_raises_heap() -> None:
+    """NVC run carries the same -H cap (large designs need it at run time too)."""
+    cmd = _NVCBackend.run_cmd("top", {}, "/lib/vhpi.so", "/work")
+    assert cmd[cmd.index("-H") + 1] == _NVC_HEAP
+    assert cmd.index("-H") < cmd.index("-r")
+
+
+def test_nvc_analyze_cmd_has_no_heap_flag() -> None:
+    """Analysis does not build the hierarchy, so it needs no -H bump."""
+    assert "-H" not in _NVCBackend.analyze_cmd(Path("x.vhd"), "/work")
+
+
+def test_ghdl_commands_have_no_heap_flag() -> None:
+    """-H is NVC-specific; GHDL has no equivalent limit and must not carry it."""
+    assert "-H" not in _GHDLBackend.elaborate_cmd("top", {}, "/work")
+    assert "-H" not in _GHDLBackend.run_cmd("top", {}, "/lib/vpi.so", "/work")
 
 
 # ── _backend() dispatch ───────────────────────────────────────────────────────
