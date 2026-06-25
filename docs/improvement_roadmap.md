@@ -1,6 +1,6 @@
 # Virtual FPGA Boards — Improvement Roadmap
 
-*Drafted 2026-05-19 · Updated 2026-06-24 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
+*Drafted 2026-05-19 · Updated 2026-06-25 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
 
 A comprehensive, impact-weighted roadmap covering improvements from two perspectives:
 
@@ -13,13 +13,13 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~5,700 LOC across 10+ Python modules (≈6,400 incl. `sim/`), 27 test files (1001 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 281 board definitions from four sources (278 loadable), performance heavily tuned (PR #31), v0.6.0 released (2026-06-22).
+The simulator is mature: ~5,700 LOC across 10+ Python modules (≈6,400 incl. `sim/`), 27 test files (1005 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 281 board definitions from four sources (278 loadable), performance heavily tuned (PR #31), v0.7.0 released (2026-06-25).
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
 1. **Board discovery at scale.** With 278 boards from 7 vendors, the original flat scrolling list with text-only filtering was inadequate — users could not filter by component type, vendor, or capability. **U0 ✅** added faceted filtering + sort, largely resolving this.
 2. **Onboarding & discoverability gaps.** README is excellent (~605 lines) but historically unreachable from inside the app. **U1 ✅** added an in-app help overlay (workflow, shortcuts, design contract); the README itself is still not surfaced in-app.
-3. **DRY drift.** Two near-identical backend classes (D2, open), three component classes with identical structure (D3, open), and a 264-line main function with stringly-typed screen results (D6, open) remain. Color/button drift is resolved: **D4 ✅** unified button drawing and **D15 ✅** consolidated ~112 inline RGB literals into a `Theme` object (`ui/theme.py`). *(VHDL wrapper templates unified in D1 ✅.)*
+3. **DRY drift.** Three component classes with identical structure (D3, open) and a 264-line main function with stringly-typed screen results (D6, open) remain. Backend/color/button drift is resolved: **D2 ✅** collapsed the two near-identical backend classes into one ABC, **D4 ✅** unified button drawing, and **D15 ✅** consolidated ~112 inline RGB literals into a `Theme` object (`ui/theme.py`). *(VHDL wrapper templates unified in D1 ✅.)*
 4. **Roadmap gravity.** Features queued in memory for months (PWM LEDs, splash, settings screen, waveforms, Verilog, in-sim navigation) are now sequenced below.
 
 This document inventories all viable improvements and ranks them by impact.
@@ -159,7 +159,7 @@ This document inventories all viable improvements and ranks them by impact.
 - **Why:** Queued in memory (#1); broadens audience significantly. Icarus Verilog is the natural first target.
 - **What:** New file picker extension filter `.v / .sv`, Verilog contract validator, `TOPLEVEL_LANG="verilog"`, new VPI lib, third backend class, example `blinky.v`.
 - **Effort:** XL (10-15 h).
-- **Dependencies:** **Requires D2** (backend ABC) — without it, a third backend is a third copy-paste of `find()` / `available()` / `lib_dir()` / `sim_bin_lib()`.
+- **Dependencies:** ~~**Requires D2** (backend ABC)~~ ✅ — the ABC now shares `find()` / `available()` / `lib_dir()` / `sim_bin_lib()`, so a third backend overrides only `NAME` + the command builders.
 - **Done when:** a `.v` file with the correct port contract simulates successfully with Icarus Verilog.
 
 #### U21. Board-native VHDL mode (port conventions)
@@ -203,16 +203,9 @@ This document inventories all viable improvements and ranks them by impact.
 
 - ✅ **2026-05-28.** Merged `sim_wrapper_template.vhd` + `sim_wrapper_7seg_template.vhd` into one template with conditional seg placeholders spliced by `_generate_wrapper()`; deleted the 7-seg template and `_choose_wrapper_template()`. Unblocks **U21** / **U22**.
 
-#### D2. Backend base class with override-only differences
+#### D2. Backend base class with override-only differences ✅
 
-- **Why:** `_GHDLBackend` (`sim_bridge.py:71-120`) and `_NVCBackend` (`:123-183`) duplicate 8 method signatures; bodies share structure. `find()` differs only by the executable name (`shutil.which("ghdl")` vs `shutil.which("nvc")`, both equal to `NAME`); `available()`, `lib_dir()`, and `sim_bin_lib()` are byte-for-byte identical apart from the `_GHDLBackend.find()` / `_NVCBackend.find()` call inside them. The `_SimBackend` Protocol (`:39-68`) declares the shape but does not share implementation.
-- **What:** Convert `_SimBackend` from Protocol -> ABC; move `find()`, `available()`, `lib_dir()`, `sim_bin_lib()` into the ABC; subclasses override only `NAME`, `plugin_lib_name()`, `analyze_cmd()`, `elaborate_cmd()`, `run_cmd()`. Optionally narrow `_backend()`'s return type (`:186`) from `type[_GHDLBackend] | type[_NVCBackend]` to `type[_SimBackend]`.
-- **⚠️ `@staticmethod` -> `@classmethod` conversion required.** Today *every* backend method is a `@staticmethod` and hardcodes its own class (e.g. `lib_dir()` calls `_GHDLBackend.find()`). To hoist the four shared methods into the ABC they must read `cls.NAME` / call `cls.find()`, so they become `@classmethod`. Callers already use class-level access (`be.find()` where `be = _backend(...)`), so this is source-compatible at the call sites.
-- **⚠️ This refactor is NOT safe under the current test suite — a test must change.** `tests/test_sim_bridge_backend.py:24-34` (`test_backend_has_all_protocol_methods`) explicitly asserts, via `inspect.getattr_static`, that **all 8 protocol methods are `@staticmethod`**. Converting `find`/`available`/`lib_dir`/`sim_bin_lib` to `@classmethod` makes that assertion fail. Update the test to allow `staticmethod` *or* `classmethod` for the hoisted methods (the `run_cmd`/`elaborate_cmd` signature-parity tests at `:40-53` are unaffected since those stay as subclass overrides).
-- **Touches:** `src/fpga_sim/sim_bridge.py:39-191` (Protocol + both backends + `_backend()`); `tests/test_sim_bridge_backend.py` (relax the staticmethod assertion). Net reduction ~30-50 LOC in `sim_bridge.py`.
-- **Effort:** S/M.
-- **Dependencies:** None. But **U20** depends on this.
-- **Done when:** `_SimBackend` is an ABC with shared implementations; `_GHDLBackend` and `_NVCBackend` override only the 5 members that differ (`NAME` + 4 methods); the staticmethod assertion in `test_sim_bridge_backend.py` is updated; all backend tests pass.
+- ✅ **2026-06-25 (PR #115).** Converted `_SimBackend` from a `Protocol` to an **ABC** and hoisted the four discovery helpers (`find` / `available` / `lib_dir` / `sim_bin_lib`) onto it as `@classmethod`s keyed on each backend's `NAME`; `_GHDLBackend` / `_NVCBackend` now override only `NAME` + the four per-simulator command builders (`plugin_lib_name` / `analyze_cmd` / `elaborate_cmd` / `run_cmd`), which stay `@staticmethod`. `_backend()` now returns `type[_SimBackend]`. ~19 LOC of duplication removed from `sim_bridge.py`. As predicted, `test_backend_has_all_protocol_methods` had to be relaxed (static- *or* classmethod); two guard tests were added so the shared helpers must stay inherited (absent from each subclass `__dict__`), locking in the dedup. Unblocks **U20** (a third backend now overrides only `NAME` + the command builders, no copy-paste).
 
 #### D3. UIComponent base class
 
@@ -329,7 +322,7 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 | **U10** (Waveform capture) | **U5** (Settings dialog) | Waveform toggle lives in Settings |
 | **U18** (Recent files) | **U5** (Settings dialog) | Consumes `recent[]` from U5's schema |
 | **U19** (Metrics checkbox) | **U5** (Settings dialog) | Metrics toggle lives in Settings |
-| **U20** (Verilog support) | **D2** (Backend ABC) | Third backend class would be a third copy-paste without ABC |
+| **U20** (Verilog support) | ~~**D2** (Backend ABC)~~ ✅ | Third backend now overrides only `NAME` + command builders |
 | ~~**U21** (Board-native VHDL)~~ | ~~**D1** (Wrapper merge)~~ ✅ | Adapter logic in unified template |
 | ~~**U22** (7-seg physical mux)~~ | ~~**D1** (Wrapper merge)~~ ✅ | Placeholders in unified template |
 | **D6b** (ScreenController) | **D6a** (Screen-result enum) | Enum enables type-safe transitions in the controller |
@@ -351,7 +344,7 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 ```text
 D1 (wrapper merge) ✅ — U21 and U22 are now unblocked
 
-D2 (backend ABC)
+D2 (backend ABC) ✅ — U20 unblocked; a third backend overrides only NAME + command builders
  └──> U20 (Verilog support)
 
 U5 (settings dialog)
@@ -378,20 +371,20 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | Sprint | Theme | Items |
 |---|---|---|
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
-| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → U2 Analysis spinner · D2 Backend base class · ~~U26 Visual README~~ ✅ |
+| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → U2 Analysis spinner · ~~D2 Backend base class~~ ✅ · ~~U26 Visual README~~ ✅ |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · ~~D15 Color consolidation~~ ✅ · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-06-25).** Sprint 1a is fully shipped. **Sprint 1b is in progress — D4 / U13 / U1 / U26 ✅ done; U2 and D2 remain open, so 1b is not yet closed.** One Sprint-2 item, **D15 ✅** (color consolidation), was pulled forward and shipped early (#109) — harmless (it front-loads U6's container shape). **U26 ✅** (Visual README, #110) was the headline user-visible win and shipped ahead of the remaining 1b refactors. The phases otherwise remain correctly ordered.
+**Status (2026-06-25).** Sprint 1a is fully shipped. **Sprint 1b is nearly closed — D4 / U13 / U1 / U26 / D2 ✅ done; only U2 (analysis spinner) remains open.** One Sprint-2 item, **D15 ✅** (color consolidation), was pulled forward and shipped early (#109) — harmless (it front-loads U6's container shape). **U26 ✅** (Visual README, #110) was the headline user-visible win and shipped ahead of the remaining 1b refactors. The phases otherwise remain correctly ordered.
 
 ---
 
 ## Critical files modified across the roadmap
 
 - `src/fpga_sim/__main__.py` — U2, U7, D6, D9 ✅
-- `src/fpga_sim/sim_bridge.py` — U4, U10, U21, D1, D2, D5, D7, D9 ✅ (defines `Simulator`)
+- `src/fpga_sim/sim_bridge.py` — U4, U10, U21, D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅
 - `src/fpga_sim/session_config.py` — U5, U18, D9 ✅, D14
 - `src/fpga_sim/ui/constants.py` — D15 ✅ (now base neutrals only), U6, U17
@@ -415,7 +408,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `ErrorDialog` modal pattern (`ui/error_dialog.py`) -> reuse layout for help / settings / tooltip dialogs.
 - `get_font()` LRU cache (`ui/constants.py:41-49`) -> already used everywhere; pre-allocation in U17 just primes it.
 - `_generate_wrapper()` (`sim_bridge.py:386-414`) -> unified template substitution with conditional 7-seg splicing (D1 ✅).
-- `_SimBackend` Protocol (`sim_bridge.py:33-63`) -> becomes ABC base in D2 with no caller changes.
+- `_SimBackend` ABC (`sim_bridge.py`) — D2 ✅ made it an ABC sharing `find()` / `available()` / `lib_dir()` / `sim_bin_lib()` as classmethods; a third backend (U20) overrides only `NAME` + the command builders.
 - `session_config.save_session` / `load_session` (`session_config.py`) -> extend schema for U5; existing call sites unchanged.
 - `sim_metrics.py` / `scripts/analyze_metrics.py` -> consumed by U19; no new infra needed.
 - `BoardDef.summary` property (`board_loader.py:433-443`) -> update format for U12; extend for U0 filter logic.
@@ -427,7 +420,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (1001 tests across 27 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, help overlay, theme value-preservation). All sprints must keep this green.
+1. **Tests** — `uv run pytest` (1005 tests across 27 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, help overlay, theme value-preservation). All sprints must keep this green.
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy src/` (the latter tightens under D8).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).

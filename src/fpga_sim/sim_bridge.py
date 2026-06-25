@@ -18,8 +18,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Protocol
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from fpga_sim.board_loader import BoardDef
@@ -36,56 +37,63 @@ Simulator = Literal["ghdl", "nvc"]
 # ── Simulator backend classes ─────────────────────────────────────────────────
 
 
-class _SimBackend(Protocol):
-    """Structural interface that all simulator backends must satisfy."""
+class _SimBackend(ABC):
+    """Abstract base for simulator backends.
+
+    The four discovery helpers (``find`` / ``available`` / ``lib_dir`` /
+    ``sim_bin_lib``) are shared here: they read ``cls.NAME`` and call
+    ``cls.find()``, which works for any backend whose executable name equals its
+    ``NAME``.  Subclasses override only ``NAME`` plus the per-simulator command
+    builders (``plugin_lib_name`` / ``analyze_cmd`` / ``elaborate_cmd`` /
+    ``run_cmd``).  Backends are used as classes, never instantiated.
+    """
 
     NAME: Simulator
 
-    @staticmethod
-    def find() -> str: ...
+    # Shared discovery — the executable name equals NAME for every backend.
+    @classmethod
+    def find(cls) -> str:
+        return shutil.which(cls.NAME) or cls.NAME
 
-    @staticmethod
-    def available() -> bool: ...
+    @classmethod
+    def available(cls) -> bool:
+        return bool(shutil.which(cls.NAME))
 
-    @staticmethod
-    def lib_dir() -> str: ...
+    @classmethod
+    def lib_dir(cls) -> str:
+        bin_path = Path(cls.find()).resolve().parent
+        lib_dir = bin_path.parent / "lib"
+        return str(lib_dir) if lib_dir.is_dir() else str(bin_path)
 
+    @classmethod
+    def sim_bin_lib(cls) -> tuple[str, str]:
+        """Return (bin_dir, lib_dir) for environment setup."""
+        return str(Path(cls.find()).resolve().parent), cls.lib_dir()
+
+    # Per-simulator specifics — subclasses must override.
     @staticmethod
+    @abstractmethod
     def plugin_lib_name() -> str: ...
 
     @staticmethod
+    @abstractmethod
     def analyze_cmd(vhdl_path: Path, work_dir: str) -> list[str]: ...
 
     @staticmethod
+    @abstractmethod
     def elaborate_cmd(toplevel: str, generics: dict[str, str], work_dir: str) -> list[str]: ...
 
     @staticmethod
+    @abstractmethod
     def run_cmd(
         toplevel: str, generics: dict[str, str], plugin_lib: str, work_dir: str
     ) -> list[str]: ...
 
-    @staticmethod
-    def sim_bin_lib() -> tuple[str, str]: ...
 
-
-class _GHDLBackend:
+class _GHDLBackend(_SimBackend):
     """GHDL simulator backend – uses the VPI interface."""
 
     NAME: Simulator = "ghdl"
-
-    @staticmethod
-    def find() -> str:
-        return shutil.which("ghdl") or "ghdl"
-
-    @staticmethod
-    def available() -> bool:
-        return bool(shutil.which("ghdl"))
-
-    @staticmethod
-    def lib_dir() -> str:
-        bin_path = Path(_GHDLBackend.find()).resolve().parent
-        lib_dir = bin_path.parent / "lib"
-        return str(lib_dir) if lib_dir.is_dir() else str(bin_path)
 
     @staticmethod
     def plugin_lib_name() -> str:
@@ -114,13 +122,8 @@ class _GHDLBackend:
         cmd.append(f"--vpi={plugin_lib}")
         return cmd
 
-    @staticmethod
-    def sim_bin_lib() -> tuple[str, str]:
-        """Return (bin_dir, lib_dir) for environment setup."""
-        return str(Path(_GHDLBackend.find()).resolve().parent), _GHDLBackend.lib_dir()
 
-
-class _NVCBackend:
+class _NVCBackend(_SimBackend):
     """NVC VHDL simulator backend – uses the VHPI interface.
 
     Key differences from GHDL:
@@ -131,20 +134,6 @@ class _NVCBackend:
     """
 
     NAME: Simulator = "nvc"
-
-    @staticmethod
-    def find() -> str:
-        return shutil.which("nvc") or "nvc"
-
-    @staticmethod
-    def available() -> bool:
-        return bool(shutil.which("nvc"))
-
-    @staticmethod
-    def lib_dir() -> str:
-        bin_path = Path(_NVCBackend.find()).resolve().parent
-        lib_dir = bin_path.parent / "lib"
-        return str(lib_dir) if lib_dir.is_dir() else str(bin_path)
 
     @staticmethod
     def plugin_lib_name() -> str:
@@ -177,17 +166,9 @@ class _NVCBackend:
             toplevel,
         ]
 
-    @staticmethod
-    def sim_bin_lib() -> tuple[str, str]:
-        """Return (bin_dir, lib_dir) for environment setup."""
-        return str(Path(_NVCBackend.find()).resolve().parent), _NVCBackend.lib_dir()
 
-
-def _backend(simulator: Simulator) -> type[_GHDLBackend] | type[_NVCBackend]:
-    """Return the backend class for the given simulator name.
-
-    Both classes satisfy the ``_SimBackend`` Protocol.
-    """
+def _backend(simulator: Simulator) -> type[_SimBackend]:
+    """Return the backend class for the given simulator name."""
     return _NVCBackend if simulator == "nvc" else _GHDLBackend
 
 

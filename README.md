@@ -223,7 +223,7 @@ A logarithmic slider from **0.001× to 10×** (default **0.1×**) controls how m
 src/fpga_sim/              Installable Python package (src layout)
   __main__.py              Entry point — screen flow, --benchmark CLI, --sim flag
   board_loader.py          Loads board definitions from JSON into BoardDef objects
-  sim_bridge.py            GHDL/NVC analysis + cocotb simulation launcher; _GHDLBackend/_NVCBackend classes
+  sim_bridge.py            GHDL/NVC analysis + cocotb simulation launcher; _SimBackend ABC + _GHDLBackend/_NVCBackend
   sim_session_log.py       Writes per-session JSON summaries to ~/.fpga_simulator/sessions/
   sim_metrics.py           Optional per-frame CSV metrics (set FPGA_SIM_METRICS=<path> to enable)
   session_config.py        Session persistence (~/.fpga_simulator/session.json)
@@ -370,7 +370,7 @@ A simple but complete VHDL design that exercises all board I/O:
 
 ### Simulator Backends (`fpga_sim/sim_bridge.py`)
 
-`sim_bridge.py` contains two private backend classes that encapsulate all simulator-specific details:
+`sim_bridge.py` defines a `_SimBackend` ABC with two private subclasses (`_GHDLBackend`, `_NVCBackend`) that encapsulate all simulator-specific details:
 
 | | `_GHDLBackend` | `_NVCBackend` |
 |---|---|---|
