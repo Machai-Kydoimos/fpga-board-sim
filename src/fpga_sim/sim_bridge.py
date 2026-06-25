@@ -123,6 +123,19 @@ class _GHDLBackend(_SimBackend):
         return cmd
 
 
+# NVC's global heap defaults to 16 MB, which large designs (deep hierarchies,
+# many instances) exhaust mid-elaboration — aborting with a cryptic
+# ``** Fatal: (init): out of memory ... increase with the -H option``.  ``-H``
+# raises the cap for the design-building phases (``-e`` / ``-r``).  It is a
+# ceiling the heap grows into on demand, not an up-front reservation: measured
+# peak RSS for a trivial design is unchanged within ~1 MB (only page-table
+# metadata scales with the cap).  512m clears NVC's GC high-water mark even for
+# very large designs (a synthetic 64-hart RISC-V array needed only ~256m); past
+# this the *design-unit* heap (``-M``) limit dominates, so a larger ``-H`` alone
+# would not help.  GHDL has no equivalent limit.
+_NVC_HEAP = "512m"
+
+
 class _NVCBackend(_SimBackend):
     """NVC VHDL simulator backend – uses the VHPI interface.
 
@@ -131,6 +144,7 @@ class _NVCBackend(_SimBackend):
       - Uses ``--std=2008`` instead of ``--std=08``
       - Generics are passed at elaboration (``-e``) time, not at run (``-r``) time
       - Plugin loaded via ``--load=<lib>`` (VHPI) instead of ``--vpi=<lib>``
+      - Raises the elaboration/run heap cap via ``-H`` (see :data:`_NVC_HEAP`)
     """
 
     NAME: Simulator = "nvc"
@@ -146,7 +160,7 @@ class _NVCBackend(_SimBackend):
     @staticmethod
     def elaborate_cmd(toplevel: str, generics: dict[str, str], work_dir: str) -> list[str]:
         """Elaborate with generics (NVC requires generics at elaboration time)."""
-        cmd = [_NVCBackend.find(), f"--work=work:{work_dir}", "--std=2008", "-e"]
+        cmd = [_NVCBackend.find(), f"--work=work:{work_dir}", "--std=2008", "-H", _NVC_HEAP, "-e"]
         for k, v in (generics or {}).items():
             cmd.extend(["-g", f"{k}={v}"])
         cmd.append(toplevel)
@@ -161,6 +175,8 @@ class _NVCBackend(_SimBackend):
             _NVCBackend.find(),
             f"--work=work:{work_dir}",
             "--std=2008",
+            "-H",
+            _NVC_HEAP,
             "-r",
             f"--load={plugin_lib}",
             toplevel,
