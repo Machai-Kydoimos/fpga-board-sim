@@ -109,6 +109,8 @@ class Theme:
     scroll_track: RGB = (80, 80, 100)
     scroll_thumb: RGB = (160, 160, 200)
     footer_hint: RGB = (140, 140, 140)
+    spinner_arc: RGB = (150, 200, 255)  # leading dot of the analysis spinner
+    spinner_track: RGB = (70, 80, 110)  # trailing/faded dots of the spinner
 
     # ── Sim panel ───────────────────────────────────────────────────────────
     info_green: RGB = (180, 220, 180)  # section headers + board summary text

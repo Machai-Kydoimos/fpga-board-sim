@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Analysis spinner.** Loading a VHDL file (and re-checking it before a run)
+  used to freeze the window for several seconds while the simulator analyzed
+  and elaborated the design, with no feedback. There is now a centered
+  "Analyzing &lt;file&gt;…" overlay with a rotating spinner that animates while
+  the work runs on a background thread, so the app stays responsive and clearly
+  shows it is busy. The overlay disappears when analysis succeeds or fails.
+
 ### Changed
 
 - **Simulator backends now share one base class (internal refactor).**

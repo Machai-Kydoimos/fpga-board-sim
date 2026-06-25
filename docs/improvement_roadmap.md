@@ -38,15 +38,9 @@ This document inventories all viable improvements and ranks them by impact.
 
 - ✅ **2026-06-01 (PR #88).** New `ui/help_dialog.py` — a blocking `HelpDialog` (4-step workflow, keyboard-shortcut legend, VHDL contract summary) opened by F1, `?`, or a circular `(?)` button on all three launcher screens; the legend renders from a single `SHORTCUTS` / `WORKFLOW` / `CONTRACT` source so it can't drift from the real handlers; 36 new tests. Carried-forward gotchas now noted on **U5** / **U7** / **U14** (and the [Delivery log](#delivery-log)).
 
-#### U2. Inline analysis spinner during VHDL load
+#### U2. Inline analysis spinner during VHDL load ✅
 
-- **Why:** `analyze_vhdl()` can hang silently for 5–10 s with no UI feedback; users assume the app is frozen. (`check_vhdl_encoding()` / `check_vhdl_contract()` are text-only and instant — only `analyze_vhdl()` is slow, so the spinner only needs to cover that call.)
-- **What:** Non-blocking "Analyzing <file>..." overlay with a rotating spinner while `analyze_vhdl()` runs.
-- **Risk / correction:** pygame is not thread-safe for rendering. Do **not** use a background thread that touches the display surface. ⚠️ The previous draft said "the analysis subprocess is already a `subprocess.run()` call — converting to `Popen` + poll loop is straightforward." That is **no longer accurate**: `analyze_vhdl()` (`sim_bridge.py:425-505`) makes **three** sequential `subprocess.run()` calls — analyze user VHDL (`:453`), analyze the generated wrapper (`:468`), elaborate (`:481`) — interleaved with Python file I/O (`_generate_wrapper`). So you cannot simply swap one `subprocess.run` for `Popen`. Two viable approaches: **(a)** run the whole `analyze_vhdl()` on a worker thread (it touches no pygame — only subprocesses + file I/O) and poll the thread/`Future` from the main loop, rendering the spinner on the main thread; or **(b)** have `analyze_vhdl()` accept an optional progress callback and convert its three steps to `Popen` + `poll()` internally. (a) is the smaller change and keeps the "no bg thread touches the display" rule intact.
-- **Touches:** `src/fpga_sim/__main__.py` has **two** launcher call sites for `analyze_vhdl()`: the Load-VHDL path at `:330-332` (inside the picker `while` loop, encoding/contract checks at `:321-327`) and the re-analyze-before-simulate path at `:380-382`. Cover both for consistent feedback. New spinner helper in `ui/`. (The benchmark path `:145` is headless and needs no spinner.)
-- **Effort:** M.
-- **Dependencies:** None.
-- **Done when:** a spinner/overlay is visible during VHDL analysis at both call sites and disappears when analysis completes or fails.
+- ✅ **2026-06-25 (PR #117).** New `ui/spinner.py` — `run_with_spinner()` runs `analyze_vhdl()` on a worker thread (a `ThreadPoolExecutor` future) and animates a `SpinnerOverlay` (dimmed snapshot → centered info-panel → a 12-dot comet ring, with "Analyzing &lt;file&gt;…" + "Running &lt;SIM&gt; analysis & elaboration…") on the main thread at ~30 fps until the future resolves, then returns its `(ok, detail)`. pygame rendering stays single-threaded — the worker only spawns subprocesses + reads files (approach (a) from the original card). Wired into **both** `__main__.py` analyze call sites (the Load-VHDL picker path and the re-analyze-before-simulate path) via `functools.partial`, whose eager arg-binding sidesteps the loop-variable-closure lint (B023) and preserves mypy's narrowing of the `str | None` path. A window-close (`QUIT`) during the wait is remembered and re-posted after the analysis finishes (the work can't be interrupted mid-flight). Two new `Theme` roles (`spinner_arc` / `spinner_track`); 20 new tests. **Closes Sprint 1b.** Carried-forward rule noted in the [Delivery log](#delivery-log).
 
 #### U3. Component tooltips on hover (preview & sim)
 
@@ -371,31 +365,31 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | Sprint | Theme | Items |
 |---|---|---|
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
-| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → U2 Analysis spinner · ~~D2 Backend base class~~ ✅ · ~~U26 Visual README~~ ✅ |
+| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → ~~U2 Analysis spinner~~ ✅ · ~~D2 Backend base class~~ ✅ · ~~U26 Visual README~~ ✅ |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · ~~D15 Color consolidation~~ ✅ · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-06-25).** Sprint 1a is fully shipped. **Sprint 1b is nearly closed — D4 / U13 / U1 / U26 / D2 ✅ done; only U2 (analysis spinner) remains open.** One Sprint-2 item, **D15 ✅** (color consolidation), was pulled forward and shipped early (#109) — harmless (it front-loads U6's container shape). **U26 ✅** (Visual README, #110) was the headline user-visible win and shipped ahead of the remaining 1b refactors. The phases otherwise remain correctly ordered.
+**Status (2026-06-25).** Sprint 1a is fully shipped. **Sprint 1b is complete — D4 / U13 / U1 / U2 / U26 / D2 ✅ all done.** One Sprint-2 item, **D15 ✅** (color consolidation), was pulled forward and shipped early (#109) — harmless (it front-loads U6's container shape). **U26 ✅** (Visual README, #110) was the headline user-visible win; **U2 ✅** (analysis spinner, #117) closed the sprint. Sprint 2 is next: D6a/D6b (screen-result enum → ScreenController), U5 (Settings dialog + extended session), D8 (mypy strict — first slice tracked as issue #116). The phases otherwise remain correctly ordered.
 
 ---
 
 ## Critical files modified across the roadmap
 
-- `src/fpga_sim/__main__.py` — U2, U7, D6, D9 ✅
+- `src/fpga_sim/__main__.py` — U2 ✅, U7, D6, D9 ✅
 - `src/fpga_sim/sim_bridge.py` — U4, U10, U21, D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅
 - `src/fpga_sim/session_config.py` — U5, U18, D9 ✅, D14
 - `src/fpga_sim/ui/constants.py` — D15 ✅ (now base neutrals only), U6, U17
-- `src/fpga_sim/ui/theme.py` — D15 ✅ (new: `Theme` dataclass + `THEME`), U6
+- `src/fpga_sim/ui/theme.py` — D15 ✅ (new: `Theme` dataclass + `THEME`), U2 ✅ (`spinner_arc` / `spinner_track` roles), U6
 - `src/fpga_sim/ui/components.py` — U3, U9, D3, D15
 - `src/fpga_sim/ui/board_display.py` — U1 ✅, U3, U11, U16, D3, D4 ✅, D9 ✅ (simulator round-trips through `FPGABoard`), D15
 - `src/fpga_sim/ui/board_selector.py` — U0, U1 ✅, U8, U12, U13 ✅, D15
 - `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4 ✅, D15
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15
 - `src/fpga_sim/ui/error_dialog.py` — U4, D4 ✅, D15
-- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/controller.py` (D6), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
+- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/controller.py` (D6), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
 - `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U7, U9, U14, U22, D15
@@ -434,3 +428,4 @@ Per-item verification is described in each entry's "Done when" criterion above. 
 Full per-PR detail for every ✅ item is in `CHANGELOG.md`, the linked PRs, and this file's own git history (`git show <merge-commit>:docs/improvement_roadmap.md` returns the pre-condense card). The forward-relevant gotchas from completed work now live as **⚠ Carried-forward** notes on the open cards they affect (**U5**, **U6**, **U7**) and in the Tier-3 note on **U14**. The one cross-cutting note without a single home:
 
 - **Selector key handling (from U1 ✅).** Any new *printable* keyboard shortcut on the board selector must be intercepted in `BoardSelector._handle_keydown()` *above* the `filter_text += ev.unicode` branch (match on `ev.unicode`), or the keystroke leaks into the text filter — this is how `?` and type-to-filter coexist.
+- **Off-main-thread work (from U2 ✅).** `run_with_spinner()` is the pattern for any future long-running launcher operation (simulator install probe, board re-sync, large-file load): the worker callable runs on a `ThreadPoolExecutor` thread and **must not touch pygame** — only the main thread draws. Pass arguments with `functools.partial` (not a `lambda`) when the call site is inside a loop, so loop variables are bound eagerly (avoids B023 and the closure-widening that would otherwise re-introduce `str | None`).
