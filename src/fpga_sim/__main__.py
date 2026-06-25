@@ -16,6 +16,7 @@ Usage:
 import argparse
 import os
 import sys
+from functools import partial
 from pathlib import Path
 
 import pygame
@@ -23,7 +24,7 @@ import pygame
 from fpga_sim.board_loader import BoardDef, discover_boards, get_default_boards_path
 from fpga_sim.session_config import load_session, save_session
 from fpga_sim.sim_bridge import Simulator, detect_simulators
-from fpga_sim.ui import BoardSelector, ErrorDialog, FPGABoard, VHDLFilePicker
+from fpga_sim.ui import BoardSelector, ErrorDialog, FPGABoard, VHDLFilePicker, run_with_spinner
 from fpga_sim.ui.constants import get_font
 
 
@@ -326,9 +327,20 @@ def main() -> None:
                     if not _ok:
                         _intent = ErrorDialog(screen, "VHDL Error", _detail).run(clock)
                     else:
-                        # Stage 3: simulator analysis + elaboration
-                        _ok, _detail = analyze_vhdl(
-                            picked, toplevel=_toplevel, simulator=simulator, board_def=chosen
+                        # Stage 3: simulator analysis + elaboration (slow — show a
+                        # spinner so the window does not look frozen for 5-10 s).
+                        _ok, _detail = run_with_spinner(
+                            screen,
+                            clock,
+                            f"Analyzing {Path(picked).name}…",
+                            partial(
+                                analyze_vhdl,
+                                picked,
+                                toplevel=_toplevel,
+                                simulator=simulator,
+                                board_def=chosen,
+                            ),
+                            detail=f"Running {simulator.upper()} analysis & elaboration…",
                         )
                         if _ok:
                             _new_work_dir = _detail
@@ -377,8 +389,18 @@ def main() -> None:
                 _work_dir_simulator = None
                 _return_to_board = chosen
                 continue
-            _ra_ok, _ra_dir = analyze_vhdl(
-                current_vhdl_path, toplevel=_ra_top, simulator=simulator, board_def=chosen
+            _ra_ok, _ra_dir = run_with_spinner(
+                screen,
+                clock,
+                f"Analyzing {Path(current_vhdl_path).name}…",
+                partial(
+                    analyze_vhdl,
+                    current_vhdl_path,
+                    toplevel=_ra_top,
+                    simulator=simulator,
+                    board_def=chosen,
+                ),
+                detail=f"Running {simulator.upper()} analysis & elaboration…",
             )
             if _ra_ok:
                 current_work_dir = _ra_dir
