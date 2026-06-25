@@ -76,20 +76,9 @@ This document inventories all viable improvements and ranks them by impact.
 - ⚠ **Carried-forward (from U1 ✅ / D4 ✅):** the settings dialog is a *blocking overlay* opened inside a live screen's loop — like `HelpDialog` it swallows `WINDOWRESIZED`, so it must reconcile the parent to the live surface after closing (`_sync_to_surface()`, reflowing `FPGABoard._layout`) or the layout stays stale on a resize. Reuse `ui/widgets/button.py` for its buttons.
 - **Done when:** settings dialog opens from a gear icon, persists window size / speed / theme across restarts, and `recent[]` is populated on each simulation run.
 
-#### U26. Visual README — hero GIF + screenshot (docs / marketing)
+#### U26. Visual README — interactive demo + selector GIFs (docs / marketing) ✅
 
-- **Why:** The README has **zero embedded images** — only a CI badge at the top and a 1-hour YouTube *talk* link at the very bottom. A visitor to the GitHub project cannot tell what the app looks like. This is the single highest-leverage adoption/marketing fix, and the headless capture infrastructure already exists.
-- **What:**
-  1. New `scripts/capture_demo.py` — a maintainer tool (sibling to `src/fpga_sim/generate_board_images.py`) that runs the *real* sim pipeline **headless** (`SDL_VIDEODRIVER=dummy`), steps a design, dumps frames of the `FPGABoard` surface (optionally with `SimPanel`), and assembles an optimised GIF.
-  2. A **hero GIF** of a running simulation — a 7-seg design (`hdl/counter_7seg.vhd` or `hdl/snake_7seg.vhd`) on a 7-seg board (e.g. DE10-Lite); most visually distinctive (digits counting + LEDs animating). Size-optimised (~800 px wide, target **< ~3 MB**).
-  3. A short **board-selector GIF** — toggling the filter chips so the 278-board catalogue visibly narrows (U0 component + vendor filtering, count updating per click).
-  4. Embed both near the **top of `README.md`** (after the intro paragraph, before Quick Start), with alt text and a caption surfacing the existing YouTube talk higher up.
-- **Reuse:** the headless screenshot recipe (cocotb + pygame, proven); `generate_board_images.py`'s `setup_pygame_headless()` / `render_board_raster()` / `save_png()`; `sim_bridge._backend` / `_build_sim_env` / `_generate_wrapper` / `_has_seg_port` for the build pipeline.
-- **GIF assembly:** add **Pillow** to the `dev` group (`uv add --group dev pillow`) so the tool is self-contained and CI-reproducible; runtime deps (`pygame`, `cocotb`, `find_libpython`) stay untouched. (System `ffmpeg` / ImageMagick are an optional fallback for maximum compression.)
-- **Touches:** new `scripts/capture_demo.py`; new `docs/assets/` (committed GIF + PNG); `README.md` (top-of-file embed); `pyproject.toml` (`dev` group gains Pillow).
-- **Effort:** M.
-- **Dependencies:** None. Soft: the headless renderer can later feed **U8** (splash screen).
-- **Done when:** the README shows a running-sim GIF + a static screenshot above the fold; `scripts/capture_demo.py` regenerates the GIF reproducibly; the committed GIF is size-optimised (< ~3 MB).
+- ✅ **2026-06-25 (PR #110).** Two reproducible animated GIFs open the README: an *interactive* `snake_7seg` demo on the DE10-Lite (a faux cursor taps BTN0 / BTN1 / SW0 with cause→effect captions over a "live VHDL simulation · board (source) · file" strip) and the board selector filtering 278 → 9 by component + vendor. New maintainer tooling — `scripts/capture_demo.py` / `capture_selector.py` / `capture_common.py` + `sim/capture_frames.py` (Pillow in the `dev` group; GIFs assembled with `disposal=1` for size). Bundled selector UX wins: always-visible scrollbar, a per-row source tag, and the filter box no longer overlapping the count. Soft: the headless renderer can later feed **U8** (splash screen).
 
 ### Tier 2 — High impact, larger initiatives
 
@@ -389,13 +378,13 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | Sprint | Theme | Items |
 |---|---|---|
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
-| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → U2 Analysis spinner · D2 Backend base class · **U26 Visual README** |
+| **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → U2 Analysis spinner · D2 Backend base class · ~~U26 Visual README~~ ✅ |
 | **2** | Foundations that unblock later UX | D6a Screen-result enum · D6b ScreenController · ~~D15 Colour consolidation~~ ✅ · U5 Settings dialog + extended session · D8 mypy strict |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-06-24).** Sprint 1a is fully shipped. **Sprint 1b is in progress — D4 / U13 / U1 ✅ done; U2 and D2 remain open, so 1b is not yet closed.** One Sprint-2 item, **D15 ✅** (colour consolidation), was pulled forward and shipped early (#109); it is the only out-of-order completion and is harmless (it front-loads U6's container shape). The phases otherwise remain correctly ordered. **U26 (Visual README)** is newly added and slotted into 1b as the headline user-visible win for the next release (v0.7.0): it is independent, cheap, and high-visibility, so it should not wait behind the refactors.
+**Status (2026-06-25).** Sprint 1a is fully shipped. **Sprint 1b is in progress — D4 / U13 / U1 / U26 ✅ done; U2 and D2 remain open, so 1b is not yet closed.** One Sprint-2 item, **D15 ✅** (colour consolidation), was pulled forward and shipped early (#109) — harmless (it front-loads U6's container shape). **U26 ✅** (Visual README, #110) was the headline user-visible win and shipped ahead of the remaining 1b refactors. The phases otherwise remain correctly ordered.
 
 ---
 
