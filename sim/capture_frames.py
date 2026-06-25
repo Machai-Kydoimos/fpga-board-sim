@@ -33,7 +33,7 @@ import os
 
 import cocotb
 import pygame
-from capture_common import draw_caption, draw_cursor
+from capture_common import draw_caption, draw_cursor, draw_strip
 from cocotb.triggers import Timer
 
 from fpga_sim.board_loader import BoardDef
@@ -99,7 +99,13 @@ class _SnakeDemo:
     """
 
     def __init__(
-        self, dut: object, board: FPGABoard, outdir: str, num_leds: int, num_segs: int
+        self,
+        dut: object,
+        board: FPGABoard,
+        outdir: str,
+        num_leds: int,
+        num_segs: int,
+        strip: str,
     ) -> None:
         """Capture references + tuning, park the cursor, and zero the inputs."""
         self.dut = dut
@@ -108,13 +114,15 @@ class _SnakeDemo:
         self.num_leds = num_leds
         self.num_segs = num_segs
         self.step_ns = _env_int("CAPTURE_STEP_NS", 12000)
-        self.hold = _env_int("CAPTURE_HOLD_FRAMES", 11)
+        self.hold = _env_int("CAPTURE_HOLD_FRAMES", 20)
         self.base_idx = min(_env_int("CAPTURE_COUNTER_BITS", 12) - 1, 16)
         self.clocks_per_frame = self.step_ns / (2 * _CLK_HALF_NS)
         self.steps_per_cycle = 4 * num_segs + 4 if num_segs else 16
         center = num_leds // 2
         self.central_mask = ((1 << center) | (1 << max(0, center - 1))) if num_leds else 0
         self.font = get_font(20, bold=True)
+        self.strip = strip
+        self.strip_font = get_font(15)
 
         w, h = board.screen.get_size()
         self.park = (w * 0.5, h * 0.44)
@@ -145,6 +153,7 @@ class _SnakeDemo:
             self.cx, self.cy = self.tx, self.ty  # snap when arrived so parked frames dedup
         self.board._draw(flip=False)
         draw_cursor(self.board.screen, (self.cx, self.cy), pressed=self.pressed)
+        draw_strip(self.board.screen, self.strip, self.strip_font)
         draw_caption(self.board.screen, self.caption, self.font)
         pygame.image.save(
             self.board.screen, os.path.join(self.outdir, f"frame_{self.frame:04d}.png")
@@ -160,6 +169,11 @@ class _SnakeDemo:
         for _ in range(40):
             if (self.tx - self.cx) ** 2 + (self.ty - self.cy) ** 2 < 9.0:
                 return
+            await self._tick()
+
+    async def _pause(self, n: int) -> None:
+        """Tick *n* frames without moving the target (a readability beat)."""
+        for _ in range(n):
             await self._tick()
 
     async def run_to_cycle(self, target: int, *, cap: int = 900) -> None:
@@ -182,6 +196,7 @@ class _SnakeDemo:
             return
         self._aim(self.board.buttons[idx].rect)
         await self._travel()
+        await self._pause(4)  # a beat on the target before the press
         await self._wait_central_led()
         self.board.buttons[idx].pressed = True
         self.dut.btn.value = 1 << idx  # type: ignore[attr-defined]
@@ -192,8 +207,7 @@ class _SnakeDemo:
         self.board.buttons[idx].pressed = False
         self.dut.btn.value = 0  # type: ignore[attr-defined]
         self.pressed = False
-        for _ in range(5):  # let the caption linger a moment after release
-            await self._tick()
+        await self._pause(3)  # a brief tail; the long hold above carries the caption
         self.caption = ""
 
     async def toggle_switch(self, idx: int, caption: str) -> None:
@@ -202,6 +216,7 @@ class _SnakeDemo:
             return
         self._aim(self.board.switches[idx].rect)
         await self._travel()
+        await self._pause(4)  # a beat on the target before the flip
         self.board.switches[idx].state = True
         self.sw_value |= 1 << idx
         self.dut.sw.value = self.sw_value  # type: ignore[attr-defined]
@@ -210,8 +225,7 @@ class _SnakeDemo:
         for _ in range(self.hold):
             await self._tick()
         self.pressed = False
-        for _ in range(6):
-            await self._tick()
+        await self._pause(3)
         self.caption = ""
 
     async def coast(self, frames: int) -> None:
@@ -223,18 +237,18 @@ class _SnakeDemo:
 
 
 async def _run_snake(
-    dut: object, board: FPGABoard, outdir: str, num_leds: int, num_segs: int
+    dut: object, board: FPGABoard, outdir: str, num_leds: int, num_segs: int, strip: str
 ) -> None:
     """Scripted interactive demo: BTN0 reverses, BTN1 lights all, SW0 speeds up."""
-    demo = _SnakeDemo(dut, board, outdir, num_leds, num_segs)
+    demo = _SnakeDemo(dut, board, outdir, num_leds, num_segs, strip)
     end_cycle = _env_int("CAPTURE_END_CYCLES", 6)
     tail = _env_int("CAPTURE_TAIL_FRAMES", 12)
     await demo.run_to_cycle(1)
-    await demo.tap_button(0, "BTN0  ·  reverse the snake")
+    await demo.tap_button(0, "BTN0  →  snake reverses")
     await demo.run_to_cycle(2)
-    await demo.tap_button(1, "BTN1  ·  light every segment")
+    await demo.tap_button(1, "BTN1  →  all segments on")
     await demo.run_to_cycle(3)
-    await demo.toggle_switch(0, "SW0  ·  2x update rate")
+    await demo.toggle_switch(0, "SW0  →  2x faster")
     await demo.run_to_cycle(end_cycle)
     await demo.coast(tail)
 
@@ -263,7 +277,11 @@ async def capture(dut: object) -> None:
     dut.clk_half_ns.value = _CLK_HALF_NS  # type: ignore[attr-defined]
 
     if scenario == "snake":
-        await _run_snake(dut, board, outdir, num_leds, num_segs)
+        source = os.environ.get("CAPTURE_SOURCE", "")
+        vhdl_name = os.environ.get("CAPTURE_VHDL_NAME", "design.vhd")
+        board_label = f"{board_def.name} ({source})" if source else board_def.name
+        strip = f"live VHDL simulation   ·   {board_label}   ·   {vhdl_name}"
+        await _run_snake(dut, board, outdir, num_leds, num_segs, strip)
     else:
         await _run_plain(dut, board, outdir, num_leds, num_segs)
 

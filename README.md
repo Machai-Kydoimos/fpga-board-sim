@@ -6,7 +6,7 @@ Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://g
 
 ![Live VHDL simulation on a virtual DE10-Lite: a snake of light crawls across the six 7-segment displays while buttons are pressed — reversing it, then lighting every segment — and a switch speeds it up](docs/assets/demo.gif)
 
-*Above — `hdl/snake_7seg.vhd` running live on the DE10-Lite via GHDL / NVC + cocotb (not a pre-rendered animation). The taps you see drive the real simulation inputs, exactly as a user would: **BTN0** reverses the snake, **BTN1** lights every segment, and **SW0** doubles the update rate. Captured headlessly via [`scripts/capture_demo.py`](scripts/capture_demo.py). ▶ [Watch the full talk](https://youtu.be/v4Fc6HctK1E).*
+*Above — one of **278 boards** (the DE10-Lite) running one example design, [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), live on GHDL / NVC + cocotb — not a pre-rendered animation. Every switch and button is a **real input to the running VHDL**; the design reads them and computes the LED and 7-segment **outputs** you see. So **BTN0** makes the design reverse the snake, **BTN1** makes it light every segment, and **SW0** makes it run faster — cause and effect, exactly as on real hardware. Captured headlessly via [`scripts/capture_demo.py`](scripts/capture_demo.py). ▶ [Watch the full talk](https://youtu.be/v4Fc6HctK1E).*
 
 Choose from **278 real FPGA boards** (Xilinx, Intel, Lattice, Gowin, Efinix, and more). Filter live by component and vendor — here the catalogue narrows from all 278 down to the 9 Intel boards that have LEDs, switches, buttons, *and* a 7-segment display:
 

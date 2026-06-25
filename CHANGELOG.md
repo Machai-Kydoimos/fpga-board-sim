@@ -8,10 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Board selector polish:** an always-visible scrollbar when the board list
+  overflows the window, and each row now shows its definition **source**
+  (litex-boards / amaranth-boards / digilent-xdc / custom) as a dim right-aligned
+  tag — previously the source appeared only on names that collide across sources.
 - **Visual README** — the project page now opens with two animated GIFs: an
   *interactive* live simulation (`hdl/snake_7seg.vhd` on the DE10-Lite — a faux
-  cursor taps BTN0 / BTN1 / SW0 with captions, driving the real DUT) and the
-  board selector filtering its 278 boards down by component and vendor with a
+  cursor taps BTN0 / BTN1 / SW0 with cause→effect captions over a persistent
+  "live VHDL simulation · board · running file" strip, driving the real DUT) and
+  the board selector filtering its 278 boards down by component and vendor with a
   cursor clicking each chip. Both are reproducible
   via new maintainer tools `scripts/capture_demo.py` and
   `scripts/capture_selector.py` (shared helpers in `scripts/capture_common.py`;

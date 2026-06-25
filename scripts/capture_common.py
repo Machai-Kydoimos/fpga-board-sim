@@ -16,6 +16,9 @@ if TYPE_CHECKING:
 # A classic arrow-pointer outline, tip at (0, 0), pointing down-right.
 _CURSOR_ARROW = [(0, 0), (0, 22), (5, 17), (9, 26), (13, 24), (9, 15), (16, 15)]
 
+# Height of the persistent context strip at the bottom of the demo GIF.
+_STRIP_H = 34
+
 
 def draw_cursor(surface: pygame.Surface, pos: tuple[float, float], *, pressed: bool) -> None:
     """Draw a faux mouse pointer with its tip at *pos*.
@@ -44,12 +47,25 @@ def draw_caption(surface: pygame.Surface, text: str, font: pygame.font.Font) -> 
     pad_x, pad_y = 16, 9
     w, h = label.get_width() + 2 * pad_x, label.get_height() + 2 * pad_y
     x = (surface.get_width() - w) // 2
-    y = surface.get_height() - h - 20
+    y = surface.get_height() - _STRIP_H - h - 12  # sit just above the persistent strip
     banner = pygame.Surface((w, h), pygame.SRCALPHA)
     banner.fill((0, 0, 0, 185))
     pygame.draw.rect(banner, (255, 196, 64), banner.get_rect(), 2, border_radius=6)
     surface.blit(banner, (x, y))
     surface.blit(label, (x + pad_x, y + pad_y))
+
+
+def draw_strip(surface: pygame.Surface, text: str, font: pygame.font.Font) -> None:
+    """Draw a persistent context band (board / source / running file) across the bottom."""
+    import pygame
+
+    w, h = surface.get_width(), surface.get_height()
+    band = pygame.Surface((w, _STRIP_H), pygame.SRCALPHA)
+    band.fill((0, 0, 0, 180))
+    surface.blit(band, (0, h - _STRIP_H))
+    pygame.draw.line(surface, (255, 196, 64), (0, h - _STRIP_H), (w, h - _STRIP_H), 1)
+    label = font.render(text, True, (215, 215, 215))
+    surface.blit(label, (16, h - _STRIP_H + (_STRIP_H - label.get_height()) // 2))
 
 
 def assemble_gif(

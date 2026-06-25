@@ -83,7 +83,7 @@ def _parse_args() -> argparse.Namespace:
         "--end-cycles", type=int, default=6, help="snake: stop after this many snake cycles"
     )
     p.add_argument(
-        "--hold-frames", type=int, default=11, help="snake: frames a button stays pressed"
+        "--hold-frames", type=int, default=20, help="snake: frames a button stays pressed"
     )
     p.add_argument(
         "--tail-frames", type=int, default=12, help="snake: extra frames after the speed-up"
@@ -135,6 +135,10 @@ def main() -> None:
     board_def = BoardDef.from_json(board_json_path.read_text())
     vhdl_path = args.vhdl.resolve()
     toplevel = vhdl_path.stem
+    try:
+        vhdl_rel = str(vhdl_path.relative_to(_ROOT))
+    except ValueError:
+        vhdl_rel = vhdl_path.name
     design_has_seg = _has_seg_port(vhdl_path.read_text())
 
     generics: dict[str, str] = {
@@ -184,6 +188,8 @@ def main() -> None:
                 "CAPTURE_END_CYCLES": str(args.end_cycles),
                 "CAPTURE_HOLD_FRAMES": str(args.hold_frames),
                 "CAPTURE_TAIL_FRAMES": str(args.tail_frames),
+                "CAPTURE_SOURCE": board_json_path.parent.name,
+                "CAPTURE_VHDL_NAME": vhdl_rel,
                 "CAPTURE_FRAMES": str(args.frames),
                 "CAPTURE_EVERY": str(args.every),
                 "CAPTURE_SW": str((1 << args.switches) - 1 if args.switches > 0 else 0),

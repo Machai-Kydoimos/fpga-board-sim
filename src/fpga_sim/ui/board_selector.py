@@ -77,12 +77,6 @@ class BoardSelector:
         # Set by the (?) button / F1 / ?; consumed by run() to open the overlay.
         self._help_requested = False
 
-        # Detect which board names appear more than once (from different sources)
-        name_counts: dict[str, int] = {}
-        for b in boards:
-            name_counts[b.name] = name_counts.get(b.name, 0) + 1
-        self._duplicate_names = {n for n, c in name_counts.items() if c > 1}
-
         if preselect_class:
             visible = self._filtered()
             idx = next(
@@ -443,11 +437,12 @@ class BoardSelector:
             pygame.draw.rect(self.screen, bg, (10, y, self.width - 20, self.row_h - 2))
             nm = item_f.render(b.name, True, THEME.board_name)
             self.screen.blit(nm, (20, y + 4))
-            detail = b.summary
-            if b.source and b.name in self._duplicate_names:
-                detail = f"{detail}  ·  {b.source}"
-            sm = detail_f.render(detail, True, THEME.muted_text)
-            self.screen.blit(sm, (20, y + 4 + item_f.get_height() + 2))
+            sub_y = y + 4 + item_f.get_height() + 2
+            sm = detail_f.render(b.summary, True, THEME.muted_text)
+            self.screen.blit(sm, (20, sub_y))
+            if b.source:  # always show the source as a dim, right-aligned tag
+                src = detail_f.render(b.source, True, THEME.board_source)
+                self.screen.blit(src, (self.width - 26 - src.get_width(), sub_y))
 
         # Header overlay (hides items that scrolled behind header)
         pygame.draw.rect(self.screen, THEME.sel_bg, (0, 0, self.width, hdr))
@@ -530,6 +525,20 @@ class BoardSelector:
             chip_rects.append((rect, "vendor", "Other"))
 
         self._chip_rects = chip_rects
+
+        # Scrollbar — always visible when the board list overflows the viewport.
+        if max_scroll > 0:
+            viewport_h = self.height - hdr
+            content_h = len(filtered) * self.row_h
+            bar_x = self.width - 9
+            pygame.draw.rect(
+                self.screen, THEME.scrollbar_track, (bar_x, hdr, 6, viewport_h), border_radius=3
+            )
+            thumb_h = max(28, round(viewport_h * viewport_h / content_h))
+            thumb_y = hdr + round((self.scroll / max_scroll) * (viewport_h - thumb_h))
+            pygame.draw.rect(
+                self.screen, THEME.scrollbar_thumb, (bar_x, thumb_y, 6, thumb_h), border_radius=3
+            )
 
         # Sort dropdown menu (drawn last so it overlays everything)
         if self._sort_open:
