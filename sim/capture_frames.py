@@ -4,14 +4,14 @@ Sibling to :mod:`sim_testbench` but non-interactive: it steps the simulation,
 mirrors ``dut.led`` / ``dut.seg`` onto an :class:`~fpga_sim.ui.FPGABoard`, and
 writes one ``frame_NNNN.png`` per frame into ``CAPTURE_OUTDIR``.  The orchestrator
 ``scripts/capture_demo.py`` builds the design, runs this module inside the
-simulator, then assembles the frames into an optimised GIF for the README.
+simulator, then assembles the frames into an optimized GIF for the README.
 
 Like ``sim_testbench``, it runs inside the simulator subprocess and cannot be
-imported or executed in the normal pytest environment.  Behaviour is driven by
+imported or executed in the normal pytest environment.  Behavior is driven by
 environment variables set by the orchestrator:
 
 ``FPGA_SIM_BOARD_JSON``
-    Serialised :class:`~fpga_sim.board_loader.BoardDef` (same var sim_testbench uses).
+    Serialized :class:`~fpga_sim.board_loader.BoardDef` (same var sim_testbench uses).
 ``CAPTURE_OUTDIR``
     Directory to receive ``frame_NNNN.png`` files (created if absent).
 ``CAPTURE_SCENARIO``
@@ -161,7 +161,7 @@ class _SnakeDemo:
         self.frame += 1
 
     def _aim(self, rect: pygame.Rect) -> None:
-        """Point the cursor's target at the centre of *rect*."""
+        """Point the cursor's target at the center of *rect*."""
         self.tx, self.ty = float(rect.centerx), float(rect.centery)
 
     async def _travel(self) -> None:

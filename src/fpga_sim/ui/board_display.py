@@ -76,7 +76,7 @@ class FPGABoard:
         vhdl_path: str | Path | None = None,
         show_footer: bool = True,
     ) -> None:
-        """Initialise the board display with components laid out from board_def.
+        """Initialize the board display with components laid out from board_def.
 
         Parameters
         ----------

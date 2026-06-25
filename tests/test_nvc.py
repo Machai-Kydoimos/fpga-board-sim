@@ -172,7 +172,7 @@ def test_nvc_cocotb_simulation_passes(nvc, nvc_sim_env, nvc_work_dir):
 
 @pytest.fixture(scope="module")
 def nvc_7seg_work_dir(nvc, nvc_sim_env):
-    """Analyse counter_7seg with the 7-seg wrapper into a fresh temp workdir."""
+    """Analyze counter_7seg with the 7-seg wrapper into a fresh temp workdir."""
     bd = _7seg_board()
     d = tempfile.mkdtemp(prefix="fpga_nvc_7seg_")
     ok, detail = analyze_vhdl(
@@ -187,7 +187,7 @@ def nvc_7seg_work_dir(nvc, nvc_sim_env):
 
 
 def test_7seg_analyzes_with_nvc(nvc, nvc_7seg_work_dir):
-    """counter_7seg.vhd must analyse cleanly under NVC using the 7-seg wrapper."""
+    """counter_7seg.vhd must analyze cleanly under NVC using the 7-seg wrapper."""
     assert Path(nvc_7seg_work_dir).is_dir()
 
 

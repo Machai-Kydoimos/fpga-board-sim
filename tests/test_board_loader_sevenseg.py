@@ -162,7 +162,7 @@ def test_summary_full_format_with_7seg():
 def all_boards():
     path = get_default_boards_path()
     if not path.is_dir():
-        pytest.skip("amaranth-boards submodule not initialised")
+        pytest.skip("amaranth-boards submodule not initialized")
     return discover_boards(path)
 
 

@@ -30,7 +30,7 @@ class FPGAChip:
     def __init__(
         self, vendor: str = "", device: str = "", package: str = "", clock_hz: float = 0.0
     ) -> None:
-        """Initialise the chip with optional vendor, device, package, and clock metadata."""
+        """Initialize the chip with optional vendor, device, package, and clock metadata."""
         self.vendor = vendor
         self.device = device
         self.package = package
@@ -47,7 +47,7 @@ class FPGAChip:
         return f"{hz:g} Hz"
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
-        """Draw the FPGA chip package with vendor colour, pin marks, and text labels."""
+        """Draw the FPGA chip package with vendor color, pin marks, and text labels."""
         if self.rect.width < 20:
             return
         r = self.rect
@@ -77,8 +77,8 @@ class FPGAChip:
             lines.append((self._fmt_clock(self.clock_hz), self._CLOCK_COLOR))
         active = [(t, c) for t, c in lines if t]
         offset = -(len(active) - 1) / 2 * line_h
-        for text, colour in active:
-            s = font.render(text, True, colour)
+        for text, color in active:
+            s = font.render(text, True, color)
             surface.blit(s, s.get_rect(centerx=cx, centery=cy + offset))
             offset += line_h
 
@@ -103,7 +103,7 @@ class LED:
     """A read-only indicator controlled via FPGABoard.set_led()."""
 
     def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
-        """Initialise the LED with its board index and optional component metadata."""
+        """Initialize the LED with its board index and optional component metadata."""
         self.index = index
         self.info = info
         self.state = False
@@ -139,7 +139,7 @@ class Switch:
     """A toggle switch – clicks flip the state."""
 
     def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
-        """Initialise the switch with its board index and optional component metadata."""
+        """Initialize the switch with its board index and optional component metadata."""
         self.index = index
         self.info = info
         self.state = False
@@ -153,8 +153,8 @@ class Switch:
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         """Draw the toggle switch body, knob, and label."""
-        colour = THEME.switch_on if self.state else THEME.switch_off
-        pygame.draw.rect(surface, colour, self.rect, border_radius=4)
+        color = THEME.switch_on if self.state else THEME.switch_off
+        pygame.draw.rect(surface, color, self.rect, border_radius=4)
         pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=4)
 
         knob_h = self.rect.height // 2
@@ -179,7 +179,7 @@ class Button:
     """A momentary push-button – pressed while the mouse is held down."""
 
     def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
-        """Initialise the button with its board index and optional component metadata."""
+        """Initialize the button with its board index and optional component metadata."""
         self.index = index
         self.info = info
         self.pressed = False
@@ -240,7 +240,7 @@ class SevenSeg:
     }
 
     def __init__(self, index: int, has_dp: bool = False) -> None:
-        """Initialise the digit with its board index and whether a decimal point is present."""
+        """Initialize the digit with its board index and whether a decimal point is present."""
         self.index = index
         self.has_dp = has_dp
         self.bits: int = 0
@@ -266,11 +266,11 @@ class SevenSeg:
         pygame.draw.rect(surface, self.BG, self.rect, border_radius=3)
         pygame.draw.rect(surface, THEME.seg_bezel, self.rect, width=1, border_radius=3)
 
-        def colour(n: str) -> tuple[int, int, int]:
+        def color(n: str) -> tuple[int, int, int]:
             return self.SEG_ON if self._seg(n) else self.SEG_OFF
 
         def hrect(x: int, y: int, w: int, h: int, n: str) -> None:
-            c = colour(n)
+            c = color(n)
             pts: list[tuple[int, int]] = [
                 (x + h // 2, y),
                 (x + w - h // 2, y),
@@ -282,7 +282,7 @@ class SevenSeg:
             pygame.draw.polygon(surface, c, pts)
 
         def vrect(x: int, y: int, w: int, h: int, n: str) -> None:
-            c = colour(n)
+            c = color(n)
             pts: list[tuple[int, int]] = [
                 (x + w // 2, y),
                 (x + w, y + w // 2),
@@ -304,7 +304,7 @@ class SevenSeg:
 
         if self.has_dp:
             r = max(2, thick // 2)
-            pygame.draw.circle(surface, colour("dp"), (x0 + dw + r + 2, y0 + dh - r - 2), r)
+            pygame.draw.circle(surface, color("dp"), (x0 + dw + r + 2, y0 + dh - r - 2), r)
 
         lbl_sz = max(8, int(dh * 0.18))
         lbl = _get_font(lbl_sz).render(str(self.index), True, THEME.seg_digit_label)

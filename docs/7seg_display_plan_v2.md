@@ -79,7 +79,7 @@ end entity;
 ```
 
 - `seg` is present only on 7-seg boards; absent on all others.
-- Polarity normalised to active-high in VHDL regardless of board hardware.
+- Polarity normalized to active-high in VHDL regardless of board hardware.
 - `NUM_SEGS` is `positive` (≥ 1) — no null-range issues.
 - Two wrapper templates (existing unchanged; new `sim_wrapper_7seg_template.vhd`).
 - `check_vhdl_contract()` enforces the presence/absence of `seg` based on the board.
@@ -429,7 +429,7 @@ def _extract_sevenseg(resources: list[_Resource]) -> "SevenSegDef | None":
     # not just the two currently known ("display_7seg_an", "display_7seg_ctrl").
 
     # Collect invert: check both resource-level flag AND pin-level PinsN.
-    # _extract_pins() normalises PinsN → inverted=True, so checking it
+    # _extract_pins() normalizes PinsN → inverted=True, so checking it
     # catches boards that set polarity at the pin rather than resource level.
     res_level_inv = any(getattr(r, "_seg_invert", False) for r in seg_resources)
     _, _, pin_level_inv, _ = _extract_pins(seg_resources[0])
@@ -952,7 +952,7 @@ async def test_seg_width_matches_num_segs(dut):
 ```python
 @pytest.mark.slow
 def test_7seg_analyzes_with_nvc(nvc, nvc_work_dir):
-    """counter_7seg.vhd must analyse cleanly under NVC using the 7-seg wrapper."""
+    """counter_7seg.vhd must analyze cleanly under NVC using the 7-seg wrapper."""
     from fpga_sim.board_loader import BoardDef, SevenSegDef
     bd = BoardDef("DE0", "DE0Platform",
                   seven_seg=SevenSegDef(4, True, False, False, False))
@@ -1049,17 +1049,17 @@ class SevenSeg:
         pygame.draw.rect(surface, self.BG, self.rect, border_radius=3)
         pygame.draw.rect(surface, (5, 5, 5), self.rect, width=1, border_radius=3)
 
-        def colour(n: str) -> tuple[int, int, int]:
+        def color(n: str) -> tuple[int, int, int]:
             return self.SEG_ON if self._seg(n) else self.SEG_OFF
 
         def hrect(x: int, y: int, w: int, h: int, n: str) -> None:
-            c = colour(n)
+            c = color(n)
             pts = [(x+h//2,y),(x+w-h//2,y),(x+w,y+h//2),
                    (x+w-h//2,y+h),(x+h//2,y+h),(x,y+h//2)]
             pygame.draw.polygon(surface, c, pts)
 
         def vrect(x: int, y: int, w: int, h: int, n: str) -> None:
-            c = colour(n)
+            c = color(n)
             pts = [(x+w//2,y),(x+w,y+w//2),(x+w,y+h-w//2),
                    (x+w//2,y+h),(x,y+h-w//2),(x,y+w//2)]
             pygame.draw.polygon(surface, c, pts)
@@ -1075,7 +1075,7 @@ class SevenSeg:
 
         if self.has_dp:
             r = max(2, thick // 2)
-            pygame.draw.circle(surface, colour("dp"), (x0+W+r+2, y0+H-r-2), r)
+            pygame.draw.circle(surface, color("dp"), (x0+W+r+2, y0+H-r-2), r)
 
         lbl_sz = max(8, int(H * 0.18))
         lbl = _get_font(lbl_sz).render(str(self.index), True, (90, 90, 90))
@@ -1104,7 +1104,7 @@ def set_seg(self, index: int, bits8: int) -> None:
 
 #### Dirty-flag extension
 
-`_prev_seg_bits` is an **instance variable** initialised in `__init__`
+`_prev_seg_bits` is an **instance variable** initialized in `__init__`
 (not a local in `_draw()`), so it persists across calls:
 
 ```python
@@ -1239,7 +1239,7 @@ def test_index_label_is_digit_index():
 #### `_svg_draw_7seg()` sketch
 
 Draw each digit as a compact 7-segment outline with all segments in the OFF (ghost)
-colour, plus a digit-index label below — matching the amber-dark aesthetic of the
+color, plus a digit-index label below — matching the amber-dark aesthetic of the
 interactive display. The SVG is a static preview, so showing segments in the OFF
 state is correct (no live signal data).
 
@@ -1264,7 +1264,7 @@ def _svg_draw_7seg(
         "rx": "3", "fill": "#0F0F0F", "stroke": "#050505", "stroke-width": "1",
     })
 
-    # Draw each segment as a filled polygon in SEG_OFF colour (#2D1905).
+    # Draw each segment as a filled polygon in SEG_OFF color (#2D1905).
     # _svg_draw_seg_polygon() is a NEW private helper defined in this same file —
     # it is NOT imported from elsewhere. It computes the 6-point SVG polygon
     # coordinates using the same hrect/vrect geometry as SevenSeg.draw() in
@@ -1317,7 +1317,7 @@ Integrate into `build_svg()` alongside `_svg_draw_led()` etc., using the same
 |------|--------|------------|
 | GHDL null-range ports if single template used | Not applicable — two-template approach avoids this | Two templates; `positive` generic |
 | `check_vhdl_contract` API change breaks callers | Fully specified | Optional `board_def=None` param; backward compat |
-| `launch_simulation` wrapper selection | Fully specified | Deserialise `board_json` if `board_def` not passed directly |
+| `launch_simulation` wrapper selection | Fully specified | Deserialize `board_json` if `board_def` not passed directly |
 | `_count_ctrl_pins` / `_ctrl_is_inverted` implementation | Fully specified | Reuse existing `_extract_pins()` helper |
 | `inverted` detection at pin vs resource level | Fixed | Check both `r._seg_invert` and `_extract_pins()` result |
 | Hermetic test coverage | Addressed | Inline-source tests for all loader cases |

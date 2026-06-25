@@ -2,7 +2,7 @@ r"""Capture a short GIF of a running simulation for the README.
 
 Builds a board + VHDL design through the real ``sim_bridge`` pipeline, runs the
 headless ``sim/capture_frames`` cocotb test to dump per-frame PNGs, then
-assembles them into an optimised animated GIF with Pillow.
+assembles them into an optimized animated GIF with Pillow.
 
 This is a maintainer / documentation tool (a sibling to
 ``src/fpga_sim/generate_board_images.py``); it is not part of the installed
@@ -156,12 +156,12 @@ def main() -> None:
     frames_dir = tempfile.mkdtemp(prefix="capture_frames_")
 
     try:
-        # Build: analyse user VHDL, generate + analyse the wrapper, elaborate.
-        _run_step(backend.analyze_cmd(vhdl_path, work_dir), env, work_dir, "analyse design")
+        # Build: analyze user VHDL, generate + analyze the wrapper, elaborate.
+        _run_step(backend.analyze_cmd(vhdl_path, work_dir), env, work_dir, "analyze design")
         wrapper = _generate_wrapper(
             toplevel, work_dir, board_def=board_def, design_has_seg=design_has_seg
         )
-        _run_step(backend.analyze_cmd(wrapper, work_dir), env, work_dir, "analyse wrapper")
+        _run_step(backend.analyze_cmd(wrapper, work_dir), env, work_dir, "analyze wrapper")
         # NVC bakes generics in at elaboration; GHDL elaborates structurally (empty generics).
         elab_generics = generics if simulator == "nvc" else {}
         _run_step(

@@ -463,4 +463,4 @@ and the README for the full 7-seg entity template.
 
 5. **`hdl/blinky.vhd` (Category 12) is best-in-class** among tutorials — fully
    board-agnostic, parametric, interactive, and correct for all 275+ boards in this
-   project's board definition catalogue without modification.
+   project's board definition catalog without modification.

@@ -1,4 +1,4 @@
-"""Semantic colour roles for the UI — the single source of truth for the palette.
+"""Semantic color roles for the UI — the single source of truth for the palette.
 
 ``constants.py`` holds the raw neutral *palette* (``WHITE`` / ``BLACK`` / ``GRAY`` …);
 this module holds the *semantic roles* the renderer actually reads. Every role is a
@@ -41,7 +41,7 @@ _VENDOR_COLORS: Mapping[str, RGB] = MappingProxyType(
 
 @dataclass(frozen=True)
 class Theme:
-    """A complete colour scheme: every semantic role the UI renders.
+    """A complete color scheme: every semantic role the UI renders.
 
     The field defaults define the "pcb-green" theme. A future theme system can
     construct alternate instances; call sites only ever read the module-level
@@ -204,5 +204,5 @@ class Theme:
     )
 
 
-# The single default theme. Every UI module reads colours from this instance.
+# The single default theme. Every UI module reads colors from this instance.
 THEME = Theme()

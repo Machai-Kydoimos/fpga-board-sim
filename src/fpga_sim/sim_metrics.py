@@ -65,7 +65,7 @@ class SimMetrics:
     """
 
     def __init__(self, path: str | Path, flush_interval: int = 60) -> None:
-        """Initialise the collector.  Call ``start()`` before the sim loop."""
+        """Initialize the collector.  Call ``start()`` before the sim loop."""
         self._path = Path(path)
         self._flush_interval = flush_interval
         self._q: queue.SimpleQueue[dict | None] = queue.SimpleQueue()

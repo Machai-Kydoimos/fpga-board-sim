@@ -254,7 +254,7 @@ def _svg_draw_seg_polygon(
     *,
     seg: str,
 ) -> None:
-    """Emit one segment polygon (OFF/ghost colour) using the same geometry as SevenSeg.draw()."""
+    """Emit one segment polygon (OFF/ghost color) using the same geometry as SevenSeg.draw()."""
     inner = max(1, dw - 2 * gap - 2 * thick)
     half = dh // 2
     ax = x0 + gap + thick
@@ -707,7 +707,7 @@ def _parse_formats(raw: str) -> set[str]:
     """Parse a comma-separated format string into a validated set.
 
     Accepts any combination of: png, jpeg, svg, all.
-    Raises argparse.ArgumentTypeError on unrecognised tokens.
+    Raises argparse.ArgumentTypeError on unrecognized tokens.
     """
     valid = {"png", "jpeg", "svg"}
     result: set[str] = set()

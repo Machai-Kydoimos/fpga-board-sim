@@ -1,7 +1,7 @@
-"""Tests for the consolidated colour theme (D15).
+"""Tests for the consolidated color theme (D15).
 
 These guard the value-preserving refactor: every semantic role must be a valid
-colour, the cross-process PCB-blue gradient must stay shared, and a few known
+color, the cross-process PCB-blue gradient must stay shared, and a few known
 shades are pinned so an accidental edit to a role default is caught.
 """
 

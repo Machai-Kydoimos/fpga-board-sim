@@ -128,7 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   boards. The corrected re-sync updates ~148 board definitions and adds 16
   more litex boards (Colorlight, OrangeCrab, ButterStick, Logicbone,
   Machdyne, QMTech, etc.). Combined with the five new custom boards above,
-  the catalogue is now 275 definitions (272 loadable) across four sources
+  the catalog is now 275 definitions (272 loadable) across four sources
   (#67)
 
 ## [0.5.0] - 2026-05-25

@@ -7,7 +7,7 @@ user would — so the board count and list visibly narrow. No simulator is requi
 
 Examples
 --------
-Regenerate the README catalogue GIF::
+Regenerate the README catalog GIF::
 
     uv run python scripts/capture_selector.py
 

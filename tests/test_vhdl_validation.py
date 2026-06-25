@@ -252,7 +252,7 @@ GOOD_7SEG = ["counter_7seg.vhd"]
 @pytest.mark.slow
 @pytest.mark.parametrize("filename", GOOD_7SEG)
 def test_good_7seg_ghdl_pass(filename, ghdl):
-    """counter_7seg.vhd must analyse cleanly under GHDL with the 7-seg wrapper."""
+    """counter_7seg.vhd must analyze cleanly under GHDL with the 7-seg wrapper."""
     f = HDL / filename
     ok, detail = analyze_vhdl(f, toplevel=f.stem, board_def=_7seg_board())
     assert ok, f"GHDL failed on {filename}: {detail}"

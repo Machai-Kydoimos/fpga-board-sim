@@ -128,7 +128,7 @@ class SimPanel:
         board_clock_hz: float,
         board_clocks_hz: list[float] | None = None,
     ) -> None:
-        """Initialise the panel with screen surface, pixel height, and board clock.
+        """Initialize the panel with screen surface, pixel height, and board clock.
 
         Parameters
         ----------

@@ -8,7 +8,7 @@ Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://g
 
 *Above — one of **278 boards** (the DE10-Lite) running one example design, [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), live on GHDL / NVC + cocotb — not a pre-rendered animation. Every switch and button is a **real input to the running VHDL**; the design reads them and computes the LED and 7-segment **outputs** you see. So **BTN0** makes the design reverse the snake, **BTN1** makes it light every segment, and **SW0** makes it run faster — cause and effect, exactly as on real hardware. Captured headlessly via [`scripts/capture_demo.py`](scripts/capture_demo.py). ▶ [Watch the full talk](https://youtu.be/v4Fc6HctK1E).*
 
-Choose from **278 real FPGA boards** (Xilinx, Intel, Lattice, Gowin, Efinix, and more). Filter live by component and vendor — here the catalogue narrows from all 278 down to the 9 Intel boards that have LEDs, switches, buttons, *and* a 7-segment display:
+Choose from **278 real FPGA boards** (Xilinx, Intel, Lattice, Gowin, Efinix, and more). Filter live by component and vendor — here the catalog narrows from all 278 down to the 9 Intel boards that have LEDs, switches, buttons, *and* a 7-segment display:
 
 ![The board selector filtering live: clicking the Has LEDs / Switches / Buttons / 7-seg and Intel chips narrows the 278-board list to 9, the count updating on each click](docs/assets/board_selector.gif)
 
@@ -452,7 +452,7 @@ entity my_design is
 end entity;
 ```
 
-A 7-segment board will happily run any standard design — the `seg` port is simply absent and the digits remain dark. A 7-seg design loaded on a non-7-seg board also passes both the contract check and GHDL/NVC analysis — the standard wrapper leaves the `seg` output unconnected, so the design compiles and runs but the digits are never driven. The simulator normalises all segment polarities to active-high in VHDL regardless of the board's hardware polarity. See `hdl/counter_7seg.vhd` for a complete working example.
+A 7-segment board will happily run any standard design — the `seg` port is simply absent and the digits remain dark. A 7-seg design loaded on a non-7-seg board also passes both the contract check and GHDL/NVC analysis — the standard wrapper leaves the `seg` output unconnected, so the design compiles and runs but the digits are never driven. The simulator normalizes all segment polarities to active-high in VHDL regardless of the board's hardware polarity. See `hdl/counter_7seg.vhd` for a complete working example.
 
 The simulator sets the generics to match the selected board's resource counts and drives `clk` at the board's actual clock frequency (extracted from its `Clock` resource, falling back to 12 MHz). The entity name must match the filename stem (e.g. `my_design.vhd` → entity `my_design`).
 
