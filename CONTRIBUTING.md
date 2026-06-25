@@ -186,17 +186,20 @@ Do not remove these ignores; they will cause mypy errors.
 
 ### Backend dispatch design (`sim_bridge.py`)
 
-`_GHDLBackend` and `_NVCBackend` both satisfy the `_SimBackend` Protocol.
-Their `elaborate_cmd` and `run_cmd` signatures are fully unified:
+`_GHDLBackend` and `_NVCBackend` subclass the `_SimBackend` ABC. The four
+discovery helpers (`find`, `available`, `lib_dir`, `sim_bin_lib`) live once on the
+ABC as classmethods keyed on each backend's `NAME`; the subclasses override only
+`NAME` plus the per-simulator command builders, whose `elaborate_cmd` and `run_cmd`
+signatures are fully unified:
 
 - `elaborate_cmd(toplevel, generics, work_dir)` — GHDL ignores generics (applies at
   run time via `-r`); NVC bakes them into the elaboration artifact.
 - `run_cmd(toplevel, generics, plugin_lib, work_dir)` — GHDL injects `-gKEY=VALUE`
   flags; NVC ignores generics (already applied during elaboration).
 
-`_backend()` returns `type[_GHDLBackend] | type[_NVCBackend]`.  Because both backends
-share identical method signatures, mypy resolves all call sites in `launch_simulation()`
-without any `# type: ignore` suppressions.
+`_backend()` returns `type[_SimBackend]`. Because every backend shares the ABC's
+method signatures, mypy resolves all call sites in `launch_simulation()` without
+any `# type: ignore` suppressions.
 
 ---
 

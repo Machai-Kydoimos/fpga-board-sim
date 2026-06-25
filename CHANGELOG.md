@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Simulator backends now share one base class (internal refactor).**
+  `_SimBackend` became an abstract base class instead of a `Protocol`: the four
+  discovery helpers (`find` / `available` / `lib_dir` / `sim_bin_lib`) are
+  defined once on the ABC as classmethods keyed on each backend's `NAME`, so
+  `_GHDLBackend` / `_NVCBackend` now override only `NAME` plus the four
+  per-simulator command builders. Removes ~19 lines of duplicated code in
+  `sim_bridge.py` and clears the way for a future third backend. No behavior
+  change.
+
 ## [0.7.0] - 2026-06-25
 
 ### Added

@@ -1,4 +1,4 @@
-"""Unit tests for _SimBackend Protocol conformance and backend dispatch."""
+"""Unit tests for _SimBackend ABC conformance and backend dispatch."""
 
 import inspect
 from typing import cast, get_args
@@ -7,31 +7,48 @@ import pytest
 
 from fpga_sim.sim_bridge import Simulator, _backend, _GHDLBackend, _NVCBackend, _SimBackend
 
-# ── Protocol conformance ──────────────────────────────────────────────────────
+# ── ABC conformance ───────────────────────────────────────────────────────────
 
-_PROTOCOL_METHODS = (
-    "find",
-    "available",
-    "lib_dir",
-    "plugin_lib_name",
-    "analyze_cmd",
-    "elaborate_cmd",
-    "run_cmd",
-    "sim_bin_lib",
-)
-
-
-def _has_static_method(cls: type, name: str) -> bool:
-    return isinstance(inspect.getattr_static(cls, name), staticmethod)
+# D2 hoisted the four discovery helpers onto the _SimBackend ABC as classmethods;
+# each backend overrides only NAME plus the per-simulator command builders, which
+# stay staticmethods.  Together these are the 8 members every backend exposes.
+_SHARED_METHODS = ("find", "available", "lib_dir", "sim_bin_lib")
+_OVERRIDE_METHODS = ("plugin_lib_name", "analyze_cmd", "elaborate_cmd", "run_cmd")
+_PROTOCOL_METHODS = _SHARED_METHODS + _OVERRIDE_METHODS
 
 
 @pytest.mark.parametrize("backend", [_GHDLBackend, _NVCBackend])
 def test_backend_has_all_protocol_methods(backend: type) -> None:
+    """Every backend exposes all 8 members, each callable without an instance."""
     for method in _PROTOCOL_METHODS:
         assert hasattr(backend, method), f"{backend.__name__} missing '{method}'"
-        assert _has_static_method(backend, method), (
-            f"{backend.__name__}.{method} must be a @staticmethod"
+        descriptor = inspect.getattr_static(backend, method)
+        assert isinstance(descriptor, (staticmethod, classmethod)), (
+            f"{backend.__name__}.{method} must be a static- or classmethod"
         )
+
+
+@pytest.mark.parametrize("backend", [_GHDLBackend, _NVCBackend])
+def test_shared_methods_inherited_from_abc(backend: type) -> None:
+    """The four shared helpers live on the ABC as classmethods, not copy-pasted.
+
+    Their absence from each subclass __dict__ is exactly what proves D2 removed
+    the duplication; redefining one in a backend would reintroduce it.
+    """
+    for method in _SHARED_METHODS:
+        assert method not in vars(backend), (
+            f"{backend.__name__}.{method} should be inherited from _SimBackend, not redefined"
+        )
+        assert isinstance(inspect.getattr_static(_SimBackend, method), classmethod), (
+            f"_SimBackend.{method} must be a @classmethod"
+        )
+
+
+@pytest.mark.parametrize("backend", [_GHDLBackend, _NVCBackend])
+def test_per_simulator_methods_overridden(backend: type) -> None:
+    """Each backend must override the per-simulator command builders."""
+    for method in _OVERRIDE_METHODS:
+        assert method in vars(backend), f"{backend.__name__} must override '{method}'"
 
 
 # ── run_cmd signature parity ──────────────────────────────────────────────────
@@ -41,7 +58,7 @@ def test_run_cmd_signatures_match() -> None:
     ghdl_sig = inspect.signature(_GHDLBackend.run_cmd)
     nvc_sig = inspect.signature(_NVCBackend.run_cmd)
     assert list(ghdl_sig.parameters) == list(nvc_sig.parameters), (
-        "run_cmd parameter lists diverged — update the _SimBackend Protocol"
+        "run_cmd parameter lists diverged — update the _SimBackend ABC"
     )
 
 
@@ -49,7 +66,7 @@ def test_elaborate_cmd_signatures_match() -> None:
     ghdl_sig = inspect.signature(_GHDLBackend.elaborate_cmd)
     nvc_sig = inspect.signature(_NVCBackend.elaborate_cmd)
     assert list(ghdl_sig.parameters) == list(nvc_sig.parameters), (
-        "elaborate_cmd parameter lists diverged — update the _SimBackend Protocol"
+        "elaborate_cmd parameter lists diverged — update the _SimBackend ABC"
     )
 
 
@@ -120,8 +137,11 @@ def test_nvc_name() -> None:
     assert _NVCBackend.NAME == "nvc"
 
 
-# ── _SimBackend is exported ───────────────────────────────────────────────────
+# ── _SimBackend ABC ───────────────────────────────────────────────────────────
 
 
-def test_sim_backend_protocol_is_importable() -> None:
-    assert _SimBackend is not None
+def test_sim_backend_is_abc() -> None:
+    """_SimBackend is an ABC whose abstract members are exactly the overrides."""
+    assert issubclass(_GHDLBackend, _SimBackend)
+    assert issubclass(_NVCBackend, _SimBackend)
+    assert _SimBackend.__abstractmethods__ == frozenset(_OVERRIDE_METHODS)
