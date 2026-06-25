@@ -80,13 +80,13 @@ def _parse_args() -> argparse.Namespace:
         "--fps", type=int, default=None, help="GIF playback fps (default: scenario-tuned)"
     )
     p.add_argument(
-        "--end-cycles", type=int, default=6, help="snake: stop after this many snake cycles"
+        "--end-cycles", type=int, default=8, help="snake: stop after this many snake cycles"
     )
     p.add_argument(
         "--hold-frames", type=int, default=20, help="snake: frames a button stays pressed"
     )
     p.add_argument(
-        "--tail-frames", type=int, default=12, help="snake: extra frames after the speed-up"
+        "--tail-frames", type=int, default=30, help="snake: extra frames after the speed-up"
     )
     p.add_argument("--frames", type=int, default=80, help="plain: number of frames to capture")
     p.add_argument("--every", type=int, default=1, help="plain: Timer steps between saved frames")

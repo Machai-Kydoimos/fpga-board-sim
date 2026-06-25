@@ -241,8 +241,8 @@ async def _run_snake(
 ) -> None:
     """Scripted interactive demo: BTN0 reverses, BTN1 lights all, SW0 speeds up."""
     demo = _SnakeDemo(dut, board, outdir, num_leds, num_segs, strip)
-    end_cycle = _env_int("CAPTURE_END_CYCLES", 6)
-    tail = _env_int("CAPTURE_TAIL_FRAMES", 12)
+    end_cycle = _env_int("CAPTURE_END_CYCLES", 8)
+    tail = _env_int("CAPTURE_TAIL_FRAMES", 30)
     await demo.run_to_cycle(1)
     await demo.tap_button(0, "BTN0  →  snake reverses")
     await demo.run_to_cycle(2)
