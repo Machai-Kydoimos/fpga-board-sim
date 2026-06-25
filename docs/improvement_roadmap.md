@@ -254,6 +254,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 - **Why:** `pyproject.toml` has `disallow_incomplete_defs = true` but not `strict = true`. Strict mode catches incomplete type guards, missing returns in complex branches, untyped `**kwargs`. The codebase is already well-annotated — the upgrade should produce a manageable error list.
 - **What:** Flip to `strict = true`; fix the resulting errors (likely concentrated in `board_loader.py` mock classes and `sim_testbench.py`).
+- **Progress:** ✅ First slice (#116) — `check_untyped_defs = true` enabled and the 26 errors it surfaced in test bodies fixed; the `annotation-unchecked` notes are gone. Remaining: the full `strict = true` flip (~13 bundled flags).
 - **Touches:** `pyproject.toml` (mypy section); scattered annotations.
 - **Effort:** M (mostly fixing reported errors).
 - **Dependencies:** None.
@@ -371,7 +372,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-06-25).** Sprint 1a is fully shipped. **Sprint 1b is complete — D4 / U13 / U1 / U2 / U26 / D2 ✅ all done.** One Sprint-2 item, **D15 ✅** (color consolidation), was pulled forward and shipped early (#109) — harmless (it front-loads U6's container shape). **U26 ✅** (Visual README, #110) was the headline user-visible win; **U2 ✅** (analysis spinner, #117) closed the sprint. Sprint 2 is next: D6a/D6b (screen-result enum → ScreenController), U5 (Settings dialog + extended session), D8 (mypy strict — first slice tracked as issue #116). The phases otherwise remain correctly ordered.
+**Status (2026-06-25).** Sprint 1a is fully shipped. **Sprint 1b is complete — D4 / U13 / U1 / U2 / U26 / D2 ✅ all done.** One Sprint-2 item, **D15 ✅** (color consolidation), was pulled forward and shipped early (#109) — harmless (it front-loads U6's container shape). **U26 ✅** (Visual README, #110) was the headline user-visible win; **U2 ✅** (analysis spinner, #117) closed the sprint. Sprint 2 is next: D6a/D6b (screen-result enum → ScreenController), U5 (Settings dialog + extended session), D8 (mypy strict — first slice ✅ #116; full `strict = true` remains). The phases otherwise remain correctly ordered.
 
 ---
 

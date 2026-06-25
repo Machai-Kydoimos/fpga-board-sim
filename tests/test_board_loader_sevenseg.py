@@ -99,7 +99,9 @@ def test_inline_8seg_multiplexed():
 
 def test_inline_no_dp_flag():
     boards = load_board_from_source(_INLINE_6SEG_NO_DP)
-    assert boards[0].seven_seg.has_dp is False
+    ssd = boards[0].seven_seg
+    assert ssd is not None
+    assert ssd.has_dp is False
 
 
 def test_inline_no_sevenseg():
@@ -148,6 +150,7 @@ def test_summary_full_format_with_7seg():
     """End-to-end check of the compact format with a 7-seg board."""
     boards = load_board_from_source(_INLINE_4SEG_INDEPENDENT)
     b = boards[0]
+    assert b.seven_seg is not None
     expected = (
         f"{len(b.leds)} LEDs · {len(b.buttons)} BTN · "
         f"{len(b.switches)} SW · {b.seven_seg.num_digits}-digit 7-seg"

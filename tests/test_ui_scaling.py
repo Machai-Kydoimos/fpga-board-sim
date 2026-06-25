@@ -119,9 +119,9 @@ from fpga_sim.ui import FPGABoard  # noqa: E402
 
 
 def _sample_board_def():
-    leds = [ComponentInfo(f"led{i}", f"LED{i}", "", "") for i in range(4)]
-    buttons = [ComponentInfo(f"btn{i}", f"BTN{i}", "", "") for i in range(2)]
-    switches = [ComponentInfo(f"sw{i}", f"SW{i}", "", "") for i in range(4)]
+    leds = [ComponentInfo(f"led{i}", f"LED{i}", i) for i in range(4)]
+    buttons = [ComponentInfo(f"btn{i}", f"BTN{i}", i) for i in range(2)]
+    switches = [ComponentInfo(f"sw{i}", f"SW{i}", i) for i in range(4)]
     return BoardDef(
         name="Test Board",
         class_name="TestBoard",

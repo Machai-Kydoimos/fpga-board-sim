@@ -69,6 +69,7 @@ class TestSpinnerOverlay:
     def test_panel_is_centered(self, screen):
         ov = SpinnerOverlay(screen, "Analyzing x.vhd…", "detail")
         ov.draw()
+        assert ov._panel_rect is not None
         sw, sh = screen.get_size()
         assert abs(ov._panel_rect.centerx - sw // 2) <= 1
         assert abs(ov._panel_rect.centery - sh // 2) <= 1

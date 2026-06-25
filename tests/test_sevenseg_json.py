@@ -44,7 +44,7 @@ def test_from_dict_missing_required_field_raises():
 
 
 def test_from_dict_optional_fields_default():
-    d = {"num_digits": 4, "has_dp": True, "is_multiplexed": False}
+    d: dict[str, object] = {"num_digits": 4, "has_dp": True, "is_multiplexed": False}
     ssd = SevenSegDef.from_dict(d)
     assert ssd.inverted is False
     assert ssd.select_inverted is False

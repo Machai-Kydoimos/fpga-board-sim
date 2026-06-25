@@ -52,7 +52,10 @@ def test_disabled_ignores_hover(screen):
 def test_draw_button_returns_none(screen):
     style = ButtonStyle(bg=(10, 20, 30), bg_hover=(40, 50, 60))
     rect = pygame.Rect(0, 0, 60, 24)
-    assert draw_button(screen, rect, "Hi", get_font(14), style) is None
+    font = get_font(14)
+    # mypy knows draw_button -> None; keep the runtime contract check explicit.
+    result = draw_button(screen, rect, "Hi", font, style)  # type: ignore[func-returns-value]
+    assert result is None
 
 
 def test_style_defaults():
