@@ -2,8 +2,9 @@
 """generate_board_images: batch PNG/JPEG/SVG board image generator.
 
 Generates PNG, JPEG, and SVG preview images for every FPGA board discovered
-in the amaranth-boards git submodule.  Images are written to a local
-board_images/ directory that is excluded from version control.
+from the JSON board definitions under boards/ (amaranth-boards, litex-boards,
+digilent-xdc, custom).  Images are written to a local board_images/ directory
+that is excluded from version control.
 
 The script uses existing project infrastructure (FPGABoard, board_loader)
 without modifying any of it.  The same visual layout and color scheme used
@@ -19,7 +20,7 @@ Usage:
     --formats LIST       Comma-separated: png, jpeg, svg, all  (default: all)
     --filter  TEXT       Only process boards whose name contains TEXT
     --list               Print discovered board names and exit
-    --boards-dir PATH    Override amaranth_boards directory (default: auto)
+    --boards-dir PATH    Override the boards/ directory     (default: auto)
 
 Dependencies: pygame (already in pyproject.toml).  No new dependencies needed.
 """
@@ -730,7 +731,7 @@ def main() -> None:
 
     Workflow:
       1. Parse CLI arguments.
-      2. Discover all BoardDefs from the amaranth-boards submodule.
+      2. Discover all BoardDefs from the JSON board definitions under boards/.
       3. Optionally filter by name and/or just list them (--list).
       4. Initialize headless pygame.
       5. For each board, generate the requested image formats.
@@ -785,7 +786,7 @@ def main() -> None:
         metavar="PATH",
         type=Path,
         default=None,
-        help="Override the amaranth_boards directory (default: auto-detect from submodule)",
+        help="Override the boards/ directory (default: auto-detect)",
     )
     args = parser.parse_args()
 
