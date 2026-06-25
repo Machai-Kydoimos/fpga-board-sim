@@ -80,6 +80,9 @@ class Theme:
     board_name: RGB = (220, 220, 255)
     muted_text: RGB = (150, 150, 150)  # board summary line, picker path
     board_count: RGB = (120, 120, 120)
+    board_source: RGB = (120, 120, 120)  # dim per-row source tag (litex/amaranth/…)
+    scrollbar_track: RGB = (62, 62, 76)
+    scrollbar_thumb: RGB = (140, 140, 165)
     chip_active: RGB = (45, 110, 55)
     chip_inactive: RGB = (50, 50, 60)
     chip_hover: RGB = (60, 75, 65)
