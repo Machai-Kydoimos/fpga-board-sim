@@ -76,6 +76,7 @@ class TestClick:
     def test_close_button_dismisses(self, screen):
         dlg = HelpDialog(screen)
         dlg._draw()
+        assert dlg._close_rect is not None
         assert dlg._click(dlg._close_rect.center) is True
 
     def test_click_outside_panel_dismisses(self, screen):
@@ -86,6 +87,7 @@ class TestClick:
     def test_click_inside_panel_keeps_open(self, screen):
         dlg = HelpDialog(screen)
         dlg._draw()
+        assert dlg._panel_rect is not None
         # A point in the panel's title area — inside the panel, not on Close.
         inside = (dlg._panel_rect.centerx, dlg._panel_rect.top + 50)
         assert dlg._click(inside) is False

@@ -59,6 +59,7 @@ def test_build_board_json_counts_and_clock():
 
 def test_build_board_json_emits_port_conventions():
     board = build_board_json(_XDC, "Test-Master.xdc", "sha")
+    assert board is not None
     assert "port_conventions" in board
     conv = board["port_conventions"]["digilent"]
     assert conv["leds"]["name"] == "led"

@@ -92,6 +92,7 @@ ignore_missing_imports = true
 exclude = ["amaranth-boards/", "boards/"]
 disallow_incomplete_defs = true
 disallow_untyped_defs = true
+check_untyped_defs = true  # D8 slice (#116): type-check bodies of untyped (test) functions too
 # strict = true  (future: evaluate after feature work settles)
 
 [[tool.mypy.overrides]]
