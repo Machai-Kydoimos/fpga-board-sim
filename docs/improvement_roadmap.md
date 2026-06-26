@@ -13,7 +13,7 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~5,700 LOC across 10+ Python modules (≈6,400 incl. `sim/`), 27 test files (1005 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 281 board definitions from four sources (278 loadable), performance heavily tuned (PR #31), v0.7.0 released (2026-06-25).
+The simulator is mature: ~5,700 LOC across 10+ Python modules (≈6,400 incl. `sim/`), 30 test files (1029 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 281 board definitions from four sources (278 loadable), performance heavily tuned (PR #31), v0.7.0 released (2026-06-25).
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
@@ -254,11 +254,11 @@ This document inventories all viable improvements and ranks them by impact.
 
 - **Why:** `pyproject.toml` has `disallow_incomplete_defs = true` but not `strict = true`. Strict mode catches incomplete type guards, missing returns in complex branches, untyped `**kwargs`. The codebase is already well-annotated — the upgrade should produce a manageable error list.
 - **What:** Flip to `strict = true`; fix the resulting errors (likely concentrated in `board_loader.py` mock classes and `sim_testbench.py`).
-- **Progress:** ✅ First slice (#116) — `check_untyped_defs = true` enabled and the 26 errors it surfaced in test bodies fixed; the `annotation-unchecked` notes are gone. Remaining: the full `strict = true` flip (~13 bundled flags).
+- **Progress:** ✅ First slice (PR #119, closing issue #116) — `check_untyped_defs = true` enabled and the 26 errors it surfaced in test bodies fixed; the `annotation-unchecked` notes are gone. Remaining: the full `strict = true` flip (~13 bundled flags).
 - **Touches:** `pyproject.toml` (mypy section); scattered annotations.
 - **Effort:** M (mostly fixing reported errors).
 - **Dependencies:** None.
-- **Done when:** `uv run mypy src/` passes with `strict = true` and CI enforces it.
+- **Done when:** `uv run mypy .` passes with `strict = true` and CI enforces it.
 
 #### D9. `Literal` types for stringly-typed identifiers ✅
 
@@ -372,7 +372,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-06-25).** Sprint 1a is fully shipped. **Sprint 1b is complete — D4 / U13 / U1 / U2 / U26 / D2 ✅ all done.** One Sprint-2 item, **D15 ✅** (color consolidation), was pulled forward and shipped early (#109) — harmless (it front-loads U6's container shape). **U26 ✅** (Visual README, #110) was the headline user-visible win; **U2 ✅** (analysis spinner, #117) closed the sprint. Sprint 2 is next: D6a/D6b (screen-result enum → ScreenController), U5 (Settings dialog + extended session), D8 (mypy strict — first slice ✅ #116; full `strict = true` remains). The phases otherwise remain correctly ordered.
+**Status (2026-06-25).** Sprint 1a is fully shipped. **Sprint 1b is complete — D4 / U13 / U1 / U2 / U26 / D2 ✅ all done.** One Sprint-2 item, **D15 ✅** (color consolidation), was pulled forward and shipped early (#109) — harmless (it front-loads U6's container shape). **U26 ✅** (Visual README, #110) was the headline user-visible win; **U2 ✅** (analysis spinner, #117) closed the sprint. Sprint 2 is next: D6a/D6b (screen-result enum → ScreenController), U5 (Settings dialog + extended session), D8 (mypy strict — first slice ✅ #119; full `strict = true` remains). The phases otherwise remain correctly ordered.
 
 ---
 
@@ -415,8 +415,8 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (1005 tests across 27 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, help overlay, theme value-preservation). All sprints must keep this green.
-2. **Lint / type** — `uv run ruff check .` and `uv run mypy src/` (the latter tightens under D8).
+1. **Tests** — `uv run pytest` (1029 tests across 30 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, help overlay, theme value-preservation). All sprints must keep this green.
+2. **Lint / type** — `uv run ruff check .` and `uv run mypy .` (the latter tightens under D8).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).
 5. **Headless CI** — every PR runs the existing Linux + Windows x GHDL + NVC x Py 3.10-3.13 matrix.
