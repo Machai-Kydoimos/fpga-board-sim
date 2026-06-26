@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   per-simulator command builders. Removes ~19 lines of duplicated code in
   `sim_bridge.py` and clears the way for a future third backend. No behavior
   change.
+- **Launcher screens return typed results instead of strings (internal
+  refactor).** `FPGABoard.run()` and `ErrorDialog.run()` previously returned
+  bare strings (`"simulate"` / `"load_vhdl"` / `"back"` / `"quit"`, and
+  `"retry"` / `"back"`); they now return `ScreenResult` / `DialogResult` enums
+  (new `fpga_sim/ui/results.py`), so the main loop dispatches on members that
+  mypy type-checks rather than typo-prone literals. Groundwork for the
+  forthcoming `ScreenController` extraction. No behavior change.
 
 ### Fixed
 

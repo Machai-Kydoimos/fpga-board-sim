@@ -170,3 +170,21 @@ def test_help_sync_without_resize_is_stable(headless_pygame):
     board._sync_to_surface()  # surface unchanged (1024x700)
     assert (board.width, board.height) == (1024, 700)
     assert board.leds[0].rect == before
+
+
+# ── run() result mapping (D6a ScreenResult enum) ─────────────────────────────
+
+
+def test_result_maps_exit_flags_to_screenresult(headless_pygame):
+    """_result() must map the loop-exit flags to the right ScreenResult, with
+    simulate > load_vhdl > back > quit precedence (mirrors the run() if-ladder)."""
+    from fpga_sim.ui import ScreenResult
+
+    board = _make_board(headless_pygame)
+    assert board._result() is ScreenResult.QUIT  # no action flag set → window closed
+    board._go_back = True
+    assert board._result() is ScreenResult.BACK
+    board._load_vhdl = True  # load_vhdl outranks go_back
+    assert board._result() is ScreenResult.LOAD_VHDL
+    board._simulate = True  # simulate outranks everything
+    assert board._result() is ScreenResult.SIMULATE
