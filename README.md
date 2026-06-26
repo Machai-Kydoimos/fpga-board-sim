@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Machai-Kydoimos/fpga-board-sim/actions/workflows/ci.yml/badge.svg)](https://github.com/Machai-Kydoimos/fpga-board-sim/actions/workflows/ci.yml)
 
-Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://github.com/ghdl/ghdl) or [NVC](https://github.com/nickg/nvc). Select from 250+ real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards), [litex-boards](https://github.com/litex-hub/litex-boards), [Digilent XDC](https://github.com/Digilent/digilent-xdc), and custom JSON definitions), then run VHDL designs against a virtual board with switches, buttons, LEDs, and 7-segment displays — all driven by [cocotb](https://github.com/cocotb/cocotb).
+Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://github.com/ghdl/ghdl) or [NVC](https://github.com/nickg/nvc). Select from 278 real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards), [litex-boards](https://github.com/litex-hub/litex-boards), [Digilent XDC](https://github.com/Digilent/digilent-xdc), and custom JSON definitions), then run VHDL designs against a virtual board with switches, buttons, LEDs, and 7-segment displays — all driven by [cocotb](https://github.com/cocotb/cocotb).
 
 ![Live VHDL simulation on a virtual DE10-Lite: a snake of light crawls across the six 7-segment displays while buttons are pressed — reversing it, then lighting every segment — and a switch speeds it up](docs/assets/demo.gif)
 
@@ -161,7 +161,7 @@ uv run fpga-sim --sim nvc       # NVC (available via winget; untested on Windows
 
 ### 1. Select a board
 
-A list of 250+ FPGA boards appears. Type to filter, click to select.
+A list of 278 FPGA boards appears. Type to filter, click to select.
 
 Need a refresher at any launcher screen? Press **F1** or **?**, or click the **(?)** button (top-right of the selector header and the preview corner) to open an in-app help overlay covering the workflow, keyboard shortcuts, and the VHDL design contract.
 
@@ -180,6 +180,8 @@ The board renders with LEDs, buttons, switches, and — on supported boards — 
 ### 3. Select a VHDL file
 
 Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains ready-to-run designs as starting points: six standard LED designs (`blinky.vhd`, `blinky_counter.vhd`, `blinky_morse.vhd`, `blinky_pwm.vhd`, `blinky_walking.vhd`, `blinky_alt.vhd`) and three 7-segment designs (`counter_7seg.vhd`, `snake_7seg.vhd`, `walking_counter_7seg.vhd`).
+
+When you pick a file, the simulator analyzes and elaborates it (a few seconds on a large design); a spinner overlay keeps the window responsive while this runs and reports any contract or compile error.
 
 ### 4. Run the simulation
 

@@ -113,13 +113,17 @@ Configured in `pyproject.toml` under `[tool.mypy]`. Current strictness:
 ```toml
 disallow_untyped_defs    = true   # all functions must be annotated
 disallow_incomplete_defs = true   # no partial annotations
+check_untyped_defs       = true   # type-check bodies of untyped (e.g. test) funcs too
 warn_return_any          = true   # warn when returning Any from typed func
 warn_unused_ignores      = true   # keep type: ignore comments tidy
 ignore_missing_imports   = true   # third-party stubs not required
 ```
 
-Test files (`tests.*`, `test_blinky`, `test_7seg`) are exempt from `disallow_untyped_defs`
-via `[[tool.mypy.overrides]]` — consistent with the ruff exemptions above.
+Test files (`tests.*`, `test_blinky`, `test_7seg`) are exempt from
+`disallow_untyped_defs` via `[[tool.mypy.overrides]]` — their functions need not
+be annotated. But `check_untyped_defs = true` (the first slice of roadmap D8)
+still type-checks the *bodies* of those untyped functions, so test code is not a
+type-checking blind spot. Consistent with the ruff exemptions above.
 
 The `boards/` directory (JSON board definitions) is excluded from both ruff
 and mypy; its files are data, not source code.
@@ -258,20 +262,20 @@ or both simulators is safe — those tests are skipped, not failed.
 
 ### Required checks (branch protection)
 
-A PR cannot be merged until these five checks all pass:
+A PR cannot be merged until these seven checks all pass:
 
 - `Lint & type-check`
 - `Test (ubuntu-latest, Python 3.10)`
 - `Test (ubuntu-latest, Python 3.12)`
+- `Test (ubuntu-latest, Python 3.13)`
 - `Test (windows-latest, Python 3.10)`
 - `Test (windows-latest, Python 3.12)`
+- `Test (windows-latest, Python 3.13)`
 
-The `Python 3.13` matrix jobs also run on every PR but are not yet required
-checks (add them to branch protection once they have reported at least once).
-The simulator-specific jobs are not required checks — they surface
-regressions but do not block merge on their own. If you introduce a
-change that touches `sim_bridge.py` or the simulator backends, confirm
-those jobs are green before merging.
+The simulator-specific jobs (Linux + GHDL, Linux + NVC, Windows + GHDL) are not
+required checks — they surface regressions but do not block merge on their own.
+If you introduce a change that touches `sim_bridge.py` or the simulator
+backends, confirm those jobs are green before merging.
 
 ---
 
