@@ -24,7 +24,15 @@ import pygame
 from fpga_sim.board_loader import BoardDef, discover_boards, get_default_boards_path
 from fpga_sim.session_config import load_session, save_session
 from fpga_sim.sim_bridge import Simulator, detect_simulators
-from fpga_sim.ui import BoardSelector, ErrorDialog, FPGABoard, VHDLFilePicker, run_with_spinner
+from fpga_sim.ui import (
+    BoardSelector,
+    DialogResult,
+    ErrorDialog,
+    FPGABoard,
+    ScreenResult,
+    VHDLFilePicker,
+    run_with_spinner,
+)
 from fpga_sim.ui.constants import get_font
 
 
@@ -266,7 +274,7 @@ def main() -> None:
 
         # ── Step 2: FPGABoard preview ─────────────────────────────
         # Three footer buttons: [Select Board] [Load VHDL File] [Start Simulation]
-        # run() returns: 'back', 'load_vhdl', 'simulate', or 'quit'
+        # run() returns a ScreenResult: BACK, LOAD_VHDL, SIMULATE, or QUIT.
         # Title is set by FPGABoard.__init__ (includes VHDL filename when loaded).
         preview = FPGABoard(
             board_def=chosen,
@@ -278,15 +286,15 @@ def main() -> None:
         result = preview.run()
         simulator = preview.simulator  # pick up any toggle change
 
-        if result == "quit":
+        if result is ScreenResult.QUIT:
             break
 
-        if result == "back":
+        if result is ScreenResult.BACK:
             current_work_dir = None
             _work_dir_simulator = None
             continue
 
-        if result == "load_vhdl":
+        if result is ScreenResult.LOAD_VHDL:
             # ── Steps 3-4: pick + validate VHDL ──────────────────────────────
             hdl_dir = Path(__file__).parent.parent.parent / "hdl"
 
@@ -318,7 +326,7 @@ def main() -> None:
 
                 # Stage 1+2: encoding and contract checks
                 _toplevel = Path(picked).stem
-                _intent = "retry"
+                _intent: DialogResult = DialogResult.RETRY
                 _ok, _detail = check_vhdl_encoding(picked)
                 if not _ok:
                     _intent = ErrorDialog(screen, "VHDL Error", _detail).run(clock)
@@ -352,10 +360,10 @@ def main() -> None:
                 if _ok:
                     _new_path = picked
                     break
-                if _intent == "back":
+                if _intent is DialogResult.BACK:
                     _back_to_boards = True
                     break
-                # "retry" → loop
+                # DialogResult.RETRY → loop
 
             if _back_to_boards:
                 current_work_dir = None
@@ -370,7 +378,7 @@ def main() -> None:
             _return_to_board = chosen  # return to FPGABoard with updated state
             continue
 
-        # result == "simulate" ────────────────────────────────────
+        # result is ScreenResult.SIMULATE ─────────────────────────
         # ── Step 5: launch simulation ─────────────────────────────
         assert current_vhdl_path is not None  # Start button only fires when VHDL is set
 
@@ -461,12 +469,12 @@ def main() -> None:
 
         if _sim_error:
             _intent = ErrorDialog(screen, "Simulation Error", _sim_error).run(clock)
-            if _intent == "back":
+            if _intent is DialogResult.BACK:
                 current_work_dir = None
                 _work_dir_simulator = None
                 _return_to_board = None
                 continue
-            # "retry" → fall through to re-enter board preview
+            # DialogResult.RETRY → fall through to re-enter board preview
         _return_to_board = chosen
         continue
 

@@ -5,6 +5,7 @@ import sys
 import pygame
 
 from fpga_sim.ui.constants import _ui_scale, get_font
+from fpga_sim.ui.results import DialogResult
 from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
 
@@ -13,7 +14,8 @@ class ErrorDialog:
     """Modal error dialog drawn over a dimmed snapshot of the current screen.
 
     Sized to ~1/3 of the main window area (2/3 wide, 1/2 tall).
-    run() returns 'retry' (Try Another File) or 'back' (Back to Boards).
+    run() returns DialogResult.RETRY (Try Another File) or
+    DialogResult.BACK (Back to Boards).
     """
 
     def __init__(self, screen: pygame.Surface, title: str, message: str) -> None:
@@ -27,12 +29,12 @@ class ErrorDialog:
         self._retry_rect: pygame.Rect | None = None
         self._back_rect: pygame.Rect | None = None
 
-    def run(self, clock: pygame.time.Clock) -> str:
-        """Run the event loop and return 'retry' or 'back'."""
+    def run(self, clock: pygame.time.Clock) -> DialogResult:
+        """Run the event loop and return DialogResult.RETRY or DialogResult.BACK."""
         while True:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
-                    return "back"
+                    return DialogResult.BACK
                 elif ev.type == pygame.WINDOWRESIZED:
                     # Rebuild background at new size so the dim overlay fills correctly
                     self._bg = pygame.Surface((ev.x, ev.y))
@@ -40,13 +42,13 @@ class ErrorDialog:
                     self._scroll = 0
                 elif ev.type == pygame.KEYDOWN:
                     if ev.key == pygame.K_ESCAPE:
-                        return "back"
+                        return DialogResult.BACK
                     elif ev.key == pygame.K_RETURN:
-                        return "retry"
+                        return DialogResult.RETRY
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
                     if ev.button == 1:
                         result = self._click(ev.pos)
-                        if result:
+                        if result is not None:
                             return result
                     elif ev.button == 4:
                         self._scroll = max(0, self._scroll - 60)
@@ -56,11 +58,11 @@ class ErrorDialog:
             self._draw()
             clock.tick(30)
 
-    def _click(self, pos: tuple[int, int]) -> str | None:
+    def _click(self, pos: tuple[int, int]) -> DialogResult | None:
         if self._retry_rect and self._retry_rect.collidepoint(pos):
-            return "retry"
+            return DialogResult.RETRY
         if self._back_rect and self._back_rect.collidepoint(pos):
-            return "back"
+            return DialogResult.BACK
         return None
 
     def _draw(self) -> None:

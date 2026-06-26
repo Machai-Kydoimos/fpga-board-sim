@@ -1,7 +1,7 @@
 """FPGABoard: the main interactive board display screen.
 
 Renders the FPGA chip, LEDs, buttons, and switches in a resizable pygame
-window.  run() returns 'back', 'load_vhdl', 'simulate', or 'quit'.
+window.  run() returns a ``ScreenResult`` (BACK / LOAD_VHDL / SIMULATE / QUIT).
 
 Footer buttons
 --------------
@@ -31,6 +31,7 @@ from fpga_sim.board_loader import BoardDef, ComponentInfo
 from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch
 from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
+from fpga_sim.ui.results import ScreenResult
 from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
 
@@ -132,6 +133,10 @@ class FPGABoard:
             self.width, self.height = w, h - height_offset
         self.clock = pygame.time.Clock()
         self.running = False
+        # Loop-exit flags consumed by _result(); run() resets them each entry.
+        self._go_back = False
+        self._simulate = False
+        self._load_vhdl = False
 
         self.simulator = simulator
         self.available_simulators: list[Simulator] = available_simulators or ["ghdl"]
@@ -247,20 +252,20 @@ class FPGABoard:
         self.height = scr_h - offset
         self._layout()
 
-    def run(self) -> str:
-        """Enter the main loop.
+    def run(self) -> ScreenResult:
+        """Enter the main loop and return the user's chosen :class:`ScreenResult`.
 
         Returns
         -------
-        'back'
+        ScreenResult.BACK
             ESC or [Select Board] clicked — return to board selector.
-        'load_vhdl'
+        ScreenResult.LOAD_VHDL
             [Load VHDL File] clicked — caller should open file picker then
             re-enter run() with an updated *vhdl_path*.
-        'simulate'
+        ScreenResult.SIMULATE
             [Start Simulation] clicked or Enter pressed (only fires when
             *vhdl_path* is not ``None``).
-        'quit'
+        ScreenResult.QUIT
             Window closed.
 
         """
@@ -276,11 +281,15 @@ class FPGABoard:
                 self._sync_to_surface()
             self._draw()
             self.clock.tick(60)
+        return self._result()
+
+    def _result(self) -> ScreenResult:
+        """Map the loop-exit flags (set by _handle_events) to a ScreenResult."""
         if self._simulate:
-            return "simulate"
+            return ScreenResult.SIMULATE
         if self._load_vhdl:
-            return "load_vhdl"
-        return "back" if self._go_back else "quit"
+            return ScreenResult.LOAD_VHDL
+        return ScreenResult.BACK if self._go_back else ScreenResult.QUIT
 
     def _resize(self, win_w: int, win_h: int) -> None:
         """Apply a new *window* size: update dimensions and reflow the layout."""
