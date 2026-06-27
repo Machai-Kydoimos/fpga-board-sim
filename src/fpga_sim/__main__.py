@@ -81,6 +81,11 @@ def _build_generics(board: "BoardDef") -> dict[str, str]:
         "NUM_SWITCHES": str(max(1, len(board.switches))),
         "NUM_BUTTONS": str(max(1, len(board.buttons))),
         "NUM_LEDS": str(max(1, len(board.leds))),
+        # Deliberately below the VHDL default (24/32): at the simulator's
+        # sub-real-time throughput a 24-bit counter's MSB toggles too slowly to
+        # see, so floor COUNTER_BITS at 17 (MSB ~every 1.3 ms of simulated time
+        # at 100 MHz) and widen it only for many-digit 7-seg displays. Real
+        # hardware would use the full 24/32.
         "COUNTER_BITS": str(max(17, 4 * num_segs)),
         "CLK_HALF_NS_INIT": str(clk_half_ns),
     }

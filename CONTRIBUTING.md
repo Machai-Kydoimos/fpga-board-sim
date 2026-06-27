@@ -188,6 +188,18 @@ that Dependabot doesn't track. **Please don't convert the ruff hook back to the
 mirror** — it reintroduces a second, drift-prone version pin. Full rationale is
 in the comment block atop `.pre-commit-config.yaml`.
 
+### Spelling and text encoding
+
+Two conventions the linters don't catch:
+
+- **US spelling** in code, comments, docs, and commit messages — `color`,
+  `behavior`, `standardize` (not `colour`, `behaviour`, `standardise`).
+- **VHDL files must be plain ASCII, or UTF-8 without a BOM**, and free of
+  decorative Unicode. Some simulator/toolchain front-ends choke on a byte-order
+  mark or stray non-ASCII bytes in HDL source, so the launcher's
+  `check_vhdl_encoding()` rejects a BOM or any byte > 127 (reporting the
+  offending line) before analysis.
+
 ---
 
 ## Type annotation conventions
@@ -235,6 +247,14 @@ signatures are fully unified:
 method signatures, mypy resolves all call sites in `launch_simulation()` without
 any `# type: ignore` suppressions.
 
+**Why GHDL uses VPI and NVC uses VHPI.** cocotb talks to each simulator through a
+different interface because of what each implements: GHDL ships a *complete* VPI
+(its VHPI is only partial), so cocotb is loaded with `--vpi=…ghdl.so` on
+`ghdl -r`; NVC ships a comprehensive VHPI and no VPI at all, so cocotb is loaded
+with `--load=…nvc.so`. This is also why generics apply at different stages — GHDL
+takes `-gKEY=VALUE` at run time, while NVC bakes them into the elaboration
+artifact (the `elaborate_cmd` / `run_cmd` split above).
+
 ---
 
 ## Test suite notes
@@ -264,6 +284,32 @@ setup. A few things that matter for contributors:
   module name (e.g. `"test_blinky"`) for `sim/` files.
 - The fast test suite (`-m "not slow"`) must pass with zero failures
   before merge.
+
+---
+
+## Smoke-testing a board
+
+To confirm a board JSON + VHDL design compiles, elaborates, and runs end-to-end
+(wrapper generation → simulator analysis → elaboration → cocotb readback) without
+opening the GUI, use the built-in **headless benchmark**:
+
+```bash
+# LED-only board:
+uv run fpga-sim --benchmark 5 --board ArtyA7_35Platform --vhdl hdl/blinky.vhd
+
+# 7-segment board:
+uv run fpga-sim --benchmark 5 --board DE10LitePlatform --vhdl hdl/counter_7seg.vhd
+```
+
+It runs the real pipeline headlessly (`SDL_VIDEODRIVER=dummy`) for the given
+number of seconds and prints a board / VHDL / simulator summary and a performance
+report; a clean exit with `PASS=1 FAIL=0` means the combination builds and runs.
+`--board` takes a board **class name** (e.g. `ArtyA7_35Platform`; omit it to use
+the first discovered board), `--vhdl` defaults to `hdl/blinky.vhd`, and
+`--sim ghdl|nvc` picks the backend.
+
+For a *visual* check (rendered LED / 7-seg frames saved as PNGs), see
+`scripts/capture_demo.py`, which drives the same headless pipeline.
 
 ---
 
@@ -306,6 +352,24 @@ The simulator-specific jobs (Linux + GHDL, Linux + NVC, Windows + GHDL) are not
 required checks — they surface regressions but do not block merge on their own.
 If you introduce a change that touches `sim_bridge.py` or the simulator
 backends, confirm those jobs are green before merging.
+
+### Gotchas
+
+- **`mypy` is whole-repo.** The `Lint & type-check` job runs `mypy .` across
+  `src/`, `tests/`, `sim/`, and `scripts/` — not just `src/`. A type change has
+  to keep the tests and scripts clean too.
+- **Don't `paths-ignore` the required jobs.** The workflows aren't path-filtered,
+  so even a docs-only PR runs and *satisfies* the required checks. If you skip
+  them with `paths-ignore`, the required check never reports and the PR can't
+  merge without an admin override — leave them running (they're fast on no-op
+  diffs).
+- **Branch protection requires an up-to-date branch.** If `main` advanced after
+  you opened the PR, update the branch or GitHub blocks the merge.
+- **CodeQL is GitHub default-setup** (no workflow file in the repo); a neutral or
+  "skipping" CodeQL result on a docs/no-op PR is expected, not a failure.
+- **Dependabot.** A *rebase* of a Dependabot PR doesn't re-trigger CI — close and
+  reopen to force a fresh run — and Dependabot won't propose a *downgrade*, so a
+  bad pin must be fixed by hand.
 
 ---
 

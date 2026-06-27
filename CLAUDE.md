@@ -118,7 +118,7 @@ entity my_design is
 end entity;
 ```
 
-The simulator sets generics to match the selected board's resource counts and provides a 100 MHz clock. The entity name must match the filename stem (e.g. `blinky.vhd` → entity `blinky`). Use `counter_7seg.vhd` in `hdl/` as a working 7-seg example.
+The simulator sets generics to match the selected board's resource counts and provides a 100 MHz clock. **`COUNTER_BITS` is overridden at runtime** to a value lower than the `:= 24` / `:= 32` defaults shown above — a floor of 17, widened for many-digit 7-seg displays — because at the simulator's sub-real-time throughput a full 24-bit counter's MSB would toggle too slowly to see; real hardware would use the full default. The entity name must match the filename stem (e.g. `blinky.vhd` → entity `blinky`). Use `counter_7seg.vhd` in `hdl/` as a working 7-seg example.
 
 ### Platform Notes
 
