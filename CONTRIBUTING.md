@@ -5,6 +5,36 @@ everything a developer needs beyond the user-facing [README](README.md).
 
 ---
 
+## Finding something to work on
+
+The backlog uses a lightweight **hybrid** model — a strategy document plus
+GitHub issues for the sprint in progress:
+
+1. **Start at the open milestone.** Browse the
+   [open issues](https://github.com/Machai-Kydoimos/fpga-board-sim/issues) in the
+   current `vX.Y.0`
+   [milestone](https://github.com/Machai-Kydoimos/fpga-board-sim/milestones), or
+   filter by the
+   `good first issue` / `help wanted` / `enhancement` labels. These are the tasks
+   queued for the active sprint — pick one that isn't blocked by another.
+2. **Read the matching roadmap card for context.** Each issue title carries a
+   roadmap ID (e.g. `U5`, `D6b`). Open
+   [`docs/improvement_roadmap.md`](docs/improvement_roadmap.md) and find that card
+   for the rationale, the files it touches, the effort estimate, the *done-when*
+   acceptance criterion, and any ⚠ carried-forward gotchas.
+3. **Nothing queued in the milestone?** The roadmap is the source of truth for
+   what comes next: read its **Suggested merge order** and **dependency graph**,
+   pick the next unblocked item, and open an issue for it (titled by its roadmap
+   ID). Completed work is summarized in
+   [`docs/roadmap_delivered.md`](docs/roadmap_delivered.md).
+
+The roadmap's **Icebox** holds parked, deferred-on-trigger items — don't start
+one unless its listed trigger condition has been met. Found something that isn't
+on the roadmap (a bug, a rough edge)? Open an issue, or for a trivial fix go
+straight to a PR.
+
+---
+
 ## Development setup
 
 ```bash
