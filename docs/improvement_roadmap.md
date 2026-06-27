@@ -1,19 +1,19 @@
 # Virtual FPGA Boards — Improvement Roadmap
 
-*Drafted 2026-05-19 · Updated 2026-06-25 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
+*Drafted 2026-05-19 · Updated 2026-06-27 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
 
 A comprehensive, impact-weighted roadmap covering improvements from two perspectives:
 
 1. **User-facing** — UX, performance, presentation, persistence, features.
 2. **Developer-facing** — architecture, DRY, type safety, documentation, tests, tooling.
 
-Each item lists *why* it matters, *what* to do, *which files* are touched, a rough effort estimate (XS / S / M / L / XL), and a *done-when* acceptance criterion. Tier numbers reflect impact-weighted priority, not strict execution order; see "Suggested merge order" at the end for a practical sequencing and "Dependencies" for required ordering constraints.
+Each item lists *why* it matters, *what* to do, *which files* are touched, a rough effort estimate (XS / S / M / L / XL), and a *done-when* acceptance criterion. Tier numbers reflect impact-weighted priority, not strict execution order; see "Suggested merge order" at the end for a practical sequencing and "Dependencies" for required ordering constraints. Completed cards are condensed to a one-line stub here, with full shipped detail in [roadmap_delivered.md](roadmap_delivered.md).
 
 ---
 
 ## Context
 
-The simulator is mature: ~5,700 LOC across 10+ Python modules (≈6,400 incl. `sim/`), 31 test files (1036 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 281 board definitions from four sources (278 loadable), performance heavily tuned (PR #31), v0.7.0 released (2026-06-25).
+The simulator is mature: ~5,700 LOC across 10+ Python modules (≈6,400 incl. `sim/`), 31 test files (1036 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 281 board definitions from four sources (278 loadable), performance heavily tuned (PR #31), v0.8.0 released (2026-06-26).
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
@@ -32,21 +32,21 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### U0. Board selector — faceted filtering and sort ✅
 
-- ✅ **2026-05-27 (PR #75).** Filter chips (4 component + data-driven vendor chips with an "Other" group), a 7-mode sort dropdown (Name, Vendor, LEDs, Switches, Buttons, 7-seg, Total), an active-filter counter, and session persistence of all filter/sort state; 42 new tests. Touched `ui/board_selector.py`.
+- Shipped 2026-05-27 (PR #75). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U1. Help / About overlay (clickable `(?)` button · F1 · `?`) ✅
 
-- ✅ **2026-06-01 (PR #88).** New `ui/help_dialog.py` — a blocking `HelpDialog` (4-step workflow, keyboard-shortcut legend, VHDL contract summary) opened by F1, `?`, or a circular `(?)` button on all three launcher screens; the legend renders from a single `SHORTCUTS` / `WORKFLOW` / `CONTRACT` source so it can't drift from the real handlers; 36 new tests. Carried-forward gotchas now noted on **U5** / **U7** / **U14** (and the [Delivery log](#delivery-log)).
+- Shipped 2026-06-01 (PR #88). Carried-forward gotchas live on **U5** / **U7** / **U14**. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U2. Inline analysis spinner during VHDL load ✅
 
-- ✅ **2026-06-25 (PR #117).** New `ui/spinner.py` — `run_with_spinner()` runs `analyze_vhdl()` on a worker thread (a `ThreadPoolExecutor` future) and animates a `SpinnerOverlay` (dimmed snapshot → centered info-panel → a 12-dot comet ring, with "Analyzing &lt;file&gt;…" + "Running &lt;SIM&gt; analysis & elaboration…") on the main thread at ~30 fps until the future resolves, then returns its `(ok, detail)`. pygame rendering stays single-threaded — the worker only spawns subprocesses + reads files (approach (a) from the original card). Wired into **both** `__main__.py` analyze call sites (the Load-VHDL picker path and the re-analyze-before-simulate path) via `functools.partial`, whose eager arg-binding sidesteps the loop-variable-closure lint (B023) and preserves mypy's narrowing of the `str | None` path. A window-close (`QUIT`) during the wait is remembered and re-posted after the analysis finishes (the work can't be interrupted mid-flight). Two new `Theme` roles (`spinner_arc` / `spinner_track`); 20 new tests. **Closes Sprint 1b.** Carried-forward rule noted in the [Delivery log](#delivery-log).
+- Shipped 2026-06-25 (PR #117). Closed Sprint 1b; established the off-main-thread `run_with_spinner()` pattern. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U3. Component tooltips on hover (preview & sim)
 
 - **Why:** Hovering an LED/switch/button currently does nothing visible; net names and pin assignments live only in stdout `print()` callbacks.
 - **What:** Hover for ~400 ms -> small tooltip with `net_name`, `pin`, `direction`. Add a `Tooltip` widget; integrate in `LED.draw`, `Switch.draw`, `Button.draw`.
-- **Touches:** new `src/fpga_sim/ui/tooltip.py`; small additions in `components.py:116-233`; mouse-pos tracking in `board_display.py`.
+- **Touches:** new `src/fpga_sim/ui/tooltip.py`; small additions in `components.py`; mouse-pos tracking in `board_display.py`.
 - **Effort:** M.
 - **Dependencies:** Soft: simpler with D3 (UIComponent base provides unified hit-testing).
 - **Done when:** hovering a component for 400 ms shows a tooltip with net name, pin, and direction; moving away dismisses it.
@@ -55,7 +55,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 - **Why:** "VHDL Error: port width mismatch" doesn't tell the user which port or expected width; the design contract lives only in CLAUDE.md.
 - **What:** Augment `check_vhdl_contract()` and the analyze stderr parser to append actionable hints: *"this board has 16 LEDs -- set NUM_LEDS=16 or use `std_logic_vector(NUM_LEDS-1 downto 0)`"*. Show a "View example" button in `ErrorDialog` that opens `hdl/blinky.vhd`.
-- **Touches:** `src/fpga_sim/sim_bridge.py:319` (`check_vhdl_contract`); `src/fpga_sim/ui/error_dialog.py`.
+- **Touches:** `src/fpga_sim/sim_bridge.py` (`check_vhdl_contract`); `src/fpga_sim/ui/error_dialog.py`.
 - **Effort:** M.
 - **Dependencies:** None.
 - **Done when:** error dialogs include the specific port/width mismatch details and a "View example" button that opens the correct example file.
@@ -72,7 +72,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### U26. Visual README — interactive demo + selector GIFs (docs / marketing) ✅
 
-- ✅ **2026-06-25 (PR #110).** Two reproducible animated GIFs open the README: an *interactive* `snake_7seg` demo on the DE10-Lite (a faux cursor taps BTN0 / BTN1 / SW0 with cause→effect captions over a "live VHDL simulation · board (source) · file" strip) and the board selector filtering 278 → 9 by component + vendor. New maintainer tooling — `scripts/capture_demo.py` / `capture_selector.py` / `capture_common.py` + `sim/capture_frames.py` (Pillow in the `dev` group; GIFs assembled with `disposal=1` for size). Bundled selector UX wins: always-visible scrollbar, a per-row source tag, and the filter box no longer overlapping the count. Soft: the headless renderer can later feed **U8** (splash screen).
+- Shipped 2026-06-25 (PR #110). Headless renderer can later feed **U8** (splash). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 ### Tier 2 — High impact, larger initiatives
 
@@ -90,7 +90,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 - **Why:** Already queued in `project_enhancements.md` (#2). Currently the only way out of sim is ESC; users cannot reload VHDL or change board without restarting.
 - **What:** Three buttons in the simulation footer: `[Back to Boards]`, `[Change VHDL]`, `[Reload VHDL]`. `Reload` re-runs `analyze_vhdl()` on the same file and re-enters sim.
-- **Touches:** `sim/sim_testbench.py`, `src/fpga_sim/sim_bridge.py` (return code signalling intent), `src/fpga_sim/__main__.py:351-430` (handle new intents).
+- **Touches:** `sim/sim_testbench.py`, `src/fpga_sim/sim_bridge.py` (return code signalling intent), `src/fpga_sim/__main__.py` (`main()` loop — handle new intents).
 - **Effort:** L.
 - **Dependencies:** Soft: benefits from D4 (shared button helper).
 - ⚠ **Carried-forward (from D4 ✅ / U1 ✅):** reuse `ui/widgets/button.py` for the toolbar buttons (it is importable in the sim subprocess too). Also note the sim screen already has an *inert* F1/`?` help stub (set by U1 but currently unconsumed) — wire it to `HelpDialog` if you want in-sim help alongside the toolbar.
@@ -110,7 +110,7 @@ This document inventories all viable improvements and ranks them by impact.
 - **Why:** Queued in memory (#4). Today LEDs are binary; PWM designs (`hdl/blinky_pwm.vhd` already exists) look broken.
 - **What:** Sample LED state N times per displayed frame (e.g. 10 sub-steps), average to a `LED.brightness in [0,1]` float, use to interpolate `RED_OFF` -> `RED_ON`.
 - **Risk:** Multiple `dut.led.value` reads per frame changes the simulation timing model. Each read requires a cocotb `Timer` await, so N sub-steps per frame multiplies the per-frame simulation cost by N. This will reduce the current 37.7 fps baseline. Mitigate by making sub-step count configurable (default 1 = current behavior, opt-in to N > 1 for PWM designs). Benchmark before/after.
-- **Touches:** `sim/sim_testbench.py` (multiple `dut.led.value` reads per draw), `src/fpga_sim/ui/components.py:116-148` (`LED.draw`).
+- **Touches:** `sim/sim_testbench.py` (multiple `dut.led.value` reads per draw), `src/fpga_sim/ui/components.py` (`LED.draw`).
 - **Effort:** M.
 - **Dependencies:** None (opt-in, so no regression to existing behavior).
 - **Done when:** a PWM-driven LED shows intermediate brightness proportional to duty cycle, and the default (1 sub-step) matches current performance.
@@ -132,9 +132,9 @@ This document inventories all viable improvements and ranks them by impact.
 | ~~U12~~ | ~~Compact board summary format (e.g. `"4 LEDs · 2 BTN · 4 SW · 4-digit 7-seg"`)~~ ✅ | `board_loader.py` (`BoardDef.summary`) | XS |
 | ~~U13~~ | ~~Arrow / Page-Up / Page-Down navigation in board + file lists~~ ✅ | `ui/board_selector.py`, `ui/vhdl_picker.py` | S |
 | U14 | `P` key to pause/resume simulation; pause indicator in SimPanel | `sim/sim_testbench.py`, `ui/sim_panel.py` | S |
-| U15 | Compact mode for `SimPanel` (toggle via existing `S` shortcut family) | `ui/sim_panel.py:282-308` | S |
-| U16 | Enforce minimum window size (800x600) with friendly warning | `__main__.py:184-187` | XS |
-| U17 | Pre-allocate common font sizes at startup (eliminates LRU eviction churn) | `ui/constants.py:41-49` | XS |
+| U15 | Compact mode for `SimPanel` (toggle via existing `S` shortcut family) | `ui/sim_panel.py` | S |
+| U16 | Enforce minimum window size (800x600) with friendly warning | `__main__.py` | XS |
+| U17 | Pre-allocate common font sizes at startup (eliminates LRU eviction churn) | `ui/constants.py` | XS |
 | U18 | Recent-files section in `VHDLFilePicker` (consumes `recent[]` from U5) | `ui/vhdl_picker.py` | S |
 | U19 | Metrics-enable checkbox surfacing `FPGA_SIM_METRICS` env var | `ui/sim_panel.py` or Settings dialog | XS |
 
@@ -177,8 +177,6 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** D1 ✅ (unified wrapper template is in place).
 - **Done when:** a muxed 7-seg board (e.g. Nexys4-DDR) shows correct digits via the physical scan interface.
 
-**Parked (not scheduled):** *LCD / OLED display support* — a stretch goal from the original `prompt_info` vision (alongside 7-seg, which shipped). No board JSON models a character LCD / OLED today and no user has requested it; recorded here for completeness only.
-
 ### Performance (mostly already done)
 
 `memory/project_sim_performance.md` documents PR #31's tuning (37.7 fps, 0.0036x real-time on Arty A7-35; GHDL dominates at 98.4 %). Remaining cheap wins:
@@ -186,6 +184,8 @@ This document inventories all viable improvements and ranks them by impact.
 - **U23.** Dirty-flag redraw — skip `_draw()` when no LED / switch / button / 7-seg state changed since last frame. Touches `sim/sim_testbench.py` draw loop and `ui/board_display.py`. **Effort:** S. **Done when:** frame rate stays at 30 fps cap but CPU usage drops when no state changes.
 - **U24.** Batch multiple `Timer` calls per frame at high speed-slider settings (today >0.1x is CPU-capped). **Effort:** M. **Done when:** high speed-slider settings show measurably higher simulation throughput.
 - **U25.** Profile GHDL GPI vs VHDL eval to find the next bottleneck. **Effort:** investigative. **Done when:** a written profile report identifies the top-3 bottlenecks with data.
+
+See also **P1** (NVC elaborate-once / run-many) in the [Icebox](#icebox).
 
 ---
 
@@ -195,15 +195,15 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### D1. Generate the VHDL wrapper from one source ✅
 
-- ✅ **2026-05-28.** Merged `sim_wrapper_template.vhd` + `sim_wrapper_7seg_template.vhd` into one template with conditional seg placeholders spliced by `_generate_wrapper()`; deleted the 7-seg template and `_choose_wrapper_template()`. Unblocks **U21** / **U22**.
+- Shipped 2026-05-28. Unblocks **U21** / **U22**. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### D2. Backend base class with override-only differences ✅
 
-- ✅ **2026-06-25 (PR #115).** Converted `_SimBackend` from a `Protocol` to an **ABC** and hoisted the four discovery helpers (`find` / `available` / `lib_dir` / `sim_bin_lib`) onto it as `@classmethod`s keyed on each backend's `NAME`; `_GHDLBackend` / `_NVCBackend` now override only `NAME` + the four per-simulator command builders (`plugin_lib_name` / `analyze_cmd` / `elaborate_cmd` / `run_cmd`), which stay `@staticmethod`. `_backend()` now returns `type[_SimBackend]`. ~19 LOC of duplication removed from `sim_bridge.py`. As predicted, `test_backend_has_all_protocol_methods` had to be relaxed (static- *or* classmethod); two guard tests were added so the shared helpers must stay inherited (absent from each subclass `__dict__`), locking in the dedup. Unblocks **U20** (a third backend now overrides only `NAME` + the command builders, no copy-paste).
+- Shipped 2026-06-25 (PR #115). `_SimBackend` is now an ABC; unblocks **U20** (a third backend overrides only `NAME` + the command builders). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### D3. UIComponent base class
 
-- **Why:** `LED`, `Switch`, `Button` in `components.py:116-233` share an identical `__init__(index, info)` signature, identical `label` property logic, and an identical `callback` attribute pattern. `SevenSeg` is similar but uses `(index, has_dp)`.
+- **Why:** `LED`, `Switch`, `Button` in `components.py` share an identical `__init__(index, info)` signature, identical `label` property logic, and an identical `callback` attribute pattern. `SevenSeg` is similar but uses `(index, has_dp)`.
 - **What:** Abstract base `UIComponent` with `index`, `info`, `rect`, `label` property; subclass-specific `state` / `pressed` / `bits` stay in children. Optional: register components into a single `board.components: list[UIComponent]` for unified hit-testing.
 - **Touches:** `src/fpga_sim/ui/components.py`; small cleanup in `ui/board_display.py`.
 - **Effort:** S.
@@ -212,26 +212,26 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### D4. Shared button-drawing helper ✅
 
-- ✅ **2026-05-31 (PR #83).** Added `ui/widgets/button.py` (`ButtonStyle` + `draw_button`) and routed all four sites through it (board_display footer, error_dialog, sim_panel clock steppers, the sim Stop/Pause overlay — across *both* processes); deleted `sim_panel._draw_btn`; the clock steppers gained hover feedback. 7 new tests. Consumed by **U1 ✅**; **U5 / U7** should reuse it.
+- Shipped 2026-05-31 (PR #83). `ui/widgets/button.py` (`ButtonStyle` + `draw_button`); **U5 / U7** should reuse it. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### D5. Platform-aware path helper
 
-- **Why:** `_build_sim_env()` (`sim_bridge.py:493-550`) repeats the PATH-prepend pattern for Windows and Linux; the `IS_WINDOWS` branching is interleaved with logic that doesn't actually differ.
+- **Why:** `_build_sim_env()` (`sim_bridge.py`) repeats the PATH-prepend pattern for Windows and Linux; the `IS_WINDOWS` branching is interleaved with logic that doesn't actually differ.
 - **What:** Extract `_compose_path(extra: list[str], var: str = "PATH") -> str`; flatten Windows/Linux branches to differ only in their `extra` list contents.
-- **Touches:** `src/fpga_sim/sim_bridge.py:493-550`. Modest LOC reduction, large clarity win.
+- **Touches:** `src/fpga_sim/sim_bridge.py`. Modest LOC reduction, large clarity win.
 - **Effort:** S.
 - **Dependencies:** None.
 - **Done when:** `_build_sim_env()` has no interleaved `if IS_WINDOWS` blocks; platform differences are isolated to the `extra` path lists.
 
 #### D15. Consolidate scattered colors into the single source of truth ✅
 
-- ✅ **2026-06-24 (PR #109).** New `ui/theme.py` — a frozen `Theme` dataclass (~80 semantic color roles + the vendor-color map, defaults = today's pcb-green) and a single swappable `THEME` instance; `constants.py` keeps only base neutrals + `get_font` / `_ui_scale`; ~112 inline RGB literals across 9 files now read `THEME.<role>`. Shipped **pixel-identical** (all 278 board SVGs byte-for-byte unchanged), import graph kept acyclic (`constants ← widgets.button ← theme`); 12 new tests. Front-loads **U6**'s container shape (see U6's ⚠ carried-forward note).
+- Shipped 2026-06-24 (PR #109). `ui/theme.py` (`Theme` + swappable `THEME`); front-loads **U6**'s container shape (see U6's ⚠ carried-forward note). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 ### Tier 2 — Architecture & state
 
 #### D6. Extract a `ScreenController` from `__main__.py`
 
-- **Why:** `main()` in `__main__.py:174-438` is a 264-line function with a `while`-loop juggling 4 screen states via implicit transitions (`_return_to_board`, `current_vhdl_path`, `current_work_dir`, `_work_dir_simulator`, `_back_to_boards`, `_new_path`, `_first_pick`, `_intent`). Reading it requires holding all of that in your head; the nested VHDL-picker loop at lines 294-335 hits 4 levels of indentation.
+- **Why:** `main()` in `__main__.py` is a 264-line function with a `while`-loop juggling 4 screen states via implicit transitions (`_return_to_board`, `current_vhdl_path`, `current_work_dir`, `_work_dir_simulator`, `_back_to_boards`, `_new_path`, `_first_pick`, `_intent`). Reading it requires holding all of that in your head; the nested VHDL-picker loop hits 4 levels of indentation.
 - **What:** Two refactors, sequenced:
   - **D6a ✅ (PR #121).** Replaced the stringly-typed screen results (`"back"`, `"load_vhdl"`, `"simulate"`, `"quit"`, `"retry"`) with **two** enums in a new leaf module `ui/results.py`: `ScreenResult` (BACK / LOAD_VHDL / SIMULATE / QUIT) for `FPGABoard.run()`, and `DialogResult` (RETRY / BACK) for `ErrorDialog.run()`, both re-exported from `ui/__init__.py`. Kept as two enums (not one shared) so mypy rejects passing a dialog result where a screen result is expected — both have a `BACK`, but the types are disjoint. `FPGABoard.run()` now delegates its exit-flag mapping to a unit-tested `_result()` seam. 7 new tests; `mypy .` confirmed to flag the three misuse shapes (wrong return, wrong assignment, wrong arg).
   - **D6b.** Lift the loop body into a `ScreenController` class with explicit transition methods (`on_board_selected`, `on_vhdl_loaded`, `on_simulate`, `on_back`) and a `SessionState` dataclass holding the VHDL / work-dir / simulator tuple. Now unblocked by D6a.
@@ -241,9 +241,9 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### D7. Decompose `launch_simulation()`
 
-- **Why:** `sim_bridge.py:553-648` mixes env construction, generic injection, NVC re-elaboration, env-var marshalling, and subprocess invocation — ~100 LOC.
+- **Why:** `sim_bridge.py` mixes env construction, generic injection, NVC re-elaboration, env-var marshalling, and subprocess invocation — ~100 LOC.
 - **What:** Split into `_prepare_run_env(board_json, vhdl_path, generics, sim_dims) -> env, cmd` and `_invoke_run(cmd, env, cwd) -> bool`. Makes env construction unit-testable.
-- **Touches:** `src/fpga_sim/sim_bridge.py:553-648`; new tests in `tests/test_sim_bridge_backend.py`.
+- **Touches:** `src/fpga_sim/sim_bridge.py`; new tests in `tests/test_sim_bridge_backend.py`.
 - **Effort:** M.
 - **Dependencies:** None.
 - **Done when:** `launch_simulation()` is a thin orchestrator; `_prepare_run_env()` has unit tests that verify env dict contents without launching a subprocess.
@@ -262,26 +262,26 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### D9. `Literal` types for stringly-typed identifiers ✅
 
-- ✅ Defined `Simulator = Literal["ghdl", "nvc"]` (in `sim_bridge.py`) and threaded it through `analyze_vhdl` / `launch_simulation` / `_backend` / `detect_simulators` / session config. Extend with `"iverilog"` when **U20** lands.
+- Shipped. `Simulator = Literal["ghdl", "nvc"]` in `sim_bridge.py`; extend with `"iverilog"` when **U20** lands. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### D10. Pin pre-commit hooks consistently; add `.editorconfig` ✅
 
-- ✅ Added `.editorconfig` (Python 4-space / 100-col, matching ruff). **Superseded (2026-06-22, #102):** hooks are no longer `rev:`-pinned — ruff / ruff-format / mypy / rumdl run as *local* hooks tracking `uv.lock` as the single source of truth.
+- Shipped; superseded 2026-06-22 (#102) — hooks now run *local*, tracking `uv.lock`. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 ### Tier 4 — Documentation
 
 #### D11. Module + mock-class docstrings ✅
 
-- ✅ Added the module docstring explaining the exec-in-mock-namespace strategy, plus one-line docstrings on the eight mock classes, the resource helpers, and `_make_namespace()`. *(The mock-exec parser later moved out to `scripts/amaranth_parser.py` in #104.)*
+- Shipped (#104 later moved the parser to `scripts/amaranth_parser.py`). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
-#### D12. Architecture diagram in CONTRIBUTING.md
+#### D12. Architecture diagram in CONTRIBUTING.md (partially done)
 
-- **Why:** CLAUDE.md has a great file-role table; CONTRIBUTING.md has install steps but no architecture overview for contributors. An ASCII data-flow diagram would lower the on-ramp.
-- **What:** Add an "Architecture overview" section with launcher/sim phase diagram, the `BoardDef` / `ComponentInfo` / `SevenSegDef` dataclasses, and the VHDL contract summary.
-- **Touches:** `CONTRIBUTING.md`.
-- **Effort:** S.
+- **Why:** CLAUDE.md has a great file-role table. CONTRIBUTING.md now *has* an "Architecture overview" section (two-process model, VHDL-side clock, SimPanel, board-sync table, session state) — but in **prose**, deferring the deep view to the README, with no diagram or dataclass/contract summary.
+- **What (remaining):** Add an **ASCII data-flow diagram** (launcher → sim subprocess) plus the `BoardDef` / `ComponentInfo` / `SevenSegDef` dataclass shapes and the VHDL contract summary — or, if the prose section is judged sufficient, close D12 as done.
+- **Touches:** `CONTRIBUTING.md` (extend the existing `## Architecture overview`).
+- **Effort:** XS (section scaffolding already exists).
 - **Dependencies:** None.
-- **Done when:** CONTRIBUTING.md contains an architecture section with a data-flow diagram.
+- **Done when:** the Architecture overview includes an ASCII data-flow diagram and the dataclass/contract summary (or a documented decision that the prose suffices).
 
 ### Tier 5 — Tests
 
@@ -376,6 +376,21 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 ---
 
+## Icebox
+
+**Parked / deferred-on-trigger items.** Each carries a **trigger** — the condition under which it should graduate into a tier above. Unlike the tiered backlog these are blocked or speculative, so they hold no sprint slot and don't appear in the dependency graph. *(Consolidated here 2026-06-27 from session memory, where neither contributors nor a future maintainer could see the item or watch its trigger.)*
+
+| ID | Item | Trigger to schedule | Effort | Notes |
+|---|---|---|---|---|
+| **P1** | NVC backend tuning — elaborate-once, run-many | Any push to raise NVC simulation throughput | M | `launch_simulation()` re-elaborates NVC (`-e`) on every run (see **D7**). Caching the elaborated design across runs of the same VHDL would cut per-run startup. NVC-only (GHDL has no separate elaborate step); benchmark before/after. |
+| **P2** | Board-sync Phase 3 — merge-aware / curation sync | Upstream removes a board we ship (recon to date: 0 removed) | L | Retain upstream-removed boards, dual upstream/adopted timestamps, `--check`, `--with-dates`. The schema `source` block permits additive provenance fields. A *subset* (preserve hand-added `port_conventions` / `peripherals` on re-sync, ~10 lines) is already noted under **U21**. Maintainer tooling in `scripts/sync_*.py`, not the app. |
+| **P3** | Mercury board 7-segment | A user requests it, or the I2C-expander path becomes worth modeling | M/L | Mercury's display sits behind an I2C GPIO expander (not directly pinned), so it was excluded from 7-seg v1. Needs an expander model + readback path. |
+| **P4** | Python 3.14 in the CI matrix | pygame **and** cocotb both ship `cp314` wheels | S | As of 2026-06, pygame 2.6.1 / cocotb 2.0.1 top out at `cp313`; adding 3.14 breaks `uv sync` (pygame sdist build). Re-check PyPI wheel tags before bumping the matrix upper bound. |
+
+**Also parked (speculative, no trigger):** *LCD / OLED display support* — a stretch goal from the original `prompt_info` vision (alongside 7-seg, which shipped). No board JSON models a character LCD / OLED and no user has requested it; recorded for completeness only.
+
+---
+
 ## Critical files modified across the roadmap
 
 - `src/fpga_sim/__main__.py` — U2 ✅, U7, D6a ✅, D6b, D9 ✅
@@ -401,12 +416,12 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 ## Existing utilities to reuse
 
 - `ErrorDialog` modal pattern (`ui/error_dialog.py`) -> reuse layout for help / settings / tooltip dialogs.
-- `get_font()` LRU cache (`ui/constants.py:41-49`) -> already used everywhere; pre-allocation in U17 just primes it.
-- `_generate_wrapper()` (`sim_bridge.py:386-414`) -> unified template substitution with conditional 7-seg splicing (D1 ✅).
+- `get_font()` LRU cache (`ui/constants.py`) -> already used everywhere; pre-allocation in U17 just primes it.
+- `_generate_wrapper()` (`sim_bridge.py`) -> unified template substitution with conditional 7-seg splicing (D1 ✅).
 - `_SimBackend` ABC (`sim_bridge.py`) — D2 ✅ made it an ABC sharing `find()` / `available()` / `lib_dir()` / `sim_bin_lib()` as classmethods; a third backend (U20) overrides only `NAME` + the command builders.
 - `session_config.save_session` / `load_session` (`session_config.py`) -> extend schema for U5; existing call sites unchanged.
 - `sim_metrics.py` / `scripts/analyze_metrics.py` -> consumed by U19; no new infra needed.
-- `BoardDef.summary` property (`board_loader.py:433-443`) -> update format for U12; extend for U0 filter logic.
+- `BoardDef.summary` property (`board_loader.py`) -> update format for U12; extend for U0 filter logic.
 - `ui/theme.py` `THEME` object (D15 ✅) — the grouped semantic palette U6 rethemes; `ui/constants.py` retains the base neutrals (`WHITE`, `GRAY`, …).
 
 ---
@@ -426,7 +441,4 @@ Per-item verification is described in each entry's "Done when" criterion above. 
 
 ## Delivery log
 
-Full per-PR detail for every ✅ item is in `CHANGELOG.md`, the linked PRs, and this file's own git history (`git show <merge-commit>:docs/improvement_roadmap.md` returns the pre-condense card). The forward-relevant gotchas from completed work now live as **⚠ Carried-forward** notes on the open cards they affect (**U5**, **U6**, **U7**) and in the Tier-3 note on **U14**. The one cross-cutting note without a single home:
-
-- **Selector key handling (from U1 ✅).** Any new *printable* keyboard shortcut on the board selector must be intercepted in `BoardSelector._handle_keydown()` *above* the `filter_text += ev.unicode` branch (match on `ev.unicode`), or the keystroke leaks into the text filter — this is how `?` and type-to-filter coexist.
-- **Off-main-thread work (from U2 ✅).** `run_with_spinner()` is the pattern for any future long-running launcher operation (simulator install probe, board re-sync, large-file load): the worker callable runs on a `ThreadPoolExecutor` thread and **must not touch pygame** — only the main thread draws. Pass arguments with `functools.partial` (not a `lambda`) when the call site is inside a loop, so loop variables are bound eagerly (avoids B023 and the closure-widening that would otherwise re-introduce `str | None`).
+Completed-item detail and the cross-cutting carried-forward notes now live in **[roadmap_delivered.md](roadmap_delivered.md)**. Per-PR detail is also in `CHANGELOG.md` and the linked PRs; forward-relevant gotchas from completed work appear as **⚠ Carried-forward** notes on the open cards they affect (**U5**, **U6**, **U7**) and in the Tier-3 note on **U14**.
