@@ -291,6 +291,17 @@ This project follows [Semantic Versioning](https://semver.org):
 | `MINOR` (0.**x**.0) | New features or meaningful refactors; backward-compatible |
 | `MAJOR` (**x**.0.0) | Breaking changes to the public interface or VHDL design contract |
 
+### When to cut a release
+
+- **MINOR (`0.x.0`)** — at the end of each roadmap sub-sprint, *or* when
+  `[Unreleased]` has accumulated ~3–5 user-visible changes, whichever comes
+  first. Always cut at a green-suite, no-open-PR boundary.
+- **PATCH (`0.x.y`)** — promptly for any shipped bug or security fix a user
+  would hit; don't wait for the next minor.
+- **Avoid "release gravity."** Don't let `[Unreleased]` grow past roughly one
+  sprint of work — small, frequent releases keep the changelog reviewable and
+  the tag history meaningful.
+
 ### Release checklist
 
 1. **Create a release branch** from `main`:
