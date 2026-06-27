@@ -13,7 +13,7 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~5,700 LOC across 10+ Python modules (≈6,400 incl. `sim/`), 31 test files (1036 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 281 board definitions from four sources (278 loadable), performance heavily tuned (PR #31), v0.8.0 released (2026-06-26).
+The simulator is mature: ~5,700 LOC across 10+ Python modules (≈6,400 incl. `sim/`), 31 test files (1036 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, 278 board definitions from four sources, performance heavily tuned (PR #31), v0.8.0 released (2026-06-26).
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
