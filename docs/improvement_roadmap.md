@@ -1,6 +1,6 @@
 # Virtual FPGA Boards — Improvement Roadmap
 
-*Drafted 2026-05-19 · Updated 2026-06-27 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
+*Drafted 2026-05-19 · Updated 2026-06-29 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
 
 A comprehensive, impact-weighted roadmap covering improvements from two perspectives:
 
@@ -63,12 +63,12 @@ This document inventories all viable improvements and ranks them by impact.
 #### U5. Settings dialog + extended session persistence
 
 - **Why:** Today only board / VHDL / simulator are saved; window size, speed slider, theme, default clock are lost every restart. The roadmap also needs a place to put new toggles (metrics, waveform, theme).
-- **What:** New `ui/settings_dialog.py` (gear icon in board preview header). Extend `session_config.py` schema with: `window_w`, `window_h`, `speed_factor`, `theme`, `metrics_enabled`, `waveform_enabled`, `recent[]` (last 10 board+vhdl tuples).
-- **Touches:** `src/fpga_sim/session_config.py`; `ui/board_display.py` header; new `ui/settings_dialog.py`.
+- **What:** New `ui/settings_dialog.py` (gear icon in board preview header). Extend `session_config.py` schema with: `window_w`, `window_h`, `speed_factor`, `theme`, `metrics_enabled`, `waveform_enabled`, `recent[]` (last 10 board+vhdl tuples). Also move the `save_session()` call site so the session is written when a VHDL file is *picked* (and on board/simulator change), not only at simulation launch as today (the lone `save_session()` call in `main()`) — otherwise a browsed-but-unrun file and its directory are lost on restart. This is what makes **U18**'s recent-files list useful across sessions.
+- **Touches:** `src/fpga_sim/session_config.py`; `src/fpga_sim/__main__.py` (move the `save_session()` call site so it fires on pick); `ui/board_display.py` header; new `ui/settings_dialog.py`.
 - **Effort:** M/L.
 - **Dependencies:** None. But **U6, U10, U18, U19** all depend on this (see Dependencies section).
 - ⚠ **Carried-forward (from U1 ✅ / D4 ✅):** the settings dialog is a *blocking overlay* opened inside a live screen's loop — like `HelpDialog` it swallows `WINDOWRESIZED`, so it must reconcile the parent to the live surface after closing (`_sync_to_surface()`, reflowing `FPGABoard._layout`) or the layout stays stale on a resize. Reuse `ui/widgets/button.py` for its buttons.
-- **Done when:** settings dialog opens from a gear icon, persists window size / speed / theme across restarts, and `recent[]` is populated on each simulation run.
+- **Done when:** settings dialog opens from a gear icon, persists window size / speed / theme across restarts, and `recent[]` / last-used directory are updated whenever a VHDL file is picked or a simulation runs (not only on simulate).
 
 #### U26. Visual README — interactive demo + selector GIFs (docs / marketing) ✅
 
@@ -143,6 +143,8 @@ This document inventories all viable improvements and ranks them by impact.
 **Note on U14 — carried-forward (from U1 ✅):** Register the new `P` key in the single `SHORTCUTS` table in `ui/help_dialog.py` (alongside ESC/S/etc.) so the help legend can't drift from the real handlers. When unit-testing the key handler, note that synthetic pygame KEYDOWN events lack `.unicode` — read it via `getattr(ev, "unicode", "")` (as `FPGABoard._handle_events` does).
 
 **Note on U18/U19:** Both require U5 (Settings dialog) for the `recent[]` data source and metrics toggle location respectively.
+
+**Note on U18 — scope (persist-on-pick + retry start-dir):** U18 surfaces `recent[]` as an "Open Recent" section at the top of the picker, but two adjacent papercuts belong here too. (1) **Persist on pick, not only on simulate:** today `save_session()` runs only at simulation launch (`__main__.py`), so a file browsed-to but never run is lost on restart — `recent[]` and the start directory must update when a VHDL file is *picked* (depends on U5's schema + save-trigger move). (2) **Don't reset the start dir on a validation retry:** after an encoding/contract error the re-opened picker jumps back to bundled `hdl/` instead of the user's directory (the `_first_pick`/`hdl_dir` branch in `main()`), forcing re-navigation — keep the last-visited directory across retries. Touches `__main__.py` in addition to `ui/vhdl_picker.py`.
 
 **Note on U13 — done (2026-06-01, PR #85):** Keyboard navigation on both list screens — `↑`/`↓` + `PgUp`/`PgDn` move the cursor (auto-scrolled into view) and `Enter` activates the row; each screen's KEYDOWN now routes through a unit-testable `_handle_keydown()`. 32 new tests.
 
@@ -387,6 +389,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **P3** | Mercury board 7-segment | A user requests it, or the I2C-expander path becomes worth modeling | M/L | Mercury's display sits behind an I2C GPIO expander (not directly pinned), so it was excluded from 7-seg v1. Needs an expander model + readback path. |
 | **P4** | Python 3.14 in the CI matrix | pygame **and** cocotb both ship `cp314` wheels | S | As of 2026-06, pygame 2.6.1 / cocotb 2.0.1 top out at `cp313`; adding 3.14 breaks `uv sync` (pygame sdist build). Re-check PyPI wheel tags before bumping the matrix upper bound. |
 | **P5** | Sync-time peripheral extraction | A peripheral type becomes consumable — the sim gains a peripheral model (VGA/audio/…), or the board-info UI wants to list on-board peripherals | M | All three parsers extract only LED/button/switch (+clock/7-seg) and discard everything else — `peripheral` appears nowhere in `scripts/` or `src/`. Upstream exposes the data richly: amaranth already has typed `Resource` stubs (`VGAResource`, `UARTResource`, `SDRAMResource`, `DDR3Resource`, …) that are currently inert; Digilent XDC section headers (`## VGA`, `## Audio`, …) are already parsed, then dropped; litex `_io` names (`serial`, `sdram`, `eth`, …) need a name→type map. `BoardDef` has no `peripherals` field, so the 6 hand-authored `custom/` boards' `peripherals` blocks are schema-valid but silently dropped at load. Needs: parser extraction → new `BoardDef.peripherals` field → JSON round-trip (the schema already defines `peripheral`). Auto-extracted data is shallower than the hand-curated attributes (`bits_per_channel`, `size_mb`, chip names). Complements **P2** / **U21** (preserve hand-added peripherals on re-sync) and the eventual per-type discriminated-union schema. |
+| **P6** | User-configurable / external boards directory | A user installs via wheel (custom boards under the package dir are wiped on upgrade), or asks to keep board JSON outside the package | S/M | `get_default_boards_path()` hardcodes `<package>/../../boards` with no override and `discover_boards()` is only ever called with it, so the board selector is closed to the bundled tree (custom boards must live in `boards/custom/` *inside* the package). Add a `FPGA_SIM_BOARDS_PATH` env var and/or a Settings entry (U5) pointing at an extra source root (e.g. `~/.fpga_simulator/boards/`), merged with the bundled sources. The loader already treats each subdirectory as an independent source, so an external root drops in with no schema change. Distinct from **P2** (upstream sync curation) — this is user-supplied boards. Pairs with **U5** / **U18** (same Settings/persistence surface; the VHDL picker already browses arbitrary dirs, so this closes the equivalent gap on the board side). |
 
 **Also parked (speculative, no trigger):** *LCD / OLED display support* — a stretch goal from the original `prompt_info` vision (alongside 7-seg, which shipped). No board JSON models a character LCD / OLED and no user has requested it; recorded for completeness only.
 
@@ -394,7 +397,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 ## Critical files modified across the roadmap
 
-- `src/fpga_sim/__main__.py` — U2 ✅, U7, D6a ✅, D6b, D9 ✅
+- `src/fpga_sim/__main__.py` — U2 ✅, U5 (save-on-pick), U7, U18, D6a ✅, D6b, D9 ✅
 - `src/fpga_sim/sim_bridge.py` — U4, U10, U21, D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅
 - `src/fpga_sim/session_config.py` — U5, U18, D9 ✅, D14
