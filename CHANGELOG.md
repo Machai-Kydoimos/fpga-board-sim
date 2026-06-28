@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Tightened the board JSON schema: the board object and the `clock_object`,
+  `component`, `seven_seg`, and `source` definitions now set
+  `additionalProperties: false`, so a misspelled field (e.g. `default_clk_hz`
+  for `default_clock_hz`) is rejected instead of silently ignored. All 278
+  boards already conform. The explicitly future-facing sections — `peripherals`
+  (intentionally free-form) and the `port_conventions` subtree (shape still
+  settling) — remain open.
+
 ## [0.8.0] - 2026-06-26
 
 ### Added

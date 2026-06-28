@@ -82,3 +82,52 @@ def test_schema_validates_with_jsonschema(schema, board_files):
             jsonschema.validate(data, schema)
         except jsonschema.ValidationError as e:
             pytest.fail(f"{json_file.name}: {e.message}")
+
+
+def _minimal_valid_board() -> dict:
+    """A board with exactly the required fields and nothing else."""
+    return {
+        "name": "T",
+        "class_name": "TP",
+        "vendor": "X",
+        "device": "d",
+        "clocks": [1000000],
+        "default_clock_hz": 1000000,
+        "leds": [],
+        "buttons": [],
+        "switches": [],
+    }
+
+
+def test_schema_forbids_unknown_top_level_key(schema):
+    """additionalProperties:false on the board object catches typo'd field names."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["default_clk_hz"] = 1  # typo of default_clock_hz
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(board, schema)
+
+
+def test_schema_forbids_unknown_component_key(schema):
+    """Components (led/button/switch) reject undeclared keys too."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["leds"] = [{"name": "led", "number": 0, "bogus": 1}]
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(board, schema)
+
+
+def test_schema_allows_extra_peripheral_key(schema):
+    """peripherals stay open (additionalProperties:true) for future typed fields."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["peripherals"] = [{"type": "vga", "bits_per_channel": 8, "future_field": "x"}]
+    jsonschema.validate(board, schema)  # must not raise
+
+
+def test_schema_allows_extra_port_convention_key(schema):
+    """port_conventions stay open while the feature's shape is still settling."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["port_conventions"] = {"terasic": {"leds_green": {"name": "LEDG", "width": 9}}}
+    jsonschema.validate(board, schema)  # must not raise
