@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Board-sync scripts now validate every generated board against
+  `boards/schema/board.schema.json` before writing. Validation happens in the
+  shared `write_outputs()` chokepoint, so all sources (and any future one) are
+  covered; an invalid board aborts the sync with no partial output, and
+  `--dry-run` doubles as a schema check. Catches parser regressions at
+  generation time instead of later in the test suite.
+
 ### Changed
 
 - Tightened the board JSON schema: the board object and the `clock_object`,

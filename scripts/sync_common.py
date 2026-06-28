@@ -11,6 +11,8 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+from jsonschema.validators import validator_for
+
 
 def sanitize_filename(name: str) -> str:
     """Convert a board name to a filesystem-safe base name."""
@@ -51,14 +53,56 @@ def download_archive(repo: str, ref: str, timeout: int = 120) -> bytes:
         return bytes(resp.read())
 
 
+def validate_board_jsons(board_jsons: dict[str, str], schema_path: Path) -> None:
+    """Validate every serialized board JSON against the board schema.
+
+    Runs at sync time so a parser regression is caught when the JSON is
+    generated, rather than later in the test suite. All violations across all
+    boards are collected and reported together in a single ``ValueError``;
+    raises ``FileNotFoundError`` if the schema itself is missing.
+    """
+    if not schema_path.exists():
+        raise FileNotFoundError(
+            f"Board schema not found at {schema_path}; cannot validate sync output."
+        )
+
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    validator_cls = validator_for(schema)
+    validator_cls.check_schema(schema)
+    validator = validator_cls(schema)
+
+    errors: list[str] = []
+    for filename, content in sorted(board_jsons.items()):
+        data = json.loads(content)
+        for err in validator.iter_errors(data):
+            location = "/".join(str(p) for p in err.absolute_path) or "<root>"
+            errors.append(f"{filename}: {err.message} (at {location})")
+
+    if errors:
+        errors.sort()
+        listing = "\n".join(f"  - {e}" for e in errors)
+        raise ValueError(f"Board schema validation failed ({len(errors)} issue(s)):\n{listing}")
+
+
 def write_outputs(
     output_dir: Path,
     board_jsons: dict[str, str],
     commit_sha: str,
     repo: str,
     dry_run: bool = False,
+    schema_path: Path | None = None,
 ) -> None:
-    """Write JSON board files and a ``_sync_metadata.json`` to the output directory."""
+    """Validate, then write JSON board files and a ``_sync_metadata.json``.
+
+    Every board is validated against the schema before anything is written, so a
+    single invalid board aborts the whole sync with no partial output (and
+    ``--dry-run`` doubles as a schema check). ``schema_path`` defaults to
+    ``<output_dir>/../schema/board.schema.json``.
+    """
+    if schema_path is None:
+        schema_path = output_dir.parent / "schema" / "board.schema.json"
+    validate_board_jsons(board_jsons, schema_path)
+
     if not dry_run:
         output_dir.mkdir(parents=True, exist_ok=True)
 
