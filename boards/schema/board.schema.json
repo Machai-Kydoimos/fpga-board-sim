@@ -85,6 +85,7 @@
       "description": "Future: named presets mapping generic ports to vendor-specific port names"
     }
   },
+  "additionalProperties": false,
   "$defs": {
     "clock_object": {
       "type": "object",
@@ -107,7 +108,8 @@
           "default": false,
           "description": "True if this is the board's default clock"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "component": {
       "type": "object",
@@ -159,7 +161,8 @@
           "default": {},
           "description": "IO standard and other attributes"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "seven_seg": {
       "type": "object",
@@ -170,7 +173,8 @@
         "is_multiplexed": { "type": "boolean" },
         "inverted": { "type": "boolean", "default": false },
         "select_inverted": { "type": "boolean", "default": false }
-      }
+      },
+      "additionalProperties": false
     },
     "source": {
       "type": "object",
@@ -197,7 +201,8 @@
           "format": "uri",
           "description": "URL to board documentation or vendor page"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "peripheral": {
       "type": "object",
