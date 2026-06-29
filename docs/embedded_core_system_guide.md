@@ -35,7 +35,9 @@ A design the simulator accepts must satisfy (see `CLAUDE.md` and `hdl/counter_7s
 - **Filename = top entity name.** `cpu_walking_counter_7seg.vhd` ⇒ `entity cpu_walking_counter_7seg`.
 - **Top generics:** `NUM_SWITCHES, NUM_BUTTONS, NUM_LEDS, NUM_SEGS, COUNTER_BITS` (all `positive`).
   The simulator computes these from the selected board and passes them by name. You may ignore
-  `COUNTER_BITS`. Extra top generics are fine if they have defaults (we add `PRESCALER_BITS`).
+  `COUNTER_BITS`. Extra top generics are fine if they have defaults — but the wrapper passes
+  *only* the five above, so an extra generic like `PRESCALER_BITS` keeps its VHDL default and is
+  effectively **fixed at generation time, not adjustable from the UI**.
 - **Top ports:** `clk : in std_logic`; `sw : in std_logic_vector(NUM_SWITCHES-1 downto 0)`;
   `btn : in ...(NUM_BUTTONS-1 ...)`; `led : out ...(NUM_LEDS-1 ...)`;
   `seg : out std_logic_vector(8*NUM_SEGS-1 downto 0)` (7-seg boards only).
@@ -78,8 +80,10 @@ clk --->| clk        +-------+ cpu_reset  +-----------------+   address[15:0]   
 - **RAM**: zero page, stack, variables.
 - **IO + config**: address decoder + registers; reads `sw`/`btn`/config/tick, writes `led`/`seg`;
   contains the prescaler that generates the tick.
-- **POR**: a small counter that holds the CPU in reset for the first few clocks.
-- **Read mux**: selects ROM/RAM/IO onto `data_in` by address decode.
+- **POR**: a small counter that holds the CPU in reset for the first few clocks (synthesized from
+  signal initial values; see §5).
+- **Read mux**: selects ROM/RAM/IO onto `data_in` by address decode — **combinational** (same-cycle
+  read; see §4 *Bus read timing*), with the default branch driving `x"00"` so the bus is never `'U'`.
 
 ## 4. Choosing or adding a CPU core
 
@@ -113,6 +117,15 @@ can inline a multi-unit core and to reach 65C02/65C816.
 `data_out[7:0]`, `address[15:0]`, `rw` (1=read, 0=write), `sync` (opcode fetch), `nmi`, `irq`
 (active-high, level). No generics.
 
+**Bus read timing — the deepest pothole.** The 6502 (and most simple cores) use a *same-cycle*
+read bus: the core drives `address`/`rw` and expects the byte back on `data_in` **within the same
+clock cycle**. So your ROM, RAM, IO registers, and read mux must be **combinational** on the read
+path (address/decode in → byte out, no output register). A registered ("synchronous") memory
+returns data one cycle late, so the core latches the *previous* address's byte and executes garbage
+from the first fetch. When adding a core, find the exact edge/phase it samples `data_in` and match
+the read path to it; combinational read is the safe default for sim-only use. (Real hardware uses
+registered block-RAM plus a wait state — not needed here.)
+
 ## 5. Reset & cold-start (generalized)
 
 **Every CPU has a boot convention.** Identify, for your core: where it fetches the initial PC
@@ -134,9 +147,10 @@ end process;
 cpu_reset <= '1' when por_cnt /= "111" else '0';
 ```
 
-This holds reset high ~7 clocks, then releases it. (This is **sim-only** — it relies on init
-values rather than an external reset pin. That is exactly the simulator's model; on real hardware
-you'd wire a reset controller.)
+This holds reset high ~7 clocks, then releases it. **Size the counter to your core's actual reset
+requirement** — "7" is a starting guess; widen it if the PC never loads from the reset vector.
+(This is **sim-only** — it relies on init values rather than an external reset pin. That is exactly
+the simulator's model; on real hardware you'd wire a reset controller.)
 
 **6502 reset vector & cold-start.** On reset the 6502 loads PC from **`$FFFC/$FFFD`**
 (little-endian). Your ROM must place a valid address there pointing at your cold-start routine.
@@ -155,6 +169,14 @@ RESET:  SEI            ; mask IRQ (polling model)
 IRQ/NMI vectors pointing at a single `RTI` if you don't use interrupts (but they must still be
 *valid* bytes, or a stray interrupt/BRK runs garbage). For learning, prefer the full sequence and
 real handlers.
+
+**Metavalue (`'U'`) hygiene — a simulation-only hazard.** GHDL/NVC start every `std_logic` at
+`'U'` (uninitialized), which has no hardware analog. If a `'U'` reaches the CPU's `data_in` — an
+uninitialized RAM read used as an operand or jammed into the PC — it propagates through the entire
+datapath and **never resolves**, so the display simply freezes or goes blank. Defend against it:
+initialize the RAM array to `x"00"`, drive the read mux's default branch to `x"00"`, synthesize the
+POR so the CPU starts defined, and have cold-start zero the variables it reads. When a CPU design
+"does nothing," suspect a `'U'` on the bus first (§14, and *Debugging with waveforms*).
 
 ## 6. Memory & IO map design
 
@@ -185,7 +207,24 @@ at `$FFFC/D`, `$FFFE/F`, `$FFFA/B`.
 
 ## 7. Writing firmware
 
-Patterns (6502, but the shapes generalize). The canonical assembled source lives in
+**Start with the smallest thing that proves the IO path** — the firmware equivalent of `blinky`
+(this is also plan Stage 1). Light one LED and write one fixed digit, then spin:
+
+```asm
+RESET:  SEI
+        CLD
+        LDX #$FF
+        TXS               ; init stack
+        LDA #$01
+        STA $E020         ; LED0 on
+        LDA #$3F          ; glyph for "0"
+        STA $E030         ; digit 0
+SPIN:   JMP SPIN          ; mx65 keeps fetching; display holds
+```
+
+If that shows one steady LED and a "0", your reset vector, POR, read path, and IO writes all work —
+everything else is incremental. Now the full walking-counter patterns (6502, but the shapes
+generalize). The canonical assembled source lives in
 `firmware/cpu_walking_counter_7seg.asm`; the sketches below are the algorithm, not final opcodes.
 
 - **Poll the tick** (decouples visible rate from instruction speed):
@@ -199,6 +238,8 @@ Patterns (6502, but the shapes generalize). The canonical assembled source lives
 - **Query config for board-independence:** `LDA $E004 → N_LEDS`, `LDA $E005 → N_SEGS` at boot.
 - **Button edge-detection** (software rising edge): read `$E002`, compare bit0 against the stored
   `PREVBTN`; on a 0→1 transition toggle `FWD` and `CNT_UP`; then store the new value in `PREVBTN`.
+  Buttons are sampled **once per tick** (not every clock like the reference RTL), so a press must be
+  held ≥ 1 tick to register — fine for a human, but automated tests must hold `btn` across a tick.
 - **Bounce state machine:** advance `POS`; at `0` or `N_LEDS-1` flip `FWD`.
 - **BCD ripple** (decimal odometer): increment digit 0; on `>9` set 0 and carry into the next
   digit across `N_SEGS`; decrement mirrors with borrow (`<0` → 9). Wrap is natural.
@@ -206,8 +247,11 @@ Patterns (6502, but the shapes generalize). The canonical assembled source lives
   glyph bytes from `walking_counter_7seg.vhd`). **One-hot LED:** compute `1<<POS` → `$E020`
   (+`$E021` if `N_LEDS>8`).
 - **Lamp-test:** if `btn(1)` set, write `$FF` to all digit regs and all LED bits.
-- **Switch speed:** popcount `sw`, and only treat every *Nth* tick as a step so each active switch
-  doubles the rate.
+- **Switch speed:** popcount `sw` (= `P`), set `SKIP = max(1, SKIP_BASE >> P)` (e.g. `SKIP_BASE=8`)
+  and treat only every `SKIP`-th tick as a step, so **each active switch halves `SKIP` and doubles
+  the rate**. (A *chosen* approximation of the reference's feel — `walking_counter_7seg.vhd` varies
+  a clock-divider bit and, despite its "doubles" comment, actually quadruples per switch; we match
+  the documented intent, not that bug.)
 
 ## 8. Assembler & ROM embedding
 
@@ -221,9 +265,11 @@ the generator just needs `{bytes, load address, vector values}`.
 | **customasm** | single binary, **ISA described in a ruledef** — great for many CPUs | non-Python binary per OS; author rulesets |
 | **hand-assembled** | zero tooling | error-prone; not general |
 
-**Recommendation:** for a one-off small program, a vendored Python assembler or `ca65` both work;
-for the long-term multi-CPU vision, `customasm` is attractive. Whatever you use, **check in the
-`.asm`, the assembled bytes, and the exact command** so the image is reproducible.
+**Recommendation:** the worked example uses **`ca65` (cc65)** as an external dev-time tool (the
+plan keeps an assembler out of the project's dependencies, so reassembly is not in CI — the
+checked-in `.bin` is the source of truth). For the long-term multi-CPU vision, `customasm` is
+attractive (one ruledef per ISA). Whatever you use, **check in the `.asm`, the assembled bytes,
+and the exact command** so the image is reproducible.
 
 **Embedding as a VHDL ROM** — sparse named association keeps it small regardless of ROM size:
 
@@ -261,9 +307,10 @@ Expose `PRESCALER_BITS` as a generic (default 10). The speed slider scales sim-t
 software division multiplies the rate further.
 
 **Polling vs. interrupts.** Start with **polling** — no ISR, no reentrancy, only a valid IRQ
-vector needed. An **IRQ-driven** version (wire the prescaler strobe to `irq`, point `$FFFE/F` at an
-ISR that steps + acknowledges) is more faithful to real embedded code and worth building as a
-compare/contrast variant once polling works.
+vector needed. Polling samples inputs only once per loop iteration (here, once per tick), so very
+short input pulses can be missed; an **IRQ-driven** version (wire the prescaler strobe to `irq`,
+point `$FFFE/F` at an ISR that steps + acknowledges) reacts per-event, is more faithful to real
+embedded code, and is worth building as a compare/contrast variant once polling works.
 
 ## 10. Generating the file
 
@@ -275,10 +322,9 @@ uv run python scripts/gen_embedded_core.py \
     --out    hdl/cpu_walking_counter_7seg.vhd
 ```
 
-Inputs: a **CPU plugin** (verbatim core + bus/reset/vector conventions), a **system spec** (memory
-
-- IO map, `prescaler_bits`), and a **ROM image**. Output: the single generic-parameterized `.vhd`,
-validated against the contract checker before writing.
+Inputs: a **CPU plugin** (verbatim core + bus/reset/vector conventions), a **system spec**
+(memory + IO map, `prescaler_bits`), and a **ROM image**. Output: the single
+generic-parameterized `.vhd`, validated against the contract checker before writing.
 
 ## 11. Running & verifying
 
@@ -301,6 +347,10 @@ validated against the contract checker before writing.
 6. **Verify** (§11): glyphs valid, odometer advances, LED bounces, `btn(0)` reverses, `btn(1)`
    lamp-test; compare side-by-side with `hdl/walking_counter_7seg.vhd`.
 
+> Once `firmware/cpu_walking_counter_7seg.asm` exists, link or inline its **complete** annotated
+> listing here (byte offsets + the three vector bytes) — a single end-to-end working program is the
+> most useful artifact for a learner; the sketches in §5/§7 are deliberately partial.
+
 ## 13. Extending
 
 - **New subsystems:** add composable IO blocks (UART, timer with compare, GPIO banks) behind the
@@ -322,3 +372,30 @@ validated against the contract checker before writing.
 | Too fast / blurred | prescaler too short / slider too high | Raise `PRESCALER_BITS`; lower the speed slider |
 | LED stuck at one end | `POS` bound wrong / didn't read `N_LEDS` | Read config reg `$E004`; check bounce limits |
 | Works in GHDL, fails in NVC | heap / elaboration differences | NVC already gets `-H 512m`; keep ROM/RAM modest |
+| Display dead from the very first frame | Registered (sync) memory → off-by-one read; CPU fetched garbage | Make ROM/RAM/mux read path **combinational** (§4) |
+| Display frozen/blank; `data_in` shows `U`/`X` | Metavalue propagation from uninitialized RAM/bus | Init RAM to `x"00"`, mux `else => x"00"`, zero vars in cold-start (§5) |
+| `btn(0)` reversal sometimes ignored | Button pulse shorter than one tick (polled once/tick) | Hold ≥ 1 tick; or use the IRQ variant (§9) |
+
+## 15. Debugging with waveforms
+
+When a CPU design misbehaves, dump a waveform and watch the bus — the fastest way to see the reset
+fetch and the main loop (flags are version-dependent; check each simulator's `-r --help`):
+
+```bash
+# GHDL: write a VCD while running headless
+ghdl -r --std=08 --workdir=<wd> sim_wrapper --vcd=cpu.vcd --stop-time=50us
+# NVC: write an FST wave
+nvc --std=2008 -H 512m -r --wave=cpu.fst --stop-time=50us sim_wrapper
+```
+
+Open the trace (GTKWave, Surfer) and watch the core's pins:
+
+- **Reset fetch:** after `cpu_reset` falls, `address` should show `$FFFC` then `$FFFD`, then jump to
+  your RESET routine. If not, the POR is too short or the reset-vector bytes are wrong.
+- **`sync`** marks opcode fetches — count them to confirm the main loop is looping.
+- **`rw`** high = read, low = write — watch a write actually drive `$E020`/`$E030`.
+- **`data_in`** showing `U`/`X` is the tell-tale of metavalue propagation (§5) or an off-by-one
+  registered read (§4); the design looks "dead" on screen.
+
+A 20–50 µs window at `PRESCALER_BITS=10` captures reset plus several ticks — enough to diagnose most
+bring-up failures.
