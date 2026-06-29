@@ -37,7 +37,7 @@ The first concrete target is a **6502** system (using the **mx65** core) running
 
 ### mx65 facts (claimed upstream — confirm in Stage 0/1)
 
-`entity mx65` (no generics): `clock:in`, `reset:in` *(active-high, async)*, `ce:in` *(clock-enable)*, `data_in:in(7:0)`, `data_out:out(7:0)`, `address:out(15:0)`, `rw:out` *(1=read, 0=write)*, `sync:out` *(opcode fetch)*, `nmi:in`, `irq:in` *(active-high, level)*. ~650 lines, one `rtl` arch, no sub-components, `numeric_std` only, GHDL `--std=08`-clean. Vectors: NMI `$FFFA/B`, RESET `$FFFC/D`, IRQ/BRK `$FFFE/F` (little-endian).
+`entity mx65` (no generics): `clock:in`, `reset:in` *(active-high, async)*, `ce:in` *(clock-enable)*, `data_in:in(7:0)`, `data_out:out(7:0)`, `address:out(15:0)`, `rw:out` *(1=read, 0=write)*, `sync:out` *(opcode fetch)*, `nmi:in`, `irq:in` *(active-high, level)*. ~995 lines, one `rtl` arch, no sub-components, `numeric_std` only, GHDL `--std=08`-clean (Stage-0 confirmed under GHDL + NVC). Vectors: NMI `$FFFA/B`, RESET `$FFFC/D`, IRQ/BRK `$FFFE/F` (little-endian).
 
 These are **unverified** until the core is vendored. Three details drive the bus design and are **not yet pinned** — resolve them empirically in Stage 1 (see the Stage-1 exit checklist): (a) **which clock edge/phase mx65 samples `data_in`** (decides whether memory reads may be registered or must be combinational), (b) **when `data_out`/`rw` are valid** for a write, and (c) the **minimum reset pulse width** before it fetches the reset vector. Also confirm it tolerates `ce='1'` tied permanently.
 

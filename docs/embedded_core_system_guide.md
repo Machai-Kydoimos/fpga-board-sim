@@ -106,7 +106,7 @@ bus-adapter mapping (which core port maps to which bus signal).
 
 | Core | License | Self-containment | Libraries | Fit |
 |---|---|---|---|---|
-| **mx65** (Steve-Teal) | MIT | **1 file, 1 arch, 0 sub-components** (~650 lines) | `std_logic_1164`+`numeric_std` | **Best** — drop-in; cycle-accurate; passes Klaus Dormann tests |
+| **mx65** (Steve-Teal) | MIT | **1 file, 1 arch, 0 sub-components** (~995 lines) | `std_logic_1164`+`numeric_std` | **Best** — drop-in; cycle-accurate; passes Klaus Dormann tests |
 | T65 (mist-devel / CoPro6502) | BSD | 4 units (`T65`+`T65_Pack`+`T65_ALU`+`T65_MCode`); instantiates components | `std_logic_1164`+`numeric_std` (clean) | Good alternative; must **inline 4 units**; configurable 6502/65C02/65C816; very battle-tested |
 | cpu6502_tc (OpenCores) | LGPL/OpenCores | multi-file, HDL-Designer-generated | possibly Synopsys | Weaker license/portability |
 
