@@ -130,8 +130,50 @@ embedded into the VHDL ROM constant.
   model is the test path. The RESET vector low byte is `$00`, so it's omitted from the sparse
   aggregate and covered by `others` — a tidy example of why the sparse form is safe.
 
-**Next (Stage 2):** write the walking-counter program in `firmware/cpu_walking_counter_7seg.s`
-(prescaler-tick polling, bounce, BCD odometer with carry/borrow, `btn(0)` reverse, `btn(1)`
-lamp-test, switch speed), assemble, and regenerate the ROM with `rom_to_vhdl.py`. The VHDL skeleton
-(`cpu_rom`/`cpu_ram`/`cpu_io`/top, POR, mux, prescaler) and the ca65 pipeline are already in place,
-so Stage 2 is firmware-only.
+## Stage 2 — Walking-counter firmware (DONE 2026-06-29)
+
+**Result:** `firmware/cpu_walking_counter_7seg.s` now holds the full walking counter — assembled to
+~310 bytes of code + glyph table (`$F800-$F934`; `irq_handler` RTI at `$F92A`, `DECLUT` at `$F92B`)
+— and the system reproduces `hdl/walking_counter_7seg.vhd` end to end. The new behavioral suite
+`sim/test_cpu_walking.py` (4 cocotb tests) passes **`PASS=4` under both NVC and GHDL**: digits are
+0-9 glyphs and the odometer advances, the LED is always one-hot and bounces, `btn(0)` reverses the
+count direction, and `btn(1)` lights every lamp. **Firmware-only as planned** — it worked on the
+first simulation attempt (only the harness `--stop-time` needed raising); Stage-1 bring-up had
+de-risked the bus/IO/tick paths.
+
+**6502 implementation (the readable `.s` is the documentation):** zero-page state (POS, FWD, CNT_UP,
+PREVBTN, LAMP, SKIP_VAL/SKIPCNT, cached N_LEDS/N_SEGS, BCD[0..7] one digit/byte); subroutines
+`bounce` / `bcd_inc` / `bcd_dec` / `onehot` / `calc_skip` (so JSR/RTS exercise the stack too). One-hot
+LED = `1 << POS` built with `ASL ONEHOT_LO / ROL ONEHOT_HI`; BCD ripple via per-digit `CMP #10` /
+borrow; switch speed = `SKIP = max(1, 8 >> popcount(SW))` (each switch doubles the rate — the chosen
+2x, not the reference RTL's 4x). Main loop = poll tick, edge-detect `btn(0)`, sample `btn(1)`,
+recompute SKIP, step every SKIP-th tick, render (lamp-test override else one-hot + glyphs).
+
+**Tick path confirmed (first functional exercise of the prescaler):** the firmware's read-to-clear
+poll of `$E010` works, including the "set wins over a simultaneous clear" rule in `cpu_io` — no
+missed or doubled ticks across the run.
+
+**Guide-worthy (test harness):**
+
+- **`PRESCALER_BITS` is *not* forwarded by `sim_wrapper`** — the wrapper only passes the contract
+  generics (NUM_*/COUNTER_BITS). So headless runs always use the design's default tick (1024 clocks
+  ≈ 41 us at the 40 ns wrapper period); you can't speed ticks up via generics. Instead **drive all
+  switches high** so `SKIP=1` and the firmware steps on *every* tick — that bounds sim time.
+- **All `@cocotb.test()`s in a module share one simulation; sim time is cumulative.** `--stop-time`
+  must exceed the *sum* of every test's awaits, or a later test is killed mid-`Timer` (the failure I
+  hit first: 100 us stop-time truncated the very first 287 us wait → all four "failed"). Sized the
+  suite to ~3.6 ms and set `--stop-time=6000000ns`.
+- **Assert `PASS=N` (not just `PASS=`)** in the runner — `"FAIL=0" and "PASS="` is a false pass when
+  *zero* tests run (the summary still reads `PASS=0 FAIL=0`). `PASS=4` pins the real count.
+- **Measure the odometer, not the LED, to test `btn(0)` direction** — the LED bounces on its own at
+  the ends, which confounds a direction probe. Read the decimal value and warm up well clear of zero
+  so the post-reverse decrement window can't underflow/wrap.
+- Metavalue `TO_INTEGER` warnings appear **only at `0ms+0`** (ROM/RAM address undriven before the
+  CPU starts) — expected, benign (the plan's metavalue-hygiene note); the run is clean thereafter.
+- The Stage-1 smoke (`sim/test_cpu_smoke.py`, static program) was **deleted** — superseded by the
+  walking suite, which subsumes its checks (it would fail against the dynamic ROM anyway).
+
+**Next (Stage 3):** generalize into `scripts/gen_embedded_core.py` (RomImage loader feeding
+`rom_to_vhdl.py`, wrapper-template-style splice of the four blocks + mx65) and adopt VSG lint/format
+(roadmap P7). The firmware, VHDL blocks, and ca65 pipeline are the reference the generator must
+reproduce byte-for-byte.

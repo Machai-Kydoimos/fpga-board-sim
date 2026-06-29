@@ -121,7 +121,7 @@ def test_cpu_system_elaborates_ghdl(ghdl):
 
 @pytest.mark.slow
 def test_cpu_system_runs_nvc(nvc):
-    """Static firmware drives LED0 + every digit='0' under NVC (cocotb smoke)."""
+    """The walking-counter firmware runs end-to-end under NVC (cocotb suite)."""
     work_dir = tempfile.mkdtemp(prefix="cpu_nvc_")
     ok, detail = analyze_vhdl(
         CPU_SYS,
@@ -140,23 +140,23 @@ def test_cpu_system_runs_nvc(nvc):
         cwd=work_dir,
     )
     run_cmd = _NVCBackend.run_cmd("sim_wrapper", _CPU_GENERICS, vhpi_lib, work_dir)
-    run_cmd.append("--stop-time=100000ns")
+    run_cmd.append("--stop-time=6000000ns")  # ~146 ticks: covers the full walking suite
 
     run_env = env.copy()
-    run_env["COCOTB_TEST_MODULES"] = "test_cpu_smoke"
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_walking"
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
     result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
     output = result.stdout + result.stderr
-    assert "FAIL=0" in output and "PASS=" in output, (
-        "cocotb Stage-1 smoke did not pass under NVC.\n" + "\n".join(output.splitlines()[-30:])
+    assert "FAIL=0" in output and "PASS=4" in output, (
+        "cocotb walking suite did not pass under NVC.\n" + "\n".join(output.splitlines()[-30:])
     )
 
 
 @pytest.mark.slow
 def test_cpu_system_runs_ghdl(ghdl):
-    """Static firmware drives LED0 + every digit='0' under GHDL (cocotb smoke)."""
+    """The walking-counter firmware runs end-to-end under GHDL (cocotb suite)."""
     work_dir = tempfile.mkdtemp(prefix="cpu_ghdl_")
     ok, detail = analyze_vhdl(
         CPU_SYS,
@@ -169,17 +169,17 @@ def test_cpu_system_runs_ghdl(ghdl):
 
     env, plugin_lib = _build_sim_env(simulator="ghdl")
     run_cmd = _GHDLBackend.run_cmd("sim_wrapper", _CPU_GENERICS, plugin_lib, work_dir)
-    run_cmd.append("--stop-time=100000ns")
+    run_cmd.append("--stop-time=6000000ns")  # ~146 ticks: covers the full walking suite
 
     run_env = env.copy()
-    run_env["COCOTB_TEST_MODULES"] = "test_cpu_smoke"
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_walking"
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
     result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
     output = result.stdout + result.stderr
-    assert "FAIL=0" in output and "PASS=" in output, (
-        "cocotb Stage-1 smoke did not pass under GHDL.\n" + "\n".join(output.splitlines()[-30:])
+    assert "FAIL=0" in output and "PASS=4" in output, (
+        "cocotb walking suite did not pass under GHDL.\n" + "\n".join(output.splitlines()[-30:])
     )
 
 
@@ -202,8 +202,8 @@ def test_firmware_bin_shape():
     data = FW_BIN.read_bytes()
     assert len(data) == 2048, "ROM image must be exactly 2 KB ($F800-$FFFF)"
     assert data[0x7FC] == 0x00 and data[0x7FD] == 0xF8, "RESET vector must point at $F800"
-    assert data[0x7FA] == 0x19 and data[0x7FB] == 0xF8, "NMI vector must point at $F819"
-    assert data[0x7FE] == 0x19 and data[0x7FF] == 0xF8, "IRQ/BRK vector must point at $F819"
+    assert data[0x7FA] == 0x2A and data[0x7FB] == 0xF9, "NMI vector -> irq_handler $F92A"
+    assert data[0x7FE] == 0x2A and data[0x7FF] == 0xF9, "IRQ vector -> irq_handler $F92A"
 
 
 def test_embedded_rom_matches_firmware_bin():

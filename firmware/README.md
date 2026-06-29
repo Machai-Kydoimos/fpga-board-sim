@@ -8,7 +8,7 @@ documentation for what the CPU does on the board.
 
 | File | Role |
 |------|------|
-| `cpu_walking_counter_7seg.s` | 6502 source (Stage 1: static bring-up; Stage 2: walking counter) |
+| `cpu_walking_counter_7seg.s` | 6502 source: the walking counter (bouncing one-hot LED + BCD odometer; `btn(0)` reverse, `btn(1)` lamp test, switch speed) |
 | `cpu_6502.cfg` | ld65 config: a 2 KB ROM at `$F800-$FFFF` with CPU vectors at `$FFFA` |
 | `cpu_walking_counter_7seg.bin` | assembled 2 KB ROM image — **the source of truth**, embedded into the VHDL |
 
