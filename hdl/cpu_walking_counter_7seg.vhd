@@ -1063,13 +1063,11 @@ end entity;
 
 architecture rtl of cpu_rom is
   type rom_t is array (0 to 2 ** ROM_BITS - 1) of std_logic_vector(7 downto 0);
-  -- Hand-assembled Stage-1 program (load address $F800; ROM offset = addr-$F800):
-  --   F800 SEI / CLD / LDX #$FF / TXS          ; authentic cold-start
-  --   F805 LDA #$01 / STA $E020                ; LED0 on
-  --   F80A LDA $E005 / TAX / LDA #$3F          ; X = NUM_SEGS, A = glyph '0'
-  --   F810 STA $E02F,X / DEX / BNE $F810       ; write '0' to every digit
-  --   F816 JMP $F816                           ; spin
-  --   F819 RTI                                 ; IRQ/BRK/NMI handler
+  -- ROM image: assembled by ca65 + ld65 from firmware/cpu_walking_counter_7seg.s
+  -- (the readable program) and embedded here verbatim.  The checked-in
+  -- firmware/cpu_walking_counter_7seg.bin is the source of truth; regenerate this
+  -- aggregate with scripts/embedded_core/rom_to_vhdl.py.  Zero bytes fall through
+  -- to `others` (e.g. the RESET vector low byte at offset 16#7FC# = $00).
   constant ROM : rom_t := (
     16#000# => x"78", 16#001# => x"D8", 16#002# => x"A2", 16#003# => x"FF",
     16#004# => x"9A", 16#005# => x"A9", 16#006# => x"01", 16#007# => x"8D",
@@ -1077,12 +1075,9 @@ architecture rtl of cpu_rom is
     16#00C# => x"E0", 16#00D# => x"AA", 16#00E# => x"A9", 16#00F# => x"3F",
     16#010# => x"9D", 16#011# => x"2F", 16#012# => x"E0", 16#013# => x"CA",
     16#014# => x"D0", 16#015# => x"FA", 16#016# => x"4C", 16#017# => x"16",
-    16#018# => x"F8", 16#019# => x"40",
-    -- interrupt/reset vectors at $FFFA-$FFFF (ROM offset $7FA-$7FF), little-endian
-    16#7FA# => x"19", 16#7FB# => x"F8",   -- NMI    -> $F819
-    16#7FC# => x"00", 16#7FD# => x"F8",   -- RESET  -> $F800
-    16#7FE# => x"19", 16#7FF# => x"F8",   -- IRQ/BRK-> $F819
-    others  => x"00"
+    16#018# => x"F8", 16#019# => x"40", 16#7FA# => x"19", 16#7FB# => x"F8",
+    16#7FD# => x"F8", 16#7FE# => x"19", 16#7FF# => x"F8",
+    others => x"00"
   );
 begin
   data <= ROM(to_integer(unsigned(addr)));

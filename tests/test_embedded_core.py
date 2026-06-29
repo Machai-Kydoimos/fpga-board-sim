@@ -7,6 +7,7 @@ system is built around it.  Later stages add ROM/generator/integration tests.
 """
 
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -25,6 +26,8 @@ from tests.conftest import _7seg_board
 PROJECT = Path(__file__).resolve().parent.parent
 MX65 = PROJECT / "scripts" / "embedded_core" / "cores" / "mx65.vhd"
 CPU_SYS = PROJECT / "hdl" / "cpu_walking_counter_7seg.vhd"
+FIRMWARE = PROJECT / "firmware"
+FW_BIN = FIRMWARE / "cpu_walking_counter_7seg.bin"
 
 # Upstream commit the vendored copy is pinned to (recorded in the file header).
 MX65_PINNED_COMMIT = "d65d81d4f8031e194bd8410133b9036db7e58794"
@@ -178,3 +181,55 @@ def test_cpu_system_runs_ghdl(ghdl):
     assert "FAIL=0" in output and "PASS=" in output, (
         "cocotb Stage-1 smoke did not pass under GHDL.\n" + "\n".join(output.splitlines()[-30:])
     )
+
+
+# ── Firmware: ca65/ld65 ROM image + embedding ─────────────────────────────────
+
+
+def test_rom_aggregate_is_sparse():
+    """rom_to_vhdl emits non-zero bytes and lets zeros fall through to `others`."""
+    from embedded_core.rom_to_vhdl import rom_aggregate
+
+    body = rom_aggregate(bytes([0x78, 0x00, 0xD8]))
+    assert '16#000# => x"78"' in body
+    assert '16#002# => x"D8"' in body
+    assert "16#001#" not in body  # zero byte omitted
+    assert 'others => x"00"' in body
+
+
+def test_firmware_bin_shape():
+    """The assembled image is a 2 KB ROM with valid reset/IRQ/NMI vectors."""
+    data = FW_BIN.read_bytes()
+    assert len(data) == 2048, "ROM image must be exactly 2 KB ($F800-$FFFF)"
+    assert data[0x7FC] == 0x00 and data[0x7FD] == 0xF8, "RESET vector must point at $F800"
+    assert data[0x7FA] == 0x19 and data[0x7FB] == 0xF8, "NMI vector must point at $F819"
+    assert data[0x7FE] == 0x19 and data[0x7FF] == 0xF8, "IRQ/BRK vector must point at $F819"
+
+
+def test_embedded_rom_matches_firmware_bin():
+    """The VHDL ROM constant must reproduce the checked-in .bin verbatim."""
+    from embedded_core.rom_to_vhdl import rom_aggregate
+
+    expected = rom_aggregate(FW_BIN.read_bytes())
+    assert expected in CPU_SYS.read_text(), (
+        "hdl ROM aggregate is out of sync with firmware/*.bin — "
+        "regenerate it with scripts/embedded_core/rom_to_vhdl.py"
+    )
+
+
+@pytest.mark.slow
+def test_firmware_reassembles_with_ca65():
+    """ca65/ld65 reproduce the checked-in .bin from the .s (skipped if cc65 absent)."""
+    if not (shutil.which("ca65") and shutil.which("ld65")):
+        pytest.skip("cc65 (ca65/ld65) not installed")
+    d = Path(tempfile.mkdtemp(prefix="fw_"))
+    obj, out = d / "fw.o", d / "fw.bin"
+    subprocess.run(
+        ["ca65", "--cpu", "6502", "-o", str(obj), str(FIRMWARE / "cpu_walking_counter_7seg.s")],
+        check=True,
+    )
+    subprocess.run(
+        ["ld65", "-C", str(FIRMWARE / "cpu_6502.cfg"), "-o", str(out), str(obj)],
+        check=True,
+    )
+    assert out.read_bytes() == FW_BIN.read_bytes(), "ca65/ld65 output drifted from the .bin"

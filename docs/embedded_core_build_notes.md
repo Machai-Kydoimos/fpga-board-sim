@@ -105,7 +105,33 @@ from config reg `$E005` and looping proves the config-read path.
   (`["ANN"]`) and the mypy `disallow_untyped_defs = false` override (so `dut` stays implicit `Any`),
   and give each test an **imperative-mood** docstring (the `D` rules still apply; D401).
 
-**Next (Stage 2):** swap the static ROM for the walking-counter firmware (prescaler-tick polling,
-bounce, BCD odometer, `btn(0)` reverse, `btn(1)` lamp-test, switch speed). Only the ROM contents +
-firmware logic change; the VHDL skeleton (`cpu_rom`/`cpu_ram`/`cpu_io`/top, POR, mux, prescaler) is
-already in place.
+### Firmware via cc65 (adopted 2026-06-29)
+
+`cc65` (ca65 V2.18 / ld65 / cl65, plus `da65` disassembler, `od65`, `sim65`) is installed locally,
+so firmware is **assembled with ca65/ld65** and the `.s` is checked in as first-class documentation
+— no hand-assembly.
+
+Pipeline: `firmware/cpu_walking_counter_7seg.s` (+ `cpu_6502.cfg`, an ld65 config: 2 KB ROM at
+`$F800-$FFFF`, `CODE` at the base, `VECTORS` at `$FFFA`) → `ca65`/`ld65` →
+`cpu_walking_counter_7seg.bin` (2 KB, **source of truth**, committed) →
+`scripts/embedded_core/rom_to_vhdl.py` (sparse aggregate: non-zero bytes + `others => x"00"`) →
+embedded into the VHDL ROM constant.
+
+- **Validation:** the ca65/ld65 output was **byte-identical** to the Stage-1 hand-assembly
+  (program bytes, interrupt vectors, and the full 2 KB) — confirming both the toolchain config and
+  the earlier hand work.
+- **Tests:** `test_embedded_rom_matches_firmware_bin` (the generated aggregate must appear verbatim
+  in the `.vhd` — a drift guard), `test_firmware_bin_shape` (size + vectors), and
+  `test_firmware_reassembles_with_ca65` (reassembly == `.bin`; **skips if `ca65` absent**, so cc65
+  stays a dev-time tool, not a CI dependency).
+- **Guide-worthy:** `da65 <bin>` disassembles for a cross-check; `ca65 -l` emits a source+bytes
+  listing (great documentation). `sim65` is a standalone 6502 sim but models cc65's runtime I/O, not
+  our MMIO (`$E020` …), so it can't exercise the IO firmware — GHDL/NVC running the real hardware
+  model is the test path. The RESET vector low byte is `$00`, so it's omitted from the sparse
+  aggregate and covered by `others` — a tidy example of why the sparse form is safe.
+
+**Next (Stage 2):** write the walking-counter program in `firmware/cpu_walking_counter_7seg.s`
+(prescaler-tick polling, bounce, BCD odometer with carry/borrow, `btn(0)` reverse, `btn(1)`
+lamp-test, switch speed), assemble, and regenerate the ROM with `rom_to_vhdl.py`. The VHDL skeleton
+(`cpu_rom`/`cpu_ram`/`cpu_io`/top, POR, mux, prescaler) and the ca65 pipeline are already in place,
+so Stage 2 is firmware-only.

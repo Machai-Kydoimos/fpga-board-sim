@@ -1,0 +1,3 @@
+# Build intermediates - the .bin is the checked-in source of truth.
+*.o
+*.lst
