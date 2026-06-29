@@ -34,11 +34,11 @@ generate-board-images = "fpga_sim.generate_board_images:main"
 dev = [
     "pytest>=9.1.1",
     "mypy>=2.1.0",
-    "ruff>=0.15.18",
+    "ruff>=0.15.20",
     "pre-commit>=3",
     "jsonschema>=4.0",
     "pytest-randomly>=4.1.0",
-    "rumdl>=0.2.20",
+    "rumdl>=0.2.26",
     "pillow>=12.2.0",
 ]
 
