@@ -40,6 +40,8 @@ dev = [
     "pytest-randomly>=4.1.0",
     "rumdl>=0.2.20",
     "pillow>=12.2.0",
+    # TOML reader for the embedded-core generator on Python 3.10; 3.11+ uses stdlib tomllib.
+    "tomli>=2.0 ; python_version < '3.11'",
 ]
 
 [tool.pytest.ini_options]
