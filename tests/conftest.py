@@ -1,10 +1,19 @@
 """Shared pytest fixtures and helpers for all test modules."""
 
+from __future__ import annotations
+
 import os
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+    from types import ModuleType
+
+    from fpga_sim.board_loader import BoardDef
 
 # Make the offline sync tooling under scripts/ importable by tests
 # (e.g. amaranth_parser, sync_amaranth_boards).
@@ -14,7 +23,7 @@ from fpga_sim.sim_bridge import _find_ghdl, _NVCBackend  # noqa: E402
 
 
 @pytest.fixture(scope="session")
-def headless_pygame():
+def headless_pygame() -> Iterator[ModuleType]:
     """Initialize pygame once per session with the dummy SDL drivers.
 
     Centralising init/quit here (rather than per-module) keeps pygame alive
@@ -39,20 +48,20 @@ def headless_pygame():
     pygame.quit()
 
 
-def _7seg_board():
+def _7seg_board() -> BoardDef:
     from fpga_sim.board_loader import BoardDef, SevenSegDef
 
     return BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, True, False))
 
 
-def _plain_board():
+def _plain_board() -> BoardDef:
     from fpga_sim.board_loader import BoardDef
 
     return BoardDef("Arty", "ArtyPlatform")
 
 
 @pytest.fixture(scope="module")
-def ghdl():
+def ghdl() -> str:
     """Return the ghdl binary path, or skip if GHDL is not installed."""
     import shutil
 
@@ -62,7 +71,7 @@ def ghdl():
 
 
 @pytest.fixture(scope="module")
-def nvc():
+def nvc() -> str:
     """Return the nvc binary path, or skip if NVC is not installed."""
     if not _NVCBackend.available():
         pytest.skip("NVC is not installed")
