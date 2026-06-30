@@ -341,15 +341,29 @@ generic-parameterized `.vhd`, validated against the contract checker before writ
 1. **Vendor** `mx65.vhd` (pin a commit) at `scripts/embedded_core/cores/mx65.vhd`; smoke-test it
    analyzes under GHDL and NVC.
 2. **Map** memory/IO as in §6; pick RAM/ROM sizes (2 KB each).
-3. **Write** `firmware/cpu_walking_counter_7seg.asm` (§5 cold-start + §7 main loop).
-4. **Assemble** to `firmware/cpu_walking_counter_7seg.bin`; record the command.
+3. **Write** `firmware/cpu_walking_counter_7seg.s` (§5 cold-start + §7 main loop).
+4. **Assemble** with `ca65`/`ld65` to `firmware/cpu_walking_counter_7seg.bin` (the source of truth).
 5. **Generate** `hdl/cpu_walking_counter_7seg.vhd` (§10).
 6. **Verify** (§11): glyphs valid, odometer advances, LED bounces, `btn(0)` reverses, `btn(1)`
    lamp-test; compare side-by-side with `hdl/walking_counter_7seg.vhd`.
 
-> Once `firmware/cpu_walking_counter_7seg.asm` exists, link or inline its **complete** annotated
-> listing here (byte offsets + the three vector bytes) — a single end-to-end working program is the
-> most useful artifact for a learner; the sketches in §5/§7 are deliberately partial.
+The complete, annotated program is the checked-in `firmware/cpu_walking_counter_7seg.s` (the §5/§7
+sketches are deliberately partial); `ca65`/`ld65` assemble it to the `.bin` that
+`scripts/embedded_core/rom_to_vhdl.py` embeds verbatim as the ROM constant.
+
+### Generic sizing — one design, every board
+
+The same generated `hdl/cpu_walking_counter_7seg.vhd` runs unchanged on boards with different
+resource counts: at cold-start the firmware reads `NUM_LEDS`/`NUM_SEGS` from the IO config registers
+(§6) and drives exactly that many. Captured headless with `scripts/capture_demo.py` on three boards
+that differ only in digit count:
+
+| 2 digits (StepMXO2) | 4 digits (DE0) | 6 digits (DE10-Lite) |
+|---|---|---|
+| ![2-digit walking counter](assets/cpu_walk_2digit.gif) | ![4-digit walking counter](assets/cpu_walk_4digit.gif) | ![6-digit walking counter](assets/cpu_walk_6digit.gif) |
+
+The bouncing one-hot LED and the decimal odometer are the same firmware, sized at runtime — nothing
+in the VHDL or the program is board-specific.
 
 ## 13. Extending
 

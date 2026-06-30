@@ -145,11 +145,15 @@ Reuse existing patterns — prefer cloning over new infra.
 
 **Sequence (vertical slice first):**
 
-- **Stage 0** — Vendor `mx65.vhd` (pin commit); smoke-test it analyzes under both simulators.
-- **Stage 1** — Hand-write the single file (top + mx65 + tiny ROM/RAM + trivial IO + config regs + POR); program writes a *constant* digit pattern + lights one LED, then spins. Goal: **elaborate + run** under GHDL **and** NVC; `test_7seg` sees valid (static) glyphs. **Stage-1 exit checklist (pins the open mx65 unknowns):** (a) PC loads from `$FFFC/D` — confirm POR width is enough, widen `por_cnt` if not; (b) reads land same-cycle — confirm mx65's `data_in` sampling edge and that the combinational read path feeds it in time (no off-by-one fetch); (c) a write to an IO register lands (verify `data_out`/`rw` timing); (d) a config-register read returns the generic value; (e) no `'U'` on `address`/`data_in` after reset (RAM init + mux default working). Proves bus wiring, vectors, POR, IO-write + config-read paths.
-- **Stage 2** — Add prescaler tick + bounce/BCD/reversal firmware; then switch-speed + `btn(1)` lamp-test for full fidelity; tune `PRESCALER_BITS`. **← working 6502 demo here.**
-- **Stage 3** — Build the generator to *reproduce* the Stage-2 file from inputs; add generator/ROM unit tests.
-- **Stage 4** — Generalize interfaces; write the development guide; add 2/4/6-digit captures; **update the surrounding docs** (CLAUDE.md file table + "VHDL Design Contract" to mention the CPU-system family and `PRESCALER_BITS`; mark the roadmap card done) per the repo's completion-checklist convention.
+> **Status (2026-06-30):** Stages 0–4 are complete and shipped on `feat/embedded-core-system`
+> (per-stage log in [`embedded_core_build_notes.md`](embedded_core_build_notes.md)). Stage 5 remains
+> future. The roadmap **P7 (VSG)** trigger has fired — the generator now emits VHDL.
+
+- **Stage 0** ✅ — Vendor `mx65.vhd` (pin commit); smoke-test it analyzes under both simulators.
+- **Stage 1** ✅ — Hand-write the single file (top + mx65 + tiny ROM/RAM + trivial IO + config regs + POR); program writes a *constant* digit pattern + lights one LED, then spins. Goal: **elaborate + run** under GHDL **and** NVC; `test_7seg` sees valid (static) glyphs. **Stage-1 exit checklist (pins the open mx65 unknowns):** (a) PC loads from `$FFFC/D` — confirm POR width is enough, widen `por_cnt` if not; (b) reads land same-cycle — confirm mx65's `data_in` sampling edge and that the combinational read path feeds it in time (no off-by-one fetch); (c) a write to an IO register lands (verify `data_out`/`rw` timing); (d) a config-register read returns the generic value; (e) no `'U'` on `address`/`data_in` after reset (RAM init + mux default working). Proves bus wiring, vectors, POR, IO-write + config-read paths.
+- **Stage 2** ✅ — Add prescaler tick + bounce/BCD/reversal firmware; then switch-speed + `btn(1)` lamp-test for full fidelity; tune `PRESCALER_BITS`. **← working 6502 demo here.**
+- **Stage 3** ✅ — Build the generator to *reproduce* the Stage-2 file from inputs; add generator/ROM unit tests.
+- **Stage 4** ✅ — Generalize interfaces; write the development guide; add 2/4/6-digit captures; **update the surrounding docs** (CLAUDE.md file table + "VHDL Design Contract" to mention the CPU-system family and `PRESCALER_BITS`; mark the roadmap card done) per the repo's completion-checklist convention.
 - **Stage 5 (later)** — IRQ-driven variant; T65 as a second (multi-unit) core; customasm path.
 
 **Top risks → mitigations:**

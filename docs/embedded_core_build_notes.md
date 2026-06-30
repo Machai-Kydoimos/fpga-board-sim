@@ -226,6 +226,42 @@ ROM/RAM widths + decode literals, which then appear in the output).
   from the spec (v1 keeps `cpu_io` a template; the spec carries the memory map, not per-register
   layout); `CpuPlugin.instantiation()` (the mx65 port map is literal in `top`); a second core (T65).
 
-**Next:** VSG VHDL lint/format (roadmap **P7**, trigger = Stage 3 — now reached) and Stage 4
-(generalize interfaces, write the dev guide, add 2/4/6-digit GIF captures, update `CLAUDE.md`'s file
-table + "VHDL Design Contract" for the CPU-system family + `PRESCALER_BITS`).
+**Next (Stage 4):** finalize the dev guide, add 2/4/6-digit GIF captures, update `CLAUDE.md`.
+
+## Stage 4 — Generic-sizing captures + docs (DONE 2026-06-30)
+
+**Result:** the one generated design is captured running on **2/4/6-digit boards** (proving generic
+sizing), and the surrounding docs are wired up. The three GIFs (`docs/assets/cpu_walk_{2,4,6}digit.gif`)
+were produced with `scripts/capture_demo.py --scenario plain --vhdl hdl/cpu_walking_counter_7seg.vhd
+--sim nvc --switches 0 --step-ns 336000 --every 1 --frames 48` on **StepMXO2 (2)**, **DE0 (4)**, and
+**DE10-Lite (6)** — all 10-LED boards, so the trio differs *only* in digit count. The firmware reads
+`CFG_LEDS`/`CFG_SEGS` at cold-start and drives exactly that many; verified by eye (a one-hot LED
+bounce and an advancing odometer at each digit count).
+
+**Bug found and fixed (`sim/capture_frames.py`):** the `plain` capture scenario drove `sw` but
+**left `btn` undriven** → `'U'`. A button-reading design (the embedded CPU) latched that garbage and
+rendered the all-on lamp-test state, frozen, on every frame. The `snake` scenario already drove
+`btn=0`; `plain` didn't. Fix: `_run_plain` now sets `dut.btn.value = 0` (released) when the board has
+buttons. *Guide-worthy:* a headless capture must drive **every** input to a defined level — an
+undriven contract port is `'U'`, and metavalue-sensitive designs render garbage, not blank.
+
+**Limitation found (worth a card if it bites again):** boards with **0 switches** (e.g. `nandland_go`,
+the plan's intended 2-digit board) **cannot be elaborated headless** — the contract generics are
+`positive` (min 1), so `NUM_SWITCHES=0` fails with *"value 0 outside of POSITIVE range"*. This is
+true for *any* design, not just the embedded core. Swapped in `step_mxo2` (2-digit, 4 switches) for
+the 2-digit capture. (Relaxing the generics to `natural` would allow null vectors but is a
+contract-wide change; deferred.)
+
+**Capture tuning:** `--switches 0` is the portable choice (works on switch-less *and* switch-ful
+boards; firmware then uses `SKIP_BASE=8`, stepping every 8 ticks). At `PRESCALER_BITS=10` (≈41 µs/
+tick, 40 ns clock) one step ≈ 8 ticks ≈ 328 µs, so `--step-ns 336000 --every 1` advances ≈ one step
+per frame; 48 frames shows several bounces + the odometer climbing.
+
+**Docs updated:** `CLAUDE.md` (Key Files rows for `gen_embedded_core.py` / `embedded_core/` /
+`systems/` / `firmware/` / the generated `.vhd`; a new *Embedded CPU systems* subsection in the VHDL
+Design Contract covering the single-file family + `PRESCALER_BITS`); the dev guide §12 (generic-sizing
+GIF table; `.asm`→`.s` fixes; the checked-in `.s` is the annotated listing); the plan's stage list
+marked 0–4 ✅.
+
+**Stages 0–4 complete.** Remaining: **Stage 5** (IRQ-driven variant; T65 as a second/multi-unit
+core; customasm path) and **VSG/P7** (now triggered — the generator emits VHDL).
