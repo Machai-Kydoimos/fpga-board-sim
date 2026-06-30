@@ -173,7 +173,59 @@ missed or doubled ticks across the run.
 - The Stage-1 smoke (`sim/test_cpu_smoke.py`, static program) was **deleted** — superseded by the
   walking suite, which subsumes its checks (it would fail against the dynamic ROM anyway).
 
-**Next (Stage 3):** generalize into `scripts/gen_embedded_core.py` (RomImage loader feeding
-`rom_to_vhdl.py`, wrapper-template-style splice of the four blocks + mx65) and adopt VSG lint/format
-(roadmap P7). The firmware, VHDL blocks, and ca65 pipeline are the reference the generator must
-reproduce byte-for-byte.
+## Stage 3 — The generator (DONE 2026-06-30)
+
+**Result:** `scripts/gen_embedded_core.py` + the `scripts/embedded_core/` package now **reproduce the
+Stage-2 file byte-for-byte** from inputs. Running
+
+```bash
+uv run python scripts/gen_embedded_core.py --cpu mx65 \
+    --system systems/walking_counter_7seg.toml \
+    --rom firmware/cpu_walking_counter_7seg.bin --out hdl/cpu_walking_counter_7seg.vhd
+```
+
+emits a file that differs from the hand-written one **only** in the banner/separator (now marked
+*generated*, "do not edit by hand"); everything else — the 1027-line vendored core, all four blocks,
+the ROM aggregate — is identical. The committed `.vhd` is now the generator's output; regenerate on
+any firmware/spec change.
+
+**Pieces (mirror the `sim_wrapper_template.vhd` + validate-then-write idiom):**
+
+- `cpu_plugin.py` — `CpuPlugin` dataclass (`mx65`): `core_vhdl_text()` returns the vendored core
+  verbatim; carries entity name, bus geometry, reset convention, vectors (the seam for T65 later).
+- `system_spec.py` — `SystemSpec` + `MemoryRegion` from a TOML file; the memory map's power-of-two
+  sizes derive `ROM_BITS`/`RAM_BITS`/address slice and the decode literals (`select_literal()`).
+- `emitter.py` — concatenates banner + verbatim core + `cpu_rom`/`cpu_ram`/`cpu_io`/`top` templates,
+  substituting `@@TOKEN@@`s; injects the ROM aggregate from the `.bin` (the live input); rejects any
+  unfilled token.
+- `templates/*.vhd.tmpl` — the hand-written blocks, **sed-extracted as exact line ranges** then
+  tokenized only where the spec/ROM drive a scalar (generics, bits, names, aggregate) → byte-exact.
+- `systems/walking_counter_7seg.toml` — name, banner description, generics, and memory map.
+
+**Tests added (`tests/test_embedded_core.py`, now 17):** `test_generator_cli_reproduces_committed_design`
+(byte-for-byte golden via the real CLI — the drift guard), `..._passes_contract_and_lists_all_entities`
+(five entities + `check_vhdl_contract`), `test_memory_map_drives_widths_and_decode` (spec derives the
+ROM/RAM widths + decode literals, which then appear in the output).
+
+**Guide-worthy:**
+
+- **Templatize by extraction, not transcription.** `sed -n 'A,Bp'` the exact block ranges into
+  `*.tmpl`, then tokenize *only* the spec/ROM-driven scalars. The diff oracle (`diff committed gen`)
+  converges fast; the only intended diff is the "generated" banner. The vendored core is emitted via
+  `CpuPlugin.core_vhdl_text()` (never templatized).
+- **Don't generate aligned VHDL you can keep literal.** The three decode lines (`= x"E0"`,
+  `= "00000"`, `= "11111"`) stay literal in `top.vhd.tmpl`; the spec's memory map *derives* them
+  (`MemoryRegion.select_literal`, hex if nibble-aligned else binary) and a test asserts they match —
+  so the spec is authoritative without the generator hand-rolling column alignment.
+- **Validate before writing.** The CLI writes to a temp file **named `<spec.name>.vhd`** (so the
+  entity==filename contract check passes) and runs `check_vhdl_encoding` + `check_vhdl_contract`
+  before committing bytes to `--out`.
+- **TOML on the 3.10 floor:** `tomllib` (3.11+) with a `tomli` fallback guard; the banner description
+  is stored as prose and the emitter prefixes each line as a `--` comment (blank line -> bare `--`).
+- **Deferred to growth (documented, not built):** generating the `cpu_io` register cases / IO layout
+  from the spec (v1 keeps `cpu_io` a template; the spec carries the memory map, not per-register
+  layout); `CpuPlugin.instantiation()` (the mx65 port map is literal in `top`); a second core (T65).
+
+**Next:** VSG VHDL lint/format (roadmap **P7**, trigger = Stage 3 — now reached) and Stage 4
+(generalize interfaces, write the dev guide, add 2/4/6-digit GIF captures, update `CLAUDE.md`'s file
+table + "VHDL Design Contract" for the CPU-system family + `PRESCALER_BITS`).

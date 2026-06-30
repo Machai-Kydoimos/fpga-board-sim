@@ -1,0 +1,94 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+-- Memory-mapped IO: switch/button/config/tick reads, LED/segment writes, and a
+-- free-running prescaler tick.  Read path is combinational; writes + prescaler
+-- are clocked.  Generics carry the board resource counts, exposed via config
+-- registers so one design fits every board.
+entity cpu_io is
+  generic (
+    NUM_SWITCHES   : positive := @@NUM_SWITCHES@@;
+    NUM_BUTTONS    : positive := @@NUM_BUTTONS@@;
+    NUM_LEDS       : positive := @@NUM_LEDS@@;
+    NUM_SEGS       : positive := @@NUM_SEGS@@;
+    PRESCALER_BITS : positive := @@PRESCALER_BITS@@
+  );
+  port (
+    clk   : in  std_logic;
+    cs    : in  std_logic;                      -- IO chip-select (address in $E0xx)
+    we    : in  std_logic;                      -- write enable (cpu rw='0')
+    addr  : in  std_logic_vector(7 downto 0);   -- low byte of CPU address
+    wdata : in  std_logic_vector(7 downto 0);   -- CPU data_out (writes)
+    rdata : out std_logic_vector(7 downto 0);   -- to read mux -> CPU data_in
+    sw    : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);
+    btn   : in  std_logic_vector(NUM_BUTTONS - 1 downto 0);
+    led   : out std_logic_vector(NUM_LEDS - 1 downto 0);
+    seg   : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)
+  );
+end entity;
+
+architecture rtl of cpu_io is
+  type seg_array_t is array (0 to NUM_SEGS - 1) of std_logic_vector(7 downto 0);
+  signal seg_regs  : seg_array_t := (others => (others => '0'));
+  signal led_reg   : std_logic_vector(15 downto 0) := (others => '0');
+  signal prescaler : unsigned(PRESCALER_BITS - 1 downto 0) := (others => '0');
+  signal tick      : std_logic := '0';
+  signal sw_ext    : std_logic_vector(15 downto 0);
+  signal btn_ext   : std_logic_vector(15 downto 0);
+begin
+  sw_ext  <= std_logic_vector(resize(unsigned(sw), 16));
+  btn_ext <= std_logic_vector(resize(unsigned(btn), 16));
+
+  -- Combinational read mux (one IO register per address).
+  process (addr, sw_ext, btn_ext, tick) begin
+    case addr is
+      when x"00"  => rdata <= sw_ext(7 downto 0);
+      when x"01"  => rdata <= sw_ext(15 downto 8);
+      when x"02"  => rdata <= btn_ext(7 downto 0);
+      when x"03"  => rdata <= btn_ext(15 downto 8);
+      when x"04"  => rdata <= std_logic_vector(to_unsigned(NUM_LEDS, 8));
+      when x"05"  => rdata <= std_logic_vector(to_unsigned(NUM_SEGS, 8));
+      when x"06"  => rdata <= std_logic_vector(to_unsigned(NUM_SWITCHES, 8));
+      when x"07"  => rdata <= std_logic_vector(to_unsigned(NUM_BUTTONS, 8));
+      when x"10"  => rdata <= "0000000" & tick;
+      when others => rdata <= x"00";
+    end case;
+  end process;
+
+  -- Clocked: prescaler tick (read-to-clear at $E010) + register writes.
+  process (clk) begin
+    if rising_edge(clk) then
+      prescaler <= prescaler + 1;
+      if cs = '1' and we = '0' and addr = x"10" then
+        tick <= '0';                       -- read-to-clear
+      end if;
+      if prescaler = (prescaler'range => '1') then
+        tick <= '1';                       -- set wins over a simultaneous clear
+      end if;
+      if cs = '1' and we = '1' then
+        case addr is
+          when x"20"  => led_reg(7 downto 0)  <= wdata;
+          when x"21"  => led_reg(15 downto 8) <= wdata;
+          when others =>
+            for i in 0 to NUM_SEGS - 1 loop
+              if addr = std_logic_vector(to_unsigned(16#30# + i, 8)) then
+                seg_regs(i) <= wdata;
+              end if;
+            end loop;
+        end case;
+      end if;
+    end if;
+  end process;
+
+  -- Outputs: LED masked to NUM_LEDS; segment slots packed (digit 0 = rightmost).
+  led <= std_logic_vector(resize(unsigned(led_reg), NUM_LEDS));
+
+  process (seg_regs) begin
+    for i in 0 to NUM_SEGS - 1 loop
+      seg(8 * i + 7 downto 8 * i) <= seg_regs(i);
+    end loop;
+  end process;
+end architecture;
+
+

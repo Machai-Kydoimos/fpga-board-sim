@@ -1,0 +1,30 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+-- ROM: combinational read (address in -> byte out same cycle), matching the
+-- 6502's same-cycle read bus (the core samples data_in on the clock edge that
+-- ends the cycle).
+entity cpu_rom is
+  generic (ROM_BITS : positive := @@ROM_BITS@@);
+  port (
+    addr : in  std_logic_vector(ROM_BITS - 1 downto 0);
+    data : out std_logic_vector(7 downto 0)
+  );
+end entity;
+
+architecture rtl of cpu_rom is
+  type rom_t is array (0 to 2 ** ROM_BITS - 1) of std_logic_vector(7 downto 0);
+  -- ROM image: assembled by ca65 + ld65 from firmware/@@FIRMWARE@@.s
+  -- (the readable program) and embedded here verbatim.  The checked-in
+  -- firmware/@@FIRMWARE@@.bin is the source of truth; regenerate this
+  -- aggregate with scripts/embedded_core/rom_to_vhdl.py.  Zero bytes fall through
+  -- to `others` (e.g. the RESET vector low byte at offset 16#7FC# = $00).
+  constant ROM : rom_t := (
+@@ROM_AGGREGATE@@
+  );
+begin
+  data <= ROM(to_integer(unsigned(addr)));
+end architecture;
+
+

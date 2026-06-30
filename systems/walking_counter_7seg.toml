@@ -1,0 +1,45 @@
+# System spec for the embedded-core walking counter.
+# Consumed by scripts/gen_embedded_core.py to (re)generate
+# hdl/cpu_walking_counter_7seg.vhd from the vendored CPU core + firmware .bin.
+
+name = "cpu_walking_counter_7seg"
+firmware = "cpu_walking_counter_7seg"
+cpu = "mx65"
+
+# Banner body (rendered as VHDL comment lines; a blank line becomes "--").
+description = """
+One self-contained VHDL file: a vendored mx65 6502 CPU core (below, verbatim,
+MIT) + ROM + RAM + memory-mapped IO + a top that wires it to the board's
+sw/btn/led/seg and synthesises a power-on reset.  The CPU runs a program held
+in the embedded ROM and drives the outputs through its IO interface.
+
+The ROM holds the walking-counter firmware (assembled by ca65/ld65 from
+firmware/cpu_walking_counter_7seg.s), replicating hdl/walking_counter_7seg.vhd
+in software: a single lit LED bounces across the LEDs while a decimal odometer
+advances on the 7-segment digits; btn(0) reverses both directions, btn(1) is a
+lamp test, and each active switch steps faster.  A free-running prescaler tick
+(polled read-to-clear at $E010) decouples the visible rate from raw CPU speed.
+See docs/embedded_core_system_plan.md."""
+
+# VHDL generic defaults (board sizes are overridden at elaboration).
+[generics]
+num_switches = 4
+num_buttons = 4
+num_leds = 4
+num_segs = 4
+counter_bits = 24
+prescaler_bits = 10
+
+# Memory map.  Sizes are powers of two; addr_bits = log2(size) drives the
+# ROM/RAM widths and the top's address slice + decode.
+[memory.ram]
+base = 0x0000
+size = 0x0800   # 2 KB -> 11 address bits
+
+[memory.io]
+base = 0xE000
+size = 0x0100
+
+[memory.rom]
+base = 0xF800
+size = 0x0800

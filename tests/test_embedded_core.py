@@ -9,6 +9,7 @@ system is built around it.  Later stages add ROM/generator/integration tests.
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -19,6 +20,7 @@ from fpga_sim.sim_bridge import (
     _GHDLBackend,
     _NVCBackend,
     analyze_vhdl,
+    check_vhdl_contract,
     check_vhdl_encoding,
 )
 from tests.conftest import _7seg_board
@@ -28,6 +30,8 @@ MX65 = PROJECT / "scripts" / "embedded_core" / "cores" / "mx65.vhd"
 CPU_SYS = PROJECT / "hdl" / "cpu_walking_counter_7seg.vhd"
 FIRMWARE = PROJECT / "firmware"
 FW_BIN = FIRMWARE / "cpu_walking_counter_7seg.bin"
+GENERATOR = PROJECT / "scripts" / "gen_embedded_core.py"
+SYSTEM_TOML = PROJECT / "systems" / "walking_counter_7seg.toml"
 
 # Upstream commit the vendored copy is pinned to (recorded in the file header).
 MX65_PINNED_COMMIT = "d65d81d4f8031e194bd8410133b9036db7e58794"
@@ -233,3 +237,68 @@ def test_firmware_reassembles_with_ca65():
         check=True,
     )
     assert out.read_bytes() == FW_BIN.read_bytes(), "ca65/ld65 output drifted from the .bin"
+
+
+# ── Stage 3: the generator reproduces the committed design ────────────────────
+
+
+def test_generator_cli_reproduces_committed_design():
+    """gen_embedded_core.py reproduces the committed .vhd byte-for-byte (drift guard)."""
+    out = Path(tempfile.mkdtemp(prefix="gen_")) / CPU_SYS.name
+    subprocess.run(
+        [
+            sys.executable,
+            str(GENERATOR),
+            "--cpu",
+            "mx65",
+            "--system",
+            str(SYSTEM_TOML),
+            "--rom",
+            str(FW_BIN),
+            "--out",
+            str(out),
+        ],
+        check=True,
+        cwd=PROJECT,
+        capture_output=True,
+        text=True,
+    )
+    assert out.read_text() == CPU_SYS.read_text(), (
+        "gen_embedded_core.py output drifted from hdl/cpu_walking_counter_7seg.vhd — "
+        "regenerate it from systems/walking_counter_7seg.toml + the firmware .bin"
+    )
+
+
+def test_generated_design_passes_contract_and_lists_all_entities():
+    """The emitted design names all five entities and passes the simulator contract."""
+    from embedded_core import system_spec
+    from embedded_core.cpu_plugin import get_plugin
+    from embedded_core.emitter import emit
+
+    spec = system_spec.load(SYSTEM_TOML)
+    generated = emit(spec, get_plugin(spec.cpu), FW_BIN.read_bytes())
+    for entity in ("mx65", "cpu_rom", "cpu_ram", "cpu_io", "cpu_walking_counter_7seg"):
+        assert f"entity {entity} is" in generated, f"generated design missing entity '{entity}'"
+    with tempfile.TemporaryDirectory() as d:
+        probe = Path(d) / f"{spec.name}.vhd"
+        probe.write_text(generated)
+        ok, msg = check_vhdl_encoding(probe)
+        assert ok, msg
+        ok, msg = check_vhdl_contract(probe)
+        assert ok, msg
+
+
+def test_memory_map_drives_widths_and_decode():
+    """The spec's memory map derives the ROM/RAM widths and the address decode."""
+    from embedded_core import system_spec
+
+    spec = system_spec.load(SYSTEM_TOML)
+    assert (spec.rom.addr_bits, spec.ram.addr_bits, spec.addr_high) == (11, 11, 10)
+    assert spec.ram.select_literal() == '"00000"'
+    assert spec.io.select_literal() == 'x"E0"'
+    assert spec.rom.select_literal() == '"11111"'
+    # ...and those decode literals actually appear in the generated top.
+    text = CPU_SYS.read_text()
+    assert f"cpu_addr(15 downto 11) = {spec.ram.select_literal()}" in text
+    assert f"cpu_addr(15 downto 11) = {spec.rom.select_literal()}" in text
+    assert spec.io.select_literal() in text

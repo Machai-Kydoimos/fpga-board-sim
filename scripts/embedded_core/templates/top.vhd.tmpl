@@ -1,0 +1,117 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+-- Top (contract entity): synthesises a power-on reset, instantiates the four
+-- blocks, and muxes read data back to the CPU.  COUNTER_BITS is part of the
+-- simulator contract but unused by the CPU system; PRESCALER_BITS is a
+-- generation-time knob (the wrapper never overrides it).
+entity @@NAME@@ is
+  generic (
+    NUM_SWITCHES   : positive := @@NUM_SWITCHES@@;
+    NUM_BUTTONS    : positive := @@NUM_BUTTONS@@;
+    NUM_LEDS       : positive := @@NUM_LEDS@@;
+    NUM_SEGS       : positive := @@NUM_SEGS@@;
+    COUNTER_BITS   : positive := @@COUNTER_BITS@@;   -- contract generic, unused here
+    PRESCALER_BITS : positive := @@PRESCALER_BITS@@
+  );
+  port (
+    clk : in  std_logic;
+    sw  : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);
+    btn : in  std_logic_vector(NUM_BUTTONS - 1 downto 0);
+    led : out std_logic_vector(NUM_LEDS - 1 downto 0);
+    seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)
+  );
+end entity;
+
+architecture rtl of @@NAME@@ is
+  -- CPU bus
+  signal cpu_addr : std_logic_vector(15 downto 0);
+  signal cpu_din  : std_logic_vector(7 downto 0);
+  signal cpu_dout : std_logic_vector(7 downto 0);
+  signal cpu_rw   : std_logic;
+
+  -- decode / block outputs
+  signal sel_ram, sel_io, sel_rom : std_logic;
+  signal ram_we   : std_logic;
+  signal io_we    : std_logic;
+  signal rom_dout : std_logic_vector(7 downto 0);
+  signal ram_dout : std_logic_vector(7 downto 0);
+  signal io_dout  : std_logic_vector(7 downto 0);
+
+  -- power-on reset (sim-only, from signal init values)
+  signal por_cnt   : unsigned(2 downto 0) := (others => '0');
+  signal cpu_reset : std_logic := '1';
+begin
+  -- POR: hold reset high for the first ~7 clocks, then release.
+  process (clk) begin
+    if rising_edge(clk) then
+      if por_cnt /= "111" then
+        por_cnt <= por_cnt + 1;
+      end if;
+    end if;
+  end process;
+  cpu_reset <= '1' when por_cnt /= "111" else '0';
+
+  -- Address decode.
+  sel_ram <= '1' when cpu_addr(15 downto 11) = "00000" else '0';
+  sel_io  <= '1' when cpu_addr(15 downto 8)  = x"E0"   else '0';
+  sel_rom <= '1' when cpu_addr(15 downto 11) = "11111" else '0';
+  ram_we  <= '1' when (sel_ram = '1' and cpu_rw = '0') else '0';
+  io_we   <= not cpu_rw;
+
+  -- Combinational read mux -> CPU data_in (default x"00" keeps the bus defined).
+  cpu_din <= rom_dout when sel_rom = '1' else
+             io_dout  when sel_io  = '1' else
+             ram_dout when sel_ram = '1' else
+             x"00";
+
+  cpu : entity work.@@CORE_ENTITY@@
+    port map (
+      clock    => clk,
+      reset    => cpu_reset,
+      ce       => '1',
+      data_in  => cpu_din,
+      data_out => cpu_dout,
+      address  => cpu_addr,
+      rw       => cpu_rw,
+      sync     => open,
+      nmi      => '0',
+      irq      => '0'
+    );
+
+  rom_inst : entity work.cpu_rom
+    generic map (ROM_BITS => @@ROM_BITS@@)
+    port map (addr => cpu_addr(@@ADDR_HIGH@@ downto 0), data => rom_dout);
+
+  ram_inst : entity work.cpu_ram
+    generic map (RAM_BITS => @@RAM_BITS@@)
+    port map (
+      clk  => clk,
+      we   => ram_we,
+      addr => cpu_addr(@@ADDR_HIGH@@ downto 0),
+      din  => cpu_dout,
+      dout => ram_dout
+    );
+
+  io_inst : entity work.cpu_io
+    generic map (
+      NUM_SWITCHES   => NUM_SWITCHES,
+      NUM_BUTTONS    => NUM_BUTTONS,
+      NUM_LEDS       => NUM_LEDS,
+      NUM_SEGS       => NUM_SEGS,
+      PRESCALER_BITS => PRESCALER_BITS
+    )
+    port map (
+      clk   => clk,
+      cs    => sel_io,
+      we    => io_we,
+      addr  => cpu_addr(7 downto 0),
+      wdata => cpu_dout,
+      rdata => io_dout,
+      sw    => sw,
+      btn   => btn,
+      led   => led,
+      seg   => seg
+    );
+end architecture;
