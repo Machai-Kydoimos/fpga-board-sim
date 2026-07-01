@@ -304,8 +304,34 @@ clear IFR, write IER, `CLI`; ISR saves A/X/Y, dispatches, acks, `RTI`.
 **Tests added:** `test_cpu_irq_runs_nvc` / `_ghdl` (walking suite, `PASS=4`) and a byte-for-byte
 golden (`test_generator_reproduces_irq_design`). Suite: 20 embedded-core tests green.
 
-**Next (Stage 5 cont.):** vendor **T80** (Z80, BSD-3; swap `std_logic_unsigned` →
-`numeric_std_unsigned` so it analyzes without `-fsynopsys` — verified), a normalized-bus + per-core
-adapter refactor (mx65 vs T80: reset polarity, `MREQ_n`/`IORQ_n`/`RD_n`/`WR_n` vs `rw`, boot at
-`$0000`), Z80 firmware via `z80asm`, and the **core-agnostic guide generalization** (including an
-interrupt-controller section).
+## Stage 5 (part 2) — Second core (Z80/T80) + normalized-bus refactor (DONE 2026-07-01)
+
+**Result:** `hdl/t80_walking_counter_7seg.vhd` runs the *same* walking counter on a **Z80** —
+`PASS=4` under GHDL + NVC via the unchanged `sim/test_cpu_walking.py`. The full how-to is folded into
+the [guide](embedded_core_system_guide.md) (§3–§4); this is the terse log.
+
+- **Refactor (the seam):** a **normalized bus** (`cpu_addr`/`cpu_din`/`cpu_dout`/`cpu_we`/`cpu_reset`/
+  `cpu_irq_req`, all active-high) that ROM/RAM/IO/decode speak, plus a per-core **adapter** `block`
+  (`adapters/<core>.vhd`) translating it to the core's pins. The **decode is generated from the spec
+  memory map**. mx65 designs regenerated (bytes re-pinned, behavior identical); `CpuPlugin` gained
+  multi-file cores + the adapter.
+- **T80** (`cores/t80/`, BSD-3, pinned `f7f776b`, 6 files leaf-first): one patch to the vendored
+  bytes — `std_logic_unsigned` → `numeric_std_unsigned` in T80.vhd/T80s.vhd — makes it analyze under
+  both sims with **no `-fsynopsys`** (T80 uses no `std_logic_arith`-only helpers).
+- **Z80 map/firmware:** boots at **`$0000`** → ROM low, RAM `$8000`, IO `$E000` (memory-mapped;
+  `IORQ_n` open). `firmware/t80_walking_counter_7seg.asm` via z88dk `z80asm` (`-b -o<bin>`, `org 0`,
+  `defc NAME = value`), same algorithm as the 6502 with `HL`/`DE` pointers + `DJNZ` loops. Adapter:
+  `cpu_we <= not WR_n and not MREQ_n`, `RESET_n <= not cpu_reset`, `INT_n <= not cpu_irq_req`.
+- **The bug — read-to-clear vs multi-cycle reads.** The Z80 rendered nothing; a debug LED marker
+  before the poll loop proved it **executes from reset** — so the **POR is fine** for the T80. The
+  `$E010` tick was **read-to-clear**: fine for the 6502's 1-cycle read, but the Z80's *multi-cycle*
+  read clears it on the first clock, before the core samples it → the poll loop hangs. Fixed to
+  **write-to-clear** (poll to check, write to ack); touched `cpu_io` + both polled firmwares (the
+  mx65 `sta TICK` shifted the vectors → `bin_shape` test updated). Guide lesson §4.5.
+- **Naming:** per-core designs are `<core>_*` (`mx65_*`, `t80_*`); shared infra keeps `cpu_`
+  (`cpu_io`/`cpu_rom`/`cpu_ram`, `cpu_plugin`, `sim/test_cpu_walking.py`).
+- **Tests:** T80 runs (nvc + ghdl) + a byte-for-byte golden + 6 T80 vendored-integrity tests;
+  embedded-core suite now **29 green**.
+
+**Stages 0–5 (IRQ variant + second core) done.** Parked: a Z80 IRQ design (a spec flag + a Z80 ISR —
+the interrupt controller is already core-agnostic), VSG/P7, and the rest of Stage 5 (T65, customasm).
