@@ -43,13 +43,13 @@ These are **unverified** until the core is vendored. Three details drive the bus
 
 ## Architecture — the single-file 6502 system
 
-Output: **`hdl/cpu_walking_counter_7seg.vhd`** → top entity `cpu_walking_counter_7seg`. **Entity order matters** (leaf units before the top, so single-pass analysis resolves `entity work.<name>`):
+Output: **`hdl/mx65_walking_counter_7seg.vhd`** → top entity `mx65_walking_counter_7seg`. **Entity order matters** (leaf units before the top, so single-pass analysis resolves `entity work.<name>`):
 
 1. `mx65` — verbatim vendored core (untouched MIT text).
 2. `cpu_rom` — **combinational-read** ROM (address in → byte out same cycle; see *Bus read timing* below); generic `ROM_BITS`; constant byte array = assembled program + decimal LUT + vectors.
 3. `cpu_ram` — RAM with **combinational read, registered (clocked) write** when `rw='0'`; generic `RAM_BITS`. **Initialize the array signal to all-zero** (`others => (others => '0')`) so a read-before-write returns `x"00"`, not `'U'` — see *Metavalue hygiene* below.
 4. `cpu_io` — address decoder + IO registers; carries `NUM_*` generics + `PRESCALER_BITS`.
-5. `cpu_walking_counter_7seg` (top) — mandatory contract (all five generics incl. unused `COUNTER_BITS`); instantiates the four blocks; synthesizes POR; ties `ce='1'`, `irq='0'`, `nmi='0'` (polling v1).
+5. `mx65_walking_counter_7seg` (top) — mandatory contract (all five generics incl. unused `COUNTER_BITS`); instantiates the four blocks; synthesizes POR; ties `ce='1'`, `irq='0'`, `nmi='0'` (polling v1).
 
 **Memory map (64 KB)**
 
@@ -127,7 +127,7 @@ Zero-page state: `BCD[0..NUM_SEGS-1]` (one byte/digit, 0–9; index 0 = units = 
 - `RomImage` loader — reads a flat `.bin` (+ load addr + vector values) → sparse VHDL ROM constant (`others => x"00"`).
 - `Emitter` — concatenates header + verbatim core + ROM + RAM + IO + top, leaf-first.
 
-Vendored core: `scripts/embedded_core/cores/mx65.vhd` (**pin the upstream commit**, keep MIT header). Firmware: `firmware/cpu_walking_counter_7seg.asm` + assembled `.bin` + a README with the exact assemble command. System spec: a small file under `scripts/embedded_core/` or `systems/`.
+Vendored core: `scripts/embedded_core/cores/mx65.vhd` (**pin the upstream commit**, keep MIT header). Firmware: `firmware/mx65_walking_counter_7seg.asm` + assembled `.bin` + a README with the exact assemble command. System spec: a small file under `scripts/embedded_core/` or `systems/`.
 
 **Assembler — explicitly out of scope as a project dependency** (user-aligned; an in-repo assembler is excluded — the image is the interface). The generator never shells out to an assembler. But the demo firmware still needs assembling by *something*, so **lock that choice now to unblock Stage 2: use `ca65` (cc65)** — the de-facto 6502 assembler — as an **external dev-time tool**. The assembled `.bin` is **checked in and is the source of truth**; the `.asm` and the exact `ca65`/`ld65` command are checked in as reproducible documentation, but reassembly is **not** part of CI (no toolchain dependency). The ROM unit test therefore asserts the *shape* of the checked-in bytes (vectors at the right offsets, `DECLUT == SEG_LUT(0..9)`), not that the `.asm` reassembles to them. (`customasm` remains the documented path for the multi-ISA future.)
 
@@ -138,8 +138,8 @@ Reuse existing patterns — prefer cloning over new infra.
 - **Stage-0 smoke (earliest, cheapest):** analyze vendored `mx65.vhd` *alone* under `ghdl -a --std=08` *and* `nvc --std=2008 -a`; assert both succeed.
 - **ROM/image unit test:** load the **checked-in** `.bin` (the source of truth) → expected ROM constant; assert reset/IRQ/NMI vector bytes at the right offsets; assert `DECLUT` == `walking_counter_7seg`'s `SEG_LUT(0..9)`. (Does not reassemble the `.asm` — see *Assembler*, above.)
 - **Generator unit test:** generated `.vhd` has entity == stem, contains all five entities, passes `sim_bridge`'s contract checker.
-- **Integration (NVC + GHDL):** clone `tests/test_nvc.py::test_7seg_nvc_simulation_passes` + the `tests/test_ghdl.py` path. **Resource sizes come from the hardcoded `generics` dict** the test passes at elaborate/run time (`NUM_LEDS`, `NUM_SEGS`, …) plus a matching `SevenSegDef(num_digits=…)` so the wrapper's `seg` width agrees — **not** from `_7seg_board()`'s resource lists (those are empty and the headless path never reads them). The existing fixture is already 4-digit and the cloned test already passes `NUM_LEDS=4`, so to exercise generic sizing just **parametrize the generics over 2/4/6 digits**. Flow: analyze `hdl/cpu_walking_counter_7seg.vhd` (`toplevel='cpu_walking_counter_7seg'`) → elaborate `sim_wrapper` → run `sim/test_7seg.py` with `btn=0` (every digit a valid glyph — BCD 0–9 ⊂ valid set; `seg` advances). Add `sim/test_cpu_walking.py` (drives `dut.btn.value`/`dut.sw.value` directly): LED is **one-hot and bounces**; **`btn(0)` reverses** direction (hold `btn` high ≥ 1 tick); **`btn(1)` → lamp-test** — assert the lamp-test bytes are `0xFF` **explicitly** (`0xFF` is *not* in `test_7seg`'s valid-glyph set, so don't reuse that helper while `btn(1)` is held). Size `--stop-time` from the tick period (≥ a few × `N_LEDS` ticks to observe a full bounce + reversal); the existing 7-seg fixture's `2000000ns` (~97 ticks at `PRESCALER_BITS=10`, ~20 ns clk) is a good default — "hundreds of µs" is too tight for wide boards.
-- **Headless GIF:** `scripts/capture_demo.py --vhdl hdl/cpu_walking_counter_7seg.vhd --sim nvc` on 2-digit (Nandland-Go), 4-digit (DE0), 6-digit (DE10-Lite) boards to prove generic sizing (`SDL_VIDEODRIVER=dummy`, `FPGA_SIM_BOARD_JSON`; `reference_headless_sim_testing` recipe).
+- **Integration (NVC + GHDL):** clone `tests/test_nvc.py::test_7seg_nvc_simulation_passes` + the `tests/test_ghdl.py` path. **Resource sizes come from the hardcoded `generics` dict** the test passes at elaborate/run time (`NUM_LEDS`, `NUM_SEGS`, …) plus a matching `SevenSegDef(num_digits=…)` so the wrapper's `seg` width agrees — **not** from `_7seg_board()`'s resource lists (those are empty and the headless path never reads them). The existing fixture is already 4-digit and the cloned test already passes `NUM_LEDS=4`, so to exercise generic sizing just **parametrize the generics over 2/4/6 digits**. Flow: analyze `hdl/mx65_walking_counter_7seg.vhd` (`toplevel='mx65_walking_counter_7seg'`) → elaborate `sim_wrapper` → run `sim/test_7seg.py` with `btn=0` (every digit a valid glyph — BCD 0–9 ⊂ valid set; `seg` advances). Add `sim/test_cpu_walking.py` (drives `dut.btn.value`/`dut.sw.value` directly): LED is **one-hot and bounces**; **`btn(0)` reverses** direction (hold `btn` high ≥ 1 tick); **`btn(1)` → lamp-test** — assert the lamp-test bytes are `0xFF` **explicitly** (`0xFF` is *not* in `test_7seg`'s valid-glyph set, so don't reuse that helper while `btn(1)` is held). Size `--stop-time` from the tick period (≥ a few × `N_LEDS` ticks to observe a full bounce + reversal); the existing 7-seg fixture's `2000000ns` (~97 ticks at `PRESCALER_BITS=10`, ~20 ns clk) is a good default — "hundreds of µs" is too tight for wide boards.
+- **Headless GIF:** `scripts/capture_demo.py --vhdl hdl/mx65_walking_counter_7seg.vhd --sim nvc` on 2-digit (Nandland-Go), 4-digit (DE0), 6-digit (DE10-Lite) boards to prove generic sizing (`SDL_VIDEODRIVER=dummy`, `FPGA_SIM_BOARD_JSON`; `reference_headless_sim_testing` recipe).
 
 ## Staging & risks
 
@@ -180,17 +180,17 @@ nvc --std=2008 -a scripts/embedded_core/cores/mx65.vhd
 # Unit + integration tests (assembler/ROM, generator, NVC+GHDL walking-counter)
 uv run pytest tests/test_embedded_core.py -v
 
-# Interactive: pick a 7-seg board (e.g. DE10-Lite) then hdl/cpu_walking_counter_7seg.vhd
+# Interactive: pick a 7-seg board (e.g. DE10-Lite) then hdl/mx65_walking_counter_7seg.vhd
 uv run fpga-sim
 
 # Headless GIFs across digit counts (proves generic sizing) — distinct --out per board
-uv run python scripts/capture_demo.py --vhdl hdl/cpu_walking_counter_7seg.vhd --board nandland_go --sim nvc --out docs/assets/cpu_walk_2digit.gif
-uv run python scripts/capture_demo.py --vhdl hdl/cpu_walking_counter_7seg.vhd --board de0         --sim nvc --out docs/assets/cpu_walk_4digit.gif
-uv run python scripts/capture_demo.py --vhdl hdl/cpu_walking_counter_7seg.vhd --board de10_lite   --sim nvc --out docs/assets/cpu_walk_6digit.gif
+uv run python scripts/capture_demo.py --vhdl hdl/mx65_walking_counter_7seg.vhd --board nandland_go --sim nvc --out docs/assets/cpu_walk_2digit.gif
+uv run python scripts/capture_demo.py --vhdl hdl/mx65_walking_counter_7seg.vhd --board de0         --sim nvc --out docs/assets/cpu_walk_4digit.gif
+uv run python scripts/capture_demo.py --vhdl hdl/mx65_walking_counter_7seg.vhd --board de10_lite   --sim nvc --out docs/assets/cpu_walk_6digit.gif
 
 # (Re)generate the design from the vendored core + system spec + ROM image
-uv run python scripts/gen_embedded_core.py --cpu mx65 --system systems/walking_counter_7seg.toml \
-    --rom firmware/cpu_walking_counter_7seg.bin --out hdl/cpu_walking_counter_7seg.vhd
+uv run python scripts/gen_embedded_core.py --cpu mx65 --system systems/mx65_walking_counter_7seg.toml \
+    --rom firmware/mx65_walking_counter_7seg.bin --out hdl/mx65_walking_counter_7seg.vhd
 ```
 
 Pre-commit (per repo convention): `ruff check`, `ruff format --check`, `mypy .`, then `uv run pytest`.

@@ -1,6 +1,6 @@
 """Stage-2 behavioral tests for the embedded-core walking counter.
 
-The 6502 firmware (firmware/cpu_walking_counter_7seg.s) replicates
+The 6502 firmware (firmware/mx65_walking_counter_7seg.s) replicates
 hdl/walking_counter_7seg.vhd in software:
 
   * a single lit LED bounces back and forth across all LEDs,

@@ -2,8 +2,8 @@
 # Same as walking_counter_7seg but the prescaler tick drives the CPU's IRQ
 # instead of being polled: `irq_driven = true` routes cpu_io.irq to the core.
 
-name = "cpu_irq_counter_7seg"
-firmware = "cpu_irq_counter_7seg"
+name = "mx65_irq_counter_7seg"
+firmware = "mx65_irq_counter_7seg"
 cpu = "mx65"
 irq_driven = true
 
@@ -13,11 +13,11 @@ Interrupt-driven variant of the walking counter: a vendored mx65 6502 CPU core
 (below, verbatim, MIT) + ROM + RAM + memory-mapped IO + a top that wires the
 prescaler tick to the CPU's (active-low) IRQ line.
 
-The firmware (firmware/cpu_irq_counter_7seg.s) enables interrupts and idles; the
+The firmware (firmware/mx65_irq_counter_7seg.s) enables interrupts and idles; the
 ISR runs once per tick -- acknowledging it by reading $E010 -- and does the same
 work as the polled design: a one-hot LED bounces across the LEDs while a decimal
 odometer advances; btn(0) reverses both directions, btn(1) is a lamp test, and
-each active switch steps faster.  Behavior matches hdl/cpu_walking_counter_7seg.
+each active switch steps faster.  Behavior matches hdl/mx65_walking_counter_7seg.
 See docs/embedded_core_system_plan.md."""
 
 # VHDL generic defaults (board sizes are overridden at elaboration).

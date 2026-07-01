@@ -1,7 +1,7 @@
 ; ===========================================================================
-; cpu_irq_counter_7seg.s - interrupt-driven walking counter (two sources)
+; mx65_irq_counter_7seg.s - interrupt-driven walking counter (two sources)
 ;
-; Same visible behavior as cpu_walking_counter_7seg.s, but driven by a small
+; Same visible behavior as mx65_walking_counter_7seg.s, but driven by a small
 ; interrupt controller in cpu_io with TWO sources multiplexed onto the CPU's
 ; single (active-low) IRQ line:
 ;

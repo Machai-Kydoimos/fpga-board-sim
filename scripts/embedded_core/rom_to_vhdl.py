@@ -11,7 +11,7 @@ program is almost all zeros).  This is the seed of the Stage-3 generator's
 RomImage loader.
 
 Usage:
-    uv run python -m embedded_core.rom_to_vhdl firmware/cpu_walking_counter_7seg.bin
+    uv run python -m embedded_core.rom_to_vhdl firmware/mx65_walking_counter_7seg.bin
 """
 
 from __future__ import annotations

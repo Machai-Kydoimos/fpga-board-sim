@@ -2,9 +2,9 @@
 
 Usage:
     uv run python scripts/gen_embedded_core.py --cpu mx65 \
-        --system systems/walking_counter_7seg.toml \
-        --rom firmware/cpu_walking_counter_7seg.bin \
-        --out hdl/cpu_walking_counter_7seg.vhd
+        --system systems/mx65_walking_counter_7seg.toml \
+        --rom firmware/mx65_walking_counter_7seg.bin \
+        --out hdl/mx65_walking_counter_7seg.vhd
 
 The vendored CPU core is emitted verbatim and board sizes stay generic (resolved
 at elaboration).  The output is validated against the simulator's VHDL contract

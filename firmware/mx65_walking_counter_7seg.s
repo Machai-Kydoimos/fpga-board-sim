@@ -1,5 +1,5 @@
 ; ===========================================================================
-; cpu_walking_counter_7seg.s - firmware for the embedded-core 6502 system
+; mx65_walking_counter_7seg.s - firmware for the embedded-core 6502 system
 ;
 ; Replicates hdl/walking_counter_7seg.vhd in software:
 ;   * a single lit LED bounces back and forth across all LEDs (Knight Rider),
@@ -12,7 +12,7 @@
 ; A hardware prescaler raises a "tick" every 2^PRESCALER_BITS clocks; the CPU
 ; polls it (read-to-clear at TICK) so the visible rate is decoupled from raw
 ; instruction speed.  Assembled with ca65 + ld65 (see README.md); the .bin is
-; embedded as the VHDL ROM constant in hdl/cpu_walking_counter_7seg.vhd.
+; embedded as the VHDL ROM constant in hdl/mx65_walking_counter_7seg.vhd.
 ; ===========================================================================
 
 .setcpu "6502"

@@ -63,10 +63,10 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `sim/test_blinky.py` | Headless cocotb tests for the blinky design |
 | `sim/test_7seg.py` | Headless cocotb tests for the counter_7seg design |
 | `sim/test_cpu_walking.py` | Headless cocotb tests for the embedded 6502 walking counter |
-| `hdl/cpu_walking_counter_7seg.vhd` | **Generated** single-file 6502 embedded-core demo (vendored mx65 + ROM/RAM/IO/top); see `docs/embedded_core_system_plan.md` |
+| `hdl/mx65_walking_counter_7seg.vhd` | **Generated** single-file 6502 embedded-core demo (vendored mx65 + ROM/RAM/IO/top); see `docs/embedded_core_system_plan.md` |
 | `scripts/gen_embedded_core.py` | Generator: emits a single-file embedded-core system from a CPU plugin + `systems/*.toml` spec + firmware `.bin` |
 | `scripts/embedded_core/` | Generator package: `cpu_plugin`, `system_spec`, `emitter`, `templates/`, vendored `cores/mx65.vhd`, `rom_to_vhdl.py` |
-| `systems/` | TOML system specs consumed by the generator (e.g. `walking_counter_7seg.toml`) |
+| `systems/` | TOML system specs consumed by the generator (e.g. `mx65_walking_counter_7seg.toml`) |
 | `firmware/` | 6502 firmware: `.s` sources + assembled `.bin` (ca65/ld65), embedded verbatim as the ROM constant |
 
 ### Data Flow
@@ -128,7 +128,7 @@ The simulator sets generics to match the selected board's resource counts and pr
 
 #### Embedded CPU systems (single-file soft-core designs)
 
-A design can instead be a **single self-contained file** that embeds a soft CPU core (e.g. the vendored mx65 6502) + ROM + RAM + memory-mapped IO + a top satisfying the same `clk/sw/btn/led[/seg]` contract above. These are **generated** by `scripts/gen_embedded_core.py` from a vendored core + a `systems/*.toml` spec + an assembled firmware `.bin`; the firmware reads the board's resource counts from IO config registers, so one design fits any board (proven across 2/4/6-digit boards). They add a generation-time **`PRESCALER_BITS`** generic — a free-running tick the firmware polls to decouple the visible rate from raw CPU speed; the wrapper never overrides it, so it keeps its default. The committed `hdl/cpu_*.vhd` is the generator's output — **regenerate it** (and the firmware `.bin`) rather than hand-editing. See `docs/embedded_core_system_guide.md`.
+A design can instead be a **single self-contained file** that embeds a soft CPU core (e.g. the vendored mx65 6502) + ROM + RAM + memory-mapped IO + a top satisfying the same `clk/sw/btn/led[/seg]` contract above. These are **generated** by `scripts/gen_embedded_core.py` from a vendored core + a `systems/*.toml` spec + an assembled firmware `.bin`; the firmware reads the board's resource counts from IO config registers, so one design fits any board (proven across 2/4/6-digit boards). They add a generation-time **`PRESCALER_BITS`** generic — a free-running tick the firmware polls to decouple the visible rate from raw CPU speed; the wrapper never overrides it, so it keeps its default. The committed `hdl/mx65_*.vhd` is the generator's output — **regenerate it** (and the firmware `.bin`) rather than hand-editing. See `docs/embedded_core_system_guide.md`.
 
 ### Platform Notes
 

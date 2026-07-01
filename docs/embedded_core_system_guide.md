@@ -32,7 +32,7 @@ top all live in that one file.
 
 A design the simulator accepts must satisfy (see `CLAUDE.md` and `hdl/counter_7seg.vhd`):
 
-- **Filename = top entity name.** `cpu_walking_counter_7seg.vhd` ⇒ `entity cpu_walking_counter_7seg`.
+- **Filename = top entity name.** `mx65_walking_counter_7seg.vhd` ⇒ `entity mx65_walking_counter_7seg`.
 - **Top generics:** `NUM_SWITCHES, NUM_BUTTONS, NUM_LEDS, NUM_SEGS, COUNTER_BITS` (all `positive`).
   The simulator computes these from the selected board and passes them by name. You may ignore
   `COUNTER_BITS`. Extra top generics are fine if they have defaults — but the wrapper passes
@@ -59,7 +59,7 @@ different port names (mx65 uses `clock/reset/ce/...`) coexists fine.
 ## 3. Anatomy of a generated system
 
 ```text
-        +------------------- cpu_walking_counter_7seg (top entity = filename) -------------------+
+        +------------------- mx65_walking_counter_7seg (top entity = filename) -------------------+
 clk --->| clk        +-------+ cpu_reset  +-----------------+   address[15:0]                     |
         |            |  POR  |----------->|                 |-----------------+                   |
         |            +-------+   ce='1'   |      mx65        |  data_out[7:0]  |  rw               |
@@ -225,7 +225,7 @@ SPIN:   JMP SPIN          ; mx65 keeps fetching; display holds
 If that shows one steady LED and a "0", your reset vector, POR, read path, and IO writes all work —
 everything else is incremental. Now the full walking-counter patterns (6502, but the shapes
 generalize). The canonical assembled source lives in
-`firmware/cpu_walking_counter_7seg.asm`; the sketches below are the algorithm, not final opcodes.
+`firmware/mx65_walking_counter_7seg.asm`; the sketches below are the algorithm, not final opcodes.
 
 - **Poll the tick** (decouples visible rate from instruction speed):
 
@@ -317,9 +317,9 @@ embedded code, and is worth building as a compare/contrast variant once polling 
 ```bash
 uv run python scripts/gen_embedded_core.py \
     --cpu mx65 \
-    --system systems/walking_counter_7seg.toml \
-    --rom    firmware/cpu_walking_counter_7seg.bin \
-    --out    hdl/cpu_walking_counter_7seg.vhd
+    --system systems/mx65_walking_counter_7seg.toml \
+    --rom    firmware/mx65_walking_counter_7seg.bin \
+    --out    hdl/mx65_walking_counter_7seg.vhd
 ```
 
 Inputs: a **CPU plugin** (verbatim core + bus/reset/vector conventions), a **system spec**
@@ -329,7 +329,7 @@ generic-parameterized `.vhd`, validated against the contract checker before writ
 ## 11. Running & verifying
 
 - **Interactive:** `uv run fpga-sim` → pick a 7-seg board → select your `.vhd`.
-- **Headless GIF:** `uv run python scripts/capture_demo.py --vhdl hdl/cpu_walking_counter_7seg.vhd
+- **Headless GIF:** `uv run python scripts/capture_demo.py --vhdl hdl/mx65_walking_counter_7seg.vhd
   --board de10_lite --sim nvc` (`SDL_VIDEODRIVER=dummy`; board JSON via `FPGA_SIM_BOARD_JSON`).
 - **Tests:** an integration test analogous to `tests/test_nvc.py::test_7seg_nvc_simulation_passes`
   (reuse `sim/test_7seg.py` glyph/advance assertions) plus a walking-specific cocotb module
@@ -341,19 +341,19 @@ generic-parameterized `.vhd`, validated against the contract checker before writ
 1. **Vendor** `mx65.vhd` (pin a commit) at `scripts/embedded_core/cores/mx65.vhd`; smoke-test it
    analyzes under GHDL and NVC.
 2. **Map** memory/IO as in §6; pick RAM/ROM sizes (2 KB each).
-3. **Write** `firmware/cpu_walking_counter_7seg.s` (§5 cold-start + §7 main loop).
-4. **Assemble** with `ca65`/`ld65` to `firmware/cpu_walking_counter_7seg.bin` (the source of truth).
-5. **Generate** `hdl/cpu_walking_counter_7seg.vhd` (§10).
+3. **Write** `firmware/mx65_walking_counter_7seg.s` (§5 cold-start + §7 main loop).
+4. **Assemble** with `ca65`/`ld65` to `firmware/mx65_walking_counter_7seg.bin` (the source of truth).
+5. **Generate** `hdl/mx65_walking_counter_7seg.vhd` (§10).
 6. **Verify** (§11): glyphs valid, odometer advances, LED bounces, `btn(0)` reverses, `btn(1)`
    lamp-test; compare side-by-side with `hdl/walking_counter_7seg.vhd`.
 
-The complete, annotated program is the checked-in `firmware/cpu_walking_counter_7seg.s` (the §5/§7
+The complete, annotated program is the checked-in `firmware/mx65_walking_counter_7seg.s` (the §5/§7
 sketches are deliberately partial); `ca65`/`ld65` assemble it to the `.bin` that
 `scripts/embedded_core/rom_to_vhdl.py` embeds verbatim as the ROM constant.
 
 ### Generic sizing — one design, every board
 
-The same generated `hdl/cpu_walking_counter_7seg.vhd` runs unchanged on boards with different
+The same generated `hdl/mx65_walking_counter_7seg.vhd` runs unchanged on boards with different
 resource counts: at cold-start the firmware reads `NUM_LEDS`/`NUM_SEGS` from the IO config registers
 (§6) and drives exactly that many. Captured headless with `scripts/capture_demo.py` on three boards
 that differ only in digit count:

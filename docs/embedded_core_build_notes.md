@@ -62,7 +62,7 @@ architecture and confirm via waveform):
 
 ## Stage 1 — Static bring-up system (DONE 2026-06-29)
 
-**Result:** the single-file system `hdl/cpu_walking_counter_7seg.vhd` (banner + verbatim mx65 +
+**Result:** the single-file system `hdl/mx65_walking_counter_7seg.vhd` (banner + verbatim mx65 +
 `cpu_rom` + `cpu_ram` + `cpu_io` + top, leaf-first, 1335 lines) **elaborates and runs under both
 GHDL and NVC**, executing a hand-assembled static program. Observed: `led=0x1`,
 `seg=0x3F3F3F3F` (every digit '0'), `num_segs=4`. All five Stage-1 exit-checklist items met —
@@ -111,9 +111,9 @@ from config reg `$E005` and looping proves the config-read path.
 so firmware is **assembled with ca65/ld65** and the `.s` is checked in as first-class documentation
 — no hand-assembly.
 
-Pipeline: `firmware/cpu_walking_counter_7seg.s` (+ `cpu_6502.cfg`, an ld65 config: 2 KB ROM at
+Pipeline: `firmware/mx65_walking_counter_7seg.s` (+ `mx65.cfg`, an ld65 config: 2 KB ROM at
 `$F800-$FFFF`, `CODE` at the base, `VECTORS` at `$FFFA`) → `ca65`/`ld65` →
-`cpu_walking_counter_7seg.bin` (2 KB, **source of truth**, committed) →
+`mx65_walking_counter_7seg.bin` (2 KB, **source of truth**, committed) →
 `scripts/embedded_core/rom_to_vhdl.py` (sparse aggregate: non-zero bytes + `others => x"00"`) →
 embedded into the VHDL ROM constant.
 
@@ -132,7 +132,7 @@ embedded into the VHDL ROM constant.
 
 ## Stage 2 — Walking-counter firmware (DONE 2026-06-29)
 
-**Result:** `firmware/cpu_walking_counter_7seg.s` now holds the full walking counter — assembled to
+**Result:** `firmware/mx65_walking_counter_7seg.s` now holds the full walking counter — assembled to
 ~310 bytes of code + glyph table (`$F800-$F934`; `irq_handler` RTI at `$F92A`, `DECLUT` at `$F92B`)
 — and the system reproduces `hdl/walking_counter_7seg.vhd` end to end. The new behavioral suite
 `sim/test_cpu_walking.py` (4 cocotb tests) passes **`PASS=4` under both NVC and GHDL**: digits are
@@ -180,8 +180,8 @@ Stage-2 file byte-for-byte** from inputs. Running
 
 ```bash
 uv run python scripts/gen_embedded_core.py --cpu mx65 \
-    --system systems/walking_counter_7seg.toml \
-    --rom firmware/cpu_walking_counter_7seg.bin --out hdl/cpu_walking_counter_7seg.vhd
+    --system systems/mx65_walking_counter_7seg.toml \
+    --rom firmware/mx65_walking_counter_7seg.bin --out hdl/mx65_walking_counter_7seg.vhd
 ```
 
 emits a file that differs from the hand-written one **only** in the banner/separator (now marked
@@ -200,7 +200,7 @@ any firmware/spec change.
   unfilled token.
 - `templates/*.vhd.tmpl` — the hand-written blocks, **sed-extracted as exact line ranges** then
   tokenized only where the spec/ROM drive a scalar (generics, bits, names, aggregate) → byte-exact.
-- `systems/walking_counter_7seg.toml` — name, banner description, generics, and memory map.
+- `systems/mx65_walking_counter_7seg.toml` — name, banner description, generics, and memory map.
 
 **Tests added (`tests/test_embedded_core.py`, now 17):** `test_generator_cli_reproduces_committed_design`
 (byte-for-byte golden via the real CLI — the drift guard), `..._passes_contract_and_lists_all_entities`
@@ -232,7 +232,7 @@ ROM/RAM widths + decode literals, which then appear in the output).
 
 **Result:** the one generated design is captured running on **2/4/6-digit boards** (proving generic
 sizing), and the surrounding docs are wired up. The three GIFs (`docs/assets/cpu_walk_{2,4,6}digit.gif`)
-were produced with `scripts/capture_demo.py --scenario plain --vhdl hdl/cpu_walking_counter_7seg.vhd
+were produced with `scripts/capture_demo.py --scenario plain --vhdl hdl/mx65_walking_counter_7seg.vhd
 --sim nvc --switches 0 --step-ns 336000 --every 1 --frames 48` on **StepMXO2 (2)**, **DE0 (4)**, and
 **DE10-Lite (6)** — all 10-LED boards, so the trio differs *only* in digit count. The firmware reads
 `CFG_LEDS`/`CFG_SEGS` at cold-start and drives exactly that many; verified by eye (a one-hot LED
@@ -268,10 +268,10 @@ and **VSG/P7** (now triggered — the generator emits VHDL).
 
 ## Stage 5 (part 1) — Interrupt-driven variant + two-source controller (DONE 2026-07-01)
 
-**Result:** a second generated design, `hdl/cpu_irq_counter_7seg.vhd`, drives the *same* walking
+**Result:** a second generated design, `hdl/mx65_irq_counter_7seg.vhd`, drives the *same* walking
 counter from **interrupts** instead of a polling loop — and runs `PASS=4` under **both GHDL and NVC**
 (the existing `sim/test_cpu_walking.py` suite, unchanged). Produced by the generator from a new
-`irq_driven = true` spec flag (`systems/cpu_irq_counter_7seg.toml`) + `firmware/cpu_irq_counter_7seg.s`.
+`irq_driven = true` spec flag (`systems/mx65_irq_counter_7seg.toml`) + `firmware/mx65_irq_counter_7seg.s`.
 
 **Two-source interrupt controller (user-requested; the realistic version).** `cpu_io` gains a small
 controller with **two sources** multiplexed onto the CPU's single IRQ line:

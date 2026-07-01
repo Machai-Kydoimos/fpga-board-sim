@@ -27,14 +27,14 @@ from tests.conftest import _7seg_board
 
 PROJECT = Path(__file__).resolve().parent.parent
 MX65 = PROJECT / "scripts" / "embedded_core" / "cores" / "mx65.vhd"
-CPU_SYS = PROJECT / "hdl" / "cpu_walking_counter_7seg.vhd"
-CPU_IRQ_SYS = PROJECT / "hdl" / "cpu_irq_counter_7seg.vhd"
+MX65_SYS = PROJECT / "hdl" / "mx65_walking_counter_7seg.vhd"
+MX65_IRQ_SYS = PROJECT / "hdl" / "mx65_irq_counter_7seg.vhd"
 FIRMWARE = PROJECT / "firmware"
-FW_BIN = FIRMWARE / "cpu_walking_counter_7seg.bin"
+MX65_BIN = FIRMWARE / "mx65_walking_counter_7seg.bin"
 GENERATOR = PROJECT / "scripts" / "gen_embedded_core.py"
-SYSTEM_TOML = PROJECT / "systems" / "walking_counter_7seg.toml"
-FW_IRQ_BIN = FIRMWARE / "cpu_irq_counter_7seg.bin"
-SYSTEM_IRQ_TOML = PROJECT / "systems" / "cpu_irq_counter_7seg.toml"
+MX65_TOML = PROJECT / "systems" / "mx65_walking_counter_7seg.toml"
+MX65_IRQ_BIN = FIRMWARE / "mx65_irq_counter_7seg.bin"
+MX65_IRQ_TOML = PROJECT / "systems" / "mx65_irq_counter_7seg.toml"
 
 # Upstream commit the vendored copy is pinned to (recorded in the file header).
 MX65_PINNED_COMMIT = "d65d81d4f8031e194bd8410133b9036db7e58794"
@@ -113,18 +113,18 @@ def test_mx65_analyzes_under_nvc(nvc):
 # ── Stage 1: the single-file CPU system elaborates + runs ─────────────────────
 
 
-def test_cpu_system_present_and_clean():
-    assert CPU_SYS.is_file(), f"Stage-1 system missing: {CPU_SYS}"
-    ok, msg = check_vhdl_encoding(CPU_SYS)
+def test_mx65_walking_present_and_clean():
+    assert MX65_SYS.is_file(), f"Stage-1 system missing: {MX65_SYS}"
+    ok, msg = check_vhdl_encoding(MX65_SYS)
     assert ok, msg
 
 
 @pytest.mark.slow
-def test_cpu_system_elaborates_ghdl(ghdl):
+def test_mx65_walking_elaborates_ghdl(ghdl):
     """The single-file system + generated wrapper analyzes/elaborates under GHDL."""
     ok, detail = analyze_vhdl(
-        CPU_SYS,
-        toplevel="cpu_walking_counter_7seg",
+        MX65_SYS,
+        toplevel="mx65_walking_counter_7seg",
         simulator="ghdl",
         board_def=_7seg_board(),
     )
@@ -132,13 +132,13 @@ def test_cpu_system_elaborates_ghdl(ghdl):
 
 
 @pytest.mark.slow
-def test_cpu_system_runs_nvc(nvc):
+def test_mx65_walking_runs_nvc(nvc):
     """The walking-counter firmware runs end-to-end under NVC (cocotb suite)."""
     work_dir = tempfile.mkdtemp(prefix="cpu_nvc_")
     ok, detail = analyze_vhdl(
-        CPU_SYS,
+        MX65_SYS,
         work_dir=work_dir,
-        toplevel="cpu_walking_counter_7seg",
+        toplevel="mx65_walking_counter_7seg",
         simulator="nvc",
         board_def=_7seg_board(),
     )
@@ -167,13 +167,13 @@ def test_cpu_system_runs_nvc(nvc):
 
 
 @pytest.mark.slow
-def test_cpu_irq_runs_nvc(nvc):
+def test_mx65_irq_runs_nvc(nvc):
     """The interrupt-driven variant runs the same walking suite under NVC."""
     work_dir = tempfile.mkdtemp(prefix="irq_nvc_")
     ok, detail = analyze_vhdl(
-        CPU_IRQ_SYS,
+        MX65_IRQ_SYS,
         work_dir=work_dir,
-        toplevel="cpu_irq_counter_7seg",
+        toplevel="mx65_irq_counter_7seg",
         simulator="nvc",
         board_def=_7seg_board(),
     )
@@ -203,13 +203,13 @@ def test_cpu_irq_runs_nvc(nvc):
 
 
 @pytest.mark.slow
-def test_cpu_irq_runs_ghdl(ghdl):
+def test_mx65_irq_runs_ghdl(ghdl):
     """The interrupt-driven variant runs the same walking suite under GHDL."""
     work_dir = tempfile.mkdtemp(prefix="irq_ghdl_")
     ok, detail = analyze_vhdl(
-        CPU_IRQ_SYS,
+        MX65_IRQ_SYS,
         work_dir=work_dir,
-        toplevel="cpu_irq_counter_7seg",
+        toplevel="mx65_irq_counter_7seg",
         simulator="ghdl",
         board_def=_7seg_board(),
     )
@@ -233,13 +233,13 @@ def test_cpu_irq_runs_ghdl(ghdl):
 
 
 @pytest.mark.slow
-def test_cpu_system_runs_ghdl(ghdl):
+def test_mx65_walking_runs_ghdl(ghdl):
     """The walking-counter firmware runs end-to-end under GHDL (cocotb suite)."""
     work_dir = tempfile.mkdtemp(prefix="cpu_ghdl_")
     ok, detail = analyze_vhdl(
-        CPU_SYS,
+        MX65_SYS,
         work_dir=work_dir,
-        toplevel="cpu_walking_counter_7seg",
+        toplevel="mx65_walking_counter_7seg",
         simulator="ghdl",
         board_def=_7seg_board(),
     )
@@ -277,7 +277,7 @@ def test_rom_aggregate_is_sparse():
 
 def test_firmware_bin_shape():
     """The assembled image is a 2 KB ROM with valid reset/IRQ/NMI vectors."""
-    data = FW_BIN.read_bytes()
+    data = MX65_BIN.read_bytes()
     assert len(data) == 2048, "ROM image must be exactly 2 KB ($F800-$FFFF)"
     assert data[0x7FC] == 0x00 and data[0x7FD] == 0xF8, "RESET vector must point at $F800"
     assert data[0x7FA] == 0x2A and data[0x7FB] == 0xF9, "NMI vector -> irq_handler $F92A"
@@ -288,8 +288,8 @@ def test_embedded_rom_matches_firmware_bin():
     """The VHDL ROM constant must reproduce the checked-in .bin verbatim."""
     from embedded_core.rom_to_vhdl import rom_aggregate
 
-    expected = rom_aggregate(FW_BIN.read_bytes())
-    assert expected in CPU_SYS.read_text(), (
+    expected = rom_aggregate(MX65_BIN.read_bytes())
+    assert expected in MX65_SYS.read_text(), (
         "hdl ROM aggregate is out of sync with firmware/*.bin — "
         "regenerate it with scripts/embedded_core/rom_to_vhdl.py"
     )
@@ -303,14 +303,14 @@ def test_firmware_reassembles_with_ca65():
     d = Path(tempfile.mkdtemp(prefix="fw_"))
     obj, out = d / "fw.o", d / "fw.bin"
     subprocess.run(
-        ["ca65", "--cpu", "6502", "-o", str(obj), str(FIRMWARE / "cpu_walking_counter_7seg.s")],
+        ["ca65", "--cpu", "6502", "-o", str(obj), str(FIRMWARE / "mx65_walking_counter_7seg.s")],
         check=True,
     )
     subprocess.run(
-        ["ld65", "-C", str(FIRMWARE / "cpu_6502.cfg"), "-o", str(out), str(obj)],
+        ["ld65", "-C", str(FIRMWARE / "mx65.cfg"), "-o", str(out), str(obj)],
         check=True,
     )
-    assert out.read_bytes() == FW_BIN.read_bytes(), "ca65/ld65 output drifted from the .bin"
+    assert out.read_bytes() == MX65_BIN.read_bytes(), "ca65/ld65 output drifted from the .bin"
 
 
 # ── Stage 3: the generator reproduces the committed design ────────────────────
@@ -318,7 +318,7 @@ def test_firmware_reassembles_with_ca65():
 
 def test_generator_cli_reproduces_committed_design():
     """gen_embedded_core.py reproduces the committed .vhd byte-for-byte (drift guard)."""
-    out = Path(tempfile.mkdtemp(prefix="gen_")) / CPU_SYS.name
+    out = Path(tempfile.mkdtemp(prefix="gen_")) / MX65_SYS.name
     subprocess.run(
         [
             sys.executable,
@@ -326,9 +326,9 @@ def test_generator_cli_reproduces_committed_design():
             "--cpu",
             "mx65",
             "--system",
-            str(SYSTEM_TOML),
+            str(MX65_TOML),
             "--rom",
-            str(FW_BIN),
+            str(MX65_BIN),
             "--out",
             str(out),
         ],
@@ -337,15 +337,15 @@ def test_generator_cli_reproduces_committed_design():
         capture_output=True,
         text=True,
     )
-    assert out.read_text() == CPU_SYS.read_text(), (
-        "gen_embedded_core.py output drifted from hdl/cpu_walking_counter_7seg.vhd — "
-        "regenerate it from systems/walking_counter_7seg.toml + the firmware .bin"
+    assert out.read_text() == MX65_SYS.read_text(), (
+        "gen_embedded_core.py output drifted from hdl/mx65_walking_counter_7seg.vhd — "
+        "regenerate it from systems/mx65_walking_counter_7seg.toml + the firmware .bin"
     )
 
 
 def test_generator_reproduces_irq_design():
     """gen_embedded_core.py reproduces the committed interrupt-driven .vhd byte-for-byte."""
-    out = Path(tempfile.mkdtemp(prefix="gen_irq_")) / CPU_IRQ_SYS.name
+    out = Path(tempfile.mkdtemp(prefix="gen_irq_")) / MX65_IRQ_SYS.name
     subprocess.run(
         [
             sys.executable,
@@ -353,9 +353,9 @@ def test_generator_reproduces_irq_design():
             "--cpu",
             "mx65",
             "--system",
-            str(SYSTEM_IRQ_TOML),
+            str(MX65_IRQ_TOML),
             "--rom",
-            str(FW_IRQ_BIN),
+            str(MX65_IRQ_BIN),
             "--out",
             str(out),
         ],
@@ -364,9 +364,9 @@ def test_generator_reproduces_irq_design():
         capture_output=True,
         text=True,
     )
-    assert out.read_text() == CPU_IRQ_SYS.read_text(), (
-        "gen_embedded_core.py output drifted from hdl/cpu_irq_counter_7seg.vhd — "
-        "regenerate it from systems/cpu_irq_counter_7seg.toml + the firmware .bin"
+    assert out.read_text() == MX65_IRQ_SYS.read_text(), (
+        "gen_embedded_core.py output drifted from hdl/mx65_irq_counter_7seg.vhd — "
+        "regenerate it from systems/mx65_irq_counter_7seg.toml + the firmware .bin"
     )
 
 
@@ -376,9 +376,9 @@ def test_generated_design_passes_contract_and_lists_all_entities():
     from embedded_core.cpu_plugin import get_plugin
     from embedded_core.emitter import emit
 
-    spec = system_spec.load(SYSTEM_TOML)
-    generated = emit(spec, get_plugin(spec.cpu), FW_BIN.read_bytes())
-    for entity in ("mx65", "cpu_rom", "cpu_ram", "cpu_io", "cpu_walking_counter_7seg"):
+    spec = system_spec.load(MX65_TOML)
+    generated = emit(spec, get_plugin(spec.cpu), MX65_BIN.read_bytes())
+    for entity in ("mx65", "cpu_rom", "cpu_ram", "cpu_io", "mx65_walking_counter_7seg"):
         assert f"entity {entity} is" in generated, f"generated design missing entity '{entity}'"
     with tempfile.TemporaryDirectory() as d:
         probe = Path(d) / f"{spec.name}.vhd"
@@ -393,13 +393,13 @@ def test_memory_map_drives_widths_and_decode():
     """The spec's memory map derives the ROM/RAM widths and the address decode."""
     from embedded_core import system_spec
 
-    spec = system_spec.load(SYSTEM_TOML)
+    spec = system_spec.load(MX65_TOML)
     assert (spec.rom.addr_bits, spec.ram.addr_bits, spec.addr_high) == (11, 11, 10)
     assert spec.ram.select_literal() == '"00000"'
     assert spec.io.select_literal() == 'x"E0"'
     assert spec.rom.select_literal() == '"11111"'
     # ...and those decode literals actually appear in the generated top.
-    text = CPU_SYS.read_text()
+    text = MX65_SYS.read_text()
     assert f"cpu_addr(15 downto 11) = {spec.ram.select_literal()}" in text
     assert f"cpu_addr(15 downto 11) = {spec.rom.select_literal()}" in text
     assert spec.io.select_literal() in text
