@@ -10,7 +10,7 @@
 ;     reference RTL's own comments say "doubles" though its code quadruples).
 ;
 ; A hardware prescaler raises a "tick" every 2^PRESCALER_BITS clocks; the CPU
-; polls it (read-to-clear at TICK) so the visible rate is decoupled from raw
+; polls it (write-to-clear at TICK) so the visible rate is decoupled from raw
 ; instruction speed.  Assembled with ca65 + ld65 (see README.md); the .bin is
 ; embedded as the VHDL ROM constant in hdl/mx65_walking_counter_7seg.vhd.
 ; ===========================================================================
@@ -22,7 +22,7 @@ SW       = $E000                ; switches, bits 7..0
 BTN      = $E002                ; buttons, bits 7..0  (bit0 = btn0, bit1 = btn1)
 CFG_LEDS = $E004                ; config: NUM_LEDS
 CFG_SEGS = $E005                ; config: NUM_SEGS
-TICK     = $E010                ; bit0 = tick pending (reading clears it)
+TICK     = $E010                ; bit0 = tick pending; write any value to clear
 LED_LO   = $E020                ; LED bits 7..0
 LED_HI   = $E021                ; LED bits 15..8
 SEG_BASE = $E030                ; per-digit segment regs: $E030 + digit index
@@ -78,7 +78,8 @@ main:
 @wait:
         lda     TICK            ; bit0 set once per 2^PRESCALER_BITS clocks
         and     #$01
-        beq     @wait           ; spin until a tick is pending (read clears it)
+        beq     @wait           ; spin until a tick is pending
+        sta     TICK            ; ack (a=1): a write clears the tick
 
         ; --- btn0 rising edge -> reverse LED walk and count direction -------
         lda     BTN

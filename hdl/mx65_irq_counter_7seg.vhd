@@ -1266,12 +1266,12 @@ begin
     end case;
   end process;
 
-  -- Clocked: prescaler tick (read-to-clear at $E010) + register writes.
+  -- Clocked: prescaler tick (write-to-clear at $E010) + register writes.
   process (clk) begin
     if rising_edge(clk) then
       prescaler <= prescaler + 1;
-      if cs = '1' and we = '0' and addr = x"10" then
-        tick <= '0';                       -- read-to-clear
+      if cs = '1' and we = '1' and addr = x"10" then
+        tick <= '0';                       -- write-to-clear (safe for multi-cycle reads)
       end if;
       if prescaler = (prescaler'range => '1') then
         tick <= '1';                       -- set wins over a simultaneous clear

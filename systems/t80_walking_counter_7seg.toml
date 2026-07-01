@@ -1,0 +1,42 @@
+# System spec for the Z80 (T80) walking counter.
+# Consumed by scripts/gen_embedded_core.py.  Unlike the 6502, the Z80 boots at
+# $0000, so ROM sits at the bottom of the map; RAM and memory-mapped IO move up.
+
+name = "t80_walking_counter_7seg"
+firmware = "t80_walking_counter_7seg"
+cpu = "t80"
+
+description = """
+Z80 version of the walking counter: a vendored T80 Z80 core (below, verbatim,
+BSD-3, with a numeric_std_unsigned standardization patch) + ROM + RAM +
+memory-mapped IO + a top that plugs the T80 into the normalized CPU bus.
+
+The ROM holds the walking-counter firmware (assembled by z88dk's z80asm from
+firmware/t80_walking_counter_7seg.asm), reproducing the 6502 design's behavior on
+a Z80: a single lit LED bounces across the LEDs while a decimal odometer advances
+on the 7-segment digits; btn(0) reverses both directions, btn(1) is a lamp test,
+and each active switch steps faster.  The Z80 boots at $0000, so ROM is at the
+bottom of the memory map; the firmware polls the prescaler tick at $E010.
+See docs/embedded_core_system_plan.md."""
+
+# VHDL generic defaults (board sizes are overridden at elaboration).
+[generics]
+num_switches = 4
+num_buttons = 4
+num_leds = 4
+num_segs = 4
+counter_bits = 24
+prescaler_bits = 10
+
+# Memory map.  Z80 boots at $0000 -> ROM low; RAM and IO up top.
+[memory.rom]
+base = 0x0000
+size = 0x0800   # 2 KB -> 11 address bits
+
+[memory.ram]
+base = 0x8000
+size = 0x0800
+
+[memory.io]
+base = 0xE000
+size = 0x0100

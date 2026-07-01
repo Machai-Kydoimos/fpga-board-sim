@@ -1,0 +1,65 @@
+Z80 Module Assembler 2.7.1o, (c) InterLogic 1993-2009, Paulo Custodio 2011-2015                   Wed Jul  1 15:49:44 2026
+Page 001                                                                                    't80_walking_counter_7seg.sym'
+
+
+
+
+Local Module Symbols:
+
+BCD                             = 8010
+bcd_dec                         = 011D
+bcd_inc                         = 0108
+bd_dec                          = 012E
+bd_loop                         = 0124
+bi_loop                         = 010F
+bi_store                        = 011B
+bounce                          = 00CF
+bounce_back                     = 00F4
+bounce_bottom                   = 00FF
+bounce_top                      = 00E7
+BTN                             = E002
+calc_skip                       = 0151
+CFG_LEDS                        = E004
+CFG_SEGS                        = E005
+CNT_UP                          = 8002
+cs_done                         = 016E
+cs_nc                           = 015D
+cs_pc                           = 0158
+cs_sh                           = 0166
+CURBTN                          = 8004
+DECLUT                          = 0172
+do_segs                         = 00A6
+FWD                             = 8001
+LAMP                            = 8005
+LED_HI                          = E021
+LED_LO                          = E020
+led_normal                      = 009A
+main                            = 002C
+noedge                          = 0056
+N_LEDS                          = 8008
+N_SEGS                          = 8009
+oh_shift                        = 0140
+onehot                          = 0131
+ONEHOT_HI                       = 800B
+ONEHOT_LO                       = 800A
+POS                             = 8000
+PREVBTN                         = 8003
+render                          = 0087
+reset                           = 0000
+SEG_BASE                        = E030
+seg_loop                        = 00B0
+seg_normal                      = 00BA
+seg_put                         = 00C7
+SKIPCNT                         = 8007
+SKIP_BASE                       = 0008
+SKIP_VAL                        = 8006
+step_inc                        = 0084
+SW                              = E000
+TICK                            = E010
+waittick                        = 002C
+zbcd                            = 001C
+
+
+Global Module Symbols:
+
+
