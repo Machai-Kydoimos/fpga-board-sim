@@ -28,6 +28,7 @@ class CpuPlugin:
     entity_name: str  # the core entity the adapter instantiates
     core_files: tuple[Path, ...]  # vendored VHDL, leaf-first (emitted verbatim)
     adapter_file: Path  # normalized-bus adapter block
+    vectored_adapter_file: Path | None = None  # variant for vectored interrupts (Z80 IM 2)
     address_bits: int = 16
     data_bits: int = 8
     reset_active_high: bool = True  # mx65: high; T80: RESET_n is active-low
@@ -39,8 +40,16 @@ class CpuPlugin:
         """Return the vendored core VHDL, files concatenated leaf-first."""
         return "\n".join(f.read_text() for f in self.core_files)
 
-    def adapter_vhdl(self) -> str:
-        """Return the normalized-bus adapter block for this core."""
+    def adapter_vhdl(self, vectored: bool = False) -> str:
+        """Return the normalized-bus adapter block for this core.
+
+        ``vectored`` selects the interrupt-mode-2 adapter (drives a vector onto the
+        data bus during INTA); the core must provide ``vectored_adapter_file``.
+        """
+        if vectored:
+            if self.vectored_adapter_file is None:
+                raise ValueError(f"core {self.name!r} has no vectored-interrupt adapter")
+            return self.vectored_adapter_file.read_text()
         return self.adapter_file.read_text()
 
 
@@ -60,6 +69,7 @@ T80 = CpuPlugin(
         for stem in ("T80_Pack", "T80_ALU", "T80_MCode", "T80_Reg", "T80", "T80s")
     ),
     adapter_file=_ADAPTERS / "t80.vhd",
+    vectored_adapter_file=_ADAPTERS / "t80_vectored.vhd",
     reset_active_high=False,
     boots_at_zero=True,
 )

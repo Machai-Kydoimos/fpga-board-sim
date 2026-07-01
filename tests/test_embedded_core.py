@@ -38,6 +38,9 @@ MX65_IRQ_TOML = PROJECT / "systems" / "mx65_irq_counter_7seg.toml"
 T80_SYS = PROJECT / "hdl" / "t80_walking_counter_7seg.vhd"
 T80_BIN = FIRMWARE / "t80_walking_counter_7seg.bin"
 T80_TOML = PROJECT / "systems" / "t80_walking_counter_7seg.toml"
+T80_IRQ_SYS = PROJECT / "hdl" / "t80_irq_counter_7seg.vhd"
+T80_IRQ_BIN = FIRMWARE / "t80_irq_counter_7seg.bin"
+T80_IRQ_TOML = PROJECT / "systems" / "t80_irq_counter_7seg.toml"
 
 # Upstream commit the vendored copy is pinned to (recorded in the file header).
 MX65_PINNED_COMMIT = "d65d81d4f8031e194bd8410133b9036db7e58794"
@@ -390,6 +393,112 @@ def test_generator_reproduces_t80_design():
     )
 
 
+# ── Stage 5 (part 3): the Z80 IM 2 (vectored) interrupt design ────────────────
+
+
+def test_t80_irq_firmware_vector_table():
+    """The IM 2 image boots with a jp and populates two distinct ISRs in the $0100 table."""
+    data = T80_IRQ_BIN.read_bytes()
+    assert data[0] == 0xC3, "IM 2 image must start with a jp (0xC3)"
+    timer_isr = data[0x100] | (data[0x101] << 8)  # I:vector table entry for vector $00
+    input_isr = data[0x102] | (data[0x103] << 8)  # ...and for vector $02
+    assert timer_isr != 0 and input_isr != 0, "IM 2 vector table at $0100 is not populated"
+    assert timer_isr != input_isr, "timer and input sources must dispatch to distinct ISRs"
+
+
+def test_generator_reproduces_t80_irq_design():
+    """gen_embedded_core.py reproduces the committed Z80 IM 2 .vhd byte-for-byte."""
+    out = Path(tempfile.mkdtemp(prefix="gen_t80irq_")) / T80_IRQ_SYS.name
+    subprocess.run(
+        [
+            sys.executable,
+            str(GENERATOR),
+            "--cpu",
+            "t80",
+            "--system",
+            str(T80_IRQ_TOML),
+            "--rom",
+            str(T80_IRQ_BIN),
+            "--out",
+            str(out),
+        ],
+        check=True,
+        cwd=PROJECT,
+        capture_output=True,
+        text=True,
+    )
+    assert out.read_text() == T80_IRQ_SYS.read_text(), (
+        "gen_embedded_core.py output drifted from hdl/t80_irq_counter_7seg.vhd — "
+        "regenerate it from systems/t80_irq_counter_7seg.toml + the firmware .bin"
+    )
+
+
+@pytest.mark.slow
+def test_t80_irq_runs_nvc(nvc):
+    """The Z80 IM 2 (vectored) interrupt design runs the walking suite under NVC."""
+    work_dir = tempfile.mkdtemp(prefix="t80irq_nvc_")
+    ok, detail = analyze_vhdl(
+        T80_IRQ_SYS,
+        work_dir=work_dir,
+        toplevel="t80_irq_counter_7seg",
+        simulator="nvc",
+        board_def=_7seg_board(),
+    )
+    assert ok, f"NVC analyze failed: {detail}"
+
+    env, vhpi_lib = _build_sim_env(simulator="nvc")
+    subprocess.run(
+        _NVCBackend.elaborate_cmd("sim_wrapper", _CPU_GENERICS, work_dir),
+        env=env,
+        check=True,
+        cwd=work_dir,
+    )
+    run_cmd = _NVCBackend.run_cmd("sim_wrapper", _CPU_GENERICS, vhpi_lib, work_dir)
+    run_cmd.append("--stop-time=6000000ns")
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_walking"
+    run_env["TOPLEVEL"] = "sim_wrapper"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+
+    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
+        "cocotb walking suite did not pass under NVC (Z80 IM 2 design).\n"
+        + "\n".join(output.splitlines()[-40:])
+    )
+
+
+@pytest.mark.slow
+def test_t80_irq_runs_ghdl(ghdl):
+    """The Z80 IM 2 (vectored) interrupt design runs the walking suite under GHDL."""
+    work_dir = tempfile.mkdtemp(prefix="t80irq_ghdl_")
+    ok, detail = analyze_vhdl(
+        T80_IRQ_SYS,
+        work_dir=work_dir,
+        toplevel="t80_irq_counter_7seg",
+        simulator="ghdl",
+        board_def=_7seg_board(),
+    )
+    assert ok, f"GHDL analyze failed: {detail}"
+
+    env, plugin_lib = _build_sim_env(simulator="ghdl")
+    run_cmd = _GHDLBackend.run_cmd("sim_wrapper", _CPU_GENERICS, plugin_lib, work_dir)
+    run_cmd.append("--stop-time=6000000ns")
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_walking"
+    run_env["TOPLEVEL"] = "sim_wrapper"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+
+    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
+        "cocotb walking suite did not pass under GHDL (Z80 IM 2 design).\n"
+        + "\n".join(output.splitlines()[-40:])
+    )
+
+
 @pytest.mark.slow
 def test_mx65_walking_runs_ghdl(ghdl):
     """The walking-counter firmware runs end-to-end under GHDL (cocotb suite)."""
@@ -592,8 +701,8 @@ def test_spec_rejects_unknown_axis_values():
         dataclasses.replace(spec, io_transport="spi")
 
 
-def test_emit_guards_unimplemented_axes():
-    """The emitter refuses axis values that are declared but not yet built."""
+def test_emit_rejects_unsupported_axis_combos():
+    """port-mapped IO is unbuilt; vectored interrupts need a core that supports them."""
     import dataclasses
 
     from embedded_core import system_spec
@@ -603,7 +712,9 @@ def test_emit_guards_unimplemented_axes():
     spec = system_spec.load(MX65_TOML)
     plugin = get_plugin(spec.cpu)
     rom = MX65_BIN.read_bytes()
+    # port-mapped IO transport is declared but not emitted yet.
     with pytest.raises(NotImplementedError):
         emit(dataclasses.replace(spec, io_transport="port"), plugin, rom)
-    with pytest.raises(NotImplementedError):
+    # the mx65 core has no vectored-interrupt adapter (only the Z80/T80 does).
+    with pytest.raises(ValueError):
         emit(dataclasses.replace(spec, irq_mode="vectored"), plugin, rom)

@@ -1,3 +1,7 @@
 # Build intermediates - the .bin is the checked-in source of truth.
 *.o
 *.lst
+# z88dk z80asm byproducts
+*.obj
+*.sym
+*.map
