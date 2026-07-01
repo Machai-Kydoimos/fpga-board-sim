@@ -561,3 +561,49 @@ def test_memory_map_drives_widths_and_decode():
     assert f"cpu_addr(15 downto 11) = {spec.ram.select_literal()}" in text
     assert f"cpu_addr(15 downto 11) = {spec.rom.select_literal()}" in text
     assert spec.io.select_literal() in text
+
+
+# ── Spec axes: interrupt mode + IO transport ──────────────────────────────────
+
+
+def test_spec_axes_defaults_and_modes():
+    """The polled design defaults to none/memory; the IRQ design uses simple/memory."""
+    from embedded_core import system_spec
+
+    walking = system_spec.load(MX65_TOML)
+    assert walking.irq_mode == "none" and not walking.irq_driven
+    assert walking.io_transport == "memory"
+
+    irq = system_spec.load(MX65_IRQ_TOML)
+    assert irq.irq_mode == "simple" and irq.irq_driven
+    assert irq.io_transport == "memory"
+
+
+def test_spec_rejects_unknown_axis_values():
+    """__post_init__ validates both axes, so bad values fail fast on construction."""
+    import dataclasses
+
+    from embedded_core import system_spec
+
+    spec = system_spec.load(MX65_TOML)
+    with pytest.raises(ValueError):
+        dataclasses.replace(spec, irq_mode="fancy")
+    with pytest.raises(ValueError):
+        dataclasses.replace(spec, io_transport="spi")
+
+
+def test_emit_guards_unimplemented_axes():
+    """The emitter refuses axis values that are declared but not yet built."""
+    import dataclasses
+
+    from embedded_core import system_spec
+    from embedded_core.cpu_plugin import get_plugin
+    from embedded_core.emitter import emit
+
+    spec = system_spec.load(MX65_TOML)
+    plugin = get_plugin(spec.cpu)
+    rom = MX65_BIN.read_bytes()
+    with pytest.raises(NotImplementedError):
+        emit(dataclasses.replace(spec, io_transport="port"), plugin, rom)
+    with pytest.raises(NotImplementedError):
+        emit(dataclasses.replace(spec, irq_mode="vectored"), plugin, rom)

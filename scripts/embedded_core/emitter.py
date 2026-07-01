@@ -50,6 +50,13 @@ def _decode(spec: SystemSpec) -> str:
 
 def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
     """Return the complete single-file VHDL design as text."""
+    # Axis values that are declared but not yet emitted (built in later stages).
+    if spec.io_transport != "memory":
+        raise NotImplementedError(
+            f"io_transport={spec.io_transport!r} not implemented yet (memory-mapped IO only)"
+        )
+    if spec.irq_mode == "vectored":
+        raise NotImplementedError("irq_mode='vectored' (Z80 IM 2) not implemented yet")
     g = spec.generics
     tokens = {
         "NAME": spec.name,

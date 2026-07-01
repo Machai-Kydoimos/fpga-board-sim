@@ -47,6 +47,16 @@ class MemoryRegion:
         return '"' + format(prefix, f"0{width}b") + '"'
 
 
+# Interrupt-dispatch modes and IO transports the generator understands.  Values
+# are validated on construction; some are declared here but implemented in a
+# later stage (the emitter guards the not-yet-built ones):
+#   irq_mode:     none = polled; simple = one fixed-vector handler (6502 IRQ /
+#                 Z80 IM 1); vectored = Z80 IM 2 (per-source vector on the bus).
+#   io_transport: memory = memory-mapped registers; port = Z80 IN/OUT via IORQ.
+IRQ_MODES = ("none", "simple", "vectored")
+IO_TRANSPORTS = ("memory", "port")
+
+
 @dataclass(frozen=True)
 class SystemSpec:
     """A parsed ``systems/*.toml`` system specification."""
@@ -59,7 +69,20 @@ class SystemSpec:
     ram: MemoryRegion
     rom: MemoryRegion
     io: MemoryRegion
-    irq_driven: bool = False  # route the timer tick to the CPU's IRQ instead of polling
+    irq_mode: str = "none"  # interrupt dispatch: none | simple | vectored (see IRQ_MODES)
+    io_transport: str = "memory"  # register transport: memory | port (see IO_TRANSPORTS)
+
+    def __post_init__(self) -> None:
+        """Validate the interrupt-mode and IO-transport axes against their value sets."""
+        if self.irq_mode not in IRQ_MODES:
+            raise ValueError(f"irq_mode {self.irq_mode!r} not one of {IRQ_MODES}")
+        if self.io_transport not in IO_TRANSPORTS:
+            raise ValueError(f"io_transport {self.io_transport!r} not one of {IO_TRANSPORTS}")
+
+    @property
+    def irq_driven(self) -> bool:
+        """True when an interrupt controller drives the CPU's IRQ line (any mode but 'none')."""
+        return self.irq_mode != "none"
 
     @property
     def addr_high(self) -> int:
@@ -84,5 +107,6 @@ def load(path: str | Path) -> SystemSpec:
         ram=region("ram"),
         rom=region("rom"),
         io=region("io"),
-        irq_driven=bool(data.get("irq_driven", False)),
+        irq_mode=str(data.get("irq_mode", "none")),
+        io_transport=str(data.get("io_transport", "memory")),
     )
