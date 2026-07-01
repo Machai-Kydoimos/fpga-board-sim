@@ -1,16 +1,15 @@
 # Embedded Core System Development Guide
 
 > **Companion:** [`embedded_core_system_plan.md`](embedded_core_system_plan.md) — the implementation
-> plan, staging, and risk register for the first system this guide describes.
+> plan, staging, and risk register.
 >
-> *A guide to building a single-file VHDL design that runs an assembled program on a soft-core
-> CPU, driving a virtual FPGA board's switches, buttons, LEDs, and 7-segment displays through a
-> memory-mapped IO subsystem. Two layers: **concepts** (for students/end-users) and **mechanics**
-> (for maintainers extending the simulator). The running worked example is a 6502 (mx65) system
-> that reproduces `hdl/walking_counter_7seg.vhd`.*
->
-> **Note:** until the first system is built (plan Stages 0–4), the file paths and exact register
-> details below are the *intended* design; finalize them against the real code as it lands.
+> *A guide to building a single-file VHDL design that runs an assembled program on a soft-core CPU,
+> driving a virtual FPGA board's switches, buttons, LEDs, and 7-segment displays through a
+> memory-mapped IO subsystem. The generator (`scripts/gen_embedded_core.py`) is built; the worked
+> examples are a **6502 (mx65)** and a **Z80 (T80)** running the same walking counter from a shared,
+> core-agnostic skeleton. Wherever the two cores differ, the guide calls out what a **third** core
+> would change — the goal is that you can drop in any VHDL CPU by vendoring it and writing one small
+> bus adapter.*
 
 ## 1. Overview & goals
 
@@ -58,73 +57,138 @@ different port names (mx65 uses `clock/reset/ce/...`) coexists fine.
 
 ## 3. Anatomy of a generated system
 
+The generator concatenates into one file: a banner, the **vendored CPU core** (verbatim), then four
+generated blocks — `cpu_rom`, `cpu_ram`, `cpu_io`, and the **top**. The trick that lets one skeleton
+host different CPUs: the ROM/RAM/IO and address decode all speak a **normalized internal bus**, and a
+small per-core **adapter** translates that bus to the specific core's pins.
+
 ```text
-        +------------------- mx65_walking_counter_7seg (top entity = filename) -------------------+
-clk --->| clk        +-------+ cpu_reset  +-----------------+   address[15:0]                     |
-        |            |  POR  |----------->|                 |-----------------+                   |
-        |            +-------+   ce='1'   |      mx65        |  data_out[7:0]  |  rw               |
-        | irq='0' -------------> ------->|  (6502 CPU core)  |---------+       |                   |
-        | nmi='0' ------------->         +-----------------+          |       |                   |
-        |                                   data_in[7:0] ^            v       v                   |
-        |                                                |   +--- system bus -----------------+   |
-        |   sw  ----------------------------------------|-->|  ROM  |  RAM  |  IO + config     |   |
-        |   btn ----------------------------------------|-->|       |       |  (decoder+regs)  |   |
-        |                                                +---|  read mux -> data_in            |   |
-        |   led <--------------------------------------------|  led regs   seg regs --> seg ------> seg
-        +----------------------------------------------------------------------------------------+
+   +------------------------- top (entity = filename) --------------------------+
+   |  clk --> [ POR ] --> cpu_reset (active-high, normalized)                    |
+   |                                                                            |
+   |    +----------------------+     normalized bus     +--- decode + read mux -+|
+   |    |  per-core ADAPTER     |  cpu_addr / cpu_din /  |  cpu_rom | cpu_ram |  ||
+   |    |  (a VHDL `block`)     |<-cpu_dout / cpu_we  -->|  cpu_io (regs+timer) |||
+   |    |   instantiates mx65   |  cpu_reset/cpu_irq_req |          |           ||
+   |    |         or T80        |                       +----------|-----------+|
+   |    +----------------------+                                   v            |
+   |  sw/btn ---------------------------------------------> cpu_io ---> led/seg  |
+   +----------------------------------------------------------------------------+
 ```
 
-- **CPU core** (mx65): drives `address`, `data_out`, `rw`; reads `data_in`. `ce='1'` (full speed),
-  `irq`/`nmi` tied off for the polling version.
-- **ROM**: read-only bytes (program + LUT + reset/IRQ/NMI vectors).
-- **RAM**: zero page, stack, variables.
-- **IO + config**: address decoder + registers; reads `sw`/`btn`/config/tick, writes `led`/`seg`;
-  contains the prescaler that generates the tick.
-- **POR**: a small counter that holds the CPU in reset for the first few clocks (synthesized from
-  signal initial values; see §5).
-- **Read mux**: selects ROM/RAM/IO onto `data_in` by address decode — **combinational** (same-cycle
-  read; see §4 *Bus read timing*), with the default branch driving `x"00"` so the bus is never `'U'`.
+- **Normalized bus.** `cpu_addr(15:0)`, `cpu_din(7:0)` (to CPU), `cpu_dout(7:0)` (from CPU), `cpu_we`
+  (active-high write strobe), `cpu_reset` (active-high), `cpu_irq_req` (active-high). Every generated
+  block uses these names, so they are **core-independent**.
+- **Per-core adapter** (`scripts/embedded_core/adapters/<core>.vhd`): a self-contained VHDL `block`
+  that instantiates the core and wires it to the normalized bus, converting reset polarity, the write
+  strobe, the interrupt polarity, and the bus protocol (§4). This is the *only* core-specific VHDL —
+  the whole "port to a new CPU" job.
+- **`cpu_rom`** — combinational read (§4 *Bus read timing*); program + LUTs, embedded from the
+  firmware `.bin`. **`cpu_ram`** — combinational read, registered write, zero-initialized. **`cpu_io`**
+  — address-decoded registers (sw/btn/config/tick reads, led/seg writes) + the prescaler + (optionally)
+  a small interrupt controller (§9).
+- **POR** — a counter that holds `cpu_reset` asserted for the first few clocks (§5).
+- **Decode + read mux** — **generated from the system memory map** (so the 6502's and Z80's different
+  maps both work); combinational, default `x"00"` so the bus is never `'U'`.
 
-## 4. Choosing or adding a CPU core
+## 4. Adding a CPU core (the core-agnostic part)
 
-**Requirements for a core to drop into this simulator:**
+Porting to a new CPU is **two files**: vendor the core under `cores/`, and write a bus adapter under
+`adapters/`. The ROM/RAM/IO, address decode, and firmware toolchain don't change. mx65 (6502) and
+T80 (Z80) are the two worked examples; a third core follows the same recipe.
 
-1. **VHDL** (GHDL/NVC are VHDL simulators; Verilog cores like Arlet's 6502 don't apply).
-2. **Self-contained in standard IEEE libraries** — `std_logic_1164` + `numeric_std` only. **No
-   Synopsys packages** (would need `-fsynopsys`, which the flow doesn't pass) and **no vendor
-   primitives** (Lattice/Xilinx macros, `altsyncram`, etc.).
-3. **Analyzes under `--std=08`** with no external dependencies.
-4. **Simple, documented bus**: address out, data in/out, a read/write strobe, reset, ideally a
-   clock-enable; level-sensitive `irq`/`nmi` if you want interrupts.
-5. **Permissive license** (MIT/BSD) so it can be vendored into the repo, with its header kept.
+### 4.1 Requirements for a core
 
-**`CpuPlugin` fields** the generator needs (see the plan): verbatim core text, entity name, address
-& data widths, reset polarity/sync, clock-enable presence, vector addresses + endianness, and the
-bus-adapter mapping (which core port maps to which bus signal).
+1. **VHDL** (GHDL/NVC are VHDL simulators; Verilog cores don't apply).
+2. **Analyzes under `--std=08` / `--std=2008` with no `-fsynopsys`** and no vendor primitives
+   (`altsyncram`, Lattice/Xilinx macros). Standard `std_logic_1164` + `numeric_std` is ideal; a core
+   that pulls in Synopsys `std_logic_unsigned`/`std_logic_arith` can usually be **standardized**
+   (§4.2).
+3. **A documented synchronous bus**: address out, data in/out, a read/write strobe, reset, and a
+   level-sensitive interrupt line if you want interrupts.
+4. **A redistributable license** (MIT/BSD) so the core can be vendored with its notice kept.
 
-**6502 cores evaluated:**
+### 4.2 Vendoring the core
 
-| Core | License | Self-containment | Libraries | Fit |
-|---|---|---|---|---|
-| **mx65** (Steve-Teal) | MIT | **1 file, 1 arch, 0 sub-components** (~995 lines) | `std_logic_1164`+`numeric_std` | **Best** — drop-in; cycle-accurate; passes Klaus Dormann tests |
-| T65 (mist-devel / CoPro6502) | BSD | 4 units (`T65`+`T65_Pack`+`T65_ALU`+`T65_MCode`); instantiates components | `std_logic_1164`+`numeric_std` (clean) | Good alternative; must **inline 4 units**; configurable 6502/65C02/65C816; very battle-tested |
-| cpu6502_tc (OpenCores) | LGPL/OpenCores | multi-file, HDL-Designer-generated | possibly Synopsys | Weaker license/portability |
+Copy the core VHDL under `scripts/embedded_core/cores/<core>/` (or a single file), **keeping its
+license header** — it travels into every generated design. Then:
 
-We use **mx65** for the first system. **T65** is the recommended next step to prove the generator
-can inline a multi-unit core and to reach 65C02/65C816.
+- **Pin the upstream commit** and record it (mx65's header; T80's `cores/t80/PROVENANCE.md`) so a
+  test can guard against silent re-vendoring.
+- **ASCII only, no BOM** — the simulator's gate (`check_vhdl_encoding`) rejects non-ASCII; sanitize a
+  core with accented bytes and note it as a patch.
+- **Multi-file cores are fine** — list the files **leaf-first**; the generator concatenates them
+  (T80 = `T80_Pack`, `T80_ALU`, `T80_MCode`, `T80_Reg`, `T80`, `T80s`).
+- **Synopsys → standard patch.** If the core uses `IEEE.STD_LOGIC_UNSIGNED`, swap it for the
+  VHDL-2008 standard `IEEE.NUMERIC_STD_UNSIGNED` (same `std_logic_vector` unsigned arithmetic, no
+  `-fsynopsys`). This worked verbatim for T80 because it uses no `std_logic_arith`-only helpers
+  (`conv_integer`, …); if a core does, translate those to `to_integer`/`to_unsigned` too. **Document
+  every change to the vendored bytes**; the integrity test checks the pinned commit *and* that the
+  core still analyzes under both simulators.
 
-**mx65 interface:** `clock`, `reset` (active-high, async), `ce` (clock-enable), `data_in[7:0]`,
-`data_out[7:0]`, `address[15:0]`, `rw` (1=read, 0=write), `sync` (opcode fetch), `nmi`, `irq`
-(active-high, level). No generics.
+### 4.3 The `CpuPlugin`
 
-**Bus read timing — the deepest pothole.** The 6502 (and most simple cores) use a *same-cycle*
-read bus: the core drives `address`/`rw` and expects the byte back on `data_in` **within the same
-clock cycle**. So your ROM, RAM, IO registers, and read mux must be **combinational** on the read
-path (address/decode in → byte out, no output register). A registered ("synchronous") memory
-returns data one cycle late, so the core latches the *previous* address's byte and executes garbage
-from the first fetch. When adding a core, find the exact edge/phase it samples `data_in` and match
-the read path to it; combinational read is the safe default for sim-only use. (Real hardware uses
-registered block-RAM plus a wait state — not needed here.)
+`scripts/embedded_core/cpu_plugin.py` describes each core — its files, its adapter, and the facts the
+generator documents (reset polarity, boot behavior):
+
+```python
+MX65 = CpuPlugin(name="mx65", entity_name="mx65",
+                 core_files=(_CORES / "mx65.vhd",),
+                 adapter_file=_ADAPTERS / "mx65.vhd")            # reset active-high, boots at $FFFC
+
+T80  = CpuPlugin(name="t80", entity_name="T80s",
+                 core_files=(_T80/"T80_Pack.vhd", ..., _T80/"T80s.vhd"),
+                 adapter_file=_ADAPTERS / "t80.vhd",
+                 reset_active_high=False, boots_at_zero=True)    # RESET_n low, boots at $0000
+```
+
+`--cpu <name>` on the generator selects it.
+
+### 4.4 The bus adapter — the heart of "any core"
+
+The adapter is a self-contained VHDL `block` (it may declare local signals, so the whole port is one
+block) that plugs the core into the **normalized bus** (§3). It must: drive `cpu_addr`, read
+`cpu_din`, drive `cpu_dout`; produce **`cpu_we`** (active-high write strobe); consume **`cpu_reset`**
+(active-high POR) and **`cpu_irq_req`** (active-high) at the core's polarities. The two cores show how
+different a bus can be:
+
+| Normalized | mx65 (6502) | T80 (Z80) |
+|---|---|---|
+| reset | `reset => cpu_reset` (active-high) | `RESET_n => not cpu_reset` (active-low) |
+| write strobe | `cpu_we <= not rw` (rw: 1=read) | `cpu_we <= (not WR_n) and (not MREQ_n)` |
+| read | combinational `data_in <= cpu_din` | combinational `DI <= cpu_din` |
+| irq | `irq => not cpu_irq_req` (active-low) | `INT_n => not cpu_irq_req` (active-low) |
+| boot | fetches PC from `$FFFC/D` | starts executing at `$0000` |
+
+```vhdl
+-- adapters/mx65.vhd
+cpu_core : block
+  signal cpu_rw : std_logic;
+begin
+  cpu : entity work.mx65 port map (
+    clock => clk, reset => cpu_reset, ce => '1',
+    data_in => cpu_din, data_out => cpu_dout, address => cpu_addr,
+    rw => cpu_rw, sync => open, nmi => '0', irq => not cpu_irq_req );
+  cpu_we <= not cpu_rw;
+end block;
+```
+
+A Z80 can access IO via `IN`/`OUT` (the `IORQ_n` space) *or*, as here, memory-mapped loads/stores; we
+memory-map IO so both cores share `cpu_io` and leave `IORQ_n` open.
+
+### 4.5 Bus read timing — the deepest pothole
+
+Simple cores use a *same-cycle* read bus: the core drives `address` and expects the byte on `data_in`
+**within the same clock cycle**, so ROM/RAM/IO and the read mux must be **combinational** (address in
+→ byte out, no output register). A registered ("synchronous") memory returns data a cycle late and
+the core executes garbage from the first fetch. Combinational read is the safe default for both cores;
+real hardware uses registered block-RAM + a wait state, not needed in sim.
+
+> **Multi-cycle reads bite read-to-clear registers.** The 6502's read is one clock; the Z80's is
+> several. A **read-to-clear** status bit clears on the *first* clock of the Z80's multi-cycle read —
+> before the core samples it — so a poll loop hangs forever. Use **write-to-clear** for status/ack
+> registers (poll to check, write to acknowledge): correct for any core, and what `cpu_io`'s tick and
+> interrupt-flag registers do (§6, §9). This one bug cost the Z80 bring-up a debugging session.
 
 ## 5. Reset & cold-start (generalized)
 
@@ -152,6 +216,10 @@ requirement** — "7" is a starting guess; widen it if the PC never loads from t
 (This is **sim-only** — it relies on init values rather than an external reset pin. That is exactly
 the simulator's model; on real hardware you'd wire a reset controller.)
 
+The POR is **core-agnostic**: it drives the normalized active-high `cpu_reset`, and the adapter
+(§4.4) converts polarity — mx65 takes it directly, T80 inverts it to `RESET_n`. Seven clocks proved
+enough for both cores; widen `por_cnt` if a core needs a longer reset.
+
 **6502 reset vector & cold-start.** On reset the 6502 loads PC from **`$FFFC/$FFFD`**
 (little-endian). Your ROM must place a valid address there pointing at your cold-start routine.
 Cold-start should:
@@ -170,6 +238,12 @@ IRQ/NMI vectors pointing at a single `RTI` if you don't use interrupts (but they
 *valid* bytes, or a stray interrupt/BRK runs garbage). For learning, prefer the full sequence and
 real handlers.
 
+**Z80 cold-start (the second core, for contrast).** The Z80 has **no reset vector** — it just starts
+executing at **`$0000`**, so ROM sits at the bottom of the map (§6) and the program's first byte *is*
+its reset code. Cold-start: `DI` (we poll), `LD SP, <top-of-RAM>` (the Z80 leaves SP undefined on
+reset), then read config and init variables. No `$FFFC`-style vector to place, and interrupt entry
+points ($0038 for IM 1, $0066 for NMI) matter only if you enable interrupts.
+
 **Metavalue (`'U'`) hygiene — a simulation-only hazard.** GHDL/NVC start every `std_logic` at
 `'U'` (uninitialized), which has no hardware analog. If a `'U'` reaches the CPU's `data_in` — an
 uninitialized RAM read used as an operand or jammed into the PC — it propagates through the entire
@@ -180,8 +254,10 @@ POR so the CPU starts defined, and have cold-start zero the variables it reads. 
 
 ## 6. Memory & IO map design
 
-Decode the address bus into regions. Keep ROM where the reset/IRQ/NMI vectors must live (top of
-memory for the 6502). Example map used by the worked example:
+Decode the address bus into regions, and put ROM **where the core boots**: top of memory for the
+6502 (so its `$FFFA–$FFFF` vectors live in ROM), or **`$0000`** for the Z80 (which boots there, with
+RAM/IO moved up). The decode lines are **generated from the spec's memory map**, so a different core's
+map is just different base addresses. Example 6502 map:
 
 - **RAM `$0000–$07FF`** — zero page (`$00–$FF`), stack (`$0100–$01FF`), variables.
 - **IO `$E000–$E0FF`** — registers below.
@@ -194,7 +270,7 @@ memory for the 6502). Example map used by the worked example:
 | `$E000`/`$E001` | R | switches (low/high byte) |
 | `$E002`/`$E003` | R | buttons (low/high byte) |
 | `$E004..$E007` | R | **config**: NUM_LEDS, NUM_SEGS, NUM_SWITCHES, NUM_BUTTONS |
-| `$E010` | R | tick pending in bit0, **read-to-clear** |
+| `$E010` | R/W | tick pending in bit0; **write any value to clear** (§4.5) |
 | `$E020`/`$E021` | W | LED bits (low/high byte), masked to NUM_LEDS |
 | `$E030+i` | W | segment byte for digit *i* (active-high, `dp g f e d c b a`) |
 
@@ -230,9 +306,10 @@ generalize). The canonical assembled source lives in
 - **Poll the tick** (decouples visible rate from instruction speed):
 
   ```asm
-  WAIT: LDA $E010      ; bit0 = tick pending (read clears it)
+  WAIT: LDA $E010      ; bit0 = tick pending
         AND #$01
         BEQ WAIT
+        STA $E010      ; ack: a write clears it (§4.5 — safe for multi-cycle-read CPUs)
   ```
 
 - **Query config for board-independence:** `LDA $E004 → N_LEDS`, `LDA $E005 → N_SEGS` at boot.
@@ -271,6 +348,11 @@ checked-in `.bin` is the source of truth). For the long-term multi-CPU vision, `
 attractive (one ruledef per ISA). Whatever you use, **check in the `.asm`, the assembled bytes,
 and the exact command** so the image is reproducible.
 
+**The assembler is per-ISA, and that's fine** — the generator only ever sees the `.bin`. The 6502
+uses `ca65`/`ld65` (cc65); the Z80 uses z88dk's `z80asm` (`z80asm -b -o<bin> file.asm`, with `org 0`
+and `defc NAME = value` for constants). Both are external dev-time tools; the checked-in `.bin` is
+the source of truth, so CI never needs the assembler.
+
 **Embedding as a VHDL ROM** — sparse named association keeps it small regardless of ROM size:
 
 ```vhdl
@@ -294,7 +376,7 @@ The simulator runs sub-real-time: a per-frame cap of ~9596 clocks at ~60 fps giv
 several clocks per instruction, so **don't busy-wait** millions of cycles for visible motion.
 
 **Use a hardware prescaler tick.** A free-running divider raises a tick every `2^PRESCALER_BITS`
-clocks; the firmware polls it (read-to-clear). The visible step rate then equals the tick rate and
+clocks; the firmware polls it (write-to-clear). The visible step rate then equals the tick rate and
 is independent of how long your loop is:
 
 | `PRESCALER_BITS` | clocks/tick | steps/s @ top slider |
@@ -306,11 +388,16 @@ is independent of how long your loop is:
 Expose `PRESCALER_BITS` as a generic (default 10). The speed slider scales sim-time; switch-based
 software division multiplies the rate further.
 
-**Polling vs. interrupts.** Start with **polling** — no ISR, no reentrancy, only a valid IRQ
-vector needed. Polling samples inputs only once per loop iteration (here, once per tick), so very
-short input pulses can be missed; an **IRQ-driven** version (wire the prescaler strobe to `irq`,
-point `$FFFE/F` at an ISR that steps + acknowledges) reacts per-event, is more faithful to real
-embedded code, and is worth building as a compare/contrast variant once polling works.
+**Polling vs. interrupts.** Start with **polling** — no ISR, no reentrancy. The interrupt-driven
+variant (`mx65_irq_counter_7seg`) instead builds a small **interrupt controller** in `cpu_io` with
+**two sources** on the one IRQ line: a **timer** (the prescaler tick) and an **input-change**
+detector (any `sw`/`btn` edge, caught in hardware — the "additional circuitry" a real peripheral
+needs). Each source has an enable bit (**IER**, `$E011`) and a flag bit (**IFR**, `$E012`,
+write-1-to-clear); `irq` is the OR of enabled+pending flags, and the ISR **reads IFR to learn which
+source fired** and dispatches — the real "which peripheral interrupted?" pattern (like a disk
+controller signalling "data ready"). The adapter routes the normalized active-high `cpu_irq_req` to
+the core's line (`not cpu_irq_req` for both the 6502's and the Z80's active-low inputs). Firmware:
+enable the source in the peripheral (IER) *and* enable the CPU (`CLI` / `EI`), then ack in the ISR.
 
 ## 10. Generating the file
 
@@ -322,19 +409,21 @@ uv run python scripts/gen_embedded_core.py \
     --out    hdl/mx65_walking_counter_7seg.vhd
 ```
 
-Inputs: a **CPU plugin** (verbatim core + bus/reset/vector conventions), a **system spec**
-(memory + IO map, `prescaler_bits`), and a **ROM image**. Output: the single
-generic-parameterized `.vhd`, validated against the contract checker before writing.
+Inputs: a **CPU plugin** (`--cpu`: vendored core files + adapter), a **system spec** (memory + IO
+map, `prescaler_bits`, `irq_driven`), and a **ROM image**. Output: the single generic-parameterized
+`.vhd`, validated against the contract checker before writing. Swap `--cpu mx65` for `--cpu t80`
+(with the matching Z80 spec + `.bin`) to generate the Z80 build; `irq_driven = true` in the spec
+generates the interrupt-driven variant instead of the polled one.
 
 ## 11. Running & verifying
 
 - **Interactive:** `uv run fpga-sim` → pick a 7-seg board → select your `.vhd`.
 - **Headless GIF:** `uv run python scripts/capture_demo.py --vhdl hdl/mx65_walking_counter_7seg.vhd
   --board de10_lite --sim nvc` (`SDL_VIDEODRIVER=dummy`; board JSON via `FPGA_SIM_BOARD_JSON`).
-- **Tests:** an integration test analogous to `tests/test_nvc.py::test_7seg_nvc_simulation_passes`
-  (reuse `sim/test_7seg.py` glyph/advance assertions) plus a walking-specific cocotb module
-  (one-hot bounce, `btn(0)` reversal, `btn(1)` lamp-test), and unit tests for the ROM image and
-  generator output.
+- **Tests:** `sim/test_cpu_walking.py` (glyphs + advance, one-hot bounce, `btn(0)` reversal,
+  `btn(1)` lamp-test) is the **shared** behavioral suite — every design (6502 polled, 6502 IRQ,
+  Z80) runs it (`PASS=4`) under both simulators. `tests/test_embedded_core.py` also byte-for-byte
+  golden-tests each generated `.vhd` and checks the vendored cores' integrity + standardization.
 
 ## 12. End-to-end worked example (the 6502 walking counter)
 
@@ -365,15 +454,29 @@ that differ only in digit count:
 The bouncing one-hot LED and the decimal odometer are the same firmware, sized at runtime — nothing
 in the VHDL or the program is board-specific.
 
+### The same counter on a Z80 (the second core)
+
+Adding a genuinely different core exercised the whole abstraction. The Z80 version is
+`systems/t80_walking_counter_7seg.toml` (ROM at `$0000`, RAM `$8000`, IO `$E000`) +
+`firmware/t80_walking_counter_7seg.asm` (the same algorithm and subroutines in Z80 assembly, built
+with `z80asm`) + the vendored T80 core + `adapters/t80.vhd`. Generate it with `--cpu t80`; it runs
+the **same** `sim/test_cpu_walking.py` behavioral suite (`PASS=4`) under GHDL and NVC — identical
+on-board behavior, a completely different CPU. Two lessons surfaced only on the Z80: the tick had to
+become **write-to-clear** (§4.5), and the memory map flips (**ROM at `$0000`** because the Z80 boots
+there). The POR needed no change.
+
 ## 13. Extending
 
-- **New subsystems:** add composable IO blocks (UART, timer with compare, GPIO banks) behind the
-  `SubsystemPlugin` interface; allocate fresh IO addresses.
-- **New CPUs:** add a `CpuPlugin`. Multi-unit cores (T65) are inlined as several entities in the
-  one file (validates the generator's inlining). Different ISAs use a different assembler
-  (customasm shines here).
-- **Hex vs BCD; IRQ-driven timing;** alternative programs — all just firmware + system-spec
-  changes; the VHDL skeleton is unchanged.
+- **New CPUs:** vendor the core (§4.2) + write one adapter (§4.4). Multi-file cores inline
+  automatically (T80 = 6 files); a Synopsys-dependent core is standardized with
+  `numeric_std_unsigned` (§4.2). The 6502 and Z80 prove the seam holds across very different buses.
+- **New subsystems:** extend `cpu_io` with more registers/peripherals (UART, timer-compare, GPIO
+  banks) at fresh IO addresses; the two-source interrupt controller (§9) is the template for adding
+  an interrupt source (enable bit + flag bit + OR into `cpu_irq_req`).
+- **IRQ-driven vs polled:** a spec flag (`irq_driven = true`) turns on the interrupt controller and
+  the `cpu_io.irq` wiring; the firmware supplies the ISR. Same design, different plumbing.
+- **Alternative programs / hex vs BCD:** just firmware + system-spec changes; the VHDL skeleton and
+  the adapter are unchanged.
 
 ## 14. Troubleshooting
 
@@ -382,13 +485,16 @@ in the VHDL or the program is board-specific.
 | Analysis fails on the core | Synopsys package / vendor primitive / `--std` mismatch | Use a `numeric_std`-only core; confirm `--std=08`/`2008` |
 | Elaborates but display blank | reset never released, or wrong reset vector | Check POR counter; verify `$FFFC/D` bytes point at `RESET` |
 | Garbage on the display | bad vectors or uninitialized RAM read as code | Unit-test vector bytes; zero RAM in cold-start |
-| Nothing moves | tick never fires, or busy-wait too long | Check prescaler + read-to-clear; lower `PRESCALER_BITS` |
+| Nothing moves | tick never fires, or busy-wait too long | Check prescaler + the write-to-clear ack; lower `PRESCALER_BITS` |
 | Too fast / blurred | prescaler too short / slider too high | Raise `PRESCALER_BITS`; lower the speed slider |
 | LED stuck at one end | `POS` bound wrong / didn't read `N_LEDS` | Read config reg `$E004`; check bounce limits |
 | Works in GHDL, fails in NVC | heap / elaboration differences | NVC already gets `-H 512m`; keep ROM/RAM modest |
 | Display dead from the very first frame | Registered (sync) memory → off-by-one read; CPU fetched garbage | Make ROM/RAM/mux read path **combinational** (§4) |
 | Display frozen/blank; `data_in` shows `U`/`X` | Metavalue propagation from uninitialized RAM/bus | Init RAM to `x"00"`, mux `else => x"00"`, zero vars in cold-start (§5) |
 | `btn(0)` reversal sometimes ignored | Button pulse shorter than one tick (polled once/tick) | Hold ≥ 1 tick; or use the IRQ variant (§9) |
+| Poll loop hangs on a multi-cycle CPU (e.g. Z80) | **read-to-clear** status bit clears mid-read, before the core samples it | Make it **write-to-clear**: poll to check, write to ack (§4.5) |
+| New core: garbage or writes don't land | bus adapter maps a strobe or polarity wrong | Recheck `adapters/<core>.vhd`: `cpu_we`, reset polarity, irq polarity, address width (§4.4) |
+| Core analysis fails on `std_logic_unsigned` | vendored core uses a Synopsys package | Swap to `numeric_std_unsigned` (§4.2); translate any `conv_*` helpers |
 
 ## 15. Debugging with waveforms
 
