@@ -1046,7 +1046,7 @@ end architecture;
 
 
 -- ===========================================================================
--- System blocks (generated).  The mx65 core above is vendored verbatim.
+-- System blocks (generated).  The CPU core above is vendored verbatim.
 -- ===========================================================================
 
 library ieee;
@@ -1334,10 +1334,10 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
--- Top (contract entity): synthesises a power-on reset, instantiates the four
--- blocks, and muxes read data back to the CPU.  COUNTER_BITS is part of the
--- simulator contract but unused by the CPU system; PRESCALER_BITS is a
--- generation-time knob (the wrapper never overrides it).
+-- Top (contract entity): a power-on reset, the ROM/RAM/IO blocks on a normalized
+-- CPU bus, and a per-core adapter that plugs the specific CPU into that bus.
+-- COUNTER_BITS is part of the simulator contract but unused here; PRESCALER_BITS
+-- is a generation-time knob (the wrapper never overrides it).
 entity mx65_irq_counter_7seg is
   generic (
     NUM_SWITCHES   : positive := 4;
@@ -1357,11 +1357,12 @@ entity mx65_irq_counter_7seg is
 end entity;
 
 architecture rtl of mx65_irq_counter_7seg is
-  -- CPU bus
-  signal cpu_addr : std_logic_vector(15 downto 0);
-  signal cpu_din  : std_logic_vector(7 downto 0);
-  signal cpu_dout : std_logic_vector(7 downto 0);
-  signal cpu_rw   : std_logic;
+  -- Normalized CPU bus (the per-core adapter below translates it to the core).
+  signal cpu_addr    : std_logic_vector(15 downto 0);
+  signal cpu_din     : std_logic_vector(7 downto 0);
+  signal cpu_dout    : std_logic_vector(7 downto 0);
+  signal cpu_we      : std_logic;                     -- active-high write strobe
+  signal cpu_irq_req : std_logic;                     -- active-high interrupt request
 
   -- decode / block outputs
   signal sel_ram, sel_io, sel_rom : std_logic;
@@ -1372,11 +1373,11 @@ architecture rtl of mx65_irq_counter_7seg is
   signal io_dout  : std_logic_vector(7 downto 0);
   signal io_irq   : std_logic;
 
-  -- power-on reset (sim-only, from signal init values)
+  -- power-on reset (sim-only, from signal init values; active-high, normalized)
   signal por_cnt   : unsigned(2 downto 0) := (others => '0');
   signal cpu_reset : std_logic := '1';
 begin
-  -- POR: hold reset high for the first ~7 clocks, then release.
+  -- POR: hold reset asserted for the first ~7 clocks, then release.
   process (clk) begin
     if rising_edge(clk) then
       if por_cnt /= "111" then
@@ -1386,12 +1387,12 @@ begin
   end process;
   cpu_reset <= '1' when por_cnt /= "111" else '0';
 
-  -- Address decode.
+  -- Address decode (from the system memory map).
   sel_ram <= '1' when cpu_addr(15 downto 11) = "00000" else '0';
-  sel_io  <= '1' when cpu_addr(15 downto 8)  = x"E0"   else '0';
+  sel_io <= '1' when cpu_addr(15 downto 8) = x"E0" else '0';
   sel_rom <= '1' when cpu_addr(15 downto 11) = "11111" else '0';
-  ram_we  <= '1' when (sel_ram = '1' and cpu_rw = '0') else '0';
-  io_we   <= not cpu_rw;
+  ram_we <= cpu_we when sel_ram = '1' else '0';
+  io_we  <= cpu_we;
 
   -- Combinational read mux -> CPU data_in (default x"00" keeps the bus defined).
   cpu_din <= rom_dout when sel_rom = '1' else
@@ -1399,19 +1400,29 @@ begin
              ram_dout when sel_ram = '1' else
              x"00";
 
-  cpu : entity work.mx65
-    port map (
-      clock    => clk,
-      reset    => cpu_reset,
-      ce       => '1',
-      data_in  => cpu_din,
-      data_out => cpu_dout,
-      address  => cpu_addr,
-      rw       => cpu_rw,
-      sync     => open,
-      nmi      => '0',
-      irq      => not io_irq
-    );
+  -- Interrupt request into the CPU (active-high; the adapter sets core polarity).
+  cpu_irq_req <= io_irq;
+
+  -- CPU + per-core bus adapter.
+  -- mx65 (6502): active-high reset, rw (1=read/0=write), active-low irq.
+  cpu_core : block
+    signal cpu_rw : std_logic;
+  begin
+    cpu : entity work.mx65
+      port map (
+        clock    => clk,
+        reset    => cpu_reset,
+        ce       => '1',
+        data_in  => cpu_din,
+        data_out => cpu_dout,
+        address  => cpu_addr,
+        rw       => cpu_rw,
+        sync     => open,
+        nmi      => '0',
+        irq      => not cpu_irq_req
+      );
+    cpu_we <= not cpu_rw;
+  end block;
 
   rom_inst : entity work.cpu_rom
     generic map (ROM_BITS => 11)

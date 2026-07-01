@@ -21,7 +21,7 @@ _RULER = "-- " + "=" * 75
 _SYSTEM_HEADER = (
     "\n"
     f"{_RULER}\n"
-    "-- System blocks (generated).  The mx65 core above is vendored verbatim.\n"
+    "-- System blocks (generated).  The CPU core above is vendored verbatim.\n"
     f"{_RULER}\n"
     "\n"
 )
@@ -38,13 +38,22 @@ def _fill(template: str, tokens: dict[str, str]) -> str:
     return template
 
 
+def _decode(spec: SystemSpec) -> str:
+    """Generate the address-decode lines from the system memory map."""
+    lines = [
+        f"  {sel} <= '1' when cpu_addr(15 downto {region.select_low}) "
+        f"= {region.select_literal()} else '0';"
+        for region, sel in ((spec.ram, "sel_ram"), (spec.io, "sel_io"), (spec.rom, "sel_rom"))
+    ]
+    return "\n".join(lines)
+
+
 def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
     """Return the complete single-file VHDL design as text."""
     g = spec.generics
     tokens = {
         "NAME": spec.name,
         "FIRMWARE": spec.firmware,
-        "CORE_ENTITY": plugin.entity_name,
         "DESCRIPTION": _banner_description(spec.description),
         "NUM_SWITCHES": str(g["num_switches"]),
         "NUM_BUTTONS": str(g["num_buttons"]),
@@ -56,6 +65,8 @@ def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
         "RAM_BITS": str(spec.ram.addr_bits),
         "ADDR_HIGH": str(spec.addr_high),
         "ROM_AGGREGATE": rom_aggregate(rom_bytes),
+        "DECODE": _decode(spec),
+        "CPU_ADAPTER": plugin.adapter_vhdl().rstrip("\n"),
     }
     # IRQ wiring (mx65's irq is active-low). Empty tokens keep the polled design
     # byte-identical; the IRQ variant exposes cpu_io.irq (= tick) and routes it in.
@@ -107,7 +118,7 @@ def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
                 "  irq <= (timer_flag and ier(0)) or (input_flag and ier(1));"
             ),
             IO_IRQ_DECL="\n  signal io_irq   : std_logic;",
-            CPU_IRQ="not io_irq",
+            CPU_IRQ_REQ="io_irq",
             IO_IRQ_CONN=",\n      irq   => io_irq",
         )
     else:
@@ -118,7 +129,7 @@ def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
             INT_READ="",
             IRQ_LOGIC="",
             IO_IRQ_DECL="",
-            CPU_IRQ="'0'",
+            CPU_IRQ_REQ="'0'",
             IO_IRQ_CONN="",
         )
 

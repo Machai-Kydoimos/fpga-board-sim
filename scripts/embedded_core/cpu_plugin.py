@@ -1,9 +1,14 @@
 """CPU core plugins for the embedded-core generator.
 
-A :class:`CpuPlugin` bundles the facts the generator needs about a soft CPU
-core: its vendored VHDL text, the entity to instantiate, bus geometry, reset
-convention, and reset/IRQ/NMI vectors.  v1 ships one plugin (``mx65``); the
-dataclass is the seam for adding more cores (e.g. T65) later.
+A :class:`CpuPlugin` bundles what the emitter needs about a vendored CPU core:
+its VHDL source (one or more files, concatenated leaf-first) and a *bus adapter*
+-- a self-contained VHDL ``block`` that plugs the core into the design's
+normalized bus (``cpu_addr`` / ``cpu_din`` / ``cpu_dout`` / ``cpu_we`` /
+``cpu_reset`` (active-high) / ``cpu_irq_req`` (active-high)), translating reset
+polarity, the write strobe, and the interrupt line to the core's real pins.
+
+Adding a new core = vendor its VHDL under ``cores/`` and write one adapter under
+``adapters/``; nothing else in the generator changes.
 """
 
 from __future__ import annotations
@@ -12,33 +17,54 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _CORES = Path(__file__).resolve().parent / "cores"
+_ADAPTERS = Path(__file__).resolve().parent / "adapters"
 
 
 @dataclass(frozen=True)
 class CpuPlugin:
-    """Everything the emitter needs to know about a vendored CPU core."""
+    """A vendored CPU core plus its normalized-bus adapter."""
 
-    name: str  # registry key, e.g. "mx65"
-    entity_name: str  # VHDL entity the top instantiates
-    core_file: Path  # vendored, verbatim VHDL (emitted first)
+    name: str  # registry key and --cpu value
+    entity_name: str  # the core entity the adapter instantiates
+    core_files: tuple[Path, ...]  # vendored VHDL, leaf-first (emitted verbatim)
+    adapter_file: Path  # normalized-bus adapter block
     address_bits: int = 16
     data_bits: int = 8
-    reset_active_high: bool = True
-    reset_async: bool = True
-    has_ce: bool = True
+    reset_active_high: bool = True  # mx65: high; T80: RESET_n is active-low
+    irq_active_high: bool = False  # both mx65 and T80 interrupt on a low line
+    boots_at_zero: bool = False  # Z80 boots at $0000; 6502 fetches a reset vector
     endian: str = "little"
-    reset_vector: int = 0xFFFC
-    irq_vector: int = 0xFFFE
-    nmi_vector: int = 0xFFFA
 
     def core_vhdl_text(self) -> str:
-        """Return the vendored core VHDL verbatim (placed first in the output)."""
-        return self.core_file.read_text()
+        """Return the vendored core VHDL, files concatenated leaf-first."""
+        return "\n".join(f.read_text() for f in self.core_files)
+
+    def adapter_vhdl(self) -> str:
+        """Return the normalized-bus adapter block for this core."""
+        return self.adapter_file.read_text()
 
 
-MX65 = CpuPlugin(name="mx65", entity_name="mx65", core_file=_CORES / "mx65.vhd")
+MX65 = CpuPlugin(
+    name="mx65",
+    entity_name="mx65",
+    core_files=(_CORES / "mx65.vhd",),
+    adapter_file=_ADAPTERS / "mx65.vhd",
+)
 
-PLUGINS: dict[str, CpuPlugin] = {MX65.name: MX65}
+_T80 = _CORES / "t80"
+T80 = CpuPlugin(
+    name="t80",
+    entity_name="T80s",
+    core_files=tuple(
+        _T80 / f"{stem}.vhd"
+        for stem in ("T80_Pack", "T80_ALU", "T80_MCode", "T80_Reg", "T80", "T80s")
+    ),
+    adapter_file=_ADAPTERS / "t80.vhd",
+    reset_active_high=False,
+    boots_at_zero=True,
+)
+
+PLUGINS: dict[str, CpuPlugin] = {MX65.name: MX65, T80.name: T80}
 
 
 def get_plugin(name: str) -> CpuPlugin:
