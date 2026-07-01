@@ -24,7 +24,7 @@ entity cpu_io is
     sw    : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);
     btn   : in  std_logic_vector(NUM_BUTTONS - 1 downto 0);
     led   : out std_logic_vector(NUM_LEDS - 1 downto 0);
-    seg   : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)
+    seg   : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)@@IRQ_PORT@@
   );
 end entity;
 
@@ -33,7 +33,7 @@ architecture rtl of cpu_io is
   signal seg_regs  : seg_array_t := (others => (others => '0'));
   signal led_reg   : std_logic_vector(15 downto 0) := (others => '0');
   signal prescaler : unsigned(PRESCALER_BITS - 1 downto 0) := (others => '0');
-  signal tick      : std_logic := '0';
+  signal tick      : std_logic := '0';@@INT_SIGNAL@@
   signal sw_ext    : std_logic_vector(15 downto 0);
   signal btn_ext   : std_logic_vector(15 downto 0);
 begin
@@ -41,7 +41,7 @@ begin
   btn_ext <= std_logic_vector(resize(unsigned(btn), 16));
 
   -- Combinational read mux (one IO register per address).
-  process (addr, sw_ext, btn_ext, tick) begin
+  process (addr, sw_ext, btn_ext, tick@@INT_SENS@@) begin
     case addr is
       when x"00"  => rdata <= sw_ext(7 downto 0);
       when x"01"  => rdata <= sw_ext(15 downto 8);
@@ -51,7 +51,7 @@ begin
       when x"05"  => rdata <= std_logic_vector(to_unsigned(NUM_SEGS, 8));
       when x"06"  => rdata <= std_logic_vector(to_unsigned(NUM_SWITCHES, 8));
       when x"07"  => rdata <= std_logic_vector(to_unsigned(NUM_BUTTONS, 8));
-      when x"10"  => rdata <= "0000000" & tick;
+      when x"10"  => rdata <= "0000000" & tick;@@INT_READ@@
       when others => rdata <= x"00";
     end case;
   end process;
@@ -88,7 +88,7 @@ begin
     for i in 0 to NUM_SEGS - 1 loop
       seg(8 * i + 7 downto 8 * i) <= seg_regs(i);
     end loop;
-  end process;
+  end process;@@IRQ_LOGIC@@
 end architecture;
 
 

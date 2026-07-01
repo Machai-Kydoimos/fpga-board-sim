@@ -57,6 +57,70 @@ def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
         "ADDR_HIGH": str(spec.addr_high),
         "ROM_AGGREGATE": rom_aggregate(rom_bytes),
     }
+    # IRQ wiring (mx65's irq is active-low). Empty tokens keep the polled design
+    # byte-identical; the IRQ variant exposes cpu_io.irq (= tick) and routes it in.
+    if spec.irq_driven:
+        tokens.update(
+            IRQ_PORT=";\n    irq   : out std_logic  -- interrupt request (level)",
+            INT_SIGNAL=(
+                '\n  signal ier        : std_logic_vector(1 downto 0) := "00";'
+                "\n  signal timer_flag : std_logic := '0';"
+                "\n  signal input_flag : std_logic := '0';"
+                "\n  signal prev_sw    : std_logic_vector(NUM_SWITCHES - 1 downto 0)"
+                " := (others => '0');"
+                "\n  signal prev_btn   : std_logic_vector(NUM_BUTTONS - 1 downto 0)"
+                " := (others => '0');"
+            ),
+            INT_SENS=", ier, timer_flag, input_flag",
+            INT_READ=(
+                '\n      when x"11"  => rdata <= "000000" & ier;'
+                '\n      when x"12"  => rdata <= "000000" & input_flag & timer_flag;'
+            ),
+            IRQ_LOGIC=(
+                "\n\n"
+                "  -- Interrupt controller: two sources (timer + sw/btn change).  Each has an\n"
+                "  -- enable bit (IER $E011) and a flag bit (IFR $E012, write-1-to-clear); irq is\n"
+                "  -- the OR of enabled+pending flags, and the ISR reads IFR to see who fired.\n"
+                "  interrupts : process (clk) begin\n"
+                "    if rising_edge(clk) then\n"
+                "      prev_sw  <= sw;\n"
+                "      prev_btn <= btn;\n"
+                "      -- register writes first, so a same-cycle flag set (below) wins the race\n"
+                "      if cs = '1' and we = '1' then\n"
+                '        if addr = x"11" then\n'
+                "          ier <= wdata(1 downto 0);\n"
+                '        elsif addr = x"12" then\n'
+                "          if wdata(0) = '1' then timer_flag <= '0'; end if;\n"
+                "          if wdata(1) = '1' then input_flag <= '0'; end if;\n"
+                "        end if;\n"
+                "      end if;\n"
+                "      -- flag sources (set wins over a simultaneous ack)\n"
+                "      if prescaler = (prescaler'range => '1') then\n"
+                "        timer_flag <= '1';\n"
+                "      end if;\n"
+                "      if sw /= prev_sw or btn /= prev_btn then\n"
+                "        input_flag <= '1';\n"
+                "      end if;\n"
+                "    end if;\n"
+                "  end process;\n"
+                "\n"
+                "  irq <= (timer_flag and ier(0)) or (input_flag and ier(1));"
+            ),
+            IO_IRQ_DECL="\n  signal io_irq   : std_logic;",
+            CPU_IRQ="not io_irq",
+            IO_IRQ_CONN=",\n      irq   => io_irq",
+        )
+    else:
+        tokens.update(
+            IRQ_PORT="",
+            INT_SIGNAL="",
+            INT_SENS="",
+            INT_READ="",
+            IRQ_LOGIC="",
+            IO_IRQ_DECL="",
+            CPU_IRQ="'0'",
+            IO_IRQ_CONN="",
+        )
 
     def block(name: str) -> str:
         return _fill((_TEMPLATES / name).read_text(), tokens)

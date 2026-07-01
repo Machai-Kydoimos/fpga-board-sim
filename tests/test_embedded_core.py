@@ -28,10 +28,13 @@ from tests.conftest import _7seg_board
 PROJECT = Path(__file__).resolve().parent.parent
 MX65 = PROJECT / "scripts" / "embedded_core" / "cores" / "mx65.vhd"
 CPU_SYS = PROJECT / "hdl" / "cpu_walking_counter_7seg.vhd"
+CPU_IRQ_SYS = PROJECT / "hdl" / "cpu_irq_counter_7seg.vhd"
 FIRMWARE = PROJECT / "firmware"
 FW_BIN = FIRMWARE / "cpu_walking_counter_7seg.bin"
 GENERATOR = PROJECT / "scripts" / "gen_embedded_core.py"
 SYSTEM_TOML = PROJECT / "systems" / "walking_counter_7seg.toml"
+FW_IRQ_BIN = FIRMWARE / "cpu_irq_counter_7seg.bin"
+SYSTEM_IRQ_TOML = PROJECT / "systems" / "cpu_irq_counter_7seg.toml"
 
 # Upstream commit the vendored copy is pinned to (recorded in the file header).
 MX65_PINNED_COMMIT = "d65d81d4f8031e194bd8410133b9036db7e58794"
@@ -159,6 +162,72 @@ def test_cpu_system_runs_nvc(nvc):
 
 
 @pytest.mark.slow
+def test_cpu_irq_runs_nvc(nvc):
+    """The interrupt-driven variant runs the same walking suite under NVC."""
+    work_dir = tempfile.mkdtemp(prefix="irq_nvc_")
+    ok, detail = analyze_vhdl(
+        CPU_IRQ_SYS,
+        work_dir=work_dir,
+        toplevel="cpu_irq_counter_7seg",
+        simulator="nvc",
+        board_def=_7seg_board(),
+    )
+    assert ok, f"NVC analyze failed: {detail}"
+
+    env, vhpi_lib = _build_sim_env(simulator="nvc")
+    subprocess.run(
+        _NVCBackend.elaborate_cmd("sim_wrapper", _CPU_GENERICS, work_dir),
+        env=env,
+        check=True,
+        cwd=work_dir,
+    )
+    run_cmd = _NVCBackend.run_cmd("sim_wrapper", _CPU_GENERICS, vhpi_lib, work_dir)
+    run_cmd.append("--stop-time=6000000ns")
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_walking"
+    run_env["TOPLEVEL"] = "sim_wrapper"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+
+    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    assert "FAIL=0" in output and "PASS=4" in output, (
+        "cocotb walking suite did not pass under NVC (interrupt-driven design).\n"
+        + "\n".join(output.splitlines()[-30:])
+    )
+
+
+@pytest.mark.slow
+def test_cpu_irq_runs_ghdl(ghdl):
+    """The interrupt-driven variant runs the same walking suite under GHDL."""
+    work_dir = tempfile.mkdtemp(prefix="irq_ghdl_")
+    ok, detail = analyze_vhdl(
+        CPU_IRQ_SYS,
+        work_dir=work_dir,
+        toplevel="cpu_irq_counter_7seg",
+        simulator="ghdl",
+        board_def=_7seg_board(),
+    )
+    assert ok, f"GHDL analyze failed: {detail}"
+
+    env, plugin_lib = _build_sim_env(simulator="ghdl")
+    run_cmd = _GHDLBackend.run_cmd("sim_wrapper", _CPU_GENERICS, plugin_lib, work_dir)
+    run_cmd.append("--stop-time=6000000ns")
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_walking"
+    run_env["TOPLEVEL"] = "sim_wrapper"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+
+    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    assert "FAIL=0" in output and "PASS=4" in output, (
+        "cocotb walking suite did not pass under GHDL (interrupt-driven design).\n"
+        + "\n".join(output.splitlines()[-30:])
+    )
+
+
+@pytest.mark.slow
 def test_cpu_system_runs_ghdl(ghdl):
     """The walking-counter firmware runs end-to-end under GHDL (cocotb suite)."""
     work_dir = tempfile.mkdtemp(prefix="cpu_ghdl_")
@@ -266,6 +335,33 @@ def test_generator_cli_reproduces_committed_design():
     assert out.read_text() == CPU_SYS.read_text(), (
         "gen_embedded_core.py output drifted from hdl/cpu_walking_counter_7seg.vhd — "
         "regenerate it from systems/walking_counter_7seg.toml + the firmware .bin"
+    )
+
+
+def test_generator_reproduces_irq_design():
+    """gen_embedded_core.py reproduces the committed interrupt-driven .vhd byte-for-byte."""
+    out = Path(tempfile.mkdtemp(prefix="gen_irq_")) / CPU_IRQ_SYS.name
+    subprocess.run(
+        [
+            sys.executable,
+            str(GENERATOR),
+            "--cpu",
+            "mx65",
+            "--system",
+            str(SYSTEM_IRQ_TOML),
+            "--rom",
+            str(FW_IRQ_BIN),
+            "--out",
+            str(out),
+        ],
+        check=True,
+        cwd=PROJECT,
+        capture_output=True,
+        text=True,
+    )
+    assert out.read_text() == CPU_IRQ_SYS.read_text(), (
+        "gen_embedded_core.py output drifted from hdl/cpu_irq_counter_7seg.vhd — "
+        "regenerate it from systems/cpu_irq_counter_7seg.toml + the firmware .bin"
     )
 
 

@@ -263,5 +263,49 @@ Design Contract covering the single-file family + `PRESCALER_BITS`); the dev gui
 GIF table; `.asm`→`.s` fixes; the checked-in `.s` is the annotated listing); the plan's stage list
 marked 0–4 ✅.
 
-**Stages 0–4 complete.** Remaining: **Stage 5** (IRQ-driven variant; T65 as a second/multi-unit
-core; customasm path) and **VSG/P7** (now triggered — the generator emits VHDL).
+**Stages 0–4 complete.** Remaining: **Stage 5** (IRQ-driven variant; a second core; customasm path)
+and **VSG/P7** (now triggered — the generator emits VHDL).
+
+## Stage 5 (part 1) — Interrupt-driven variant + two-source controller (DONE 2026-07-01)
+
+**Result:** a second generated design, `hdl/cpu_irq_counter_7seg.vhd`, drives the *same* walking
+counter from **interrupts** instead of a polling loop — and runs `PASS=4` under **both GHDL and NVC**
+(the existing `sim/test_cpu_walking.py` suite, unchanged). Produced by the generator from a new
+`irq_driven = true` spec flag (`systems/cpu_irq_counter_7seg.toml`) + `firmware/cpu_irq_counter_7seg.s`.
+
+**Two-source interrupt controller (user-requested; the realistic version).** `cpu_io` gains a small
+controller with **two sources** multiplexed onto the CPU's single IRQ line:
+
+- **timer** (IFR bit0) — the prescaler tick; paces the animation.
+- **input** (IFR bit1) — any `sw`/`btn` change, **edge-detected in hardware** (`prev_sw`/`prev_btn`
+  registers); the user acted, so re-read the controls.
+
+Registers: **IER** (`$E011`, enable per source) and **IFR** (`$E012`, flag per source, read = status,
+**write-1-to-clear** = ack). `irq <= (timer_flag and ier(0)) or (input_flag and ier(1))`. The ISR
+**reads IFR to see who fired** and dispatches — the genuine "which peripheral interrupted?" step.
+Clean split of work: the *timer* ISR advances + renders; the *input* ISR re-samples controls
+(btn0 edge → reverse, `LAMP` = btn1 level, recompute switch speed). Firmware: `SEI` during init,
+clear IFR, write IER, `CLI`; ISR saves A/X/Y, dispatches, acks, `RTI`.
+
+**Facts / guide-worthy:**
+
+- **mx65's `irq` is active-low** (`irq_ready <= not (reset_reg or irq or i)`), so the top wires
+  `irq => not io_irq`. (This is the first thing a different core changes — captured for the guide.)
+- **Flag process orders "clear then set"** so a tick arriving on the same cycle as its ack is not
+  lost (set wins) — the same race the polled `$E010` tick already handled.
+- The generator stays **byte-for-byte on the polled design**: all IRQ wiring is conditional tokens
+  (`IRQ_PORT` / `INT_SIGNAL` / `INT_SENS` / `INT_READ` / `IRQ_LOGIC` in `cpu_io`; `IO_IRQ_DECL` /
+  `CPU_IRQ` / `IO_IRQ_CONN` in the top) that are empty for `irq_driven = false`. The polled golden
+  test still passes unchanged.
+- The **same** `test_cpu_walking` suite verifies both designs: the tests drive `sw`/`btn`, which now
+  fire *input* interrupts (sampling the controls) while *timer* interrupts run the animation — so
+  identical observable behavior, different plumbing.
+
+**Tests added:** `test_cpu_irq_runs_nvc` / `_ghdl` (walking suite, `PASS=4`) and a byte-for-byte
+golden (`test_generator_reproduces_irq_design`). Suite: 20 embedded-core tests green.
+
+**Next (Stage 5 cont.):** vendor **T80** (Z80, BSD-3; swap `std_logic_unsigned` →
+`numeric_std_unsigned` so it analyzes without `-fsynopsys` — verified), a normalized-bus + per-core
+adapter refactor (mx65 vs T80: reset polarity, `MREQ_n`/`IORQ_n`/`RD_n`/`WR_n` vs `rw`, boot at
+`$0000`), Z80 firmware via `z80asm`, and the **core-agnostic guide generalization** (including an
+interrupt-controller section).

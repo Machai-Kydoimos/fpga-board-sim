@@ -37,7 +37,7 @@ architecture rtl of @@NAME@@ is
   signal io_we    : std_logic;
   signal rom_dout : std_logic_vector(7 downto 0);
   signal ram_dout : std_logic_vector(7 downto 0);
-  signal io_dout  : std_logic_vector(7 downto 0);
+  signal io_dout  : std_logic_vector(7 downto 0);@@IO_IRQ_DECL@@
 
   -- power-on reset (sim-only, from signal init values)
   signal por_cnt   : unsigned(2 downto 0) := (others => '0');
@@ -77,7 +77,7 @@ begin
       rw       => cpu_rw,
       sync     => open,
       nmi      => '0',
-      irq      => '0'
+      irq      => @@CPU_IRQ@@
     );
 
   rom_inst : entity work.cpu_rom
@@ -112,6 +112,6 @@ begin
       sw    => sw,
       btn   => btn,
       led   => led,
-      seg   => seg
+      seg   => seg@@IO_IRQ_CONN@@
     );
 end architecture;

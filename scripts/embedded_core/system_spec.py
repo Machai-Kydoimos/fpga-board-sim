@@ -59,6 +59,7 @@ class SystemSpec:
     ram: MemoryRegion
     rom: MemoryRegion
     io: MemoryRegion
+    irq_driven: bool = False  # route the timer tick to the CPU's IRQ instead of polling
 
     @property
     def addr_high(self) -> int:
@@ -83,4 +84,5 @@ def load(path: str | Path) -> SystemSpec:
         ram=region("ram"),
         rom=region("rom"),
         io=region("io"),
+        irq_driven=bool(data.get("irq_driven", False)),
     )
