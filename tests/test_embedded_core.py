@@ -49,6 +49,11 @@ _CPU_GENERICS = {
     "COUNTER_BITS": "24",
 }
 
+# The run tests below require exactly this many cocotb PASSes (with FAIL=0) so a
+# zero-test run can't false-pass.  Keep in sync with the number of @cocotb.test()
+# functions in sim/test_cpu_walking.py.
+_WALKING_TEST_COUNT = 4
+
 
 # ── Vendored file integrity (no simulator needed) ─────────────────────────────
 
@@ -156,7 +161,7 @@ def test_cpu_system_runs_nvc(nvc):
 
     result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
     output = result.stdout + result.stderr
-    assert "FAIL=0" in output and "PASS=4" in output, (
+    assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under NVC.\n" + "\n".join(output.splitlines()[-30:])
     )
 
@@ -191,7 +196,7 @@ def test_cpu_irq_runs_nvc(nvc):
 
     result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
     output = result.stdout + result.stderr
-    assert "FAIL=0" in output and "PASS=4" in output, (
+    assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under NVC (interrupt-driven design).\n"
         + "\n".join(output.splitlines()[-30:])
     )
@@ -221,7 +226,7 @@ def test_cpu_irq_runs_ghdl(ghdl):
 
     result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
     output = result.stdout + result.stderr
-    assert "FAIL=0" in output and "PASS=4" in output, (
+    assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under GHDL (interrupt-driven design).\n"
         + "\n".join(output.splitlines()[-30:])
     )
@@ -251,7 +256,7 @@ def test_cpu_system_runs_ghdl(ghdl):
 
     result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
     output = result.stdout + result.stderr
-    assert "FAIL=0" in output and "PASS=4" in output, (
+    assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under GHDL.\n" + "\n".join(output.splitlines()[-30:])
     )
 
