@@ -39,6 +39,11 @@ MX65_IRQ_TOML = PROJECT / "systems" / "mx65_irq_counter_7seg.toml"
 # Upstream commit the vendored copy is pinned to (recorded in the file header).
 MX65_PINNED_COMMIT = "d65d81d4f8031e194bd8410133b9036db7e58794"
 
+# Vendored T80 (Z80) core — multi-file, analyzed/inlined leaf-first.
+T80_DIR = PROJECT / "scripts" / "embedded_core" / "cores" / "t80"
+T80_FILES = ("T80_Pack", "T80_ALU", "T80_MCode", "T80_Reg", "T80", "T80s")
+T80_PINNED_COMMIT = "f7f776b54d67dcd6b19d3b97027dfbc6db6f14f4"
+
 # Resource generics for the Stage-1 system (>=4 LEDs to exercise the LED reg,
 # >=2 digits to exercise the per-digit indexed write loop).
 _CPU_GENERICS = {
@@ -108,6 +113,63 @@ def test_mx65_analyzes_under_nvc(nvc):
         text=True,
     )
     assert result.returncode == 0, f"NVC analysis failed:\n{result.stderr}"
+
+
+# ── Vendored T80 (Z80) core: integrity + analyzes under both sims ─────────────
+
+
+def test_t80_vendored_present():
+    for name in T80_FILES:
+        assert (T80_DIR / f"{name}.vhd").is_file(), f"Vendored T80 file missing: {name}.vhd"
+    assert (T80_DIR / "PROVENANCE.md").is_file(), "T80 PROVENANCE.md missing"
+
+
+def test_t80_is_ascii_clean():
+    """Each vendored T80 file must pass the simulator's encoding gate."""
+    for name in T80_FILES:
+        ok, msg = check_vhdl_encoding(T80_DIR / f"{name}.vhd")
+        assert ok, msg
+
+
+def test_t80_license_and_commit_recorded():
+    """The BSD-3 notice travels in each file; the pinned commit is in PROVENANCE."""
+    for name in T80_FILES:
+        assert "Redistribution and use" in (T80_DIR / f"{name}.vhd").read_text(), (
+            f"{name}.vhd is missing its BSD-3 notice"
+        )
+    assert T80_PINNED_COMMIT in (T80_DIR / "PROVENANCE.md").read_text()
+
+
+def test_t80_standardized_to_numeric_std():
+    """The Synopsys std_logic_unsigned was swapped for the VHDL-2008 standard package."""
+    for name in T80_FILES:
+        text = (T80_DIR / f"{name}.vhd").read_text().lower()
+        assert "std_logic_unsigned" not in text, f"{name} still uses std_logic_unsigned"
+        assert "std_logic_arith" not in text, f"{name} uses std_logic_arith"
+    for name in ("T80", "T80s"):
+        assert "numeric_std_unsigned" in (T80_DIR / f"{name}.vhd").read_text().lower()
+
+
+@pytest.mark.slow
+def test_t80_analyzes_under_ghdl(ghdl):
+    """All six files analyze leaf-first under GHDL --std=08 (no -fsynopsys)."""
+    d = tempfile.mkdtemp(prefix="t80_ghdl_")
+    for name in T80_FILES:
+        result = subprocess.run(
+            _GHDLBackend.analyze_cmd(T80_DIR / f"{name}.vhd", d), capture_output=True, text=True
+        )
+        assert result.returncode == 0, f"GHDL analysis of {name} failed:\n{result.stderr}"
+
+
+@pytest.mark.slow
+def test_t80_analyzes_under_nvc(nvc):
+    """All six files analyze leaf-first under NVC --std=2008."""
+    d = tempfile.mkdtemp(prefix="t80_nvc_")
+    for name in T80_FILES:
+        result = subprocess.run(
+            _NVCBackend.analyze_cmd(T80_DIR / f"{name}.vhd", d), capture_output=True, text=True
+        )
+        assert result.returncode == 0, f"NVC analysis of {name} failed:\n{result.stderr}"
 
 
 # ── Stage 1: the single-file CPU system elaborates + runs ─────────────────────
