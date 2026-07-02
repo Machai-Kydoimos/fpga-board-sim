@@ -179,7 +179,7 @@ The board renders with LEDs, buttons, switches, and — on supported boards — 
 
 ### 3. Select a VHDL file
 
-Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains ready-to-run designs as starting points: six standard LED designs (`blinky.vhd`, `blinky_counter.vhd`, `blinky_morse.vhd`, `blinky_pwm.vhd`, `blinky_walking.vhd`, `blinky_alt.vhd`), three 7-segment designs (`counter_7seg.vhd`, `snake_7seg.vhd`, `walking_counter_7seg.vhd`), and the embedded-core family — six generated 6502/Z80 soft-CPU systems (`mx65_*.vhd`, `t80_*.vhd`) plus the `mx65_hello_7seg.vhd` on-ramp (see [Embedded CPU systems](#embedded-cpu-systems) below).
+Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains ready-to-run designs as starting points: six standard LED designs (`blinky.vhd`, `blinky_counter.vhd`, `blinky_morse.vhd`, `blinky_pwm.vhd`, `blinky_walking.vhd`, `blinky_alt.vhd`), three 7-segment designs (`counter_7seg.vhd`, `snake_7seg.vhd`, `walking_counter_7seg.vhd`), and the embedded-core family — six generated 6502/Z80 soft-CPU systems (`mx65_*.vhd`, `t80_*.vhd`) plus `mx65_hello_7seg.vhd` (on-ramp) and `mx65_dice_7seg.vhd` (peripheral-extension example) (see [Embedded CPU systems](#embedded-cpu-systems) below).
 
 When you pick a file, the simulator analyzes and elaborates it (a few seconds on a large design); a spinner overlay keeps the window responsive while this runs and reports any contract or compile error.
 
@@ -466,7 +466,7 @@ The simulator sets the generics to match the selected board's resource counts an
 
 ### Embedded CPU systems
 
-A design can also be a **single self-contained file that embeds a soft CPU core** — a vendored 6502 (mx65) or Z80 (T80) — running an assembled firmware program, instead of hand-written RTL. The file still satisfies the same 7-segment board contract above (`clk`/`sw`/`btn`/`led`/`seg`); the firmware reads the board's resource counts from IO config registers, so one generated file fits any board. Six systems ship today — `hdl/mx65_walking_counter_7seg.vhd`, `hdl/mx65_irq_counter_7seg.vhd`, and four `hdl/t80_*.vhd` Z80 variants (IM 2 vectored interrupts, port-mapped IO, and a capstone combining both) — plus `hdl/mx65_hello_7seg.vhd`, a ~20-line firmware on-ramp for anyone starting their own.
+A design can also be a **single self-contained file that embeds a soft CPU core** — a vendored 6502 (mx65) or Z80 (T80) — running an assembled firmware program, instead of hand-written RTL. The file still satisfies the same 7-segment board contract above (`clk`/`sw`/`btn`/`led`/`seg`); the firmware reads the board's resource counts from IO config registers, so one generated file fits any board. Six systems ship today — `hdl/mx65_walking_counter_7seg.vhd`, `hdl/mx65_irq_counter_7seg.vhd`, and four `hdl/t80_*.vhd` Z80 variants (IM 2 vectored interrupts, port-mapped IO, and a capstone combining both) — plus `hdl/mx65_hello_7seg.vhd`, a ~20-line firmware on-ramp, and `hdl/mx65_dice_7seg.vhd`, a worked example of extending the IO subsystem with a peripheral (a free-running LFSR random-number register) that also gives ROM and RAM independently-sized regions.
 
 ![The 6502 walking-counter firmware running on a virtual DE10-Lite, identical in behavior to the hand-written walking_counter_7seg.vhd RTL design](docs/assets/cpu_walk_6digit.gif)
 

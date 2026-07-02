@@ -60,6 +60,11 @@ class MemoryRegion:
 IRQ_MODES = ("none", "simple", "vectored")
 IO_TRANSPORTS = ("memory", "port")
 
+# CPU-side IO subsystems the emitter can splice into cpu_io (see the fragment
+# triple under templates/fragments/lfsr_*.vhd.frag).  Unrelated to board-JSON
+# `peripherals` (physical on-board devices, e.g. VGA/audio -- roadmap P5).
+PERIPHERALS = ("lfsr",)
+
 
 @dataclass(frozen=True)
 class SystemSpec:
@@ -75,13 +80,17 @@ class SystemSpec:
     io: MemoryRegion
     irq_mode: str = "none"  # interrupt dispatch: none | simple | vectored (see IRQ_MODES)
     io_transport: str = "memory"  # register transport: memory | port (see IO_TRANSPORTS)
+    peripherals: tuple[str, ...] = ()  # CPU-side IO subsystems to splice in (see PERIPHERALS)
 
     def __post_init__(self) -> None:
-        """Validate the interrupt-mode/IO-transport axes and the memory map."""
+        """Validate the interrupt-mode/IO-transport/peripherals axes and the memory map."""
         if self.irq_mode not in IRQ_MODES:
             raise ValueError(f"irq_mode {self.irq_mode!r} not one of {IRQ_MODES}")
         if self.io_transport not in IO_TRANSPORTS:
             raise ValueError(f"io_transport {self.io_transport!r} not one of {IO_TRANSPORTS}")
+        for peripheral in self.peripherals:
+            if peripheral not in PERIPHERALS:
+                raise ValueError(f"peripheral {peripheral!r} not one of {PERIPHERALS}")
         self._validate_regions()
 
     def _validate_regions(self) -> None:
@@ -125,7 +134,17 @@ class SystemSpec:
 # Keys the loader accepts; anything else in a systems/*.toml is a load-time error
 # (a typo like `irq_moed` must fail loudly, not silently fall back to a default).
 _TOP_LEVEL_KEYS = frozenset(
-    {"name", "firmware", "cpu", "description", "generics", "memory", "irq_mode", "io_transport"}
+    {
+        "name",
+        "firmware",
+        "cpu",
+        "description",
+        "generics",
+        "memory",
+        "irq_mode",
+        "io_transport",
+        "peripherals",
+    }
 )
 _MEMORY_KEYS = frozenset({"ram", "rom", "io"})
 _REGION_KEYS = frozenset({"base", "size"})
@@ -166,4 +185,5 @@ def load(path: str | Path) -> SystemSpec:
         io=region("io"),
         irq_mode=str(data.get("irq_mode", "none")),
         io_transport=str(data.get("io_transport", "memory")),
+        peripherals=tuple(str(p) for p in data.get("peripherals", [])),
     )

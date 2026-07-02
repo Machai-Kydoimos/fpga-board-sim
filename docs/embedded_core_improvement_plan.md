@@ -37,8 +37,8 @@
 | 2 | Spec/generator validation; decouple ROM/RAM sizes | M | done | [#144](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/144) | 2026-07-02 |
 | 3 | Correct shipped provenance & banners (first regen) | S | done | [#146](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/146) | 2026-07-02 |
 | 4 | Emitter fragment refactor (byte-identical) | M | done | [#148](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/148) | 2026-07-02 |
-| 5 | Newcomer on-ramp: hello design + front-door docs | M | in review | — | — |
-| 6 | Peripheral extension: LFSR + dice design | L | not started | — | — |
+| 5 | Newcomer on-ramp: hello design + front-door docs | M | done | [#150](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/150) | 2026-07-02 |
+| 6 | Peripheral extension: LFSR + dice design | L | in review | — | — |
 | 7 | Stopwatch RTL showcase + parking | M | not started | — | — |
 
 ---
