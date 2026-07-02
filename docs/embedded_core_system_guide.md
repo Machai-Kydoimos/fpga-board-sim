@@ -211,6 +211,11 @@ The plugin names the variant files (`vectored_adapter_file`, `port_adapter_file`
 generator rejects that combination with a clear error. Everything *above* the pins — the interrupt
 controller, the register file — is the same generated VHDL no matter which adapter is chosen.
 
+**Coverage note:** every combination above is exercised by a committed design and test *except*
+`irq_mode = "simple"` (Z80 IM 1) on the base `t80.vhd` — it uses the same emitter branch the mx65
+IRQ design already exercises, so the path is generator-supported, but no `systems/*.toml` currently
+selects it. Treat it as declared-but-unexercised until a committed IM 1 design lands.
+
 ## 5. Reset & cold-start (generalized)
 
 **Every CPU has a boot convention.** Identify, for your core: where it fetches the initial PC
@@ -342,7 +347,7 @@ SPIN:   JMP SPIN          ; mx65 keeps fetching; display holds
 If that shows one steady LED and a "0", your reset vector, POR, read path, and IO writes all work —
 everything else is incremental. Now the full walking-counter patterns (6502, but the shapes
 generalize). The canonical assembled source lives in
-`firmware/mx65_walking_counter_7seg.asm`; the sketches below are the algorithm, not final opcodes.
+`firmware/mx65_walking_counter_7seg.s`; the sketches below are the algorithm, not final opcodes.
 
 - **Poll the tick** (decouples visible rate from instruction speed):
 
@@ -358,7 +363,10 @@ generalize). The canonical assembled source lives in
   `PREVBTN`; on a 0→1 transition toggle `FWD` and `CNT_UP`; then store the new value in `PREVBTN`.
   Buttons are sampled **once per tick** (not every clock like the reference RTL), so a press must be
   held ≥ 1 tick to register — fine for a human, but automated tests must hold `btn` across a tick.
-- **Bounce state machine:** advance `POS`; at `0` or `N_LEDS-1` flip `FWD`.
+- **Bounce state machine:** advance `POS`; at `0` or `N_LEDS-1` flip `FWD`. Assumes
+  **`NUM_LEDS ≥ 2`** — on a 1-LED board this underflows and the LED goes dark (the 7-seg odometer is
+  unaffected); every 7-seg board satisfies this, but since any design can run on any of the 278
+  boards, a 1-LED non-7-seg board is a known gap, not a guarantee.
 - **BCD ripple** (decimal odometer): increment digit 0; on `>9` set 0 and carry into the next
   digit across `N_SEGS`; decrement mirrors with borrow (`<0` → 9). Wrap is natural.
 - **Render digits via ROM LUT:** `LDX BCD[i]; LDA DECLUT,X; STA $E030,Y` (`DECLUT` = the ten

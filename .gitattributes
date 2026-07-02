@@ -13,3 +13,7 @@
 *.pdf  binary
 *.zip  binary
 *.whl  binary
+
+# Generated single-file embedded-core designs (regenerate; never hand-edit) — collapse in diffs
+hdl/mx65_*.vhd linguist-generated=true
+hdl/t80_*.vhd  linguist-generated=true

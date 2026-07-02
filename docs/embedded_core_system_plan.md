@@ -127,7 +127,7 @@ Zero-page state: `BCD[0..NUM_SEGS-1]` (one byte/digit, 0–9; index 0 = units = 
 - `RomImage` loader — reads a flat `.bin` (+ load addr + vector values) → sparse VHDL ROM constant (`others => x"00"`).
 - `Emitter` — concatenates header + verbatim core + ROM + RAM + IO + top, leaf-first.
 
-Vendored core: `scripts/embedded_core/cores/mx65.vhd` (**pin the upstream commit**, keep MIT header). Firmware: `firmware/mx65_walking_counter_7seg.asm` + assembled `.bin` + a README with the exact assemble command. System spec: a small file under `scripts/embedded_core/` or `systems/`.
+Vendored core: `scripts/embedded_core/cores/mx65.vhd` (**pin the upstream commit**, keep MIT header). Firmware: `firmware/mx65_walking_counter_7seg.s` + assembled `.bin` + a README with the exact assemble command. System spec: a small file under `scripts/embedded_core/` or `systems/`.
 
 **Assembler — explicitly out of scope as a project dependency** (user-aligned; an in-repo assembler is excluded — the image is the interface). The generator never shells out to an assembler. But the demo firmware still needs assembling by *something*, so **lock that choice now to unblock Stage 2: use `ca65` (cc65)** — the de-facto 6502 assembler — as an **external dev-time tool**. The assembled `.bin` is **checked in and is the source of truth**; the `.asm` and the exact `ca65`/`ld65` command are checked in as reproducible documentation, but reassembly is **not** part of CI (no toolchain dependency). The ROM unit test therefore asserts the *shape* of the checked-in bytes (vectors at the right offsets, `DECLUT == SEG_LUT(0..9)`), not that the `.asm` reassembles to them. (`customasm` remains the documented path for the multi-ISA future.)
 
@@ -145,16 +145,25 @@ Reuse existing patterns — prefer cloning over new infra.
 
 **Sequence (vertical slice first):**
 
-> **Status (2026-06-30):** Stages 0–4 are complete and shipped on `feat/embedded-core-system`
-> (per-stage log in [`embedded_core_build_notes.md`](embedded_core_build_notes.md)). Stage 5 remains
-> future. The roadmap **P7 (VSG)** trigger has fired — the generator now emits VHDL.
+> **Status (2026-07-02):** Stages 0–5 are complete and shipped (`feat/embedded-core-system`, #135;
+> per-stage log in [`embedded_core_build_notes.md`](embedded_core_build_notes.md)) — the IRQ-driven
+> variant, T80 (Z80) as a second core, both Z80 feature axes (IM 2 vectored interrupts, port-mapped
+> IO), and the capstone design combining them are all done. Remaining Stage-5 ideas (a true third
+> core; the `customasm` path) are parked as roadmap **P8**, tracked by the active follow-up arc
+> [`embedded_core_improvement_plan.md`](embedded_core_improvement_plan.md). The roadmap **P7 (VSG)**
+> trigger has fired — the generator now emits VHDL.
 
 - **Stage 0** ✅ — Vendor `mx65.vhd` (pin commit); smoke-test it analyzes under both simulators.
 - **Stage 1** ✅ — Hand-write the single file (top + mx65 + tiny ROM/RAM + trivial IO + config regs + POR); program writes a *constant* digit pattern + lights one LED, then spins. Goal: **elaborate + run** under GHDL **and** NVC; `test_7seg` sees valid (static) glyphs. **Stage-1 exit checklist (pins the open mx65 unknowns):** (a) PC loads from `$FFFC/D` — confirm POR width is enough, widen `por_cnt` if not; (b) reads land same-cycle — confirm mx65's `data_in` sampling edge and that the combinational read path feeds it in time (no off-by-one fetch); (c) a write to an IO register lands (verify `data_out`/`rw` timing); (d) a config-register read returns the generic value; (e) no `'U'` on `address`/`data_in` after reset (RAM init + mux default working). Proves bus wiring, vectors, POR, IO-write + config-read paths.
 - **Stage 2** ✅ — Add prescaler tick + bounce/BCD/reversal firmware; then switch-speed + `btn(1)` lamp-test for full fidelity; tune `PRESCALER_BITS`. **← working 6502 demo here.**
 - **Stage 3** ✅ — Build the generator to *reproduce* the Stage-2 file from inputs; add generator/ROM unit tests.
 - **Stage 4** ✅ — Generalize interfaces; write the development guide; add 2/4/6-digit captures; **update the surrounding docs** (CLAUDE.md file table + "VHDL Design Contract" to mention the CPU-system family and `PRESCALER_BITS`; mark the roadmap card done) per the repo's completion-checklist convention.
-- **Stage 5 (later)** — IRQ-driven variant; T65 as a second (multi-unit) core; customasm path.
+- **Stage 5** ✅ — IRQ-driven variant (mx65 polled / simple / vectored IRQ); Z80 (T80) as a second
+  core, exercising both feature axes (interrupt mode, port-mapped IO) plus a capstone design
+  combining them. *(Originally scoped as "T65 as a second core"; delivered as T80/Z80 instead — a
+  broader core-agnosticism proof — see [`embedded_core_build_notes.md`](embedded_core_build_notes.md).)*
+  A true third core and the `customasm` path remain parked — roadmap **P8** /
+  [`embedded_core_improvement_plan.md`](embedded_core_improvement_plan.md).
 
 **Top risks → mitigations:**
 
