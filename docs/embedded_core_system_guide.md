@@ -524,6 +524,17 @@ nonzero on any difference); `--write` regenerates drifted or missing files in pl
 additionally reassembles each firmware source with its pinned dev-time toolchain and reports drift
 against the checked-in `.bin` (it never writes a `.bin` — that stays a deliberate manual act).
 
+**Generator internals — where the VHDL lives:** `emitter.py` fills each `templates/*.vhd.tmpl` file's
+`@@TOKEN@@` markers (`_fill`) and concatenates the results (`emit`, §3's leaf-first order). Short,
+purely-connective token values (a decl line, a port addition) stay inline Python strings in
+`emitter.py`. Multi-line VHDL *bodies* — currently the interrupt controller's signals, read-mux arm,
+process, and IM 2 vector encoder — instead live as separate `templates/fragments/*.vhd.frag` files,
+loaded by the small `_frag()` helper and spliced into the same tokens. Neither `.vhd.tmpl` nor
+`.vhd.frag` files are complete, standalone-analyzable VHDL (they carry `@@TOKEN@@` markers or are
+partial design units), so both are on the P7/VSG hard-exclusion list (`improvement_roadmap.md`) —
+write them to the ruleset's style by hand. When extending `cpu_io` (§13) with a new multi-line block,
+add a fragment rather than growing another Python string literal.
+
 ## 11. Running & verifying
 
 - **Interactive:** `uv run fpga-sim` → pick a 7-seg board → select your `.vhd`.
@@ -598,7 +609,9 @@ generator logic — the vectored and port token sets compose — only the combin
   `numeric_std_unsigned` (§4.2). The 6502 and Z80 prove the seam holds across very different buses.
 - **New subsystems:** extend `cpu_io` with more registers/peripherals (UART, timer-compare, GPIO
   banks) at fresh IO addresses; the two-source interrupt controller (§9) is the template for adding
-  an interrupt source (enable bit + flag bit + OR into `cpu_irq_req`).
+  an interrupt source (enable bit + flag bit + OR into `cpu_irq_req`). Put any new multi-line VHDL
+  body in a `templates/fragments/*.vhd.frag` file, not a Python string literal (§10's "generator
+  internals" note).
 - **Interrupt mode & IO transport:** two spec axes (§10) — `irq_mode`
   (`none`/`simple`/`vectored`) turns on the interrupt controller (and, for `vectored`, the INTA
   vector supply); `io_transport` (`memory`/`port`) picks the IO transport. Each pin-level combination
