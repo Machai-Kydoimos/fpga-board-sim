@@ -32,8 +32,8 @@
 
 | Phase | Title | Size | State | PR | Date |
 |---|---|---|---|---|---|
-| 0 | Errata & repo hygiene | S | not started | — | — |
-| 1 | Reassembly guards + regeneration tooling | M | not started | — | — |
+| 0 | Errata & repo hygiene | S | done | [#140](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/140) | 2026-07-02 |
+| 1 | Reassembly guards + regeneration tooling | M | in review | — | — |
 | 2 | Spec/generator validation; decouple ROM/RAM sizes | M | not started | — | — |
 | 3 | Correct shipped provenance & banners (first regen) | S | not started | — | — |
 | 4 | Emitter fragment refactor (byte-identical) | M | not started | — | — |
