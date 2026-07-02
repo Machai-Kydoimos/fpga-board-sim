@@ -38,6 +38,18 @@ def _fill(template: str, tokens: dict[str, str]) -> str:
     return template
 
 
+def _frag(name: str, *, prefix: str = "\n") -> str:
+    """Load a template fragment, prefixed for splicing into a Python-string token.
+
+    Fragments hold multi-line VHDL bodies as readable ``.vhd.frag`` files
+    (not standalone-analyzable VHDL -- see the P7/VSG exclusion list) instead
+    of Python string literals. ``prefix`` supplies the leading blank line(s)
+    the splice site expects; the trailing newline from the file read is
+    stripped so the caller controls what follows.
+    """
+    return prefix + (_TEMPLATES / "fragments" / name).read_text().rstrip("\n")
+
+
 def _decode(spec: SystemSpec) -> str:
     """Generate the address-decode lines from the system memory map.
 
@@ -117,67 +129,19 @@ def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
     # variant also exports a per-source vector byte the adapter drives during INTA.
     if spec.irq_driven:
         tokens.update(
-            INT_SIGNAL=(
-                '\n  signal ier        : std_logic_vector(1 downto 0) := "00";'
-                "\n  signal timer_flag : std_logic := '0';"
-                "\n  signal input_flag : std_logic := '0';"
-                "\n  signal prev_sw    : std_logic_vector(NUM_SWITCHES - 1 downto 0)"
-                " := (others => '0');"
-                "\n  signal prev_btn   : std_logic_vector(NUM_BUTTONS - 1 downto 0)"
-                " := (others => '0');"
-            ),
+            INT_SIGNAL=_frag("irq_signals.vhd.frag"),
             INT_SENS=", ier, timer_flag, input_flag",
-            INT_READ=(
-                '\n      when x"11"  => rdata <= "000000" & ier;'
-                '\n      when x"12"  => rdata <= "000000" & input_flag & timer_flag;'
-            ),
+            INT_READ=_frag("irq_read.vhd.frag"),
             CPU_IRQ_REQ="io_irq",
         )
-        irq_logic = (
-            "\n\n"
-            "  -- Interrupt controller: two sources (timer + sw/btn change).  Each has an\n"
-            "  -- enable bit (IER $E011) and a flag bit (IFR $E012, write-1-to-clear); irq is\n"
-            "  -- the OR of enabled+pending flags, and the ISR reads IFR to see who fired.\n"
-            "  interrupts : process (clk) begin\n"
-            "    if rising_edge(clk) then\n"
-            "      prev_sw  <= sw;\n"
-            "      prev_btn <= btn;\n"
-            "      -- register writes first, so a same-cycle flag set (below) wins the race\n"
-            "      if cs = '1' and we = '1' then\n"
-            '        if addr = x"11" then\n'
-            "          ier <= wdata(1 downto 0);\n"
-            '        elsif addr = x"12" then\n'
-            "          if wdata(0) = '1' then timer_flag <= '0'; end if;\n"
-            "          if wdata(1) = '1' then input_flag <= '0'; end if;\n"
-            "        end if;\n"
-            "      end if;\n"
-            "      -- flag sources (set wins over a simultaneous ack)\n"
-            "      if prescaler = (prescaler'range => '1') then\n"
-            "        timer_flag <= '1';\n"
-            "      end if;\n"
-            "      if sw /= prev_sw or btn /= prev_btn then\n"
-            "        input_flag <= '1';\n"
-            "      end if;\n"
-            "    end if;\n"
-            "  end process;\n"
-            "\n"
-            "  irq <= (timer_flag and ier(0)) or (input_flag and ier(1));"
-        )
+        irq_logic = _frag("irq_logic.vhd.frag", prefix="\n\n")
         if vectored:
             tokens.update(
                 IRQ_PORT=(
                     ";\n    irq     : out std_logic;"
                     "\n    irq_vec : out std_logic_vector(7 downto 0)"
                 ),
-                IRQ_LOGIC=irq_logic
-                + (
-                    "\n\n"
-                    "  -- IM 2 vector: the enabled+pending source, timer over input.  The values\n"
-                    "  -- index the CPU's I:vector table ($00 -> timer ISR, $02 -> input ISR).\n"
-                    "  irq_vec <= x\"00\" when (timer_flag and ier(0)) = '1' else\n"
-                    "             x\"02\" when (input_flag and ier(1)) = '1' else\n"
-                    '             x"00";'
-                ),
+                IRQ_LOGIC=irq_logic + _frag("irq_vec.vhd.frag", prefix="\n\n"),
                 IO_IRQ_DECL=(
                     "\n  signal io_irq     : std_logic;"
                     "\n  signal io_irq_vec : std_logic_vector(7 downto 0);"
