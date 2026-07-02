@@ -73,14 +73,14 @@ begin
 
   rom_inst : entity work.cpu_rom
     generic map (ROM_BITS => @@ROM_BITS@@)
-    port map (addr => cpu_addr(@@ADDR_HIGH@@ downto 0), data => rom_dout);
+    port map (addr => cpu_addr(@@ROM_ADDR_HIGH@@ downto 0), data => rom_dout);
 
   ram_inst : entity work.cpu_ram
     generic map (RAM_BITS => @@RAM_BITS@@)
     port map (
       clk  => clk,
       we   => ram_we,
-      addr => cpu_addr(@@ADDR_HIGH@@ downto 0),
+      addr => cpu_addr(@@RAM_ADDR_HIGH@@ downto 0),
       din  => cpu_dout,
       dout => ram_dout
     );

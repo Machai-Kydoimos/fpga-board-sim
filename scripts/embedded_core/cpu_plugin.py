@@ -33,11 +33,15 @@ class CpuPlugin:
     vectored_adapter_file: Path | None = None  # variant for vectored interrupts (Z80 IM 2)
     port_adapter_file: Path | None = None  # variant for port-mapped IO (Z80 IN/OUT via IORQ)
     vectored_port_adapter_file: Path | None = None  # variant for IM 2 + port-mapped IO
+    boots_at_zero: bool = False  # Z80: boots at $0000; 6502: fetches a vector -- consumed by emit()
+
+    # Documentation-only below: the adapter VHDL implements each of these facts already;
+    # changing a field's value here has no effect on the generated design. Candidates to
+    # become functional with the P8 normalized-bus-v2 work (see improvement_roadmap.md).
     address_bits: int = 16
     data_bits: int = 8
     reset_active_high: bool = True  # mx65: high; T80: RESET_n is active-low
     irq_active_high: bool = False  # both mx65 and T80 interrupt on a low line
-    boots_at_zero: bool = False  # Z80 boots at $0000; 6502 fetches a reset vector
     endian: str = "little"
 
     def core_vhdl_text(self) -> str:

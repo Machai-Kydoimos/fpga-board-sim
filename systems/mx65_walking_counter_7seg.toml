@@ -30,8 +30,11 @@ num_segs = 4
 counter_bits = 24
 prescaler_bits = 10
 
-# Memory map.  Sizes are powers of two; addr_bits = log2(size) drives the
-# ROM/RAM widths and the top's address slice + decode.
+# Memory map.  Sizes are powers of two, bases must be aligned to their own
+# size, and regions must not overlap (enforced by system_spec.py at load
+# time -- see guide §6).  addr_bits = log2(size) drives each region's own
+# width and address slice in the top (ROM and RAM sizes are independent)
+# plus the address decode.
 [memory.ram]
 base = 0x0000
 size = 0x0800   # 2 KB -> 11 address bits
