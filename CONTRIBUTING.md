@@ -395,6 +395,14 @@ This project follows [Semantic Versioning](https://semver.org):
 - **Avoid "release gravity."** Don't let `[Unreleased]` grow past roughly one
   sprint of work — small, frequent releases keep the changelog reviewable and
   the tag history meaningful.
+- **Changelog entries land with the PR, not at release time.** A PR that
+  changes anything user-visible (feature, fix, behavior change) adds its own
+  `[Unreleased]` entry in that same PR; multi-PR arcs add entries per PR or as
+  an explicit arc-close step. Docs-only changes, dependency bumps, and
+  internal churn superseded before it ever ships need no entry. This keeps
+  the "~3–5 user-visible changes" trigger above readable at a glance and
+  makes release-checklist step 2 a pure move instead of after-the-fact
+  authorship.
 
 ### Release checklist
 
