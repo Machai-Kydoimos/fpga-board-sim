@@ -4683,7 +4683,7 @@ end entity;
 
 architecture rtl of cpu_rom is
   type rom_t is array (0 to 2 ** ROM_BITS - 1) of std_logic_vector(7 downto 0);
-  -- ROM image: assembled by ca65 + ld65 from firmware/t80_portio_counter_7seg.s
+  -- ROM image: assembled by z88dk z80asm from firmware/t80_portio_counter_7seg.asm
   -- (the readable program) and embedded here verbatim.  The checked-in
   -- firmware/t80_portio_counter_7seg.bin is the source of truth; regenerate this
   -- aggregate with scripts/embedded_core/rom_to_vhdl.py.  Zero bytes fall through

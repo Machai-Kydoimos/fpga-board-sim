@@ -34,8 +34,8 @@
 |---|---|---|---|---|---|
 | 0 | Errata & repo hygiene | S | done | [#140](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/140) | 2026-07-02 |
 | 1 | Reassembly guards + regeneration tooling | M | done | [#142](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/142) | 2026-07-02 |
-| 2 | Spec/generator validation; decouple ROM/RAM sizes | M | in review | — | — |
-| 3 | Correct shipped provenance & banners (first regen) | S | not started | — | — |
+| 2 | Spec/generator validation; decouple ROM/RAM sizes | M | done | [#144](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/144) | 2026-07-02 |
+| 3 | Correct shipped provenance & banners (first regen) | S | in review | — | — |
 | 4 | Emitter fragment refactor (byte-identical) | M | not started | — | — |
 | 5 | Newcomer on-ramp: hello design + front-door docs | M | not started | — | — |
 | 6 | Peripheral extension: LFSR + dice design | L | not started | — | — |
