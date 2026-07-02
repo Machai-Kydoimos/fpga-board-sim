@@ -65,6 +65,8 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `sim/test_cpu_walking.py` | Shared headless cocotb behavioral suite run by every embedded-core design (6502 + Z80) |
 | `sim/test_cpu_hello.py` | Headless cocotb test for the `mx65_hello_7seg` on-ramp design (static: one LED + one digit, never changes) |
 | `sim/test_cpu_dice.py` | Headless cocotb test for the `mx65_dice_7seg` peripheral-extension design (LFSR-driven die roll on `btn(0)`) |
+| `hdl/stopwatch_7seg.vhd` | Hand-written interactive stopwatch: `btn(0)` start/stop, `btn(1)` reset, switch speed; the RTL half of the "same behavior, hardware vs software" teaching pair with the embedded-core designs |
+| `sim/test_stopwatch.py` | Headless cocotb test for `stopwatch_7seg.vhd` (start/stop/reset behavior) |
 | `hdl/mx65_walking_counter_7seg.vhd` | **Generated** single-file 6502 embedded-core demo (vendored mx65 + ROM/RAM/IO/top); Z80 (T80) siblings are `hdl/t80_*.vhd`; `hdl/mx65_hello_7seg.vhd` is the ~20-line newcomer on-ramp; `hdl/mx65_dice_7seg.vhd` extends `cpu_io` with an LFSR peripheral and has an independently-sized ROM/RAM map; see `docs/embedded_core_system_guide.md` |
 | `scripts/gen_embedded_core.py` | Generator: emits a single-file embedded-core system from a CPU plugin + `systems/*.toml` spec + firmware `.bin`; `--cpu`/`--rom`/`--out` are inferred from `--system` (explicit flags override) |
 | `scripts/regen_embedded_cores.py` | One-command regen loop over every `systems/*.toml`: check (default), `--write` (regenerate drifted/missing files), `--assemble` (reassemble firmware with its pinned dev-time toolchain and report drift; never writes `.bin`s) |

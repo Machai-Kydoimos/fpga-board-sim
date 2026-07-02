@@ -673,6 +673,12 @@ both simulators, that Phase 2's per-region address slices really are independent
 design — unrelated to board-JSON `peripherals` blocks (physical on-board devices like VGA or audio;
 roadmap P5's domain). Same word, different layer.
 
+**Reader exercise:** `hdl/stopwatch_7seg.vhd` is the hand-written RTL half of this repo's "same
+behavior, hardware vs software" teaching pair — start/stop/reset under button control, the same
+interaction style as the dice roller above. Porting it to 6502 or Z80 firmware is left as an
+exercise; `firmware/mx65_walking_counter_7seg.s` already shows the full recipe (BCD ripple, edge
+detection, switch-speed scaling) for turning this exact kind of RTL into firmware.
+
 ## 14. Troubleshooting
 
 | Symptom | Likely cause | Fix |
