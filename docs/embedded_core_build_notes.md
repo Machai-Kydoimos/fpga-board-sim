@@ -145,9 +145,10 @@ de-risked the bus/IO/tick paths.
 PREVBTN, LAMP, SKIP_VAL/SKIPCNT, cached N_LEDS/N_SEGS, BCD[0..7] one digit/byte); subroutines
 `bounce` / `bcd_inc` / `bcd_dec` / `onehot` / `calc_skip` (so JSR/RTS exercise the stack too). One-hot
 LED = `1 << POS` built with `ASL ONEHOT_LO / ROL ONEHOT_HI`; BCD ripple via per-digit `CMP #10` /
-borrow; switch speed = `SKIP = max(1, 8 >> popcount(SW))` (each switch doubles the rate — the chosen
-2x, not the reference RTL's 4x). Main loop = poll tick, edge-detect `btn(0)`, sample `btn(1)`,
-recompute SKIP, step every SKIP-th tick, render (lamp-test override else one-hot + glyphs).
+borrow; switch speed = `SKIP = max(1, 8 >> popcount(SW))` (each switch doubles the rate, matching
+the reference RTL now that #133 fixed its `base - n*2` quadrupling bug). Main loop = poll tick,
+edge-detect `btn(0)`, sample `btn(1)`, recompute SKIP, step every SKIP-th tick, render (lamp-test
+override else one-hot + glyphs).
 
 **Tick path confirmed (first functional exercise of the prescaler):** the firmware's read-to-clear
 poll of `$E010` works, including the "set wins over a simultaneous clear" rule in `cpu_io` — no

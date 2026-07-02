@@ -94,7 +94,7 @@ begin
   end process count_proc;
 
   -- Speed index from switch popcount ------------------------------------------
-  -- Each active switch subtracts 2 from step_idx, halving the step period
+  -- Each active switch subtracts 1 from step_idx, halving the step period
   -- (doubling the snake speed).  Clamped to [1, COUNTER_BITS-1].
   --
   -- The base speed is capped at bit 16 so the step rate matches blinky_walking
@@ -116,7 +116,7 @@ begin
     if base > 16 then
       base := 16;
     end if;
-    idx := base - n * 2;
+    idx := base - n;
     if idx < 1 then
       idx := 1;
     end if;

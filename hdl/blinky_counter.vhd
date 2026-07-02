@@ -2,8 +2,8 @@
 --
 -- All LEDs display a sliding window of bits from a free-running counter,
 -- showing the raw binary count.  With no switches active the window sits at
--- the upper (slow) bits; each additional active switch shifts the window two
--- bit positions toward the LSB, doubling the visible count rate.
+-- the upper (slow) bits; each additional active switch shifts the window one
+-- bit position toward the LSB, doubling the visible count rate.
 -- Holding any button forces all LEDs on.
 --
 -- Effect  : LEDs count upward in binary with a right-to-left ripple.
@@ -43,7 +43,7 @@ begin
   -- LED output: map a window of counter bits onto the LEDs.
   --
   -- Window base (no switches) = COUNTER_BITS - NUM_LEDS  (upper/slow bits).
-  -- Each active switch shifts the base 2 positions toward the LSB, making
+  -- Each active switch shifts the base 1 position toward the LSB, making
   -- the count run faster.  The base is clamped so the window always fits
   -- within the counter.
   --
@@ -71,7 +71,7 @@ begin
       max_off := 0;
     end if;
 
-    offset := n_sw * 2;
+    offset := n_sw;
     if offset > max_off then
       offset := max_off;
     end if;

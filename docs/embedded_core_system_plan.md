@@ -101,7 +101,7 @@ mx65 sees reset high ~7 clocks, then low → loads PC from `$FFFC/D`. **The "7" 
 | **10 (default)** | 1024 | ~560 | lively but watchable |
 | 12 | 4096 | ~140 | calm |
 
-`PRESCALER_BITS` = a top-level generic (default 10), **fixed at generation time** — the wrapper never passes it, so it is *not* a runtime knob (the runtime knobs are the speed slider and the switches). The speed slider scales sim-time; **switches** further multiply the rate via software tick-division (each active switch doubles it — a *chosen* factor, see *Demo firmware*; note the reference RTL actually *quadruples* per switch — `idx := base - n*2` in `walking_counter_7seg.vhd:127`, a latent bug since its own comments say "doubles"). **Polling** (read-to-clear `$E010`) for v1; IRQ-driven is a later stage.
+`PRESCALER_BITS` = a top-level generic (default 10), **fixed at generation time** — the wrapper never passes it, so it is *not* a runtime knob (the runtime knobs are the speed slider and the switches). The speed slider scales sim-time; **switches** further multiply the rate via software tick-division (each active switch doubles it, matching `walking_counter_7seg.vhd`'s `idx := base - n` — see *Demo firmware*. The RTL originally quadrupled per switch, `base - n*2`, contradicting its own "doubles" comment; fixed in #133, so firmware and RTL now agree). **Polling** (read-to-clear `$E010`) for v1; IRQ-driven is a later stage.
 
 ## Demo firmware (replicates `walking_counter_7seg`)
 
