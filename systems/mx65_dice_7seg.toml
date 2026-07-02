@@ -1,0 +1,52 @@
+# System spec for the embedded-core LFSR/dice-roller demo -- the guide's
+# section-13 peripheral-extension worked example.
+# Consumed by scripts/gen_embedded_core.py to (re)generate
+# hdl/mx65_dice_7seg.vhd from the vendored CPU core + firmware .bin.
+
+name = "mx65_dice_7seg"
+firmware = "mx65_dice_7seg"
+cpu = "mx65"
+peripherals = ["lfsr"]
+
+# Banner body (rendered as VHDL comment lines; a blank line becomes "--").
+description = """
+One self-contained VHDL file: a vendored mx65 6502 CPU core (below, verbatim,
+MIT) + ROM + RAM + memory-mapped IO (extended with an LFSR peripheral) + a
+top that wires it to the board's sw/btn/led/seg and synthesises a power-on
+reset.
+
+The ROM holds a dice-roller firmware (assembled by ca65/ld65 from
+firmware/mx65_dice_7seg.s): cold start blanks every digit but 0 and shows
+"0"; each btn(0) press reads the free-running LFSR random-number register
+(cpu_io's peripherals = ["lfsr"] splices it in at $E008), reduces it to
+1-6, and shows that value on digit 0 and as a binary readout on the LEDs.
+Deliberately gives ROM (2 KB) and RAM (1 KB) DIFFERENT sizes -- the runtime
+proof that each region's address slice in the top is generated from its
+own size independently (Phase 2 of the embedded-core improvement plan).
+See docs/embedded_core_system_guide.md, section 13."""
+
+# VHDL generic defaults (board sizes are overridden at elaboration).
+[generics]
+num_switches = 4
+num_buttons = 4
+num_leds = 4
+num_segs = 4
+counter_bits = 24
+prescaler_bits = 10
+
+# Memory map.  Sizes are powers of two, bases must be aligned to their own
+# size, and regions must not overlap (enforced by system_spec.py at load
+# time -- see guide §6).  ROM and RAM are DELIBERATELY unequal sizes here:
+# RAM_ADDR_HIGH (9) != ROM_ADDR_HIGH (10), exercising Phase 2's independent
+# per-region address slices at runtime, under both simulators.
+[memory.ram]
+base = 0x0000
+size = 0x0400   # 1 KB -> 10 address bits (zero page + stack easily fit)
+
+[memory.io]
+base = 0xE000
+size = 0x0100
+
+[memory.rom]
+base = 0xF800
+size = 0x0800   # 2 KB -> 11 address bits; vectors at top, as mx65 requires

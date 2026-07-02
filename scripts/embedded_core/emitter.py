@@ -167,6 +167,17 @@ def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
             IO_IRQ_CONN="",
         )
 
+    # Peripherals: optional CPU-side IO subsystems (see PERIPHERALS). Empty tokens
+    # keep every design without one byte-identical -- the same pattern as IRQ wiring.
+    tokens.update(PERIPH_SIGNALS="", PERIPH_SENS="", PERIPH_READ="", PERIPH_LOGIC="")
+    if "lfsr" in spec.peripherals:
+        tokens.update(
+            PERIPH_SIGNALS=tokens["PERIPH_SIGNALS"] + _frag("lfsr_signals.vhd.frag"),
+            PERIPH_SENS=tokens["PERIPH_SENS"] + ", lfsr_reg",
+            PERIPH_READ=tokens["PERIPH_READ"] + _frag("lfsr_read.vhd.frag"),
+            PERIPH_LOGIC=tokens["PERIPH_LOGIC"] + _frag("lfsr_logic.vhd.frag", prefix="\n\n"),
+        )
+
     def block(name: str) -> str:
         return _fill((_TEMPLATES / name).read_text(), tokens)
 

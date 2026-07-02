@@ -317,6 +317,7 @@ map is just different base addresses. Example 6502 map:
 | `$E000`/`$E001` | R | switches (low/high byte) |
 | `$E002`/`$E003` | R | buttons (low/high byte) |
 | `$E004..$E007` | R | **config**: NUM_LEDS, NUM_SEGS, NUM_SWITCHES, NUM_BUTTONS |
+| `$E008` | R | LFSR random byte -- only when the spec lists the `"lfsr"` peripheral (§13) |
 | `$E010` | R/W | tick pending in bit0; **write any value to clear** (§4.5) |
 | `$E020`/`$E021` | W | LED bits (low/high byte), masked to NUM_LEDS |
 | `$E030+i` | W | segment byte for digit *i* (active-high, `dp g f e d c b a`) |
@@ -636,16 +637,41 @@ generator logic — the vectored and port token sets compose — only the combin
   automatically (T80 = 6 files); a Synopsys-dependent core is standardized with
   `numeric_std_unsigned` (§4.2). The 6502 and Z80 prove the seam holds across very different buses.
 - **New subsystems:** extend `cpu_io` with more registers/peripherals (UART, timer-compare, GPIO
-  banks) at fresh IO addresses; the two-source interrupt controller (§9) is the template for adding
-  an interrupt source (enable bit + flag bit + OR into `cpu_irq_req`). Put any new multi-line VHDL
-  body in a `templates/fragments/*.vhd.frag` file, not a Python string literal (§10's "generator
-  internals" note).
+  banks) at fresh IO addresses — worked example below. The two-source interrupt controller (§9) is
+  the template for adding an interrupt source (enable bit + flag bit + OR into `cpu_irq_req`).
 - **Interrupt mode & IO transport:** two spec axes (§10) — `irq_mode`
   (`none`/`simple`/`vectored`) turns on the interrupt controller (and, for `vectored`, the INTA
   vector supply); `io_transport` (`memory`/`port`) picks the IO transport. Each pin-level combination
   is a small adapter variant (§4.6); the firmware supplies the ISR and/or the `IN`/`OUT` accesses.
 - **Alternative programs / hex vs BCD:** just firmware + system-spec changes; the VHDL skeleton and
   the adapter are unchanged.
+
+### Worked example: adding a peripheral (the LFSR / dice-roller)
+
+The `peripherals` spec axis (a TOML list, e.g. `peripherals = ["lfsr"]`) splices an optional
+CPU-side IO subsystem into `cpu_io` without touching any existing design — empty tokens when the
+list is empty keep every other system byte-identical (proved by the golden tests). Adding one is
+four pieces; `hdl/mx65_dice_7seg.vhd` / `systems/mx65_dice_7seg.toml` are the committed example:
+
+1. **A fragment triple** (`templates/fragments/lfsr_*.vhd.frag`), spliced via four `cpu_io.vhd.tmpl`
+   anchors — `@@PERIPH_SIGNALS@@`, `@@PERIPH_SENS@@`, `@@PERIPH_READ@@`, `@@PERIPH_LOGIC@@` (put any
+   new multi-line VHDL body in a fragment, not a Python string literal — §10's "generator internals"
+   note): a signal declaration, a sensitivity-list addition, a read-mux `when` arm at a fresh address
+   (`$E008`), and the peripheral's own clocked process (a free-running maximal-length LFSR here).
+2. **The spec list:** `peripherals = ["lfsr"]` in the system spec, validated against `PERIPHERALS`
+   in `system_spec.py` (an unknown name is a clear load-time error, same as `irq_mode`/`io_transport`).
+3. **Firmware that uses it:** `firmware/mx65_dice_7seg.s` reads the new register (`LFSR = $E008`) on
+   each button press and reduces it to a die face — ordinary memory-mapped IO from the firmware's
+   point of view, no different from reading switches or buttons.
+4. **Tests:** `sim/test_cpu_dice.py` plus the golden/reassembly/NVC/GHDL wrappers in
+   `tests/test_embedded_core.py`, following the same pattern every other system uses.
+
+The dice spec also gives ROM (2 KB) and RAM (1 KB) **different** sizes — the runtime proof, under
+both simulators, that Phase 2's per-region address slices really are independent (§6).
+
+**Terminology note:** this `peripherals` axis is CPU-side IO subsystems *inside* the generated
+design — unrelated to board-JSON `peripherals` blocks (physical on-board devices like VGA or audio;
+roadmap P5's domain). Same word, different layer.
 
 ## 14. Troubleshooting
 
