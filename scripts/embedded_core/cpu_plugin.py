@@ -29,6 +29,7 @@ class CpuPlugin:
     core_files: tuple[Path, ...]  # vendored VHDL, leaf-first (emitted verbatim)
     adapter_file: Path  # normalized-bus adapter block
     vectored_adapter_file: Path | None = None  # variant for vectored interrupts (Z80 IM 2)
+    port_adapter_file: Path | None = None  # variant for port-mapped IO (Z80 IN/OUT via IORQ)
     address_bits: int = 16
     data_bits: int = 8
     reset_active_high: bool = True  # mx65: high; T80: RESET_n is active-low
@@ -40,16 +41,24 @@ class CpuPlugin:
         """Return the vendored core VHDL, files concatenated leaf-first."""
         return "\n".join(f.read_text() for f in self.core_files)
 
-    def adapter_vhdl(self, vectored: bool = False) -> str:
+    def adapter_vhdl(self, vectored: bool = False, port: bool = False) -> str:
         """Return the normalized-bus adapter block for this core.
 
         ``vectored`` selects the interrupt-mode-2 adapter (drives a vector onto the
-        data bus during INTA); the core must provide ``vectored_adapter_file``.
+        data bus during INTA); ``port`` selects the port-mapped-IO adapter (exposes
+        MREQ/IORQ so the decode can split memory and I/O space).  The core must
+        provide the matching adapter file.
         """
+        if vectored and port:
+            raise ValueError("no combined vectored + port-IO adapter is provided yet")
         if vectored:
             if self.vectored_adapter_file is None:
                 raise ValueError(f"core {self.name!r} has no vectored-interrupt adapter")
             return self.vectored_adapter_file.read_text()
+        if port:
+            if self.port_adapter_file is None:
+                raise ValueError(f"core {self.name!r} has no port-mapped-IO adapter")
+            return self.port_adapter_file.read_text()
         return self.adapter_file.read_text()
 
 
@@ -70,6 +79,7 @@ T80 = CpuPlugin(
     ),
     adapter_file=_ADAPTERS / "t80.vhd",
     vectored_adapter_file=_ADAPTERS / "t80_vectored.vhd",
+    port_adapter_file=_ADAPTERS / "t80_port.vhd",
     reset_active_high=False,
     boots_at_zero=True,
 )

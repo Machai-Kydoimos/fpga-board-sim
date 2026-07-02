@@ -41,6 +41,9 @@ T80_TOML = PROJECT / "systems" / "t80_walking_counter_7seg.toml"
 T80_IRQ_SYS = PROJECT / "hdl" / "t80_irq_counter_7seg.vhd"
 T80_IRQ_BIN = FIRMWARE / "t80_irq_counter_7seg.bin"
 T80_IRQ_TOML = PROJECT / "systems" / "t80_irq_counter_7seg.toml"
+T80_PORTIO_SYS = PROJECT / "hdl" / "t80_portio_counter_7seg.vhd"
+T80_PORTIO_BIN = FIRMWARE / "t80_portio_counter_7seg.bin"
+T80_PORTIO_TOML = PROJECT / "systems" / "t80_portio_counter_7seg.toml"
 
 # Upstream commit the vendored copy is pinned to (recorded in the file header).
 MX65_PINNED_COMMIT = "d65d81d4f8031e194bd8410133b9036db7e58794"
@@ -499,6 +502,110 @@ def test_t80_irq_runs_ghdl(ghdl):
     )
 
 
+# ── Stage 5 (part 4): the Z80 port-mapped-IO design ───────────────────────────
+
+
+def test_portio_design_decodes_via_iorq():
+    """Port mode splits memory (MREQ) and I/O (IORQ) instead of an address window."""
+    text = T80_PORTIO_SYS.read_text()
+    assert "sel_io  <= cpu_iorq;" in text, "IO select should come from the I/O cycle"
+    assert "cpu_mreq = '1' and cpu_addr" in text, "ROM/RAM selects should be MREQ-qualified"
+    assert "cpu_iorq <= (not iorq_n)" in text, "adapter should derive the I/O cycle from IORQ"
+
+
+def test_generator_reproduces_t80_portio_design():
+    """gen_embedded_core.py reproduces the committed Z80 port-IO .vhd byte-for-byte."""
+    out = Path(tempfile.mkdtemp(prefix="gen_t80portio_")) / T80_PORTIO_SYS.name
+    subprocess.run(
+        [
+            sys.executable,
+            str(GENERATOR),
+            "--cpu",
+            "t80",
+            "--system",
+            str(T80_PORTIO_TOML),
+            "--rom",
+            str(T80_PORTIO_BIN),
+            "--out",
+            str(out),
+        ],
+        check=True,
+        cwd=PROJECT,
+        capture_output=True,
+        text=True,
+    )
+    assert out.read_text() == T80_PORTIO_SYS.read_text(), (
+        "gen_embedded_core.py output drifted from hdl/t80_portio_counter_7seg.vhd — "
+        "regenerate it from systems/t80_portio_counter_7seg.toml + the firmware .bin"
+    )
+
+
+@pytest.mark.slow
+def test_t80_portio_runs_nvc(nvc):
+    """The Z80 port-mapped-IO design runs the walking suite under NVC."""
+    work_dir = tempfile.mkdtemp(prefix="t80portio_nvc_")
+    ok, detail = analyze_vhdl(
+        T80_PORTIO_SYS,
+        work_dir=work_dir,
+        toplevel="t80_portio_counter_7seg",
+        simulator="nvc",
+        board_def=_7seg_board(),
+    )
+    assert ok, f"NVC analyze failed: {detail}"
+
+    env, vhpi_lib = _build_sim_env(simulator="nvc")
+    subprocess.run(
+        _NVCBackend.elaborate_cmd("sim_wrapper", _CPU_GENERICS, work_dir),
+        env=env,
+        check=True,
+        cwd=work_dir,
+    )
+    run_cmd = _NVCBackend.run_cmd("sim_wrapper", _CPU_GENERICS, vhpi_lib, work_dir)
+    run_cmd.append("--stop-time=6000000ns")
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_walking"
+    run_env["TOPLEVEL"] = "sim_wrapper"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+
+    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
+        "cocotb walking suite did not pass under NVC (Z80 port-IO design).\n"
+        + "\n".join(output.splitlines()[-40:])
+    )
+
+
+@pytest.mark.slow
+def test_t80_portio_runs_ghdl(ghdl):
+    """The Z80 port-mapped-IO design runs the walking suite under GHDL."""
+    work_dir = tempfile.mkdtemp(prefix="t80portio_ghdl_")
+    ok, detail = analyze_vhdl(
+        T80_PORTIO_SYS,
+        work_dir=work_dir,
+        toplevel="t80_portio_counter_7seg",
+        simulator="ghdl",
+        board_def=_7seg_board(),
+    )
+    assert ok, f"GHDL analyze failed: {detail}"
+
+    env, plugin_lib = _build_sim_env(simulator="ghdl")
+    run_cmd = _GHDLBackend.run_cmd("sim_wrapper", _CPU_GENERICS, plugin_lib, work_dir)
+    run_cmd.append("--stop-time=6000000ns")
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_walking"
+    run_env["TOPLEVEL"] = "sim_wrapper"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+
+    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
+        "cocotb walking suite did not pass under GHDL (Z80 port-IO design).\n"
+        + "\n".join(output.splitlines()[-40:])
+    )
+
+
 @pytest.mark.slow
 def test_mx65_walking_runs_ghdl(ghdl):
     """The walking-counter firmware runs end-to-end under GHDL (cocotb suite)."""
@@ -702,7 +809,7 @@ def test_spec_rejects_unknown_axis_values():
 
 
 def test_emit_rejects_unsupported_axis_combos():
-    """port-mapped IO is unbuilt; vectored interrupts need a core that supports them."""
+    """mx65 supports neither vectored interrupts nor port-mapped IO (both Z80-only)."""
     import dataclasses
 
     from embedded_core import system_spec
@@ -712,8 +819,8 @@ def test_emit_rejects_unsupported_axis_combos():
     spec = system_spec.load(MX65_TOML)
     plugin = get_plugin(spec.cpu)
     rom = MX65_BIN.read_bytes()
-    # port-mapped IO transport is declared but not emitted yet.
-    with pytest.raises(NotImplementedError):
+    # the mx65 core has no port-mapped-IO adapter (only the Z80/T80 does).
+    with pytest.raises(ValueError):
         emit(dataclasses.replace(spec, io_transport="port"), plugin, rom)
     # the mx65 core has no vectored-interrupt adapter (only the Z80/T80 does).
     with pytest.raises(ValueError):

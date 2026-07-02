@@ -30,7 +30,7 @@ architecture rtl of @@NAME@@ is
   signal cpu_din     : std_logic_vector(7 downto 0);
   signal cpu_dout    : std_logic_vector(7 downto 0);
   signal cpu_we      : std_logic;                     -- active-high write strobe
-  signal cpu_irq_req : std_logic;                     -- active-high interrupt request
+  signal cpu_irq_req : std_logic;                     -- active-high interrupt request@@BUS_CTRL_DECL@@
 
   -- decode / block outputs
   signal sel_ram, sel_io, sel_rom : std_logic;

@@ -39,7 +39,19 @@ def _fill(template: str, tokens: dict[str, str]) -> str:
 
 
 def _decode(spec: SystemSpec) -> str:
-    """Generate the address-decode lines from the system memory map."""
+    """Generate the address-decode lines from the system memory map.
+
+    Memory-mapped IO uses three address windows (RAM / IO / ROM).  Port-mapped IO
+    qualifies the ROM/RAM windows with a memory request (MREQ) and takes the IO
+    select straight from the I/O cycle (IORQ), which the adapter exposes.
+    """
+    if spec.io_transport == "port":
+        mem = [
+            f"  {sel} <= '1' when cpu_mreq = '1' and "
+            f"cpu_addr(15 downto {region.select_low}) = {region.select_literal()} else '0';"
+            for region, sel in ((spec.ram, "sel_ram"), (spec.rom, "sel_rom"))
+        ]
+        return "\n".join([*mem, "  sel_io  <= cpu_iorq;"])
     lines = [
         f"  {sel} <= '1' when cpu_addr(15 downto {region.select_low}) "
         f"= {region.select_literal()} else '0';"
@@ -50,12 +62,8 @@ def _decode(spec: SystemSpec) -> str:
 
 def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
     """Return the complete single-file VHDL design as text."""
-    # Port-mapped IO (Z80 IORQ) is declared but not emitted yet; memory-mapped only.
-    if spec.io_transport != "memory":
-        raise NotImplementedError(
-            f"io_transport={spec.io_transport!r} not implemented yet (memory-mapped IO only)"
-        )
     vectored = spec.irq_mode == "vectored"
+    port_io = spec.io_transport == "port"
     g = spec.generics
     tokens = {
         "NAME": spec.name,
@@ -72,7 +80,13 @@ def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
         "ADDR_HIGH": str(spec.addr_high),
         "ROM_AGGREGATE": rom_aggregate(rom_bytes),
         "DECODE": _decode(spec),
-        "CPU_ADAPTER": plugin.adapter_vhdl(vectored=vectored).rstrip("\n"),
+        "CPU_ADAPTER": plugin.adapter_vhdl(vectored=vectored, port=port_io).rstrip("\n"),
+        "BUS_CTRL_DECL": (
+            "\n  signal cpu_mreq : std_logic;  -- memory request (Z80 MREQ)"
+            "\n  signal cpu_iorq : std_logic;  -- I/O cycle (Z80 IORQ)"
+            if port_io
+            else ""
+        ),
     }
     # IRQ wiring. Empty tokens keep the polled design byte-identical.  irq_driven
     # designs wire cpu_io's interrupt controller to the CPU; the vectored (Z80 IM 2)
