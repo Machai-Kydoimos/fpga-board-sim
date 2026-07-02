@@ -3,7 +3,7 @@
 -- A single lit LED bounces back and forth across all available LEDs.
 -- The step rate is derived from the free-running counter: with no switches,
 -- the LED advances on every MSB transition (slowest).  Each additional active
--- switch doubles the step rate by moving the trigger two bit positions toward
+-- switch doubles the step rate by moving the trigger one bit position toward
 -- the LSB.
 --
 -- btn(0) : each press reverses the walking direction
@@ -49,7 +49,7 @@ begin
   end process count_proc;
 
   -- Derive step_idx from switch popcount.
-  -- Each active switch moves the trigger bit 2 positions toward the LSB,
+  -- Each active switch moves the trigger bit 1 position toward the LSB,
   -- doubling the step rate.  Index is clamped to [1, COUNTER_BITS-1].
   idx_proc : process(sw)
     variable n   : integer range 0 to NUM_SWITCHES;
@@ -61,7 +61,7 @@ begin
         n := n + 1;
       end if;
     end loop;
-    idx := COUNTER_BITS - 1 - n * 2;
+    idx := COUNTER_BITS - 1 - n;
     if idx < 1 then
       idx := 1;
     end if;

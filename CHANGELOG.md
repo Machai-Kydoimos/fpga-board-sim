@@ -25,6 +25,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (intentionally free-form) and the `port_conventions` subtree (shape still
   settling) — remain open.
 
+### Fixed
+
+- **Switch-driven speed-up in four bundled demo designs quadrupled the rate
+  instead of doubling it.** `walking_counter_7seg.vhd`, `blinky_walking.vhd`,
+  `blinky_counter.vhd`, and `snake_7seg.vhd` all computed the switch-driven
+  step-index as `base - n * 2` (`n` = active-switch count), which halves the
+  step period *twice* per switch — every header/inline comment in these files
+  says "doubles" (#133). Changed to `base - n` so the code matches its own
+  docs. `sim/capture_frames.py`, which mirrors `snake_7seg`'s timing in Python
+  to pace the README demo-GIF capture, was updated to match or it would have
+  desynced from the corrected hardware.
+
 ## [0.8.0] - 2026-06-26
 
 ### Added

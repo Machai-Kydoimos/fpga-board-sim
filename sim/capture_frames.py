@@ -99,7 +99,7 @@ class _SnakeDemo:
     Each ``_tick`` advances the sim one frame, eases the faux cursor toward its
     target, draws the board + cursor + caption, and saves a PNG.  The snake step
     count is tracked deterministically (step period = ``2**step_idx`` clocks; each
-    active switch lowers ``step_idx`` by 2) so we know when each full cycle ends.
+    active switch lowers ``step_idx`` by 1) so we know when each full cycle ends.
     """
 
     def __init__(
@@ -149,7 +149,7 @@ class _SnakeDemo:
         """Advance one frame: step, mirror, ease the cursor, draw + save."""
         await Timer(self.step_ns, unit="ns")
         _mirror_outputs(self.dut, self.board, self.num_leds, self.num_segs)
-        step_idx = max(1, self.base_idx - 2 * self.sw_value.bit_count())
+        step_idx = max(1, self.base_idx - self.sw_value.bit_count())
         self.steps_done += self.clocks_per_frame / float(1 << step_idx)
         self.cx += (self.tx - self.cx) * 0.34
         self.cy += (self.ty - self.cy) * 0.34

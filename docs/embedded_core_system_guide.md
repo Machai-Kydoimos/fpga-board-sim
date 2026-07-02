@@ -367,9 +367,9 @@ generalize). The canonical assembled source lives in
 - **Lamp-test:** if `btn(1)` set, write `$FF` to all digit regs and all LED bits.
 - **Switch speed:** popcount `sw` (= `P`), set `SKIP = max(1, SKIP_BASE >> P)` (e.g. `SKIP_BASE=8`)
   and treat only every `SKIP`-th tick as a step, so **each active switch halves `SKIP` and doubles
-  the rate**. (A *chosen* approximation of the reference's feel — `walking_counter_7seg.vhd` varies
-  a clock-divider bit and, despite its "doubles" comment, actually quadruples per switch; we match
-  the documented intent, not that bug.)
+  the rate** — matching `walking_counter_7seg.vhd`'s `idx := base - n`. (The RTL originally
+  quadrupled per switch despite its "doubles" comment; fixed in #133, so the firmware's always-2x
+  choice now matches the RTL exactly rather than deliberately diverging from it.)
 
 ## 8. Assembler & ROM embedding
 
