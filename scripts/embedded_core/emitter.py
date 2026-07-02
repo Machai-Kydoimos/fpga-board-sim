@@ -90,6 +90,8 @@ def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
         "NAME": spec.name,
         "FIRMWARE": spec.firmware,
         "DESCRIPTION": _banner_description(spec.description),
+        "ASM_TOOLCHAIN": plugin.asm_toolchain,
+        "ASM_EXT": plugin.asm_ext,
         "NUM_SWITCHES": str(g["num_switches"]),
         "NUM_BUTTONS": str(g["num_buttons"]),
         "NUM_LEDS": str(g["num_leds"]),
