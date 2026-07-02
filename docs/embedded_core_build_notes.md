@@ -333,5 +333,33 @@ the [guide](embedded_core_system_guide.md) (§3–§4); this is the terse log.
 - **Tests:** T80 runs (nvc + ghdl) + a byte-for-byte golden + 6 T80 vendored-integrity tests;
   embedded-core suite now **29 green**.
 
-**Stages 0–5 (IRQ variant + second core) done.** Parked: a Z80 IRQ design (a spec flag + a Z80 ISR —
-the interrupt controller is already core-agnostic), VSG/P7, and the rest of Stage 5 (T65, customasm).
+**Stage 5 parts 1–2 done.** Continued below with the Z80 feature axes.
+
+## Stage 5 (parts 3–5) — Z80 interrupt-mode + IO-transport axes (DONE 2026-07-02)
+
+**Result:** two spec axes and three new committed Z80 designs, each running the shared
+`test_cpu_walking` suite (`PASS=4`) under GHDL + NVC; full embedded-core suite **44 green**. The
+durable how-to is folded into the [guide](embedded_core_system_guide.md) (§4.6, §6, §9); terse log:
+
+- **Axes (byte-identical to prior designs).** `irq_mode` (none/simple/vectored) generalizes the old
+  `irq_driven` bool (kept as a property); `io_transport` (memory/port) is new. Both validated in
+  `SystemSpec.__post_init__`; the emitter guards unbuilt combos. The mx65 IRQ spec migrated
+  `irq_driven = true` → `irq_mode = "simple"`; all prior goldens stay green.
+- **IM 2 (vectored) — `t80_irq_counter_7seg`.** During INTA (`M1_n & IORQ_n` low) the `t80_vectored`
+  adapter muxes a per-source vector onto `DI`; cpu_io priority-encodes it (timer `$00`, input `$02`).
+  Firmware: `I=$01`, page-aligned table at `$0100`, `IM 2`, two ISRs (no IFR dispatch). The emitter's
+  vectored branch adds the `irq_vec` port/encoder + `io_irq_vec` wiring.
+- **Port IO — `t80_portio_counter_7seg`.** The IO register file moves to the Z80 I/O space; the
+  `t80_port` adapter exposes MREQ/IORQ, and the decode qualifies ROM/RAM by MREQ + takes `sel_io` from
+  IORQ (a `BUS_CTRL_DECL` token declares the two signals). `cpu_io` is unchanged — firmware swaps
+  loads/stores for `IN`/`OUT` (C-indexed `OUT` for the segment ports).
+- **Capstone — `t80_irq_portio_counter_7seg`.** IM 2 **and** port IO together (the original goal).
+  `M1_n` separates the two IORQ uses, so it needed only the combined `t80_vectored_port` adapter and
+  **no emitter change** — the vectored + port token sets already compose.
+- **Repo hygiene:** untracked leaked z80asm byproducts (`.obj`/`.sym`) and ignored `.obj/.sym/.map`.
+
+Interrupt (none/simple/vectored) × transport (memory/port) matrix complete for the T80; six committed
+designs across two cores.
+
+**Stages 0–5 fully done** (IRQ + second core + both Z80 axes + capstone). Parked: VSG/P7 and the rest
+of Stage 5 (a third core, e.g. T65; customasm).

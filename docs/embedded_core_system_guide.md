@@ -4,8 +4,8 @@
 > plan, staging, and risk register.
 >
 > *A guide to building a single-file VHDL design that runs an assembled program on a soft-core CPU,
-> driving a virtual FPGA board's switches, buttons, LEDs, and 7-segment displays through a
-> memory-mapped IO subsystem. The generator (`scripts/gen_embedded_core.py`) is built; the worked
+> driving a virtual FPGA board's switches, buttons, LEDs, and 7-segment displays through an
+> IO subsystem (memory- or port-mapped). The generator (`scripts/gen_embedded_core.py`) is built; the worked
 > examples are a **6502 (mx65)** and a **Z80 (T80)** running the same walking counter from a shared,
 > core-agnostic skeleton. Wherever the two cores differ, the guide calls out what a **third** core
 > would change — the goal is that you can drop in any VHDL CPU by vendoring it and writing one small
@@ -173,8 +173,10 @@ begin
 end block;
 ```
 
-A Z80 can access IO via `IN`/`OUT` (the `IORQ_n` space) *or*, as here, memory-mapped loads/stores; we
-memory-map IO so both cores share `cpu_io` and leave `IORQ_n` open.
+A Z80 can reach IO two ways: **memory-mapped** loads/stores (as here, shared with the 6502) or
+**port-mapped** `IN`/`OUT` in the `IORQ_n` space (§6, *Port-mapped IO*). This base adapter is the
+memory-mapped one; each (interrupt mode × IO transport) combination that changes the pin-level wiring
+is a small adapter variant (§4.6).
 
 ### 4.5 Bus read timing — the deepest pothole
 
@@ -189,6 +191,25 @@ real hardware uses registered block-RAM + a wait state, not needed in sim.
 > before the core samples it — so a poll loop hangs forever. Use **write-to-clear** for status/ack
 > registers (poll to check, write to acknowledge): correct for any core, and what `cpu_io`'s tick and
 > interrupt-flag registers do (§6, §9). This one bug cost the Z80 bring-up a debugging session.
+
+### 4.6 Adapter variants — interrupt mode × IO transport
+
+A core's adapter can have **variants** for optional features selected by the spec (§10): the
+**interrupt mode** (`irq_mode`) and the **IO transport** (`io_transport`). Each combination that
+changes the *pin-level* wiring is one adapter file, and the generator picks it from the plugin. The
+T80 ships all four; the mx65 (no I/O space, fixed IRQ vector) needs only the base one:
+
+| adapter | interrupt | IO transport | what it adds over the base |
+|---|---|---|---|
+| `t80.vhd` | none / simple | memory-mapped | the base bus translation |
+| `t80_vectored.vhd` | vectored (IM 2) | memory-mapped | muxes a vector onto `DI` during INTA (§9) |
+| `t80_port.vhd` | none / simple | port (IORQ) | exposes `MREQ`/`IORQ` for the decode split (§6) |
+| `t80_vectored_port.vhd` | vectored | port | both at once (`M1_n` keeps INTA and `IN`/`OUT` apart) |
+
+The plugin names the variant files (`vectored_adapter_file`, `port_adapter_file`,
+`vectored_port_adapter_file`); a core that supports neither feature leaves them unset, and the
+generator rejects that combination with a clear error. Everything *above* the pins — the interrupt
+controller, the register file — is the same generated VHDL no matter which adapter is chosen.
 
 ## 5. Reset & cold-start (generalized)
 
@@ -280,6 +301,26 @@ at boot and adapts (essential for the walking LED, which must know how many LEDs
 masks `led` to `NUM_LEDS`, and exposes `seg_regs(0..NUM_SEGS-1)` packed to `seg` (digit 0 =
 rightmost, no reversal). **Vector placement:** the assembler must emit the reset/IRQ/NMI addresses
 at `$FFFC/D`, `$FFFE/F`, `$FFFA/B`.
+
+### Port-mapped IO — the transport axis
+
+The 6502 has only memory-mapped IO, but the Z80 has a **separate I/O space** reached with `IN`/`OUT`
+(which assert `IORQ_n`, not `MREQ_n`). The `io_transport` spec field selects which the generated
+design uses:
+
+- **`memory`** (default) — the IO window is an address range (`$E000` above); the 6502 and Z80 both
+  work this way and `cpu_io`'s chip-select comes from the address decode.
+- **`port`** (Z80 only) — the register file moves into the I/O space; the select comes from the
+  **I/O cycle** (`IORQ`) instead, and ROM/RAM stay in the memory space. The decode becomes the
+  textbook Z80 split: ROM/RAM selects qualified by **MREQ**, and `sel_io` taken from the **IORQ**
+  cycle (with `M1_n` high to exclude the interrupt-acknowledge cycle, §9). The `t80_port` adapter
+  exposes `cpu_mreq`/`cpu_iorq` for exactly this.
+
+**`cpu_io` itself is unchanged** — same registers at the same offsets (`$00`=SW … `$30`=SEG, now
+*port* numbers); only *how it is selected* differs, so the register file is genuinely transport-
+independent. The firmware swaps loads/stores for `IN`/`OUT` (e.g. `LD A,($E000)` → `IN A,($00)`; a
+C-indexed `OUT (C),A` walks the segment ports). This is the sharpest view of the seam: the IO block
+is core- and transport-agnostic; reaching it is the adapter's job.
 
 ## 7. Writing firmware
 
@@ -399,6 +440,26 @@ controller signalling "data ready"). The adapter routes the normalized active-hi
 the core's line (`not cpu_irq_req` for both the 6502's and the Z80's active-low inputs). Firmware:
 enable the source in the peripheral (IER) *and* enable the CPU (`CLI` / `EI`), then ack in the ISR.
 
+### Vectored interrupts — the interrupt-mode axis
+
+The controller above is the **`irq_mode = "simple"`** shape: one IRQ line, one handler that reads IFR
+to dispatch. It maps to a **single fixed vector** — the 6502's `$FFFE` IRQ vector, or the Z80's
+**interrupt mode 1** (`RST 38h`). **`irq_mode = "vectored"`** instead uses the Z80's **interrupt mode
+2**, where the *peripheral* supplies a vector so the *hardware* dispatches:
+
+- On interrupt the Z80 runs an **interrupt-acknowledge cycle** (INTA = `M1_n` **and** `IORQ_n` low —
+  a combination that occurs nowhere else). The `t80_vectored` adapter detects it and drives the
+  controller's **vector byte** onto `DI`.
+- The controller priority-encodes a vector per source (**timer → `$00`, input → `$02`**). The Z80
+  forms `I:vector` (the `I` register is the high byte), reads the 2-byte ISR address from that table
+  entry, and jumps — so **timer and input dispatch to *separate* ISRs**, no IFR read needed. Firmware
+  sets `I`, a page-aligned vector table (`$0100` here), then `IM 2` + `EI`.
+- Each ISR still **acks its source** by write-to-clear on IFR (§4.5) and ends with `RETI`.
+
+Because `M1_n` cleanly separates the Z80's two `IORQ` uses — INTA (`M1_n` low) supplies the vector;
+`IN`/`OUT` (`M1_n` high) select port IO — vectored interrupts and port IO **compose** into one
+"realistic Z80 machine" (`t80_irq_portio`, §12) with only a combined adapter, no new generator logic.
+
 ## 10. Generating the file
 
 ```bash
@@ -410,10 +471,17 @@ uv run python scripts/gen_embedded_core.py \
 ```
 
 Inputs: a **CPU plugin** (`--cpu`: vendored core files + adapter), a **system spec** (memory + IO
-map, `prescaler_bits`, `irq_driven`), and a **ROM image**. Output: the single generic-parameterized
-`.vhd`, validated against the contract checker before writing. Swap `--cpu mx65` for `--cpu t80`
-(with the matching Z80 spec + `.bin`) to generate the Z80 build; `irq_driven = true` in the spec
-generates the interrupt-driven variant instead of the polled one.
+map, `prescaler_bits`, and the two feature axes), and a **ROM image**. Output: the single
+generic-parameterized `.vhd`, validated against the contract checker before writing. Swap `--cpu
+mx65` for `--cpu t80` (with the matching Z80 spec + `.bin`) to generate a Z80 build. Two spec fields
+select the optional features:
+
+- **`irq_mode`** — `"none"` (polled, default), `"simple"` (one fixed-vector handler: 6502 IRQ or
+  Z80 IM 1), or `"vectored"` (Z80 IM 2, §9).
+- **`io_transport`** — `"memory"` (memory-mapped, default) or `"port"` (Z80 `IN`/`OUT`, §6).
+
+The generator selects the matching adapter variant (§4.6); an unsupported combination for the chosen
+core fails fast with a clear error.
 
 ## 11. Running & verifying
 
@@ -421,9 +489,10 @@ generates the interrupt-driven variant instead of the polled one.
 - **Headless GIF:** `uv run python scripts/capture_demo.py --vhdl hdl/mx65_walking_counter_7seg.vhd
   --board de10_lite --sim nvc` (`SDL_VIDEODRIVER=dummy`; board JSON via `FPGA_SIM_BOARD_JSON`).
 - **Tests:** `sim/test_cpu_walking.py` (glyphs + advance, one-hot bounce, `btn(0)` reversal,
-  `btn(1)` lamp-test) is the **shared** behavioral suite — every design (6502 polled, 6502 IRQ,
-  Z80) runs it (`PASS=4`) under both simulators. `tests/test_embedded_core.py` also byte-for-byte
-  golden-tests each generated `.vhd` and checks the vendored cores' integrity + standardization.
+  `btn(1)` lamp-test) is the **shared** behavioral suite — **all six designs** (6502 polled + IRQ;
+  Z80 polled, IM 2, port-IO, and the IM 2 + port capstone) run it (`PASS=4`) under both simulators.
+  `tests/test_embedded_core.py` also byte-for-byte golden-tests each generated `.vhd` and checks the
+  vendored cores' integrity + standardization.
 
 ## 12. End-to-end worked example (the 6502 walking counter)
 
@@ -465,6 +534,22 @@ on-board behavior, a completely different CPU. Two lessons surfaced only on the 
 become **write-to-clear** (§4.5), and the memory map flips (**ROM at `$0000`** because the Z80 boots
 there). The POR needed no change.
 
+### The Z80 feature variants (IM 2, port IO, and the capstone)
+
+Three more Z80 designs exercise the two feature axes independently and together — each runs the same
+`test_cpu_walking` suite (`PASS=4`) under both simulators, so the *behavior* is fixed while the
+*machine* changes:
+
+| design | `irq_mode` | `io_transport` | shows |
+|---|---|---|---|
+| `t80_irq_counter_7seg` | vectored | memory | IM 2 — per-source ISRs via the `I:vector` table (§9) |
+| `t80_portio_counter_7seg` | none | port | IO in the I/O space, the MREQ/IORQ decode split (§6) |
+| `t80_irq_portio_counter_7seg` | vectored | port | the **capstone** — both, a "realistic" Z80 machine |
+
+The capstone is the shape a real Z80 system (with Z80-family peripherals) takes. It needed no new
+generator logic — the vectored and port token sets compose — only the combined adapter
+(`t80_vectored_port.vhd`), because `M1_n` keeps INTA and `IN`/`OUT` apart on the shared `IORQ` line.
+
 ## 13. Extending
 
 - **New CPUs:** vendor the core (§4.2) + write one adapter (§4.4). Multi-file cores inline
@@ -473,8 +558,10 @@ there). The POR needed no change.
 - **New subsystems:** extend `cpu_io` with more registers/peripherals (UART, timer-compare, GPIO
   banks) at fresh IO addresses; the two-source interrupt controller (§9) is the template for adding
   an interrupt source (enable bit + flag bit + OR into `cpu_irq_req`).
-- **IRQ-driven vs polled:** a spec flag (`irq_driven = true`) turns on the interrupt controller and
-  the `cpu_io.irq` wiring; the firmware supplies the ISR. Same design, different plumbing.
+- **Interrupt mode & IO transport:** two spec axes (§10) — `irq_mode`
+  (`none`/`simple`/`vectored`) turns on the interrupt controller (and, for `vectored`, the INTA
+  vector supply); `io_transport` (`memory`/`port`) picks the IO transport. Each pin-level combination
+  is a small adapter variant (§4.6); the firmware supplies the ISR and/or the `IN`/`OUT` accesses.
 - **Alternative programs / hex vs BCD:** just firmware + system-spec changes; the VHDL skeleton and
   the adapter are unchanged.
 
@@ -495,6 +582,8 @@ there). The POR needed no change.
 | Poll loop hangs on a multi-cycle CPU (e.g. Z80) | **read-to-clear** status bit clears mid-read, before the core samples it | Make it **write-to-clear**: poll to check, write to ack (§4.5) |
 | New core: garbage or writes don't land | bus adapter maps a strobe or polarity wrong | Recheck `adapters/<core>.vhd`: `cpu_we`, reset polarity, irq polarity, address width (§4.4) |
 | Core analysis fails on `std_logic_unsigned` | vendored core uses a Synopsys package | Swap to `numeric_std_unsigned` (§4.2); translate any `conv_*` helpers |
+| Vectored IRQ jumps to garbage | `I`/vector-table mismatch, or the adapter doesn't drive `DI` on INTA | Set `I` to the table page, put the table at `I:vector`; confirm `t80_vectored` muxes the vector during INTA (§9) |
+| Port-IO: `IN`/`OUT` hit ROM/RAM, or IO reads return `x"00"` | decode not split by MREQ/IORQ, or firmware still uses loads/stores | With `io_transport="port"` the decode qualifies ROM/RAM by MREQ and takes `sel_io` from IORQ (§6); use `IN`/`OUT` for IO |
 
 ## 15. Debugging with waveforms
 
