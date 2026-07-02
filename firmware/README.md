@@ -42,7 +42,7 @@ disassemble the image as a cross-check.
 ### Z80: z88dk's `z80asm`
 
 ```bash
-z80asm -b -o t80_walking_counter_7seg.bin t80_walking_counter_7seg.asm
+z80asm -b -ot80_walking_counter_7seg.bin t80_walking_counter_7seg.asm
 ```
 
 `-b` selects a raw binary image; z88dk's `z80asm` glues its value directly to `-o` (no space).
