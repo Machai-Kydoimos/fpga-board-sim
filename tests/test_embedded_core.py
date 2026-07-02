@@ -44,6 +44,9 @@ T80_IRQ_TOML = PROJECT / "systems" / "t80_irq_counter_7seg.toml"
 T80_PORTIO_SYS = PROJECT / "hdl" / "t80_portio_counter_7seg.vhd"
 T80_PORTIO_BIN = FIRMWARE / "t80_portio_counter_7seg.bin"
 T80_PORTIO_TOML = PROJECT / "systems" / "t80_portio_counter_7seg.toml"
+T80_IRQPORTIO_SYS = PROJECT / "hdl" / "t80_irq_portio_counter_7seg.vhd"
+T80_IRQPORTIO_BIN = FIRMWARE / "t80_irq_portio_counter_7seg.bin"
+T80_IRQPORTIO_TOML = PROJECT / "systems" / "t80_irq_portio_counter_7seg.toml"
 
 # Upstream commit the vendored copy is pinned to (recorded in the file header).
 MX65_PINNED_COMMIT = "d65d81d4f8031e194bd8410133b9036db7e58794"
@@ -602,6 +605,110 @@ def test_t80_portio_runs_ghdl(ghdl):
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under GHDL (Z80 port-IO design).\n"
+        + "\n".join(output.splitlines()[-40:])
+    )
+
+
+# ── Stage 5 (part 5): the Z80 capstone (IM 2 + port-mapped IO together) ────────
+
+
+def test_capstone_combines_vectored_and_port():
+    """The capstone carries BOTH the IM 2 vector supply and the IORQ-based IO decode."""
+    text = T80_IRQPORTIO_SYS.read_text()
+    assert "irq_vec <= x" in text, "missing the IM 2 vector encoder"
+    assert "io_irq_vec when inta" in text, "missing the INTA vector mux"
+    assert "sel_io  <= cpu_iorq;" in text, "missing the port-mapped IO decode"
+
+
+def test_generator_reproduces_t80_irq_portio_design():
+    """gen_embedded_core.py reproduces the committed Z80 capstone .vhd byte-for-byte."""
+    out = Path(tempfile.mkdtemp(prefix="gen_t80cap_")) / T80_IRQPORTIO_SYS.name
+    subprocess.run(
+        [
+            sys.executable,
+            str(GENERATOR),
+            "--cpu",
+            "t80",
+            "--system",
+            str(T80_IRQPORTIO_TOML),
+            "--rom",
+            str(T80_IRQPORTIO_BIN),
+            "--out",
+            str(out),
+        ],
+        check=True,
+        cwd=PROJECT,
+        capture_output=True,
+        text=True,
+    )
+    assert out.read_text() == T80_IRQPORTIO_SYS.read_text(), (
+        "gen_embedded_core.py output drifted from hdl/t80_irq_portio_counter_7seg.vhd — "
+        "regenerate it from systems/t80_irq_portio_counter_7seg.toml + the firmware .bin"
+    )
+
+
+@pytest.mark.slow
+def test_t80_irq_portio_runs_nvc(nvc):
+    """The Z80 capstone (IM 2 + port-mapped IO) runs the walking suite under NVC."""
+    work_dir = tempfile.mkdtemp(prefix="t80cap_nvc_")
+    ok, detail = analyze_vhdl(
+        T80_IRQPORTIO_SYS,
+        work_dir=work_dir,
+        toplevel="t80_irq_portio_counter_7seg",
+        simulator="nvc",
+        board_def=_7seg_board(),
+    )
+    assert ok, f"NVC analyze failed: {detail}"
+
+    env, vhpi_lib = _build_sim_env(simulator="nvc")
+    subprocess.run(
+        _NVCBackend.elaborate_cmd("sim_wrapper", _CPU_GENERICS, work_dir),
+        env=env,
+        check=True,
+        cwd=work_dir,
+    )
+    run_cmd = _NVCBackend.run_cmd("sim_wrapper", _CPU_GENERICS, vhpi_lib, work_dir)
+    run_cmd.append("--stop-time=6000000ns")
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_walking"
+    run_env["TOPLEVEL"] = "sim_wrapper"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+
+    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
+        "cocotb walking suite did not pass under NVC (Z80 capstone).\n"
+        + "\n".join(output.splitlines()[-40:])
+    )
+
+
+@pytest.mark.slow
+def test_t80_irq_portio_runs_ghdl(ghdl):
+    """The Z80 capstone (IM 2 + port-mapped IO) runs the walking suite under GHDL."""
+    work_dir = tempfile.mkdtemp(prefix="t80cap_ghdl_")
+    ok, detail = analyze_vhdl(
+        T80_IRQPORTIO_SYS,
+        work_dir=work_dir,
+        toplevel="t80_irq_portio_counter_7seg",
+        simulator="ghdl",
+        board_def=_7seg_board(),
+    )
+    assert ok, f"GHDL analyze failed: {detail}"
+
+    env, plugin_lib = _build_sim_env(simulator="ghdl")
+    run_cmd = _GHDLBackend.run_cmd("sim_wrapper", _CPU_GENERICS, plugin_lib, work_dir)
+    run_cmd.append("--stop-time=6000000ns")
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_walking"
+    run_env["TOPLEVEL"] = "sim_wrapper"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+
+    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
+        "cocotb walking suite did not pass under GHDL (Z80 capstone).\n"
         + "\n".join(output.splitlines()[-40:])
     )
 

@@ -30,6 +30,7 @@ class CpuPlugin:
     adapter_file: Path  # normalized-bus adapter block
     vectored_adapter_file: Path | None = None  # variant for vectored interrupts (Z80 IM 2)
     port_adapter_file: Path | None = None  # variant for port-mapped IO (Z80 IN/OUT via IORQ)
+    vectored_port_adapter_file: Path | None = None  # variant for IM 2 + port-mapped IO
     address_bits: int = 16
     data_bits: int = 8
     reset_active_high: bool = True  # mx65: high; T80: RESET_n is active-low
@@ -50,7 +51,9 @@ class CpuPlugin:
         provide the matching adapter file.
         """
         if vectored and port:
-            raise ValueError("no combined vectored + port-IO adapter is provided yet")
+            if self.vectored_port_adapter_file is None:
+                raise ValueError(f"core {self.name!r} has no vectored + port-IO adapter")
+            return self.vectored_port_adapter_file.read_text()
         if vectored:
             if self.vectored_adapter_file is None:
                 raise ValueError(f"core {self.name!r} has no vectored-interrupt adapter")
@@ -80,6 +83,7 @@ T80 = CpuPlugin(
     adapter_file=_ADAPTERS / "t80.vhd",
     vectored_adapter_file=_ADAPTERS / "t80_vectored.vhd",
     port_adapter_file=_ADAPTERS / "t80_port.vhd",
+    vectored_port_adapter_file=_ADAPTERS / "t80_vectored_port.vhd",
     reset_active_high=False,
     boots_at_zero=True,
 )
