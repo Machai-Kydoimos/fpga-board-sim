@@ -63,7 +63,8 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `sim/test_blinky.py` | Headless cocotb tests for the blinky design |
 | `sim/test_7seg.py` | Headless cocotb tests for the counter_7seg design |
 | `sim/test_cpu_walking.py` | Shared headless cocotb behavioral suite run by every embedded-core design (6502 + Z80) |
-| `hdl/mx65_walking_counter_7seg.vhd` | **Generated** single-file 6502 embedded-core demo (vendored mx65 + ROM/RAM/IO/top); Z80 (T80) siblings are `hdl/t80_*.vhd`; see `docs/embedded_core_system_guide.md` |
+| `sim/test_cpu_hello.py` | Headless cocotb test for the `mx65_hello_7seg` on-ramp design (static: one LED + one digit, never changes) |
+| `hdl/mx65_walking_counter_7seg.vhd` | **Generated** single-file 6502 embedded-core demo (vendored mx65 + ROM/RAM/IO/top); Z80 (T80) siblings are `hdl/t80_*.vhd`; `hdl/mx65_hello_7seg.vhd` is the ~20-line newcomer on-ramp; see `docs/embedded_core_system_guide.md` |
 | `scripts/gen_embedded_core.py` | Generator: emits a single-file embedded-core system from a CPU plugin + `systems/*.toml` spec + firmware `.bin`; `--cpu`/`--rom`/`--out` are inferred from `--system` (explicit flags override) |
 | `scripts/regen_embedded_cores.py` | One-command regen loop over every `systems/*.toml`: check (default), `--write` (regenerate drifted/missing files), `--assemble` (reassemble firmware with its pinned dev-time toolchain and report drift; never writes `.bin`s) |
 | `scripts/embedded_core/` | Generator package: `cpu_plugin`, `system_spec`, `emitter`, `templates/` (`*.vhd.tmpl` + `templates/fragments/*.vhd.frag` for multi-line VHDL bodies), `adapters/` (per-core bus adapters), vendored `cores/` (mx65, t80), `rom_to_vhdl.py` |

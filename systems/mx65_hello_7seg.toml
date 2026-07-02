@@ -1,0 +1,50 @@
+# System spec for the embedded-core "hello" design -- the newcomer on-ramp.
+# Consumed by scripts/gen_embedded_core.py to (re)generate
+# hdl/mx65_hello_7seg.vhd from the vendored CPU core + firmware .bin.
+
+name = "mx65_hello_7seg"
+firmware = "mx65_hello_7seg"
+cpu = "mx65"
+
+# Banner body (rendered as VHDL comment lines; a blank line becomes "--").
+description = """
+The smallest embedded-core design: a vendored mx65 6502 CPU core (below,
+verbatim, MIT) + ROM + RAM + memory-mapped IO + a top that wires it to the
+board's sw/btn/led/seg and synthesises a power-on reset -- the same skeleton
+every embedded-core design uses, with the simplest possible firmware.
+
+The ROM holds a ~20-line hello program (assembled by ca65/ld65 from
+firmware/mx65_hello_7seg.s): light LED0, show "0" on digit 0, then hold
+forever.  It proves the reset vector, power-on reset, and IO write path all
+work, with nothing else to distract from that -- the intended first artifact
+for anyone starting their own embedded-core firmware.  Copy this file, its
+system spec, and the assemble command in firmware/README.md to start your
+own.  See docs/embedded_core_system_guide.md, "Quickstart" and section 7."""
+
+# VHDL generic defaults (board sizes are overridden at elaboration).  Same
+# memory map and generics as mx65_walking_counter_7seg -- copy this file to
+# start a new design.
+[generics]
+num_switches = 4
+num_buttons = 4
+num_leds = 4
+num_segs = 4
+counter_bits = 24
+prescaler_bits = 10
+
+# Memory map.  Sizes are powers of two, bases must be aligned to their own
+# size, and regions must not overlap (enforced by system_spec.py at load
+# time -- see guide §6).  addr_bits = log2(size) drives each region's own
+# width and address slice in the top (ROM and RAM sizes are independent)
+# plus the address decode.
+[memory.ram]
+base = 0x0000
+size = 0x0800   # 2 KB -> 11 address bits
+
+[memory.io]
+base = 0xE000
+size = 0x0100
+
+[memory.rom]
+base = 0xF800
+size = 0x0800
