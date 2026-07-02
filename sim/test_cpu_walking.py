@@ -1,9 +1,10 @@
-"""Shared behavioral test suite for every embedded-core design.
+"""Shared behavioral test suite for the six walking-style embedded-core designs.
 
-Run against both cores and all six shipped systems (mx65 polled, mx65 simple-IRQ,
-t80 polled, t80 IM 2 vectored-IRQ, t80 port-IO, and the t80 IM 2 + port-IO
-capstone). Each system's firmware replicates hdl/walking_counter_7seg.vhd in
-software:
+Run against both cores and all six walking-style systems (mx65 polled, mx65
+simple-IRQ, t80 polled, t80 IM 2 vectored-IRQ, t80 port-IO, and the t80 IM 2 +
+port-IO capstone); the hello and dice designs have their own suites
+(test_cpu_hello.py, test_cpu_dice.py). Each system's firmware replicates
+hdl/walking_counter_7seg.vhd in software:
 
   * a single lit LED bounces back and forth across all LEDs,
   * every LED step advances a decimal odometer on the 7-segment digits,

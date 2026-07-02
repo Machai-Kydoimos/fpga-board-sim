@@ -62,7 +62,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `tests/` | pytest integration test suite |
 | `sim/test_blinky.py` | Headless cocotb tests for the blinky design |
 | `sim/test_7seg.py` | Headless cocotb tests for the counter_7seg design |
-| `sim/test_cpu_walking.py` | Shared headless cocotb behavioral suite run by every embedded-core design (6502 + Z80) |
+| `sim/test_cpu_walking.py` | Shared headless cocotb behavioral suite run by the six walking-style embedded-core designs (6502 + Z80) |
 | `sim/test_cpu_hello.py` | Headless cocotb test for the `mx65_hello_7seg` on-ramp design (static: one LED + one digit, never changes) |
 | `sim/test_cpu_dice.py` | Headless cocotb test for the `mx65_dice_7seg` peripheral-extension design (LFSR-driven die roll on `btn(0)`) |
 | `hdl/stopwatch_7seg.vhd` | Hand-written interactive stopwatch: `btn(0)` start/stop, `btn(1)` reset, switch speed; the RTL half of the "same behavior, hardware vs software" teaching pair with the embedded-core designs |

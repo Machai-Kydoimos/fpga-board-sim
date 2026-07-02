@@ -385,7 +385,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 **Parked / deferred-on-trigger items.** Each carries a **trigger** — the condition under which it should graduate into a tier above. Unlike the tiered backlog these are blocked or speculative, so they hold no sprint slot and don't appear in the dependency graph. *(Consolidated here 2026-06-27 from session memory, where neither contributors nor a future maintainer could see the item or watch its trigger.)*
 
-**Active embedded-core follow-up arc:** [`embedded_core_improvement_plan.md`](embedded_core_improvement_plan.md) — turns the 2026-07-02 review behind **P7**'s and **P8**'s notes below into ordered, executable phases; see its own status ledger for progress.
+**Embedded-core follow-up arc — complete 2026-07-02 (PRs #140–#154):** [`embedded_core_improvement_plan.md`](embedded_core_improvement_plan.md) — turned the 2026-07-02 review behind **P7**'s and **P8**'s notes below into ordered, executable phases; its status ledger has the per-phase PRs.
 
 | ID | Item | Trigger to schedule | Effort | Notes |
 |---|---|---|---|---|
