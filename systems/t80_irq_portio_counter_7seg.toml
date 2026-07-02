@@ -1,0 +1,50 @@
+# System spec for the Z80 (T80) "realistic machine" capstone (Stage 5, part 5):
+# vectored interrupts (IM 2) AND port-mapped IO together -- the combination a real
+# Z80 system (with Z80-family peripherals) uses.  `irq_mode = "vectored"` selects
+# the vector encoder + INTA vector supply; `io_transport = "port"` moves the
+# register file into the I/O space.  M1_n keeps the two IORQ uses apart in the
+# combined adapter (INTA supplies the vector; IN/OUT select the registers).
+
+name = "t80_irq_portio_counter_7seg"
+firmware = "t80_irq_portio_counter_7seg"
+cpu = "t80"
+irq_mode = "vectored"
+io_transport = "port"
+
+description = """
+Capstone Z80 (T80) walking counter combining both Z80 features: interrupt mode 2
+(vectored) and port-mapped IO.  A vendored T80 core (below, verbatim, BSD-3, with
+a numeric_std_unsigned standardization patch) + ROM + RAM + an IO register file in
+the Z80 I/O space + a top whose adapter both supplies the interrupt vector during
+INTA and exposes MREQ/IORQ for the memory/IO decode split.
+
+The firmware (firmware/t80_irq_portio_counter_7seg.asm) arms IM 2 and idles; the
+timer (vector $00) and sw/btn-change (vector $02) sources dispatch to separate
+ISRs via the I:vector table at $0100, and every IO access uses IN/OUT.  Visible
+behavior matches the other designs: a one-hot LED bounces across the LEDs while a
+decimal odometer advances; btn(0) reverses both directions, btn(1) is a lamp test,
+and each active switch steps faster.  The Z80 boots at $0000, so ROM is at the
+bottom of the memory map.  See docs/embedded_core_system_plan.md."""
+
+# VHDL generic defaults (board sizes are overridden at elaboration).
+[generics]
+num_switches = 4
+num_buttons = 4
+num_leds = 4
+num_segs = 4
+counter_bits = 24
+prescaler_bits = 10
+
+# Memory map: ROM/RAM in the memory space; IO is in the port space (base = the
+# I/O-port origin; the decode ignores it and takes the IO select from IORQ).
+[memory.rom]
+base = 0x0000
+size = 0x0800   # 2 KB -> 11 address bits
+
+[memory.ram]
+base = 0x8000
+size = 0x0800
+
+[memory.io]
+base = 0x0000
+size = 0x0100   # 256 I/O ports

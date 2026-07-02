@@ -40,6 +40,8 @@ dev = [
     "pytest-randomly>=4.1.0",
     "rumdl>=0.2.20",
     "pillow>=12.2.0",
+    # TOML reader for the embedded-core generator on Python 3.10; 3.11+ uses stdlib tomllib.
+    "tomli>=2.0 ; python_version < '3.11'",
 ]
 
 [tool.pytest.ini_options]
@@ -77,6 +79,7 @@ ignore = [
 "sim/sim_testbench.py" = ["ANN201"] # cocotb async test implicit return type
 "sim/test_blinky.py" = ["ANN"]  # cocotb headless tests: dut signals are dynamic
 "sim/test_7seg.py" = ["ANN"]   # cocotb headless tests: dut signals are dynamic
+"sim/test_cpu_walking.py" = ["ANN"]  # cocotb headless tests: dut signals are dynamic
 
 [tool.ruff.format]
 quote-style = "double"
@@ -96,7 +99,7 @@ check_untyped_defs = true  # D8 slice (#116): type-check bodies of untyped (test
 # strict = true  (future: evaluate after feature work settles)
 
 [[tool.mypy.overrides]]
-module = ["tests.*", "test_blinky", "test_7seg"]
+module = ["tests.*", "test_blinky", "test_7seg", "test_cpu_walking"]
 disallow_untyped_defs = false   # test functions and fixtures are exempt
 
 # ── rumdl (Markdown linter + formatter) ──────────────────────────────────────

@@ -1,0 +1,44 @@
+# System spec for the interrupt-driven walking counter (Stage 5).
+# Same as walking_counter_7seg but an interrupt controller drives the CPU's IRQ
+# instead of being polled: `irq_mode = "simple"` (one fixed-vector handler)
+# routes cpu_io.irq to the core.
+
+name = "mx65_irq_counter_7seg"
+firmware = "mx65_irq_counter_7seg"
+cpu = "mx65"
+irq_mode = "simple"
+
+# Banner body (rendered as VHDL comment lines; a blank line becomes "--").
+description = """
+Interrupt-driven variant of the walking counter: a vendored mx65 6502 CPU core
+(below, verbatim, MIT) + ROM + RAM + memory-mapped IO + a top that wires the
+prescaler tick to the CPU's (active-low) IRQ line.
+
+The firmware (firmware/mx65_irq_counter_7seg.s) enables interrupts and idles; the
+ISR runs once per tick -- acknowledging it by reading $E010 -- and does the same
+work as the polled design: a one-hot LED bounces across the LEDs while a decimal
+odometer advances; btn(0) reverses both directions, btn(1) is a lamp test, and
+each active switch steps faster.  Behavior matches hdl/mx65_walking_counter_7seg.
+See docs/embedded_core_system_plan.md."""
+
+# VHDL generic defaults (board sizes are overridden at elaboration).
+[generics]
+num_switches = 4
+num_buttons = 4
+num_leds = 4
+num_segs = 4
+counter_bits = 24
+prescaler_bits = 10
+
+# Memory map (same as the polled design).
+[memory.ram]
+base = 0x0000
+size = 0x0800   # 2 KB -> 11 address bits
+
+[memory.io]
+base = 0xE000
+size = 0x0100
+
+[memory.rom]
+base = 0xF800
+size = 0x0800

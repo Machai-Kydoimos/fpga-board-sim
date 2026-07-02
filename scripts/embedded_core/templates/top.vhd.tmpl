@@ -1,0 +1,108 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+-- Top (contract entity): a power-on reset, the ROM/RAM/IO blocks on a normalized
+-- CPU bus, and a per-core adapter that plugs the specific CPU into that bus.
+-- COUNTER_BITS is part of the simulator contract but unused here; PRESCALER_BITS
+-- is a generation-time knob (the wrapper never overrides it).
+entity @@NAME@@ is
+  generic (
+    NUM_SWITCHES   : positive := @@NUM_SWITCHES@@;
+    NUM_BUTTONS    : positive := @@NUM_BUTTONS@@;
+    NUM_LEDS       : positive := @@NUM_LEDS@@;
+    NUM_SEGS       : positive := @@NUM_SEGS@@;
+    COUNTER_BITS   : positive := @@COUNTER_BITS@@;   -- contract generic, unused here
+    PRESCALER_BITS : positive := @@PRESCALER_BITS@@
+  );
+  port (
+    clk : in  std_logic;
+    sw  : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);
+    btn : in  std_logic_vector(NUM_BUTTONS - 1 downto 0);
+    led : out std_logic_vector(NUM_LEDS - 1 downto 0);
+    seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)
+  );
+end entity;
+
+architecture rtl of @@NAME@@ is
+  -- Normalized CPU bus (the per-core adapter below translates it to the core).
+  signal cpu_addr    : std_logic_vector(15 downto 0);
+  signal cpu_din     : std_logic_vector(7 downto 0);
+  signal cpu_dout    : std_logic_vector(7 downto 0);
+  signal cpu_we      : std_logic;                     -- active-high write strobe
+  signal cpu_irq_req : std_logic;                     -- active-high interrupt request@@BUS_CTRL_DECL@@
+
+  -- decode / block outputs
+  signal sel_ram, sel_io, sel_rom : std_logic;
+  signal ram_we   : std_logic;
+  signal io_we    : std_logic;
+  signal rom_dout : std_logic_vector(7 downto 0);
+  signal ram_dout : std_logic_vector(7 downto 0);
+  signal io_dout  : std_logic_vector(7 downto 0);@@IO_IRQ_DECL@@
+
+  -- power-on reset (sim-only, from signal init values; active-high, normalized)
+  signal por_cnt   : unsigned(2 downto 0) := (others => '0');
+  signal cpu_reset : std_logic := '1';
+begin
+  -- POR: hold reset asserted for the first ~7 clocks, then release.
+  process (clk) begin
+    if rising_edge(clk) then
+      if por_cnt /= "111" then
+        por_cnt <= por_cnt + 1;
+      end if;
+    end if;
+  end process;
+  cpu_reset <= '1' when por_cnt /= "111" else '0';
+
+  -- Address decode (from the system memory map).
+@@DECODE@@
+  ram_we <= cpu_we when sel_ram = '1' else '0';
+  io_we  <= cpu_we;
+
+  -- Combinational read mux -> CPU data_in (default x"00" keeps the bus defined).
+  cpu_din <= rom_dout when sel_rom = '1' else
+             io_dout  when sel_io  = '1' else
+             ram_dout when sel_ram = '1' else
+             x"00";
+
+  -- Interrupt request into the CPU (active-high; the adapter sets core polarity).
+  cpu_irq_req <= @@CPU_IRQ_REQ@@;
+
+  -- CPU + per-core bus adapter.
+@@CPU_ADAPTER@@
+
+  rom_inst : entity work.cpu_rom
+    generic map (ROM_BITS => @@ROM_BITS@@)
+    port map (addr => cpu_addr(@@ADDR_HIGH@@ downto 0), data => rom_dout);
+
+  ram_inst : entity work.cpu_ram
+    generic map (RAM_BITS => @@RAM_BITS@@)
+    port map (
+      clk  => clk,
+      we   => ram_we,
+      addr => cpu_addr(@@ADDR_HIGH@@ downto 0),
+      din  => cpu_dout,
+      dout => ram_dout
+    );
+
+  io_inst : entity work.cpu_io
+    generic map (
+      NUM_SWITCHES   => NUM_SWITCHES,
+      NUM_BUTTONS    => NUM_BUTTONS,
+      NUM_LEDS       => NUM_LEDS,
+      NUM_SEGS       => NUM_SEGS,
+      PRESCALER_BITS => PRESCALER_BITS
+    )
+    port map (
+      clk   => clk,
+      cs    => sel_io,
+      we    => io_we,
+      addr  => cpu_addr(7 downto 0),
+      wdata => cpu_dout,
+      rdata => io_dout,
+      sw    => sw,
+      btn   => btn,
+      led   => led,
+      seg   => seg@@IO_IRQ_CONN@@
+    );
+end architecture;

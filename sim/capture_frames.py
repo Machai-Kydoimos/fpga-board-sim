@@ -81,6 +81,10 @@ async def _run_plain(
     num_switches = len(board.switches)
     if num_switches:
         dut.sw.value = sw_value & ((1 << num_switches) - 1)  # type: ignore[attr-defined]
+    if board.buttons:
+        # Release all buttons: an undriven 'btn' floats at 'U', which a
+        # button-reading design (e.g. the embedded CPU) would latch as garbage.
+        dut.btn.value = 0  # type: ignore[attr-defined]
 
     for frame in range(frames):
         for _ in range(every):

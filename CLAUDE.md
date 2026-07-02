@@ -62,6 +62,12 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `tests/` | pytest integration test suite |
 | `sim/test_blinky.py` | Headless cocotb tests for the blinky design |
 | `sim/test_7seg.py` | Headless cocotb tests for the counter_7seg design |
+| `sim/test_cpu_walking.py` | Shared headless cocotb behavioral suite run by every embedded-core design (6502 + Z80) |
+| `hdl/mx65_walking_counter_7seg.vhd` | **Generated** single-file 6502 embedded-core demo (vendored mx65 + ROM/RAM/IO/top); Z80 (T80) siblings are `hdl/t80_*.vhd`; see `docs/embedded_core_system_guide.md` |
+| `scripts/gen_embedded_core.py` | Generator: emits a single-file embedded-core system from a CPU plugin + `systems/*.toml` spec + firmware `.bin` |
+| `scripts/embedded_core/` | Generator package: `cpu_plugin`, `system_spec`, `emitter`, `templates/`, `adapters/` (per-core bus adapters), vendored `cores/` (mx65, t80), `rom_to_vhdl.py` |
+| `systems/` | TOML system specs consumed by the generator (e.g. `mx65_walking_counter_7seg.toml`) |
+| `firmware/` | CPU firmware: 6502 `.s` (ca65/ld65) + Z80 `.asm` (z80asm) sources + assembled `.bin`, embedded verbatim as the ROM constant |
 
 ### Data Flow
 
@@ -119,6 +125,10 @@ end entity;
 ```
 
 The simulator sets generics to match the selected board's resource counts and provides a 100 MHz clock. **`COUNTER_BITS` is overridden at runtime** to a value lower than the `:= 24` / `:= 32` defaults shown above — a floor of 17, widened for many-digit 7-seg displays — because at the simulator's sub-real-time throughput a full 24-bit counter's MSB would toggle too slowly to see; real hardware would use the full default. The entity name must match the filename stem (e.g. `blinky.vhd` → entity `blinky`). Use `counter_7seg.vhd` in `hdl/` as a working 7-seg example.
+
+#### Embedded CPU systems (single-file soft-core designs)
+
+A design can instead be a **single self-contained file** that embeds a soft CPU core (the vendored mx65 6502 or T80 Z80) + ROM + RAM + IO (memory-mapped, or Z80 port-mapped) + a top satisfying the same `clk/sw/btn/led[/seg]` contract above. These are **generated** by `scripts/gen_embedded_core.py` from a vendored core + a `systems/*.toml` spec + an assembled firmware `.bin`; the firmware reads the board's resource counts from IO config registers, so one design fits any board (proven across 2/4/6-digit boards). Two spec axes select optional features — `irq_mode` (none/simple/vectored interrupts) and `io_transport` (memory/port) — each realized by a per-core bus adapter under `scripts/embedded_core/adapters/`. They add a generation-time **`PRESCALER_BITS`** generic — a free-running tick the firmware polls to decouple the visible rate from raw CPU speed; the wrapper never overrides it, so it keeps its default. The committed `hdl/{mx65,t80}_*.vhd` designs are the generator's output — **regenerate them** (and the firmware `.bin`) rather than hand-editing. See `docs/embedded_core_system_guide.md`.
 
 ### Platform Notes
 

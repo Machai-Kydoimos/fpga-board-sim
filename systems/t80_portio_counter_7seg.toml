@@ -1,0 +1,48 @@
+# System spec for the Z80 (T80) walking counter with PORT-MAPPED IO (Stage 5,
+# part 4).  Same polled behavior as t80_walking_counter_7seg, but the IO register
+# file lives in the Z80's separate I/O space: `io_transport = "port"` selects the
+# T80 port adapter (which exposes MREQ/IORQ) and a decode that qualifies the
+# ROM/RAM windows with MREQ and takes the IO select from IORQ.  The firmware
+# reaches the registers with IN/OUT instead of loads/stores.
+
+name = "t80_portio_counter_7seg"
+firmware = "t80_portio_counter_7seg"
+cpu = "t80"
+io_transport = "port"
+
+description = """
+Port-mapped-IO variant of the Z80 walking counter: a vendored T80 Z80 core
+(below, verbatim, BSD-3, with a numeric_std_unsigned standardization patch) +
+ROM + RAM + an IO register file in the Z80 I/O space + a top whose adapter
+exposes MREQ/IORQ so the decode can split memory and I/O accesses.
+
+The firmware (firmware/t80_portio_counter_7seg.asm) polls the prescaler tick and
+drives the display exactly like the memory-mapped design, but reads switches /
+buttons / config and writes LEDs / segments with IN/OUT (I/O space) rather than
+loads/stores.  Visible behavior is identical: a one-hot LED bounces across the
+LEDs while a decimal odometer advances; btn(0) reverses both directions, btn(1)
+is a lamp test, and each active switch steps faster.  The Z80 boots at $0000, so
+ROM is at the bottom of the memory map.  See docs/embedded_core_system_plan.md."""
+
+# VHDL generic defaults (board sizes are overridden at elaboration).
+[generics]
+num_switches = 4
+num_buttons = 4
+num_leds = 4
+num_segs = 4
+counter_bits = 24
+prescaler_bits = 10
+
+# Memory map: ROM/RAM in the memory space; IO is in the port space, so its base
+# is the I/O-port origin (0) and the decode ignores it (IO select comes from IORQ).
+[memory.rom]
+base = 0x0000
+size = 0x0800   # 2 KB -> 11 address bits
+
+[memory.ram]
+base = 0x8000
+size = 0x0800
+
+[memory.io]
+base = 0x0000
+size = 0x0100   # 256 I/O ports
