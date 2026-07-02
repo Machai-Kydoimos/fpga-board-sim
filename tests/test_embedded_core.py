@@ -928,7 +928,7 @@ def test_memory_map_drives_widths_and_decode():
     from embedded_core import system_spec
 
     spec = system_spec.load(MX65_TOML)
-    assert (spec.rom.addr_bits, spec.ram.addr_bits, spec.addr_high) == (11, 11, 10)
+    assert (spec.rom.addr_bits, spec.ram.addr_bits) == (11, 11)
     assert spec.ram.select_literal() == '"00000"'
     assert spec.io.select_literal() == 'x"E0"'
     assert spec.rom.select_literal() == '"11111"'
@@ -937,6 +937,181 @@ def test_memory_map_drives_widths_and_decode():
     assert f"cpu_addr(15 downto 11) = {spec.ram.select_literal()}" in text
     assert f"cpu_addr(15 downto 11) = {spec.rom.select_literal()}" in text
     assert spec.io.select_literal() in text
+
+
+# ── Memory-map validation: power-of-two, alignment, range, overlap, ROM fit ────
+
+
+@pytest.mark.slow
+def test_unequal_rom_ram_sizes_analyze_under_ghdl(ghdl):
+    """A spec with independently-sized ROM/RAM regions analyzes cleanly (F11 proof).
+
+    Uses the committed walking-counter .bin only to exercise the address
+    widths/decode -- its vectors assume ROM at $F800, so this design is never
+    *run*, only analyzed. Phase 6 adds a committed, runnable unequal-size design.
+    """
+    import dataclasses
+
+    from embedded_core import system_spec
+    from embedded_core.cpu_plugin import get_plugin
+    from embedded_core.emitter import emit
+
+    spec = dataclasses.replace(
+        system_spec.load(MX65_TOML),
+        name="mx65_unequal_rom_ram_test",
+        rom=system_spec.MemoryRegion(name="rom", base=0xF000, size=0x1000),  # 4 KB (was 2 KB)
+    )
+    assert spec.rom.addr_bits != spec.ram.addr_bits, "test spec must actually have unequal sizes"
+
+    generated = emit(spec, get_plugin(spec.cpu), MX65_BIN.read_bytes())
+    d = tempfile.mkdtemp(prefix="unequal_ghdl_")
+    probe = Path(d) / f"{spec.name}.vhd"
+    probe.write_text(generated)
+    result = subprocess.run(_GHDLBackend.analyze_cmd(probe, d), capture_output=True, text=True)
+    assert result.returncode == 0, f"GHDL analysis failed:\n{result.stderr}"
+
+
+def test_spec_rejects_non_power_of_two_region_size():
+    """A region size that isn't a power of two fails eagerly at spec construction."""
+    import dataclasses
+
+    from embedded_core import system_spec
+
+    spec = system_spec.load(MX65_TOML)
+    with pytest.raises(ValueError) as exc_info:
+        dataclasses.replace(spec, io=system_spec.MemoryRegion(name="io", base=0xE000, size=0x300))
+    assert "io" in str(exc_info.value) and "power of two" in str(exc_info.value)
+
+
+def test_spec_rejects_misaligned_region_base():
+    """A region base that isn't a multiple of its own size fails with a named error."""
+    import dataclasses
+
+    from embedded_core import system_spec
+
+    spec = system_spec.load(MX65_TOML)
+    with pytest.raises(ValueError) as exc_info:
+        dataclasses.replace(spec, io=system_spec.MemoryRegion(name="io", base=0xE080, size=0x100))
+    assert "io" in str(exc_info.value) and "not aligned" in str(exc_info.value)
+
+
+def test_port_io_transport_exempts_io_region_from_checks():
+    """With io_transport='port', the io region is skipped by alignment/overlap checks.
+
+    The committed t80_portio spec already relies on this (io 0x0000/0x100 sits
+    "under" rom 0x0000/0x0800 -- see systems/t80_portio_counter_7seg.toml); this
+    test makes the exemption itself the thing under test, rather than relying on
+    that spec loading successfully as incidental proof.
+    """
+    import dataclasses
+
+    from embedded_core import system_spec
+
+    memory_spec = system_spec.load(
+        MX65_TOML
+    )  # io_transport defaults to "memory"; rom = 0xF800/0x0800
+    io_over_rom = system_spec.MemoryRegion(name="io", base=0xF800, size=0x100)  # == rom.base
+    with pytest.raises(ValueError, match="overlap"):
+        dataclasses.replace(memory_spec, io=io_over_rom)
+
+    port_spec = system_spec.load(T80_PORTIO_TOML)  # rom = 0x0000/0x0800
+    io_over_that_rom = system_spec.MemoryRegion(name="io", base=0x0000, size=0x100)  # == rom.base
+    dataclasses.replace(port_spec, io=io_over_that_rom)  # must not raise: io exempt in port mode
+
+
+def test_spec_rejects_overlapping_regions():
+    """Two regions occupying the same bytes fail with both region names in the error."""
+    import dataclasses
+
+    from embedded_core import system_spec
+
+    spec = system_spec.load(MX65_TOML)  # rom = 0xF800/0x0800
+    with pytest.raises(ValueError) as exc_info:
+        dataclasses.replace(
+            spec, ram=system_spec.MemoryRegion(name="ram", base=0xF800, size=0x0800)
+        )
+    message = str(exc_info.value)
+    assert "ram" in message and "rom" in message and "overlap" in message
+
+
+def test_spec_rejects_out_of_range_region():
+    """A region past the 64 KB address space fails even though it is aligned."""
+    import dataclasses
+
+    from embedded_core import system_spec
+
+    spec = system_spec.load(MX65_TOML)
+    with pytest.raises(ValueError) as exc_info:
+        dataclasses.replace(spec, io=system_spec.MemoryRegion(name="io", base=0x10000, size=0x100))
+    assert "io" in str(exc_info.value) and "address space" in str(exc_info.value)
+
+
+def test_spec_load_rejects_unknown_top_level_key():
+    """A typo'd top-level key (e.g. irq_moed) fails loudly instead of being silently ignored."""
+    from embedded_core import system_spec
+
+    text = MX65_TOML.read_text().replace('cpu = "mx65"\n', 'cpu = "mx65"\nirq_moed = "simple"\n')
+    tmp = Path(tempfile.mkdtemp(prefix="spec_")) / "bad.toml"
+    tmp.write_text(text)
+    with pytest.raises(ValueError, match="irq_moed"):
+        system_spec.load(tmp)
+
+
+def test_spec_load_rejects_unknown_generic_key():
+    """A typo'd key inside [generics] fails loudly instead of being silently ignored."""
+    from embedded_core import system_spec
+
+    text = MX65_TOML.read_text().replace("[generics]\n", "[generics]\nbogus_generic = 1\n")
+    tmp = Path(tempfile.mkdtemp(prefix="spec_")) / "bad.toml"
+    tmp.write_text(text)
+    with pytest.raises(ValueError, match="bogus_generic"):
+        system_spec.load(tmp)
+
+
+def test_emit_rejects_oversized_rom_image():
+    """A firmware image larger than the rom region's size fails, naming both sizes."""
+    from embedded_core import system_spec
+    from embedded_core.cpu_plugin import get_plugin
+    from embedded_core.emitter import emit
+
+    spec = system_spec.load(MX65_TOML)  # rom.size == 0x0800
+    oversized = bytes(spec.rom.size + 1)
+    with pytest.raises(ValueError) as exc_info:
+        emit(spec, get_plugin(spec.cpu), oversized)
+    message = str(exc_info.value)
+    assert str(spec.rom.size + 1) in message and str(spec.rom.size) in message
+
+
+def test_emit_rejects_boots_at_zero_core_with_rom_not_at_zero():
+    """A boots-at-zero core (T80) with rom.base != 0 fails at emit time, not load time."""
+    import dataclasses
+
+    from embedded_core import system_spec
+    from embedded_core.cpu_plugin import get_plugin
+    from embedded_core.emitter import emit
+
+    spec = dataclasses.replace(
+        system_spec.load(T80_TOML),
+        rom=system_spec.MemoryRegion(name="rom", base=0x0800, size=0x0800),
+    )
+    with pytest.raises(ValueError, match="boots at"):
+        emit(spec, get_plugin(spec.cpu), T80_BIN.read_bytes())
+
+
+def test_emit_rejects_vector_fetch_core_with_rom_not_at_top():
+    """A vector-fetch core (mx65) whose rom region doesn't end at 0x10000 fails at emit time."""
+    import dataclasses
+
+    from embedded_core import system_spec
+    from embedded_core.cpu_plugin import get_plugin
+    from embedded_core.emitter import emit
+
+    spec = dataclasses.replace(
+        system_spec.load(MX65_TOML),
+        rom=system_spec.MemoryRegion(name="rom", base=0xF000, size=0x0800),
+    )
+    with pytest.raises(ValueError, match="top of memory"):
+        emit(spec, get_plugin(spec.cpu), MX65_BIN.read_bytes())
 
 
 # ── Spec axes: interrupt mode + IO transport ──────────────────────────────────

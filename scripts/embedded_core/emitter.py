@@ -62,6 +62,27 @@ def _decode(spec: SystemSpec) -> str:
 
 def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
     """Return the complete single-file VHDL design as text."""
+    if len(rom_bytes) > spec.rom.size:
+        rom_end = spec.rom.base + spec.rom.size
+        raise ValueError(
+            f"firmware image is {len(rom_bytes)} bytes, which does not fit in the "
+            f"{spec.rom.size}-byte 'rom' region ({spec.rom.base:#x}..{rom_end:#x})"
+        )
+    if plugin.boots_at_zero:
+        if spec.rom.base != 0:
+            raise ValueError(
+                f"core {plugin.name!r} boots at $0000, so its 'rom' region must start at 0x0 "
+                f"(got {spec.rom.base:#x}) -- see guide §6, put ROM where the core boots"
+            )
+    else:
+        rom_top = spec.rom.base + spec.rom.size
+        if rom_top != 0x10000:
+            raise ValueError(
+                f"core {plugin.name!r} fetches its reset vector from the top of memory, so its "
+                f"'rom' region must end at 0x10000 (got {rom_top:#x}) -- see guide §6, "
+                "put ROM where the core boots"
+            )
+
     vectored = spec.irq_mode == "vectored"
     port_io = spec.io_transport == "port"
     g = spec.generics
@@ -77,7 +98,8 @@ def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
         "PRESCALER_BITS": str(g["prescaler_bits"]),
         "ROM_BITS": str(spec.rom.addr_bits),
         "RAM_BITS": str(spec.ram.addr_bits),
-        "ADDR_HIGH": str(spec.addr_high),
+        "ROM_ADDR_HIGH": str(spec.rom.addr_bits - 1),
+        "RAM_ADDR_HIGH": str(spec.ram.addr_bits - 1),
         "ROM_AGGREGATE": rom_aggregate(rom_bytes),
         "DECODE": _decode(spec),
         "CPU_ADAPTER": plugin.adapter_vhdl(vectored=vectored, port=port_io).rstrip("\n"),

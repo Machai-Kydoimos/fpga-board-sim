@@ -144,6 +144,12 @@ T80  = CpuPlugin(name="t80", entity_name="T80s",
 
 `--cpu <name>` on the generator selects it.
 
+Most of these fields are **documentation only**: `address_bits`, `data_bits`, `reset_active_high`,
+`irq_active_high`, and `endian` are facts the adapter VHDL already implements, so changing a field's
+value here has no effect on the generated design (they're candidates to become functional with the
+P8 normalized-bus-v2 work). `boots_at_zero` is the exception — the generator consumes it to enforce
+where ROM must sit (§6).
+
 ### 4.4 The bus adapter — the heart of "any core"
 
 The adapter is a self-contained VHDL `block` (it may declare local signals, so the whole port is one
@@ -306,6 +312,19 @@ at boot and adapts (essential for the walking LED, which must know how many LEDs
 masks `led` to `NUM_LEDS`, and exposes `seg_regs(0..NUM_SEGS-1)` packed to `seg` (digit 0 =
 rightmost, no reversal). **Vector placement:** the assembler must emit the reset/IRQ/NMI addresses
 at `$FFFC/D`, `$FFFE/F`, `$FFFA/B`.
+
+**Memory-map rules (enforced by the generator at load/generate time):** every region's `size` must
+be a power of two and its `base` a multiple of that size; every region must fit within the 64 KB
+address space; ROM, RAM, and IO (in `memory` transport) must not overlap each other. **ROM and RAM
+sizes are independent** — each region's address slice in the top is generated from its own size, so
+ROM and RAM never need to match. ROM must sit where the core boots, checked against the plugin's
+`boots_at_zero` (§4.3): `$0000` for a boots-at-zero core, or ending at `$10000` for a vector-fetch
+core. The assembled firmware image must fit inside the `rom` region's `size`. Any violation raises a
+`ValueError` naming the offending region; an unknown or typo'd key anywhere in the spec (top level,
+`[generics]`, or a `memory.*` table) is rejected the same way rather than silently ignored.
+**Exception:** with `io_transport = "port"` the `io` region describes the Z80's separate I/O space,
+not a slice of the 64 KB memory map, so it is exempt from every rule above — the committed port-IO
+specs legitimately place it "under" ROM.
 
 ### Port-mapped IO — the transport axis
 
