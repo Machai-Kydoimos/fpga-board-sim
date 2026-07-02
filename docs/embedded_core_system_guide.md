@@ -471,6 +471,14 @@ Because `M1_n` cleanly separates the Z80's two `IORQ` uses — INTA (`M1_n` low)
 ## 10. Generating the file
 
 ```bash
+uv run python scripts/gen_embedded_core.py --system systems/mx65_walking_counter_7seg.toml
+```
+
+`--cpu`, `--rom`, and `--out` are inferred from the spec (`spec.cpu`; `firmware/<spec.firmware>.bin`;
+`hdl/<spec.name>.vhd`) — the short form above is all you need for a spec that already exists.
+Override any of them explicitly for a different ROM image or output path:
+
+```bash
 uv run python scripts/gen_embedded_core.py \
     --cpu mx65 \
     --system systems/mx65_walking_counter_7seg.toml \
@@ -480,9 +488,9 @@ uv run python scripts/gen_embedded_core.py \
 
 Inputs: a **CPU plugin** (`--cpu`: vendored core files + adapter), a **system spec** (memory + IO
 map, `prescaler_bits`, and the two feature axes), and a **ROM image**. Output: the single
-generic-parameterized `.vhd`, validated against the contract checker before writing. Swap `--cpu
-mx65` for `--cpu t80` (with the matching Z80 spec + `.bin`) to generate a Z80 build. Two spec fields
-select the optional features:
+generic-parameterized `.vhd`, validated against the contract checker before writing. A spec whose
+`cpu` field is `t80` generates a Z80 build with no `--cpu` needed; an explicit `--cpu` that
+disagrees with the spec fails fast. Two spec fields select the optional features:
 
 - **`irq_mode`** — `"none"` (polled, default), `"simple"` (one fixed-vector handler: 6502 IRQ or
   Z80 IM 1), or `"vectored"` (Z80 IM 2, §9).
@@ -490,6 +498,12 @@ select the optional features:
 
 The generator selects the matching adapter variant (§4.6); an unsupported combination for the chosen
 core fails fast with a clear error.
+
+**Regenerating everything at once:** `uv run python scripts/regen_embedded_cores.py` loops over
+every `systems/*.toml` and reports `OK` / `DIFFERS` / `MISSING` for each (default: check only, exits
+nonzero on any difference); `--write` regenerates drifted or missing files in place; `--assemble`
+additionally reassembles each firmware source with its pinned dev-time toolchain and reports drift
+against the checked-in `.bin` (it never writes a `.bin` — that stays a deliberate manual act).
 
 ## 11. Running & verifying
 
