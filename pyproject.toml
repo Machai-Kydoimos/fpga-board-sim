@@ -82,6 +82,7 @@ ignore = [
 "sim/test_cpu_walking.py" = ["ANN"]  # cocotb headless tests: dut signals are dynamic
 "sim/test_cpu_hello.py" = ["ANN"]    # cocotb headless tests: dut signals are dynamic
 "sim/test_cpu_dice.py" = ["ANN"]     # cocotb headless tests: dut signals are dynamic
+"sim/test_stopwatch.py" = ["ANN"]    # cocotb headless tests: dut signals are dynamic
 
 [tool.ruff.format]
 quote-style = "double"
@@ -101,7 +102,15 @@ check_untyped_defs = true  # D8 slice (#116): type-check bodies of untyped (test
 # strict = true  (future: evaluate after feature work settles)
 
 [[tool.mypy.overrides]]
-module = ["tests.*", "test_blinky", "test_7seg", "test_cpu_walking", "test_cpu_hello", "test_cpu_dice"]
+module = [
+    "tests.*",
+    "test_blinky",
+    "test_7seg",
+    "test_cpu_walking",
+    "test_cpu_hello",
+    "test_cpu_dice",
+    "test_stopwatch",
+]
 disallow_untyped_defs = false   # test functions and fixtures are exempt
 
 # ── rumdl (Markdown linter + formatter) ──────────────────────────────────────

@@ -179,7 +179,7 @@ The board renders with LEDs, buttons, switches, and — on supported boards — 
 
 ### 3. Select a VHDL file
 
-Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains ready-to-run designs as starting points: six standard LED designs (`blinky.vhd`, `blinky_counter.vhd`, `blinky_morse.vhd`, `blinky_pwm.vhd`, `blinky_walking.vhd`, `blinky_alt.vhd`), three 7-segment designs (`counter_7seg.vhd`, `snake_7seg.vhd`, `walking_counter_7seg.vhd`), and the embedded-core family — six generated 6502/Z80 soft-CPU systems (`mx65_*.vhd`, `t80_*.vhd`) plus `mx65_hello_7seg.vhd` (on-ramp) and `mx65_dice_7seg.vhd` (peripheral-extension example) (see [Embedded CPU systems](#embedded-cpu-systems) below).
+Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains ready-to-run designs as starting points: six standard LED designs (`blinky.vhd`, `blinky_counter.vhd`, `blinky_morse.vhd`, `blinky_pwm.vhd`, `blinky_walking.vhd`, `blinky_alt.vhd`), four 7-segment designs (`counter_7seg.vhd`, `snake_7seg.vhd`, `walking_counter_7seg.vhd`, `stopwatch_7seg.vhd`), and the embedded-core family — six generated 6502/Z80 soft-CPU systems (`mx65_*.vhd`, `t80_*.vhd`) plus `mx65_hello_7seg.vhd` (on-ramp) and `mx65_dice_7seg.vhd` (peripheral-extension example) (see [Embedded CPU systems](#embedded-cpu-systems) below).
 
 When you pick a file, the simulator analyzes and elaborates it (a few seconds on a large design); a spinner overlay keeps the window responsive while this runs and reports any contract or compile error.
 
@@ -253,6 +253,7 @@ hdl/                       Example VHDL designs
   counter_7seg.vhd         Hex digit counter for 7-segment boards (works on all 8 supported boards)
   snake_7seg.vhd           Single segment crawls figure-8 across all digits; bouncing LED + decimal point
   walking_counter_7seg.vhd Bouncing LED + decimal BCD counter on 7-seg digits; switch speed, button direction
+  stopwatch_7seg.vhd       Interactive stopwatch: btn(0) start/stop, btn(1) reset; switch speed
   mx65_*.vhd, t80_*.vhd    Generated embedded-core systems (6502 + Z80 soft CPUs) — see the guide below
 systems/                   TOML system specs consumed by the embedded-core generator
 firmware/                  CPU firmware: 6502 .s (ca65/ld65) + Z80 .asm (z80asm) sources + assembled .bin
