@@ -1,7 +1,9 @@
-"""Stage-2 behavioral tests for the embedded-core walking counter.
+"""Shared behavioral test suite for every embedded-core design.
 
-The 6502 firmware (firmware/mx65_walking_counter_7seg.s) replicates
-hdl/walking_counter_7seg.vhd in software:
+Run against both cores and all six shipped systems (mx65 polled, mx65 simple-IRQ,
+t80 polled, t80 IM 2 vectored-IRQ, t80 port-IO, and the t80 IM 2 + port-IO
+capstone). Each system's firmware replicates hdl/walking_counter_7seg.vhd in
+software:
 
   * a single lit LED bounces back and forth across all LEDs,
   * every LED step advances a decimal odometer on the 7-segment digits,
