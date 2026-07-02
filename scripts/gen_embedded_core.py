@@ -1,6 +1,9 @@
 """Generate a single-file embedded-core VHDL design from a system spec + ROM image.
 
-Usage:
+Usage (short form -- --cpu/--rom/--out are inferred from the spec):
+    uv run python scripts/gen_embedded_core.py --system systems/mx65_walking_counter_7seg.toml
+
+Usage (long form -- explicit flags override the inferred values):
     uv run python scripts/gen_embedded_core.py --cpu mx65 \
         --system systems/mx65_walking_counter_7seg.toml \
         --rom firmware/mx65_walking_counter_7seg.bin \
@@ -17,31 +20,23 @@ import argparse
 import tempfile
 from pathlib import Path
 
-from embedded_core import system_spec
-from embedded_core.cpu_plugin import get_plugin
+from embedded_core.cpu_plugin import CpuPlugin, get_plugin
 from embedded_core.emitter import emit
+from embedded_core.system_spec import SystemSpec, load
 
 from fpga_sim.sim_bridge import check_vhdl_contract, check_vhdl_encoding
 
+REPO = Path(__file__).resolve().parents[1]
 
-def main() -> None:
-    """Parse arguments, emit the design, validate it, and write the output file."""
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument("--cpu", required=True, help="CPU plugin name (e.g. mx65)")
-    parser.add_argument("--system", required=True, type=Path, help="system spec TOML")
-    parser.add_argument("--rom", required=True, type=Path, help="firmware ROM image (.bin)")
-    parser.add_argument("--out", required=True, type=Path, help="output .vhd path")
-    args = parser.parse_args()
 
-    spec = system_spec.load(args.system)
-    if spec.cpu != args.cpu:
-        raise SystemExit(f"--cpu {args.cpu!r} does not match spec cpu {spec.cpu!r}")
-    plugin = get_plugin(args.cpu)
-    vhdl = emit(spec, plugin, args.rom.read_bytes())
+def generate_vhdl(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
+    """Emit the design and validate it against the simulator's VHDL contract.
 
-    # Validate before writing: encoding + the simulator's top-level contract.
+    Raises ``SystemExit`` with a clear message if validation fails. Shared by
+    this module's CLI and ``scripts/regen_embedded_cores.py`` so there is
+    exactly one validate-then-write code path.
+    """
+    vhdl = emit(spec, plugin, rom_bytes)
     # The temp file is named <spec.name>.vhd so the entity==filename check passes.
     with tempfile.TemporaryDirectory() as d:
         probe = Path(d) / f"{spec.name}.vhd"
@@ -52,9 +47,32 @@ def main() -> None:
         ):
             if not ok:
                 raise SystemExit(f"generated VHDL failed {label} check: {msg}")
+    return vhdl
 
-    args.out.write_text(vhdl)
-    print(f"wrote {args.out} ({len(vhdl.splitlines())} lines)")
+
+def main() -> None:
+    """Parse arguments, emit the design, validate it, and write the output file."""
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument("--cpu", help="CPU plugin name (default: the spec's cpu field)")
+    parser.add_argument("--system", required=True, type=Path, help="system spec TOML")
+    parser.add_argument(
+        "--rom", type=Path, help="firmware ROM image (default: firmware/<spec.firmware>.bin)"
+    )
+    parser.add_argument("--out", type=Path, help="output .vhd path (default: hdl/<spec.name>.vhd)")
+    args = parser.parse_args()
+
+    spec = load(args.system)
+    if args.cpu is not None and args.cpu != spec.cpu:
+        raise SystemExit(f"--cpu {args.cpu!r} does not match spec cpu {spec.cpu!r}")
+    rom_path = args.rom if args.rom is not None else REPO / "firmware" / f"{spec.firmware}.bin"
+    out_path = args.out if args.out is not None else REPO / "hdl" / f"{spec.name}.vhd"
+
+    plugin = get_plugin(spec.cpu)
+    vhdl = generate_vhdl(spec, plugin, rom_path.read_bytes())
+    out_path.write_text(vhdl)
+    print(f"wrote {out_path} ({len(vhdl.splitlines())} lines)")
 
 
 if __name__ == "__main__":

@@ -32,6 +32,8 @@ MX65_IRQ_SYS = PROJECT / "hdl" / "mx65_irq_counter_7seg.vhd"
 FIRMWARE = PROJECT / "firmware"
 MX65_BIN = FIRMWARE / "mx65_walking_counter_7seg.bin"
 GENERATOR = PROJECT / "scripts" / "gen_embedded_core.py"
+REGEN_SCRIPT = PROJECT / "scripts" / "regen_embedded_cores.py"
+SYSTEMS_DIR = PROJECT / "systems"
 MX65_TOML = PROJECT / "systems" / "mx65_walking_counter_7seg.toml"
 MX65_IRQ_BIN = FIRMWARE / "mx65_irq_counter_7seg.bin"
 MX65_IRQ_TOML = PROJECT / "systems" / "mx65_irq_counter_7seg.toml"
@@ -777,21 +779,57 @@ def test_embedded_rom_matches_firmware_bin():
 
 
 @pytest.mark.slow
-def test_firmware_reassembles_with_ca65():
+@pytest.mark.parametrize("stem", ["mx65_walking_counter_7seg", "mx65_irq_counter_7seg"])
+def test_firmware_reassembles_with_ca65(stem):
     """ca65/ld65 reproduce the checked-in .bin from the .s (skipped if cc65 absent)."""
     if not (shutil.which("ca65") and shutil.which("ld65")):
         pytest.skip("cc65 (ca65/ld65) not installed")
     d = Path(tempfile.mkdtemp(prefix="fw_"))
     obj, out = d / "fw.o", d / "fw.bin"
     subprocess.run(
-        ["ca65", "--cpu", "6502", "-o", str(obj), str(FIRMWARE / "mx65_walking_counter_7seg.s")],
+        ["ca65", "--cpu", "6502", "-o", str(obj), str(FIRMWARE / f"{stem}.s")],
         check=True,
     )
     subprocess.run(
         ["ld65", "-C", str(FIRMWARE / "mx65.cfg"), "-o", str(out), str(obj)],
         check=True,
     )
-    assert out.read_bytes() == MX65_BIN.read_bytes(), "ca65/ld65 output drifted from the .bin"
+    assert out.read_bytes() == (FIRMWARE / f"{stem}.bin").read_bytes(), (
+        f"ca65/ld65 output drifted from {stem}.bin"
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "stem",
+    [
+        "t80_walking_counter_7seg",
+        "t80_irq_counter_7seg",
+        "t80_portio_counter_7seg",
+        "t80_irq_portio_counter_7seg",
+    ],
+)
+def test_firmware_reassembles_with_z80asm(stem):
+    """z88dk z80asm reproduces the checked-in .bin from the .asm (skipped if absent).
+
+    Pinned invocation (z88dk z80asm 2.7.1o glues its value to -o, no space):
+    ``z80asm -b -o<stem>.bin <stem>.asm``, run with the .asm copied into a temp
+    dir and cwd set there -- z80asm drops .obj/.sym byproducts next to its input.
+    """
+    if not shutil.which("z80asm"):
+        pytest.skip("z88dk z80asm not installed")
+    d = Path(tempfile.mkdtemp(prefix="fw_z80_"))
+    src = d / f"{stem}.asm"
+    src.write_text((FIRMWARE / f"{stem}.asm").read_text())
+    out = d / f"{stem}.bin"
+    subprocess.run(
+        ["z80asm", "-b", f"-o{out.name}", src.name],
+        check=True,
+        cwd=d,
+    )
+    assert out.read_bytes() == (FIRMWARE / f"{stem}.bin").read_bytes(), (
+        f"z80asm output drifted from {stem}.bin"
+    )
 
 
 # ── Stage 3: the generator reproduces the committed design ────────────────────
@@ -821,6 +859,21 @@ def test_generator_cli_reproduces_committed_design():
     assert out.read_text() == MX65_SYS.read_text(), (
         "gen_embedded_core.py output drifted from hdl/mx65_walking_counter_7seg.vhd — "
         "regenerate it from systems/mx65_walking_counter_7seg.toml + the firmware .bin"
+    )
+
+
+def test_generator_cli_short_form_infers_cpu_rom_out():
+    """--cpu/--rom are inferred from the spec; only --system (+ a tmp --out) is required."""
+    out = Path(tempfile.mkdtemp(prefix="gen_shortform_")) / MX65_SYS.name
+    subprocess.run(
+        [sys.executable, str(GENERATOR), "--system", str(MX65_TOML), "--out", str(out)],
+        check=True,
+        cwd=PROJECT,
+        capture_output=True,
+        text=True,
+    )
+    assert out.read_text() == MX65_SYS.read_text(), (
+        "short-form CLI (--system + --out only) drifted from hdl/mx65_walking_counter_7seg.vhd"
     )
 
 
@@ -932,3 +985,21 @@ def test_emit_rejects_unsupported_axis_combos():
     # the mx65 core has no vectored-interrupt adapter (only the Z80/T80 does).
     with pytest.raises(ValueError):
         emit(dataclasses.replace(spec, irq_mode="vectored"), plugin, rom)
+
+
+# ── scripts/regen_embedded_cores.py: the one-command regen/check loop ─────────
+
+
+def test_regen_script_check_mode_clean_tree():
+    """In check mode on a clean checkout, every systems/*.toml reports OK and exit is 0."""
+    result = subprocess.run(
+        [sys.executable, str(REGEN_SCRIPT)],
+        cwd=PROJECT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    system_count = len(list(SYSTEMS_DIR.glob("*.toml")))
+    lines = [line for line in result.stdout.splitlines() if line]
+    assert len(lines) == system_count, f"expected {system_count} systems reported, got: {lines}"
+    assert all(line.endswith(": OK") for line in lines), result.stdout

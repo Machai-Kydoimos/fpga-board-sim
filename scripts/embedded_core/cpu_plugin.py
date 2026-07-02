@@ -28,6 +28,8 @@ class CpuPlugin:
     entity_name: str  # the core entity the adapter instantiates
     core_files: tuple[Path, ...]  # vendored VHDL, leaf-first (emitted verbatim)
     adapter_file: Path  # normalized-bus adapter block
+    asm_toolchain: str  # human-readable dev-time assembler, e.g. "ca65 + ld65"
+    asm_ext: str  # firmware source extension for this core, e.g. ".s"
     vectored_adapter_file: Path | None = None  # variant for vectored interrupts (Z80 IM 2)
     port_adapter_file: Path | None = None  # variant for port-mapped IO (Z80 IN/OUT via IORQ)
     vectored_port_adapter_file: Path | None = None  # variant for IM 2 + port-mapped IO
@@ -70,6 +72,8 @@ MX65 = CpuPlugin(
     entity_name="mx65",
     core_files=(_CORES / "mx65.vhd",),
     adapter_file=_ADAPTERS / "mx65.vhd",
+    asm_toolchain="ca65 + ld65",
+    asm_ext=".s",
 )
 
 _T80 = _CORES / "t80"
@@ -81,6 +85,8 @@ T80 = CpuPlugin(
         for stem in ("T80_Pack", "T80_ALU", "T80_MCode", "T80_Reg", "T80", "T80s")
     ),
     adapter_file=_ADAPTERS / "t80.vhd",
+    asm_toolchain="z88dk z80asm",
+    asm_ext=".asm",
     vectored_adapter_file=_ADAPTERS / "t80_vectored.vhd",
     port_adapter_file=_ADAPTERS / "t80_port.vhd",
     vectored_port_adapter_file=_ADAPTERS / "t80_vectored_port.vhd",
