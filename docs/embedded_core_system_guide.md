@@ -27,6 +27,21 @@ assemble it; embed the bytes as a ROM; generate the single file; and verify it.
 `.vhd`. VHDL lets one file hold many entities/architectures, so the CPU core, ROM, RAM, IO, and
 top all live in that one file.
 
+> **Quickstart — your first change** (five steps, a few minutes):
+>
+> 1. Run an existing design: `uv run fpga-sim`, pick any 7-segment board, select
+>    `hdl/mx65_hello_7seg.vhd`. LED0 lights and digit 0 shows "0".
+> 2. Open `firmware/mx65_hello_7seg.s` and find `GLYPH0: .byte $3F` (the digit-0 glyph) or
+>    `LED_LO`/`lda #$01` (which LED lights).
+> 3. Change the glyph byte (e.g. `$06` for "1") or the LED value (e.g. `#$02` for LED1).
+> 4. Assemble (`firmware/README.md` has the exact command) and regenerate:
+>    `uv run python scripts/regen_embedded_cores.py --write`.
+> 5. Rerun the simulator on `hdl/mx65_hello_7seg.vhd` and watch your change take effect.
+>
+> That is the whole edit → assemble → regenerate → run loop every firmware change in this guide
+> follows (§10 has the toolflow diagram) — the rest of this document is what happens when the
+> change is bigger than one byte.
+
 ## 2. Prerequisites — the simulator contract
 
 A design the simulator accepts must satisfy (see `CLAUDE.md` and `hdl/counter_7seg.vhd`):
@@ -349,7 +364,8 @@ is core- and transport-agnostic; reaching it is the adapter's job.
 ## 7. Writing firmware
 
 **Start with the smallest thing that proves the IO path** — the firmware equivalent of `blinky`
-(this is also plan Stage 1). Light one LED and write one fixed digit, then spin:
+(this is also plan Stage 1, and now a committed design: `firmware/mx65_hello_7seg.s`, generated as
+`hdl/mx65_hello_7seg.vhd`). Light one LED and write one fixed digit, then spin:
 
 ```asm
 RESET:  SEI
@@ -364,9 +380,12 @@ SPIN:   JMP SPIN          ; mx65 keeps fetching; display holds
 ```
 
 If that shows one steady LED and a "0", your reset vector, POR, read path, and IO writes all work —
-everything else is incremental. Now the full walking-counter patterns (6502, but the shapes
-generalize). The canonical assembled source lives in
-`firmware/mx65_walking_counter_7seg.s`; the sketches below are the algorithm, not final opcodes.
+everything else is incremental. Run it yourself (`uv run fpga-sim`, pick `hdl/mx65_hello_7seg.vhd`),
+or see the Quickstart box after §1 for the five-step edit loop. Start your own firmware by copying
+`mx65_hello_7seg.s`, `systems/mx65_hello_7seg.toml`, and the assemble command in
+`firmware/README.md`. Now the full walking-counter patterns (6502, but the shapes generalize). The
+canonical assembled source lives in `firmware/mx65_walking_counter_7seg.s`; the sketches below are
+the algorithm, not final opcodes.
 
 - **Poll the tick** (decouples visible rate from instruction speed):
 
@@ -488,6 +507,15 @@ Because `M1_n` cleanly separates the Z80's two `IORQ` uses — INTA (`M1_n` low)
 "realistic Z80 machine" (`t80_irq_portio`, §12) with only a combined adapter, no new generator logic.
 
 ## 10. Generating the file
+
+Where §3's diagram shows the **hardware** inside the generated file, this is the **toolflow** that
+produces it:
+
+```text
+firmware/<name>.s|.asm ──(ca65+ld65 / z80asm, dev-time)──► firmware/<name>.bin ─┐
+scripts/embedded_core/cores/<core>/  (vendored VHDL, verbatim) ─────────────────┼─► gen_embedded_core.py ─► hdl/<name>.vhd ─► simulator
+systems/<name>.toml  (memory map + irq_mode/io_transport axes) ─────────────────┘        (validate-then-write)
+```
 
 ```bash
 uv run python scripts/gen_embedded_core.py --system systems/mx65_walking_counter_7seg.toml

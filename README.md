@@ -179,7 +179,7 @@ The board renders with LEDs, buttons, switches, and — on supported boards — 
 
 ### 3. Select a VHDL file
 
-Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains ready-to-run designs as starting points: six standard LED designs (`blinky.vhd`, `blinky_counter.vhd`, `blinky_morse.vhd`, `blinky_pwm.vhd`, `blinky_walking.vhd`, `blinky_alt.vhd`) and three 7-segment designs (`counter_7seg.vhd`, `snake_7seg.vhd`, `walking_counter_7seg.vhd`).
+Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains ready-to-run designs as starting points: six standard LED designs (`blinky.vhd`, `blinky_counter.vhd`, `blinky_morse.vhd`, `blinky_pwm.vhd`, `blinky_walking.vhd`, `blinky_alt.vhd`), three 7-segment designs (`counter_7seg.vhd`, `snake_7seg.vhd`, `walking_counter_7seg.vhd`), and the embedded-core family — six generated 6502/Z80 soft-CPU systems (`mx65_*.vhd`, `t80_*.vhd`) plus the `mx65_hello_7seg.vhd` on-ramp (see [Embedded CPU systems](#embedded-cpu-systems) below).
 
 When you pick a file, the simulator analyzes and elaborates it (a few seconds on a large design); a spinner overlay keeps the window responsive while this runs and reports any contract or compile error.
 
@@ -253,6 +253,9 @@ hdl/                       Example VHDL designs
   counter_7seg.vhd         Hex digit counter for 7-segment boards (works on all 8 supported boards)
   snake_7seg.vhd           Single segment crawls figure-8 across all digits; bouncing LED + decimal point
   walking_counter_7seg.vhd Bouncing LED + decimal BCD counter on 7-seg digits; switch speed, button direction
+  mx65_*.vhd, t80_*.vhd    Generated embedded-core systems (6502 + Z80 soft CPUs) — see the guide below
+systems/                   TOML system specs consumed by the embedded-core generator
+firmware/                  CPU firmware: 6502 .s (ca65/ld65) + Z80 .asm (z80asm) sources + assembled .bin
 scripts/
   sync_amaranth_boards.py  Syncs board definitions from amaranth-boards
   amaranth_parser.py       Mock-exec parser used by sync_amaranth_boards.py
@@ -262,6 +265,9 @@ scripts/
   digilent_parser.py       XDC regex parser used by sync_digilent_xdc.py
   sync_common.py           Shared scaffolding (download/naming/output) for the sync scripts
   analyze_metrics.py       Standalone performance report from a sim_metrics CSV
+  gen_embedded_core.py     Generates one embedded-core system from a CPU plugin + system spec + firmware .bin
+  regen_embedded_cores.py  One-command regen/check loop over every systems/*.toml
+  embedded_core/           Generator package: cpu_plugin, system_spec, emitter, templates/, adapters/, vendored cores/
 tests/                     pytest integration suite (board loading, serialization, GHDL, NVC, UI, panel)
 boards/
   amaranth-boards/         Board definitions synced from amaranth-lang/amaranth-boards
@@ -457,6 +463,14 @@ end entity;
 A 7-segment board will happily run any standard design — the `seg` port is simply absent and the digits remain dark. A 7-seg design loaded on a non-7-seg board also passes both the contract check and GHDL/NVC analysis — the standard wrapper leaves the `seg` output unconnected, so the design compiles and runs but the digits are never driven. The simulator normalizes all segment polarities to active-high in VHDL regardless of the board's hardware polarity. See `hdl/counter_7seg.vhd` for a complete working example.
 
 The simulator sets the generics to match the selected board's resource counts and drives `clk` at the board's actual clock frequency (extracted from its `Clock` resource, falling back to 12 MHz). The entity name must match the filename stem (e.g. `my_design.vhd` → entity `my_design`).
+
+### Embedded CPU systems
+
+A design can also be a **single self-contained file that embeds a soft CPU core** — a vendored 6502 (mx65) or Z80 (T80) — running an assembled firmware program, instead of hand-written RTL. The file still satisfies the same 7-segment board contract above (`clk`/`sw`/`btn`/`led`/`seg`); the firmware reads the board's resource counts from IO config registers, so one generated file fits any board. Six systems ship today — `hdl/mx65_walking_counter_7seg.vhd`, `hdl/mx65_irq_counter_7seg.vhd`, and four `hdl/t80_*.vhd` Z80 variants (IM 2 vectored interrupts, port-mapped IO, and a capstone combining both) — plus `hdl/mx65_hello_7seg.vhd`, a ~20-line firmware on-ramp for anyone starting their own.
+
+![The 6502 walking-counter firmware running on a virtual DE10-Lite, identical in behavior to the hand-written walking_counter_7seg.vhd RTL design](docs/assets/cpu_walk_6digit.gif)
+
+These are **generated**, not hand-written — `uv run python scripts/gen_embedded_core.py --system systems/<name>.toml` (re)builds one from a vendored CPU core + a `systems/*.toml` spec + an assembled firmware `.bin`; `uv run python scripts/regen_embedded_cores.py` regenerates every system in one command. See `docs/embedded_core_system_guide.md` for the full development guide (quickstart, architecture, extending) and `docs/embedded_core_improvement_plan.md` for the arc that hardened it.
 
 ## Dependencies
 

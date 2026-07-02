@@ -49,6 +49,9 @@ T80_PORTIO_TOML = PROJECT / "systems" / "t80_portio_counter_7seg.toml"
 T80_IRQPORTIO_SYS = PROJECT / "hdl" / "t80_irq_portio_counter_7seg.vhd"
 T80_IRQPORTIO_BIN = FIRMWARE / "t80_irq_portio_counter_7seg.bin"
 T80_IRQPORTIO_TOML = PROJECT / "systems" / "t80_irq_portio_counter_7seg.toml"
+MX65_HELLO_SYS = PROJECT / "hdl" / "mx65_hello_7seg.vhd"
+MX65_HELLO_BIN = FIRMWARE / "mx65_hello_7seg.bin"
+MX65_HELLO_TOML = PROJECT / "systems" / "mx65_hello_7seg.toml"
 
 # Upstream commit the vendored copy is pinned to (recorded in the file header).
 MX65_PINNED_COMMIT = "d65d81d4f8031e194bd8410133b9036db7e58794"
@@ -72,6 +75,9 @@ _CPU_GENERICS = {
 # zero-test run can't false-pass.  Keep in sync with the number of @cocotb.test()
 # functions in sim/test_cpu_walking.py.
 _WALKING_TEST_COUNT = 4
+
+# Keep in sync with the number of @cocotb.test() functions in sim/test_cpu_hello.py.
+_HELLO_TEST_COUNT = 1
 
 
 # ── Vendored file integrity (no simulator needed) ─────────────────────────────
@@ -744,6 +750,73 @@ def test_mx65_walking_runs_ghdl(ghdl):
     )
 
 
+# ── The "hello" on-ramp design: static, so a short --stop-time keeps CI cheap ──
+
+
+@pytest.mark.slow
+def test_mx65_hello_runs_nvc(nvc):
+    """The hello firmware runs end-to-end under NVC (cocotb suite)."""
+    work_dir = tempfile.mkdtemp(prefix="hello_nvc_")
+    ok, detail = analyze_vhdl(
+        MX65_HELLO_SYS,
+        work_dir=work_dir,
+        toplevel="mx65_hello_7seg",
+        simulator="nvc",
+        board_def=_7seg_board(),
+    )
+    assert ok, f"NVC analyze failed: {detail}"
+
+    env, vhpi_lib = _build_sim_env(simulator="nvc")
+    subprocess.run(
+        _NVCBackend.elaborate_cmd("sim_wrapper", _CPU_GENERICS, work_dir),
+        env=env,
+        check=True,
+        cwd=work_dir,
+    )
+    run_cmd = _NVCBackend.run_cmd("sim_wrapper", _CPU_GENERICS, vhpi_lib, work_dir)
+    run_cmd.append("--stop-time=100000ns")  # static design: 50us settle + 20us hold + margin
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_hello"
+    run_env["TOPLEVEL"] = "sim_wrapper"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+
+    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    assert "FAIL=0" in output and f"PASS={_HELLO_TEST_COUNT}" in output, (
+        "cocotb hello suite did not pass under NVC.\n" + "\n".join(output.splitlines()[-30:])
+    )
+
+
+@pytest.mark.slow
+def test_mx65_hello_runs_ghdl(ghdl):
+    """The hello firmware runs end-to-end under GHDL (cocotb suite)."""
+    work_dir = tempfile.mkdtemp(prefix="hello_ghdl_")
+    ok, detail = analyze_vhdl(
+        MX65_HELLO_SYS,
+        work_dir=work_dir,
+        toplevel="mx65_hello_7seg",
+        simulator="ghdl",
+        board_def=_7seg_board(),
+    )
+    assert ok, f"GHDL analyze failed: {detail}"
+
+    env, plugin_lib = _build_sim_env(simulator="ghdl")
+    run_cmd = _GHDLBackend.run_cmd("sim_wrapper", _CPU_GENERICS, plugin_lib, work_dir)
+    run_cmd.append("--stop-time=100000ns")  # static design: 50us settle + 20us hold + margin
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_hello"
+    run_env["TOPLEVEL"] = "sim_wrapper"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+
+    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    assert "FAIL=0" in output and f"PASS={_HELLO_TEST_COUNT}" in output, (
+        "cocotb hello suite did not pass under GHDL.\n" + "\n".join(output.splitlines()[-30:])
+    )
+
+
 # ── Firmware: ca65/ld65 ROM image + embedding ─────────────────────────────────
 
 
@@ -779,7 +852,9 @@ def test_embedded_rom_matches_firmware_bin():
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("stem", ["mx65_walking_counter_7seg", "mx65_irq_counter_7seg"])
+@pytest.mark.parametrize(
+    "stem", ["mx65_walking_counter_7seg", "mx65_irq_counter_7seg", "mx65_hello_7seg"]
+)
 def test_firmware_reassembles_with_ca65(stem):
     """ca65/ld65 reproduce the checked-in .bin from the .s (skipped if cc65 absent)."""
     if not (shutil.which("ca65") and shutil.which("ld65")):
@@ -901,6 +976,22 @@ def test_generator_reproduces_irq_design():
     assert out.read_text() == MX65_IRQ_SYS.read_text(), (
         "gen_embedded_core.py output drifted from hdl/mx65_irq_counter_7seg.vhd — "
         "regenerate it from systems/mx65_irq_counter_7seg.toml + the firmware .bin"
+    )
+
+
+def test_generator_reproduces_hello_design():
+    """gen_embedded_core.py reproduces the committed hello .vhd byte-for-byte."""
+    out = Path(tempfile.mkdtemp(prefix="gen_hello_")) / MX65_HELLO_SYS.name
+    subprocess.run(
+        [sys.executable, str(GENERATOR), "--system", str(MX65_HELLO_TOML), "--out", str(out)],
+        check=True,
+        cwd=PROJECT,
+        capture_output=True,
+        text=True,
+    )
+    assert out.read_text() == MX65_HELLO_SYS.read_text(), (
+        "gen_embedded_core.py output drifted from hdl/mx65_hello_7seg.vhd — "
+        "regenerate it from systems/mx65_hello_7seg.toml + the firmware .bin"
     )
 
 
