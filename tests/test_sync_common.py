@@ -8,6 +8,7 @@ suite). Validation is exercised against the real board schema.
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -19,7 +20,7 @@ from sync_common import validate_board_jsons, write_outputs  # noqa: E402
 SCHEMA_PATH = Path(__file__).parent.parent / "boards" / "schema" / "board.schema.json"
 
 
-def _valid_board() -> dict:
+def _valid_board() -> dict[str, Any]:
     """Return a minimal board dict satisfying every required schema field."""
     return {
         "name": "Test Board",
@@ -34,7 +35,7 @@ def _valid_board() -> dict:
     }
 
 
-def _jsons(boards: dict) -> dict:
+def _jsons(boards: dict[str, dict[str, Any]]) -> dict[str, str]:
     """Serialize a {filename: board-dict} map the way the sync scripts do."""
     return {name: json.dumps(board, indent=2) + "\n" for name, board in boards.items()}
 

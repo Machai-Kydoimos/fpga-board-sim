@@ -1,7 +1,16 @@
 """Tests for SimPanel: clock options, update_timing rolling averages,
 and FPGABoard.set_height_offset()."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
+
+if TYPE_CHECKING:
+    import pygame
+
+    from fpga_sim.ui.sim_panel import SimPanel
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -14,7 +23,9 @@ def dummy_screen(headless_pygame):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _make_panel(dummy_screen, clock_hz=100e6, clocks_hz=None):
+def _make_panel(
+    dummy_screen: pygame.Surface, clock_hz: float = 100e6, clocks_hz: list[float] | None = None
+) -> SimPanel:
     from fpga_sim.ui.sim_panel import SimPanel
 
     return SimPanel(dummy_screen, height=120, board_clock_hz=clock_hz, board_clocks_hz=clocks_hz)
@@ -145,7 +156,7 @@ from fpga_sim.board_loader import BoardDef, ComponentInfo  # noqa: E402
 from fpga_sim.ui import FPGABoard  # noqa: E402
 
 
-def _sample_board():
+def _sample_board() -> BoardDef:
     leds = [ComponentInfo(f"led{i}", f"LED{i}", i) for i in range(4)]
     buttons = [ComponentInfo(f"btn{i}", f"BTN{i}", i) for i in range(2)]
     switches = [ComponentInfo(f"sw{i}", f"SW{i}", i) for i in range(4)]

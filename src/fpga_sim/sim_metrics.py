@@ -68,7 +68,7 @@ class SimMetrics:
         """Initialize the collector.  Call ``start()`` before the sim loop."""
         self._path = Path(path)
         self._flush_interval = flush_interval
-        self._q: queue.SimpleQueue[dict | None] = queue.SimpleQueue()
+        self._q: queue.SimpleQueue[dict[str, object] | None] = queue.SimpleQueue()
         self._thread = threading.Thread(target=self._writer, daemon=True, name="sim-metrics")
         self._frame_start_ns: int = 0
 

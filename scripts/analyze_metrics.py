@@ -16,6 +16,7 @@ import math
 import statistics
 import sys
 from pathlib import Path
+from typing import Any
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -56,7 +57,7 @@ def _stats_row(label: str, vals: list[float], fmt: str = ".1f") -> None:
 # ── Main analysis ─────────────────────────────────────────────────────────────
 
 
-def _load_meta(csv_path: Path) -> dict:
+def _load_meta(csv_path: Path) -> dict[str, Any]:
     """Load the JSON sidecar written by sim_testbench, or return empty dict."""
     meta_path = csv_path.with_suffix("").with_suffix(".meta.json")
     # Also try stripping .csv and appending .meta.json for any extension
@@ -102,7 +103,7 @@ def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
         board = _mf("board_name", "Generic")
         clk_hz = _mf("board_clock_hz", 0.0)
         ts = _mf("timestamp", "")
-        generics: dict = _mf("generics", {})
+        generics: dict[str, Any] = _mf("generics", {})
         cb = _mf("counter_bits", generics.get("COUNTER_BITS", "?"))
         pyver = _mf("python_version", "")
         plat = _mf("platform", "")

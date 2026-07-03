@@ -6,14 +6,21 @@ standard-IEEE clean (no Synopsys packages, no vendor primitives) before any
 system is built around it.  Later stages add ROM/generator/integration tests.
 """
 
+from __future__ import annotations
+
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from embedded_core.cpu_plugin import CpuPlugin
+    from embedded_core.system_spec import SystemSpec
 
 from fpga_sim.sim_bridge import (
     _build_sim_env,
@@ -86,7 +93,7 @@ _HELLO_TEST_COUNT = 1
 _DICE_TEST_COUNT = 1
 
 
-def _firmware_source(spec, plugin):
+def _firmware_source(spec: SystemSpec, plugin: CpuPlugin) -> str:
     """Read spec's firmware source text (the same file gen_embedded_core.py embeds)."""
     return (FIRMWARE / f"{spec.firmware}{plugin.asm_ext}").read_text()
 

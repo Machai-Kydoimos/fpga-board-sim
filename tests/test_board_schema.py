@@ -1,7 +1,9 @@
 """Tests that all board JSON files validate against the schema."""
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -9,7 +11,7 @@ BOARDS_DIR = Path(__file__).parent.parent / "boards"
 SCHEMA_PATH = BOARDS_DIR / "schema" / "board.schema.json"
 
 
-def _all_board_json_files():
+def _all_board_json_files() -> Iterator[Path]:
     """Yield all board JSON files from all source directories."""
     for source_dir in sorted(BOARDS_DIR.iterdir()):
         if not source_dir.is_dir() or source_dir.name == "schema":
@@ -84,7 +86,7 @@ def test_schema_validates_with_jsonschema(schema, board_files):
             pytest.fail(f"{json_file.name}: {e.message}")
 
 
-def _minimal_valid_board() -> dict:
+def _minimal_valid_board() -> dict[str, Any]:
     """A board with exactly the required fields and nothing else."""
     return {
         "name": "T",

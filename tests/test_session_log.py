@@ -1,6 +1,7 @@
 """Tests for sim_session_log.save_session_stats()."""
 
 import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -16,7 +17,7 @@ def session_dir(tmp_path, monkeypatch):
     return target
 
 
-def _call(**overrides):
+def _call(**overrides: Any) -> Path:
     """Call save_session_stats with valid defaults; allow field overrides."""
     kwargs: dict[str, Any] = dict(
         board_name="Test Board",

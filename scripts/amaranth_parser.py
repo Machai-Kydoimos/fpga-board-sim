@@ -16,6 +16,7 @@ the two can evolve independently.
 """
 
 import re
+from collections.abc import Sequence
 
 from fpga_sim.board_loader import (
     _FALLBACK_CLOCK_HZ,
@@ -29,7 +30,7 @@ from fpga_sim.board_loader import (
 # ═══════════════════════════════════════════════════════════════════════
 
 
-class _Attrs(dict):
+class _Attrs(dict[str, str]):
     """Mock of amaranth ``Attrs`` — pin attributes (e.g. ``IOStandard``), kept on the resource."""
 
     def __init__(self, **kwargs: str) -> None:
@@ -102,11 +103,12 @@ class _Connector:
         self,
         name: str,
         number: int,
-        pins: str | dict = "",
+        pins: str | dict[str, str] = "",
         **kwargs: object,
     ) -> None:
         self.name = name
         self.number = number
+        self.mapping: dict[str, str]
         if isinstance(pins, str):
             self.mapping = {}
             for i, p in enumerate(pins.split()):
@@ -137,7 +139,7 @@ class _Resource:
         cls,
         *args: object,
         default_name: str,
-        ios: list,
+        ios: Sequence[object],
         name_suffix: str = "",
     ) -> "_Resource":
         """Construct a _Resource from positional (number,) or (name, number) args."""
@@ -160,7 +162,7 @@ class _Resource:
 
 def _split_resources(
     *args: object,
-    pins: str | list | dict,
+    pins: str | list[str] | dict[int, str],
     invert: bool = False,
     conn: str | None = None,
     attrs: "_Attrs | None" = None,
@@ -357,7 +359,7 @@ def _make_namespace() -> dict[str, object]:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def _extract_clocks(resources: list) -> list[float]:
+def _extract_clocks(resources: list[_Resource]) -> list[float]:
     """Return sorted unique clock frequencies (Hz) from the resource list."""
     seen: set[float] = set()
     for res in resources:
@@ -367,7 +369,7 @@ def _extract_clocks(resources: list) -> list[float]:
     return sorted(seen)
 
 
-def _find_default_clock_hz(resources: list, default_clk: str | None) -> float:
+def _find_default_clock_hz(resources: list[_Resource], default_clk: str | None) -> float:
     """Return Hz for the named default_clk resource, or _FALLBACK_CLOCK_HZ."""
     if default_clk:
         for res in resources:
@@ -504,7 +506,7 @@ def load_board_from_source(source: str, filename: str = "<string>") -> list[Boar
     except Exception:
         return []
 
-    all_names: list | None = ns.get("__all__")  # type: ignore[assignment]
+    all_names: list[str] | None = ns.get("__all__")  # type: ignore[assignment]
 
     boards = []
     for obj_name, obj in list(ns.items()):

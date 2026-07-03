@@ -12,12 +12,13 @@ def screen(headless_pygame):
     return headless_pygame.display.set_mode((200, 120))
 
 
-def _fill_rgb(screen, style, **kwargs):
+def _fill_rgb(screen: pygame.Surface, style: ButtonStyle, **kwargs: bool) -> tuple[int, int, int]:
     """Draw a borderless button with an empty label; return the center pixel RGB."""
     screen.fill((1, 2, 3))
     rect = pygame.Rect(20, 20, 120, 60)
     draw_button(screen, rect, "", get_font(14), style, **kwargs)
-    return tuple(screen.get_at(rect.center))[:3]
+    r, g, b, _a = screen.get_at(rect.center)
+    return (r, g, b)
 
 
 def test_enabled_uses_bg(screen):

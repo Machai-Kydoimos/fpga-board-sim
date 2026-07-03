@@ -9,7 +9,8 @@ import pytest
 # Add scripts/ to path for importing
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from sync_amaranth_boards import generate_board_json, sanitize_filename, unique_name  # noqa: E402
+from sync_amaranth_boards import generate_board_json  # noqa: E402
+from sync_common import sanitize_filename, unique_name  # noqa: E402
 
 
 def test_sanitize_filename_basic():
