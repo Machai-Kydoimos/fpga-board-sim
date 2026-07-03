@@ -255,15 +255,9 @@ See also **P1** (NVC elaborate-once / run-many) in the [Icebox](#icebox).
 
 ### Tier 3 — Type safety & tooling
 
-#### D8. mypy strict mode
+#### D8. mypy strict mode ✅
 
-- **Why:** `pyproject.toml` has `disallow_incomplete_defs = true` but not `strict = true`. Strict mode catches incomplete type guards, missing returns in complex branches, untyped `**kwargs`. The codebase is already well-annotated — the upgrade should produce a manageable error list.
-- **What:** Flip to `strict = true`; fix the resulting errors (likely concentrated in `board_loader.py` mock classes and `sim_testbench.py`).
-- **Progress:** ✅ First slice (PR #119, closing issue #116) — `check_untyped_defs = true` enabled and the 26 errors it surfaced in test bodies fixed; the `annotation-unchecked` notes are gone. Remaining: the full `strict = true` flip (~13 bundled flags).
-- **Touches:** `pyproject.toml` (mypy section); scattered annotations.
-- **Effort:** M (mostly fixing reported errors).
-- **Dependencies:** None.
-- **Done when:** `uv run mypy .` passes with `strict = true` and CI enforces it.
+- Shipped. `pyproject.toml`'s `[tool.mypy]` now carries a single `strict = true` (13 bundled flags, superseding the five it used to list individually); `uv run mypy .` is clean across 84 files and CI enforces it via the existing `uv run mypy .` step. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### D9. `Literal` types for stringly-typed identifiers ✅
 
@@ -372,12 +366,12 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 |---|---|---|
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
 | **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → ~~U2 Analysis spinner~~ ✅ · ~~D2 Backend base class~~ ✅ · ~~U26 Visual README~~ ✅ |
-| **2** | Foundations that unblock later UX | ~~D6a Screen-result enum~~ ✅ · D6b ScreenController · ~~D15 Color consolidation~~ ✅ · U5 Settings dialog + extended session · D8 mypy strict |
+| **2** | Foundations that unblock later UX | ~~D6a Screen-result enum~~ ✅ · D6b ScreenController · ~~D15 Color consolidation~~ ✅ · U5 Settings dialog + extended session · ~~D8 mypy strict~~ ✅ |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-06-26).** Sprint 1a is fully shipped. **Sprint 1b is complete — D4 / U13 / U1 / U2 / U26 / D2 ✅ all done.** **Sprint 2 is underway:** **D15 ✅** (color consolidation, #109, pulled forward), **D8 first slice ✅** (`check_untyped_defs`, #119), and **D6a ✅** (screen-result enum, #121 — `ScreenResult`/`DialogResult` in `ui/results.py`; D6b ScreenController now unblocked). Remaining Sprint 2: **D6b** (ScreenController extraction), **U5** (Settings dialog + extended session), and the **full `strict = true` flip** (rest of D8). The phases otherwise remain correctly ordered.
+**Status (2026-07-03).** Sprint 1a is fully shipped. **Sprint 1b is complete — D4 / U13 / U1 / U2 / U26 / D2 ✅ all done.** **Sprint 2: D15 ✅** (color consolidation, #109), **D6a ✅** (screen-result enum, #121 — `ScreenResult`/`DialogResult` in `ui/results.py`; D6b ScreenController now unblocked), and **D8 ✅** (mypy strict, first slice #119 + full flip #166). Remaining Sprint 2: **D6b** (ScreenController extraction) and **U5** (Settings dialog + extended session). The phases otherwise remain correctly ordered.
 
 ---
 
@@ -424,7 +418,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U7, U9, U14, U22, D15
-- `pyproject.toml` — D8, U26 (`dev` group gains Pillow)
+- `pyproject.toml` — D8 ✅ (`[tool.mypy]` now just `strict = true`), U26 (`dev` group gains Pillow)
 - `.pre-commit-config.yaml`, new `.editorconfig` — D10 ✅
 - `CONTRIBUTING.md` — D12
 
@@ -446,7 +440,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
 1. **Tests** — `uv run pytest` (1126 tests across 32 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums). All sprints must keep this green.
-2. **Lint / type** — `uv run ruff check .` and `uv run mypy .` (the latter tightens under D8).
+2. **Lint / type** — `uv run ruff check .` and `uv run mypy .` (`strict = true` since D8 ✅).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).
 5. **Headless CI** — every PR runs the existing Linux + Windows x GHDL + NVC x Py 3.10-3.13 matrix.
