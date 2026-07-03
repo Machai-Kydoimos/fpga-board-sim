@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   also gains a `--prescaler-bits` generation-time override for the
   `PRESCALER_BITS` generic default (e.g. for a temporary faster-stepping
   capture build), and all 8 committed designs are regenerated (#161)
+- **New capture scenarios + assets: `cpu_walk` and `dice`.** `sim/capture_frames.py`'s
+  interactive-storyboard machinery is generalized into a `_Storyboard` base
+  class shared by the snake, embedded-CPU walking-counter, and dice-roller
+  demos. `scripts/capture_demo.py` gains `--prescaler-bits`, `--vhdl-label`,
+  and `--png` (save a still frame instead of assembling a GIF). New assets:
+  an interactive `mx65_walking_counter_demo.gif` for the README, an
+  `mx65_dice_7seg.gif`, and an `mx65_hello_7seg.png`, all embedded in the
+  guide/README (#162)
 
 ### Changed
 
@@ -32,6 +40,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a table of contents, and all 61 `§N` cross-references and ~37 repo-file
   mentions are now clickable anchor/relative links; the misaligned §3 ASCII
   diagram is corrected (#160)
+- **Fixed temporally-aliased embedded-CPU GIFs and the `demo.gif` loop seam.**
+  The walking-counter GIFs were captured against a temporary
+  `--prescaler-bits 14` variant build instead of the committed design's
+  default, so the visible step rate is now readable (~6.4 steps/s) instead of
+  aliased (~4 steps/frame). `demo.gif`'s storyboard now restores both `SW0`
+  and `BTN0` at the end, so its loop seam is continuous in rate and
+  direction. The three digit-count GIFs are renamed
+  `cpu_walk_{2,4,6}digit.gif` → `mx65_walking_counter_{2,4,6}digit.gif` (#162)
 
 ## [0.9.0] - 2026-07-02
 

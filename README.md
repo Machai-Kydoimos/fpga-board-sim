@@ -13,9 +13,9 @@ jobs on Linux and GHDL 6.0 on Windows. macOS is supported but not CI-tested.*
 
 Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://github.com/ghdl/ghdl) or [NVC](https://github.com/nickg/nvc). Select from 278 real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards), [litex-boards](https://github.com/litex-hub/litex-boards), [Digilent XDC](https://github.com/Digilent/digilent-xdc), and custom JSON definitions), then run VHDL designs against a virtual board with switches, buttons, LEDs, and 7-segment displays — all driven by [cocotb](https://github.com/cocotb/cocotb).
 
-![Live VHDL simulation on a virtual DE10-Lite: a snake of light crawls across the six 7-segment displays while buttons are pressed — reversing it, then lighting every segment — and a switch speeds it up](docs/assets/demo.gif)
+![Live VHDL simulation on a virtual DE10-Lite: a snake of light crawls across the six 7-segment displays while buttons are pressed — reversing it, then lighting every segment, and a switch speeds it up — and finally the inputs are restored so the loop plays seamlessly](docs/assets/demo.gif)
 
-*Above — one of **278 boards** (the DE10-Lite) running one example design, [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), live on GHDL / NVC + cocotb — not a pre-rendered animation. Every switch and button is a **real input to the running VHDL**; the design reads them and computes the LED and 7-segment **outputs** you see. So **BTN0** makes the design reverse the snake, **BTN1** makes it light every segment, and **SW0** makes it run faster — cause and effect, exactly as on real hardware. Captured headlessly via [`scripts/capture_demo.py`](scripts/capture_demo.py). ▶ [Watch the full talk](https://youtu.be/v4Fc6HctK1E).*
+*Above — one of **278 boards** (the DE10-Lite) running one example design, [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), live on GHDL / NVC + cocotb — not a pre-rendered animation. Every switch and button is a **real input to the running VHDL**; the design reads them and computes the LED and 7-segment **outputs** you see. So **BTN0** makes the design reverse the snake, **BTN1** makes it light every segment, and **SW0** makes it run faster — cause and effect, exactly as on real hardware — and finally the inputs are restored so the loop plays seamlessly. Captured headlessly via [`scripts/capture_demo.py`](scripts/capture_demo.py). ▶ [Watch the full talk](https://youtu.be/v4Fc6HctK1E).*
 
 Choose from **278 real FPGA boards** (Xilinx, Intel, Lattice, Gowin, Efinix, and more). Filter live by component and vendor — here the catalog narrows from all 278 down to the 9 Intel boards that have LEDs, switches, buttons, *and* a 7-segment display:
 
@@ -274,6 +274,8 @@ scripts/
   sync_digilent_xdc.py     Syncs board definitions from Digilent XDC files (26 boards + port_conventions)
   digilent_parser.py       XDC regex parser used by sync_digilent_xdc.py
   sync_common.py           Shared scaffolding (download/naming/output) for the sync scripts
+  capture_demo.py          Captures the README/guide GIFs and PNG stills via headless simulation
+  capture_selector.py      Captures the board-selector filtering GIF via headless UI automation
   analyze_metrics.py       Standalone performance report from a sim_metrics CSV
   gen_embedded_core.py     Generates one embedded-core system from a CPU plugin + system spec + firmware .bin
   regen_embedded_cores.py  One-command regen/check loop over every systems/*.toml
@@ -478,7 +480,17 @@ The simulator sets the generics to match the selected board's resource counts an
 
 A design can also be a **single self-contained file that embeds a soft CPU core** — a vendored 6502 (mx65) or Z80 (T80) — running an assembled firmware program, instead of hand-written RTL. The file still satisfies the same 7-segment board contract above (`clk`/`sw`/`btn`/`led`/`seg`); the firmware reads the board's resource counts from IO config registers, so one generated file fits any board. Six systems ship today — `hdl/mx65_walking_counter_7seg.vhd`, `hdl/mx65_irq_counter_7seg.vhd`, and four `hdl/t80_*.vhd` Z80 variants (IM 2 vectored interrupts, port-mapped IO, and a capstone combining both) — plus `hdl/mx65_hello_7seg.vhd`, a ~20-line firmware on-ramp, and `hdl/mx65_dice_7seg.vhd`, a worked example of extending the IO subsystem with a peripheral (a free-running LFSR random-number register) that also gives ROM and RAM independently-sized regions.
 
-![The 6502 walking-counter firmware running on a virtual DE10-Lite, identical in behavior to the hand-written walking_counter_7seg.vhd RTL design](docs/assets/cpu_walk_6digit.gif)
+![The 6502 soft-CPU walking-counter firmware running on a virtual DE10-Lite: BTN0 reverses the count and the bouncing LED, BTN1 lights every LED and segment (lamp test), and SW0 doubles the step rate — then all three are restored so the loop repeats seamlessly](docs/assets/mx65_walking_counter_demo.gif)
+
+*Above — the same virtual board, but nothing here is hand-written RTL: a **6502 soft CPU**
+(the vendored mx65 core) executes
+[`firmware/mx65_walking_counter_7seg.s`](firmware/mx65_walking_counter_7seg.s) from an
+embedded ROM, reading the switches and buttons and driving the LEDs and digits through
+memory-mapped IO. **BTN0** makes the firmware count down and reverse the bouncing LED,
+**BTN1** is a lamp test, and **SW0** doubles the step rate. The CPU free-runs at full
+simulation speed — a hardware prescaler divides the visible update rate, exactly as it
+would on real silicon. Captured headlessly via
+[`scripts/capture_demo.py`](scripts/capture_demo.py).*
 
 These are **generated**, not hand-written — `uv run python scripts/gen_embedded_core.py --system systems/<name>.toml` (re)builds one from a vendored CPU core + a `systems/*.toml` spec + an assembled firmware `.bin`; `uv run python scripts/regen_embedded_cores.py` regenerates every system in one command. See [`docs/embedded_core_system_guide.md`](docs/embedded_core_system_guide.md) for the full development guide (quickstart, architecture, extending) and [`docs/embedded_core_improvement_plan.md`](docs/embedded_core_improvement_plan.md) for the arc that hardened it.
 

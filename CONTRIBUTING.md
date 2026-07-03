@@ -313,6 +313,51 @@ For a *visual* check (rendered LED / 7-seg frames saved as PNGs), see
 
 ---
 
+## Regenerating the documentation assets
+
+The README and embedded-core guide embed GIFs/PNGs captured live from the
+running simulator (headless, `SDL_VIDEODRIVER=dummy`) — none are hand-drawn or
+post-processed. To regenerate them:
+
+```bash
+# Board selector filtering GIF
+uv run python scripts/capture_selector.py
+
+# README hero GIF (interactive snake_7seg storyboard)
+uv run python scripts/capture_demo.py
+
+# Embedded-CPU walking-counter GIFs need a temporary faster-stepping variant
+# build first (--prescaler-bits 14), so the CPU free-runs while the display
+# steps at a viewable rate (see the guide's "Timing & throughput" section):
+uv run python scripts/gen_embedded_core.py --system systems/mx65_walking_counter_7seg.toml \
+    --prescaler-bits 14 --out /tmp/variant.vhd
+
+uv run python scripts/capture_demo.py --scenario plain --sim nvc --vhdl /tmp/variant.vhd \
+    --vhdl-label hdl/mx65_walking_counter_7seg.vhd --step-ns 336000 --frames 144 \
+    --board step_mxo2 --out docs/assets/mx65_walking_counter_2digit.gif
+# ...repeat with --board de0 / de10_lite for the 4-digit / 6-digit GIFs
+
+uv run python scripts/capture_demo.py --scenario cpu_walk --sim nvc --vhdl /tmp/variant.vhd \
+    --vhdl-label hdl/mx65_walking_counter_7seg.vhd --prescaler-bits 14 --step-ns 336000 \
+    --board de10_lite --out docs/assets/mx65_walking_counter_demo.gif
+
+# Dice-roller GIF and hello-design PNG use the committed designs directly --
+# ticks only gate button sampling, so no variant build is needed:
+uv run python scripts/capture_demo.py --scenario dice --sim nvc \
+    --vhdl hdl/mx65_dice_7seg.vhd --step-ns 336000 --board de10_lite \
+    --out docs/assets/mx65_dice_7seg.gif
+
+uv run python scripts/capture_demo.py --scenario plain --sim nvc \
+    --vhdl hdl/mx65_hello_7seg.vhd --step-ns 336000 --frames 12 --png \
+    --board de10_lite --out docs/assets/mx65_hello_7seg.png
+```
+
+**Visually review every regenerated GIF/PNG before committing** (loop-seam
+continuity, readable step rate, strip/caption text): these are captured live,
+so a logic change anywhere in the pipeline can subtly change what they show.
+
+---
+
 ## CI pipeline
 
 Every push and pull request runs the following jobs:

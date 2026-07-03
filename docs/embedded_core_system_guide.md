@@ -404,6 +404,8 @@ RESET:  SEI
 SPIN:   JMP SPIN          ; mx65 keeps fetching; display holds
 ```
 
+![The mx65_hello_7seg design running on a virtual DE10-Lite: LED0 lit and digit 0 showing "0", then holding forever](assets/mx65_hello_7seg.png)
+
 If that shows one steady LED and a "0", your reset vector, POR, read path, and IO writes all work —
 everything else is incremental. Run it yourself (`uv run fpga-sim`, pick [`hdl/mx65_hello_7seg.vhd`](../hdl/mx65_hello_7seg.vhd)),
 or see the Quickstart box after [§1](#1-overview--goals) for the five-step edit loop. Start your own firmware by copying
@@ -602,8 +604,18 @@ add a fragment rather than growing another Python string literal.
 ## 11. Running & verifying
 
 - **Interactive:** `uv run fpga-sim` → pick a 7-seg board → select your `.vhd`.
-- **Headless GIF:** `uv run python scripts/capture_demo.py --vhdl hdl/mx65_walking_counter_7seg.vhd
-  --board de10_lite --sim nvc` (`SDL_VIDEODRIVER=dummy`; board JSON via `FPGA_SIM_BOARD_JSON`).
+- **Headless GIF (design at its normal speed):**
+  `uv run python scripts/capture_demo.py --scenario plain --vhdl hdl/mx65_walking_counter_7seg.vhd
+  --board de10_lite --sim nvc --step-ns 336000` (`SDL_VIDEODRIVER=dummy`; board JSON via
+  `FPGA_SIM_BOARD_JSON`).
+- **Headless interactive GIF (the README's storyboard):** generate a temporary
+  `--prescaler-bits 14` variant so the CPU free-runs while the display steps at a viewable rate
+  ([§9](#9-timing--throughput)), then capture it with the `cpu_walk` scenario and `--vhdl-label` so
+  the info strip still shows the real committed path:
+  `uv run python scripts/gen_embedded_core.py --system systems/mx65_walking_counter_7seg.toml
+  --prescaler-bits 14 --out /tmp/variant.vhd && uv run python scripts/capture_demo.py --scenario
+  cpu_walk --sim nvc --vhdl /tmp/variant.vhd --vhdl-label hdl/mx65_walking_counter_7seg.vhd
+  --prescaler-bits 14 --step-ns 336000 --board de10_lite --out docs/assets/mx65_walking_counter_demo.gif`.
 - **Tests:** [`sim/test_cpu_walking.py`](../sim/test_cpu_walking.py) (glyphs + advance, one-hot bounce, `btn(0)` reversal,
   `btn(1)` lamp-test) is the **shared** behavioral suite — **all six designs** (6502 polled + IRQ;
   Z80 polled, IM 2, port-IO, and the IM 2 + port capstone) run it (`PASS=4`) under both simulators.
@@ -634,10 +646,14 @@ that differ only in digit count:
 
 | 2 digits (StepMXO2) | 4 digits (DE0) | 6 digits (DE10-Lite) |
 |---|---|---|
-| ![2-digit walking counter](assets/cpu_walk_2digit.gif) | ![4-digit walking counter](assets/cpu_walk_4digit.gif) | ![6-digit walking counter](assets/cpu_walk_6digit.gif) |
+| ![2-digit walking counter](assets/mx65_walking_counter_2digit.gif) | ![4-digit walking counter](assets/mx65_walking_counter_4digit.gif) | ![6-digit walking counter](assets/mx65_walking_counter_6digit.gif) |
 
 The bouncing one-hot LED and the decimal odometer are the same firmware, sized at runtime — nothing
-in the VHDL or the program is board-specific.
+in the VHDL or the program is board-specific. The four `t80_*` builds are not shown: they drive the
+board identically to these mx65 captures
+([§12](#12-end-to-end-worked-example-the-6502-walking-counter)) — that sameness is the point. The
+README's embedded-CPU section has a fuller interactive capture of this same design (`BTN0`, `BTN1`,
+and `SW0` all exercised in one storyboard).
 
 ### The same counter on a Z80 (the second core)
 
@@ -687,6 +703,11 @@ The `peripherals` spec axis (a TOML list, e.g. `peripherals = ["lfsr"]`) splices
 CPU-side IO subsystem into `cpu_io` without touching any existing design — empty tokens when the
 list is empty keep every other system byte-identical (proved by the golden tests). Adding one is
 four pieces; [`hdl/mx65_dice_7seg.vhd`](../hdl/mx65_dice_7seg.vhd) / [`systems/mx65_dice_7seg.toml`](../systems/mx65_dice_7seg.toml) are the committed example:
+
+![The mx65 dice-roller firmware running on a virtual DE10-Lite: each BTN0 press reads the free-running LFSR peripheral and shows a new 1-6 face on digit 0 and its binary value on the LEDs](assets/mx65_dice_7seg.gif)
+
+*Each `BTN0` press samples the free-running LFSR peripheral and renders the reduced 1–6 result as a
+digit-0 glyph and a binary LED readout.*
 
 1. **A fragment triple** (`templates/fragments/lfsr_*.vhd.frag`), spliced via four `cpu_io.vhd.tmpl`
    anchors — `@@PERIPH_SIGNALS@@`, `@@PERIPH_SENS@@`, `@@PERIPH_READ@@`, `@@PERIPH_LOGIC@@` (put any
