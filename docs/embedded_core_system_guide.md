@@ -481,6 +481,11 @@ constant ROM : rom_t := (
 Unit-test the bytes: assert the vectors land at the right offsets and that `DECLUT` equals
 `walking_counter_7seg`'s `SEG_LUT(0..9)`.
 
+**The generated file also carries the readable source.** Above the `constant ROM` declaration,
+the generator embeds the full firmware assembly listing as a `--` comment block (verbatim, one
+source line per comment line), so the single `.vhd` file shows both the machine code *and* the
+program that produced it — the checked-in `.bin` stays the authoritative image either way.
+
 ## 9. Timing & throughput
 
 The simulator runs sub-real-time: a per-frame cap of ~9596 clocks at ~60 fps gives a ceiling
@@ -496,9 +501,15 @@ is independent of how long your loop is:
 | 8 | 256 | ~2250 (CPU-capped) |
 | **10 (default)** | 1024 | ~560 |
 | 12 | 4096 | ~140 |
+| 14 | 16384 | ~35 |
 
 Expose `PRESCALER_BITS` as a generic (default 10). The speed slider scales sim-time; switch-based
-software division multiplies the rate further.
+software division multiplies the rate further. `scripts/gen_embedded_core.py --prescaler-bits N`
+overrides the generic's *default* at generation time, without touching the committed design or its
+firmware — the committed GIF captures
+([§12](#12-end-to-end-worked-example-the-6502-walking-counter)) use a temporary 14-variant build
+(`--prescaler-bits 14`) so the CPU still free-runs at full simulation speed while the visible step
+rate stays slow enough for a viewer to follow.
 
 **Polling vs. interrupts.** Start with **polling** — no ISR, no reentrancy. The interrupt-driven
 variant (`mx65_irq_counter_7seg`) instead builds a small **interrupt controller** in `cpu_io` with

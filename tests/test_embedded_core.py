@@ -86,6 +86,11 @@ _HELLO_TEST_COUNT = 1
 _DICE_TEST_COUNT = 1
 
 
+def _firmware_source(spec, plugin):
+    """Read spec's firmware source text (the same file gen_embedded_core.py embeds)."""
+    return (FIRMWARE / f"{spec.firmware}{plugin.asm_ext}").read_text()
+
+
 # ── Vendored file integrity (no simulator needed) ─────────────────────────────
 
 
@@ -1097,7 +1102,8 @@ def test_generated_design_passes_contract_and_lists_all_entities():
     from embedded_core.emitter import emit
 
     spec = system_spec.load(MX65_TOML)
-    generated = emit(spec, get_plugin(spec.cpu), MX65_BIN.read_bytes())
+    plugin = get_plugin(spec.cpu)
+    generated = emit(spec, plugin, MX65_BIN.read_bytes(), _firmware_source(spec, plugin))
     for entity in ("mx65", "cpu_rom", "cpu_ram", "cpu_io", "mx65_walking_counter_7seg"):
         assert f"entity {entity} is" in generated, f"generated design missing entity '{entity}'"
     with tempfile.TemporaryDirectory() as d:
@@ -1125,6 +1131,46 @@ def test_memory_map_drives_widths_and_decode():
     assert spec.io.select_literal() in text
 
 
+# ── Firmware listing + --prescaler-bits generation override ───────────────────
+
+
+def test_firmware_listing_embedded_for_both_cores():
+    """The generated file carries the firmware source as a comment above the ROM constant."""
+    from embedded_core import system_spec
+    from embedded_core.cpu_plugin import get_plugin
+    from embedded_core.emitter import emit
+
+    for toml, rom_bin in ((MX65_HELLO_TOML, MX65_HELLO_BIN), (T80_TOML, T80_BIN)):
+        spec = system_spec.load(toml)
+        plugin = get_plugin(spec.cpu)
+        source = _firmware_source(spec, plugin)
+        generated = emit(spec, plugin, rom_bin.read_bytes(), source)
+        first_line = source.splitlines()[0].rstrip()
+        assert f"-- {first_line}" in generated, f"{spec.name}: firmware listing not embedded"
+        assert f"-- Firmware source: firmware/{spec.firmware}{plugin.asm_ext}" in generated, (
+            f"{spec.name}: firmware listing header missing"
+        )
+
+
+def test_prescaler_bits_generation_override():
+    """spec.generics['prescaler_bits'] (as --prescaler-bits sets it) flows into the generic."""
+    from embedded_core import system_spec
+    from embedded_core.cpu_plugin import get_plugin
+    from embedded_core.emitter import emit
+
+    spec = system_spec.load(MX65_TOML)
+    plugin = get_plugin(spec.cpu)
+    source = _firmware_source(spec, plugin)
+    rom = MX65_BIN.read_bytes()
+
+    unmodified = emit(spec, plugin, rom, source)
+    assert "PRESCALER_BITS : positive := 10" in unmodified
+
+    spec.generics["prescaler_bits"] = 14
+    overridden = emit(spec, plugin, rom, source)
+    assert "PRESCALER_BITS : positive := 14" in overridden
+
+
 # ── Memory-map validation: power-of-two, alignment, range, overlap, ROM fit ────
 
 
@@ -1149,7 +1195,8 @@ def test_unequal_rom_ram_sizes_analyze_under_ghdl(ghdl):
     )
     assert spec.rom.addr_bits != spec.ram.addr_bits, "test spec must actually have unequal sizes"
 
-    generated = emit(spec, get_plugin(spec.cpu), MX65_BIN.read_bytes())
+    plugin = get_plugin(spec.cpu)
+    generated = emit(spec, plugin, MX65_BIN.read_bytes(), _firmware_source(spec, plugin))
     d = tempfile.mkdtemp(prefix="unequal_ghdl_")
     probe = Path(d) / f"{spec.name}.vhd"
     probe.write_text(generated)
@@ -1263,7 +1310,7 @@ def test_emit_rejects_oversized_rom_image():
     spec = system_spec.load(MX65_TOML)  # rom.size == 0x0800
     oversized = bytes(spec.rom.size + 1)
     with pytest.raises(ValueError) as exc_info:
-        emit(spec, get_plugin(spec.cpu), oversized)
+        emit(spec, get_plugin(spec.cpu), oversized, "")  # rejected before firmware_source is used
     message = str(exc_info.value)
     assert str(spec.rom.size + 1) in message and str(spec.rom.size) in message
 
@@ -1281,7 +1328,7 @@ def test_emit_rejects_boots_at_zero_core_with_rom_not_at_zero():
         rom=system_spec.MemoryRegion(name="rom", base=0x0800, size=0x0800),
     )
     with pytest.raises(ValueError, match="boots at"):
-        emit(spec, get_plugin(spec.cpu), T80_BIN.read_bytes())
+        emit(spec, get_plugin(spec.cpu), T80_BIN.read_bytes(), "")
 
 
 def test_emit_rejects_vector_fetch_core_with_rom_not_at_top():
@@ -1297,7 +1344,7 @@ def test_emit_rejects_vector_fetch_core_with_rom_not_at_top():
         rom=system_spec.MemoryRegion(name="rom", base=0xF000, size=0x0800),
     )
     with pytest.raises(ValueError, match="top of memory"):
-        emit(spec, get_plugin(spec.cpu), MX65_BIN.read_bytes())
+        emit(spec, get_plugin(spec.cpu), MX65_BIN.read_bytes(), "")
 
 
 # ── Spec axes: interrupt mode + IO transport ──────────────────────────────────
@@ -1355,10 +1402,10 @@ def test_emit_rejects_unsupported_axis_combos():
     rom = MX65_BIN.read_bytes()
     # the mx65 core has no port-mapped-IO adapter (only the Z80/T80 does).
     with pytest.raises(ValueError):
-        emit(dataclasses.replace(spec, io_transport="port"), plugin, rom)
+        emit(dataclasses.replace(spec, io_transport="port"), plugin, rom, "")
     # the mx65 core has no vectored-interrupt adapter (only the Z80/T80 does).
     with pytest.raises(ValueError):
-        emit(dataclasses.replace(spec, irq_mode="vectored"), plugin, rom)
+        emit(dataclasses.replace(spec, irq_mode="vectored"), plugin, rom, "")
 
 
 # ── scripts/regen_embedded_cores.py: the one-command regen/check loop ─────────

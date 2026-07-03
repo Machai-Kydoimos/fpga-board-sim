@@ -20,6 +20,7 @@ architecture rtl of cpu_rom is
   -- firmware/@@FIRMWARE@@.bin is the source of truth; regenerate this
   -- aggregate with scripts/embedded_core/rom_to_vhdl.py.  Zero bytes fall through
   -- to `others` (e.g. the RESET vector low byte at offset 16#7FC# = $00).
+@@FIRMWARE_LISTING@@
   constant ROM : rom_t := (
 @@ROM_AGGREGATE@@
   );
