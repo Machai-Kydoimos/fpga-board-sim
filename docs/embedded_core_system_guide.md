@@ -747,7 +747,7 @@ detection, switch-speed scaling) for turning this exact kind of RTL into firmwar
 | LED stuck at one end | `POS` bound wrong / didn't read `N_LEDS` | Read config reg `$E004`; check bounce limits |
 | Works in GHDL, fails in NVC | heap / elaboration differences | NVC already gets `-H 512m`; keep ROM/RAM modest |
 | Display dead from the very first frame | Registered (sync) memory → off-by-one read; CPU fetched garbage | Make ROM/RAM/mux read path **combinational** ([§4](#4-adding-a-cpu-core-the-core-agnostic-part)) |
-| Display frozen/blank; `data_in` shows `U`/`X` | Metavalue propagation from uninitialized RAM/bus | Init RAM to `x"00"`, mux `else => x"00"`, zero vars in cold-start ([§5](#5-reset--cold-start-generalized)) |
+| Display frozen/blank; `data_in` shows `U`/`X` | Metavalue propagation from uninitialized RAM/bus | Init RAM to `x"00"`, mux `else => x"00"`, zero vars in cold-start ([§5](#5-reset--cold-start-generalized)); dump a waveform to see where it originates ([§15](#15-debugging-with-waveforms)) |
 | `btn(0)` reversal sometimes ignored | Button pulse shorter than one tick (polled once/tick) | Hold ≥ 1 tick; or use the IRQ variant ([§9](#9-timing--throughput)) |
 | Poll loop hangs on a multi-cycle CPU (e.g. Z80) | **read-to-clear** status bit clears mid-read, before the core samples it | Make it **write-to-clear**: poll to check, write to ack ([§4.5](#45-bus-read-timing--the-deepest-pothole)) |
 | New core: garbage or writes don't land | bus adapter maps a strobe or polarity wrong | Recheck `adapters/<core>.vhd`: `cpu_we`, reset polarity, irq polarity, address width ([§4.4](#44-the-bus-adapter--the-heart-of-any-core)) |
@@ -778,3 +778,45 @@ Open the trace (GTKWave, Surfer) and watch the core's pins:
 
 A 20–50 µs window at `PRESCALER_BITS=10` captures reset plus several ticks — enough to diagnose most
 bring-up failures.
+
+### A worked example: `mx65_hello_7seg`'s reset-to-spin story
+
+The `hello` design ([§7](#7-writing-firmware)) is small enough to show its *entire* boot story in
+one annotated capture — a reference for what "correct" looks like before you go hunting for what's
+wrong in a bigger design:
+
+![Annotated waveform of mx65_hello_7seg's boot: POR release, reset-vector fetch, first opcode, the LED-on store, and the spin loop, with clk/cpu_reset/cpu_addr/cpu_din/cpu_we/led traces](assets/mx65_hello_waveform.png)
+
+Reading left to right (every callout below is *located programmatically* from the trace — searched
+for, not eyeballed or hardcoded):
+
+1. **POR releases after 7 clocks** — `cpu_reset` falls once the POR counter
+   ([§5](#5-reset--cold-start-generalized)) reaches its terminal count; this is the first thing to
+   check when a design looks "dead" from frame one.
+2. **6502 fetches the reset vector** — `cpu_addr` reads `$FFFC` then `$FFFD`, the little-endian
+   address the CPU will jump to.
+3. **First opcode (`SEI`)** — execution jumps to `$F800` (the top of ROM, per the memory map in
+   [§6](#6-memory--io-map-design)) and `cpu_din` shows `$78`, the `SEI` opcode that opens
+   [`firmware/mx65_hello_7seg.s`](../firmware/mx65_hello_7seg.s).
+4. **`STA $E020 -> LED0 on`** — `cpu_we` pulses while `cpu_addr` holds `$E020` (`LED_LO`,
+   [§6](#6-memory--io-map-design)) and `led(0)` rises one clock later — cause and effect.
+5. **`spin: JMP spin`** — `cpu_addr` settles into a tight three-address repeat (`$F810`-`$F812`,
+   the `JMP` opcode and its two operand bytes) that holds for the rest of the run; the figure only
+   *plots* the first 650 ns of the 3000 ns simulated window for legibility, but the loop is checked
+   programmatically to hold stable all the way to the end before the figure is drawn.
+
+Regenerate this figure any time the firmware or generator changes:
+
+```bash
+uv run python scripts/capture_waveform.py
+```
+
+If you use GTKWave day to day, the committed
+[`docs/assets/mx65_hello_7seg.gtkw`](assets/mx65_hello_7seg.gtkw) save file lists the same six
+signals (GTKWave's default display for multi-bit signals is already hex, matching the figure).
+Keep the VCD this time and open both together:
+
+```bash
+uv run python scripts/capture_waveform.py --vcd-out /tmp/hello.vcd
+gtkwave /tmp/hello.vcd docs/assets/mx65_hello_7seg.gtkw
+```

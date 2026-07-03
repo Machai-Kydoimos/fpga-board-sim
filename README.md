@@ -276,6 +276,7 @@ scripts/
   sync_common.py           Shared scaffolding (download/naming/output) for the sync scripts
   capture_demo.py          Captures the README/guide GIFs and PNG stills via headless simulation
   capture_selector.py      Captures the board-selector filtering GIF via headless UI automation
+  capture_waveform.py      Renders the guide's annotated mx65_hello_7seg waveform PNG + .gtkw
   analyze_metrics.py       Standalone performance report from a sim_metrics CSV
   gen_embedded_core.py     Generates one embedded-core system from a CPU plugin + system spec + firmware .bin
   regen_embedded_cores.py  One-command regen/check loop over every systems/*.toml
