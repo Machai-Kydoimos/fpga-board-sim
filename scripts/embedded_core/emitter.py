@@ -32,6 +32,24 @@ def _banner_description(description: str) -> str:
     return "\n".join(f"-- {line}" if line else "--" for line in description.split("\n"))
 
 
+def _firmware_listing(spec: SystemSpec, plugin: CpuPlugin, source: str) -> str:
+    """Render the firmware source as an indented VHDL comment block above the ROM constant.
+
+    Two-space indent matches cpu_rom.vhd.tmpl's existing provenance comment
+    (see guide §8); a blank source line becomes a bare ``--``, same rule as
+    :func:`_banner_description`.
+    """
+    header = (
+        f"  -- Firmware source: firmware/{spec.firmware}{plugin.asm_ext}  "
+        f"(assembled with {plugin.asm_toolchain}; the checked-in .bin below is authoritative)"
+    )
+    lines = [header, "  " + _RULER]
+    for line in source.splitlines():
+        line = line.rstrip()
+        lines.append(f"  -- {line}" if line else "  --")
+    return "\n".join(lines)
+
+
 def _fill(template: str, tokens: dict[str, str]) -> str:
     for key, value in tokens.items():
         template = template.replace(f"@@{key}@@", value)
@@ -72,8 +90,12 @@ def _decode(spec: SystemSpec) -> str:
     return "\n".join(lines)
 
 
-def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
-    """Return the complete single-file VHDL design as text."""
+def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes, firmware_source: str) -> str:
+    """Return the complete single-file VHDL design as text.
+
+    ``firmware_source`` is embedded verbatim as a comment block above the ROM
+    constant (see guide §8), so the single file also shows the program it runs.
+    """
     if len(rom_bytes) > spec.rom.size:
         rom_end = spec.rom.base + spec.rom.size
         raise ValueError(
@@ -104,6 +126,7 @@ def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
         "DESCRIPTION": _banner_description(spec.description),
         "ASM_TOOLCHAIN": plugin.asm_toolchain,
         "ASM_EXT": plugin.asm_ext,
+        "FIRMWARE_LISTING": _firmware_listing(spec, plugin, firmware_source),
         "NUM_SWITCHES": str(g["num_switches"]),
         "NUM_BUTTONS": str(g["num_buttons"]),
         "NUM_LEDS": str(g["num_leds"]),

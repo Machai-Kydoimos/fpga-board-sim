@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on" summary of the CI matrix (Ubuntu + Windows × Python 3.10/3.12/3.13,
   plus GHDL/NVC simulator jobs) in place of per-OS badges, which GitHub
   Actions cannot express per-job (#159)
+- **Embedded-core generated designs now carry their firmware source.** Above
+  the ROM constant, every generated `hdl/*.vhd` embeds its firmware assembly
+  listing verbatim as a `--` comment block, so the single file shows both the
+  machine code and the program that produced it. `scripts/gen_embedded_core.py`
+  also gains a `--prescaler-bits` generation-time override for the
+  `PRESCALER_BITS` generic default (e.g. for a temporary faster-stepping
+  capture build), and all 8 committed designs are regenerated (#161)
 
 ### Changed
 
