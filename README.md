@@ -1,6 +1,15 @@
 # FPGA Board Simulator
 
 [![CI](https://github.com/Machai-Kydoimos/fpga-board-sim/actions/workflows/ci.yml/badge.svg)](https://github.com/Machai-Kydoimos/fpga-board-sim/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Machai-Kydoimos/fpga-board-sim)](https://github.com/Machai-Kydoimos/fpga-board-sim/releases)
+[![License](https://img.shields.io/github/license/Machai-Kydoimos/fpga-board-sim)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+
+*CI matrix: Ubuntu + Windows × Python 3.10 / 3.12 / 3.13, plus GHDL 6.0 and NVC simulator
+jobs on Linux and GHDL 6.0 on Windows. macOS is supported but not CI-tested.*
 
 Interactive FPGA board simulator supporting VHDL simulation via [GHDL](https://github.com/ghdl/ghdl) or [NVC](https://github.com/nickg/nvc). Select from 278 real FPGA board definitions (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards), [litex-boards](https://github.com/litex-hub/litex-boards), [Digilent XDC](https://github.com/Digilent/digilent-xdc), and custom JSON definitions), then run VHDL designs against a virtual board with switches, buttons, LEDs, and 7-segment displays — all driven by [cocotb](https://github.com/cocotb/cocotb).
 
@@ -471,7 +480,7 @@ A design can also be a **single self-contained file that embeds a soft CPU core*
 
 ![The 6502 walking-counter firmware running on a virtual DE10-Lite, identical in behavior to the hand-written walking_counter_7seg.vhd RTL design](docs/assets/cpu_walk_6digit.gif)
 
-These are **generated**, not hand-written — `uv run python scripts/gen_embedded_core.py --system systems/<name>.toml` (re)builds one from a vendored CPU core + a `systems/*.toml` spec + an assembled firmware `.bin`; `uv run python scripts/regen_embedded_cores.py` regenerates every system in one command. See `docs/embedded_core_system_guide.md` for the full development guide (quickstart, architecture, extending) and `docs/embedded_core_improvement_plan.md` for the arc that hardened it.
+These are **generated**, not hand-written — `uv run python scripts/gen_embedded_core.py --system systems/<name>.toml` (re)builds one from a vendored CPU core + a `systems/*.toml` spec + an assembled firmware `.bin`; `uv run python scripts/regen_embedded_cores.py` regenerates every system in one command. See [`docs/embedded_core_system_guide.md`](docs/embedded_core_system_guide.md) for the full development guide (quickstart, architecture, extending) and [`docs/embedded_core_improvement_plan.md`](docs/embedded_core_improvement_plan.md) for the arc that hardened it.
 
 ## Dependencies
 

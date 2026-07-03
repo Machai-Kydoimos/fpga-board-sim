@@ -6,6 +6,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **README badge row + CI matrix note.** The README now shows a project-info
+  badge trio (license, latest release, Python 3.10+) alongside the existing
+  CI badge and a new tooling trio (ruff, mypy, uv), plus a one-line "tested
+  on" summary of the CI matrix (Ubuntu + Windows × Python 3.10/3.12/3.13,
+  plus GHDL/NVC simulator jobs) in place of per-OS badges, which GitHub
+  Actions cannot express per-job (#159)
+
+### Changed
+
+- **README doc references are now links.** The `docs/embedded_core_system_guide.md`
+  and `docs/embedded_core_improvement_plan.md` mentions in the README's
+  embedded-CPU section are clickable relative links instead of plain
+  backticked text (#159)
+
 ## [0.9.0] - 2026-07-02
 
 ### Added
