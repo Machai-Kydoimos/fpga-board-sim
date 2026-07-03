@@ -5,7 +5,16 @@ The FPGABoard.run() result mapping lives in test_board_display_events.py
 ErrorDialog producer (click / keyboard / quit → DialogResult).
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fpga_sim.ui import DialogResult, ScreenResult
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
+    from fpga_sim.ui.error_dialog import ErrorDialog
 
 # ── Enum invariants ──────────────────────────────────────────────────────────
 
@@ -21,19 +30,22 @@ def test_screenresult_has_four_distinct_members():
 
 
 def test_dialogresult_has_two_distinct_members():
-    assert DialogResult.RETRY is not DialogResult.BACK
+    # mypy (strict_equality) proves these literals can never be equal — that's
+    # exactly the invariant under test, so the check is deliberately tautological.
+    assert DialogResult.RETRY is not DialogResult.BACK  # type: ignore[comparison-overlap]
 
 
 def test_screen_and_dialog_back_are_disjoint():
     """Both enums have a BACK, but as separate types they never compare equal —
     so the two decision spaces can't be confused at runtime (mypy blocks it too)."""
-    assert ScreenResult.BACK != DialogResult.BACK
+    # Same rationale as above: mypy statically proving non-overlap *is* the point.
+    assert ScreenResult.BACK != DialogResult.BACK  # type: ignore[comparison-overlap]
 
 
 # ── ErrorDialog producer ─────────────────────────────────────────────────────
 
 
-def _make_dialog(headless_pygame):
+def _make_dialog(headless_pygame: ModuleType) -> ErrorDialog:
     from fpga_sim.ui.error_dialog import ErrorDialog
 
     screen = headless_pygame.display.set_mode((1024, 700))

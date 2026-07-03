@@ -17,6 +17,8 @@ wrapper's 40 ns period that is ~41 us, and driving all switches high makes the
 firmware step on every tick.  The waits below are sized in those ~41 us steps.
 """
 
+from typing import Any
+
 import cocotb
 from cocotb.triggers import Timer
 
@@ -27,17 +29,17 @@ _GLYPH_TO_DIGIT = {glyph: digit for digit, glyph in enumerate(_BCD_GLYPHS)}
 _STEP_NS = 41_000  # one prescaler tick == one step at full switch speed
 
 
-def _leds(dut):
+def _leds(dut: Any) -> int:
     return int(dut.led.value)
 
 
-def _segs(dut):
+def _segs(dut: Any) -> list[int]:
     """Return the per-digit segment bytes, digit 0 (units) first."""
     raw = int(dut.seg.value)
     return [(raw >> (8 * i)) & 0xFF for i in range(len(dut.seg.value) // 8)]
 
 
-def _number(dut):
+def _number(dut: Any) -> int | None:
     """Decode the displayed digits into a decimal value, or None if not all glyphs."""
     value = 0
     for i, glyph in enumerate(_segs(dut)):

@@ -2,6 +2,7 @@
 
 import csv
 import time
+from pathlib import Path
 
 import pytest
 
@@ -10,11 +11,11 @@ from fpga_sim.sim_metrics import _FIELDS, SimMetrics
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _make(tmp_path, flush_interval=1):
+def _make(tmp_path: Path, flush_interval: int = 1) -> SimMetrics:
     return SimMetrics(tmp_path / "metrics.csv", flush_interval=flush_interval)
 
 
-def _sample_record(m):
+def _sample_record(m: SimMetrics) -> None:
     m.record(
         timer_us=100.0,
         draw_us=50.0,

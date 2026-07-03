@@ -8,6 +8,8 @@ intentionally unequal ROM/RAM map (see systems/mx65_dice_7seg.toml) -- the
 runtime proof that Phase 2's per-region address slices are independent.
 """
 
+from typing import Any
+
 import cocotb
 from cocotb.triggers import Timer
 
@@ -22,11 +24,11 @@ _GLYPH_TO_VALUE = {0x06: 1, 0x5B: 2, 0x4F: 3, 0x66: 4, 0x6D: 5, 0x7D: 6}
 _PRESSES = [(2, 2), (3, 2), (2, 3), (4, 2), (2, 4), (3, 3)]
 
 
-def _leds(dut):
+def _leds(dut: Any) -> int:
     return int(dut.led.value)
 
 
-def _segs(dut):
+def _segs(dut: Any) -> list[int]:
     """Return the per-digit segment bytes, digit 0 (units) first."""
     raw = int(dut.seg.value)
     return [(raw >> (8 * i)) & 0xFF for i in range(len(dut.seg.value) // 8)]

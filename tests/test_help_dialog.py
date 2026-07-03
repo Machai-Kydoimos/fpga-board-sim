@@ -1,5 +1,7 @@
 """Tests for HelpDialog: dismiss logic, rendering, content table, trigger button."""
 
+from types import ModuleType
+
 import pygame
 import pytest
 
@@ -17,8 +19,9 @@ def screen(headless_pygame):
     return headless_pygame.display.set_mode((1024, 700))
 
 
-def _key(pygame_, key, unicode=""):
-    return pygame_.event.Event(pygame_.KEYDOWN, key=key, unicode=unicode)
+def _key(pygame_: ModuleType, key: int, unicode: str = "") -> pygame.event.Event:
+    ev: pygame.event.Event = pygame_.event.Event(pygame_.KEYDOWN, key=key, unicode=unicode)
+    return ev
 
 
 # ── Dismiss keys ──────────────────────────────────────────────────────────────

@@ -1,6 +1,9 @@
 """Tests for BoardSelector: faceted filtering, sorting, and scroll behavior."""
 
+from types import ModuleType
+
 import pytest
+from pygame.event import Event
 
 from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
 from fpga_sim.ui.board_selector import _SORT_OPTIONS, BoardSelector
@@ -362,9 +365,10 @@ class TestScrollClamping:
 # ── Keyboard navigation ──────────────────────────────────────────────────────
 
 
-def _key(pygame, key, unicode=""):
+def _key(pygame: ModuleType, key: int, unicode: str = "") -> Event:
     """Build a synthetic KEYDOWN event."""
-    return pygame.event.Event(pygame.KEYDOWN, key=key, unicode=unicode)
+    ev: Event = pygame.event.Event(pygame.KEYDOWN, key=key, unicode=unicode)
+    return ev
 
 
 class TestKeyboardNav:

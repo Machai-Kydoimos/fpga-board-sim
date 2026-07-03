@@ -5,6 +5,8 @@ changing whether it is running. All switches are driven high for the fastest
 count rate (see hdl/stopwatch_7seg.vhd's idx_proc).
 """
 
+from typing import Any
+
 import cocotb
 from cocotb.triggers import Timer
 
@@ -15,13 +17,13 @@ _BCD_GLYPHS = (0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F)
 _GLYPH_TO_DIGIT = {glyph: digit for digit, glyph in enumerate(_BCD_GLYPHS)}
 
 
-def _segs(dut):
+def _segs(dut: Any) -> list[int]:
     """Return the per-digit segment bytes, digit 0 (units) first."""
     raw = int(dut.seg.value)
     return [(raw >> (8 * i)) & 0xFF for i in range(len(dut.seg.value) // 8)]
 
 
-def _number(dut):
+def _number(dut: Any) -> int | None:
     """Decode the displayed digits into a decimal value, or None if not all glyphs."""
     value = 0
     for i, glyph in enumerate(_segs(dut)):
@@ -32,7 +34,7 @@ def _number(dut):
     return value
 
 
-async def _press(dut, bit):
+async def _press(dut: Any, bit: int) -> None:
     """Pulse btn[bit] high for one tick then low, so the rising edge registers."""
     dut.btn.value = 1 << bit
     await Timer(_TICK_NS, "ns")

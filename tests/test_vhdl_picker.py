@@ -1,6 +1,9 @@
 """Tests for VHDLFilePicker: scanning, keyboard navigation, and activation."""
 
+from types import ModuleType
+
 import pytest
+from pygame.event import Event
 
 from fpga_sim.ui.vhdl_picker import VHDLFilePicker
 
@@ -22,9 +25,10 @@ def workdir(tmp_path):
     return tmp_path
 
 
-def _key(pygame, key, unicode=""):
+def _key(pygame: ModuleType, key: int, unicode: str = "") -> Event:
     """Build a synthetic KEYDOWN event."""
-    return pygame.event.Event(pygame.KEYDOWN, key=key, unicode=unicode)
+    ev: Event = pygame.event.Event(pygame.KEYDOWN, key=key, unicode=unicode)
+    return ev
 
 
 # ── Scanning ─────────────────────────────────────────────────────────────────

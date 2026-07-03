@@ -6,6 +6,8 @@ walking-counter suite this design is deliberately static, so the one check
 below confirms the one-time write landed and nothing ever changes afterward.
 """
 
+from typing import Any
+
 import cocotb
 from cocotb.triggers import Timer
 
@@ -13,11 +15,11 @@ _SETTLE_NS = 50_000  # generous margin over the ~20-instruction reset sequence
 _HOLD_NS = 20_000
 
 
-def _leds(dut):
+def _leds(dut: Any) -> int:
     return int(dut.led.value)
 
 
-def _segs(dut):
+def _segs(dut: Any) -> list[int]:
     """Return the per-digit segment bytes, digit 0 (units) first."""
     raw = int(dut.seg.value)
     return [(raw >> (8 * i)) & 0xFF for i in range(len(dut.seg.value) // 8)]

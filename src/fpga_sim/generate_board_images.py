@@ -38,7 +38,6 @@ import argparse
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import cast
 
 import pygame
 
@@ -121,7 +120,7 @@ def render_board_raster(board: FPGABoard) -> pygame.Surface:
     for cleaner static images without modifying existing behavior.
     """
     board._draw()
-    return cast(pygame.Surface, board.screen.copy())
+    return board.screen.copy()
 
 
 def save_png(surface: pygame.Surface, path: Path) -> None:

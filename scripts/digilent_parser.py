@@ -8,6 +8,7 @@ Self-contained: no ``fpga_sim`` dependency.  Used by
 
 import re
 from datetime import datetime, timezone
+from typing import Any
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Board metadata — XDC files lack device/package info
@@ -212,9 +213,9 @@ def _parse_port_name(port: str) -> tuple[str, int | None]:
     return port.strip(), None
 
 
-def parse_xdc(content: str) -> dict:
+def parse_xdc(content: str) -> dict[str, Any]:
     """Parse an XDC file into structured pin data grouped by section type."""
-    pins: dict[str, list[dict]] = {}
+    pins: dict[str, list[dict[str, Any]]] = {}
     clock_period_ns: float | None = None
     current_type: str | None = None
     port_iostandard: dict[str, str] = {}
@@ -283,9 +284,9 @@ def parse_xdc(content: str) -> dict:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def _build_led_components(pin_entries: list[dict]) -> list[dict]:
+def _build_led_components(pin_entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Build LED component dicts from parsed XDC pin entries."""
-    components: list[dict] = []
+    components: list[dict[str, Any]] = []
     for entry in pin_entries:
         base, idx = _parse_port_name(entry["port"])
         if idx is None:
@@ -304,7 +305,7 @@ def _build_led_components(pin_entries: list[dict]) -> list[dict]:
     return sorted(components, key=lambda c: c["number"])
 
 
-def _build_rgb_led_components(pin_entries: list[dict]) -> list[dict]:
+def _build_rgb_led_components(pin_entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Build RGB LED component dicts, grouping r/g/b pins by LED index."""
     groups: dict[int, dict[str, str]] = {}
     iostandard = ""
@@ -318,7 +319,7 @@ def _build_rgb_led_components(pin_entries: list[dict]) -> list[dict]:
             color = m.group(2).lower()
             groups.setdefault(led_idx, {})[color] = entry["pin"]
 
-    components: list[dict] = []
+    components: list[dict[str, Any]] = []
     for idx in sorted(groups):
         g = groups[idx]
         pins = [g.get("r", ""), g.get("g", ""), g.get("b", "")]
@@ -337,9 +338,9 @@ def _build_rgb_led_components(pin_entries: list[dict]) -> list[dict]:
     return components
 
 
-def _build_switch_components(pin_entries: list[dict]) -> list[dict]:
+def _build_switch_components(pin_entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Build switch component dicts from parsed XDC pin entries."""
-    components: list[dict] = []
+    components: list[dict[str, Any]] = []
     for entry in pin_entries:
         base, idx = _parse_port_name(entry["port"])
         if idx is None:
@@ -358,9 +359,9 @@ def _build_switch_components(pin_entries: list[dict]) -> list[dict]:
     return sorted(components, key=lambda c: c["number"])
 
 
-def _build_button_components(pin_entries: list[dict]) -> list[dict]:
+def _build_button_components(pin_entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Build button component dicts. Handles both indexed and named buttons."""
-    components: list[dict] = []
+    components: list[dict[str, Any]] = []
     for entry in pin_entries:
         base, idx = _parse_port_name(entry["port"])
         port_lower = entry["port"].strip().lower()
@@ -388,7 +389,7 @@ def _build_button_components(pin_entries: list[dict]) -> list[dict]:
     return sorted(components, key=lambda c: c["number"])
 
 
-def _build_seven_seg(pin_entries: list[dict]) -> dict | None:
+def _build_seven_seg(pin_entries: list[dict[str, Any]]) -> dict[str, Any] | None:
     """Build seven_seg definition from parsed 7-segment XDC section."""
     if not pin_entries:
         return None
@@ -440,7 +441,7 @@ def _build_seven_seg(pin_entries: list[dict]) -> dict | None:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def _build_port_conventions(parsed: dict, board_key: str) -> dict[str, dict]:
+def _build_port_conventions(parsed: dict[str, Any], board_key: str) -> dict[str, dict[str, Any]]:
     """Build port_conventions from parsed XDC data."""
     pins = parsed["pins"]
     convention: dict[str, object] = {
@@ -530,7 +531,7 @@ def build_board_json(
     xdc_filename: str,
     commit_sha: str,
     schema_ref: str = "../schema/board.schema.json",
-) -> dict | None:
+) -> dict[str, Any] | None:
     """Parse one XDC file and return a complete board JSON dict."""
     board_key = xdc_filename.replace("-Master.xdc", "")
     meta = _BOARD_METADATA.get(board_key, {})
@@ -550,7 +551,7 @@ def build_board_json(
     if parsed["clock_period_ns"] and parsed["clock_period_ns"] > 0:
         clock_hz = 1e9 / parsed["clock_period_ns"]
 
-    clocks: list[dict] = []
+    clocks: list[dict[str, Any]] = []
     if clock_entries and clock_hz:
         clocks.append(
             {
@@ -570,7 +571,7 @@ def build_board_json(
 
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    board: dict = {
+    board: dict[str, Any] = {
         "$schema": schema_ref,
         "name": board_name,
         "class_name": class_name,

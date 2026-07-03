@@ -21,9 +21,9 @@ after run() returns to discover the user's choice.
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 import pygame
 
@@ -37,6 +37,12 @@ from fpga_sim.ui.widgets import draw_button
 
 if TYPE_CHECKING:
     from fpga_sim.sim_bridge import Simulator
+
+
+class _Positionable(Protocol):
+    """Structural type for board widgets `_place_items` can lay out (assigns `.rect`)."""
+
+    rect: pygame.Rect
 
 
 class FPGABoard:
@@ -322,7 +328,7 @@ class FPGABoard:
         # Reserve space for footer buttons + VHDL status; none needed when footer hidden
         bottom_reserve = max(65, round(90 * s)) if self._show_footer else max(8, round(10 * s))
 
-        sections: list[tuple[str, list, int]] = [("fpga", [self.fpga_chip], 3)]
+        sections: list[tuple[str, Sequence[_Positionable], int]] = [("fpga", [self.fpga_chip], 3)]
         if self.leds:
             sections.append(("leds", self.leds, 4))
         if self.buttons:
@@ -366,7 +372,7 @@ class FPGABoard:
 
     def _place_items(  # noqa: PLR0913
         self,
-        items: list,
+        items: Sequence[_Positionable],
         x0: float,
         y0: float,
         avail_w: float,
@@ -442,7 +448,7 @@ class FPGABoard:
 
     # ── events ───────────────────────────────────────────────────────
 
-    def _handle_events(self, events: list | None = None) -> None:
+    def _handle_events(self, events: list[pygame.event.Event] | None = None) -> None:
         for event in events if events is not None else pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False

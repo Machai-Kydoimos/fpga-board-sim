@@ -14,6 +14,7 @@ parser, so the runtime loader and the offline tooling evolve independently.
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 _FALLBACK_CLOCK_HZ: float = 12e6  # most common across 80 surveyed boards
 
@@ -105,11 +106,11 @@ class BoardDef:
     vendor: str = ""
     device: str = ""
     package: str = ""
-    clocks: list = field(default_factory=list)  # Hz, e.g. [25e6, 100e6]
+    clocks: list[float] = field(default_factory=list)  # Hz, e.g. [25e6, 100e6]
     default_clock_hz: float = _FALLBACK_CLOCK_HZ  # Hz; drives cocotb Clock()
-    leds: list = field(default_factory=list)
-    buttons: list = field(default_factory=list)
-    switches: list = field(default_factory=list)
+    leds: list[ComponentInfo] = field(default_factory=list)
+    buttons: list[ComponentInfo] = field(default_factory=list)
+    switches: list[ComponentInfo] = field(default_factory=list)
     seven_seg: "SevenSegDef | None" = None
     source: str = ""
 
@@ -160,7 +161,7 @@ class BoardDef:
         """Deserialize from JSON produced by to_json()."""
         data = json.loads(raw)
 
-        def _make(items: list, kind: str) -> list[ComponentInfo]:
+        def _make(items: list[dict[str, Any]], kind: str) -> list[ComponentInfo]:
             return [
                 ComponentInfo(
                     kind=kind,

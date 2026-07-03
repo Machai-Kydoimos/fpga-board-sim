@@ -8,6 +8,7 @@ test suite.
 """
 
 import re
+from typing import Any
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Mock LiteX build system classes
@@ -59,7 +60,7 @@ class _DiffPairs:
 
 class _Connector:
     def __init__(
-        self, name: str = "", number: int = 0, pins: str | dict = "", **kwargs: object
+        self, name: str = "", number: int = 0, pins: str | dict[str, str] = "", **kwargs: object
     ) -> None:
         self.name = name
         self.number = number
@@ -131,7 +132,9 @@ def _make_mock_platform(name: str, vendor: str) -> type:
             **kwargs: object,
         ) -> None:
             self.device = str(device) if device else ""
-            self._captured_io: list[tuple] = list(io) if isinstance(io, (list, tuple)) else []
+            self._captured_io: list[tuple[Any, ...]] = (
+                list(io) if isinstance(io, (list, tuple)) else []
+            )
 
         def add_resources(self, resources: object) -> None:
             if isinstance(resources, list):
@@ -227,7 +230,7 @@ def _classify_resource(name: str) -> str | None:
     return None
 
 
-def _extract_io_pins(ios: tuple) -> tuple[list[str], str, str, object]:
+def _extract_io_pins(ios: tuple[Any, ...]) -> tuple[list[str], str, str, object]:
     """Extract pins, iostandard, direction, and connector from IO args.
 
     Returns (pin_names, iostandard, direction, connector).
@@ -264,7 +267,9 @@ def _extract_io_pins(ios: tuple) -> tuple[list[str], str, str, object]:
     return pin_names, iostandard, direction, connector
 
 
-def _parse_io_as_component(res_name: str, res_num: int, ios: tuple, kind: str) -> dict:
+def _parse_io_as_component(
+    res_name: str, res_num: int, ios: tuple[Any, ...], kind: str
+) -> dict[str, Any]:
     """Convert a single _io tuple into a component dict."""
     pin_names, iostandard, direction, connector = _extract_io_pins(ios)
 
@@ -311,7 +316,7 @@ def _parse_io_as_component(res_name: str, res_num: int, ios: tuple, kind: str) -
     }
 
 
-def _parse_clock_info(res_name: str, ios: tuple) -> dict:
+def _parse_clock_info(res_name: str, ios: tuple[Any, ...]) -> dict[str, Any]:
     """Extract clock info from a clock resource tuple."""
     pin_names, _, _, _ = _extract_io_pins(ios)
 
@@ -331,7 +336,9 @@ def _parse_clock_info(res_name: str, ios: tuple) -> dict:
     }
 
 
-def _build_seven_seg_def(seg_tuples: list[tuple], ctrl_tuples: list[tuple]) -> dict | None:
+def _build_seven_seg_def(
+    seg_tuples: list[tuple[Any, ...]], ctrl_tuples: list[tuple[Any, ...]]
+) -> dict[str, Any] | None:
     """Build a seven_seg definition from segment and control tuples."""
     if not seg_tuples:
         return None
@@ -390,7 +397,7 @@ def _make_class_name(filename: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def parse_litex_board(source: str, filename: str) -> list[dict]:
+def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
     """Parse a litex-boards platform file and return board definition dicts."""
     lines = source.split("\n")
     cleaned = []
@@ -435,7 +442,7 @@ def parse_litex_board(source: str, filename: str) -> list[dict]:
 
     # Try to instantiate to get device and IO
     device = ""
-    captured_io: list[tuple] = []
+    captured_io: list[tuple[Any, ...]] = []
     try:
         instance = platform_class()
         device = getattr(instance, "device", "")
@@ -463,12 +470,12 @@ def parse_litex_board(source: str, filename: str) -> list[dict]:
             break
 
     # Parse all IO tuples
-    leds: list[dict] = []
-    buttons: list[dict] = []
-    switches: list[dict] = []
-    clock_infos: list[dict] = []
-    seg_tuples: list[tuple] = []
-    seg_ctrl_tuples: list[tuple] = []
+    leds: list[dict[str, Any]] = []
+    buttons: list[dict[str, Any]] = []
+    switches: list[dict[str, Any]] = []
+    clock_infos: list[dict[str, Any]] = []
+    seg_tuples: list[tuple[Any, ...]] = []
+    seg_ctrl_tuples: list[tuple[Any, ...]] = []
 
     for io_tuple in captured_io:
         if not isinstance(io_tuple, tuple) or len(io_tuple) < 3:
@@ -504,14 +511,14 @@ def parse_litex_board(source: str, filename: str) -> list[dict]:
         default_clock_hz = 1e9 / default_clk_period
 
     # Build clock list
-    clocks: list[dict] = []
+    clocks: list[dict[str, Any]] = []
     for ci in clock_infos:
         hz = ci.get("inferred_hz")
         is_default = (ci["name"] == default_clk_name) if default_clk_name else False
         if is_default and default_clock_hz:
             hz = default_clock_hz
         if hz:
-            entry: dict = {"name": ci["name"], "hz": hz, "pin": ci["pin"]}
+            entry: dict[str, Any] = {"name": ci["name"], "hz": hz, "pin": ci["pin"]}
             if is_default:
                 entry["is_default"] = True
             clocks.append(entry)

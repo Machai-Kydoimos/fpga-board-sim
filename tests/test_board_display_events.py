@@ -3,7 +3,18 @@
 Currently covers the R key (reset switches off, release held buttons).
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from fpga_sim.board_loader import BoardDef, ComponentInfo
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
+    from pygame.event import Event
+
+    from fpga_sim.ui import FPGABoard
 
 
 def _sample_board() -> BoardDef:
@@ -19,15 +30,16 @@ def _sample_board() -> BoardDef:
     )
 
 
-def _make_board(headless_pygame):
+def _make_board(headless_pygame: ModuleType) -> FPGABoard:
     from fpga_sim.ui import FPGABoard
 
     headless_pygame.display.set_mode((1024, 700))
     return FPGABoard(board_def=_sample_board(), width=1024, height=700)
 
 
-def _r_keydown(pygame):
-    return pygame.event.Event(pygame.KEYDOWN, {"key": pygame.K_r, "mod": 0})
+def _r_keydown(pygame: ModuleType) -> Event:
+    ev: Event = pygame.event.Event(pygame.KEYDOWN, {"key": pygame.K_r, "mod": 0})
+    return ev
 
 
 # ── R key: switch reset ──────────────────────────────────────────────────────
@@ -115,8 +127,9 @@ def test_r_resets_switches_and_buttons_together(headless_pygame):
 # ── Help overlay triggers (F1 / ? / the (?) button) ──────────────────────────
 
 
-def _keydown(pygame, key, unicode=""):
-    return pygame.event.Event(pygame.KEYDOWN, {"key": key, "mod": 0, "unicode": unicode})
+def _keydown(pygame: ModuleType, key: int, unicode: str = "") -> Event:
+    ev: Event = pygame.event.Event(pygame.KEYDOWN, {"key": key, "mod": 0, "unicode": unicode})
+    return ev
 
 
 def test_f1_requests_help(headless_pygame):
