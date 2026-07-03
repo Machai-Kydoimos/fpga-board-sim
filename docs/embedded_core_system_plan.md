@@ -192,10 +192,20 @@ uv run pytest tests/test_embedded_core.py -v
 # Interactive: pick a 7-seg board (e.g. DE10-Lite) then hdl/mx65_walking_counter_7seg.vhd
 uv run fpga-sim
 
-# Headless GIFs across digit counts (proves generic sizing) — distinct --out per board
-uv run python scripts/capture_demo.py --vhdl hdl/mx65_walking_counter_7seg.vhd --board nandland_go --sim nvc --out docs/assets/cpu_walk_2digit.gif
-uv run python scripts/capture_demo.py --vhdl hdl/mx65_walking_counter_7seg.vhd --board de0         --sim nvc --out docs/assets/cpu_walk_4digit.gif
-uv run python scripts/capture_demo.py --vhdl hdl/mx65_walking_counter_7seg.vhd --board de10_lite   --sim nvc --out docs/assets/cpu_walk_6digit.gif
+# Headless GIFs across digit counts (proves generic sizing) -- captured from a
+# temporary --prescaler-bits 14 variant build so the CPU free-runs while the
+# display steps at a viewable rate; distinct --out per board
+uv run python scripts/gen_embedded_core.py --system systems/mx65_walking_counter_7seg.toml \
+    --prescaler-bits 14 --out /tmp/variant.vhd
+uv run python scripts/capture_demo.py --scenario plain --sim nvc --vhdl /tmp/variant.vhd \
+    --vhdl-label hdl/mx65_walking_counter_7seg.vhd --step-ns 336000 --frames 144 \
+    --board step_mxo2 --out docs/assets/mx65_walking_counter_2digit.gif
+uv run python scripts/capture_demo.py --scenario plain --sim nvc --vhdl /tmp/variant.vhd \
+    --vhdl-label hdl/mx65_walking_counter_7seg.vhd --step-ns 336000 --frames 144 \
+    --board de0 --out docs/assets/mx65_walking_counter_4digit.gif
+uv run python scripts/capture_demo.py --scenario plain --sim nvc --vhdl /tmp/variant.vhd \
+    --vhdl-label hdl/mx65_walking_counter_7seg.vhd --step-ns 336000 --frames 144 \
+    --board de10_lite --out docs/assets/mx65_walking_counter_6digit.gif
 
 # (Re)generate the design from the vendored core + system spec + ROM image
 uv run python scripts/gen_embedded_core.py --cpu mx65 --system systems/mx65_walking_counter_7seg.toml \

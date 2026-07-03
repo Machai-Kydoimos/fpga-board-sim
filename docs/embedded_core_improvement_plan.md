@@ -518,7 +518,7 @@ describe the final tooling (short-form CLI, regen script, fragments) exactly onc
    - New `### Embedded CPU systems` subsection under "Writing VHDL for the Simulator" (after the
      7-seg section): what they are (CPU + ROM + RAM + IO in one generated file; firmware produces
      the behavior), same board contract as above, one existing GIF
-     (`docs/assets/cpu_walk_6digit.gif` — no new capture needed), the one-command regeneration, and
+     (`docs/assets/mx65_walking_counter_6digit.gif` — no new capture needed), the one-command regeneration, and
      links to the guide + this plan. Mirror CLAUDE.md's wording where possible — don't invent a
      second phrasing.
    - Project Structure block (grep `walking_counter_7seg.vhd`): add a summarizing row for

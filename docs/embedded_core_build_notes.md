@@ -232,7 +232,7 @@ ROM/RAM widths + decode literals, which then appear in the output).
 ## Stage 4 — Generic-sizing captures + docs (DONE 2026-06-30)
 
 **Result:** the one generated design is captured running on **2/4/6-digit boards** (proving generic
-sizing), and the surrounding docs are wired up. The three GIFs (`docs/assets/cpu_walk_{2,4,6}digit.gif`)
+sizing), and the surrounding docs are wired up. The three GIFs (`docs/assets/mx65_walking_counter_{2,4,6}digit.gif`)
 were produced with `scripts/capture_demo.py --scenario plain --vhdl hdl/mx65_walking_counter_7seg.vhd
 --sim nvc --switches 0 --step-ns 336000 --every 1 --frames 48` on **StepMXO2 (2)**, **DE0 (4)**, and
 **DE10-Lite (6)** — all 10-LED boards, so the trio differs *only* in digit count. The firmware reads
