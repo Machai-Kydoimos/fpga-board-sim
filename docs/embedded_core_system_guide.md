@@ -5,15 +5,33 @@
 >
 > *A guide to building a single-file VHDL design that runs an assembled program on a soft-core CPU,
 > driving a virtual FPGA board's switches, buttons, LEDs, and 7-segment displays through an
-> IO subsystem (memory- or port-mapped). The generator (`scripts/gen_embedded_core.py`) is built; the worked
+> IO subsystem (memory- or port-mapped). The generator ([`scripts/gen_embedded_core.py`](../scripts/gen_embedded_core.py)) is built; the worked
 > examples are a **6502 (mx65)** and a **Z80 (T80)** running the same walking counter from a shared,
 > core-agnostic skeleton. Wherever the two cores differ, the guide calls out what a **third** core
 > would change — the goal is that you can drop in any VHDL CPU by vendoring it and writing one small
 > bus adapter.*
 
+**Contents**
+
+- [§1 Overview & goals](#1-overview--goals)
+- [§2 Prerequisites — the simulator contract](#2-prerequisites--the-simulator-contract)
+- [§3 Anatomy of a generated system](#3-anatomy-of-a-generated-system)
+- [§4 Adding a CPU core (the core-agnostic part)](#4-adding-a-cpu-core-the-core-agnostic-part)
+- [§5 Reset & cold-start (generalized)](#5-reset--cold-start-generalized)
+- [§6 Memory & IO map design](#6-memory--io-map-design)
+- [§7 Writing firmware](#7-writing-firmware)
+- [§8 Assembler & ROM embedding](#8-assembler--rom-embedding)
+- [§9 Timing & throughput](#9-timing--throughput)
+- [§10 Generating the file](#10-generating-the-file)
+- [§11 Running & verifying](#11-running--verifying)
+- [§12 End-to-end worked example (the 6502 walking counter)](#12-end-to-end-worked-example-the-6502-walking-counter)
+- [§13 Extending](#13-extending)
+- [§14 Troubleshooting](#14-troubleshooting)
+- [§15 Debugging with waveforms](#15-debugging-with-waveforms)
+
 ## 1. Overview & goals
 
-A normal design in this simulator is a hand-written VHDL behavior (see `hdl/blinky.vhd`). An
+A normal design in this simulator is a hand-written VHDL behavior (see [`hdl/blinky.vhd`](../hdl/blinky.vhd)). An
 **embedded core system** instead puts a **CPU** on the board and lets **software** (machine code
 in an embedded ROM) produce the behavior, sensing inputs and driving outputs through an **IO
 subsystem**. The whole thing — CPU core, ROM, RAM, IO, and a top wrapper — is emitted as **one
@@ -30,21 +48,21 @@ top all live in that one file.
 > **Quickstart — your first change** (five steps, a few minutes):
 >
 > 1. Run an existing design: `uv run fpga-sim`, pick any 7-segment board, select
->    `hdl/mx65_hello_7seg.vhd`. LED0 lights and digit 0 shows "0".
-> 2. Open `firmware/mx65_hello_7seg.s` and find `GLYPH0: .byte $3F` (the digit-0 glyph) or
+>    [`hdl/mx65_hello_7seg.vhd`](../hdl/mx65_hello_7seg.vhd). LED0 lights and digit 0 shows "0".
+> 2. Open [`firmware/mx65_hello_7seg.s`](../firmware/mx65_hello_7seg.s) and find `GLYPH0: .byte $3F` (the digit-0 glyph) or
 >    `LED_LO`/`lda #$01` (which LED lights).
 > 3. Change the glyph byte (e.g. `$06` for "1") or the LED value (e.g. `#$02` for LED1).
-> 4. Assemble (`firmware/README.md` has the exact command) and regenerate:
+> 4. Assemble ([`firmware/README.md`](../firmware/README.md) has the exact command) and regenerate:
 >    `uv run python scripts/regen_embedded_cores.py --write`.
-> 5. Rerun the simulator on `hdl/mx65_hello_7seg.vhd` and watch your change take effect.
+> 5. Rerun the simulator on [`hdl/mx65_hello_7seg.vhd`](../hdl/mx65_hello_7seg.vhd) and watch your change take effect.
 >
 > That is the whole edit → assemble → regenerate → run loop every firmware change in this guide
-> follows (§10 has the toolflow diagram) — the rest of this document is what happens when the
+> follows ([§10](#10-generating-the-file) has the toolflow diagram) — the rest of this document is what happens when the
 > change is bigger than one byte.
 
 ## 2. Prerequisites — the simulator contract
 
-A design the simulator accepts must satisfy (see `CLAUDE.md` and `hdl/counter_7seg.vhd`):
+A design the simulator accepts must satisfy (see [`CLAUDE.md`](../CLAUDE.md) and [`hdl/counter_7seg.vhd`](../hdl/counter_7seg.vhd)):
 
 - **Filename = top entity name.** `mx65_walking_counter_7seg.vhd` ⇒ `entity mx65_walking_counter_7seg`.
 - **Top generics:** `NUM_SWITCHES, NUM_BUTTONS, NUM_LEDS, NUM_SEGS, COUNTER_BITS` (all `positive`).
@@ -59,9 +77,9 @@ A design the simulator accepts must satisfy (see `CLAUDE.md` and `hdl/counter_7s
   6=g,5=f,4=e,3=d,2=c,1=b,0=a`, **active-high**; **digit 0 = rightmost**. The simulator applies any
   board-level active-low inversion and multiplexing for you — always drive active-high per-digit
   bytes.
-- **Clock only.** The auto-generated wrapper (`sim/sim_wrapper_template.vhd`) drives `clk`
+- **Clock only.** The auto-generated wrapper ([`sim/sim_wrapper_template.vhd`](../sim/sim_wrapper_template.vhd)) drives `clk`
   (period from the board's default clock, adjustable by the speed slider). There is **no reset
-  input** — you synthesize one (§5).
+  input** — you synthesize one ([§5](#5-reset--cold-start-generalized)).
 - **VHDL-2008**, `ieee.std_logic_1164` + `ieee.numeric_std`. Analysis runs `ghdl -a --std=08` /
   `nvc --std=2008 -a` **without `-fsynopsys`** — so the Synopsys packages
   `std_logic_unsigned`/`std_logic_arith`/`std_logic_signed` are **not available**.
@@ -78,17 +96,23 @@ host different CPUs: the ROM/RAM/IO and address decode all speak a **normalized 
 small per-core **adapter** translates that bus to the specific core's pins.
 
 ```text
-   +------------------------- top (entity = filename) --------------------------+
-   |  clk --> [ POR ] --> cpu_reset (active-high, normalized)                    |
-   |                                                                            |
-   |    +----------------------+     normalized bus     +--- decode + read mux -+|
-   |    |  per-core ADAPTER     |  cpu_addr / cpu_din /  |  cpu_rom | cpu_ram |  ||
-   |    |  (a VHDL `block`)     |<-cpu_dout / cpu_we  -->|  cpu_io (regs+timer) |||
-   |    |   instantiates mx65   |  cpu_reset/cpu_irq_req |          |           ||
-   |    |         or T80        |                       +----------|-----------+|
-   |    +----------------------+                                   v            |
-   |  sw/btn ---------------------------------------------> cpu_io ---> led/seg  |
-   +----------------------------------------------------------------------------+
++------------------------------- top (entity = filename) --------------------------------+
+|                                                                                        |
+|  clk --> [ POR ] --> cpu_reset (active-high, normalized)                               |
+|                                                                                        |
+|  +----------------------+                            +------------------------------+  |
+|  |  per-core ADAPTER    |       normalized bus       |     decode + read mux        |  |
+|  |  (a VHDL `block`)    |                            |                              |  |
+|  |  instantiates mx65   | cpu_addr / cpu_dout -----> |  cpu_rom | cpu_ram | cpu_io  |  |
+|  |  or T80              | cpu_we ------------------> |          (regs + timer)      |  |
+|  |                      | <---------------- cpu_din  |                              |  |
+|  |                      | <- cpu_reset, cpu_irq_req  |                              |  |
+|  +----------------------+                            +------------------------------+  |
+|                                                            ^               |           |
+|  sw/btn --------------------------------------------------+                |           |
+|                                                                            v           |
+|                                                                         led/seg        |
++----------------------------------------------------------------------------------------+
 ```
 
 - **Normalized bus.** `cpu_addr(15:0)`, `cpu_din(7:0)` (to CPU), `cpu_dout(7:0)` (from CPU), `cpu_we`
@@ -96,13 +120,13 @@ small per-core **adapter** translates that bus to the specific core's pins.
   block uses these names, so they are **core-independent**.
 - **Per-core adapter** (`scripts/embedded_core/adapters/<core>.vhd`): a self-contained VHDL `block`
   that instantiates the core and wires it to the normalized bus, converting reset polarity, the write
-  strobe, the interrupt polarity, and the bus protocol (§4). This is the *only* core-specific VHDL —
+  strobe, the interrupt polarity, and the bus protocol ([§4](#4-adding-a-cpu-core-the-core-agnostic-part)). This is the *only* core-specific VHDL —
   the whole "port to a new CPU" job.
-- **`cpu_rom`** — combinational read (§4 *Bus read timing*); program + LUTs, embedded from the
+- **`cpu_rom`** — combinational read ([§4](#4-adding-a-cpu-core-the-core-agnostic-part) [*Bus read timing*](#45-bus-read-timing--the-deepest-pothole)); program + LUTs, embedded from the
   firmware `.bin`. **`cpu_ram`** — combinational read, registered write, zero-initialized. **`cpu_io`**
   — address-decoded registers (sw/btn/config/tick reads, led/seg writes) + the prescaler + (optionally)
-  a small interrupt controller (§9).
-- **POR** — a counter that holds `cpu_reset` asserted for the first few clocks (§5).
+  a small interrupt controller ([§9](#9-timing--throughput)).
+- **POR** — a counter that holds `cpu_reset` asserted for the first few clocks ([§5](#5-reset--cold-start-generalized)).
 - **Decode + read mux** — **generated from the system memory map** (so the 6502's and Z80's different
   maps both work); combinational, default `x"00"` so the bus is never `'U'`.
 
@@ -118,7 +142,7 @@ T80 (Z80) are the two worked examples; a third core follows the same recipe.
 2. **Analyzes under `--std=08` / `--std=2008` with no `-fsynopsys`** and no vendor primitives
    (`altsyncram`, Lattice/Xilinx macros). Standard `std_logic_1164` + `numeric_std` is ideal; a core
    that pulls in Synopsys `std_logic_unsigned`/`std_logic_arith` can usually be **standardized**
-   (§4.2).
+   ([§4.2](#42-vendoring-the-core)).
 3. **A documented synchronous bus**: address out, data in/out, a read/write strobe, reset, and a
    level-sensitive interrupt line if you want interrupts.
 4. **A redistributable license** (MIT/BSD) so the core can be vendored with its notice kept.
@@ -143,7 +167,7 @@ license header** — it travels into every generated design. Then:
 
 ### 4.3 The `CpuPlugin`
 
-`scripts/embedded_core/cpu_plugin.py` describes each core — its files, its adapter, and the facts the
+[`scripts/embedded_core/cpu_plugin.py`](../scripts/embedded_core/cpu_plugin.py) describes each core — its files, its adapter, and the facts the
 generator documents (reset polarity, boot behavior):
 
 ```python
@@ -163,12 +187,12 @@ Most of these fields are **documentation only**: `address_bits`, `data_bits`, `r
 `irq_active_high`, and `endian` are facts the adapter VHDL already implements, so changing a field's
 value here has no effect on the generated design (they're candidates to become functional with the
 P8 normalized-bus-v2 work). `boots_at_zero` is the exception — the generator consumes it to enforce
-where ROM must sit (§6).
+where ROM must sit ([§6](#6-memory--io-map-design)).
 
 ### 4.4 The bus adapter — the heart of "any core"
 
 The adapter is a self-contained VHDL `block` (it may declare local signals, so the whole port is one
-block) that plugs the core into the **normalized bus** (§3). It must: drive `cpu_addr`, read
+block) that plugs the core into the **normalized bus** ([§3](#3-anatomy-of-a-generated-system)). It must: drive `cpu_addr`, read
 `cpu_din`, drive `cpu_dout`; produce **`cpu_we`** (active-high write strobe); consume **`cpu_reset`**
 (active-high POR) and **`cpu_irq_req`** (active-high) at the core's polarities. The two cores show how
 different a bus can be:
@@ -195,9 +219,9 @@ end block;
 ```
 
 A Z80 can reach IO two ways: **memory-mapped** loads/stores (as here, shared with the 6502) or
-**port-mapped** `IN`/`OUT` in the `IORQ_n` space (§6, *Port-mapped IO*). This base adapter is the
+**port-mapped** `IN`/`OUT` in the `IORQ_n` space ([§6](#6-memory--io-map-design), [*Port-mapped IO*](#port-mapped-io--the-transport-axis)). This base adapter is the
 memory-mapped one; each (interrupt mode × IO transport) combination that changes the pin-level wiring
-is a small adapter variant (§4.6).
+is a small adapter variant ([§4.6](#46-adapter-variants--interrupt-mode--io-transport)).
 
 ### 4.5 Bus read timing — the deepest pothole
 
@@ -211,11 +235,11 @@ real hardware uses registered block-RAM + a wait state, not needed in sim.
 > several. A **read-to-clear** status bit clears on the *first* clock of the Z80's multi-cycle read —
 > before the core samples it — so a poll loop hangs forever. Use **write-to-clear** for status/ack
 > registers (poll to check, write to acknowledge): correct for any core, and what `cpu_io`'s tick and
-> interrupt-flag registers do (§6, §9). This one bug cost the Z80 bring-up a debugging session.
+> interrupt-flag registers do ([§6](#6-memory--io-map-design), [§9](#9-timing--throughput)). This one bug cost the Z80 bring-up a debugging session.
 
 ### 4.6 Adapter variants — interrupt mode × IO transport
 
-A core's adapter can have **variants** for optional features selected by the spec (§10): the
+A core's adapter can have **variants** for optional features selected by the spec ([§10](#10-generating-the-file)): the
 **interrupt mode** (`irq_mode`) and the **IO transport** (`io_transport`). Each combination that
 changes the *pin-level* wiring is one adapter file, and the generator picks it from the plugin. The
 T80 ships all four; the mx65 (no I/O space, fixed IRQ vector) needs only the base one:
@@ -223,8 +247,8 @@ T80 ships all four; the mx65 (no I/O space, fixed IRQ vector) needs only the bas
 | adapter | interrupt | IO transport | what it adds over the base |
 |---|---|---|---|
 | `t80.vhd` | none / simple | memory-mapped | the base bus translation |
-| `t80_vectored.vhd` | vectored (IM 2) | memory-mapped | muxes a vector onto `DI` during INTA (§9) |
-| `t80_port.vhd` | none / simple | port (IORQ) | exposes `MREQ`/`IORQ` for the decode split (§6) |
+| `t80_vectored.vhd` | vectored (IM 2) | memory-mapped | muxes a vector onto `DI` during INTA ([§9](#9-timing--throughput)) |
+| `t80_port.vhd` | none / simple | port (IORQ) | exposes `MREQ`/`IORQ` for the decode split ([§6](#6-memory--io-map-design)) |
 | `t80_vectored_port.vhd` | vectored | port | both at once (`M1_n` keeps INTA and `IN`/`OUT` apart) |
 
 The plugin names the variant files (`vectored_adapter_file`, `port_adapter_file`,
@@ -264,7 +288,7 @@ requirement** — "7" is a starting guess; widen it if the PC never loads from t
 the simulator's model; on real hardware you'd wire a reset controller.)
 
 The POR is **core-agnostic**: it drives the normalized active-high `cpu_reset`, and the adapter
-(§4.4) converts polarity — mx65 takes it directly, T80 inverts it to `RESET_n`. Seven clocks proved
+([§4.4](#44-the-bus-adapter--the-heart-of-any-core)) converts polarity — mx65 takes it directly, T80 inverts it to `RESET_n`. Seven clocks proved
 enough for both cores; widen `por_cnt` if a core needs a longer reset.
 
 **6502 reset vector & cold-start.** On reset the 6502 loads PC from **`$FFFC/$FFFD`**
@@ -286,7 +310,7 @@ IRQ/NMI vectors pointing at a single `RTI` if you don't use interrupts (but they
 real handlers.
 
 **Z80 cold-start (the second core, for contrast).** The Z80 has **no reset vector** — it just starts
-executing at **`$0000`**, so ROM sits at the bottom of the map (§6) and the program's first byte *is*
+executing at **`$0000`**, so ROM sits at the bottom of the map ([§6](#6-memory--io-map-design)) and the program's first byte *is*
 its reset code. Cold-start: `DI` (we poll), `LD SP, <top-of-RAM>` (the Z80 leaves SP undefined on
 reset), then read config and init variables. No `$FFFC`-style vector to place, and interrupt entry
 points ($0038 for IM 1, $0066 for NMI) matter only if you enable interrupts.
@@ -297,7 +321,7 @@ uninitialized RAM read used as an operand or jammed into the PC — it propagate
 datapath and **never resolves**, so the display simply freezes or goes blank. Defend against it:
 initialize the RAM array to `x"00"`, drive the read mux's default branch to `x"00"`, synthesize the
 POR so the CPU starts defined, and have cold-start zero the variables it reads. When a CPU design
-"does nothing," suspect a `'U'` on the bus first (§14, and *Debugging with waveforms*).
+"does nothing," suspect a `'U'` on the bus first ([§14](#14-troubleshooting), and [*Debugging with waveforms*](#15-debugging-with-waveforms)).
 
 ## 6. Memory & IO map design
 
@@ -317,8 +341,8 @@ map is just different base addresses. Example 6502 map:
 | `$E000`/`$E001` | R | switches (low/high byte) |
 | `$E002`/`$E003` | R | buttons (low/high byte) |
 | `$E004..$E007` | R | **config**: NUM_LEDS, NUM_SEGS, NUM_SWITCHES, NUM_BUTTONS |
-| `$E008` | R | LFSR random byte -- only when the spec lists the `"lfsr"` peripheral (§13) |
-| `$E010` | R/W | tick pending in bit0; **write any value to clear** (§4.5) |
+| `$E008` | R | LFSR random byte -- only when the spec lists the `"lfsr"` peripheral ([§13](#13-extending)) |
+| `$E010` | R/W | tick pending in bit0; **write any value to clear** ([§4.5](#45-bus-read-timing--the-deepest-pothole)) |
 | `$E020`/`$E021` | W | LED bits (low/high byte), masked to NUM_LEDS |
 | `$E030+i` | W | segment byte for digit *i* (active-high, `dp g f e d c b a`) |
 
@@ -334,7 +358,7 @@ be a power of two and its `base` a multiple of that size; every region must fit 
 address space; ROM, RAM, and IO (in `memory` transport) must not overlap each other. **ROM and RAM
 sizes are independent** — each region's address slice in the top is generated from its own size, so
 ROM and RAM never need to match. ROM must sit where the core boots, checked against the plugin's
-`boots_at_zero` (§4.3): `$0000` for a boots-at-zero core, or ending at `$10000` for a vector-fetch
+`boots_at_zero` ([§4.3](#43-the-cpuplugin)): `$0000` for a boots-at-zero core, or ending at `$10000` for a vector-fetch
 core. The assembled firmware image must fit inside the `rom` region's `size`. Any violation raises a
 `ValueError` naming the offending region; an unknown or typo'd key anywhere in the spec (top level,
 `[generics]`, or a `memory.*` table) is rejected the same way rather than silently ignored.
@@ -353,7 +377,7 @@ design uses:
 - **`port`** (Z80 only) — the register file moves into the I/O space; the select comes from the
   **I/O cycle** (`IORQ`) instead, and ROM/RAM stay in the memory space. The decode becomes the
   textbook Z80 split: ROM/RAM selects qualified by **MREQ**, and `sel_io` taken from the **IORQ**
-  cycle (with `M1_n` high to exclude the interrupt-acknowledge cycle, §9). The `t80_port` adapter
+  cycle (with `M1_n` high to exclude the interrupt-acknowledge cycle, [§9](#9-timing--throughput)). The `t80_port` adapter
   exposes `cpu_mreq`/`cpu_iorq` for exactly this.
 
 **`cpu_io` itself is unchanged** — same registers at the same offsets (`$00`=SW … `$30`=SEG, now
@@ -365,8 +389,8 @@ is core- and transport-agnostic; reaching it is the adapter's job.
 ## 7. Writing firmware
 
 **Start with the smallest thing that proves the IO path** — the firmware equivalent of `blinky`
-(this is also plan Stage 1, and now a committed design: `firmware/mx65_hello_7seg.s`, generated as
-`hdl/mx65_hello_7seg.vhd`). Light one LED and write one fixed digit, then spin:
+(this is also plan Stage 1, and now a committed design: [`firmware/mx65_hello_7seg.s`](../firmware/mx65_hello_7seg.s), generated as
+[`hdl/mx65_hello_7seg.vhd`](../hdl/mx65_hello_7seg.vhd)). Light one LED and write one fixed digit, then spin:
 
 ```asm
 RESET:  SEI
@@ -381,11 +405,11 @@ SPIN:   JMP SPIN          ; mx65 keeps fetching; display holds
 ```
 
 If that shows one steady LED and a "0", your reset vector, POR, read path, and IO writes all work —
-everything else is incremental. Run it yourself (`uv run fpga-sim`, pick `hdl/mx65_hello_7seg.vhd`),
-or see the Quickstart box after §1 for the five-step edit loop. Start your own firmware by copying
-`mx65_hello_7seg.s`, `systems/mx65_hello_7seg.toml`, and the assemble command in
-`firmware/README.md`. Now the full walking-counter patterns (6502, but the shapes generalize). The
-canonical assembled source lives in `firmware/mx65_walking_counter_7seg.s`; the sketches below are
+everything else is incremental. Run it yourself (`uv run fpga-sim`, pick [`hdl/mx65_hello_7seg.vhd`](../hdl/mx65_hello_7seg.vhd)),
+or see the Quickstart box after [§1](#1-overview--goals) for the five-step edit loop. Start your own firmware by copying
+`mx65_hello_7seg.s`, [`systems/mx65_hello_7seg.toml`](../systems/mx65_hello_7seg.toml), and the assemble command in
+[`firmware/README.md`](../firmware/README.md). Now the full walking-counter patterns (6502, but the shapes generalize). The
+canonical assembled source lives in [`firmware/mx65_walking_counter_7seg.s`](../firmware/mx65_walking_counter_7seg.s); the sketches below are
 the algorithm, not final opcodes.
 
 - **Poll the tick** (decouples visible rate from instruction speed):
@@ -501,15 +525,15 @@ to dispatch. It maps to a **single fixed vector** — the 6502's `$FFFE` IRQ vec
   forms `I:vector` (the `I` register is the high byte), reads the 2-byte ISR address from that table
   entry, and jumps — so **timer and input dispatch to *separate* ISRs**, no IFR read needed. Firmware
   sets `I`, a page-aligned vector table (`$0100` here), then `IM 2` + `EI`.
-- Each ISR still **acks its source** by write-to-clear on IFR (§4.5) and ends with `RETI`.
+- Each ISR still **acks its source** by write-to-clear on IFR ([§4.5](#45-bus-read-timing--the-deepest-pothole)) and ends with `RETI`.
 
 Because `M1_n` cleanly separates the Z80's two `IORQ` uses — INTA (`M1_n` low) supplies the vector;
 `IN`/`OUT` (`M1_n` high) select port IO — vectored interrupts and port IO **compose** into one
-"realistic Z80 machine" (`t80_irq_portio`, §12) with only a combined adapter, no new generator logic.
+"realistic Z80 machine" (`t80_irq_portio`, [§12](#12-end-to-end-worked-example-the-6502-walking-counter)) with only a combined adapter, no new generator logic.
 
 ## 10. Generating the file
 
-Where §3's diagram shows the **hardware** inside the generated file, this is the **toolflow** that
+Where [§3](#3-anatomy-of-a-generated-system)'s diagram shows the **hardware** inside the generated file, this is the **toolflow** that
 produces it:
 
 ```text
@@ -541,10 +565,10 @@ generic-parameterized `.vhd`, validated against the contract checker before writ
 disagrees with the spec fails fast. Two spec fields select the optional features:
 
 - **`irq_mode`** — `"none"` (polled, default), `"simple"` (one fixed-vector handler: 6502 IRQ or
-  Z80 IM 1), or `"vectored"` (Z80 IM 2, §9).
-- **`io_transport`** — `"memory"` (memory-mapped, default) or `"port"` (Z80 `IN`/`OUT`, §6).
+  Z80 IM 1), or `"vectored"` (Z80 IM 2, [§9](#9-timing--throughput)).
+- **`io_transport`** — `"memory"` (memory-mapped, default) or `"port"` (Z80 `IN`/`OUT`, [§6](#6-memory--io-map-design)).
 
-The generator selects the matching adapter variant (§4.6); an unsupported combination for the chosen
+The generator selects the matching adapter variant ([§4.6](#46-adapter-variants--interrupt-mode--io-transport)); an unsupported combination for the chosen
 core fails fast with a clear error.
 
 **Regenerating everything at once:** `uv run python scripts/regen_embedded_cores.py` loops over
@@ -554,14 +578,14 @@ additionally reassembles each firmware source with its pinned dev-time toolchain
 against the checked-in `.bin` (it never writes a `.bin` — that stays a deliberate manual act).
 
 **Generator internals — where the VHDL lives:** `emitter.py` fills each `templates/*.vhd.tmpl` file's
-`@@TOKEN@@` markers (`_fill`) and concatenates the results (`emit`, §3's leaf-first order). Short,
+`@@TOKEN@@` markers (`_fill`) and concatenates the results (`emit`, [§3](#3-anatomy-of-a-generated-system)'s leaf-first order). Short,
 purely-connective token values (a decl line, a port addition) stay inline Python strings in
 `emitter.py`. Multi-line VHDL *bodies* — currently the interrupt controller's signals, read-mux arm,
 process, and IM 2 vector encoder — instead live as separate `templates/fragments/*.vhd.frag` files,
 loaded by the small `_frag()` helper and spliced into the same tokens. Neither `.vhd.tmpl` nor
 `.vhd.frag` files are complete, standalone-analyzable VHDL (they carry `@@TOKEN@@` markers or are
-partial design units), so both are on the P7/VSG hard-exclusion list (`improvement_roadmap.md`) —
-write them to the ruleset's style by hand. When extending `cpu_io` (§13) with a new multi-line block,
+partial design units), so both are on the P7/VSG hard-exclusion list ([`improvement_roadmap.md`](improvement_roadmap.md)) —
+write them to the ruleset's style by hand. When extending `cpu_io` ([§13](#13-extending)) with a new multi-line block,
 add a fragment rather than growing another Python string literal.
 
 ## 11. Running & verifying
@@ -569,32 +593,32 @@ add a fragment rather than growing another Python string literal.
 - **Interactive:** `uv run fpga-sim` → pick a 7-seg board → select your `.vhd`.
 - **Headless GIF:** `uv run python scripts/capture_demo.py --vhdl hdl/mx65_walking_counter_7seg.vhd
   --board de10_lite --sim nvc` (`SDL_VIDEODRIVER=dummy`; board JSON via `FPGA_SIM_BOARD_JSON`).
-- **Tests:** `sim/test_cpu_walking.py` (glyphs + advance, one-hot bounce, `btn(0)` reversal,
+- **Tests:** [`sim/test_cpu_walking.py`](../sim/test_cpu_walking.py) (glyphs + advance, one-hot bounce, `btn(0)` reversal,
   `btn(1)` lamp-test) is the **shared** behavioral suite — **all six designs** (6502 polled + IRQ;
   Z80 polled, IM 2, port-IO, and the IM 2 + port capstone) run it (`PASS=4`) under both simulators.
-  `tests/test_embedded_core.py` also byte-for-byte golden-tests each generated `.vhd` and checks the
+  [`tests/test_embedded_core.py`](../tests/test_embedded_core.py) also byte-for-byte golden-tests each generated `.vhd` and checks the
   vendored cores' integrity + standardization.
 
 ## 12. End-to-end worked example (the 6502 walking counter)
 
-1. **Vendor** `mx65.vhd` (pin a commit) at `scripts/embedded_core/cores/mx65.vhd`; smoke-test it
+1. **Vendor** `mx65.vhd` (pin a commit) at [`scripts/embedded_core/cores/mx65.vhd`](../scripts/embedded_core/cores/mx65.vhd); smoke-test it
    analyzes under GHDL and NVC.
-2. **Map** memory/IO as in §6; pick RAM/ROM sizes (2 KB each).
-3. **Write** `firmware/mx65_walking_counter_7seg.s` (§5 cold-start + §7 main loop).
-4. **Assemble** with `ca65`/`ld65` to `firmware/mx65_walking_counter_7seg.bin` (the source of truth).
-5. **Generate** `hdl/mx65_walking_counter_7seg.vhd` (§10).
-6. **Verify** (§11): glyphs valid, odometer advances, LED bounces, `btn(0)` reverses, `btn(1)`
-   lamp-test; compare side-by-side with `hdl/walking_counter_7seg.vhd`.
+2. **Map** memory/IO as in [§6](#6-memory--io-map-design); pick RAM/ROM sizes (2 KB each).
+3. **Write** [`firmware/mx65_walking_counter_7seg.s`](../firmware/mx65_walking_counter_7seg.s) ([§5](#5-reset--cold-start-generalized) cold-start + [§7](#7-writing-firmware) main loop).
+4. **Assemble** with `ca65`/`ld65` to [`firmware/mx65_walking_counter_7seg.bin`](../firmware/mx65_walking_counter_7seg.bin) (the source of truth).
+5. **Generate** [`hdl/mx65_walking_counter_7seg.vhd`](../hdl/mx65_walking_counter_7seg.vhd) ([§10](#10-generating-the-file)).
+6. **Verify** ([§11](#11-running--verifying)): glyphs valid, odometer advances, LED bounces, `btn(0)` reverses, `btn(1)`
+   lamp-test; compare side-by-side with [`hdl/walking_counter_7seg.vhd`](../hdl/walking_counter_7seg.vhd).
 
-The complete, annotated program is the checked-in `firmware/mx65_walking_counter_7seg.s` (the §5/§7
+The complete, annotated program is the checked-in [`firmware/mx65_walking_counter_7seg.s`](../firmware/mx65_walking_counter_7seg.s) (the [§5](#5-reset--cold-start-generalized)/[§7](#7-writing-firmware)
 sketches are deliberately partial); `ca65`/`ld65` assemble it to the `.bin` that
-`scripts/embedded_core/rom_to_vhdl.py` embeds verbatim as the ROM constant.
+[`scripts/embedded_core/rom_to_vhdl.py`](../scripts/embedded_core/rom_to_vhdl.py) embeds verbatim as the ROM constant.
 
 ### Generic sizing — one design, every board
 
-The same generated `hdl/mx65_walking_counter_7seg.vhd` runs unchanged on boards with different
+The same generated [`hdl/mx65_walking_counter_7seg.vhd`](../hdl/mx65_walking_counter_7seg.vhd) runs unchanged on boards with different
 resource counts: at cold-start the firmware reads `NUM_LEDS`/`NUM_SEGS` from the IO config registers
-(§6) and drives exactly that many. Captured headless with `scripts/capture_demo.py` on three boards
+([§6](#6-memory--io-map-design)) and drives exactly that many. Captured headless with [`scripts/capture_demo.py`](../scripts/capture_demo.py) on three boards
 that differ only in digit count:
 
 | 2 digits (StepMXO2) | 4 digits (DE0) | 6 digits (DE10-Lite) |
@@ -607,12 +631,12 @@ in the VHDL or the program is board-specific.
 ### The same counter on a Z80 (the second core)
 
 Adding a genuinely different core exercised the whole abstraction. The Z80 version is
-`systems/t80_walking_counter_7seg.toml` (ROM at `$0000`, RAM `$8000`, IO `$E000`) +
-`firmware/t80_walking_counter_7seg.asm` (the same algorithm and subroutines in Z80 assembly, built
+[`systems/t80_walking_counter_7seg.toml`](../systems/t80_walking_counter_7seg.toml) (ROM at `$0000`, RAM `$8000`, IO `$E000`) +
+[`firmware/t80_walking_counter_7seg.asm`](../firmware/t80_walking_counter_7seg.asm) (the same algorithm and subroutines in Z80 assembly, built
 with `z80asm`) + the vendored T80 core + `adapters/t80.vhd`. Generate it with `--cpu t80`; it runs
-the **same** `sim/test_cpu_walking.py` behavioral suite (`PASS=4`) under GHDL and NVC — identical
+the **same** [`sim/test_cpu_walking.py`](../sim/test_cpu_walking.py) behavioral suite (`PASS=4`) under GHDL and NVC — identical
 on-board behavior, a completely different CPU. Two lessons surfaced only on the Z80: the tick had to
-become **write-to-clear** (§4.5), and the memory map flips (**ROM at `$0000`** because the Z80 boots
+become **write-to-clear** ([§4.5](#45-bus-read-timing--the-deepest-pothole)), and the memory map flips (**ROM at `$0000`** because the Z80 boots
 there). The POR needed no change.
 
 ### The Z80 feature variants (IM 2, port IO, and the capstone)
@@ -623,8 +647,8 @@ Three more Z80 designs exercise the two feature axes independently and together 
 
 | design | `irq_mode` | `io_transport` | shows |
 |---|---|---|---|
-| `t80_irq_counter_7seg` | vectored | memory | IM 2 — per-source ISRs via the `I:vector` table (§9) |
-| `t80_portio_counter_7seg` | none | port | IO in the I/O space, the MREQ/IORQ decode split (§6) |
+| `t80_irq_counter_7seg` | vectored | memory | IM 2 — per-source ISRs via the `I:vector` table ([§9](#9-timing--throughput)) |
+| `t80_portio_counter_7seg` | none | port | IO in the I/O space, the MREQ/IORQ decode split ([§6](#6-memory--io-map-design)) |
 | `t80_irq_portio_counter_7seg` | vectored | port | the **capstone** — both, a "realistic" Z80 machine |
 
 The capstone is the shape a real Z80 system (with Z80-family peripherals) takes. It needed no new
@@ -633,16 +657,16 @@ generator logic — the vectored and port token sets compose — only the combin
 
 ## 13. Extending
 
-- **New CPUs:** vendor the core (§4.2) + write one adapter (§4.4). Multi-file cores inline
+- **New CPUs:** vendor the core ([§4.2](#42-vendoring-the-core)) + write one adapter ([§4.4](#44-the-bus-adapter--the-heart-of-any-core)). Multi-file cores inline
   automatically (T80 = 6 files); a Synopsys-dependent core is standardized with
-  `numeric_std_unsigned` (§4.2). The 6502 and Z80 prove the seam holds across very different buses.
+  `numeric_std_unsigned` ([§4.2](#42-vendoring-the-core)). The 6502 and Z80 prove the seam holds across very different buses.
 - **New subsystems:** extend `cpu_io` with more registers/peripherals (UART, timer-compare, GPIO
-  banks) at fresh IO addresses — worked example below. The two-source interrupt controller (§9) is
+  banks) at fresh IO addresses — worked example below. The two-source interrupt controller ([§9](#9-timing--throughput)) is
   the template for adding an interrupt source (enable bit + flag bit + OR into `cpu_irq_req`).
-- **Interrupt mode & IO transport:** two spec axes (§10) — `irq_mode`
+- **Interrupt mode & IO transport:** two spec axes ([§10](#10-generating-the-file)) — `irq_mode`
   (`none`/`simple`/`vectored`) turns on the interrupt controller (and, for `vectored`, the INTA
   vector supply); `io_transport` (`memory`/`port`) picks the IO transport. Each pin-level combination
-  is a small adapter variant (§4.6); the firmware supplies the ISR and/or the `IN`/`OUT` accesses.
+  is a small adapter variant ([§4.6](#46-adapter-variants--interrupt-mode--io-transport)); the firmware supplies the ISR and/or the `IN`/`OUT` accesses.
 - **Alternative programs / hex vs BCD:** just firmware + system-spec changes; the VHDL skeleton and
   the adapter are unchanged.
 
@@ -651,32 +675,32 @@ generator logic — the vectored and port token sets compose — only the combin
 The `peripherals` spec axis (a TOML list, e.g. `peripherals = ["lfsr"]`) splices an optional
 CPU-side IO subsystem into `cpu_io` without touching any existing design — empty tokens when the
 list is empty keep every other system byte-identical (proved by the golden tests). Adding one is
-four pieces; `hdl/mx65_dice_7seg.vhd` / `systems/mx65_dice_7seg.toml` are the committed example:
+four pieces; [`hdl/mx65_dice_7seg.vhd`](../hdl/mx65_dice_7seg.vhd) / [`systems/mx65_dice_7seg.toml`](../systems/mx65_dice_7seg.toml) are the committed example:
 
 1. **A fragment triple** (`templates/fragments/lfsr_*.vhd.frag`), spliced via four `cpu_io.vhd.tmpl`
    anchors — `@@PERIPH_SIGNALS@@`, `@@PERIPH_SENS@@`, `@@PERIPH_READ@@`, `@@PERIPH_LOGIC@@` (put any
-   new multi-line VHDL body in a fragment, not a Python string literal — §10's "generator internals"
+   new multi-line VHDL body in a fragment, not a Python string literal — [§10](#10-generating-the-file)'s "generator internals"
    note): a signal declaration, a sensitivity-list addition, a read-mux `when` arm at a fresh address
    (`$E008`), and the peripheral's own clocked process (a free-running maximal-length LFSR here).
 2. **The spec list:** `peripherals = ["lfsr"]` in the system spec, validated against `PERIPHERALS`
    in `system_spec.py` (an unknown name is a clear load-time error, same as `irq_mode`/`io_transport`).
-3. **Firmware that uses it:** `firmware/mx65_dice_7seg.s` reads the new register (`LFSR = $E008`) on
+3. **Firmware that uses it:** [`firmware/mx65_dice_7seg.s`](../firmware/mx65_dice_7seg.s) reads the new register (`LFSR = $E008`) on
    each button press and reduces it to a die face — ordinary memory-mapped IO from the firmware's
    point of view, no different from reading switches or buttons.
-4. **Tests:** `sim/test_cpu_dice.py` plus the golden/reassembly/NVC/GHDL wrappers in
-   `tests/test_embedded_core.py`, following the same pattern every other system uses.
+4. **Tests:** [`sim/test_cpu_dice.py`](../sim/test_cpu_dice.py) plus the golden/reassembly/NVC/GHDL wrappers in
+   [`tests/test_embedded_core.py`](../tests/test_embedded_core.py), following the same pattern every other system uses.
 
 The dice spec also gives ROM (2 KB) and RAM (1 KB) **different** sizes — the runtime proof, under
-both simulators, that Phase 2's per-region address slices really are independent (§6).
+both simulators, that Phase 2's per-region address slices really are independent ([§6](#6-memory--io-map-design)).
 
 **Terminology note:** this `peripherals` axis is CPU-side IO subsystems *inside* the generated
 design — unrelated to board-JSON `peripherals` blocks (physical on-board devices like VGA or audio;
 roadmap P5's domain). Same word, different layer.
 
-**Reader exercise:** `hdl/stopwatch_7seg.vhd` is the hand-written RTL half of this repo's "same
+**Reader exercise:** [`hdl/stopwatch_7seg.vhd`](../hdl/stopwatch_7seg.vhd) is the hand-written RTL half of this repo's "same
 behavior, hardware vs software" teaching pair — start/stop/reset under button control, the same
 interaction style as the dice roller above. Porting it to 6502 or Z80 firmware is left as an
-exercise; `firmware/mx65_walking_counter_7seg.s` already shows the full recipe (BCD ripple, edge
+exercise; [`firmware/mx65_walking_counter_7seg.s`](../firmware/mx65_walking_counter_7seg.s) already shows the full recipe (BCD ripple, edge
 detection, switch-speed scaling) for turning this exact kind of RTL into firmware.
 
 ## 14. Troubleshooting
@@ -690,14 +714,14 @@ detection, switch-speed scaling) for turning this exact kind of RTL into firmwar
 | Too fast / blurred | prescaler too short / slider too high | Raise `PRESCALER_BITS`; lower the speed slider |
 | LED stuck at one end | `POS` bound wrong / didn't read `N_LEDS` | Read config reg `$E004`; check bounce limits |
 | Works in GHDL, fails in NVC | heap / elaboration differences | NVC already gets `-H 512m`; keep ROM/RAM modest |
-| Display dead from the very first frame | Registered (sync) memory → off-by-one read; CPU fetched garbage | Make ROM/RAM/mux read path **combinational** (§4) |
-| Display frozen/blank; `data_in` shows `U`/`X` | Metavalue propagation from uninitialized RAM/bus | Init RAM to `x"00"`, mux `else => x"00"`, zero vars in cold-start (§5) |
-| `btn(0)` reversal sometimes ignored | Button pulse shorter than one tick (polled once/tick) | Hold ≥ 1 tick; or use the IRQ variant (§9) |
-| Poll loop hangs on a multi-cycle CPU (e.g. Z80) | **read-to-clear** status bit clears mid-read, before the core samples it | Make it **write-to-clear**: poll to check, write to ack (§4.5) |
-| New core: garbage or writes don't land | bus adapter maps a strobe or polarity wrong | Recheck `adapters/<core>.vhd`: `cpu_we`, reset polarity, irq polarity, address width (§4.4) |
-| Core analysis fails on `std_logic_unsigned` | vendored core uses a Synopsys package | Swap to `numeric_std_unsigned` (§4.2); translate any `conv_*` helpers |
-| Vectored IRQ jumps to garbage | `I`/vector-table mismatch, or the adapter doesn't drive `DI` on INTA | Set `I` to the table page, put the table at `I:vector`; confirm `t80_vectored` muxes the vector during INTA (§9) |
-| Port-IO: `IN`/`OUT` hit ROM/RAM, or IO reads return `x"00"` | decode not split by MREQ/IORQ, or firmware still uses loads/stores | With `io_transport="port"` the decode qualifies ROM/RAM by MREQ and takes `sel_io` from IORQ (§6); use `IN`/`OUT` for IO |
+| Display dead from the very first frame | Registered (sync) memory → off-by-one read; CPU fetched garbage | Make ROM/RAM/mux read path **combinational** ([§4](#4-adding-a-cpu-core-the-core-agnostic-part)) |
+| Display frozen/blank; `data_in` shows `U`/`X` | Metavalue propagation from uninitialized RAM/bus | Init RAM to `x"00"`, mux `else => x"00"`, zero vars in cold-start ([§5](#5-reset--cold-start-generalized)) |
+| `btn(0)` reversal sometimes ignored | Button pulse shorter than one tick (polled once/tick) | Hold ≥ 1 tick; or use the IRQ variant ([§9](#9-timing--throughput)) |
+| Poll loop hangs on a multi-cycle CPU (e.g. Z80) | **read-to-clear** status bit clears mid-read, before the core samples it | Make it **write-to-clear**: poll to check, write to ack ([§4.5](#45-bus-read-timing--the-deepest-pothole)) |
+| New core: garbage or writes don't land | bus adapter maps a strobe or polarity wrong | Recheck `adapters/<core>.vhd`: `cpu_we`, reset polarity, irq polarity, address width ([§4.4](#44-the-bus-adapter--the-heart-of-any-core)) |
+| Core analysis fails on `std_logic_unsigned` | vendored core uses a Synopsys package | Swap to `numeric_std_unsigned` ([§4.2](#42-vendoring-the-core)); translate any `conv_*` helpers |
+| Vectored IRQ jumps to garbage | `I`/vector-table mismatch, or the adapter doesn't drive `DI` on INTA | Set `I` to the table page, put the table at `I:vector`; confirm `t80_vectored` muxes the vector during INTA ([§9](#9-timing--throughput)) |
+| Port-IO: `IN`/`OUT` hit ROM/RAM, or IO reads return `x"00"` | decode not split by MREQ/IORQ, or firmware still uses loads/stores | With `io_transport="port"` the decode qualifies ROM/RAM by MREQ and takes `sel_io` from IORQ ([§6](#6-memory--io-map-design)); use `IN`/`OUT` for IO |
 
 ## 15. Debugging with waveforms
 
@@ -717,8 +741,8 @@ Open the trace (GTKWave, Surfer) and watch the core's pins:
   your RESET routine. If not, the POR is too short or the reset-vector bytes are wrong.
 - **`sync`** marks opcode fetches — count them to confirm the main loop is looping.
 - **`rw`** high = read, low = write — watch a write actually drive `$E020`/`$E030`.
-- **`data_in`** showing `U`/`X` is the tell-tale of metavalue propagation (§5) or an off-by-one
-  registered read (§4); the design looks "dead" on screen.
+- **`data_in`** showing `U`/`X` is the tell-tale of metavalue propagation ([§5](#5-reset--cold-start-generalized)) or an off-by-one
+  registered read ([§4](#4-adding-a-cpu-core-the-core-agnostic-part)); the design looks "dead" on screen.
 
 A 20–50 µs window at `PRESCALER_BITS=10` captures reset plus several ticks — enough to diagnose most
 bring-up failures.

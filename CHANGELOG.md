@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `docs/embedded_core_improvement_plan.md` mentions in the README's
   embedded-CPU section are clickable relative links instead of plain
   backticked text (#159)
+- **Embedded-core guide navigation.** `docs/embedded_core_system_guide.md` gains
+  a table of contents, and all 61 `§N` cross-references and ~37 repo-file
+  mentions are now clickable anchor/relative links; the misaligned §3 ASCII
+  diagram is corrected (#160)
 
 ## [0.9.0] - 2026-07-02
 
