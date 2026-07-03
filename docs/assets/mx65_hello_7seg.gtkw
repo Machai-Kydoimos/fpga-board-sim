@@ -1,0 +1,17 @@
+[*]
+[*] GTKWave save file for the mx65_hello_7seg annotated waveform.
+[*] Regenerate with: uv run python scripts/capture_waveform.py
+[*]
+[dumpfile] "mx65_hello_7seg.vcd"
+[timestart] 0
+[size] 1600 640
+[pos] -1 -1
+[sst_width] 220
+[signals_width] 220
+-mx65_hello_7seg
+wave_tb.dut.clk
+wave_tb.dut.cpu_reset
+wave_tb.dut.cpu_addr[15:0]
+wave_tb.dut.cpu_din[7:0]
+wave_tb.dut.cpu_we
+wave_tb.dut.led[3:0]

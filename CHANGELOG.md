@@ -29,6 +29,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an interactive `mx65_walking_counter_demo.gif` for the README, an
   `mx65_dice_7seg.gif`, and an `mx65_hello_7seg.png`, all embedded in the
   guide/README (#162)
+- **Annotated waveform for guide §15.** New `scripts/capture_waveform.py`
+  simulates `mx65_hello_7seg` against an inline testbench, hand-parses the
+  resulting VCD, and renders `docs/assets/mx65_hello_waveform.png` in a
+  GTKWave-like visual idiom (black background, green traces, hexagonal bus
+  lanes) with five annotations — POR release, reset-vector fetch, first
+  opcode, the LED-on store, and the terminal spin loop — all located
+  programmatically from the trace. Also (re)writes
+  `docs/assets/mx65_hello_7seg.gtkw` so `gtkwave <vcd> <that file>` opens the
+  identical view in real GTKWave (#163)
 
 ### Changed
 

@@ -73,6 +73,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `scripts/embedded_core/` | Generator package: `cpu_plugin`, `system_spec`, `emitter`, `templates/` (`*.vhd.tmpl` + `templates/fragments/*.vhd.frag` for multi-line VHDL bodies), `adapters/` (per-core bus adapters), vendored `cores/` (mx65, t80), `rom_to_vhdl.py` |
 | `systems/` | TOML system specs consumed by the generator (e.g. `mx65_walking_counter_7seg.toml`) |
 | `firmware/` | CPU firmware: 6502 `.s` (ca65/ld65) + Z80 `.asm` (z80asm) sources + assembled `.bin`, embedded verbatim as the ROM constant |
+| `scripts/capture_waveform.py` | Simulates `mx65_hello_7seg` against an inline testbench and renders `docs/assets/mx65_hello_waveform.png` (+ `.gtkw`) — an annotated GTKWave-idiom waveform for the guide's debugging section, with all five callouts located programmatically from the parsed VCD |
 
 ### Data Flow
 
