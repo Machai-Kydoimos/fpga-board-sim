@@ -275,6 +275,18 @@ setup. A few things that matter for contributors:
   its own pygame `init`/`quit` fixture — use the shared session
   `headless_pygame` in `tests/conftest.py`. A mid-session `pygame.quit()`
   invalidates the cached fonts other modules render with.)
+- **Session-file isolation.** `save_session()` / `update_session()` /
+  `push_recent()` write the real `~/.fpga_simulator/session.json`. Any test
+  that constructs a `ScreenController` or `SettingsDialog` — or otherwise
+  triggers a session write — must redirect the target first, or the test run
+  clobbers the developer's own saved session:
+
+  ```python
+  monkeypatch.setattr("fpga_sim.session_config.SESSION_FILE", tmp_path / "session.json")
+  ```
+
+  `tests/test_controller.py` and `tests/test_settings_dialog.py` do this with
+  an autouse fixture; follow that pattern in new test modules.
 - **`sim/test_blinky.py`** contains headless cocotb tests for the blinky
   design. **`sim/test_7seg.py`** contains the equivalent tests for the
   `counter_7seg` design. Both run via pytest through a cocotb–pytest
@@ -536,8 +548,23 @@ boundaries (`*ios: object`, `**kwargs: object`) because the upstream APIs accept
 heterogeneous arguments. Use `cast()` if you need a narrower type after
 extracting a value from a mock object.
 
-**Session state** is stored in `~/.fpga_simulator/session.json` and
-loaded at startup. It is intentionally best-effort — load and save
-failures are silently ignored so a corrupt or missing file never breaks
-the app. After each simulation run, a separate per-session performance
-summary is appended to `~/.fpga_simulator/sessions/` by `fpga_sim/sim_session_log.py`.
+**Session state** is stored in `~/.fpga_simulator/session.json` and loaded
+at startup. Every write is a **merge** (`update_session()` does a
+read-modify-write; `save_session()` builds on it), and the keys have owners —
+never write a key another writer owns:
+
+- the **launcher** (`ScreenController`) writes the board / VHDL / simulator /
+  selector prefs / window size — on every board, simulator, or VHDL change,
+  at quit, and at launch — plus `recent[]` via `push_recent()`;
+- the **Settings dialog** writes `theme` (and, when U10/U19 land, the
+  `waveform_enabled` / `metrics_enabled` toggles);
+- the **sim subprocess** owns `speed_factor`: `launch_simulation()` seeds the
+  panel slider via the `FPGA_SIM_SPEED` env var and `sim/sim_testbench.py`
+  writes the final slider value back at exit — only when that env var is
+  present, so benchmark and test runs never touch the file. The launcher
+  re-reads the file before each launch rather than caching the value.
+
+It is intentionally best-effort — load and save failures are silently ignored
+so a corrupt or missing file never breaks the app. After each simulation run,
+a separate per-session performance summary is appended to
+`~/.fpga_simulator/sessions/` by `fpga_sim/sim_session_log.py`.

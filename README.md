@@ -233,21 +233,28 @@ A logarithmic slider from **0.001× to 10×** (default **0.1×**; the last-used 
 
 ```text
 src/fpga_sim/              Installable Python package (src layout)
-  __main__.py              Entry point — screen flow, --benchmark CLI, --sim flag
+  __main__.py              Entry point — arg parsing, window setup/restore, --benchmark CLI, --sim flag
+  controller.py            ScreenController + SessionState — drives the launcher screen flow
   board_loader.py          Loads board definitions from JSON into BoardDef objects
   sim_bridge.py            GHDL/NVC analysis + cocotb simulation launcher; _SimBackend ABC + _GHDLBackend/_NVCBackend
   sim_session_log.py       Writes per-session JSON summaries to ~/.fpga_simulator/sessions/
   sim_metrics.py           Optional per-frame CSV metrics (set FPGA_SIM_METRICS=<path> to enable)
-  session_config.py        Session persistence (~/.fpga_simulator/session.json)
+  session_config.py        Session persistence, merge-on-write (~/.fpga_simulator/session.json)
   generate_board_images.py Renders static board previews (used for documentation/thumbnails)
   ui/                      pygame UI subpackage
-    constants.py           Color constants and _ui_scale helper (single source of truth)
+    constants.py           Base neutral colors, get_font cache, _ui_scale helper
+    theme.py               Theme dataclass + THEME instance — the semantic color roles
     components.py          FPGAChip, LED, Switch, Button — low-level board components
     board_selector.py      Board picker screen
     board_display.py       Board preview + simulation screen (FPGABoard class)
     sim_panel.py           Stats strip rendered during simulation (SimPanel class)
     vhdl_picker.py         VHDL file browser screen
     error_dialog.py        Error dialog overlay
+    help_dialog.py         Help overlay (F1 / ? / the (?) button)
+    settings_dialog.py     Settings overlay (gear button): theme, sim speed, recent files
+    spinner.py             Analysis busy-spinner overlay (run_with_spinner)
+    results.py             ScreenResult / DialogResult enums
+    widgets/               Shared button rendering (ButtonStyle + draw_button)
 sim/                       Simulation infrastructure (not part of the installed package)
   sim_testbench.py         cocotb test that bridges simulator signals ↔ pygame UI; main sim loop
   sim_wrapper_template.vhd VHDL wrapper template — seg port/generic spliced in when needed
@@ -336,8 +343,8 @@ Note that pygame runs in two separate OS processes. The launcher (board selector
 When the user clicks "Start Simulation" and picks a VHDL file, the following happens:
 
 ```text
-fpga_sim/__main__.py             fpga_sim/sim_bridge.py            Simulator + cocotb
-────────────────────             ──────────────────────            ──────────────────
+fpga_sim/controller.py           fpga_sim/sim_bridge.py            Simulator + cocotb
+──────────────────────           ──────────────────────            ──────────────────
 1. Serialize BoardDef to JSON
 2. Call launch_simulation() ───→ 3. Analyze VHDL
    pygame.quit()                    (GHDL: also elaborate here;
