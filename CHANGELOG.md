@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`main()`'s 264-line screen loop extracted into a `ScreenController` (D6b).**
+  New `src/fpga_sim/controller.py` holds a `SessionState` dataclass (the VHDL /
+  work-dir / simulator tuple plus the persisted selector preferences) and a
+  `ScreenController` whose public transition methods (`on_board_selected`,
+  `on_vhdl_loaded`, `on_simulate`, `on_back`) form an explicit state machine,
+  dispatched by a `match` on the D6a `ScreenResult` enum; `__main__.main()` is
+  now a thin driver and `_build_generics` moved to `controller.build_generics`.
+  No behavior change; 33 new tests (#123, #168)
+
 ## [0.10.0] - 2026-07-03
 
 ### Added

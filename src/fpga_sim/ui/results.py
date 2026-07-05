@@ -1,9 +1,9 @@
 """Typed screen-transition results.
 
 These small enums replace the stringly-typed return values of the launcher
-screens' ``run()`` methods. The main loop in ``__main__`` (and the future
-``ScreenController`` extracted in D6b) dispatches on enum members that mypy can
-check, instead of bare strings that drift silently when a branch is renamed.
+screens' ``run()`` methods. The ``ScreenController`` in ``fpga_sim.controller``
+(extracted in D6b) dispatches on enum members that mypy can check, instead of
+bare strings that drift silently when a branch is renamed.
 
 Plain ``Enum`` (not ``StrEnum``, which is 3.11+) is used because these values
 are purely internal control-flow signals — they are never serialized to the
