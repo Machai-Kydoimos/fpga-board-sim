@@ -12,6 +12,7 @@ from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch
 from fpga_sim.ui.error_dialog import ErrorDialog
 from fpga_sim.ui.help_dialog import HelpDialog
 from fpga_sim.ui.results import DialogResult, ScreenResult
+from fpga_sim.ui.settings_dialog import SettingsDialog
 from fpga_sim.ui.sim_panel import SimPanel
 from fpga_sim.ui.spinner import SpinnerOverlay, run_with_spinner
 from fpga_sim.ui.vhdl_picker import VHDLFilePicker
@@ -27,6 +28,7 @@ __all__ = [
     "VHDLFilePicker",
     "ErrorDialog",
     "HelpDialog",
+    "SettingsDialog",
     "ScreenResult",
     "DialogResult",
     "SimPanel",

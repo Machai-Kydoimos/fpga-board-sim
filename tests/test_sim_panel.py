@@ -206,11 +206,28 @@ def test_low_frequency_period_ns(dummy_screen):
 
 
 def test_initial_speed_factor_is_default(dummy_screen):
-    """speed_factor must start at _SPEED_DEFAULT (0.1×) on a fresh panel."""
-    from fpga_sim.ui.sim_panel import _SPEED_DEFAULT
+    """speed_factor must start at SPEED_DEFAULT (0.1×) on a fresh panel."""
+    from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 
     panel = _make_panel(dummy_screen, clock_hz=100e6)
-    assert panel.speed_factor == pytest.approx(_SPEED_DEFAULT)
+    assert panel.speed_factor == pytest.approx(SPEED_DEFAULT)
+
+
+def test_speed_factor_ctor_param_restores_saved_value(dummy_screen):
+    """A restored session speed (U5) must seed the slider."""
+    from fpga_sim.ui.sim_panel import SimPanel
+
+    panel = SimPanel(dummy_screen, height=120, board_clock_hz=100e6, speed_factor=2.5)
+    assert panel.speed_factor == pytest.approx(2.5)
+
+
+@pytest.mark.parametrize(("requested", "expected"), [(0.0, 0.001), (-3.0, 0.001), (99.0, 10.0)])
+def test_speed_factor_ctor_param_is_clamped(dummy_screen, requested, expected):
+    """Out-of-range restored speeds clamp to the slider range."""
+    from fpga_sim.ui.sim_panel import SimPanel
+
+    panel = SimPanel(dummy_screen, height=120, board_clock_hz=100e6, speed_factor=requested)
+    assert panel.speed_factor == pytest.approx(expected)
 
 
 def test_update_one_frame_gives_exact_values(dummy_screen):

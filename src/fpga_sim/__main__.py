@@ -20,6 +20,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 import pygame
 
@@ -157,6 +158,30 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) ->
     return 0
 
 
+# Floor for a restored window size: saved values below this are treated as junk.
+_MIN_RESTORE_W, _MIN_RESTORE_H = 640, 480
+
+
+def _initial_window_size(session: dict[str, Any], desktop: tuple[int, int]) -> tuple[int, int]:
+    """Pick the launcher window size: the saved one, else ~80% of the desktop.
+
+    A saved ``window_w`` / ``window_h`` pair (written at quit and at every
+    simulation launch) is clamped to the desktop; missing, junk, or
+    implausibly small values fall through to the default calculation.
+    """
+    sw, sh = desktop
+    try:
+        w, h = int(session.get("window_w", 0)), int(session.get("window_h", 0))
+    except (TypeError, ValueError):
+        w, h = 0, 0
+    if w >= _MIN_RESTORE_W and h >= _MIN_RESTORE_H:
+        return min(w, sw), min(h, sh)
+    return (
+        max(1024, min(round(sw * 0.80), 1600)),
+        max(700, min(round(sh * 0.80), 1000)),
+    )
+
+
 def main() -> None:
     """Run the FPGA Board Simulator: set up pygame, then hand off to ScreenController."""
     args = _parse_args()
@@ -165,12 +190,11 @@ def main() -> None:
     if args.benchmark is not None:
         sys.exit(_run_benchmark(args, available_sims))
 
+    session = load_session()
     pygame.init()
     # get_desktop_sizes() is reliable in pygame 2.x before any set_mode() call
     sizes = pygame.display.get_desktop_sizes()
-    sw, sh = sizes[0] if sizes else (1920, 1080)
-    width = max(1024, min(round(sw * 0.80), 1600))
-    height = max(700, min(round(sh * 0.80), 1000))
+    width, height = _initial_window_size(session, sizes[0] if sizes else (1920, 1080))
 
     boards = discover_boards(get_default_boards_path())
 
@@ -191,7 +215,7 @@ def main() -> None:
         screen,
         clock,
         available_sims,
-        session=load_session(),
+        session=session,
         cli_simulator=args.sim,
     ).run()
 

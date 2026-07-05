@@ -184,6 +184,7 @@ The board renders with LEDs, buttons, switches, and — on supported boards — 
 - **"Start Simulation"** button → opens the VHDL file picker
 - **R** → reset all switches off and release any held buttons
 - **F1 / ? / (?)** → open the help overlay
+- **Gear button** (next to the `(?)`) → open the Settings dialog: UI theme, reset the remembered sim speed, clear the recent-files list
 - **ESC** → back to board list
 
 ### 3. Select a VHDL file
@@ -220,13 +221,13 @@ A strip at the bottom of the window shows live simulation statistics across thre
 
 **Simulation speed (center)**
 
-A logarithmic slider from **0.001× to 10×** (default **0.1×**) controls how many simulated nanoseconds are passed to each `await Timer(...)` call, effectively slowing the design below real-time for debugging. When GHDL/NVC throughput limits the step, an amber **(CPU-limited)** note appears — dragging right won't help; try lowering the virtual clock instead.
+A logarithmic slider from **0.001× to 10×** (default **0.1×**; the last-used value is remembered across sessions) controls how many simulated nanoseconds are passed to each `await Timer(...)` call, effectively slowing the design below real-time for debugging. When GHDL/NVC throughput limits the step, an amber **(CPU-limited)** note appears — dragging right won't help; try lowering the virtual clock instead.
 
 **Virtual clock (right)**
 
 **[-] / [+]** cycle through the clock frequencies declared in the board's amaranth-boards definition. The new half-period is written directly to the VHDL wrapper; the clock changes within one half-period without restarting the simulator. A **[PAUSE] / [RESUME]** button freezes simulation while keeping the simulator process alive.
 
-> **Session persistence:** The last-used board, VHDL file, and simulator choice are saved to `~/.fpga_simulator/session.json` and pre-selected on the next run. After each simulation session a compact performance summary is also written to `~/.fpga_simulator/sessions/<timestamp>_<board>.json` (board, simulator, duration, avg FPS, simulated time, G/D/I breakdown).
+> **Session persistence:** The last-used board, VHDL file, simulator, selector sort/filters, window size, and sim-speed slider are saved to `~/.fpga_simulator/session.json` and restored on the next run. The session updates whenever you pick a file or change the board or simulator — not only when a simulation launches — and the last 10 (board, VHDL) pairs are remembered as a recent-files list. The Settings dialog (gear button in the board preview) shows the persisted theme and speed and can reset the speed or clear the recent list. After each simulation session a compact performance summary is also written to `~/.fpga_simulator/sessions/<timestamp>_<board>.json` (board, simulator, duration, avg FPS, simulated time, G/D/I breakdown).
 
 ## Project Structure
 

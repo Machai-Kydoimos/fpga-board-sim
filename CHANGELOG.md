@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Settings dialog + extended session persistence (U5).** A gear button in
+  the board preview header opens a new Settings overlay (`ui/settings_dialog.py`)
+  with three rows: the UI theme (cycles `THEME_NAMES`; disabled until U6 adds
+  alternates), the remembered sim-speed with a [Reset], and the new
+  recent-files list with a [Clear]. The session file now also persists the
+  window size (restored at startup), the speed slider (seeded into the sim
+  via `FPGA_SIM_SPEED` and written back at sim exit; benchmark/test runs
+  never touch it), a `theme` name, reserved `metrics_enabled` /
+  `waveform_enabled` toggles (for U19/U10), and `recent[]` — the last 10
+  (board, VHDL) pairs for U18's picker section. All session writers now
+  merge into the file instead of rewriting it, and the launcher saves on
+  every board / simulator / VHDL change and at quit — not only at simulation
+  launch — so a browsed-but-unrun file and its directory survive a restart
+  (#124, #169)
+
 ### Changed
 
 - **`main()`'s 264-line screen loop extracted into a `ScreenController` (D6b).**

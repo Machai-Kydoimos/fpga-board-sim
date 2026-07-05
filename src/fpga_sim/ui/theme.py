@@ -27,6 +27,13 @@ from fpga_sim.ui.widgets.button import RGB, ButtonStyle
 _PCB_BLUE: RGB = (20, 60, 110)
 _PCB_BLUE_HI: RGB = (30, 80, 140)
 
+# Selectable theme names + their Settings-dialog labels. U6 adds the alternate
+# instances ("dark", "high-contrast") here; the persisted session's ``theme`` key
+# holds one of these names, and the Settings dialog cycles through them (the
+# control stays disabled while there is only one).
+THEME_NAMES: tuple[str, ...] = ("pcb-green",)
+THEME_LABELS: Mapping[str, str] = MappingProxyType({"pcb-green": "PCB Green"})
+
 # FPGA vendor → package fill. Immutable so every Theme can safely share one instance.
 _VENDOR_COLORS: Mapping[str, RGB] = MappingProxyType(
     {
@@ -164,6 +171,16 @@ class Theme:
     btn_help_close: ButtonStyle = ButtonStyle(bg=(45, 50, 70), bg_hover=(65, 75, 110))
     btn_help: ButtonStyle = ButtonStyle(  # the (?) trigger; big radius → circular
         bg=(45, 50, 70), bg_hover=(70, 85, 120), border=(120, 135, 170), radius=99
+    )
+    btn_settings: ButtonStyle = ButtonStyle(  # the gear trigger; matches btn_help
+        bg=(45, 50, 70), bg_hover=(70, 85, 120), border=(120, 135, 170), radius=99
+    )
+    btn_settings_action: ButtonStyle = ButtonStyle(  # dialog row actions (cycle/Reset/Clear)
+        bg=(50, 55, 75),
+        bg_hover=(65, 75, 110),
+        bg_disabled=(40, 42, 55),
+        fg_disabled=(120, 120, 135),
+        border_disabled=(80, 80, 95),
     )
     btn_error_retry: ButtonStyle = ButtonStyle(bg=(25, 70, 25), bg_hover=(40, 110, 40))
     btn_error_back: ButtonStyle = ButtonStyle(

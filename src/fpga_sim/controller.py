@@ -31,7 +31,7 @@ from typing import Any, cast
 import pygame
 
 from fpga_sim.board_loader import BoardDef
-from fpga_sim.session_config import save_session
+from fpga_sim.session_config import load_session, push_recent, save_session
 from fpga_sim.sim_bridge import (
     Simulator,
     analyze_vhdl,
@@ -49,6 +49,7 @@ from fpga_sim.ui import (
     run_with_spinner,
 )
 from fpga_sim.ui.constants import get_font
+from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 
 _HDL_DIR = Path(__file__).parent.parent.parent / "hdl"
 
@@ -185,6 +186,28 @@ class ScreenController:
         saved = session.get("simulator", "")
         return cast("Simulator", saved) if saved in available_sims else available_sims[0]
 
+    # ── Session persistence ───────────────────────────────────────────────
+
+    def _save_session(self, *, window_size: tuple[int, int] | None = None) -> None:
+        """Persist the launcher state (a merge — see ``session_config``).
+
+        Called on every board / simulator / VHDL change, at quit, and at
+        simulation launch — not only at launch as pre-U5 — so preferences
+        survive a browse-only session.  *window_size* is included when the
+        caller has a live window to measure.
+        """
+        s = self.state
+        save_session(
+            s.board_class,
+            s.vhdl_path or s.last_vhdl_path,
+            s.simulator,
+            s.board_source,
+            s.board_sort,
+            s.component_filters,
+            s.vendor_filters,
+            window_size=window_size,
+        )
+
     # ── Loop ──────────────────────────────────────────────────────────────
 
     def run(self) -> None:
@@ -192,6 +215,9 @@ class ScreenController:
         nxt = NextScreen.SELECTOR
         while nxt is not NextScreen.QUIT:
             nxt = self._run_selector() if nxt is NextScreen.SELECTOR else self._run_preview()
+        # Quit-time save: keep the final window size and any sort/filter/
+        # simulator changes from a browse-only session.
+        self._save_session(window_size=self.screen.get_size())
         get_font.cache_clear()
         pygame.quit()
 
@@ -218,13 +244,18 @@ class ScreenController:
         return self.on_board_selected(chosen)
 
     def on_board_selected(self, board: BoardDef) -> NextScreen:
-        """Enter the preview for *board*.
+        """Enter the preview for *board* and persist it as the new preselection.
 
-        Deliberately does **not** touch the persisted ``board_class`` /
-        ``board_source`` preselection — those update only when a simulation
-        actually launches (matching the pre-D6b behavior).
+        Pre-U5 the preselection updated only when a simulation launched; now
+        the last *browsed* board is restored too, so a pick-then-quit session
+        resumes where the user left off.
         """
         self.board = board
+        s = self.state
+        if (s.board_class, s.board_source) != (board.class_name, board.source):
+            s.board_class = board.class_name
+            s.board_source = board.source
+            self._save_session()
         return NextScreen.PREVIEW
 
     # ── Step 2: board preview ─────────────────────────────────────────────
@@ -245,7 +276,9 @@ class ScreenController:
             vhdl_path=self.state.vhdl_path,
         )
         result = preview.run()
-        self.state.simulator = preview.simulator  # pick up any toggle change
+        if preview.simulator != self.state.simulator:  # pick up any toggle change
+            self.state.simulator = preview.simulator
+            self._save_session()
 
         match result:
             case ScreenResult.QUIT:
@@ -331,14 +364,18 @@ class ScreenController:
         """Record a validated + analyzed VHDL file, then re-enter the preview.
 
         ``work_dir_simulator`` records which simulator did the analysis so a
-        later simulator toggle triggers re-analysis at launch.  (U5 will add
-        its save-on-pick session write here.)
+        later simulator toggle triggers re-analysis at launch.  The session is
+        saved here — on *pick*, not only at launch — so a browsed-but-unrun
+        file, its directory, and its ``recent[]`` entry survive a restart.
         """
         s = self.state
         s.vhdl_path = vhdl_path
         s.last_vhdl_path = vhdl_path
         s.work_dir = work_dir
         s.work_dir_simulator = s.simulator
+        self._save_session()
+        if self.board is not None:
+            push_recent(self.board.class_name, self.board.source, vhdl_path)
         return NextScreen.PREVIEW
 
     # ── Step 5: launch simulation ─────────────────────────────────────────
@@ -396,22 +433,25 @@ class ScreenController:
             s.work_dir = detail
             s.work_dir_simulator = s.simulator
 
-        save_session(
-            board.class_name,
-            s.vhdl_path,
-            s.simulator,
-            board.source,
-            s.board_sort,
-            s.component_filters,
-            s.vendor_filters,
-        )
         s.board_class = board.class_name
         s.board_source = board.source
         s.last_vhdl_path = s.vhdl_path
 
         # Capture the final window size before quitting pygame so the
-        # simulation subprocess and the post-sim restart both use it.
+        # simulation subprocess, the post-sim restart, and the next app
+        # launch (via the session file) all use it.
         width, height = self.screen.get_size()
+        self._save_session(window_size=(width, height))
+        push_recent(board.class_name, board.source, s.vhdl_path)
+
+        # The sim writes the slider's final value back to the session file at
+        # exit, so re-read it each launch: the slider resumes where the user
+        # left it — across runs and across restarts.
+        try:
+            speed = float(load_session().get("speed_factor", SPEED_DEFAULT))
+        except (TypeError, ValueError):
+            speed = SPEED_DEFAULT
+
         get_font.cache_clear()
         pygame.quit()  # the cocotb subprocess starts its own pygame
 
@@ -427,6 +467,7 @@ class ScreenController:
                 work_dir=s.work_dir,
                 simulator=s.simulator,
                 board_def=board,
+                speed_factor=speed,
             )
         except Exception as e:
             sim_error = str(e)

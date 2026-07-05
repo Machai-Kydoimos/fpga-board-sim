@@ -48,7 +48,9 @@ _CLOCK_PRESETS_HZ: list[float] = [
 
 _SPEED_MIN: float = 0.001
 _SPEED_MAX: float = 10.0
-_SPEED_DEFAULT: float = 0.1
+# Public: also read by sim_testbench (restore/write-back), the controller
+# (launch plumbing), and the Settings dialog ([Reset]).
+SPEED_DEFAULT: float = 0.1
 
 _LOG_MIN: float = math.log10(_SPEED_MIN)  # -3
 _LOG_MAX: float = math.log10(_SPEED_MAX)  #  1
@@ -127,6 +129,7 @@ class SimPanel:
         height: int,
         board_clock_hz: float,
         board_clocks_hz: list[float] | None = None,
+        speed_factor: float = SPEED_DEFAULT,
     ) -> None:
         """Initialize the panel with screen surface, pixel height, and board clock.
 
@@ -145,6 +148,9 @@ class SimPanel:
             board.  When provided the [-]/[+] buttons cycle through these
             instead of the built-in generic preset list.  Pass ``None`` (the
             default) to use the generic preset list.
+        speed_factor:
+            Initial speed multiplier (e.g. restored from the saved session).
+            Clamped to the slider range.
 
         """
         self.screen = screen
@@ -168,7 +174,7 @@ class SimPanel:
             "period_ns": 1e9 / self._clock_options[self._preset_idx],
         }
 
-        self.speed_factor: float = _SPEED_DEFAULT
+        self.speed_factor: float = max(_SPEED_MIN, min(_SPEED_MAX, speed_factor))
         self.paused: bool = False
         # stop_requested is set by sim_testbench when the overlay [■ Stop] button
         # is clicked.  Declared here so sim_testbench can read it without coupling
