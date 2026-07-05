@@ -571,6 +571,7 @@ def launch_simulation(
     work_dir: str | None = None,
     simulator: Simulator = "ghdl",
     board_def: BoardDef | None = None,
+    speed_factor: float | None = None,
 ) -> bool:
     """Launch an interactive simulator + cocotb simulation.
 
@@ -584,6 +585,11 @@ def launch_simulation(
 
     If *work_dir* is supplied (from a prior ``analyze_vhdl()`` call) the
     analysis step is skipped — existing artifacts are reused.
+
+    *speed_factor* (when not ``None``) seeds the sim panel's speed slider via
+    ``FPGA_SIM_SPEED``; its presence also tells sim_testbench to write the
+    slider's final value back to the session file at exit.  Callers that must
+    not touch the user's session (benchmark, tests) simply leave it ``None``.
 
     This call blocks until the simulation exits.
     """
@@ -649,6 +655,8 @@ def launch_simulation(
     env["FPGA_SIM_BOARD_JSON"] = board_json
     env["FPGA_SIM_WIDTH"] = str(sim_width)
     env["FPGA_SIM_HEIGHT"] = str(sim_height)
+    if speed_factor is not None:
+        env["FPGA_SIM_SPEED"] = str(speed_factor)
     # Metadata consumed by sim_testbench when FPGA_SIM_METRICS is set
     env["FPGA_SIM_SIMULATOR"] = simulator
     env["FPGA_SIM_VHDL_PATH"] = str(vhdl_path)

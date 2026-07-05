@@ -46,15 +46,26 @@ import pygame
 from cocotb.triggers import Timer
 
 from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ, BoardDef, ComponentInfo
+from fpga_sim.session_config import update_session
 from fpga_sim.sim_session_log import save_session_stats
 from fpga_sim.ui import FPGABoard, SimPanel
 from fpga_sim.ui.constants import get_font as _get_font
-from fpga_sim.ui.sim_panel import _PANEL_H_BASE, _SPEED_DEFAULT
+from fpga_sim.ui.sim_panel import _PANEL_H_BASE, SPEED_DEFAULT
 from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
 
 # ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
 _METRICS_PATH: str = os.environ.get("FPGA_SIM_METRICS", "")
+
+# ── Saved speed restore (the launcher sets FPGA_SIM_SPEED from the session) ──
+# When present it seeds the panel's speed slider, and the final slider value is
+# written back to the session file at exit.  Benchmark and test runs never set
+# it, so they neither read nor touch the user's session.
+_SPEED_ENV: str = os.environ.get("FPGA_SIM_SPEED", "")
+try:
+    _SPEED_INIT: float = float(_SPEED_ENV) if _SPEED_ENV else SPEED_DEFAULT
+except ValueError:
+    _SPEED_INIT = SPEED_DEFAULT
 
 # ── Benchmark mode (set FPGA_SIM_BENCHMARK=<seconds> for headless run) ────────
 _BENCHMARK_SECS: float = float(os.environ.get("FPGA_SIM_BENCHMARK", "0"))
@@ -132,7 +143,7 @@ def _write_meta_sidecar(
         "num_segs": board_def.seven_seg.num_digits if board_def and board_def.seven_seg else 0,
         "max_cycles_per_step": _MAX_CYCLES_PER_STEP,
         "real_step_ns": _REAL_STEP_NS,
-        "speed_factor_default": _SPEED_DEFAULT,
+        "speed_factor_default": SPEED_DEFAULT,
         "python_version": sys.version.split()[0],
         "platform": platform.platform(),
     }
@@ -178,6 +189,7 @@ async def interactive_sim(dut: object) -> None:
         height=_PANEL_H_BASE,
         board_clock_hz=clk_hz,
         board_clocks_hz=board_def.clocks if board_def else None,
+        speed_factor=_SPEED_INIT,
     )
 
     # Initial scaled panel height for the board layout.
@@ -510,6 +522,11 @@ async def interactive_sim(dut: object) -> None:
     if _metrics:
         _metrics.stop()
         print(f"[metrics] Saved to: {_METRICS_PATH}")
+
+    # ── Persist the final slider speed for the next launch ────────────────────
+    # Only when the launcher provided FPGA_SIM_SPEED (see the module header).
+    if _SPEED_ENV:
+        update_session(speed_factor=panel.speed_factor)
 
     # ── Write per-session JSON summary ────────────────────────────────────────
     _duration_s = time.monotonic() - _session_start

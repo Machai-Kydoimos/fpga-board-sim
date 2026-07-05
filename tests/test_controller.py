@@ -16,18 +16,25 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+import pytest
+
 import fpga_sim.controller as controller_mod
 from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
 from fpga_sim.controller import NextScreen, ScreenController, SessionState, build_generics
 from fpga_sim.ui import DialogResult, ScreenResult
+from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 
 if TYPE_CHECKING:
     from pathlib import Path
     from types import ModuleType
 
-    import pytest
-
     from fpga_sim.sim_bridge import Simulator
+
+
+@pytest.fixture(autouse=True)
+def _isolated_session_file(tmp_path, monkeypatch):
+    """Redirect SESSION_FILE so controller saves never touch the real user file."""
+    monkeypatch.setattr("fpga_sim.session_config.SESSION_FILE", tmp_path / "session.json")
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -210,14 +217,28 @@ def test_ctor_drops_missing_vhdl_but_keeps_it_as_last(headless_pygame):
 # ── Transition methods ───────────────────────────────────────────────────────
 
 
-def test_on_board_selected_sets_board_but_not_preselect_prefs(headless_pygame):
+def test_on_board_selected_updates_preselect_and_saves(headless_pygame, monkeypatch):
     ctrl = _make_controller(headless_pygame, session={"board_class": "Old", "board_source": "src"})
+    saves: list[Any] = []
+    monkeypatch.setattr(controller_mod, "save_session", lambda *a, **k: saves.append((a, k)))
     board = _board()
     assert ctrl.on_board_selected(board) is NextScreen.PREVIEW
     assert ctrl.board is board
-    # preselection only updates when a simulation launches (pre-D6b behavior)
-    assert ctrl.state.board_class == "Old"
-    assert ctrl.state.board_source == "src"
+    # U5: browsing persists the preselection immediately (not only at launch)
+    assert ctrl.state.board_class == board.class_name
+    assert ctrl.state.board_source == board.source
+    assert len(saves) == 1
+
+
+def test_on_board_selected_same_board_skips_save(headless_pygame, monkeypatch):
+    ctrl = _make_controller(
+        headless_pygame,
+        session={"board_class": "ArtyA7_35Platform", "board_source": "amaranth-boards"},
+    )
+    saves: list[Any] = []
+    monkeypatch.setattr(controller_mod, "save_session", lambda *a, **k: saves.append((a, k)))
+    ctrl.on_board_selected(_board())  # same class/source as the session
+    assert saves == []
 
 
 def test_on_back_clears_analysis_keeps_vhdl(headless_pygame):
@@ -242,6 +263,30 @@ def test_on_vhdl_loaded_records_file_workdir_and_simulator(headless_pygame):
     assert s.work_dir_simulator == "nvc"
 
 
+def test_on_vhdl_loaded_saves_session_and_pushes_recent(headless_pygame, monkeypatch):
+    """U5 save-on-pick: a picked file must persist without a simulation run."""
+    ctrl = _make_controller(headless_pygame)
+    board = _board()
+    ctrl.on_board_selected(board)
+    saves: list[Any] = []
+    recents: list[tuple[Any, ...]] = []
+    monkeypatch.setattr(controller_mod, "save_session", lambda *a, **k: saves.append((a, k)))
+    monkeypatch.setattr(controller_mod, "push_recent", lambda *a: recents.append(a))
+    ctrl.on_vhdl_loaded("/tmp/x.vhd", "/tmp/work")
+    (args, _kwargs) = saves[-1]
+    assert args[1] == "/tmp/x.vhd"  # the newly picked file is in the save
+    assert recents == [(board.class_name, board.source, "/tmp/x.vhd")]
+
+
+def test_on_vhdl_loaded_without_board_skips_recent(headless_pygame, monkeypatch):
+    """No board (direct call) → session still saved, recent[] untouched."""
+    ctrl = _make_controller(headless_pygame)
+    recents: list[tuple[Any, ...]] = []
+    monkeypatch.setattr(controller_mod, "push_recent", lambda *a: recents.append(a))
+    ctrl.on_vhdl_loaded("/tmp/x.vhd", "/tmp/work")
+    assert recents == []
+
+
 # ── run() loop ───────────────────────────────────────────────────────────────
 
 
@@ -263,6 +308,18 @@ def test_run_alternates_screens_until_quit(headless_pygame, monkeypatch):
     monkeypatch.setattr(headless_pygame, "quit", lambda: None)
     ctrl.run()
     assert seq == ["selector", "preview", "selector", "preview"]
+
+
+def test_run_quit_saves_prefs_and_window_size(headless_pygame, monkeypatch):
+    """U5: quitting must persist the final window size and selector prefs."""
+    ctrl = _make_controller(headless_pygame)
+    saves: list[Any] = []
+    monkeypatch.setattr(controller_mod, "save_session", lambda *a, **k: saves.append((a, k)))
+    monkeypatch.setattr(ctrl, "_run_selector", lambda: NextScreen.QUIT)
+    monkeypatch.setattr(headless_pygame, "quit", lambda: None)
+    ctrl.run()
+    ((_args, kwargs),) = saves
+    assert kwargs == {"window_size": (1024, 700)}
 
 
 # ── _run_selector ────────────────────────────────────────────────────────────
@@ -381,6 +438,28 @@ def test_preview_picks_up_simulator_toggle_and_passes_state(headless_pygame, mon
     assert fake.last_kwargs["available_simulators"] == ["ghdl", "nvc"]
 
 
+def test_preview_simulator_toggle_saves_session(headless_pygame, monkeypatch):
+    """U5: a simulator toggle persists immediately, not only at launch."""
+    ctrl = _make_controller(headless_pygame)
+    ctrl.on_board_selected(_board())
+    saves: list[Any] = []
+    monkeypatch.setattr(controller_mod, "save_session", lambda *a, **k: saves.append((a, k)))
+    _install_preview(monkeypatch, ScreenResult.QUIT, simulator="nvc")
+    ctrl._run_preview()
+    ((args, _kwargs),) = saves
+    assert args[2] == "nvc"  # the new simulator is in the save
+
+
+def test_preview_unchanged_simulator_skips_save(headless_pygame, monkeypatch):
+    ctrl = _make_controller(headless_pygame)
+    ctrl.on_board_selected(_board())
+    saves: list[Any] = []
+    monkeypatch.setattr(controller_mod, "save_session", lambda *a, **k: saves.append((a, k)))
+    _install_preview(monkeypatch, ScreenResult.QUIT, simulator="ghdl")  # no change
+    ctrl._run_preview()
+    assert saves == []
+
+
 # ── _run_vhdl_picker ─────────────────────────────────────────────────────────
 
 
@@ -493,8 +572,8 @@ def _sim_harness(
     tmp_path: Path,
     *,
     analyzed: bool = True,
-) -> tuple[ScreenController, list[dict[str, Any]], list[tuple[Any, ...]]]:
-    """Build a controller ready to simulate, with launch/save recorders installed.
+) -> tuple[ScreenController, list[dict[str, Any]], list[tuple[Any, ...]], list[tuple[Any, ...]]]:
+    """Build a controller ready to simulate, with launch/save/recent recorders.
 
     With ``analyzed=True`` the state looks freshly analyzed by the current
     simulator (no re-analysis path); the contract check is fenced off so any
@@ -528,13 +607,15 @@ def _sim_harness(
         )
 
     saves: list[tuple[Any, ...]] = []
+    recents: list[tuple[Any, ...]] = []
     monkeypatch.setattr(controller_mod, "launch_simulation", fake_launch)
-    monkeypatch.setattr(controller_mod, "save_session", lambda *a: saves.append(a))
-    return ctrl, launches, saves
+    monkeypatch.setattr(controller_mod, "save_session", lambda *a, **k: saves.append((a, k)))
+    monkeypatch.setattr(controller_mod, "push_recent", lambda *a: recents.append(a))
+    return ctrl, launches, saves, recents
 
 
 def test_simulate_launches_and_reinits_pygame(headless_pygame, monkeypatch, tmp_path):
-    ctrl, launches, saves = _sim_harness(headless_pygame, monkeypatch, tmp_path)
+    ctrl, launches, saves, recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
     board = ctrl.board
     assert board is not None
     old_screen = ctrl.screen
@@ -549,15 +630,39 @@ def test_simulate_launches_and_reinits_pygame(headless_pygame, monkeypatch, tmp_
     assert launch["simulator"] == "ghdl"
     assert launch["board_def"] is board
     assert (launch["sim_width"], launch["sim_height"]) == (1024, 700)
+    assert launch["speed_factor"] == SPEED_DEFAULT  # nothing saved yet → default
 
-    assert saves == [(board.class_name, ctrl.state.vhdl_path, "ghdl", board.source, "", [], [])]
+    assert saves == [
+        (
+            (board.class_name, ctrl.state.vhdl_path, "ghdl", board.source, "", [], []),
+            {"window_size": (1024, 700)},
+        )
+    ]
+    assert recents == [(board.class_name, board.source, ctrl.state.vhdl_path)]
     assert ctrl.state.board_class == board.class_name  # preselect updated on launch
     assert ctrl.state.board_source == board.source
     assert ctrl.screen is not old_screen  # pygame was quit and re-initialized
 
 
+def test_simulate_passes_saved_speed_to_launch(headless_pygame, monkeypatch, tmp_path):
+    """U5: the sim-written speed_factor is re-read at every launch."""
+    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
+    monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": 2.5})
+    ctrl.on_simulate()
+    assert launches[0]["speed_factor"] == 2.5
+
+
+def test_simulate_junk_saved_speed_falls_back_to_default(headless_pygame, monkeypatch, tmp_path):
+    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
+    monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": "fast"})
+    ctrl.on_simulate()
+    assert launches[0]["speed_factor"] == SPEED_DEFAULT
+
+
 def test_simulate_stale_session_contract_failure_drops_vhdl(headless_pygame, monkeypatch, tmp_path):
-    ctrl, launches, _saves = _sim_harness(headless_pygame, monkeypatch, tmp_path, analyzed=False)
+    ctrl, launches, _saves, _recents = _sim_harness(
+        headless_pygame, monkeypatch, tmp_path, analyzed=False
+    )
     monkeypatch.setattr(
         controller_mod, "check_vhdl_contract", lambda p, board_def: (False, "port mismatch")
     )
@@ -569,7 +674,9 @@ def test_simulate_stale_session_contract_failure_drops_vhdl(headless_pygame, mon
 
 
 def test_simulate_reanalyzes_when_simulator_changed(headless_pygame, monkeypatch, tmp_path):
-    ctrl, launches, _saves = _sim_harness(headless_pygame, monkeypatch, tmp_path, analyzed=False)
+    ctrl, launches, _saves, _recents = _sim_harness(
+        headless_pygame, monkeypatch, tmp_path, analyzed=False
+    )
     ctrl.state.work_dir = "old-wd"
     ctrl.state.work_dir_simulator = "nvc"  # produced by the other simulator
     monkeypatch.setattr(controller_mod, "check_vhdl_contract", lambda p, board_def: (True, ""))
@@ -586,7 +693,9 @@ def test_simulate_reanalyzes_when_simulator_changed(headless_pygame, monkeypatch
 def test_simulate_reanalysis_failure_keeps_state_and_skips_launch(
     headless_pygame, monkeypatch, tmp_path
 ):
-    ctrl, launches, _saves = _sim_harness(headless_pygame, monkeypatch, tmp_path, analyzed=False)
+    ctrl, launches, _saves, _recents = _sim_harness(
+        headless_pygame, monkeypatch, tmp_path, analyzed=False
+    )
     ctrl.state.work_dir = "old-wd"
     ctrl.state.work_dir_simulator = "nvc"
     monkeypatch.setattr(controller_mod, "check_vhdl_contract", lambda p, board_def: (True, ""))
@@ -601,7 +710,7 @@ def test_simulate_reanalysis_failure_keeps_state_and_skips_launch(
 
 
 def test_simulate_error_retry_reenters_preview(headless_pygame, monkeypatch, tmp_path):
-    ctrl, _launches, _saves = _sim_harness(headless_pygame, monkeypatch, tmp_path)
+    ctrl, _launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
 
     def boom(*args: Any, **kwargs: Any) -> None:
         raise RuntimeError("cocotb exploded")
@@ -614,7 +723,7 @@ def test_simulate_error_retry_reenters_preview(headless_pygame, monkeypatch, tmp
 
 
 def test_simulate_error_back_returns_to_selector(headless_pygame, monkeypatch, tmp_path):
-    ctrl, _launches, _saves = _sim_harness(headless_pygame, monkeypatch, tmp_path)
+    ctrl, _launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
 
     def boom(*args: Any, **kwargs: Any) -> None:
         raise RuntimeError("kaboom")

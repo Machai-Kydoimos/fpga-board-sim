@@ -184,6 +184,7 @@ The board renders with LEDs, buttons, switches, and — on supported boards — 
 - **"Start Simulation"** button → opens the VHDL file picker
 - **R** → reset all switches off and release any held buttons
 - **F1 / ? / (?)** → open the help overlay
+- **Gear button** (next to the `(?)`) → open the Settings dialog: UI theme, reset the remembered sim speed, clear the recent-files list
 - **ESC** → back to board list
 
 ### 3. Select a VHDL file
@@ -220,33 +221,40 @@ A strip at the bottom of the window shows live simulation statistics across thre
 
 **Simulation speed (center)**
 
-A logarithmic slider from **0.001× to 10×** (default **0.1×**) controls how many simulated nanoseconds are passed to each `await Timer(...)` call, effectively slowing the design below real-time for debugging. When GHDL/NVC throughput limits the step, an amber **(CPU-limited)** note appears — dragging right won't help; try lowering the virtual clock instead.
+A logarithmic slider from **0.001× to 10×** (default **0.1×**; the last-used value is remembered across sessions) controls how many simulated nanoseconds are passed to each `await Timer(...)` call, effectively slowing the design below real-time for debugging. When GHDL/NVC throughput limits the step, an amber **(CPU-limited)** note appears — dragging right won't help; try lowering the virtual clock instead.
 
 **Virtual clock (right)**
 
 **[-] / [+]** cycle through the clock frequencies declared in the board's amaranth-boards definition. The new half-period is written directly to the VHDL wrapper; the clock changes within one half-period without restarting the simulator. A **[PAUSE] / [RESUME]** button freezes simulation while keeping the simulator process alive.
 
-> **Session persistence:** The last-used board, VHDL file, and simulator choice are saved to `~/.fpga_simulator/session.json` and pre-selected on the next run. After each simulation session a compact performance summary is also written to `~/.fpga_simulator/sessions/<timestamp>_<board>.json` (board, simulator, duration, avg FPS, simulated time, G/D/I breakdown).
+> **Session persistence:** The last-used board, VHDL file, simulator, selector sort/filters, window size, and sim-speed slider are saved to `~/.fpga_simulator/session.json` and restored on the next run. The session updates whenever you pick a file or change the board or simulator — not only when a simulation launches — and the last 10 (board, VHDL) pairs are remembered as a recent-files list. The Settings dialog (gear button in the board preview) shows the persisted theme and speed and can reset the speed or clear the recent list. After each simulation session a compact performance summary is also written to `~/.fpga_simulator/sessions/<timestamp>_<board>.json` (board, simulator, duration, avg FPS, simulated time, G/D/I breakdown).
 
 ## Project Structure
 
 ```text
 src/fpga_sim/              Installable Python package (src layout)
-  __main__.py              Entry point — screen flow, --benchmark CLI, --sim flag
+  __main__.py              Entry point — arg parsing, window setup/restore, --benchmark CLI, --sim flag
+  controller.py            ScreenController + SessionState — drives the launcher screen flow
   board_loader.py          Loads board definitions from JSON into BoardDef objects
   sim_bridge.py            GHDL/NVC analysis + cocotb simulation launcher; _SimBackend ABC + _GHDLBackend/_NVCBackend
   sim_session_log.py       Writes per-session JSON summaries to ~/.fpga_simulator/sessions/
   sim_metrics.py           Optional per-frame CSV metrics (set FPGA_SIM_METRICS=<path> to enable)
-  session_config.py        Session persistence (~/.fpga_simulator/session.json)
+  session_config.py        Session persistence, merge-on-write (~/.fpga_simulator/session.json)
   generate_board_images.py Renders static board previews (used for documentation/thumbnails)
   ui/                      pygame UI subpackage
-    constants.py           Color constants and _ui_scale helper (single source of truth)
+    constants.py           Base neutral colors, get_font cache, _ui_scale helper
+    theme.py               Theme dataclass + THEME instance — the semantic color roles
     components.py          FPGAChip, LED, Switch, Button — low-level board components
     board_selector.py      Board picker screen
     board_display.py       Board preview + simulation screen (FPGABoard class)
     sim_panel.py           Stats strip rendered during simulation (SimPanel class)
     vhdl_picker.py         VHDL file browser screen
     error_dialog.py        Error dialog overlay
+    help_dialog.py         Help overlay (F1 / ? / the (?) button)
+    settings_dialog.py     Settings overlay (gear button): theme, sim speed, recent files
+    spinner.py             Analysis busy-spinner overlay (run_with_spinner)
+    results.py             ScreenResult / DialogResult enums
+    widgets/               Shared button rendering (ButtonStyle + draw_button)
 sim/                       Simulation infrastructure (not part of the installed package)
   sim_testbench.py         cocotb test that bridges simulator signals ↔ pygame UI; main sim loop
   sim_wrapper_template.vhd VHDL wrapper template — seg port/generic spliced in when needed
@@ -335,8 +343,8 @@ Note that pygame runs in two separate OS processes. The launcher (board selector
 When the user clicks "Start Simulation" and picks a VHDL file, the following happens:
 
 ```text
-fpga_sim/__main__.py             fpga_sim/sim_bridge.py            Simulator + cocotb
-────────────────────             ──────────────────────            ──────────────────
+fpga_sim/controller.py           fpga_sim/sim_bridge.py            Simulator + cocotb
+──────────────────────           ──────────────────────            ──────────────────
 1. Serialize BoardDef to JSON
 2. Call launch_simulation() ───→ 3. Analyze VHDL
    pygame.quit()                    (GHDL: also elaborate here;

@@ -164,6 +164,37 @@ def test_help_button_click_requests_help(headless_pygame):
     assert board._help_requested is True
 
 
+# ── Settings (gear) button — U5 ───────────────────────────────────────────────
+
+
+def test_settings_button_click_requests_settings(headless_pygame):
+    board = _make_board(headless_pygame)
+    board._draw()  # populates self._settings_btn_rect
+    assert board._settings_btn_rect is not None
+    click = headless_pygame.event.Event(
+        headless_pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": board._settings_btn_rect.center}
+    )
+    board._handle_events([click])
+    assert board._settings_requested is True
+    assert board._help_requested is False  # the neighboring (?) must not fire
+
+
+def test_settings_button_sits_left_of_help(headless_pygame):
+    board = _make_board(headless_pygame)
+    board._draw()
+    assert board._settings_btn_rect is not None and board._help_btn_rect is not None
+    assert board._settings_btn_rect.right < board._help_btn_rect.left
+    assert board._settings_btn_rect.top == board._help_btn_rect.top
+
+
+def test_settings_button_absent_without_footer(headless_pygame):
+    """The sim subprocess (show_footer=False) draws no gear — nothing to click."""
+    board = _make_board(headless_pygame)
+    board._show_footer = False
+    board._draw()
+    assert board._settings_btn_rect is None
+
+
 # ── Resize reconciliation after the help overlay closes ──────────────────────
 
 

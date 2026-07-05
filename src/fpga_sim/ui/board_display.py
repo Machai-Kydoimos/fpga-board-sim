@@ -32,6 +32,7 @@ from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch
 from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
 from fpga_sim.ui.results import ScreenResult
+from fpga_sim.ui.settings_dialog import SettingsDialog, draw_settings_button
 from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
 
@@ -207,6 +208,9 @@ class FPGABoard:
         self._help_btn_rect: pygame.Rect | None = None
         # Set by the (?) button / F1 / ?; consumed by run() to open the overlay.
         self._help_requested = False
+        self._settings_btn_rect: pygame.Rect | None = None
+        # Set by the gear button; consumed by run() to open the settings overlay.
+        self._settings_requested = False
         self._layout()
 
     # ── public API ───────────────────────────────────────────────────
@@ -284,6 +288,10 @@ class FPGABoard:
             if self._help_requested:
                 self._help_requested = False
                 HelpDialog(self.screen).run(self.clock)
+                self._sync_to_surface()
+            if self._settings_requested:
+                self._settings_requested = False
+                SettingsDialog(self.screen).run(self.clock)
                 self._sync_to_surface()
             self._draw()
             self.clock.tick(60)
@@ -485,6 +493,11 @@ class FPGABoard:
                     self._help_requested = True
                     return
 
+                # Settings (gear) button
+                if self._settings_btn_rect and self._settings_btn_rect.collidepoint(event.pos):
+                    self._settings_requested = True
+                    return
+
                 # Simulator toggle (cycle to next available simulator)
                 if (
                     self._sim_toggle_rect
@@ -610,11 +623,18 @@ class FPGABoard:
         mouse_pos = pygame.mouse.get_pos()
         gap = max(8, round(10 * s))
 
-        # Help (?) button — top-right corner.
+        # Help (?) button — top-right corner — with the settings gear to its left.
         help_margin = max(12, round(16 * s))
         self._help_btn_rect = draw_help_button(
             self.screen,
             right=self.width - help_margin,
+            top=help_margin,
+            size=max(24, round(30 * s)),
+            mouse=mouse_pos,
+        )
+        self._settings_btn_rect = draw_settings_button(
+            self.screen,
+            right=self._help_btn_rect.left - gap,
             top=help_margin,
             size=max(24, round(30 * s)),
             mouse=mouse_pos,

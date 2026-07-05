@@ -1,10 +1,16 @@
-"""Tests for session_config: load/save/roundtrip."""
+"""Tests for session_config: load/save/roundtrip, merge semantics, recent[]."""
 
 import json
 
 import pytest
 
-from fpga_sim.session_config import load_session, save_session
+from fpga_sim.session_config import (
+    RECENT_MAX,
+    load_session,
+    push_recent,
+    save_session,
+    update_session,
+)
 
 
 @pytest.fixture
@@ -114,11 +120,8 @@ def test_load_json_number_returns_empty(session_file):
     """A file containing a bare number (valid JSON, not a dict) returns {}."""
     session_file.parent.mkdir(parents=True)
     session_file.write_text("42")
-    # json.loads("42") returns int; cast() is a no-op, so callers get 42.
-    # load_session() does not guard against non-dict JSON — document behavior.
-    result = load_session()
-    # Just verify it doesn't raise; type may be int or {}
-    assert result is not None
+    # Non-dict JSON is treated as corrupt: merge-on-write needs a real dict.
+    assert load_session() == {}
 
 
 def test_save_session_does_not_raise_on_oserror(tmp_path, monkeypatch):
@@ -193,3 +196,146 @@ def test_load_old_session_without_filter_keys(session_file):
     result = load_session()
     assert "component_filters" not in result
     assert "vendor_filters" not in result
+
+
+# ── U5: merge-on-write ────────────────────────────────────────────────────────
+
+
+def test_save_preserves_keys_owned_by_other_writers(session_file):
+    """save_session must not clobber speed_factor / theme / recent."""
+    update_session(speed_factor=2.5, theme="dark", recent=[{"vhdl_path": "a.vhd"}])
+    save_session("BoardA", "/path/a.vhd")
+    data = load_session()
+    assert data["speed_factor"] == 2.5
+    assert data["theme"] == "dark"
+    assert data["recent"] == [{"vhdl_path": "a.vhd"}]
+    assert data["board_class"] == "BoardA"  # …while still writing its own keys
+
+
+def test_save_window_size(session_file):
+    save_session("B", "/p.vhd", window_size=(1280, 800))
+    data = load_session()
+    assert (data["window_w"], data["window_h"]) == (1280, 800)
+
+
+def test_save_without_window_size_keeps_previous(session_file):
+    save_session("B", "/p.vhd", window_size=(1280, 800))
+    save_session("C", "/q.vhd")  # no window_size → previous one survives
+    data = load_session()
+    assert (data["window_w"], data["window_h"]) == (1280, 800)
+    assert data["board_class"] == "C"
+
+
+# ── U5: update_session ────────────────────────────────────────────────────────
+
+
+def test_update_session_creates_file_and_directory(session_file):
+    assert not session_file.parent.exists()
+    update_session(speed_factor=1.5)
+    assert json.loads(session_file.read_text()) == {"speed_factor": 1.5}
+
+
+def test_update_session_merges_into_existing(session_file):
+    save_session("BoardA", "/path/a.vhd", simulator="nvc")
+    update_session(speed_factor=0.5)
+    data = load_session()
+    assert data["speed_factor"] == 0.5
+    assert data["board_class"] == "BoardA"
+    assert data["simulator"] == "nvc"
+
+
+def test_update_session_over_corrupt_file_starts_fresh(session_file):
+    session_file.parent.mkdir(parents=True)
+    session_file.write_text("not valid json {{{")
+    update_session(theme="dark")
+    assert load_session() == {"theme": "dark"}
+
+
+def test_update_session_over_non_dict_json_starts_fresh(session_file):
+    session_file.parent.mkdir(parents=True)
+    session_file.write_text("42")
+    update_session(theme="dark")
+    assert load_session() == {"theme": "dark"}
+
+
+def test_update_session_swallows_oserror(tmp_path, monkeypatch):
+    import pathlib
+
+    target = tmp_path / ".fpga_simulator" / "session.json"
+    monkeypatch.setattr("fpga_sim.session_config.SESSION_FILE", target)
+
+    def _raise(self, *args, **kwargs):
+        raise OSError("simulated disk full")
+
+    monkeypatch.setattr(pathlib.Path, "write_text", _raise)
+    update_session(speed_factor=1.0)  # must not propagate OSError
+
+
+def test_update_session_reserved_toggle_keys_roundtrip(session_file):
+    """The U10/U19 toggle keys persist through the generic writer."""
+    update_session(metrics_enabled=True, waveform_enabled=False)
+    data = load_session()
+    assert data["metrics_enabled"] is True
+    assert data["waveform_enabled"] is False
+
+
+# ── U5: push_recent ───────────────────────────────────────────────────────────
+
+
+def test_push_recent_first_entry(session_file):
+    push_recent("BoardA", "custom", "/path/a.vhd")
+    assert load_session()["recent"] == [
+        {"board_class": "BoardA", "board_source": "custom", "vhdl_path": "/path/a.vhd"}
+    ]
+
+
+def test_push_recent_newest_first(session_file):
+    push_recent("BoardA", "custom", "/path/a.vhd")
+    push_recent("BoardB", "custom", "/path/b.vhd")
+    recent = load_session()["recent"]
+    assert [e["vhdl_path"] for e in recent] == ["/path/b.vhd", "/path/a.vhd"]
+
+
+def test_push_recent_dedup_moves_to_front(session_file):
+    push_recent("BoardA", "custom", "/path/a.vhd")
+    push_recent("BoardB", "custom", "/path/b.vhd")
+    push_recent("BoardA", "custom", "/path/a.vhd")  # re-pick the oldest
+    recent = load_session()["recent"]
+    assert [e["board_class"] for e in recent] == ["BoardA", "BoardB"]
+    assert len(recent) == 2
+
+
+def test_push_recent_same_file_different_board_kept_separate(session_file):
+    push_recent("BoardA", "custom", "/path/a.vhd")
+    push_recent("BoardB", "custom", "/path/a.vhd")  # same file, other board
+    recent = load_session()["recent"]
+    assert [e["board_class"] for e in recent] == ["BoardB", "BoardA"]
+
+
+def test_push_recent_caps_at_recent_max(session_file):
+    for i in range(RECENT_MAX + 5):
+        push_recent(f"Board{i}", "custom", f"/path/{i}.vhd")
+    recent = load_session()["recent"]
+    assert len(recent) == RECENT_MAX
+    assert recent[0]["board_class"] == f"Board{RECENT_MAX + 4}"  # newest kept
+
+
+def test_push_recent_preserves_other_keys(session_file):
+    save_session("BoardA", "/path/a.vhd")
+    push_recent("BoardA", "custom", "/path/a.vhd")
+    assert load_session()["board_class"] == "BoardA"
+
+
+def test_push_recent_tolerates_corrupt_recent_value(session_file):
+    update_session(recent="junk")  # hand-edited file
+    push_recent("BoardA", "custom", "/path/a.vhd")
+    assert len(load_session()["recent"]) == 1
+
+
+def test_push_recent_drops_non_dict_entries(session_file):
+    update_session(recent=["junk", 42])
+    push_recent("BoardA", "custom", "/path/a.vhd")
+    recent = load_session()["recent"]
+    assert recent == [
+        {"board_class": "BoardA", "board_source": "custom", "vhdl_path": "/path/a.vhd"}
+    ]
