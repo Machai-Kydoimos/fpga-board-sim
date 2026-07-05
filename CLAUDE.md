@@ -42,7 +42,8 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 
 | File | Role |
 |------|------|
-| `src/fpga_sim/__main__.py` | Main entry point; pygame UI with four screens |
+| `src/fpga_sim/__main__.py` | Thin entry point: arg parsing, pygame/window setup, headless benchmark |
+| `src/fpga_sim/controller.py` | `ScreenController` + `SessionState`: drives the launcher screen flow (selector → preview → picker → simulate) |
 | `src/fpga_sim/board_loader.py` | Loads board definitions from JSON into `BoardDef` objects (runtime loader) |
 | `src/fpga_sim/sim_bridge.py` | GHDL analysis + simulation launcher; platform-specific VPI env setup |
 | `src/fpga_sim/ui/` | pygame UI package (board_selector, board_display, components, etc.) |
@@ -79,9 +80,9 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 
 1. `src/fpga_sim/board_loader.py` reads JSON board definitions from `boards/` subdirectories (each subdirectory is a "source": `amaranth-boards/`, `litex-boards/`, `digilent-xdc/`, `custom/`, etc.) and constructs `BoardDef` objects. The offline mock-exec pipeline for parsing upstream amaranth `.py` board files lives in `scripts/amaranth_parser.py` (used by `scripts/sync_amaranth_boards.py`); the litex and digilent parsers live in `scripts/litex_parser.py` and `scripts/digilent_parser.py` (self-contained, no `fpga_sim` dependency).
 
-2. `src/fpga_sim/__main__.py` displays four sequential screens: `BoardSelector` → `FPGABoard` (preview) → `VHDLFilePicker` → simulation start.
+2. `src/fpga_sim/controller.py` (`ScreenController`, constructed by `__main__.main()`) drives four sequential screens: `BoardSelector` → `FPGABoard` (preview) → `VHDLFilePicker` → simulation start.
 
-3. When simulation starts, `__main__.py` calls `pygame.quit()`, serializes the `BoardDef` to JSON, and calls `launch_simulation()` in `src/fpga_sim/sim_bridge.py`.
+3. When simulation starts, `ScreenController.on_simulate()` calls `pygame.quit()`, serializes the `BoardDef` to JSON, and calls `launch_simulation()` in `src/fpga_sim/sim_bridge.py`.
 
 4. `sim_bridge.py` builds a platform-aware environment (PATH, LD_LIBRARY_PATH/PYTHONHOME, VPI paths) and runs `ghdl -r ... --vpi=cocotbvpi_ghdl.so`. The board JSON is passed via the `FPGA_SIM_BOARD_JSON` env var. Both `src/` and `sim/` are added to `PYTHONPATH` so the subprocess can import `fpga_sim` and find `sim_testbench`.
 

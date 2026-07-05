@@ -13,13 +13,13 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 32 test files (1126 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, performance heavily tuned (PR #31), v0.10.0 released (2026-07-03).
+The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 33 test files (1159 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, performance heavily tuned (PR #31), v0.10.0 released (2026-07-03).
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
 1. **Board discovery at scale.** With 278 boards from 7 vendors, the original flat scrolling list with text-only filtering was inadequate — users could not filter by component type, vendor, or capability. **U0 ✅** added faceted filtering + sort, largely resolving this.
 2. **Onboarding & discoverability gaps.** README is excellent (~605 lines) but historically unreachable from inside the app. **U1 ✅** added an in-app help overlay (workflow, shortcuts, design contract); the README itself is still not surfaced in-app.
-3. **DRY drift.** Three component classes with identical structure (D3, open) and a 264-line main function (D6b, open) remain — its **stringly-typed screen results are now a typed enum (D6a ✅)**. Backend/color/button drift is resolved: **D2 ✅** collapsed the two near-identical backend classes into one ABC, **D4 ✅** unified button drawing, and **D15 ✅** consolidated ~112 inline RGB literals into a `Theme` object (`ui/theme.py`). *(VHDL wrapper templates unified in D1 ✅.)*
+3. **DRY drift.** Three component classes with identical structure (D3, open) remain; the 264-line main function is gone — **D6a ✅** typed its screen results and **D6b ✅** lifted the loop into a `ScreenController` (`controller.py`), leaving `main()` a thin driver. Backend/color/button drift is resolved: **D2 ✅** collapsed the two near-identical backend classes into one ABC, **D4 ✅** unified button drawing, and **D15 ✅** consolidated ~112 inline RGB literals into a `Theme` object (`ui/theme.py`). *(VHDL wrapper templates unified in D1 ✅.)*
 4. **Roadmap gravity.** Features queued in memory for months (PWM LEDs, splash, settings screen, waveforms, Verilog, in-sim navigation) are now sequenced below.
 
 This document inventories all viable improvements and ranks them by impact.
@@ -63,8 +63,8 @@ This document inventories all viable improvements and ranks them by impact.
 #### U5. Settings dialog + extended session persistence
 
 - **Why:** Today only board / VHDL / simulator are saved; window size, speed slider, theme, default clock are lost every restart. The roadmap also needs a place to put new toggles (metrics, waveform, theme).
-- **What:** New `ui/settings_dialog.py` (gear icon in board preview header). Extend `session_config.py` schema with: `window_w`, `window_h`, `speed_factor`, `theme`, `metrics_enabled`, `waveform_enabled`, `recent[]` (last 10 board+vhdl tuples). Also move the `save_session()` call site so the session is written when a VHDL file is *picked* (and on board/simulator change), not only at simulation launch as today (the lone `save_session()` call in `main()`) — otherwise a browsed-but-unrun file and its directory are lost on restart. This is what makes **U18**'s recent-files list useful across sessions.
-- **Touches:** `src/fpga_sim/session_config.py`; `src/fpga_sim/__main__.py` (move the `save_session()` call site so it fires on pick); `ui/board_display.py` header; new `ui/settings_dialog.py`.
+- **What:** New `ui/settings_dialog.py` (gear icon in board preview header). Extend `session_config.py` schema with: `window_w`, `window_h`, `speed_factor`, `theme`, `metrics_enabled`, `waveform_enabled`, `recent[]` (last 10 board+vhdl tuples). Also add a `save_session()` call when a VHDL file is *picked* (and on board/simulator change), not only at simulation launch as today (the lone call sits in `ScreenController.on_simulate()`; **D6b ✅** designed `on_vhdl_loaded()` as the landing spot for save-on-pick) — otherwise a browsed-but-unrun file and its directory are lost on restart. This is what makes **U18**'s recent-files list useful across sessions.
+- **Touches:** `src/fpga_sim/session_config.py`; `src/fpga_sim/controller.py` (add the save-on-pick call in `on_vhdl_loaded()`); `ui/board_display.py` header; new `ui/settings_dialog.py`.
 - **Effort:** M/L.
 - **Dependencies:** None. But **U6, U10, U18, U19** all depend on this (see Dependencies section).
 - ⚠ **Carried-forward (from U1 ✅ / D4 ✅):** the settings dialog is a *blocking overlay* opened inside a live screen's loop — like `HelpDialog` it swallows `WINDOWRESIZED`, so it must reconcile the parent to the live surface after closing (`_sync_to_surface()`, reflowing `FPGABoard._layout`) or the layout stays stale on a resize. Reuse `ui/widgets/button.py` for its buttons.
@@ -90,7 +90,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 - **Why:** Already queued in `project_enhancements.md` (#2). Currently the only way out of sim is ESC; users cannot reload VHDL or change board without restarting.
 - **What:** Three buttons in the simulation footer: `[Back to Boards]`, `[Change VHDL]`, `[Reload VHDL]`. `Reload` re-runs `analyze_vhdl()` on the same file and re-enters sim.
-- **Touches:** `sim/sim_testbench.py`, `src/fpga_sim/sim_bridge.py` (return code signalling intent), `src/fpga_sim/__main__.py` (`main()` loop — handle new intents).
+- **Touches:** `sim/sim_testbench.py`, `src/fpga_sim/sim_bridge.py` (return code signalling intent), `src/fpga_sim/controller.py` (`ScreenController.on_simulate()` — handle new intents).
 - **Effort:** L.
 - **Dependencies:** Soft: benefits from D4 (shared button helper).
 - ⚠ **Carried-forward (from D4 ✅ / U1 ✅):** reuse `ui/widgets/button.py` for the toolbar buttons (it is importable in the sim subprocess too). Also note the sim screen already has an *inert* F1/`?` help stub (set by U1 but currently unconsumed) — wire it to `HelpDialog` if you want in-sim help alongside the toolbar.
@@ -144,7 +144,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 **Note on U18/U19:** Both require U5 (Settings dialog) for the `recent[]` data source and metrics toggle location respectively.
 
-**Note on U18 — scope (persist-on-pick + retry start-dir):** U18 surfaces `recent[]` as an "Open Recent" section at the top of the picker, but two adjacent papercuts belong here too. (1) **Persist on pick, not only on simulate:** today `save_session()` runs only at simulation launch (`__main__.py`), so a file browsed-to but never run is lost on restart — `recent[]` and the start directory must update when a VHDL file is *picked* (depends on U5's schema + save-trigger move). (2) **Don't reset the start dir on a validation retry:** after an encoding/contract error the re-opened picker jumps back to bundled `hdl/` instead of the user's directory (the `_first_pick`/`hdl_dir` branch in `main()`), forcing re-navigation — keep the last-visited directory across retries. Touches `__main__.py` in addition to `ui/vhdl_picker.py`.
+**Note on U18 — scope (persist-on-pick + retry start-dir):** U18 surfaces `recent[]` as an "Open Recent" section at the top of the picker, but two adjacent papercuts belong here too. (1) **Persist on pick, not only on simulate:** today `save_session()` runs only at simulation launch (`ScreenController.on_simulate()`), so a file browsed-to but never run is lost on restart — `recent[]` and the start directory must update when a VHDL file is *picked* (depends on U5's schema + save-trigger addition in `on_vhdl_loaded()`). (2) **Don't reset the start dir on a validation retry:** after an encoding/contract error the re-opened picker jumps back to bundled `hdl/` instead of the user's directory (the retry branch in `ScreenController._run_vhdl_picker()`), forcing re-navigation — keep the last-visited directory across retries. Touches `controller.py` in addition to `ui/vhdl_picker.py`.
 
 **Note on U13 — done (2026-06-01, PR #85):** Keyboard navigation on both list screens — `↑`/`↓` + `PgUp`/`PgDn` move the cursor (auto-scrolled into view) and `Enter` activates the row; each screen's KEYDOWN now routes through a unit-testable `_handle_keydown()`. 32 new tests.
 
@@ -234,15 +234,9 @@ See also **P1** (NVC elaborate-once / run-many) in the [Icebox](#icebox).
 
 ### Tier 2 — Architecture & state
 
-#### D6. Extract a `ScreenController` from `__main__.py`
+#### D6. Extract a `ScreenController` from `__main__.py` ✅
 
-- **Why:** `main()` in `__main__.py` is a 264-line function with a `while`-loop juggling 4 screen states via implicit transitions (`_return_to_board`, `current_vhdl_path`, `current_work_dir`, `_work_dir_simulator`, `_back_to_boards`, `_new_path`, `_first_pick`, `_intent`). Reading it requires holding all of that in your head; the nested VHDL-picker loop hits 4 levels of indentation.
-- **What:** Two refactors, sequenced:
-  - **D6a ✅ (PR #121).** Replaced the stringly-typed screen results (`"back"`, `"load_vhdl"`, `"simulate"`, `"quit"`, `"retry"`) with **two** enums in a new leaf module `ui/results.py`: `ScreenResult` (BACK / LOAD_VHDL / SIMULATE / QUIT) for `FPGABoard.run()`, and `DialogResult` (RETRY / BACK) for `ErrorDialog.run()`, both re-exported from `ui/__init__.py`. Kept as two enums (not one shared) so mypy rejects passing a dialog result where a screen result is expected — both have a `BACK`, but the types are disjoint. `FPGABoard.run()` now delegates its exit-flag mapping to a unit-tested `_result()` seam. 7 new tests; `mypy .` confirmed to flag the three misuse shapes (wrong return, wrong assignment, wrong arg).
-  - **D6b.** Lift the loop body into a `ScreenController` class with explicit transition methods (`on_board_selected`, `on_vhdl_loaded`, `on_simulate`, `on_back`) and a `SessionState` dataclass holding the VHDL / work-dir / simulator tuple. Now unblocked by D6a.
-- **Touches:** `src/fpga_sim/__main__.py`; new `src/fpga_sim/ui/results.py` (D6a ✅); new `src/fpga_sim/controller.py` (D6b).
-- **Effort:** ~~M (D6a)~~ ✅ + L (D6b). **D6a landed first** — it cleanly unblocks the controller extraction.
-- **Done when:** ~~(D6a) all string-literal screen results are replaced with enum members and mypy catches misuse~~ ✅. (D6b) `main()` is a thin driver calling `ScreenController` methods; no screen-state variables in `main()`.
+- Shipped in two stages: **D6a ✅** (screen-result enums, PR #121) + **D6b ✅** (2026-07-05, PR #168 — `ScreenController` + `SessionState` in `controller.py`; `main()` is now a thin driver). U5's save-on-pick lands in `on_vhdl_loaded`. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### D7. Decompose `launch_simulation()`
 
@@ -340,7 +334,7 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 | **U20** (Verilog support) | ~~**D2** (Backend ABC)~~ ✅ | Third backend now overrides only `NAME` + command builders |
 | ~~**U21** (Board-native VHDL)~~ | ~~**D1** (Wrapper merge)~~ ✅ | Adapter logic in unified template |
 | ~~**U22** (7-seg physical mux)~~ | ~~**D1** (Wrapper merge)~~ ✅ | Placeholders in unified template |
-| **D6b** (ScreenController) | ~~**D6a** (Screen-result enum)~~ ✅ | Enum (now shipped) enables type-safe transitions in the controller |
+| ~~**D6b** (ScreenController)~~ ✅ | ~~**D6a** (Screen-result enum)~~ ✅ | Enum-typed transitions in the controller — both shipped |
 
 ### Soft dependencies
 
@@ -372,11 +366,10 @@ U5 (settings dialog)
 D15 (color consolidation) ✅ — Theme object in place; U6 swaps its contents
  └──> U6  (theme system)
 
-D6a (screen-result enum) ✅ — D6b unblocked
- └──> D6b (ScreenController)
+D6a (screen-result enum) ✅ — D6b (ScreenController) ✅ — both shipped
 ```
 
-All other items (U0, U1, U2, U3, U4, U7, U8, U9, U11-U17, U21-U25, D3-D5, D7-D15) are independently shippable.
+All other items (U0, U1, U2, U3, U4, U7, U8, U9, U11-U17, U21-U25, D3-D5, D7-D16) are independently shippable.
 
 ---
 
@@ -388,12 +381,12 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 |---|---|---|
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
 | **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → ~~U2 Analysis spinner~~ ✅ · ~~D2 Backend base class~~ ✅ · ~~U26 Visual README~~ ✅ |
-| **2** | Foundations that unblock later UX | ~~D6a Screen-result enum~~ ✅ · D6b ScreenController · ~~D15 Color consolidation~~ ✅ · U5 Settings dialog + extended session · ~~D8 mypy strict~~ ✅ |
+| **2** | Foundations that unblock later UX | ~~D6a Screen-result enum~~ ✅ · ~~D6b ScreenController~~ ✅ · ~~D15 Color consolidation~~ ✅ · U5 Settings dialog + extended session · ~~D8 mypy strict~~ ✅ |
 | **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-07-03).** Sprint 1a is fully shipped. **Sprint 1b is complete — D4 / U13 / U1 / U2 / U26 / D2 ✅ all done.** **Sprint 2: D15 ✅** (color consolidation, #109), **D6a ✅** (screen-result enum, #121 — `ScreenResult`/`DialogResult` in `ui/results.py`; D6b ScreenController now unblocked), and **D8 ✅** (mypy strict, first slice #119 + full flip #166). Remaining Sprint 2: **D6b** (ScreenController extraction) and **U5** (Settings dialog + extended session). The phases otherwise remain correctly ordered.
+**Status (2026-07-05).** Sprint 1a is fully shipped. **Sprint 1b is complete — D4 / U13 / U1 / U2 / U26 / D2 ✅ all done.** **Sprint 2: D15 ✅** (color consolidation, #109), **D6a ✅** (screen-result enum, #121 — `ScreenResult`/`DialogResult` in `ui/results.py`), **D8 ✅** (mypy strict, first slice #119 + full flip #166), and **D6b ✅** (ScreenController extraction, #168 — `controller.py`; `main()` is a thin driver). Remaining Sprint 2: **U5** (Settings dialog + extended session). The phases otherwise remain correctly ordered.
 
 ---
 
@@ -424,7 +417,8 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 ## Critical files modified across the roadmap
 
-- `src/fpga_sim/__main__.py` — U2 ✅, U5 (save-on-pick), U7, U18, D6a ✅, D6b, D9 ✅
+- `src/fpga_sim/__main__.py` — U2 ✅, U16, D6a ✅, D6b ✅ (now a thin driver), D9 ✅
+- `src/fpga_sim/controller.py` — D6b ✅ (new: `ScreenController` + `SessionState`), U5 (save-on-pick in `on_vhdl_loaded()`), U7 (new sim intents), U18 (retry start-dir)
 - `src/fpga_sim/sim_bridge.py` — U4, U10, U21, D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`), D16 (wrap the run subprocess)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅
 - `src/fpga_sim/session_config.py` — U5, U18, D9 ✅, D14, D16 (sandbox toggle)
@@ -436,7 +430,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/ui/sim_panel.py` — U14, U15, U19, D4 ✅, D15
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15
 - `src/fpga_sim/ui/error_dialog.py` — U4, D4 ✅, D6a ✅ (`run()` returns `DialogResult`), D15
-- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅), `src/fpga_sim/controller.py` (D6b), `src/fpga_sim/sandbox.py` (D16), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
+- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
 - `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U7, U9, U14, U22, D15
@@ -461,7 +455,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (1126 tests across 32 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums). All sprints must keep this green.
+1. **Tests** — `uv run pytest` (1159 tests across 33 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions). All sprints must keep this green.
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy .` (`strict = true` since D8 ✅).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).
