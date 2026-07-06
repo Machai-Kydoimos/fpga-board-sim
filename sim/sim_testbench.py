@@ -51,11 +51,18 @@ from fpga_sim.sim_session_log import save_session_stats
 from fpga_sim.ui import FPGABoard, SimPanel
 from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.sim_panel import _PANEL_H_BASE, SPEED_DEFAULT
-from fpga_sim.ui.theme import THEME
+from fpga_sim.ui.theme import THEME, THEME_NAMES, set_theme
 from fpga_sim.ui.widgets import draw_button
 
 # ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
 _METRICS_PATH: str = os.environ.get("FPGA_SIM_METRICS", "")
+
+# ── Saved theme restore (the launcher sets FPGA_SIM_THEME from its live theme) ──
+# Applied at import, before any drawing; an unknown or absent name keeps the
+# default, so benchmark and test runs are unaffected.
+_THEME_ENV: str = os.environ.get("FPGA_SIM_THEME", "")
+if _THEME_ENV in THEME_NAMES:
+    set_theme(_THEME_ENV)
 
 # ── Saved speed restore (the launcher sets FPGA_SIM_SPEED from the session) ──
 # When present it seeds the panel's speed slider, and the final slider value is

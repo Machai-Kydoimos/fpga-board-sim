@@ -1,8 +1,9 @@
-"""Tests for __main__._initial_window_size (U5 window-size restore)."""
+"""Tests for the __main__ session-restore helpers (U5 window size, U6 theme)."""
 
 from __future__ import annotations
 
-from fpga_sim.__main__ import _initial_window_size
+from fpga_sim.__main__ import _initial_window_size, _restore_session_theme
+from fpga_sim.ui.theme import current_theme_name
 
 _DESKTOP = (1920, 1080)
 # The pre-U5 default calculation for that desktop: 80% capped to 1600x1000.
@@ -37,3 +38,17 @@ def test_default_calc_floors_small_desktop():
 def test_float_saved_size_is_accepted():
     # JSON numbers may round-trip as floats; int() them.
     assert _initial_window_size({"window_w": 1280.0, "window_h": 800.0}, _DESKTOP) == (1280, 800)
+
+
+def test_saved_theme_is_applied(restore_theme):
+    _restore_session_theme({"theme": "dark"})
+    assert current_theme_name() == "dark"
+
+
+def test_missing_or_unknown_theme_keeps_default(restore_theme):
+    _restore_session_theme({})
+    assert current_theme_name() == "pcb-green"
+    _restore_session_theme({"theme": "no-such-theme"})
+    assert current_theme_name() == "pcb-green"
+    _restore_session_theme({"theme": 42})
+    assert current_theme_name() == "pcb-green"

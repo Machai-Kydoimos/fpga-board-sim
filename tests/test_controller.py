@@ -23,6 +23,7 @@ from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
 from fpga_sim.controller import NextScreen, ScreenController, SessionState, build_generics
 from fpga_sim.ui import DialogResult, ScreenResult
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
+from fpga_sim.ui.theme import set_theme
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -631,6 +632,7 @@ def test_simulate_launches_and_reinits_pygame(headless_pygame, monkeypatch, tmp_
     assert launch["board_def"] is board
     assert (launch["sim_width"], launch["sim_height"]) == (1024, 700)
     assert launch["speed_factor"] == SPEED_DEFAULT  # nothing saved yet → default
+    assert launch["theme"] == "pcb-green"  # default theme forwarded (U6)
 
     assert saves == [
         (
@@ -650,6 +652,16 @@ def test_simulate_passes_saved_speed_to_launch(headless_pygame, monkeypatch, tmp
     monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": 2.5})
     ctrl.on_simulate()
     assert launches[0]["speed_factor"] == 2.5
+
+
+def test_simulate_passes_active_theme_to_launch(
+    headless_pygame, monkeypatch, tmp_path, restore_theme
+):
+    """U6: the launcher's live theme name rides into the subprocess launch."""
+    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
+    set_theme("dark")
+    ctrl.on_simulate()
+    assert launches[0]["theme"] == "dark"
 
 
 def test_simulate_junk_saved_speed_falls_back_to_default(headless_pygame, monkeypatch, tmp_path):

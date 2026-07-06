@@ -21,6 +21,7 @@ Usage:
     --filter  TEXT       Only process boards whose name contains TEXT
     --list               Print discovered board names and exit
     --boards-dir PATH    Override the boards/ directory     (default: auto)
+    --theme   NAME       Render with the named UI theme (default: pcb-green)
 
 Dependencies: pygame (already in pyproject.toml).  No new dependencies needed.
 """
@@ -43,9 +44,8 @@ import pygame
 
 from fpga_sim.board_loader import BoardDef, discover_boards, get_default_boards_path
 from fpga_sim.ui import LED, Button, FPGABoard, FPGAChip, Switch
-from fpga_sim.ui.components import SevenSeg
 from fpga_sim.ui.constants import GRAY, WHITE, _ui_scale
-from fpga_sim.ui.theme import THEME
+from fpga_sim.ui.theme import THEME, THEME_NAMES, set_theme
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -236,12 +236,6 @@ def _svg_line(
     )
 
 
-_SVG_SEG_OFF = "#{:02X}{:02X}{:02X}".format(*SevenSeg.SEG_OFF)
-_SVG_SEG_BG = "#{:02X}{:02X}{:02X}".format(*SevenSeg.BG)
-_SVG_SEG_BEZEL = "#{:02X}{:02X}{:02X}".format(*THEME.seg_bezel)
-_SVG_SEG_LABEL = "#{:02X}{:02X}{:02X}".format(*THEME.seg_digit_label)
-
-
 def _svg_draw_seg_polygon(
     parent: ET.Element,
     x0: int,
@@ -288,7 +282,7 @@ def _svg_draw_seg_polygon(
     ET.SubElement(
         parent,
         "polygon",
-        {"points": " ".join(f"{px},{py}" for px, py in pts), "fill": _SVG_SEG_OFF},
+        {"points": " ".join(f"{px},{py}" for px, py in pts), "fill": _svg_color(THEME.seg_off)},
     )
 
 
@@ -313,8 +307,8 @@ def _svg_draw_7seg(
             "width": str(dw),
             "height": str(dh),
             "rx": "3",
-            "fill": _SVG_SEG_BG,
-            "stroke": _SVG_SEG_BEZEL,
+            "fill": _svg_color(THEME.seg_bg),
+            "stroke": _svg_color(THEME.seg_bezel),
             "stroke-width": "1",
         },
     )
@@ -330,7 +324,7 @@ def _svg_draw_7seg(
                 "cx": str(x0 + dw + r + 2),
                 "cy": str(y0 + dh - r - 2),
                 "r": str(r),
-                "fill": _SVG_SEG_OFF,
+                "fill": _svg_color(THEME.seg_off),
             },
         )
 
@@ -341,7 +335,7 @@ def _svg_draw_7seg(
             "x": str(x0 + dw // 2),
             "y": str(y0 + dh + 12),
             "text-anchor": "middle",
-            "fill": _SVG_SEG_LABEL,
+            "fill": _svg_color(THEME.seg_digit_label),
             "font-size": str(max(8, int(dh * 0.18))),
         },
     ).text = str(digit_index)
@@ -363,15 +357,15 @@ def _svg_draw_fpga_chip(
       - Short tick marks along all four edges (simulated IC package pins)
       - Three centered text labels: vendor name, device ID, package code
 
-    Vendor colors are read directly from FPGAChip._VENDOR_COLORS so that
-    any future additions to that dict are automatically reflected here.
+    Colors are read from THEME at render time (like FPGAChip.draw itself), so
+    the --theme option and any palette additions are automatically reflected.
     """
     r = chip.rect
     if r.width < 20:
         return  # Guard matches FPGAChip.draw() early-exit condition
 
     # Main body — vendor-specific fill with gray border
-    fill = FPGAChip._VENDOR_COLORS.get(chip.vendor, THEME.chip_default)
+    fill = THEME.vendor_colors.get(chip.vendor, THEME.chip_default)
     _svg_rect(parent, r, fill, stroke=FPGAChip._BORDER_COLOR, stroke_width=2, radius=6)
 
     # Pin tick marks — replicates _draw_pin_marks() count formula exactly
@@ -381,13 +375,13 @@ def _svg_draw_fpga_chip(
 
     for i in range(h_count):
         x = r.left + (i + 1) * r.width // (h_count + 1)
-        _svg_line(parent, x, r.top, x, r.top - ln, FPGAChip._PIN_COLOR)  # top edge
-        _svg_line(parent, x, r.bottom, x, r.bottom + ln, FPGAChip._PIN_COLOR)  # bottom edge
+        _svg_line(parent, x, r.top, x, r.top - ln, THEME.chip_pin)  # top edge
+        _svg_line(parent, x, r.bottom, x, r.bottom + ln, THEME.chip_pin)  # bottom edge
 
     for i in range(v_count):
         y = r.top + (i + 1) * r.height // (v_count + 1)
-        _svg_line(parent, r.left, y, r.left - ln, y, FPGAChip._PIN_COLOR)  # left edge
-        _svg_line(parent, r.right, y, r.right + ln, y, FPGAChip._PIN_COLOR)  # right edge
+        _svg_line(parent, r.left, y, r.left - ln, y, THEME.chip_pin)  # left edge
+        _svg_line(parent, r.right, y, r.right + ln, y, THEME.chip_pin)  # right edge
 
     # Centered text labels — mirrors the dynamic layout in FPGAChip.draw().
     # 1.2× is the standard approximation for a monospace font's line height.
@@ -397,11 +391,11 @@ def _svg_draw_fpga_chip(
 
     lines: list[tuple[str, tuple[int, int, int], bool]] = [
         (chip.vendor, WHITE, True),
-        (chip.device.upper(), FPGAChip._DEVICE_COLOR, False),
-        (chip.package.upper(), FPGAChip._PACKAGE_COLOR, False),
+        (chip.device.upper(), THEME.chip_device, False),
+        (chip.package.upper(), THEME.chip_package, False),
     ]
     if chip.clock_hz:
-        lines.append((FPGAChip._fmt_clock(chip.clock_hz), FPGAChip._CLOCK_COLOR, False))
+        lines.append((FPGAChip._fmt_clock(chip.clock_hz), THEME.chip_clock, False))
     active = [(t, c, b) for t, c, b in lines if t]
     offset = -(len(active) - 1) / 2 * line_h
     for text, color, bold in active:
@@ -787,7 +781,14 @@ def main() -> None:
         default=None,
         help="Override the boards/ directory (default: auto-detect)",
     )
+    parser.add_argument(
+        "--theme",
+        choices=THEME_NAMES,
+        default=THEME_NAMES[0],
+        help="Render with the named UI theme",
+    )
     args = parser.parse_args()
+    set_theme(args.theme)
 
     # ── Discover boards ────────────────────────────────────────────────────────
     boards_dir = args.boards_dir or get_default_boards_path()
