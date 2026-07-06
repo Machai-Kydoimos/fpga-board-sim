@@ -1,6 +1,6 @@
 # Virtual FPGA Boards — Improvement Roadmap
 
-*Drafted 2026-05-19 · Updated 2026-07-02 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
+*Drafted 2026-05-19 · Updated 2026-07-06 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
 
 A comprehensive, impact-weighted roadmap covering improvements from two perspectives:
 
@@ -13,7 +13,7 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 35 test files (1216 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, performance heavily tuned (PR #31), v0.11.0 released (2026-07-06).
+The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 35 test files (1235 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, three UI themes, performance heavily tuned (PR #31), v0.11.0 released (2026-07-06).
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
@@ -70,16 +70,9 @@ This document inventories all viable improvements and ranks them by impact.
 
 ### Tier 2 — High impact, larger initiatives
 
-#### U6. Theme system (light / dark / high-contrast)
+#### U6. Theme system (light / dark / high-contrast) ✅
 
-- **Why:** The green PCB clashes with the dark selector, and accessibility (high-contrast) is impossible today. **D15 ✅ centralised the palette into a frozen `Theme` object** (`ui/theme.py`) and routed every call site through the module-level `THEME`, so U6 no longer touches draw code — it just supplies alternate `Theme` instances and a way to select one.
-- **What:** The `Theme` dataclass + default `pcb-green` instance already exist (D15). Add two alternate instances (`dark`, `high-contrast`) — optionally loaded from JSON — wire them into the Settings Theme row (U5 ✅), and add a way to pass the chosen theme into the sim subprocess (which also reads `THEME`). Persistence of the `theme` key already works.
-- **Touches:** `src/fpga_sim/ui/theme.py` (alternate `Theme` instances + a `set_theme`/selection mechanism; extend `THEME_NAMES` / `THEME_LABELS`); `ui/settings_dialog.py` (U5 ✅ — the row auto-enables with a second name); `sim_bridge.py` / `sim/sim_testbench.py` to carry the choice across the process boundary. Call sites already read `THEME` (D15), so they don't change.
-- **Effort:** M now that D15 has shipped the `Theme` container and routed every call site through `THEME`; the remaining work is the alternate palettes, the Settings toggle, persistence, and the subprocess plumbing.
-- **Dependencies:** ~~**U5** (Settings dialog)~~ ✅ — shipped with a Theme row already in place. ~~**D15** (palette centralised)~~ ✅ — the `Theme` object is in place.
-- ⚠ **Carried-forward (from D15 ✅):** the swappable `THEME` container is already in place — keep the import graph acyclic (`constants ← widgets.button ← theme`). Verify the default (`pcb-green`) theme stays **pixel-identical** by regenerating the board images and diffing them byte-for-byte against `main` (the `generate_board_images.py` SVG check D15 used to prove zero visual change).
-- ⚠ **Carried-forward (from U5 ✅):** the Settings dialog's Theme row already cycles `THEME_NAMES` / `THEME_LABELS` (`ui/theme.py`) and persists the chosen name to the session's `theme` key (the control auto-enables once the tuple has a second entry). U6 adds the alternate `Theme` instances + names, applies the persisted selection at startup and on dialog close, and passes it into the sim subprocess.
-- **Done when:** three themes are selectable in Settings; all UI screens (selector, preview, sim, dialogs) render correctly with each; no themed screen reads a color literal outside the `Theme`.
+- Shipped 2026-07-06 (PR #178, issue #174). New `set_theme()` swaps the shared `THEME` instance's contents in place (call sites bind it once at import, so no draw code changed); alternate **dark** and **high-contrast** `Theme` instances; the Settings Theme row auto-enabled and applies live; the persisted name is restored at startup and carried into the sim subprocess via `FPGA_SIM_THEME`; every import-time `THEME` capture converted to a draw-time read; default `pcb-green` proven pixel-identical (278 board PNGs byte-for-byte vs `main`). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U7. In-simulation navigation toolbar
 
@@ -118,6 +111,26 @@ This document inventories all viable improvements and ranks them by impact.
 - **Effort:** M.
 - **Dependencies:** ~~**U5** (Settings dialog)~~ ✅ — shipped; the session's `waveform_enabled` key is reserved for this toggle.
 - **Done when:** enabling waveform capture produces a valid VCD/FST file viewable in GTKWave.
+
+#### U27. User-defined themes (JSON) + example scheme pack
+
+- **Why:** Users have favorite editor/terminal color schemes (Dracula, Nord, Solarized, Gruvbox, Catppuccin, …). Shipping each as a built-in creates a permanent per-theme maintenance surface — every future `Theme` role must be designed and QA'd across all of them (the U6 bar is "renders correctly on every screen, per theme"). A JSON theme mechanism plus a copyable example pack covers the whole long tail while keeping exactly three release-gated built-ins. *(This is the "optionally loaded from JSON" idea the U6 card deliberately deferred — decided 2026-07-06 with Rick.)*
+- **What:** Scan `~/.fpga_simulator/themes/*.json` at startup and merge into the theme registry, so the Settings row, `--list-themes`, session persistence, and `FPGA_SIM_THEME` pick user themes up with no extra wiring. Files are schema-validated (the `boards/schema/board.schema.json` precedent) and express **partial overrides over a declared `base` theme** — ~15 lines gets a recognizable scheme, everything unspecified inherits:
+
+  ```json
+  { "label": "Dracula", "base": "dark",
+    "overrides": { "pcb_bg": [40, 42, 54], "sel_bg": [40, 42, 54],
+                   "accent_bar": [68, 71, 90], "led_on": [255, 85, 85],
+                   "seg_on": [255, 184, 108], "switch_on": [139, 233, 253] } }
+  ```
+
+  Invalid files warn and are skipped (never crash the launcher); unknown role names warn-don't-fail, because **role names become a compatibility surface** — document a stable core set, treat the rest as advanced. Ship `examples/themes/` with the popular schemes as ready-to-copy files, each with a one-line attribution comment (palettes are effectively uncopyrightable and all named sources are MIT — attribution is manners, not obligation).
+  - **Phase 0 (internal prerequisite):** promote the component-label / section-title / component-border neutrals (`WHITE` / `GRAY` reads in the board draw paths) into `Theme` roles — white-on-cream is illegible, so **light** schemes (Solarized Light, Gruvbox Light, Catppuccin Latte) are blocked until this lands. Must keep the default pcb-green **pixel-identical** (the established byte-diff check). Dark schemes work without it; the example pack ships dark-first.
+- **Touches:** `src/fpga_sim/ui/theme.py` (registry becomes dynamic; loader + schema for the JSON form, including the nested `ButtonStyle` sub-objects — the fiddly part); `ui/components.py` / `ui/board_display.py` (phase-0 neutral promotion); new `examples/themes/`; README theming section; tests (`test_theme.py` + loader suite). `sim_testbench.py`, `__main__.py`, `settings_dialog.py`, and `generate_board_images.py` all read the registry, so they extend automatically — verify, don't rewire.
+- **Effort:** M (phase 0: S/M; loader/schema/registry: M; example pack: S per scheme).
+- **Dependencies:** ~~**U6** (Theme system)~~ ✅ — registry, `set_theme()`, and the cross-process handoff are in place.
+- ⚠ **Carried-forward (from U6 ✅):** read `THEME.<role>` at draw time only — import-time captures (`X = THEME.role` at module *or class* level) silently defeat retheming; phase 0 must re-prove pixel-identical default output; theme-switching tests take the `restore_theme` fixture. The Settings Theme row is a *cycle* button — fine for a handful of themes; consider a picker only if installed-theme counts actually grow.
+- **Done when:** a user can drop a JSON file into `~/.fpga_simulator/themes/`, see it in Settings and `--list-themes`, select it, keep it across restarts, and see it inside the sim subprocess; invalid files warn and are skipped; every example-pack scheme loads and renders correctly on all four screens; pcb-green stays byte-identical after phase 0.
 
 ### Tier 3 — Quick wins (ship anytime)
 
@@ -317,8 +330,9 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 
 | Blocked item | Requires | Reason |
 |---|---|---|
-| **U6** (Theme system) | ~~**U5** (Settings dialog)~~ ✅ | Theme row shipped (disabled until a second theme exists) |
-| **U6** (Theme system) | ~~**D15** (Color consolidation)~~ ✅ | Palette now lives in the `Theme` object; U6 swaps its contents |
+| ~~**U6** (Theme system)~~ ✅ | ~~**U5** (Settings dialog)~~ ✅ | Theme row now enabled and applies the choice live — both shipped |
+| ~~**U6** (Theme system)~~ ✅ | ~~**D15** (Color consolidation)~~ ✅ | `set_theme()` swaps the `Theme` object's contents in place — both shipped |
+| **U27** (User JSON themes) | ~~**U6** (Theme system)~~ ✅ | Registry + `set_theme()` shipped; U27 makes the registry dynamic |
 | **U10** (Waveform capture) | ~~**U5** (Settings dialog)~~ ✅ | Settings dialog shipped; `waveform_enabled` session key reserved |
 | **U18** (Recent files) | ~~**U5** (Settings dialog)~~ ✅ | `recent[]` is populated on every pick + launch |
 | **U19** (Metrics checkbox) | ~~**U5** (Settings dialog)~~ ✅ | Settings dialog shipped; `metrics_enabled` session key reserved |
@@ -348,14 +362,17 @@ D1 (wrapper merge) ✅ — U21 and U22 are now unblocked
 D2 (backend ABC) ✅ — U20 unblocked; a third backend overrides only NAME + command builders
  └──> U20 (Verilog support)
 
-U5 (settings dialog) ✅ — U6 / U10 / U18 / U19 are now unblocked
- ├──> U6  (theme system)        # U6 also requires D15 (below)
+U5 (settings dialog) ✅ — U6 shipped; U10 / U18 / U19 remain unblocked
+ ├──> U6  (theme system) ✅     # also required D15 (below)
  ├──> U10 (waveform capture)
  ├──> U18 (recent files)
  └──> U19 (metrics checkbox)
 
-D15 (color consolidation) ✅ — Theme object in place; U6 swaps its contents
- └──> U6  (theme system)
+D15 (color consolidation) ✅ — U6 (theme system) ✅ — both shipped
+ └──> U6  (theme system) ✅
+
+U6 (theme system) ✅ — U27 is now unblocked
+ └──> U27 (user-defined JSON themes + example scheme pack)
 
 D6a (screen-result enum) ✅ — D6b (ScreenController) ✅ — both shipped
 ```
@@ -373,11 +390,11 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
 | **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → ~~U2 Analysis spinner~~ ✅ · ~~D2 Backend base class~~ ✅ · ~~U26 Visual README~~ ✅ |
 | **2** | Foundations that unblock later UX | ~~D6a Screen-result enum~~ ✅ · ~~D6b ScreenController~~ ✅ · ~~D15 Color consolidation~~ ✅ · ~~U5 Settings dialog + extended session~~ ✅ · ~~D8 mypy strict~~ ✅ |
-| **3** | Visible polish | U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar |
-| **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
+| **3** | Visible polish | U3 Tooltips · U4 Contextual errors · ~~U6 Theme system~~ ✅ · U7 In-sim toolbar |
+| **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw · U27 User JSON themes |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-07-06).** Sprints 1a, 1b, and **2 are fully shipped**. Sprint 2 closed with **U5 ✅** (Settings dialog + extended session, #169), joining **D15 ✅** (#109), **D6a ✅** (#121), **D8 ✅** (#119 + #166), and **D6b ✅** (#168). Next: **Sprint 3** (U3 Tooltips · U4 Contextual errors · U6 Theme system · U7 In-sim toolbar). The phases otherwise remain correctly ordered.
+**Status (2026-07-06).** Sprints 1a, 1b, and **2 are fully shipped**; **Sprint 3 is underway** (milestone v0.12.0, issues #172/#173/#174/#175). **U6 ✅** (Theme system, #178) landed first — dark + high-contrast themes with live switching. Remaining: **U3** (Tooltips, #172) · **U4** (Contextual errors, #173) · **U7** (In-sim toolbar, #175). The phases otherwise remain correctly ordered.
 
 ---
 
@@ -413,8 +430,8 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/sim_bridge.py` — U4, U5 ✅ (`speed_factor` → `FPGA_SIM_SPEED`), U10, U21, D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`), D16 (wrap the run subprocess)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅
 - `src/fpga_sim/session_config.py` — U5 ✅ (merge-on-write; new `update_session` / `push_recent`), U18, D9 ✅, D14 ✅, D16 (sandbox toggle)
-- `src/fpga_sim/ui/constants.py` — D15 ✅ (now base neutrals only), U6, U17
-- `src/fpga_sim/ui/theme.py` — D15 ✅ (new: `Theme` dataclass + `THEME`), U2 ✅ (`spinner_arc` / `spinner_track` roles), U5 ✅ (`THEME_NAMES` / `THEME_LABELS` + settings button styles), U6
+- `src/fpga_sim/ui/constants.py` — D15 ✅ (now base neutrals only), U17
+- `src/fpga_sim/ui/theme.py` — D15 ✅ (new: `Theme` dataclass + `THEME`), U2 ✅ (`spinner_arc` / `spinner_track` roles), U5 ✅ (`THEME_NAMES` / `THEME_LABELS` + settings button styles), U6 ✅ (`dark` / `high-contrast` instances + `set_theme` / `current_theme_name`), U27 (dynamic registry + JSON loader)
 - `src/fpga_sim/ui/components.py` — U3, U9, D3, D15
 - `src/fpga_sim/ui/board_display.py` — U1 ✅, U3, U5 ✅ (gear trigger), U11, U16, D3, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15
 - `src/fpga_sim/ui/board_selector.py` — U0, U1 ✅, U8, U12, U13 ✅, D15
@@ -435,10 +452,10 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `get_font()` LRU cache (`ui/constants.py`) -> already used everywhere; pre-allocation in U17 just primes it.
 - `_generate_wrapper()` (`sim_bridge.py`) -> unified template substitution with conditional 7-seg splicing (D1 ✅).
 - `_SimBackend` ABC (`sim_bridge.py`) — D2 ✅ made it an ABC sharing `find()` / `available()` / `lib_dir()` / `sim_bin_lib()` as classmethods; a third backend (U20) overrides only `NAME` + the command builders.
-- `session_config.save_session` / `load_session` / `update_session` / `push_recent` (`session_config.py`) -> U5 ✅ extended the schema with merge-on-write; U18 consumes `recent[]`, U6/U10/U19 write their keys via `update_session`.
+- `session_config.save_session` / `load_session` / `update_session` / `push_recent` (`session_config.py`) -> U5 ✅ extended the schema with merge-on-write; U18 consumes `recent[]`, U6 ✅ writes `theme`, U10/U19 write their keys via `update_session`.
 - `sim_metrics.py` / `scripts/analyze_metrics.py` -> consumed by U19; no new infra needed.
 - `BoardDef.summary` property (`board_loader.py`) -> update format for U12; extend for U0 filter logic.
-- `ui/theme.py` `THEME` object (D15 ✅) — the grouped semantic palette U6 rethemes; `ui/constants.py` retains the base neutrals (`WHITE`, `GRAY`, …).
+- `ui/theme.py` `THEME` object (D15 ✅) — the grouped semantic palette, rethemed in place by U6 ✅'s `set_theme()`; `ui/constants.py` retains the base neutrals (`WHITE`, `GRAY`, …) until U27's phase 0 promotes the component-label/border neutrals into themed roles.
 
 ---
 
@@ -457,4 +474,4 @@ Per-item verification is described in each entry's "Done when" criterion above. 
 
 ## Delivery log
 
-Completed-item detail and the cross-cutting carried-forward notes now live in **[roadmap_delivered.md](roadmap_delivered.md)**. Per-PR detail is also in `CHANGELOG.md` and the linked PRs; forward-relevant gotchas from completed work appear as **⚠ Carried-forward** notes on the open cards they affect (**U6**, **U7**) and in the Tier-3 note on **U14**.
+Completed-item detail and the cross-cutting carried-forward notes now live in **[roadmap_delivered.md](roadmap_delivered.md)**. Per-PR detail is also in `CHANGELOG.md` and the linked PRs; forward-relevant gotchas from completed work appear as **⚠ Carried-forward** notes on the open cards they affect (**U7**) and in the Tier-3 note on **U14**.

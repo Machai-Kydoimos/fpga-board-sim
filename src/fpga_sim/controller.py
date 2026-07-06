@@ -50,6 +50,7 @@ from fpga_sim.ui import (
 )
 from fpga_sim.ui.constants import get_font
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
+from fpga_sim.ui.theme import current_theme_name
 
 _HDL_DIR = Path(__file__).parent.parent.parent / "hdl"
 
@@ -468,6 +469,7 @@ class ScreenController:
                 simulator=s.simulator,
                 board_def=board,
                 speed_factor=speed,
+                theme=current_theme_name(),
             )
         except Exception as e:
             sim_error = str(e)

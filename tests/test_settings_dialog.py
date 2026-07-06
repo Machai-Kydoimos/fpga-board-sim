@@ -9,7 +9,7 @@ import pytest
 from fpga_sim.session_config import load_session, update_session
 from fpga_sim.ui.settings_dialog import SettingsDialog, draw_settings_button
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
-from fpga_sim.ui.theme import THEME_NAMES
+from fpga_sim.ui.theme import THEME_NAMES, current_theme_name
 
 
 @pytest.fixture(autouse=True)
@@ -75,13 +75,31 @@ class TestDismiss:
 
 
 class TestActions:
-    def test_theme_cycle_disabled_with_single_theme(self, screen, session_file):
-        assert len(THEME_NAMES) == 1  # update this test when U6 adds themes
+    def test_theme_cycle_applies_and_persists(self, screen, session_file, restore_theme):
+        """U6: a click on the Theme row applies set_theme() and writes the session."""
         dlg = SettingsDialog(screen)
         dlg._draw()
         assert dlg._theme_rect is not None
-        assert dlg._click(dlg._theme_rect.center) is False
-        assert not session_file.exists()  # disabled control: nothing written
+        assert dlg._click(dlg._theme_rect.center) is False  # stays open
+        assert load_session()["theme"] == THEME_NAMES[1]
+        assert current_theme_name() == THEME_NAMES[1]  # applied live, not just saved
+
+    def test_theme_cycle_wraps_back_to_default(self, screen, session_file, restore_theme):
+        update_session(theme=THEME_NAMES[-1])
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._theme_rect is not None
+        dlg._click(dlg._theme_rect.center)
+        assert load_session()["theme"] == THEME_NAMES[0]
+        assert current_theme_name() == THEME_NAMES[0]
+
+    def test_theme_cycle_full_loop_visits_every_theme(self, screen, session_file, restore_theme):
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._theme_rect is not None
+        for expected in (*THEME_NAMES[1:], THEME_NAMES[0]):
+            dlg._click(dlg._theme_rect.center)
+            assert load_session()["theme"] == expected
 
     def test_reset_speed_writes_default(self, screen, session_file):
         update_session(speed_factor=2.5)
@@ -150,6 +168,14 @@ class TestValues:
     def test_theme_name_junk_falls_back(self, screen):
         update_session(theme=42)
         assert SettingsDialog(screen)._theme_name() == THEME_NAMES[0]
+
+    def test_theme_name_unknown_string_falls_back(self, screen):
+        update_session(theme="no-such-theme")
+        assert SettingsDialog(screen)._theme_name() == THEME_NAMES[0]
+
+    def test_theme_name_valid_saved_name_is_returned(self, screen):
+        update_session(theme=THEME_NAMES[1])
+        assert SettingsDialog(screen)._theme_name() == THEME_NAMES[1]
 
 
 # ── Gear trigger button ───────────────────────────────────────────────────────
