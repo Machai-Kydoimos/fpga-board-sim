@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now enabled and applies the choice live; the persisted theme is restored at
   startup and carried into the simulation subprocess via `FPGA_SIM_THEME`.
   `generate-board-images` gains a `--theme` option. The default theme is
-  pixel-identical to 0.11.0 (all 278 board PNGs byte-for-byte) (#174, #176)
+  pixel-identical to 0.11.0 (all 278 board PNGs byte-for-byte) (#174, #178)
 
 ## [0.11.0] - 2026-07-06
 

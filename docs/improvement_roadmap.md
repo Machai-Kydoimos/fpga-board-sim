@@ -72,7 +72,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### U6. Theme system (light / dark / high-contrast) ✅
 
-- Shipped 2026-07-06 (PR #176, issue #174). New `set_theme()` swaps the shared `THEME` instance's contents in place (call sites bind it once at import, so no draw code changed); alternate **dark** and **high-contrast** `Theme` instances; the Settings Theme row auto-enabled and applies live; the persisted name is restored at startup and carried into the sim subprocess via `FPGA_SIM_THEME`; every import-time `THEME` capture converted to a draw-time read; default `pcb-green` proven pixel-identical (278 board PNGs byte-for-byte vs `main`). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
+- Shipped 2026-07-06 (PR #178, issue #174). New `set_theme()` swaps the shared `THEME` instance's contents in place (call sites bind it once at import, so no draw code changed); alternate **dark** and **high-contrast** `Theme` instances; the Settings Theme row auto-enabled and applies live; the persisted name is restored at startup and carried into the sim subprocess via `FPGA_SIM_THEME`; every import-time `THEME` capture converted to a draw-time read; default `pcb-green` proven pixel-identical (278 board PNGs byte-for-byte vs `main`). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U7. In-simulation navigation toolbar
 
@@ -370,7 +370,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-07-06).** Sprints 1a, 1b, and **2 are fully shipped**; **Sprint 3 is underway** (milestone v0.12.0, issues #172/#173/#174/#175). **U6 ✅** (Theme system, #176) landed first — dark + high-contrast themes with live switching. Remaining: **U3** (Tooltips, #172) · **U4** (Contextual errors, #173) · **U7** (In-sim toolbar, #175). The phases otherwise remain correctly ordered.
+**Status (2026-07-06).** Sprints 1a, 1b, and **2 are fully shipped**; **Sprint 3 is underway** (milestone v0.12.0, issues #172/#173/#174/#175). **U6 ✅** (Theme system, #178) landed first — dark + high-contrast themes with live switching. Remaining: **U3** (Tooltips, #172) · **U4** (Contextual errors, #173) · **U7** (In-sim toolbar, #175). The phases otherwise remain correctly ordered.
 
 ---
 
