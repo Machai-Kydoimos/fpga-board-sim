@@ -51,14 +51,9 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** Soft: simpler with D3 (UIComponent base provides unified hit-testing).
 - **Done when:** hovering a component for 400 ms shows a tooltip with net name, pin, and direction; moving away dismisses it.
 
-#### U4. Error messages with contextual hints
+#### U4. Error messages with contextual hints ✅
 
-- **Why:** "VHDL Error: port width mismatch" doesn't tell the user which port or expected width; the design contract lives only in CLAUDE.md.
-- **What:** Augment `check_vhdl_contract()` and the analyze stderr parser to append actionable hints: *"this board has 16 LEDs -- set NUM_LEDS=16 or use `std_logic_vector(NUM_LEDS-1 downto 0)`"*. Show a "View example" button in `ErrorDialog` that opens `hdl/blinky.vhd`.
-- **Touches:** `src/fpga_sim/sim_bridge.py` (`check_vhdl_contract`); `src/fpga_sim/ui/error_dialog.py`.
-- **Effort:** M.
-- **Dependencies:** None.
-- **Done when:** error dialogs include the specific port/width mismatch details and a "View example" button that opens the correct example file.
+- Shipped 2026-07-07 (PR #181, issue #173). Parsed board-aware contract checks (fixed widths vs board counts, port modes, generics now fatal-with-fix), `add_error_hints()` on GHDL/NVC stderr, and a [View Example] dialog button. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U5. Settings dialog + extended session persistence ✅
 
@@ -390,11 +385,11 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
 | **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → ~~U2 Analysis spinner~~ ✅ · ~~D2 Backend base class~~ ✅ · ~~U26 Visual README~~ ✅ |
 | **2** | Foundations that unblock later UX | ~~D6a Screen-result enum~~ ✅ · ~~D6b ScreenController~~ ✅ · ~~D15 Color consolidation~~ ✅ · ~~U5 Settings dialog + extended session~~ ✅ · ~~D8 mypy strict~~ ✅ |
-| **3** | Visible polish | U3 Tooltips · U4 Contextual errors · ~~U6 Theme system~~ ✅ · U7 In-sim toolbar |
+| **3** | Visible polish | U3 Tooltips · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · U7 In-sim toolbar |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw · U27 User JSON themes |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-07-06).** Sprints 1a, 1b, and **2 are fully shipped**; **Sprint 3 is underway** (milestone v0.12.0, issues #172/#173/#174/#175). **U6 ✅** (Theme system, #178) landed first — dark + high-contrast themes with live switching. Remaining: **U3** (Tooltips, #172) · **U4** (Contextual errors, #173) · **U7** (In-sim toolbar, #175). The phases otherwise remain correctly ordered.
+**Status (2026-07-07).** Sprints 1a, 1b, and **2 are fully shipped**; **Sprint 3 is underway** (milestone v0.12.0, issues #172/#173/#174/#175). **U6 ✅** (Theme system, #178) landed first, then **U4 ✅** (Contextual errors, #181). Remaining: **U3** (Tooltips, #172) · **U7** (In-sim toolbar, #175). The phases otherwise remain correctly ordered.
 
 ---
 
@@ -426,8 +421,8 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 ## Critical files modified across the roadmap
 
 - `src/fpga_sim/__main__.py` — U2 ✅, U5 ✅ (window-size restore), U16, D6a ✅, D6b ✅ (now a thin driver), D9 ✅
-- `src/fpga_sim/controller.py` — D6b ✅ (new: `ScreenController` + `SessionState`), U5 ✅ (save-on-pick/change/quit + speed plumbing), U7 (new sim intents), U18 (retry start-dir)
-- `src/fpga_sim/sim_bridge.py` — U4, U5 ✅ (`speed_factor` → `FPGA_SIM_SPEED`), U10, U21, D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`), D16 (wrap the run subprocess)
+- `src/fpga_sim/controller.py` — D6b ✅ (new: `ScreenController` + `SessionState`), U4 ✅ (`example_vhdl_for` wiring), U5 ✅ (save-on-pick/change/quit + speed plumbing), U7 (new sim intents), U18 (retry start-dir)
+- `src/fpga_sim/sim_bridge.py` — U4 ✅ (parsed contract checks + `add_error_hints`), U5 ✅ (`speed_factor` → `FPGA_SIM_SPEED`), U10, U21, D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`), D16 (wrap the run subprocess)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅
 - `src/fpga_sim/session_config.py` — U5 ✅ (merge-on-write; new `update_session` / `push_recent`), U18, D9 ✅, D14 ✅, D16 (sandbox toggle)
 - `src/fpga_sim/ui/constants.py` — D15 ✅ (now base neutrals only), U17
@@ -437,7 +432,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/ui/board_selector.py` — U0, U1 ✅, U8, U12, U13 ✅, D15
 - `src/fpga_sim/ui/sim_panel.py` — U5 ✅ (`speed_factor` ctor param; public `SPEED_DEFAULT`), U14, U15, U19, D4 ✅, D15
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15
-- `src/fpga_sim/ui/error_dialog.py` — U4, D4 ✅, D6a ✅ (`run()` returns `DialogResult`), D15
+- `src/fpga_sim/ui/error_dialog.py` — U4 ✅ (`example_path` → [View Example]), D4 ✅, D6a ✅ (`run()` returns `DialogResult`), D15
 - New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
 - `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)

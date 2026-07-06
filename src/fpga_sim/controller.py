@@ -55,6 +55,16 @@ from fpga_sim.ui.theme import current_theme_name
 _HDL_DIR = Path(__file__).parent.parent.parent / "hdl"
 
 
+def example_vhdl_for(board: BoardDef | None) -> Path:
+    """Return the bundled example design that satisfies the contract for *board*.
+
+    Offered by validation ErrorDialogs as [View Example]: ``counter_7seg.vhd``
+    for boards with a 7-segment display, ``blinky.vhd`` otherwise.
+    """
+    has_7seg = board is not None and board.seven_seg is not None
+    return _HDL_DIR / ("counter_7seg.vhd" if has_7seg else "blinky.vhd")
+
+
 def build_generics(board: BoardDef) -> dict[str, str]:
     """Build the generic map for sim_wrapper from a board definition.
 
@@ -338,19 +348,27 @@ class ScreenController:
                 return NextScreen.PREVIEW
 
             # Stage 1+2: encoding and contract checks; stage 3: analysis.
+            example = example_vhdl_for(self.board)
             intent: DialogResult = DialogResult.RETRY
             ok, detail = check_vhdl_encoding(picked)
             if not ok:
-                intent = ErrorDialog(self.screen, "VHDL Error", detail).run(self.clock)
+                intent = ErrorDialog(self.screen, "VHDL Error", detail, example_path=example).run(
+                    self.clock
+                )
             else:
                 ok, detail = check_vhdl_contract(picked, board_def=self.board)
                 if not ok:
-                    intent = ErrorDialog(self.screen, "VHDL Error", detail).run(self.clock)
+                    intent = ErrorDialog(
+                        self.screen, "VHDL Error", detail, example_path=example
+                    ).run(self.clock)
                 else:
                     ok, detail = self._analyze_with_spinner(picked)
                     if not ok:
                         intent = ErrorDialog(
-                            self.screen, f"{s.simulator.upper()} Error", detail
+                            self.screen,
+                            f"{s.simulator.upper()} Error",
+                            detail,
+                            example_path=example,
                         ).run(self.clock)
 
             if ok:
@@ -422,14 +440,17 @@ class ScreenController:
         # standard design or vice-versa).  Always re-run the contract check
         # here so a stale session cannot bypass it.
         if s.work_dir_simulator != s.simulator:
+            example = example_vhdl_for(board)
             ok, msg = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
             if not ok:
-                ErrorDialog(self.screen, "VHDL Error", msg).run(self.clock)
+                ErrorDialog(self.screen, "VHDL Error", msg, example_path=example).run(self.clock)
                 s.clear_vhdl()
                 return NextScreen.PREVIEW
             ok, detail = self._analyze_with_spinner(s.vhdl_path)
             if not ok:
-                ErrorDialog(self.screen, f"{s.simulator.upper()} Error", detail).run(self.clock)
+                ErrorDialog(
+                    self.screen, f"{s.simulator.upper()} Error", detail, example_path=example
+                ).run(self.clock)
                 return NextScreen.PREVIEW
             s.work_dir = detail
             s.work_dir_simulator = s.simulator

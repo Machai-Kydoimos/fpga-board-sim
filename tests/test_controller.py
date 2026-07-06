@@ -20,7 +20,13 @@ import pytest
 
 import fpga_sim.controller as controller_mod
 from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
-from fpga_sim.controller import NextScreen, ScreenController, SessionState, build_generics
+from fpga_sim.controller import (
+    NextScreen,
+    ScreenController,
+    SessionState,
+    build_generics,
+    example_vhdl_for,
+)
 from fpga_sim.ui import DialogResult, ScreenResult
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 from fpga_sim.ui.theme import set_theme
@@ -76,10 +82,14 @@ class _FakeDialog:
     """ErrorDialog stand-in: records (title, message), replays scripted intents."""
 
     shown: list[tuple[str, str]] = []
+    example_paths: list[Path | None] = []
     intents: list[DialogResult] = []
 
-    def __init__(self, screen: Any, title: str, message: str) -> None:
+    def __init__(
+        self, screen: Any, title: str, message: str, example_path: Path | None = None
+    ) -> None:
         type(self).shown.append((title, message))
+        type(self).example_paths.append(example_path)
 
     def run(self, clock: Any) -> DialogResult:
         return type(self).intents.pop(0)
@@ -89,6 +99,7 @@ def _install_dialog(
     monkeypatch: pytest.MonkeyPatch, intents: list[DialogResult]
 ) -> type[_FakeDialog]:
     _FakeDialog.shown = []
+    _FakeDialog.example_paths = []
     _FakeDialog.intents = list(intents)
     monkeypatch.setattr(controller_mod, "ErrorDialog", _FakeDialog)
     return _FakeDialog
@@ -745,3 +756,40 @@ def test_simulate_error_back_returns_to_selector(headless_pygame, monkeypatch, t
     assert ctrl.on_simulate() is NextScreen.SELECTOR
     assert ctrl.state.work_dir is None  # back drops the analysis
     assert ctrl.state.vhdl_path is not None  # …but keeps the file
+
+
+# ── example_vhdl_for / View-Example wiring (U4) ──────────────────────────────
+
+
+def test_example_vhdl_for_plain_board():
+    assert example_vhdl_for(_board()).name == "blinky.vhd"
+
+
+def test_example_vhdl_for_none():
+    assert example_vhdl_for(None).name == "blinky.vhd"
+
+
+def test_example_vhdl_for_7seg_board():
+    board = _board(seven_seg=SevenSegDef(4, True, False, True, False))
+    assert example_vhdl_for(board).name == "counter_7seg.vhd"
+
+
+def test_picker_error_dialog_gets_example_path(headless_pygame, monkeypatch):
+    """Validation dialogs offer the board-appropriate example design."""
+    ctrl = _make_controller(headless_pygame)
+    ctrl.on_board_selected(_board())
+    _install_picker(monkeypatch, ["bad.vhd", None])
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (False, "bad"))
+    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
+    ctrl._run_vhdl_picker()
+    assert dialog.example_paths == [controller_mod._HDL_DIR / "blinky.vhd"]
+
+
+def test_picker_error_dialog_gets_7seg_example(headless_pygame, monkeypatch):
+    ctrl = _make_controller(headless_pygame)
+    ctrl.on_board_selected(_board(seven_seg=SevenSegDef(4, True, False, True, False)))
+    _install_picker(monkeypatch, ["bad.vhd", None])
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (False, "bad"))
+    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
+    ctrl._run_vhdl_picker()
+    assert dialog.example_paths == [controller_mod._HDL_DIR / "counter_7seg.vhd"]

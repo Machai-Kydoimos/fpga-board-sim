@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Error messages with contextual hints (U4).** The pre-simulation contract
+  check now parses the design's toplevel entity and explains violations in
+  terms of the selected board — e.g. *"Port 'led' is a fixed 16 bits wide,
+  but DE10-Lite has 10 LEDs. The simulator sets NUM_LEDS=10 for this board —
+  declare the port as `led : out std_logic_vector(NUM_LEDS - 1 downto 0)`"*.
+  It also catches wrong port directions (which GHDL/NVC accept silently,
+  yielding dead LEDs), missing required generics (previously a console-only
+  warning followed by a cryptic `sim_wrapper.vhd` error), extra ports or
+  generics without defaults, and `seg`-without-`NUM_SEGS` on 7-seg boards.
+  GHDL/NVC analysis errors gain appended `Hint:` lines for the common
+  failure modes, quoting the board's real resource counts. Error dialogs
+  gain a **[View Example]** button (`V` key) that opens the
+  board-appropriate bundled example design (#173, #181)
 - **Theme system (U6).** Three selectable UI themes: the default **PCB Green**,
   **Dark** (graphite PCB, slate-blue accents), and **High Contrast** (pure
   black surfaces, white text and borders, yellow accents, saturated component
