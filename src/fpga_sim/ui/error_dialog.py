@@ -1,6 +1,9 @@
 """ErrorDialog: modal error overlay with scrollable message and retry/back buttons."""
 
+import os
+import subprocess
 import sys
+from pathlib import Path
 
 import pygame
 
@@ -10,24 +13,49 @@ from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
 
 
+def _open_file_external(path: Path) -> None:
+    """Open *path* with the platform's default application (best-effort)."""
+    try:
+        if sys.platform == "win32":
+            os.startfile(path)  # noqa: S606
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", str(path)], start_new_session=True)
+        else:
+            subprocess.Popen(["xdg-open", str(path)], start_new_session=True)
+    except OSError as e:
+        print(f"[error_dialog] could not open {path}: {e}", file=sys.stderr, flush=True)
+
+
 class ErrorDialog:
     """Modal error dialog drawn over a dimmed snapshot of the current screen.
 
     Sized to ~1/3 of the main window area (2/3 wide, 1/2 tall).
     run() returns DialogResult.RETRY (Try Another File) or
     DialogResult.BACK (Back to Boards).
+
+    When *example_path* is given, a third [View Example] button (and the V key)
+    opens that file with the system's default application — the dialog stays
+    open so the user can compare it against the error text.
     """
 
-    def __init__(self, screen: pygame.Surface, title: str, message: str) -> None:
+    def __init__(
+        self,
+        screen: pygame.Surface,
+        title: str,
+        message: str,
+        example_path: Path | None = None,
+    ) -> None:
         """Initialize the dialog with a screen snapshot, title, and message text."""
         self.screen = screen
         self.title = title
         self.message = message
+        self.example_path = example_path
         print(f"[error] {title}: {message}", file=sys.stderr, flush=True)
         self._bg = screen.copy()
         self._scroll = 0
         self._retry_rect: pygame.Rect | None = None
         self._back_rect: pygame.Rect | None = None
+        self._example_rect: pygame.Rect | None = None
 
     def run(self, clock: pygame.time.Clock) -> DialogResult:
         """Run the event loop and return DialogResult.RETRY or DialogResult.BACK."""
@@ -45,6 +73,8 @@ class ErrorDialog:
                         return DialogResult.BACK
                     elif ev.key == pygame.K_RETURN:
                         return DialogResult.RETRY
+                    elif ev.key == pygame.K_v and self.example_path is not None:
+                        _open_file_external(self.example_path)
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
                     if ev.button == 1:
                         result = self._click(ev.pos)
@@ -63,6 +93,10 @@ class ErrorDialog:
             return DialogResult.RETRY
         if self._back_rect and self._back_rect.collidepoint(pos):
             return DialogResult.BACK
+        if self._example_rect and self._example_rect.collidepoint(pos):
+            # Opens externally; the dialog stays up so the user can compare.
+            assert self.example_path is not None
+            _open_file_external(self.example_path)
         return None
 
     def _draw(self) -> None:
@@ -152,40 +186,40 @@ class ErrorDialog:
                 border_radius=2,
             )
 
-        # Buttons
+        # Buttons: [View Example] (optional) [Try Another File] [Back to Boards]
         btn_y = py + panel_h - btns_h + btn_gap
-        retry_w = btn_f.size("Try Another File")[0] + pad
-        back_w = btn_f.size("Back to Boards")[0] + pad
-        total_btn_w = retry_w + btn_gap + back_w
-        btn_start_x = px + (panel_w - total_btn_w) // 2
+        buttons = []
+        if self.example_path is not None:
+            buttons.append(("View Example", THEME.btn_load_vhdl, "_example_rect"))
+        buttons += [
+            ("Try Another File", THEME.btn_error_retry, "_retry_rect"),
+            ("Back to Boards", THEME.btn_error_back, "_back_rect"),
+        ]
+        widths = [btn_f.size(label)[0] + pad for label, _, _ in buttons]
+        total_btn_w = sum(widths) + btn_gap * (len(buttons) - 1)
+        bx = px + (panel_w - total_btn_w) // 2
 
         mouse = pygame.mouse.get_pos()
-
-        self._retry_rect = pygame.Rect(btn_start_x, btn_y, retry_w, btn_h)
-        draw_button(
-            self.screen,
-            self._retry_rect,
-            "Try Another File",
-            btn_f,
-            THEME.btn_error_retry,
-            hovered=self._retry_rect.collidepoint(mouse),
-        )
-
-        self._back_rect = pygame.Rect(btn_start_x + retry_w + btn_gap, btn_y, back_w, btn_h)
-        draw_button(
-            self.screen,
-            self._back_rect,
-            "Back to Boards",
-            btn_f,
-            THEME.btn_error_back,
-            hovered=self._back_rect.collidepoint(mouse),
-        )
+        self._example_rect = None
+        for (label, style, attr), w in zip(buttons, widths, strict=True):
+            rect = pygame.Rect(bx, btn_y, w, btn_h)
+            setattr(self, attr, rect)
+            draw_button(
+                self.screen,
+                rect,
+                label,
+                btn_f,
+                style,
+                hovered=rect.collidepoint(mouse),
+            )
+            bx += w + btn_gap
 
         # Keyboard shortcut hint below the panel
         hint_f = get_font(max(12, round(14 * s)))
-        hint = hint_f.render(
-            "Enter: Try Another File    Esc: Back to Boards", True, THEME.footer_hint
-        )
+        hint_text = "Enter: Try Another File    Esc: Back to Boards"
+        if self.example_path is not None:
+            hint_text = f"V: View Example    {hint_text}"
+        hint = hint_f.render(hint_text, True, THEME.footer_hint)
         self.screen.blit(hint, hint.get_rect(centerx=px + panel_w // 2, top=py + panel_h + 8))
 
         pygame.display.flip()
