@@ -14,7 +14,8 @@ Schema (every key is optional; readers fall back to defaults):
 - ``window_w`` / ``window_h`` — launcher window size, restored at startup
 - ``speed_factor`` — sim speed multiplier (the sim subprocess writes the
   slider's final value at exit; the launcher passes it back in at launch)
-- ``theme`` — UI theme name (the Settings dialog writes it; U6 applies it)
+- ``theme`` — UI theme name (the Settings dialog writes and applies it; the
+  launcher restores it at startup and forwards it to the sim subprocess)
 - ``metrics_enabled`` / ``waveform_enabled`` — reserved for the Settings
   toggles that U19 / U10 add
 - ``recent`` — the last :data:`RECENT_MAX` (board, VHDL) picks, newest first,

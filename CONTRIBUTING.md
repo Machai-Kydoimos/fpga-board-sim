@@ -556,8 +556,10 @@ never write a key another writer owns:
 - the **launcher** (`ScreenController`) writes the board / VHDL / simulator /
   selector prefs / window size — on every board, simulator, or VHDL change,
   at quit, and at launch — plus `recent[]` via `push_recent()`;
-- the **Settings dialog** writes `theme` (and, when U10/U19 land, the
-  `waveform_enabled` / `metrics_enabled` toggles);
+- the **Settings dialog** writes `theme` and applies it live via
+  `ui.theme.set_theme()`; the launcher restores it at startup and forwards it
+  to the sim subprocess through `FPGA_SIM_THEME` (when U10/U19 land the dialog
+  also gains the `waveform_enabled` / `metrics_enabled` toggles);
 - the **sim subprocess** owns `speed_factor`: `launch_simulation()` seeds the
   panel slider via the `FPGA_SIM_SPEED` env var and `sim/sim_testbench.py`
   writes the final slider value back at exit — only when that env var is

@@ -18,13 +18,9 @@ from fpga_sim.ui.theme import THEME
 class FPGAChip:
     """Visual representation of the FPGA IC package on the board."""
 
-    # Chip palette, sourced from the shared Theme (also read by generate_board_images).
-    _VENDOR_COLORS = THEME.vendor_colors
+    # Palette roles are read from THEME at draw time (never captured here) so a
+    # set_theme() swap restyles the chip; geometry and the neutral border stay.
     _BORDER_COLOR = GRAY
-    _DEVICE_COLOR = THEME.chip_device
-    _PACKAGE_COLOR = THEME.chip_package
-    _CLOCK_COLOR = THEME.chip_clock
-    _PIN_COLOR = THEME.chip_pin
     _PIN_LENGTH = 5
 
     def __init__(
@@ -51,7 +47,7 @@ class FPGAChip:
         if self.rect.width < 20:
             return
         r = self.rect
-        color = self._VENDOR_COLORS.get(self.vendor, THEME.chip_default)
+        color = THEME.vendor_colors.get(self.vendor, THEME.chip_default)
 
         pygame.draw.rect(surface, color, r, border_radius=6)
         pygame.draw.rect(surface, self._BORDER_COLOR, r, 2, border_radius=6)
@@ -66,15 +62,15 @@ class FPGAChip:
             ),
             (
                 self.device.upper(),
-                self._DEVICE_COLOR,
+                THEME.chip_device,
             ),
             (
                 self.package.upper(),
-                self._PACKAGE_COLOR,
+                THEME.chip_package,
             ),
         ]
         if self.clock_hz:
-            lines.append((self._fmt_clock(self.clock_hz), self._CLOCK_COLOR))
+            lines.append((self._fmt_clock(self.clock_hz), THEME.chip_clock))
         active = [(t, c) for t, c in lines if t]
         offset = -(len(active) - 1) / 2 * line_h
         for text, color in active:
@@ -83,7 +79,7 @@ class FPGAChip:
             offset += line_h
 
     def _draw_pin_marks(self, surface: pygame.Surface, r: pygame.Rect) -> None:
-        color = self._PIN_COLOR
+        color = THEME.chip_pin
         length = self._PIN_LENGTH
         h_count = max(4, min(20, r.width // 14))
         v_count = max(4, min(14, r.height // 14))
@@ -221,11 +217,12 @@ class Button:
 
 
 class SevenSeg:
-    """Draws one digit of a 7-segment display."""
+    """Draws one digit of a 7-segment display.
 
-    SEG_ON: tuple[int, int, int] = THEME.seg_on  # amber
-    SEG_OFF: tuple[int, int, int] = THEME.seg_off  # dark amber (ghost segments)
-    BG: tuple[int, int, int] = THEME.seg_bg
+    Segment colors (``seg_on`` / ``seg_off`` / ``seg_bg`` / ``seg_bezel``) are
+    read from THEME at draw time — never captured — so a set_theme() swap
+    restyles the digits.
+    """
 
     # Bit positions: {dp, g, f, e, d, c, b, a}
     _BIT: dict[str, int] = {
@@ -263,11 +260,11 @@ class SevenSeg:
         half = dh // 2
         x0, y0 = self.rect.topleft
 
-        pygame.draw.rect(surface, self.BG, self.rect, border_radius=3)
+        pygame.draw.rect(surface, THEME.seg_bg, self.rect, border_radius=3)
         pygame.draw.rect(surface, THEME.seg_bezel, self.rect, width=1, border_radius=3)
 
         def color(n: str) -> tuple[int, int, int]:
-            return self.SEG_ON if self._seg(n) else self.SEG_OFF
+            return THEME.seg_on if self._seg(n) else THEME.seg_off
 
         def hrect(x: int, y: int, w: int, h: int, n: str) -> None:
             c = color(n)
