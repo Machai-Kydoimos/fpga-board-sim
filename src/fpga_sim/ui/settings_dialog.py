@@ -4,8 +4,9 @@ A blocking overlay — same snapshot-dim-centered-panel structure as
 :class:`~fpga_sim.ui.help_dialog.HelpDialog` — whose rows act directly on the
 persisted session file (:mod:`fpga_sim.session_config`):
 
-* **Theme** — cycles :data:`~fpga_sim.ui.theme.THEME_NAMES` (disabled while
-  only ``pcb-green`` exists; U6 adds the alternates and applies the choice).
+* **Theme** — cycles :data:`~fpga_sim.ui.theme.THEME_NAMES` and applies the
+  choice immediately via :func:`~fpga_sim.ui.theme.set_theme` (the launcher
+  restores the persisted name at startup).
 * **Sim speed** — the speed slider's value as written back by the last
   simulation run, with a [Reset] to the default.
 * **Recent files** — how many (board, VHDL) pairs are remembered (U18
@@ -28,11 +29,8 @@ import pygame
 from fpga_sim.session_config import load_session, update_session
 from fpga_sim.ui.constants import _ui_scale, get_font
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
-from fpga_sim.ui.theme import THEME, THEME_LABELS, THEME_NAMES
+from fpga_sim.ui.theme import THEME, THEME_LABELS, THEME_NAMES, current_theme_name, set_theme
 from fpga_sim.ui.widgets import draw_button
-
-#: Style for the gear trigger button (sourced from the Theme).
-SETTINGS_BUTTON_STYLE = THEME.btn_settings
 
 
 def _draw_gear_icon(
@@ -64,8 +62,9 @@ def draw_settings_button(
     """
     rect = pygame.Rect(right - size, top, size, size)
     font = get_font(max(12, round(size * 0.6)), bold=True)
-    draw_button(surface, rect, "", font, SETTINGS_BUTTON_STYLE, hovered=rect.collidepoint(mouse))
-    _draw_gear_icon(surface, rect.center, max(6, round(size * 0.32)), SETTINGS_BUTTON_STYLE.fg)
+    style = THEME.btn_settings  # read at draw time so a theme switch restyles the gear
+    draw_button(surface, rect, "", font, style, hovered=rect.collidepoint(mouse))
+    _draw_gear_icon(surface, rect.center, max(6, round(size * 0.32)), style.fg)
     return rect
 
 
@@ -92,8 +91,8 @@ class SettingsDialog:
     # ── Session-derived row values ────────────────────────────────────────────
 
     def _theme_name(self) -> str:
-        name = self._session.get("theme", THEME_NAMES[0])
-        return name if isinstance(name, str) and name else THEME_NAMES[0]
+        name = self._session.get("theme", "")
+        return name if isinstance(name, str) and name in THEME_NAMES else current_theme_name()
 
     def _speed(self) -> float:
         try:
@@ -141,7 +140,11 @@ class SettingsDialog:
         if self._theme_rect and self._theme_rect.collidepoint(pos) and self._can_cycle_theme():
             current = self._theme_name()
             idx = THEME_NAMES.index(current) if current in THEME_NAMES else -1
-            update_session(theme=THEME_NAMES[(idx + 1) % len(THEME_NAMES)])
+            chosen = THEME_NAMES[(idx + 1) % len(THEME_NAMES)]
+            # Apply live: the dialog restyles on its next frame and the parent
+            # screen on close (the dimmed backdrop snapshot keeps the old look).
+            set_theme(chosen)
+            update_session(theme=chosen)
             self._session = load_session()
             return False
         if self._reset_rect and self._reset_rect.collidepoint(pos) and self._can_reset_speed():

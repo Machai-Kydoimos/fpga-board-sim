@@ -48,6 +48,20 @@ def headless_pygame() -> Iterator[ModuleType]:
     pygame.quit()
 
 
+@pytest.fixture
+def restore_theme() -> Iterator[None]:
+    """Reset the shared THEME to the default after a test that switches themes.
+
+    Any test that calls ``set_theme`` (directly or through the Settings
+    dialog) must request this fixture, or it would leak the alternate palette
+    into later tests that read ``THEME``.
+    """
+    from fpga_sim.ui.theme import set_theme
+
+    yield
+    set_theme("pcb-green")
+
+
 def _7seg_board() -> BoardDef:
     from fpga_sim.board_loader import BoardDef, SevenSegDef
 

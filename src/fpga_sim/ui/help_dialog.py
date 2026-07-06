@@ -10,8 +10,8 @@ which is the single source of truth: when a future key lands (U14 ``P`` pause,
 U15 compact mode, …) it is added here and the overlay updates automatically,
 so the legend cannot drift away from the real handlers.
 
-``draw_help_button`` / :data:`HELP_BUTTON_STYLE` render the ``(?)`` trigger
-button that the board selector and preview share (via the D4 button helper).
+``draw_help_button`` renders the ``(?)`` trigger button that the board
+selector and preview share (via the D4 button helper).
 """
 
 from __future__ import annotations
@@ -21,10 +21,6 @@ import pygame
 from fpga_sim.ui.constants import _ui_scale, get_font
 from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
-
-#: Style for the ``(?)`` trigger button shared by the selector header and the
-#: preview corner (sourced from the Theme).  Exported for ``draw_help_button``.
-HELP_BUTTON_STYLE = THEME.btn_help
 
 # ── Content (data-driven; the legend's single source of truth) ───────────────
 WORKFLOW: list[tuple[str, str]] = [
@@ -287,5 +283,6 @@ def draw_help_button(
     """
     rect = pygame.Rect(right - size, top, size, size)
     font = get_font(max(12, round(size * 0.6)), bold=True)
-    draw_button(surface, rect, "?", font, HELP_BUTTON_STYLE, hovered=rect.collidepoint(mouse))
+    # Read the style at draw time so a theme switch restyles the trigger too.
+    draw_button(surface, rect, "?", font, THEME.btn_help, hovered=rect.collidepoint(mouse))
     return rect

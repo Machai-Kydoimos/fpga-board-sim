@@ -30,6 +30,7 @@ from fpga_sim.session_config import load_session
 from fpga_sim.sim_bridge import Simulator, detect_simulators
 from fpga_sim.ui import FPGABoard
 from fpga_sim.ui.constants import get_font
+from fpga_sim.ui.theme import THEME_NAMES, set_theme
 
 
 def _parse_args() -> argparse.Namespace:
@@ -162,6 +163,17 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) ->
 _MIN_RESTORE_W, _MIN_RESTORE_H = 640, 480
 
 
+def _restore_session_theme(session: dict[str, Any]) -> None:
+    """Apply the persisted theme before anything draws.
+
+    An unknown, junk, or missing name silently keeps the default — the
+    session schema's readers-fall-back-to-defaults rule.
+    """
+    saved = session.get("theme", "")
+    if saved in THEME_NAMES:
+        set_theme(saved)
+
+
 def _initial_window_size(session: dict[str, Any], desktop: tuple[int, int]) -> tuple[int, int]:
     """Pick the launcher window size: the saved one, else ~80% of the desktop.
 
@@ -191,6 +203,7 @@ def main() -> None:
         sys.exit(_run_benchmark(args, available_sims))
 
     session = load_session()
+    _restore_session_theme(session)
     pygame.init()
     # get_desktop_sizes() is reliable in pygame 2.x before any set_mode() call
     sizes = pygame.display.get_desktop_sizes()

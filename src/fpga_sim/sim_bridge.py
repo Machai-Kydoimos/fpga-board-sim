@@ -572,6 +572,7 @@ def launch_simulation(
     simulator: Simulator = "ghdl",
     board_def: BoardDef | None = None,
     speed_factor: float | None = None,
+    theme: str | None = None,
 ) -> bool:
     """Launch an interactive simulator + cocotb simulation.
 
@@ -590,6 +591,10 @@ def launch_simulation(
     ``FPGA_SIM_SPEED``; its presence also tells sim_testbench to write the
     slider's final value back to the session file at exit.  Callers that must
     not touch the user's session (benchmark, tests) simply leave it ``None``.
+
+    *theme* (when not ``None``) carries the launcher's active theme name into
+    the subprocess via ``FPGA_SIM_THEME``; sim_testbench applies it before
+    drawing.  Passed as a plain string so this module stays UI-import-free.
 
     This call blocks until the simulation exits.
     """
@@ -657,6 +662,8 @@ def launch_simulation(
     env["FPGA_SIM_HEIGHT"] = str(sim_height)
     if speed_factor is not None:
         env["FPGA_SIM_SPEED"] = str(speed_factor)
+    if theme is not None:
+        env["FPGA_SIM_THEME"] = theme
     # Metadata consumed by sim_testbench when FPGA_SIM_METRICS is set
     env["FPGA_SIM_SIMULATOR"] = simulator
     env["FPGA_SIM_VHDL_PATH"] = str(vhdl_path)
