@@ -20,8 +20,11 @@ Usage:
     --formats LIST       Comma-separated: png, jpeg, svg, all  (default: all)
     --filter  TEXT       Only process boards whose name contains TEXT
     --list               Print discovered board names and exit
+    --list-themes        Print available UI theme names and exit
     --boards-dir PATH    Override the boards/ directory     (default: auto)
-    --theme   NAME       Render with the named UI theme (default: pcb-green)
+    --theme   LIST       Comma-separated UI themes, or 'all' (default: pcb-green).
+                         One theme renders into --output-dir as before; several
+                         render into per-theme subdirectories beneath it.
 
 Dependencies: pygame (already in pyproject.toml).  No new dependencies needed.
 """
@@ -45,7 +48,7 @@ import pygame
 from fpga_sim.board_loader import BoardDef, discover_boards, get_default_boards_path
 from fpga_sim.ui import LED, Button, FPGABoard, FPGAChip, Switch
 from fpga_sim.ui.constants import GRAY, WHITE, _ui_scale
-from fpga_sim.ui.theme import THEME, THEME_NAMES, set_theme
+from fpga_sim.ui.theme import THEME, THEME_LABELS, THEME_NAMES, set_theme
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -719,15 +722,55 @@ def _parse_formats(raw: str) -> set[str]:
     return result
 
 
+def _parse_themes(raw: str) -> list[str]:
+    """Parse a comma-separated theme string into an ordered, deduplicated list.
+
+    Accepts names from THEME_NAMES plus ``all``.  Order is preserved so
+    multi-theme runs render (and log) in the order given.  Raises
+    argparse.ArgumentTypeError on unrecognized tokens.
+    """
+    result: list[str] = []
+    for token in raw.lower().split(","):
+        token = token.strip()
+        if token == "all":
+            return list(THEME_NAMES)
+        if token in THEME_NAMES:
+            if token not in result:
+                result.append(token)
+        else:
+            raise argparse.ArgumentTypeError(
+                f"Unknown theme '{token}'.  Choose from: {', '.join(THEME_NAMES)}, all"
+            )
+    if not result:
+        raise argparse.ArgumentTypeError("At least one theme must be specified.")
+    return result
+
+
+def print_theme_list() -> None:
+    """Print the selectable UI themes: slug, Settings-dialog label, default marker.
+
+    Reads THEME_NAMES / THEME_LABELS so the listing can never drift from the
+    real registry in ``fpga_sim.ui.theme``.
+    """
+    width = max(len(name) for name in THEME_NAMES)
+    print("Available themes:")
+    for name in THEME_NAMES:
+        default = "  (default)" if name == THEME_NAMES[0] else ""
+        print(f"  {name:<{width}}  {THEME_LABELS.get(name, name)}{default}")
+
+
 def main() -> None:
     """Entry point: discover boards, generate images, report results.
 
     Workflow:
       1. Parse CLI arguments.
       2. Discover all BoardDefs from the JSON board definitions under boards/.
-      3. Optionally filter by name and/or just list them (--list).
+      3. Optionally filter by name and/or just list boards (--list) or
+         themes (--list-themes).
       4. Initialize headless pygame.
-      5. For each board, generate the requested image formats.
+      5. For each requested theme, generate the requested image formats for
+         every board — into --output-dir directly for a single theme, or into
+         a per-theme subdirectory when several themes are requested.
       6. Print a per-board status line and a final summary.
 
     Exits with code 1 if any board fails or no boards are found.
@@ -783,12 +826,26 @@ def main() -> None:
     )
     parser.add_argument(
         "--theme",
-        choices=THEME_NAMES,
+        metavar="LIST",
+        dest="themes",
+        type=_parse_themes,
         default=THEME_NAMES[0],
-        help="Render with the named UI theme",
+        help=(
+            f"Comma-separated UI themes to render: {', '.join(THEME_NAMES)}, or 'all'. "
+            "Several themes write into per-theme subdirectories of --output-dir"
+        ),
+    )
+    parser.add_argument(
+        "--list-themes",
+        action="store_true",
+        help="Print available theme names and exit without generating images",
     )
     args = parser.parse_args()
-    set_theme(args.theme)
+
+    # ── --list-themes: print and exit (no boards or pygame needed) ─────────────
+    if args.list_themes:
+        print_theme_list()
+        return
 
     # ── Discover boards ────────────────────────────────────────────────────────
     boards_dir = args.boards_dir or get_default_boards_path()
@@ -833,26 +890,36 @@ def main() -> None:
         (b, unique_name(sanitize_filename(b.name), seen)) for b in boards
     ]
 
-    # ── Generate images ────────────────────────────────────────────────────────
+    # ── Generate images: theme × board ─────────────────────────────────────────
+    # A single theme keeps the flat layout (and byte-identical default output);
+    # several themes each get a subdirectory so basenames stay stable and the
+    # per-theme trees are directly diffable.
+    multi_theme = len(args.themes) > 1
     total = len(name_map)
     succeeded = 0
     failed = 0
 
-    for i, (board_def, base_name) in enumerate(name_map, 1):
-        ok, msg = generate_images_for_board(
-            board_def,
-            args.output_dir,
-            base_name,
-            args.width,
-            args.height,
-            args.formats,
-        )
-        status = "OK  " if ok else "FAIL"
-        print(f"  [{i:3}/{total}] [{status}] {msg}")
-        if ok:
-            succeeded += 1
-        else:
-            failed += 1
+    for theme_name in args.themes:
+        set_theme(theme_name)
+        out_dir = args.output_dir / theme_name if multi_theme else args.output_dir
+        out_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Rendering theme '{theme_name}' -> {out_dir}")
+
+        for i, (board_def, base_name) in enumerate(name_map, 1):
+            ok, msg = generate_images_for_board(
+                board_def,
+                out_dir,
+                base_name,
+                args.width,
+                args.height,
+                args.formats,
+            )
+            status = "OK  " if ok else "FAIL"
+            print(f"  [{i:3}/{total}] [{status}] {msg}")
+            if ok:
+                succeeded += 1
+            else:
+                failed += 1
 
     pygame.quit()
 
