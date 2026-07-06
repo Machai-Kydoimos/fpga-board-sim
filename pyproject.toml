@@ -38,7 +38,7 @@ dev = [
     "pre-commit>=3",
     "jsonschema>=4.0",
     "pytest-randomly>=4.1.0",
-    "rumdl>=0.2.27",
+    "rumdl>=0.2.28",
     "pillow>=12.3.0",
     # TOML reader for the embedded-core generator on Python 3.10; 3.11+ uses stdlib tomllib.
     "tomli>=2.0 ; python_version < '3.11'",
