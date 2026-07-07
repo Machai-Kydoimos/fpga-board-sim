@@ -19,7 +19,7 @@ It is feature-complete for experienced FPGA users, but the codebase and UX have 
 
 1. **Board discovery at scale.** With 278 boards from 7 vendors, the original flat scrolling list with text-only filtering was inadequate — users could not filter by component type, vendor, or capability. **U0 ✅** added faceted filtering + sort, largely resolving this.
 2. **Onboarding & discoverability gaps.** README is excellent (~605 lines) but historically unreachable from inside the app. **U1 ✅** added an in-app help overlay (workflow, shortcuts, design contract); the README itself is still not surfaced in-app.
-3. **DRY drift.** Three component classes with identical structure (D3, open) remain; the 264-line main function is gone — **D6a ✅** typed its screen results and **D6b ✅** lifted the loop into a `ScreenController` (`controller.py`), leaving `main()` a thin driver. Backend/color/button drift is resolved: **D2 ✅** collapsed the two near-identical backend classes into one ABC, **D4 ✅** unified button drawing, and **D15 ✅** consolidated ~112 inline RGB literals into a `Theme` object (`ui/theme.py`). *(VHDL wrapper templates unified in D1 ✅.)*
+3. **DRY drift.** Largely resolved. The three component classes now share a `UIComponent` base (**D3 ✅**); the 264-line main function is gone — **D6a ✅** typed its screen results and **D6b ✅** lifted the loop into a `ScreenController` (`controller.py`), leaving `main()` a thin driver. Backend/color/button drift is resolved: **D2 ✅** collapsed the two near-identical backend classes into one ABC, **D4 ✅** unified button drawing, and **D15 ✅** consolidated ~112 inline RGB literals into a `Theme` object (`ui/theme.py`). *(VHDL wrapper templates unified in D1 ✅.)*
 4. **Roadmap gravity.** Features queued in memory for months (PWM LEDs, splash, settings screen, waveforms, Verilog, in-sim navigation) are now sequenced below.
 
 This document inventories all viable improvements and ranks them by impact.
@@ -48,7 +48,7 @@ This document inventories all viable improvements and ranks them by impact.
 - **What:** Hover for ~400 ms -> small tooltip with `net_name`, `pin`, `direction`. Add a `Tooltip` widget; integrate in `LED.draw`, `Switch.draw`, `Button.draw`.
 - **Touches:** new `src/fpga_sim/ui/tooltip.py`; small additions in `components.py`; mouse-pos tracking in `board_display.py`.
 - **Effort:** M.
-- **Dependencies:** Soft: simpler with D3 (UIComponent base provides unified hit-testing).
+- **Dependencies:** Soft prep **D3 ✅** shipped — hover hit-testing iterates a single `list[UIComponent]` (uniform `.info` / `.label` / `.rect`).
 - **Done when:** hovering a component for 400 ms shows a tooltip with net name, pin, and direction; moving away dismisses it.
 
 #### U4. Error messages with contextual hints ✅
@@ -203,14 +203,9 @@ See also **P1** (NVC elaborate-once / run-many) in the [Icebox](#icebox).
 
 - Shipped 2026-06-25 (PR #115). `_SimBackend` is now an ABC; unblocks **U20** (a third backend overrides only `NAME` + the command builders). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
-#### D3. UIComponent base class
+#### D3. UIComponent base class ✅
 
-- **Why:** `LED`, `Switch`, `Button` in `components.py` share an identical `__init__(index, info)` signature, identical `label` property logic, and an identical `callback` attribute pattern. `SevenSeg` is similar but uses `(index, has_dp)`.
-- **What:** Abstract base `UIComponent` with `index`, `info`, `rect`, `label` property; subclass-specific `state` / `pressed` / `bits` stay in children. Optional: register components into a single `board.components: list[UIComponent]` for unified hit-testing.
-- **Touches:** `src/fpga_sim/ui/components.py`; small cleanup in `ui/board_display.py`.
-- **Effort:** S.
-- **Dependencies:** None. Soft: simplifies U3 (tooltips can use unified hit-testing).
-- **Done when:** `LED`, `Switch`, `Button` inherit from `UIComponent`; no duplicate `__init__` / `label` code; all component tests pass.
+- Shipped 2026-07-07 (PR #183). Abstract `UIComponent` base holds the `(index, info)` ctor, `index` / `info` / `rect`, and the `label` property (prefix fallback via `_LABEL_PREFIX`, else `ComponentInfo.display_name`); `LED` / `Switch` / `Button` inherit it, `FPGAChip` / `SevenSeg` stay standalone. Enables **U3** (single `list[UIComponent]` for hover hit-testing). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### D4. Shared button-drawing helper ✅
 
@@ -335,7 +330,7 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 | Item | Benefits from | Reason |
 |---|---|---|
 | **U1** (Help dialog) | **D4** (Shared button helper) ✅ | Consistent "Close" button styling |
-| **U3** (Tooltips) | **D3** (UIComponent base) | Unified hit-testing across component types |
+| **U3** (Tooltips) | **D3 ✅** (UIComponent base) | Unified hit-testing across component types |
 | **U5** (Settings dialog) | **D4** (Shared button helper) ✅ | Reuse button rendering in dialog |
 | ~~**U7** (In-sim toolbar)~~ ✅ | **D4** (Shared button helper) ✅ | Consistent toolbar button styling |
 | **U8** (Splash) | **U0** (Board filtering) | Left panel already has filter chips |
@@ -421,8 +416,8 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/session_config.py` — U5 ✅ (merge-on-write; new `update_session` / `push_recent`), U18, D9 ✅, D14 ✅, D16 (sandbox toggle)
 - `src/fpga_sim/ui/constants.py` — D15 ✅ (now base neutrals only), U17
 - `src/fpga_sim/ui/theme.py` — D15 ✅ (new: `Theme` dataclass + `THEME`), U2 ✅ (`spinner_arc` / `spinner_track` roles), U5 ✅ (`THEME_NAMES` / `THEME_LABELS` + settings button styles), U6 ✅ (`dark` / `high-contrast` instances + `set_theme` / `current_theme_name`), U27 (dynamic registry + JSON loader)
-- `src/fpga_sim/ui/components.py` — U3, U9, D3, D15
-- `src/fpga_sim/ui/board_display.py` — U1 ✅, U3, U5 ✅ (gear trigger), U11, U16, D3, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15
+- `src/fpga_sim/ui/components.py` — U3, U9, D3 ✅, D15
+- `src/fpga_sim/ui/board_display.py` — U1 ✅, U3, U5 ✅ (gear trigger), U11, U16, D3 ✅, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15
 - `src/fpga_sim/ui/board_selector.py` — U0, U1 ✅, U8, U12, U13 ✅, D15
 - `src/fpga_sim/ui/sim_panel.py` — U5 ✅ (`speed_factor` ctor param; public `SPEED_DEFAULT`), U14, U15, U19, D4 ✅, D15
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15
@@ -452,7 +447,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (1328 tests across 37 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip). All sprints must keep this green.
+1. **Tests** — `uv run pytest` (1344 tests across 38 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip, UIComponent base contract). All sprints must keep this green.
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy .` (`strict = true` since D8 ✅).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).
