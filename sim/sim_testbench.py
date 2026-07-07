@@ -40,6 +40,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import cocotb
 import pygame
@@ -47,8 +48,9 @@ from cocotb.triggers import Timer
 
 from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ, BoardDef, ComponentInfo
 from fpga_sim.session_config import update_session
+from fpga_sim.sim_bridge import SimExit
 from fpga_sim.sim_session_log import save_session_stats
-from fpga_sim.ui import FPGABoard, SimPanel
+from fpga_sim.ui import FPGABoard, HelpDialog, SimPanel, SimToolbar
 from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.sim_panel import _PANEL_H_BASE, SPEED_DEFAULT
 from fpga_sim.ui.theme import THEME, THEME_NAMES, set_theme
@@ -56,6 +58,13 @@ from fpga_sim.ui.widgets import draw_button
 
 # ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
 _METRICS_PATH: str = os.environ.get("FPGA_SIM_METRICS", "")
+
+# ── Exit-intent channel (the launcher sets FPGA_SIM_EXIT_INTENT_FILE, U7) ────
+# When present, the navigation toolbar is drawn and a toolbar click writes the
+# chosen SimExit value to this file just before exit; launch_simulation() reads
+# it back to route to the selector / picker / a relaunch.  Benchmark and test
+# runs never set it, so they get no toolbar and never write the file.
+_EXIT_INTENT_PATH: str = os.environ.get("FPGA_SIM_EXIT_INTENT_FILE", "")
 
 # ── Saved theme restore (the launcher sets FPGA_SIM_THEME from its live theme) ──
 # Applied at import, before any drawing; an unknown or absent name keeps the
@@ -301,6 +310,14 @@ async def interactive_sim(dut: object) -> None:
     # ── 7-segment display state ───────────────────────────────────────────────
     _seven_seg_def = board_def.seven_seg if board_def else None
 
+    # ── Navigation toolbar (U7) ───────────────────────────────────────────────
+    # Only when the launcher is listening for exit intents; benchmark runs skip
+    # it so their overlay draw cost stays comparable across modes.
+    _toolbar: SimToolbar | None = (
+        SimToolbar() if _EXIT_INTENT_PATH and not _BENCHMARK_MODE else None
+    )
+    _exit_intent: SimExit | None = None
+
     # ── Print banner ──────────────────────────────────────────────────────────
     print(f"\n{'=' * 60}")
     print(f"  Simulation running: {_board_name}")
@@ -309,7 +326,9 @@ async def interactive_sim(dut: object) -> None:
     print(f"  {num_led} LEDs, {num_btn} buttons, {num_sw} switches{_seg_suffix}")
     print(f"  Clock: {clk_hz / 1e6:.4g} MHz  |  Speed: {panel.speed_factor:.4g}x")
     print("  Use the panel sliders to adjust speed and virtual clock.")
-    print("  S: toggle stats panel  |  Pause/Stop: bottom-right of board")
+    print("  S: toggle stats panel  |  F1/?: help  |  Pause/Stop: bottom-right")
+    if _toolbar is not None:
+        print("  Toolbar (bottom-left): Back to Boards | Change VHDL | Reload VHDL")
     print("  Press ESC or close window to stop")
     print(f"{'=' * 60}\n")
 
@@ -339,6 +358,7 @@ async def interactive_sim(dut: object) -> None:
     while (
         board.running
         and not panel.stop_requested
+        and _exit_intent is None
         and (not _BENCHMARK_MODE or time.monotonic() - _session_start < _BENCHMARK_SECS)
     ):
         # ── Sync board height offset when panel rescales after window resize ─────
@@ -398,7 +418,19 @@ async def interactive_sim(dut: object) -> None:
                     panel.stop_requested = True
                 elif _pause_btn_rect is not None and _pause_btn_rect.collidepoint(ev.pos):
                     panel.paused = not panel.paused
+                elif _toolbar is not None:
+                    _nav = _toolbar.handle_click(ev.pos)
+                    if _nav is not None:
+                        _exit_intent = _nav
             panel.handle_event(ev)
+
+        # ── F1 / ? help (the U1 stub, consumed here since U7) ────────────────
+        # The modal owns the event loop while open, so simulation time simply
+        # does not advance — the same pause the launcher screens get.
+        if board._help_requested:
+            board._help_requested = False
+            HelpDialog(screen).run(board.clock)
+            board._sync_to_surface()
 
         # ── Propagate virtual clock changes to the VHDL wrapper ───────────────
         new_half = max(1, int(panel.clk_state["period_ns"] / 2))
@@ -479,15 +511,31 @@ async def interactive_sim(dut: object) -> None:
             hovered=_pause_btn_rect.collidepoint(pygame.mouse.get_pos()),
         )
 
-        # ── "S: stats" hint (bottom-left) when panel is hidden ────────────────
+        # ── Navigation toolbar (bottom-left, opposite Pause/Stop) — U7 ───────
+        _toolbar_rect: pygame.Rect | None = None
+        if _toolbar is not None:
+            _toolbar_rect = _toolbar.draw(
+                screen,
+                _ov_font,
+                left=_ov_margin,
+                bottom=_board_bottom - _ov_margin,
+                pad_x=_ov_pad_x,
+                pad_y=_ov_pad_y,
+                gap=_ov_gap,
+            )
+
+        # ── "S: stats · F1: help" hint (bottom-left) when panel is hidden ─────
+        # Sits above the toolbar when that is shown, else at the window bottom.
         if not _show_panel:
             _hint_font = _get_font(max(9, round(10 * _ov_s)))
-            _hint_surf = _hint_font.render("S: stats", True, THEME.sim_hint)
+            _hint_surf = _hint_font.render("S: stats · F1: help", True, THEME.sim_hint)
+            _hint_pad = max(4, round(5 * _ov_s))
+            _hint_bottom = _toolbar_rect.top if _toolbar_rect is not None else _sh
             screen.blit(
                 _hint_surf,
                 (
                     max(6, round(8 * _ov_s)),
-                    _sh - _hint_surf.get_height() - max(4, round(5 * _ov_s)),
+                    _hint_bottom - _hint_surf.get_height() - _hint_pad,
                 ),
             )
 
@@ -534,6 +582,15 @@ async def interactive_sim(dut: object) -> None:
     # Only when the launcher provided FPGA_SIM_SPEED (see the module header).
     if _SPEED_ENV:
         update_session(speed_factor=panel.speed_factor)
+
+    # ── Write the exit intent for the launcher (U7 toolbar navigation) ────────
+    # A plain stop (ESC / window close / [Stop]) writes nothing: the launcher
+    # treats a missing file as SimExit.STOPPED.
+    if _EXIT_INTENT_PATH and _exit_intent is not None:
+        try:
+            Path(_EXIT_INTENT_PATH).write_text(_exit_intent.value)
+        except OSError as e:
+            print(f"[warn] could not write exit intent: {e}")  # launcher falls back to a stop
 
     # ── Write per-session JSON summary ────────────────────────────────────────
     _duration_s = time.monotonic() - _session_start

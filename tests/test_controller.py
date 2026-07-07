@@ -27,6 +27,7 @@ from fpga_sim.controller import (
     build_generics,
     example_vhdl_for,
 )
+from fpga_sim.sim_bridge import SimExit
 from fpga_sim.ui import DialogResult, ScreenResult
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 from fpga_sim.ui.theme import set_theme
@@ -584,12 +585,15 @@ def _sim_harness(
     tmp_path: Path,
     *,
     analyzed: bool = True,
+    sim_exits: list[SimExit] | None = None,
 ) -> tuple[ScreenController, list[dict[str, Any]], list[tuple[Any, ...]], list[tuple[Any, ...]]]:
     """Build a controller ready to simulate, with launch/save/recent recorders.
 
     With ``analyzed=True`` the state looks freshly analyzed by the current
     simulator (no re-analysis path); the contract check is fenced off so any
-    unexpected call fails the test.
+    unexpected call fails the test.  *sim_exits* scripts what each successive
+    fake launch reports (exhausted → ``SimExit.STOPPED``), driving the U7
+    intent handling.
     """
     vhdl = tmp_path / "blinky.vhd"
     vhdl.write_text("-- design")
@@ -604,10 +608,11 @@ def _sim_harness(
         )
 
     launches: list[dict[str, Any]] = []
+    exits = list(sim_exits or [])
 
     def fake_launch(
         board_json: Any, vhdl_path: Any, toplevel: Any, generics: Any, **kwargs: Any
-    ) -> None:
+    ) -> SimExit:
         launches.append(
             {
                 "board_json": board_json,
@@ -617,6 +622,7 @@ def _sim_harness(
                 **kwargs,
             }
         )
+        return exits.pop(0) if exits else SimExit.STOPPED
 
     saves: list[tuple[Any, ...]] = []
     recents: list[tuple[Any, ...]] = []
@@ -756,6 +762,123 @@ def test_simulate_error_back_returns_to_selector(headless_pygame, monkeypatch, t
     assert ctrl.on_simulate() is NextScreen.SELECTOR
     assert ctrl.state.work_dir is None  # back drops the analysis
     assert ctrl.state.vhdl_path is not None  # …but keeps the file
+
+
+# ── on_simulate: U7 toolbar exit intents ─────────────────────────────────────
+
+
+def test_simulate_back_to_boards_intent_goes_to_selector(headless_pygame, monkeypatch, tmp_path):
+    ctrl, launches, _saves, _recents = _sim_harness(
+        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.BACK_TO_BOARDS]
+    )
+    assert ctrl.on_simulate() is NextScreen.SELECTOR
+    assert len(launches) == 1
+    assert ctrl.state.work_dir is None  # routed through on_back → analysis dropped
+    assert ctrl.state.vhdl_path is not None  # …but the file is kept for the next board
+
+
+def test_simulate_change_vhdl_intent_opens_picker(headless_pygame, monkeypatch, tmp_path):
+    ctrl, launches, _saves, _recents = _sim_harness(
+        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.CHANGE_VHDL]
+    )
+    picker_calls: list[int] = []
+
+    def fake_picker() -> NextScreen:
+        picker_calls.append(1)
+        return NextScreen.PREVIEW
+
+    monkeypatch.setattr(ctrl, "_run_vhdl_picker", fake_picker)
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+    assert picker_calls == [1]
+    assert len(launches) == 1
+
+
+def test_simulate_reload_intent_revalidates_and_relaunches(headless_pygame, monkeypatch, tmp_path):
+    """[Reload VHDL] re-runs the full pipeline and relaunches without a preview."""
+    ctrl, launches, _saves, _recents = _sim_harness(
+        headless_pygame,
+        monkeypatch,
+        tmp_path,
+        sim_exits=[SimExit.RELOAD_VHDL, SimExit.STOPPED],
+    )
+    # The harness fences the contract check for the *pre-launch* path; the
+    # reload path must run it again, so re-allow it here.
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
+    monkeypatch.setattr(controller_mod, "check_vhdl_contract", lambda p, board_def: (True, ""))
+    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
+    analyze_calls: list[dict[str, Any]] = []
+
+    def fake_analyze(vhdl_path: Any, **kwargs: Any) -> tuple[bool, str]:
+        analyze_calls.append({"vhdl_path": vhdl_path, **kwargs})
+        return True, "wd"
+
+    monkeypatch.setattr(controller_mod, "analyze_vhdl", fake_analyze)
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+    assert len(launches) == 2  # reload relaunched immediately
+    (call,) = analyze_calls
+    assert call["vhdl_path"] == ctrl.state.vhdl_path  # same file, re-analyzed
+    assert call["work_dir"] == "wd"  # existing work dir reused, not a fresh temp dir
+    assert launches[1]["work_dir"] == "wd"
+    refreshed: Any = ctrl.state.work_dir_simulator
+    assert refreshed == "ghdl"
+
+
+def test_simulate_reload_rereads_speed_each_launch(headless_pygame, monkeypatch, tmp_path):
+    """The sim writes its final slider value at exit; a reload must pick it up."""
+    ctrl, launches, _saves, _recents = _sim_harness(
+        headless_pygame,
+        monkeypatch,
+        tmp_path,
+        sim_exits=[SimExit.RELOAD_VHDL, SimExit.STOPPED],
+    )
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
+    monkeypatch.setattr(controller_mod, "check_vhdl_contract", lambda p, board_def: (True, ""))
+    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
+    monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "wd"))
+    speeds = iter([1.5, 3.0])
+    monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": next(speeds)})
+    ctrl.on_simulate()
+    assert [launch["speed_factor"] for launch in launches] == [1.5, 3.0]
+
+
+def test_simulate_reload_encoding_failure_shows_dialog(headless_pygame, monkeypatch, tmp_path):
+    ctrl, launches, _saves, _recents = _sim_harness(
+        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.RELOAD_VHDL]
+    )
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (False, "not ASCII"))
+    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+    assert len(launches) == 1  # no relaunch with a bad file
+    assert dialog.shown == [("VHDL Error", "not ASCII")]
+    assert dialog.example_paths == [controller_mod._HDL_DIR / "blinky.vhd"]
+    assert ctrl.state.vhdl_path is not None  # kept: the user is mid-edit
+    assert ctrl.state.work_dir is None  # old artifacts may not match the edited file
+
+
+def test_simulate_reload_analysis_failure_uses_simulator_title(
+    headless_pygame, monkeypatch, tmp_path
+):
+    ctrl, launches, _saves, _recents = _sim_harness(
+        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.RELOAD_VHDL]
+    )
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
+    monkeypatch.setattr(controller_mod, "check_vhdl_contract", lambda p, board_def: (True, ""))
+    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
+    monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (False, "elab failed"))
+    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+    assert len(launches) == 1
+    assert dialog.shown == [("GHDL Error", "elab failed")]
+    assert ctrl.state.work_dir is None  # the reused dir now holds a partial build
+
+
+def test_simulate_reload_failure_back_goes_to_selector(headless_pygame, monkeypatch, tmp_path):
+    ctrl, _launches, _saves, _recents = _sim_harness(
+        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.RELOAD_VHDL]
+    )
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (False, "bad"))
+    _install_dialog(monkeypatch, [DialogResult.BACK])
+    assert ctrl.on_simulate() is NextScreen.SELECTOR
 
 
 # ── example_vhdl_for / View-Example wiring (U4) ──────────────────────────────

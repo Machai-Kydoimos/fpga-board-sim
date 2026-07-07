@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **In-simulation navigation toolbar (U7).** The running simulation gains three
+  buttons at the bottom-left — **[Back to Boards]**, **[Change VHDL]**, and
+  **[Reload VHDL]** — so it is no longer a dead end reachable only by ESC.
+  **[Reload VHDL]** re-validates and re-analyzes the current file (pick up edits
+  you just made in your editor) and restarts the simulation without returning to
+  the launcher; **[Change VHDL]** opens the file picker; **[Back to Boards]**
+  returns to the selector. The buttons follow the active theme. Pressing
+  **F1** or **?** during a simulation now opens the help overlay too (#175)
 - **Error messages with contextual hints (U4).** The pre-simulation contract
   check now parses the design's toplevel entity and explains violations in
   terms of the selected board — e.g. *"Port 'led' is a fixed 16 bits wide,

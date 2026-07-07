@@ -512,6 +512,20 @@ calls `pygame.quit()` before spawning the simulator subprocess.
 `sim/sim_testbench.py` calls `pygame.init()` fresh inside that subprocess.
 Never assume pygame state persists across the boundary.
 
+**Sim → launcher signalling.** The subprocess reports *why* it ended through a
+`SimExit` value written to an exit-intent sidecar file, whose path arrives in
+`FPGA_SIM_EXIT_INTENT_FILE`. The in-sim toolbar's **[Back to Boards]** /
+**[Change VHDL]** / **[Reload VHDL]** buttons each write their `SimExit`; a plain
+stop (ESC / window close / **[Stop]**) writes nothing. `launch_simulation()`
+clears any stale file first, then reads it back **only on a clean (exit code 0)
+run** — so a GHDL/NVC crash is never mistaken for navigation — and returns the
+`SimExit`, which `ScreenController.on_simulate()` routes (RELOAD re-validates and
+relaunches in place without leaving the sim loop). To add a new sim-screen
+action, add a `SimExit` member, a button in `ui/sim_toolbar.py` (borrow a
+`ButtonStyle` role by *name* so themes apply automatically), and a routing arm
+in `on_simulate()` — never overload the process exit code, which the simulators
+own.
+
 **VHDL-side clock.** The clock is driven by the generated `sim_wrapper`
 entity (see `sim/sim_wrapper_template.vhd`), not by a Python coroutine. This eliminates per-half-period GPI callbacks — only two GPI
 calls happen per frame (the Timer endpoints). The wrapper exposes

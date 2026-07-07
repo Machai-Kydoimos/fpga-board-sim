@@ -36,7 +36,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### U1. Help / About overlay (clickable `(?)` button · F1 · `?`) ✅
 
-- Shipped 2026-06-01 (PR #88). Carried-forward gotchas live on **U7** / **U14**. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
+- Shipped 2026-06-01 (PR #88). Carried-forward gotchas live on **U14** (U7 ✅ consumed the in-sim F1/`?` help stub). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U2. Inline analysis spinner during VHDL load ✅
 
@@ -69,15 +69,9 @@ This document inventories all viable improvements and ranks them by impact.
 
 - Shipped 2026-07-06 (PR #178, issue #174). New `set_theme()` swaps the shared `THEME` instance's contents in place (call sites bind it once at import, so no draw code changed); alternate **dark** and **high-contrast** `Theme` instances; the Settings Theme row auto-enabled and applies live; the persisted name is restored at startup and carried into the sim subprocess via `FPGA_SIM_THEME`; every import-time `THEME` capture converted to a draw-time read; default `pcb-green` proven pixel-identical (278 board PNGs byte-for-byte vs `main`). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
-#### U7. In-simulation navigation toolbar
+#### U7. In-simulation navigation toolbar ✅
 
-- **Why:** Already queued in `project_enhancements.md` (#2). Currently the only way out of sim is ESC; users cannot reload VHDL or change board without restarting.
-- **What:** Three buttons in the simulation footer: `[Back to Boards]`, `[Change VHDL]`, `[Reload VHDL]`. `Reload` re-runs `analyze_vhdl()` on the same file and re-enters sim.
-- **Touches:** `sim/sim_testbench.py`, `src/fpga_sim/sim_bridge.py` (return code signalling intent), `src/fpga_sim/controller.py` (`ScreenController.on_simulate()` — handle new intents).
-- **Effort:** L.
-- **Dependencies:** Soft: benefits from D4 (shared button helper).
-- ⚠ **Carried-forward (from D4 ✅ / U1 ✅):** reuse `ui/widgets/button.py` for the toolbar buttons (it is importable in the sim subprocess too). Also note the sim screen already has an *inert* F1/`?` help stub (set by U1 but currently unconsumed) — wire it to `HelpDialog` if you want in-sim help alongside the toolbar.
-- **Done when:** all three buttons work during simulation; [Reload VHDL] re-analyzes and restarts without returning to the launcher.
+- Shipped 2026-07-07 (PR #182, issue #175). Three buttons drawn bottom-left during simulation — `[Back to Boards]` · `[Change VHDL]` · `[Reload VHDL]` — via the new `ui/sim_toolbar.py`, reusing the D4 `draw_button` helper and the existing `btn_select_board` / `btn_load_vhdl` / `btn_start_sim` theme roles (so every theme styles the toolbar for free). The subprocess signals the chosen action through a new `SimExit` enum written to an exit-intent sidecar file (`FPGA_SIM_EXIT_INTENT_FILE`), trusted only on a clean exit so a crash is never mistaken for navigation; `launch_simulation()` returns the `SimExit` and `ScreenController.on_simulate()` routes it — RELOAD re-validates + re-analyzes the file in place and relaunches without leaving the sim, BACK → selector, CHANGE → picker. The inert U1 F1/`?` help stub is now consumed in-sim (opens `HelpDialog`). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U8. Splash screen with random board preview
 
@@ -343,7 +337,7 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 | **U1** (Help dialog) | **D4** (Shared button helper) ✅ | Consistent "Close" button styling |
 | **U3** (Tooltips) | **D3** (UIComponent base) | Unified hit-testing across component types |
 | **U5** (Settings dialog) | **D4** (Shared button helper) ✅ | Reuse button rendering in dialog |
-| **U7** (In-sim toolbar) | **D4** (Shared button helper) ✅ | Consistent toolbar button styling |
+| ~~**U7** (In-sim toolbar)~~ ✅ | **D4** (Shared button helper) ✅ | Consistent toolbar button styling |
 | **U8** (Splash) | **U0** (Board filtering) | Left panel already has filter chips |
 | ~~**D9** (Literal types)~~ ✅ | — | Extend the `Simulator` alias in `sim_bridge.py` to add `"iverilog"` when U20 lands |
 | **D13** (Env tests) | **D5** (Path helper) | Cleaner branches are easier to test |
@@ -372,7 +366,7 @@ U6 (theme system) ✅ — U27 is now unblocked
 D6a (screen-result enum) ✅ — D6b (ScreenController) ✅ — both shipped
 ```
 
-All other items (U0, U1, U2, U3, U4, U7, U8, U9, U11-U17, U21-U25, D3-D5, D7-D16) are independently shippable.
+All other items (U0, U1, U2, U3, U4, U8, U9, U11-U17, U21-U25, D3-D5, D7-D16) are independently shippable.
 
 ---
 
@@ -385,11 +379,11 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
 | **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → ~~U2 Analysis spinner~~ ✅ · ~~D2 Backend base class~~ ✅ · ~~U26 Visual README~~ ✅ |
 | **2** | Foundations that unblock later UX | ~~D6a Screen-result enum~~ ✅ · ~~D6b ScreenController~~ ✅ · ~~D15 Color consolidation~~ ✅ · ~~U5 Settings dialog + extended session~~ ✅ · ~~D8 mypy strict~~ ✅ |
-| **3** | Visible polish | U3 Tooltips · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · U7 In-sim toolbar |
+| **3** | Visible polish | U3 Tooltips · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · ~~U7 In-sim toolbar~~ ✅ |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw · U27 User JSON themes |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-07-07).** Sprints 1a, 1b, and **2 are fully shipped**; **Sprint 3 is underway** (milestone v0.12.0, issues #172/#173/#174/#175). **U6 ✅** (Theme system, #178) landed first, then **U4 ✅** (Contextual errors, #181). Remaining: **U3** (Tooltips, #172) · **U7** (In-sim toolbar, #175). The phases otherwise remain correctly ordered.
+**Status (2026-07-07).** Sprints 1a, 1b, and **2 are fully shipped**; **Sprint 3 is underway** (milestone v0.12.0, issues #172/#173/#174/#175). **U6 ✅** (Theme system, #178) landed first, then **U4 ✅** (Contextual errors, #181), then **U7 ✅** (In-sim toolbar, #175). Remaining: **U3** (Tooltips, #172) — the last Sprint 3 card. The phases otherwise remain correctly ordered.
 
 ---
 
@@ -421,8 +415,8 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 ## Critical files modified across the roadmap
 
 - `src/fpga_sim/__main__.py` — U2 ✅, U5 ✅ (window-size restore), U16, D6a ✅, D6b ✅ (now a thin driver), D9 ✅
-- `src/fpga_sim/controller.py` — D6b ✅ (new: `ScreenController` + `SessionState`), U4 ✅ (`example_vhdl_for` wiring), U5 ✅ (save-on-pick/change/quit + speed plumbing), U7 (new sim intents), U18 (retry start-dir)
-- `src/fpga_sim/sim_bridge.py` — U4 ✅ (parsed contract checks + `add_error_hints`), U5 ✅ (`speed_factor` → `FPGA_SIM_SPEED`), U10, U21, D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`), D16 (wrap the run subprocess)
+- `src/fpga_sim/controller.py` — D6b ✅ (new: `ScreenController` + `SessionState`), U4 ✅ (`example_vhdl_for` wiring), U5 ✅ (save-on-pick/change/quit + speed plumbing), U7 ✅ (`on_simulate` acts on the returned `SimExit`; reload/back/change routing), U18 (retry start-dir)
+- `src/fpga_sim/sim_bridge.py` — U4 ✅ (parsed contract checks + `add_error_hints`), U5 ✅ (`speed_factor` → `FPGA_SIM_SPEED`), U7 ✅ (`SimExit` enum + exit-intent sidecar; `launch_simulation()` returns it), U10, U21, D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`), D16 (wrap the run subprocess)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅
 - `src/fpga_sim/session_config.py` — U5 ✅ (merge-on-write; new `update_session` / `push_recent`), U18, D9 ✅, D14 ✅, D16 (sandbox toggle)
 - `src/fpga_sim/ui/constants.py` — D15 ✅ (now base neutrals only), U17
@@ -433,10 +427,10 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/ui/sim_panel.py` — U5 ✅ (`speed_factor` ctor param; public `SPEED_DEFAULT`), U14, U15, U19, D4 ✅, D15
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15
 - `src/fpga_sim/ui/error_dialog.py` — U4 ✅ (`example_path` → [View Example]), D4 ✅, D6a ✅ (`run()` returns `DialogResult`), D15
-- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
+- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/sim_toolbar.py` (U7 ✅), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
 - `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
-- `sim/sim_testbench.py` — U5 ✅ (speed restore + write-back), U7, U9, U14, U22, D15
+- `sim/sim_testbench.py` — U5 ✅ (speed restore + write-back), U7 ✅ (toolbar draw + click → intent-file write; F1/`?` → in-sim `HelpDialog`), U9, U14, U22, D15
 - `pyproject.toml` — D8 ✅ (`[tool.mypy]` now just `strict = true`), U26 (`dev` group gains Pillow)
 - `.pre-commit-config.yaml`, new `.editorconfig` — D10 ✅
 - `CONTRIBUTING.md` — D12
@@ -458,7 +452,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (1216 tests across 35 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence). All sprints must keep this green.
+1. **Tests** — `uv run pytest` (1328 tests across 37 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip). All sprints must keep this green.
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy .` (`strict = true` since D8 ✅).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).
@@ -469,4 +463,4 @@ Per-item verification is described in each entry's "Done when" criterion above. 
 
 ## Delivery log
 
-Completed-item detail and the cross-cutting carried-forward notes now live in **[roadmap_delivered.md](roadmap_delivered.md)**. Per-PR detail is also in `CHANGELOG.md` and the linked PRs; forward-relevant gotchas from completed work appear as **⚠ Carried-forward** notes on the open cards they affect (**U7**) and in the Tier-3 note on **U14**.
+Completed-item detail and the cross-cutting carried-forward notes now live in **[roadmap_delivered.md](roadmap_delivered.md)**. Per-PR detail is also in `CHANGELOG.md` and the linked PRs; forward-relevant gotchas from completed work appear as **⚠ Carried-forward** notes on the open cards they affect (e.g. the Tier-3 note on **U14**).
