@@ -31,7 +31,12 @@ WORKFLOW: list[tuple[str, str]] = [
         "then Load a VHDL file.",
     ),
     ("3", "Pick a VHDL file — choose a .vhd/.vhdl design (start with hdl/blinky.vhd)."),
-    ("4", "Run — switches and buttons drive the inputs; LEDs and 7-seg show live outputs."),
+    (
+        "4",
+        "Run — switches and buttons drive the inputs; LEDs and 7-seg show live "
+        "outputs. The bottom-left toolbar goes Back to Boards, Changes the VHDL, "
+        "or Reloads it after an edit.",
+    ),
 ]
 
 #: (keys, description) — rendered into the shortcut legend.  Add new keys here.
