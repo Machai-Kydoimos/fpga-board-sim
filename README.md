@@ -200,8 +200,10 @@ The selected simulator (GHDL or NVC) compiles and simulates the VHDL design via 
 - **Switches/buttons** drive FPGA inputs in real time
 - **LEDs** reflect FPGA outputs from the simulation
 - **7-segment digits** show live hex glyphs on supported boards
+- **Toolbar** (bottom-left) → **[Back to Boards]**, **[Change VHDL]**, or **[Reload VHDL]** — Reload re-analyzes the current file (pick up edits you just made in your editor) and restarts, without leaving the simulation
 - **R** — reset all switches off and release any held buttons (inputs only; design state is unaffected)
 - **S** — toggle the stats panel (see below)
+- **F1 / ?** — open the help overlay
 - **ESC** or close window → stops simulation, returns to board list
 
 #### Stats panel
@@ -248,6 +250,7 @@ src/fpga_sim/              Installable Python package (src layout)
     board_selector.py      Board picker screen
     board_display.py       Board preview + simulation screen (FPGABoard class)
     sim_panel.py           Stats strip rendered during simulation (SimPanel class)
+    sim_toolbar.py         In-simulation navigation toolbar (SimToolbar class)
     vhdl_picker.py         VHDL file browser screen
     error_dialog.py        Error dialog overlay
     help_dialog.py         Help overlay (F1 / ? / the (?) button)
