@@ -3,6 +3,7 @@
 These are the building blocks placed on the board canvas by FPGABoard.
 """
 
+import abc
 from collections.abc import Callable
 
 import pygame
@@ -95,20 +96,45 @@ class FPGAChip:
             pygame.draw.line(surface, color, (r.right, y), (r.right + length, y))
 
 
-class LED:
-    """A read-only indicator controlled via FPGABoard.set_led()."""
+class UIComponent(abc.ABC):
+    """Abstract base for the indexed, info-carrying board widgets.
+
+    ``LED``, ``Switch``, and ``Button`` share an identical ``(index, info)``
+    construction signature, the same ``label`` derivation, and the
+    ``index`` / ``info`` / ``rect`` attributes; subclasses add their own
+    interactive state (``state`` / ``pressed`` / ``callback``) and implement
+    :meth:`draw`.  ``FPGAChip`` and ``SevenSeg`` are intentionally *not*
+    subclasses — neither is ``(index, info)``-based.
+    """
+
+    #: Fallback label prefix, e.g. ``"LED"``; used when no ComponentInfo is set.
+    _LABEL_PREFIX: str = ""
 
     def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
-        """Initialize the LED with its board index and optional component metadata."""
+        """Initialize with the board index and optional component metadata."""
         self.index = index
         self.info = info
-        self.state = False
         self.rect = pygame.Rect(0, 0, 0, 0)
 
     @property
     def label(self) -> str:
-        """Human-readable label derived from ComponentInfo or the LED index."""
-        return self.info.display_name if self.info else f"LED{self.index}"
+        """Human-readable label from ComponentInfo, else ``<PREFIX><index>``."""
+        return self.info.display_name if self.info else f"{self._LABEL_PREFIX}{self.index}"
+
+    @abc.abstractmethod
+    def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+        """Render the component onto *surface*, using *font* for its label."""
+
+
+class LED(UIComponent):
+    """A read-only indicator controlled via FPGABoard.set_led()."""
+
+    _LABEL_PREFIX = "LED"
+
+    def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
+        """Initialize the LED with its board index and optional component metadata."""
+        super().__init__(index, info)
+        self.state = False
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         """Draw the LED circle with glow effect when lit, plus its label."""
@@ -131,21 +157,16 @@ class LED:
         surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
 
 
-class Switch:
+class Switch(UIComponent):
     """A toggle switch – clicks flip the state."""
+
+    _LABEL_PREFIX = "SW"
 
     def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
         """Initialize the switch with its board index and optional component metadata."""
-        self.index = index
-        self.info = info
+        super().__init__(index, info)
         self.state = False
-        self.rect = pygame.Rect(0, 0, 0, 0)
         self.callback: Callable[[int, bool, ComponentInfo | None], None] | None = None
-
-    @property
-    def label(self) -> str:
-        """Human-readable label derived from ComponentInfo or the switch index."""
-        return self.info.display_name if self.info else f"SW{self.index}"
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         """Draw the toggle switch body, knob, and label."""
@@ -171,21 +192,16 @@ class Switch:
         return False
 
 
-class Button:
+class Button(UIComponent):
     """A momentary push-button – pressed while the mouse is held down."""
+
+    _LABEL_PREFIX = "BTN"
 
     def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
         """Initialize the button with its board index and optional component metadata."""
-        self.index = index
-        self.info = info
+        super().__init__(index, info)
         self.pressed = False
-        self.rect = pygame.Rect(0, 0, 0, 0)
         self.callback: Callable[[int, bool, ComponentInfo | None], None] | None = None
-
-    @property
-    def label(self) -> str:
-        """Human-readable label derived from ComponentInfo or the button index."""
-        return self.info.display_name if self.info else f"BTN{self.index}"
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         """Draw the push-button with a highlight when pressed, plus its label."""
