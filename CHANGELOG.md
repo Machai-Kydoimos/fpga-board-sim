@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Component hover tooltips (U3).** Hovering an LED, switch, or button for
+  ~400 ms shows a small tooltip with its net name, pin(s), and direction;
+  moving the cursor away dismisses it. Works in both the board preview and the
+  running simulation, and follows the active theme (#172, #184)
 - **In-simulation navigation toolbar (U7).** The running simulation gains three
   buttons at the bottom-left — **[Back to Boards]**, **[Change VHDL]**, and
   **[Reload VHDL]** — so it is no longer a dead end reachable only by ESC.
