@@ -16,6 +16,7 @@ from fpga_sim.ui.settings_dialog import SettingsDialog
 from fpga_sim.ui.sim_panel import SimPanel
 from fpga_sim.ui.sim_toolbar import SimToolbar
 from fpga_sim.ui.spinner import SpinnerOverlay, run_with_spinner
+from fpga_sim.ui.tooltip import Tooltip
 from fpga_sim.ui.vhdl_picker import VHDLFilePicker
 
 __all__ = [
@@ -37,4 +38,5 @@ __all__ = [
     "SimToolbar",
     "SpinnerOverlay",
     "run_with_spinner",
+    "Tooltip",
 ]

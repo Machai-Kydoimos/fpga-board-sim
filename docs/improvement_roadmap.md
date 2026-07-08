@@ -42,14 +42,9 @@ This document inventories all viable improvements and ranks them by impact.
 
 - Shipped 2026-06-25 (PR #117). Closed Sprint 1b; established the off-main-thread `run_with_spinner()` pattern. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
-#### U3. Component tooltips on hover (preview & sim)
+#### U3. Component tooltips on hover (preview & sim) ✅
 
-- **Why:** Hovering an LED/switch/button currently does nothing visible; net names and pin assignments live only in stdout `print()` callbacks.
-- **What:** Hover for ~400 ms -> small tooltip with `net_name`, `pin`, `direction`. Add a `Tooltip` widget; integrate in `LED.draw`, `Switch.draw`, `Button.draw`.
-- **Touches:** new `src/fpga_sim/ui/tooltip.py`; small additions in `components.py`; mouse-pos tracking in `board_display.py`.
-- **Effort:** M.
-- **Dependencies:** Soft prep **D3 ✅** shipped — hover hit-testing iterates a single `list[UIComponent]` (uniform `.info` / `.label` / `.rect`).
-- **Done when:** hovering a component for 400 ms shows a tooltip with net name, pin, and direction; moving away dismisses it.
+- Shipped 2026-07-08 (PR #184, issue #172). Hovering an LED / switch / button for ~400 ms shows a `Tooltip` (`ui/tooltip.py`) with net name / pin / direction, dismissed on leave. A unified `FPGABoard.components` `list[UIComponent]` (from **D3 ✅**) drives one dwell hit-test; `_draw_hover_tooltip()` at the end of `_draw` covers preview *and* sim (both drive the same `_draw`). Reuses the shared info-panel `THEME` roles, so no `theme.py` change. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U4. Error messages with contextual hints ✅
 
@@ -330,7 +325,7 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 | Item | Benefits from | Reason |
 |---|---|---|
 | **U1** (Help dialog) | **D4** (Shared button helper) ✅ | Consistent "Close" button styling |
-| **U3** (Tooltips) | **D3 ✅** (UIComponent base) | Unified hit-testing across component types |
+| **U3 ✅** (Tooltips) | **D3 ✅** (UIComponent base) | Unified hit-testing across component types |
 | **U5** (Settings dialog) | **D4** (Shared button helper) ✅ | Reuse button rendering in dialog |
 | ~~**U7** (In-sim toolbar)~~ ✅ | **D4** (Shared button helper) ✅ | Consistent toolbar button styling |
 | **U8** (Splash) | **U0** (Board filtering) | Left panel already has filter chips |
@@ -374,11 +369,11 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **1a** | Quickest wins + foundations | ~~U0 Board filtering~~ ✅ · ~~U11 Reset key~~ ✅ · ~~U12 Board summary format~~ ✅ · ~~D1 Wrapper template merge~~ ✅ · ~~D9 Literal types~~ ✅ · ~~D10 .editorconfig + hook pins~~ ✅ · ~~D11 Mock-class docstrings~~ ✅ |
 | **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → ~~U2 Analysis spinner~~ ✅ · ~~D2 Backend base class~~ ✅ · ~~U26 Visual README~~ ✅ |
 | **2** | Foundations that unblock later UX | ~~D6a Screen-result enum~~ ✅ · ~~D6b ScreenController~~ ✅ · ~~D15 Color consolidation~~ ✅ · ~~U5 Settings dialog + extended session~~ ✅ · ~~D8 mypy strict~~ ✅ |
-| **3** | Visible polish | U3 Tooltips · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · ~~U7 In-sim toolbar~~ ✅ |
+| **3** | Visible polish | ~~U3 Tooltips~~ ✅ · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · ~~U7 In-sim toolbar~~ ✅ |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw · U27 User JSON themes |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-07-07).** Sprints 1a, 1b, and **2 are fully shipped**; **Sprint 3 is underway** (milestone v0.12.0, issues #172/#173/#174/#175). **U6 ✅** (Theme system, #178) landed first, then **U4 ✅** (Contextual errors, #181), then **U7 ✅** (In-sim toolbar, #175). Remaining: **U3** (Tooltips, #172) — the last Sprint 3 card. The phases otherwise remain correctly ordered.
+**Status (2026-07-08).** Sprints 1a, 1b, **2, and 3 are all fully shipped**. Sprint 3 (milestone v0.12.0) delivered **U6 ✅** (Theme system, PR #178), **U4 ✅** (Contextual errors, PR #181), **U7 ✅** (In-sim toolbar, PR #182), and **U3 ✅** (Tooltips, PR #184) — with the **D3 ✅** UIComponent-base refactor (PR #183) landed first as prep for U3. Milestone v0.12.0 is complete; **Sprint 4 is next**. The phases otherwise remain correctly ordered.
 
 ---
 
@@ -416,13 +411,13 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/session_config.py` — U5 ✅ (merge-on-write; new `update_session` / `push_recent`), U18, D9 ✅, D14 ✅, D16 (sandbox toggle)
 - `src/fpga_sim/ui/constants.py` — D15 ✅ (now base neutrals only), U17
 - `src/fpga_sim/ui/theme.py` — D15 ✅ (new: `Theme` dataclass + `THEME`), U2 ✅ (`spinner_arc` / `spinner_track` roles), U5 ✅ (`THEME_NAMES` / `THEME_LABELS` + settings button styles), U6 ✅ (`dark` / `high-contrast` instances + `set_theme` / `current_theme_name`), U27 (dynamic registry + JSON loader)
-- `src/fpga_sim/ui/components.py` — U3, U9, D3 ✅, D15
-- `src/fpga_sim/ui/board_display.py` — U1 ✅, U3, U5 ✅ (gear trigger), U11, U16, D3 ✅, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15
+- `src/fpga_sim/ui/components.py` — U3 ✅, U9, D3 ✅, D15
+- `src/fpga_sim/ui/board_display.py` — U1 ✅, U3 ✅, U5 ✅ (gear trigger), U11, U16, D3 ✅, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15
 - `src/fpga_sim/ui/board_selector.py` — U0, U1 ✅, U8, U12, U13 ✅, D15
 - `src/fpga_sim/ui/sim_panel.py` — U5 ✅ (`speed_factor` ctor param; public `SPEED_DEFAULT`), U14, U15, U19, D4 ✅, D15
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15
 - `src/fpga_sim/ui/error_dialog.py` — U4 ✅ (`example_path` → [View Example]), D4 ✅, D6a ✅ (`run()` returns `DialogResult`), D15
-- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/sim_toolbar.py` (U7 ✅), `ui/tooltip.py` (U3), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
+- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/sim_toolbar.py` (U7 ✅), `ui/tooltip.py` (U3 ✅), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
 - `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U5 ✅ (speed restore + write-back), U7 ✅ (toolbar draw + click → intent-file write; F1/`?` → in-sim `HelpDialog`), U9, U14, U22, D15
@@ -447,7 +442,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (1344 tests across 38 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip, UIComponent base contract). All sprints must keep this green.
+1. **Tests** — `uv run pytest` (1364 tests across 40 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip, UIComponent base contract, component hover tooltips). All sprints must keep this green.
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy .` (`strict = true` since D8 ✅).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).

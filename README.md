@@ -176,10 +176,11 @@ Need a refresher at any launcher screen? Press **F1** or **?**, or click the **(
 
 ### 2. Preview the board
 
-The board renders with LEDs, buttons, switches, and — on supported boards — a 7-segment display, all matching the real hardware. Components show their resource names and pin assignments.
+The board renders with LEDs, buttons, switches, and — on supported boards — a 7-segment display, all matching the real hardware. Each component is labeled with its resource name; **hover** any LED, switch, or button for a moment to reveal its net name, pin, and direction.
 
 - **Click switches** to toggle them
 - **Click and hold buttons** to press them
+- **Hover a component** → tooltip with its net name, pin, and direction
 - **`SIM: GHDL` / `SIM: NVC`** toggle → cycle between installed simulators
 - **"Start Simulation"** button → opens the VHDL file picker
 - **R** → reset all switches off and release any held buttons
@@ -200,6 +201,7 @@ The selected simulator (GHDL or NVC) compiles and simulates the VHDL design via 
 - **Switches/buttons** drive FPGA inputs in real time
 - **LEDs** reflect FPGA outputs from the simulation
 - **7-segment digits** show live hex glyphs on supported boards
+- **Hover a component** → tooltip with its net name, pin, and direction
 - **Toolbar** (bottom-left) → **[Back to Boards]**, **[Change VHDL]**, or **[Reload VHDL]** — Reload re-analyzes the current file (pick up edits you just made in your editor) and restarts, without leaving the simulation
 - **R** — reset all switches off and release any held buttons (inputs only; design state is unaffected)
 - **S** — toggle the stats panel (see below)
@@ -246,7 +248,7 @@ src/fpga_sim/              Installable Python package (src layout)
   ui/                      pygame UI subpackage
     constants.py           Base neutral colors, get_font cache, _ui_scale helper
     theme.py               Theme dataclass + THEME instance — the semantic color roles
-    components.py          FPGAChip, LED, Switch, Button — low-level board components
+    components.py          UIComponent base + FPGAChip, LED, Switch, Button — low-level board components
     board_selector.py      Board picker screen
     board_display.py       Board preview + simulation screen (FPGABoard class)
     sim_panel.py           Stats strip rendered during simulation (SimPanel class)
@@ -255,6 +257,7 @@ src/fpga_sim/              Installable Python package (src layout)
     error_dialog.py        Error dialog overlay
     help_dialog.py         Help overlay (F1 / ? / the (?) button)
     settings_dialog.py     Settings overlay (gear button): theme, sim speed, recent files
+    tooltip.py             Hover tooltip — component net name / pin / direction
     spinner.py             Analysis busy-spinner overlay (run_with_spinner)
     results.py             ScreenResult / DialogResult enums
     widgets/               Shared button rendering (ButtonStyle + draw_button)
@@ -331,7 +334,7 @@ The UI has four screens, each a class with a `run()` method:
 
 1. **`BoardSelector`** — scrollable, filterable list of all discovered boards. Each row shows the board name and a resource summary. Type to filter, click to select.
 
-2. **`FPGABoard`** (preview mode) — renders the selected board's components on a green PCB-style background. An auto-layout engine arranges LEDs, buttons, and switches into a grid that adapts to the component count and window size. LEDs get 3× the vertical weight since boards can have many (up to 64+). Components are interactive even in preview — switches toggle, buttons press. A **`SIM: GHDL` / `SIM: NVC`** toggle button in the footer cycles between installed simulators (grayed out when only one is available). A **"Start Simulation"** button leads to step 3.
+2. **`FPGABoard`** (preview mode) — renders the selected board's components on a green PCB-style background. An auto-layout engine arranges LEDs, buttons, and switches into a grid that adapts to the component count and window size. LEDs get 3× the vertical weight since boards can have many (up to 64+). Components are interactive even in preview — switches toggle, buttons press, and hovering shows a tooltip with the component's net name, pin, and direction. A **`SIM: GHDL` / `SIM: NVC`** toggle button in the footer cycles between installed simulators (grayed out when only one is available). A **"Start Simulation"** button leads to step 3.
 
 3. **`VHDLFilePicker`** — minimal file browser that shows directories and `.vhd`/`.vhdl` files. Navigate by clicking directories, select a VHDL file to proceed.
 

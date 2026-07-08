@@ -538,6 +538,18 @@ of the simulation window. Its `panel_height` is a property that re-evaluates
 whenever the window resizes to keep the board and panel areas in sync.
 `sim_testbench.py` does this check at the top of every frame.
 
+**Board components & hover overlays.** `FPGABoard`'s LEDs, switches, and buttons
+share a `UIComponent` base (`ui/components.py`) and are registered in one
+`FPGABoard.components` `list[UIComponent]` used for hover hit-testing. The hover
+tooltip (`ui/tooltip.py`) is drawn at the *end* of `FPGABoard._draw()`; because
+both the preview loop and the sim subprocess drive that same `_draw`, any
+board-area overlay added there appears in both — no `sim_testbench.py` change.
+It draws *before* the sim's bottom `SimPanel` / `SimToolbar`, so keep such
+overlays biased away from the bottom strip (the tooltip flips upward near the
+bottom edge). New per-component metadata to surface goes in `tooltip_rows()`;
+the widget reads the shared info-panel `THEME` roles at draw time, so it
+restyles per theme for free.
+
 **Board sync scripts.** Three scripts in `scripts/` download upstream
 board definitions and convert them to our JSON schema:
 
