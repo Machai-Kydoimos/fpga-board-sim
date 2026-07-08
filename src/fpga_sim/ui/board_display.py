@@ -28,16 +28,20 @@ from typing import TYPE_CHECKING, Protocol
 import pygame
 
 from fpga_sim.board_loader import BoardDef, ComponentInfo
-from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch
+from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch, UIComponent
 from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
 from fpga_sim.ui.results import ScreenResult
 from fpga_sim.ui.settings_dialog import SettingsDialog, draw_settings_button
 from fpga_sim.ui.theme import THEME
+from fpga_sim.ui.tooltip import Tooltip
 from fpga_sim.ui.widgets import draw_button
 
 if TYPE_CHECKING:
     from fpga_sim.sim_bridge import Simulator
+
+# Cursor dwell (ms) over a component before its hover tooltip appears.
+HOVER_TOOLTIP_MS = 400
 
 
 class _Positionable(Protocol):
@@ -184,6 +188,12 @@ class FPGABoard:
             self._seven_segs = []
         self._prev_seg_bits: list[int] = [0] * len(self._seven_segs)
         self._seg_panel_x: int = 0
+
+        # Unified hover hit-test list (LEDs + switches + buttons) for U3 tooltips.
+        self.components: list[UIComponent] = [*self.leds, *self.switches, *self.buttons]
+        self._tooltip = Tooltip()
+        self._hover_target: UIComponent | None = None
+        self._hover_since_ms = 0
 
         # Default callbacks – print name + connector info
         def _sw_cb(idx: int, state: bool, info: ComponentInfo | None) -> None:
@@ -547,6 +557,42 @@ class FPGABoard:
                 for btn in self.buttons:
                     btn.handle_release()
 
+    # ── hover tooltips (U3) ──────────────────────────────────────────
+
+    def _component_at(self, pos: tuple[int, int]) -> UIComponent | None:
+        """Return the LED / switch / button whose rect contains *pos*, or None."""
+        for comp in self.components:
+            if comp.rect.collidepoint(pos):
+                return comp
+        return None
+
+    def _update_hover(self, pos: tuple[int, int], now_ms: int) -> UIComponent | None:
+        """Track cursor dwell; return the component whose tooltip is due, else None.
+
+        The dwell timer resets whenever the cursor moves to a different component
+        (or off all of them); a tooltip becomes due once the same component has
+        been hovered for ``HOVER_TOOLTIP_MS``.
+        """
+        target = self._component_at(pos)
+        if target is not self._hover_target:
+            self._hover_target = target
+            self._hover_since_ms = now_ms
+        if target is not None and now_ms - self._hover_since_ms >= HOVER_TOOLTIP_MS:
+            return target
+        return None
+
+    def _draw_hover_tooltip(self) -> None:
+        """Draw the hover tooltip when the cursor has dwelt on a component.
+
+        Called at the end of ``_draw`` so it renders on top of the board (and,
+        in preview mode, the footer).  Works in the simulation subprocess too,
+        which drives this same ``_draw`` each frame.
+        """
+        pos = pygame.mouse.get_pos()
+        hovered = self._update_hover(pos, pygame.time.get_ticks())
+        if hovered is not None:
+            self._tooltip.draw(self.screen, pos, hovered.label, hovered.info)
+
     # ── drawing ──────────────────────────────────────────────────────
 
     def _draw(self, *, flip: bool = True) -> None:
@@ -613,6 +659,7 @@ class FPGABoard:
 
         # ── Footer buttons (preview mode only) ───────────────────────
         if not self._show_footer:
+            self._draw_hover_tooltip()
             if flip:
                 pygame.display.flip()
             return
@@ -714,5 +761,6 @@ class FPGABoard:
             )
         self.screen.blit(status_txt, (btn_margin_x, status_y))
 
+        self._draw_hover_tooltip()
         if flip:
             pygame.display.flip()
