@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   interface) and is off by default, so the standard run and benchmarks are
   unaffected. Refines the reserved `waveform_enabled` session key into the
   tri-state `waveform` (#186, #187)
+- **Auto GTKWave save file (U28).** When waveform capture is on, each run also
+  writes a matching `<design>_<timestamp>.gtkw` beside the dump, so
+  `gtkwave <file>.gtkw` opens preloaded with the top-level ports —
+  clk / sw / btn / led (plus seg on 7-seg boards) — instead of an empty signal
+  tree. The save file names its dump, so it loads the trace on its own; a
+  crashed/empty run writes none (#189, #192)
 
 ## [0.12.0] - 2026-07-08
 

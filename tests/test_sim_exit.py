@@ -80,6 +80,12 @@ def launch_env(tmp_path, monkeypatch):
             captured["cwd"] = cwd
             if write is not None:
                 Path(env["FPGA_SIM_EXIT_INTENT_FILE"]).write_text(write)
+            # Mimic the simulator emitting a non-empty dump when capture is on, so
+            # the post-run hint + GTKWave-sidecar path (U10 / U28) runs for real.
+            for arg in cmd:
+                for prefix in ("--vcd=", "--fst=", "--wave="):
+                    if arg.startswith(prefix):
+                        Path(arg[len(prefix) :]).write_text("$version fake $end\n")
             return subprocess.CompletedProcess(cmd, returncode)
 
         # sim_bridge does a plain ``import subprocess``, so patching the global
@@ -144,3 +150,15 @@ def test_launch_with_vcd_adds_flag_and_creates_dir(launch_env, tmp_path):
     assert "blinky_" in vcd_flags[0] and vcd_flags[0].endswith(".vcd")
     assert str(tmp_path / "waveforms") in vcd_flags[0]
     assert (tmp_path / "waveforms").is_dir()  # created before the run
+
+
+def test_launch_with_vcd_writes_gtkw_sidecar(launch_env):
+    """U28: a produced dump gets a matching .gtkw naming it + listing sim_wrapper.clk."""
+    run, captured, _work_dir = launch_env
+    run(waveform="vcd")
+    vcd = Path(next(a[len("--vcd=") :] for a in captured["cmd"] if a.startswith("--vcd=")))
+    gtkw = vcd.with_suffix(".gtkw")
+    assert gtkw.is_file()  # written beside the dump the fake produced
+    text = gtkw.read_text()
+    assert f'[dumpfile] "{vcd}"' in text
+    assert "sim_wrapper.clk" in text

@@ -13,7 +13,7 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 40 test files (1393 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, three UI themes, performance heavily tuned (PR #31), v0.12.0 released (2026-07-08).
+The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 40 test files (1398 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, three UI themes, performance heavily tuned (PR #31), v0.12.0 released (2026-07-08).
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
@@ -124,11 +124,11 @@ This document inventories all viable improvements and ranks them by impact.
 | U17 | Pre-allocate common font sizes at startup (eliminates LRU eviction churn) | `ui/constants.py` | XS |
 | U18 | Recent-files section in `VHDLFilePicker` (consumes `recent[]` from U5 ✅) | `ui/vhdl_picker.py` | S |
 | U19 | Metrics-enable checkbox surfacing `FPGA_SIM_METRICS` env var | `ui/sim_panel.py` or Settings dialog | XS |
-| U28 | Auto-emit a `<design>.gtkw` GTKWave save file beside the dump (preload clk/sw/btn/led/seg) — reuse the `.gtkw`-writer idiom in `scripts/capture_waveform.py` | `sim_bridge.py` (or new `waveform.py`) | S |
+| ~~U28~~ | ~~Auto-emit a `<design>.gtkw` GTKWave save file beside the dump (preload clk/sw/btn/led/seg)~~ ✅ | `sim_bridge.py` (`_write_gtkw`) | S |
 | U29 | `FPGA_SIM_WAVEFORM` env to enable capture headlessly/CI + optional one-click auto-open in GTKWave after a run (reuse U4's platform opener) | `sim_bridge.py`, Settings dialog | S |
 | U30 | "Include memories" depth toggle — NVC `--dump-arrays` (GHDL dumps arrays already) so embedded-core RAM/ROM/registers appear in the trace | `sim_bridge.py` (`run_cmd`), Settings/env | S |
 
-**Note on U28–U30 (waveform-capture follow-ups):** all three extend **U10 ✅** and were raised 2026-07-09 during U10 review. U28 (a ready-made `.gtkw` view) and U29 (env-enable for CI/headless + one-click auto-open) are UX polish; **U30** makes capture useful for the mx65/t80 **embedded-core** designs, whose interesting state (RAM/ROM/registers) is exactly the nested arrays NVC skips by default (GHDL dumps them already). `scripts/capture_waveform.py` already contains a `.gtkw`-writer idiom U28 can reuse.
+**Note on U28–U30 (waveform-capture follow-ups):** all three extend **U10 ✅** and were raised 2026-07-09 during U10 review. U28 (a ready-made `.gtkw` view) and U29 (env-enable for CI/headless + one-click auto-open) are UX polish; **U30** makes capture useful for the mx65/t80 **embedded-core** designs, whose interesting state (RAM/ROM/registers) is exactly the nested arrays NVC skips by default (GHDL dumps them already). `scripts/capture_waveform.py` already contains a `.gtkw`-writer idiom U28 can reuse. **U28 shipped 2026-07-09** (Sprint 5 lead, issue #189) — `sim_bridge._write_gtkw` writes the save file after a produced dump, naming ports from the run generics (`sim_wrapper.led[N-1:0]`, `seg[8·digits-1:0]`); signal names were cross-checked against a real `sim_wrapper` VCD (plain + 7-seg).
 
 **Note on U12:** `BoardDef.summary` already includes 7-seg digit count as of v0.5.0. Remaining work is the formatting change (dot separators, abbreviated labels).
 
@@ -371,7 +371,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **2** | Foundations that unblock later UX | ~~D6a Screen-result enum~~ ✅ · ~~D6b ScreenController~~ ✅ · ~~D15 Color consolidation~~ ✅ · ~~U5 Settings dialog + extended session~~ ✅ · ~~D8 mypy strict~~ ✅ |
 | **3** | Visible polish | ~~U3 Tooltips~~ ✅ · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · ~~U7 In-sim toolbar~~ ✅ |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · ~~U10 Waveform~~ ✅ · U23 Dirty-flag redraw · U27 User JSON themes |
-| **5** | Waveform polish | U28 Auto-emit `.gtkw` · U29 `FPGA_SIM_WAVEFORM` env + one-click auto-open · U30 "Include memories" (`--dump-arrays`) |
+| **5** | Waveform polish | ~~U28 Auto-emit `.gtkw`~~ ✅ · U29 `FPGA_SIM_WAVEFORM` env + one-click auto-open · U30 "Include memories" (`--dump-arrays`) |
 | **6** | Board-native VHDL (lab↔sim round-trip) | U21 Board-native VHDL — **6a** clk/sw/btn/led remap + polarity → **6b** decomposed 7-seg adapter; + ~10-line sync shallow-merge. Own sprint (L/XL — may carry its own research/decisions) |
 | **7** | Iteration & panel UX | U18 Recent files (+ keep dir on retry) · U14 Pause/resume · U15 Compact SimPanel · U19 Metrics checkbox |
 | **8** | Startup hardening + dev-DRY base | U16 Min window size · U17 Font pre-alloc · **D5 Path helper** → D13 Env-branch tests · D12 Arch diagram |
@@ -380,7 +380,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **11** | Verilog / SystemVerilog | U20 Verilog support (Icarus) |
 | **12** | 7-seg physical mux | U22 7-seg physical mux (shares U21's wrapper-template 7-seg context) |
 
-**Status (2026-07-09).** Sprints 1a, 1b, **2, and 3 are fully shipped**, and **Sprint 4 (milestone v0.13.0) is now in progress** — its first card **U10 ✅** (Waveform capture, PR #187, issue #186) has landed; **U8 / U9 / U23 / U27** remain. Sprint 3 (milestone v0.12.0) delivered **U6 ✅** (Theme system, PR #178), **U4 ✅** (Contextual errors, PR #181), **U7 ✅** (In-sim toolbar, PR #182), and **U3 ✅** (Tooltips, PR #184) — with the **D3 ✅** UIComponent-base refactor (PR #183) landed first as prep for U3. The phases otherwise remain correctly ordered. **Sprints 5–12 are now mapped** (2026-07-09) from the previously-unscheduled backlog — waveform polish (5) → board-native VHDL (6, its own sprint per the lab↔sim round-trip priority) → iteration / panel UX (7) → startup + dev-DRY base (8) → untrusted-VHDL isolation (9) → performance (10) → Verilog (11) → 7-seg physical mux (12). The only cross-item constraints are the soft chains **D5 → D13** and **D5 + D7 → D16**, both honored (D5 in 8; D7 + D16 in 9); every other 5–12 sprint is order-free. Per the hybrid backlog model, only the *active* sprint gets a GitHub milestone + issues — 5–12 stay strategy-only until promoted.
+**Status (2026-07-09).** Sprints 1a, 1b, **2, and 3 are fully shipped**, and **milestone v0.13.0 is now a waveform-themed release** (re-cut 2026-07-09): **U10 ✅** (capture, PR #187, issue #186) plus the folded-in **Sprint 5 waveform-polish** cards **U28 ✅** (`.gtkw` save file, this PR) / **U29** / **U30** (issues #190 / #191); the other Sprint-4 UX cards **U8 / U9 / U23 / U27** moved to **v0.14.0**. Sprint 3 (milestone v0.12.0) delivered **U6 ✅** (Theme system, PR #178), **U4 ✅** (Contextual errors, PR #181), **U7 ✅** (In-sim toolbar, PR #182), and **U3 ✅** (Tooltips, PR #184) — with the **D3 ✅** UIComponent-base refactor (PR #183) landed first as prep for U3. The phases otherwise remain correctly ordered. **Sprints 5–12 are now mapped** (2026-07-09) from the previously-unscheduled backlog — waveform polish (5) → board-native VHDL (6, its own sprint per the lab↔sim round-trip priority) → iteration / panel UX (7) → startup + dev-DRY base (8) → untrusted-VHDL isolation (9) → performance (10) → Verilog (11) → 7-seg physical mux (12). The only cross-item constraints are the soft chains **D5 → D13** and **D5 + D7 → D16**, both honored (D5 in 8; D7 + D16 in 9); every other 5–12 sprint is order-free. Per the hybrid backlog model, only the *active* sprint gets a GitHub milestone + issues — 5–12 stay strategy-only until promoted.
 
 ---
 

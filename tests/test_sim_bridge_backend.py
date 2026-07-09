@@ -13,10 +13,12 @@ from fpga_sim.sim_bridge import (
     WaveConfig,
     _backend,
     _GHDLBackend,
+    _gtkw_path,
     _normalize_wave,
     _NVCBackend,
     _SimBackend,
     _waveform_path,
+    _write_gtkw,
 )
 
 # ── ABC conformance ───────────────────────────────────────────────────────────
@@ -265,3 +267,49 @@ def test_waveform_dir_env_override(monkeypatch, tmp_path):
     assert p.name.startswith("blinky_") and p.suffix == ".vcd"
     monkeypatch.setenv("FPGA_SIM_WAVEFORM_DIR", "   ")  # blank → default
     assert _waveform_path("blinky", "vcd").parent == tmp_path / "default"
+
+
+# ── GTKWave save file (U28) ───────────────────────────────────────────────────
+
+
+def test_gtkw_path_is_dump_sibling_with_gtkw_suffix():
+    """The save file sits beside the dump: same stem, .gtkw suffix (either format)."""
+    assert _gtkw_path(Path("/w/blinky_2026-07-09_14-30-05.vcd")) == Path(
+        "/w/blinky_2026-07-09_14-30-05.gtkw"
+    )
+    assert _gtkw_path(Path("/w/blinky_2026-07-09_14-30-05.fst")) == Path(
+        "/w/blinky_2026-07-09_14-30-05.gtkw"
+    )
+
+
+def test_write_gtkw_lists_toplevel_ports_with_widths(tmp_path):
+    """U28: the save file names sim_wrapper's ports with generic-derived ranges."""
+    gtkw = tmp_path / "blinky.gtkw"
+    dump = tmp_path / "blinky.vcd"
+    _write_gtkw(gtkw, dump, {"NUM_SWITCHES": "4", "NUM_BUTTONS": "2", "NUM_LEDS": "8"})
+    text = gtkw.read_text()
+    assert f'[dumpfile] "{dump}"' in text
+    assert "sim_wrapper.clk" in text
+    assert "sim_wrapper.sw[3:0]" in text
+    assert "sim_wrapper.btn[1:0]" in text
+    assert "sim_wrapper.led[7:0]" in text
+    assert "sim_wrapper.seg" not in text  # no NUM_SEGS → no seg row
+
+
+def test_write_gtkw_includes_seg_when_7seg(tmp_path):
+    """seg packs 8 bits per digit: NUM_SEGS=6 → seg[47:0]."""
+    gtkw = tmp_path / "c.gtkw"
+    _write_gtkw(gtkw, tmp_path / "c.fst", {"NUM_LEDS": "10", "NUM_SEGS": "6"})
+    text = gtkw.read_text()
+    assert "sim_wrapper.seg[47:0]" in text  # 6*8 - 1
+    assert "sim_wrapper.led[9:0]" in text
+
+
+def test_write_gtkw_skips_ports_with_missing_or_bad_generics(tmp_path):
+    """clk is always present; a vector whose generic is absent/garbage is omitted, not broken."""
+    gtkw = tmp_path / "x.gtkw"
+    _write_gtkw(gtkw, tmp_path / "x.vcd", {"NUM_LEDS": "oops"})
+    text = gtkw.read_text()
+    assert "sim_wrapper.clk" in text
+    assert "sim_wrapper.sw" not in text and "sim_wrapper.btn" not in text
+    assert "sim_wrapper.led" not in text  # garbage width → skipped, no "led[-1:0]"

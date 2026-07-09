@@ -1085,6 +1085,59 @@ def _waveform_path(entity: str, fmt: WaveFormat, *, now: datetime | None = None)
     return _waveform_dir() / f"{entity}_{stamp}.{fmt}"
 
 
+def _gtkw_path(wave_path: Path) -> Path:
+    """Return the GTKWave save-file sibling of a dump: same stem, ``.gtkw`` suffix.
+
+    Pairing by identical stem (``blinky_<stamp>.vcd`` → ``blinky_<stamp>.gtkw``)
+    keeps each save file matched to its dump once several timestamped captures
+    accumulate.
+    """
+    return wave_path.with_suffix(".gtkw")
+
+
+def _write_gtkw(gtkw_path: Path, dump_path: Path, generics: dict[str, str]) -> None:
+    """Write a GTKWave save file that preloads the ``sim_wrapper`` top-level ports.
+
+    Opening ``gtkwave <gtkw_path>`` lands the user on clk / sw / btn / led (and
+    seg, for 7-seg runs) instead of an empty view with the whole signal tree —
+    the U28 convenience atop U10's raw capture.  Signal names mirror the
+    hierarchy both backends emit: the elaborated toplevel is ``sim_wrapper`` and
+    each vector carries a ``[msb:0]`` range whose width comes from *generics*
+    (a port whose generic is absent or unparseable is skipped, so an unusual
+    design yields a shorter list rather than a broken line).  ``[dumpfile]`` names
+    *dump_path*, so the save file also loads the trace on its own.
+    """
+    top = "sim_wrapper"
+
+    def _vector(name: str, width_generic: str, *, scale: int = 1) -> str | None:
+        try:
+            msb = int(generics[width_generic]) * scale - 1
+        except (KeyError, ValueError):
+            return None
+        return f"{top}.{name}[{msb}:0]" if msb >= 0 else None
+
+    ports = [
+        f"{top}.clk",
+        _vector("sw", "NUM_SWITCHES"),
+        _vector("btn", "NUM_BUTTONS"),
+        _vector("led", "NUM_LEDS"),
+        _vector("seg", "NUM_SEGS", scale=8),  # seg packs 8 bits per digit
+    ]
+    lines = [
+        "[*]",
+        "[*] GTKWave save file auto-written by fpga-sim (roadmap U28).",
+        "[*] Preloads the sim_wrapper top-level ports; load beside the matching dump.",
+        "[*]",
+        f'[dumpfile] "{dump_path}"',
+        "[timestart] 0",
+        "[signals_width] 200",
+        "[sst_width] 200",
+        f"-{top}",
+        *[p for p in ports if p is not None],
+    ]
+    gtkw_path.write_text("\n".join(lines) + "\n")
+
+
 def launch_simulation(
     board_json: str,
     vhdl_path: str | Path,
@@ -1225,6 +1278,10 @@ def launch_simulation(
     if wave_cfg is not None:
         wpath = Path(wave_cfg.path)
         if wpath.is_file() and wpath.stat().st_size > 0:
-            print(f"Waveform written: {wpath}\n  Open it with:  gtkwave {wpath}")
+            # U28: drop a matching GTKWave save file so the dump opens on the
+            # interesting ports (clk/sw/btn/led[/seg]) instead of an empty view.
+            gtkw = _gtkw_path(wpath)
+            _write_gtkw(gtkw, wpath, generics)
+            print(f"Waveform written: {wpath}\n  Open it with preloaded signals:  gtkwave {gtkw}")
 
     return _read_exit_intent(intent_file, result.returncode)
