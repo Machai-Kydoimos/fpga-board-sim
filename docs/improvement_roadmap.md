@@ -371,9 +371,16 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **2** | Foundations that unblock later UX | ~~D6a Screen-result enum~~ ✅ · ~~D6b ScreenController~~ ✅ · ~~D15 Color consolidation~~ ✅ · ~~U5 Settings dialog + extended session~~ ✅ · ~~D8 mypy strict~~ ✅ |
 | **3** | Visible polish | ~~U3 Tooltips~~ ✅ · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · ~~U7 In-sim toolbar~~ ✅ |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · ~~U10 Waveform~~ ✅ · U23 Dirty-flag redraw · U27 User JSON themes |
-| **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
+| **5** | Waveform polish | U28 Auto-emit `.gtkw` · U29 `FPGA_SIM_WAVEFORM` env + one-click auto-open · U30 "Include memories" (`--dump-arrays`) |
+| **6** | Board-native VHDL (lab↔sim round-trip) | U21 Board-native VHDL — **6a** clk/sw/btn/led remap + polarity → **6b** decomposed 7-seg adapter; + ~10-line sync shallow-merge. Own sprint (L/XL — may carry its own research/decisions) |
+| **7** | Iteration & panel UX | U18 Recent files (+ keep dir on retry) · U14 Pause/resume · U15 Compact SimPanel · U19 Metrics checkbox |
+| **8** | Startup hardening + dev-DRY base | U16 Min window size · U17 Font pre-alloc · **D5 Path helper** → D13 Env-branch tests · D12 Arch diagram |
+| **9** | Untrusted-VHDL isolation | **D7 Decompose `launch_simulation`** → D16 Sandbox the sim subprocess |
+| **10** | Performance deep-dive | U25 Profile GHDL GPI vs eval → U24 Batch `Timer` calls |
+| **11** | Verilog / SystemVerilog | U20 Verilog support (Icarus) |
+| **12** | 7-seg physical mux | U22 7-seg physical mux (shares U21's wrapper-template 7-seg context) |
 
-**Status (2026-07-09).** Sprints 1a, 1b, **2, and 3 are fully shipped**, and **Sprint 4 (milestone v0.13.0) is now in progress** — its first card **U10 ✅** (Waveform capture, PR #187, issue #186) has landed; **U8 / U9 / U23 / U27** remain. Sprint 3 (milestone v0.12.0) delivered **U6 ✅** (Theme system, PR #178), **U4 ✅** (Contextual errors, PR #181), **U7 ✅** (In-sim toolbar, PR #182), and **U3 ✅** (Tooltips, PR #184) — with the **D3 ✅** UIComponent-base refactor (PR #183) landed first as prep for U3. The phases otherwise remain correctly ordered.
+**Status (2026-07-09).** Sprints 1a, 1b, **2, and 3 are fully shipped**, and **Sprint 4 (milestone v0.13.0) is now in progress** — its first card **U10 ✅** (Waveform capture, PR #187, issue #186) has landed; **U8 / U9 / U23 / U27** remain. Sprint 3 (milestone v0.12.0) delivered **U6 ✅** (Theme system, PR #178), **U4 ✅** (Contextual errors, PR #181), **U7 ✅** (In-sim toolbar, PR #182), and **U3 ✅** (Tooltips, PR #184) — with the **D3 ✅** UIComponent-base refactor (PR #183) landed first as prep for U3. The phases otherwise remain correctly ordered. **Sprints 5–12 are now mapped** (2026-07-09) from the previously-unscheduled backlog — waveform polish (5) → board-native VHDL (6, its own sprint per the lab↔sim round-trip priority) → iteration / panel UX (7) → startup + dev-DRY base (8) → untrusted-VHDL isolation (9) → performance (10) → Verilog (11) → 7-seg physical mux (12). The only cross-item constraints are the soft chains **D5 → D13** and **D5 + D7 → D16**, both honored (D5 in 8; D7 + D16 in 9); every other 5–12 sprint is order-free. Per the hybrid backlog model, only the *active* sprint gets a GitHub milestone + issues — 5–12 stay strategy-only until promoted.
 
 ---
 
