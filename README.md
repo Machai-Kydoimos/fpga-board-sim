@@ -185,7 +185,7 @@ The board renders with LEDs, buttons, switches, and — on supported boards — 
 - **"Start Simulation"** button → opens the VHDL file picker
 - **R** → reset all switches off and release any held buttons
 - **F1 / ? / (?)** → open the help overlay
-- **Gear button** (next to the `(?)`) → open the Settings dialog: switch the UI theme (PCB Green / Dark / High Contrast), reset the remembered sim speed, clear the recent-files list
+- **Gear button** (next to the `(?)`) → open the Settings dialog: switch the UI theme (PCB Green / Dark / High Contrast), reset the remembered sim speed, toggle waveform capture (off / VCD / FST), clear the recent-files list
 - **ESC** → back to board list
 
 ### 3. Select a VHDL file
@@ -231,7 +231,7 @@ A logarithmic slider from **0.001× to 10×** (default **0.1×**; the last-used 
 
 **[-] / [+]** cycle through the clock frequencies declared in the board's amaranth-boards definition. The new half-period is written directly to the VHDL wrapper; the clock changes within one half-period without restarting the simulator. A **[PAUSE] / [RESUME]** button freezes simulation while keeping the simulator process alive.
 
-> **Session persistence:** The last-used board, VHDL file, simulator, selector sort/filters, window size, and sim-speed slider are saved to `~/.fpga_simulator/session.json` and restored on the next run. The session updates whenever you pick a file or change the board or simulator — not only when a simulation launches — and the last 10 (board, VHDL) pairs are remembered as a recent-files list. The Settings dialog (gear button in the board preview) can switch the UI theme — PCB Green / Dark / High Contrast, applied live, restored at startup, and used by the simulation window too — reset the speed, or clear the recent list. After each simulation session a compact performance summary is also written to `~/.fpga_simulator/sessions/<timestamp>_<board>.json` (board, simulator, duration, avg FPS, simulated time, G/D/I breakdown).
+> **Session persistence:** The last-used board, VHDL file, simulator, selector sort/filters, window size, and sim-speed slider are saved to `~/.fpga_simulator/session.json` and restored on the next run. The session updates whenever you pick a file or change the board or simulator — not only when a simulation launches — and the last 10 (board, VHDL) pairs are remembered as a recent-files list. The Settings dialog (gear button in the board preview) can switch the UI theme — PCB Green / Dark / High Contrast, applied live, restored at startup, and used by the simulation window too — reset the speed, toggle **waveform capture** (off / VCD / FST), or clear the recent list. When waveform capture is enabled, the simulation writes `~/.fpga_simulator/waveforms/<design>.<vcd|fst>` — open it in GTKWave (VCD is plain text; FST is compact for long runs) — and prints the path when the run ends. After each simulation session a compact performance summary is also written to `~/.fpga_simulator/sessions/<timestamp>_<board>.json` (board, simulator, duration, avg FPS, simulated time, G/D/I breakdown).
 
 ## Project Structure
 
@@ -256,7 +256,7 @@ src/fpga_sim/              Installable Python package (src layout)
     vhdl_picker.py         VHDL file browser screen
     error_dialog.py        Error dialog overlay
     help_dialog.py         Help overlay (F1 / ? / the (?) button)
-    settings_dialog.py     Settings overlay (gear button): theme, sim speed, recent files
+    settings_dialog.py     Settings overlay (gear button): theme, sim speed, waveform, recent files
     tooltip.py             Hover tooltip — component net name / pin / direction
     spinner.py             Analysis busy-spinner overlay (run_with_spinner)
     results.py             ScreenResult / DialogResult enums

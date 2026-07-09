@@ -68,9 +68,14 @@ def launch_env(tmp_path, monkeypatch):
     captured: dict[str, Any] = {}
 
     monkeypatch.setattr(sim_bridge, "_build_sim_env", lambda **kw: ({}, "plugin.so"))
+    # Redirect waveform output away from the real ~/.fpga_simulator (U10).
+    monkeypatch.setattr(sim_bridge, "WAVEFORM_DIR", tmp_path / "waveforms")
 
-    def run(*, write: str | None = None, returncode: int = 0) -> SimExit:
+    def run(
+        *, write: str | None = None, returncode: int = 0, waveform: str | None = None
+    ) -> SimExit:
         def fake_run(cmd: Any, env: Any = None, cwd: Any = None, **kw: Any) -> Any:
+            captured["cmd"] = cmd
             captured["env"] = env
             captured["cwd"] = cwd
             if write is not None:
@@ -87,6 +92,7 @@ def launch_env(tmp_path, monkeypatch):
             {},
             work_dir=str(work_dir),
             simulator="ghdl",  # ghdl path: no elaborate subprocess before the run
+            waveform=waveform,
         )
 
     return run, captured, work_dir
@@ -112,3 +118,29 @@ def test_launch_clears_a_stale_intent_from_a_reused_workdir(launch_env):
 def test_launch_ignores_intent_when_subprocess_failed(launch_env):
     run, _captured, _work_dir = launch_env
     assert run(write="back_to_boards", returncode=2) is SimExit.STOPPED
+
+
+# ── waveform capture plumbing (U10) ───────────────────────────────────────────
+
+
+def test_launch_without_waveform_adds_no_dump_flag(launch_env):
+    run, captured, _work_dir = launch_env
+    run()  # default: capture off
+    assert not any(a.startswith(("--vcd", "--fst")) for a in captured["cmd"])
+
+
+def test_launch_waveform_off_adds_no_dump_flag(launch_env):
+    run, captured, _work_dir = launch_env
+    run(waveform="off")
+    assert not any(a.startswith(("--vcd", "--fst")) for a in captured["cmd"])
+
+
+def test_launch_with_vcd_adds_flag_and_creates_dir(launch_env, tmp_path):
+    run, captured, _work_dir = launch_env
+    run(waveform="vcd")
+    vcd_flags = [a for a in captured["cmd"] if a.startswith("--vcd=")]
+    assert len(vcd_flags) == 1
+    # Named after the toplevel ("blinky"), under the redirected WAVEFORM_DIR.
+    assert vcd_flags[0].endswith("blinky.vcd")
+    assert str(tmp_path / "waveforms") in vcd_flags[0]
+    assert (tmp_path / "waveforms").is_dir()  # created before the run

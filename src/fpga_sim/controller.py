@@ -485,13 +485,16 @@ class ScreenController:
         sim_error: str | None = None
         sim_exit = SimExit.STOPPED
         while True:
-            # The sim writes the slider's final value back to the session file
-            # at exit, so re-read it each (re)launch: the slider resumes where
-            # the user left it — across runs, reloads, and restarts.
+            # The sim writes the slider's final value back to the session file at
+            # exit, so re-read the session each (re)launch: the slider resumes
+            # where the user left it — across runs, reloads, and restarts.  The
+            # waveform mode (launcher-owned, U10) rides along from the same read.
+            sess = load_session()
             try:
-                speed = float(load_session().get("speed_factor", SPEED_DEFAULT))
+                speed = float(sess.get("speed_factor", SPEED_DEFAULT))
             except (TypeError, ValueError):
                 speed = SPEED_DEFAULT
+            waveform = sess.get("waveform")
 
             try:
                 sim_exit = launch_simulation(
@@ -506,6 +509,7 @@ class ScreenController:
                     board_def=board,
                     speed_factor=speed,
                     theme=current_theme_name(),
+                    waveform=waveform,
                 )
             except Exception as e:
                 sim_error = str(e)

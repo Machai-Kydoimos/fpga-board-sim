@@ -9,6 +9,9 @@ persisted session file (:mod:`fpga_sim.session_config`):
   restores the persisted name at startup).
 * **Sim speed** — the speed slider's value as written back by the last
   simulation run, with a [Reset] to the default.
+* **Waveform** — cycles native simulator capture off / VCD / FST; the launcher
+  passes the choice to the sim run subprocess, which writes
+  ``~/.fpga_simulator/waveforms/<design>.<ext>`` for opening in GTKWave.
 * **Recent files** — how many (board, VHDL) pairs are remembered (U18
   surfaces them in the file picker), with a [Clear].
 
@@ -31,6 +34,11 @@ from fpga_sim.ui.constants import _ui_scale, get_font
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 from fpga_sim.ui.theme import THEME, THEME_LABELS, THEME_NAMES, current_theme_name, set_theme
 from fpga_sim.ui.widgets import draw_button
+
+# Waveform-capture cycle for the Settings row: off → VCD → FST → off.  The two
+# active values match ``sim_bridge.WaveFormat``; "off" (no capture) is the default.
+_WAVEFORM_MODES = ("off", "vcd", "fst")
+_WAVEFORM_LABELS = {"off": "Off", "vcd": "VCD", "fst": "FST"}
 
 
 def _draw_gear_icon(
@@ -86,6 +94,7 @@ class SettingsDialog:
         self._close_rect: pygame.Rect | None = None
         self._theme_rect: pygame.Rect | None = None
         self._reset_rect: pygame.Rect | None = None
+        self._waveform_rect: pygame.Rect | None = None
         self._clear_rect: pygame.Rect | None = None
 
     # ── Session-derived row values ────────────────────────────────────────────
@@ -103,6 +112,10 @@ class SettingsDialog:
     def _recent_count(self) -> int:
         recent = self._session.get("recent", [])
         return len(recent) if isinstance(recent, list) else 0
+
+    def _waveform_mode(self) -> str:
+        mode = self._session.get("waveform", "off")
+        return mode if isinstance(mode, str) and mode in _WAVEFORM_MODES else "off"
 
     def _can_cycle_theme(self) -> bool:
         return len(THEME_NAMES) > 1
@@ -155,6 +168,12 @@ class SettingsDialog:
             update_session(recent=[])
             self._session = load_session()
             return False
+        if self._waveform_rect and self._waveform_rect.collidepoint(pos):
+            # Always enabled — both backends support capture; cycle off→vcd→fst→off.
+            idx = _WAVEFORM_MODES.index(self._waveform_mode())
+            update_session(waveform=_WAVEFORM_MODES[(idx + 1) % len(_WAVEFORM_MODES)])
+            self._session = load_session()
+            return False
         return bool(self._panel_rect and not self._panel_rect.collidepoint(pos))
 
     # ── Drawing ───────────────────────────────────────────────────────────────
@@ -176,6 +195,7 @@ class SettingsDialog:
             # (label, value, action label, action enabled)
             ("Theme", THEME_LABELS.get(theme_name, theme_name), "Switch", self._can_cycle_theme()),
             ("Sim speed", f"{self._speed():.4g}x", "Reset", self._can_reset_speed()),
+            ("Waveform", _WAVEFORM_LABELS[self._waveform_mode()], "Change", True),
             (
                 "Recent files",
                 f"{self._recent_count()} remembered",
@@ -233,7 +253,7 @@ class SettingsDialog:
             )
             action_rects.append(rect)
             y += row_h + gap
-        self._theme_rect, self._reset_rect, self._clear_rect = action_rects
+        self._theme_rect, self._reset_rect, self._waveform_rect, self._clear_rect = action_rects
 
         # Hint line about the automatically-persisted state.
         self.screen.blit(hint_f.render(hint, True, THEME.dim_text), (px + pad, y))
