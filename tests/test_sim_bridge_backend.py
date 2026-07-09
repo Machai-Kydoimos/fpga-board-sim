@@ -1,6 +1,7 @@
 """Unit tests for _SimBackend ABC conformance and backend dispatch."""
 
 import inspect
+from datetime import datetime
 from pathlib import Path
 from typing import cast, get_args
 
@@ -242,8 +243,25 @@ def test_normalize_wave(value, expected):
     assert _normalize_wave(value) == expected
 
 
-def test_waveform_path_lands_under_waveform_dir(monkeypatch, tmp_path):
-    """<entity>.<ext> under the (redirectable) WAVEFORM_DIR; ext == format."""
+def test_waveform_path_is_timestamped_under_waveform_dir(monkeypatch, tmp_path):
+    """<entity>_<timestamp>.<ext> under the (redirectable) default dir."""
     monkeypatch.setattr("fpga_sim.sim_bridge.WAVEFORM_DIR", tmp_path)
-    assert _waveform_path("blinky", "vcd") == tmp_path / "blinky.vcd"
-    assert _waveform_path("counter_7seg", "fst") == tmp_path / "counter_7seg.fst"
+    monkeypatch.delenv("FPGA_SIM_WAVEFORM_DIR", raising=False)
+    when = datetime(2026, 7, 9, 14, 30, 5)
+    assert _waveform_path("blinky", "vcd", now=when) == tmp_path / "blinky_2026-07-09_14-30-05.vcd"
+    assert (
+        _waveform_path("counter_7seg", "fst", now=when)
+        == tmp_path / "counter_7seg_2026-07-09_14-30-05.fst"
+    )
+
+
+def test_waveform_dir_env_override(monkeypatch, tmp_path):
+    """FPGA_SIM_WAVEFORM_DIR relocates output; a blank value falls back to the default."""
+    monkeypatch.setattr("fpga_sim.sim_bridge.WAVEFORM_DIR", tmp_path / "default")
+    proj = tmp_path / "proj" / "waves"
+    monkeypatch.setenv("FPGA_SIM_WAVEFORM_DIR", str(proj))
+    p = _waveform_path("blinky", "vcd")
+    assert p.parent == proj
+    assert p.name.startswith("blinky_") and p.suffix == ".vcd"
+    monkeypatch.setenv("FPGA_SIM_WAVEFORM_DIR", "   ")  # blank → default
+    assert _waveform_path("blinky", "vcd").parent == tmp_path / "default"

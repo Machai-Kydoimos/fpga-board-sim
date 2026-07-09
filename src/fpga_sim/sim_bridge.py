@@ -20,6 +20,7 @@ import sys
 import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -1041,10 +1042,21 @@ def _build_sim_env(
 
 # ── Waveform capture ──────────────────────────────────────────────────────────
 
-#: Directory for user-requested waveform dumps.  A module attribute (mirroring
-#: ``session_config.SESSION_FILE``) so tests can redirect it; the run subprocess
-#: writes here regardless of its temp work-dir cwd because the path is absolute.
+#: Default directory for waveform dumps.  A module attribute (mirroring
+#: ``session_config.SESSION_FILE``) so tests can redirect it; overridable at
+#: runtime by the ``FPGA_SIM_WAVEFORM_DIR`` env var so a user working in their
+#: own project tree can keep captures in-tree.  The resolved path is absolute,
+#: so the run subprocess writes there regardless of its temp work-dir cwd.
 WAVEFORM_DIR: Path = Path.home() / ".fpga_simulator" / "waveforms"
+
+#: Env var overriding :data:`WAVEFORM_DIR` (blank/unset → the default).
+WAVEFORM_DIR_ENV = "FPGA_SIM_WAVEFORM_DIR"
+
+
+def _waveform_dir() -> Path:
+    """Effective output directory: ``$FPGA_SIM_WAVEFORM_DIR`` or :data:`WAVEFORM_DIR`."""
+    override = os.environ.get(WAVEFORM_DIR_ENV, "").strip()
+    return Path(override).expanduser() if override else WAVEFORM_DIR
 
 
 def _normalize_wave(value: str | None) -> WaveFormat | None:
@@ -1060,13 +1072,17 @@ def _normalize_wave(value: str | None) -> WaveFormat | None:
     return None
 
 
-def _waveform_path(entity: str, fmt: WaveFormat) -> Path:
-    """Absolute output path for a waveform dump of *entity* in *fmt*.
+def _waveform_path(entity: str, fmt: WaveFormat, *, now: datetime | None = None) -> Path:
+    """Absolute, timestamped output path for a waveform dump of *entity*.
 
-    One file per design entity under :data:`WAVEFORM_DIR`, overwritten each run
-    (the extension equals the format: ``blinky.vcd`` / ``blinky.fst``).
+    ``<dir>/<entity>_<YYYY-MM-DD_HH-MM-SS>.<ext>`` under :func:`_waveform_dir`, so
+    successive runs of a design accumulate (compare iterations in GTKWave) instead
+    of overwriting, and same-named designs from different projects never collide.
+    Colons are avoided so the name is valid on Windows.  *now* is injectable so
+    tests are deterministic.
     """
-    return WAVEFORM_DIR / f"{entity}.{fmt}"
+    stamp = (now or datetime.now()).strftime("%Y-%m-%d_%H-%M-%S")
+    return _waveform_dir() / f"{entity}_{stamp}.{fmt}"
 
 
 def launch_simulation(
@@ -1106,11 +1122,11 @@ def launch_simulation(
     drawing.  Passed as a plain string so this module stays UI-import-free.
 
     *waveform* (``"vcd"`` / ``"fst"``; anything else, incl. ``None``, means off)
-    enables native simulator waveform capture to
-    ``~/.fpga_simulator/waveforms/<toplevel>.<ext>`` (see :func:`_waveform_path`).
-    Capture is a run-command flag on GHDL/NVC and independent of cocotb, so
-    ``sim_testbench`` is unaffected; the path is printed after a run that
-    produced a non-empty file, for opening in GTKWave.
+    enables native simulator waveform capture to a timestamped file under
+    ``~/.fpga_simulator/waveforms/`` — or ``$FPGA_SIM_WAVEFORM_DIR`` — (see
+    :func:`_waveform_path`).  Capture is a run-command flag on GHDL/NVC and
+    independent of cocotb, so ``sim_testbench`` is unaffected; the path is
+    printed after a run that produced a non-empty file, for opening in GTKWave.
 
     This call blocks until the simulation exits, then returns the
     :class:`SimExit` the user chose via the in-simulation toolbar

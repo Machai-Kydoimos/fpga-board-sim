@@ -13,7 +13,7 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 40 test files (1392 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, three UI themes, performance heavily tuned (PR #31), v0.12.0 released (2026-07-08).
+The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 40 test files (1393 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, three UI themes, performance heavily tuned (PR #31), v0.12.0 released (2026-07-08).
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
@@ -89,7 +89,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### U10. Waveform capture ✅
 
-- Shipped 2026-07-09 (PR #187, issue #186). New Settings **Waveform** row cycles **off / VCD / FST**; `launch_simulation(waveform=…)` writes `~/.fpga_simulator/waveforms/<design>.<ext>` (GHDL `--vcd=`/`--fst=` after the toplevel; NVC `--wave=` + `--format=` before it) and prints a GTKWave hint on exit. Native dump orthogonal to cocotb, so `sim_testbench.py` untouched; the reserved `waveform_enabled` key became the tri-state `waveform`. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
+- Shipped 2026-07-09 (PR #187, issue #186). New Settings **Waveform** row cycles **off / VCD / FST**; `launch_simulation(waveform=…)` writes a timestamped `~/.fpga_simulator/waveforms/<design>_<timestamp>.<ext>` (dir overridable via `FPGA_SIM_WAVEFORM_DIR`; GHDL `--vcd=`/`--fst=` after the toplevel, NVC `--wave=` + `--format=` before it) and prints a GTKWave hint on exit. Native dump orthogonal to cocotb, so `sim_testbench.py` untouched; the reserved `waveform_enabled` key became the tri-state `waveform`. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U27. User-defined themes (JSON) + example scheme pack
 
@@ -124,6 +124,11 @@ This document inventories all viable improvements and ranks them by impact.
 | U17 | Pre-allocate common font sizes at startup (eliminates LRU eviction churn) | `ui/constants.py` | XS |
 | U18 | Recent-files section in `VHDLFilePicker` (consumes `recent[]` from U5 ✅) | `ui/vhdl_picker.py` | S |
 | U19 | Metrics-enable checkbox surfacing `FPGA_SIM_METRICS` env var | `ui/sim_panel.py` or Settings dialog | XS |
+| U28 | Auto-emit a `<design>.gtkw` GTKWave save file beside the dump (preload clk/sw/btn/led/seg) — reuse the `.gtkw`-writer idiom in `scripts/capture_waveform.py` | `sim_bridge.py` (or new `waveform.py`) | S |
+| U29 | `FPGA_SIM_WAVEFORM` env to enable capture headlessly/CI + optional one-click auto-open in GTKWave after a run (reuse U4's platform opener) | `sim_bridge.py`, Settings dialog | S |
+| U30 | "Include memories" depth toggle — NVC `--dump-arrays` (GHDL dumps arrays already) so embedded-core RAM/ROM/registers appear in the trace | `sim_bridge.py` (`run_cmd`), Settings/env | S |
+
+**Note on U28–U30 (waveform-capture follow-ups):** all three extend **U10 ✅** and were raised 2026-07-09 during U10 review. U28 (a ready-made `.gtkw` view) and U29 (env-enable for CI/headless + one-click auto-open) are UX polish; **U30** makes capture useful for the mx65/t80 **embedded-core** designs, whose interesting state (RAM/ROM/registers) is exactly the nested arrays NVC skips by default (GHDL dumps them already). `scripts/capture_waveform.py` already contains a `.gtkw`-writer idiom U28 can reuse.
 
 **Note on U12:** `BoardDef.summary` already includes 7-seg digit count as of v0.5.0. Remaining work is the formatting change (dot separators, abbreviated labels).
 
@@ -351,7 +356,7 @@ U6 (theme system) ✅ — U27 is now unblocked
 D6a (screen-result enum) ✅ — D6b (ScreenController) ✅ — both shipped
 ```
 
-All other items (U0, U1, U2, U3, U4, U8, U9, U11-U17, U21-U25, D3-D5, D7-D16) are independently shippable.
+All other items (U0, U1, U2, U3, U4, U8, U9, U11-U17, U21-U25, U28-U30, D3-D5, D7-D16) are independently shippable.
 
 ---
 
@@ -437,7 +442,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (1392 tests across 40 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip, UIComponent base contract, component hover tooltips). All sprints must keep this green.
+1. **Tests** — `uv run pytest` (1393 tests across 40 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip, UIComponent base contract, component hover tooltips). All sprints must keep this green.
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy .` (`strict = true` since D8 ✅).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).

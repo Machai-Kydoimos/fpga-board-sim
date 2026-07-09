@@ -10,8 +10,9 @@ persisted session file (:mod:`fpga_sim.session_config`):
 * **Sim speed** — the speed slider's value as written back by the last
   simulation run, with a [Reset] to the default.
 * **Waveform** — cycles native simulator capture off / VCD / FST; the launcher
-  passes the choice to the sim run subprocess, which writes
-  ``~/.fpga_simulator/waveforms/<design>.<ext>`` for opening in GTKWave.
+  passes the choice to the sim run subprocess, which writes a timestamped
+  ``~/.fpga_simulator/waveforms/<design>_<timestamp>.<ext>`` (or under
+  ``$FPGA_SIM_WAVEFORM_DIR``) for opening in GTKWave.
 * **Recent files** — how many (board, VHDL) pairs are remembered (U18
   surfaces them in the file picker), with a [Clear].
 

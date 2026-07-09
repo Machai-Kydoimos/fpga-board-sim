@@ -140,7 +140,7 @@ def test_launch_with_vcd_adds_flag_and_creates_dir(launch_env, tmp_path):
     run(waveform="vcd")
     vcd_flags = [a for a in captured["cmd"] if a.startswith("--vcd=")]
     assert len(vcd_flags) == 1
-    # Named after the toplevel ("blinky"), under the redirected WAVEFORM_DIR.
-    assert vcd_flags[0].endswith("blinky.vcd")
+    # Named "<toplevel>_<timestamp>.vcd" under the redirected WAVEFORM_DIR.
+    assert "blinky_" in vcd_flags[0] and vcd_flags[0].endswith(".vcd")
     assert str(tmp_path / "waveforms") in vcd_flags[0]
     assert (tmp_path / "waveforms").is_dir()  # created before the run
