@@ -13,7 +13,7 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 40 test files (1393 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, three UI themes, performance heavily tuned (PR #31), v0.12.0 released (2026-07-08).
+The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 40 test files (1398 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, three UI themes, performance heavily tuned (PR #31), v0.12.0 released (2026-07-08).
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
@@ -124,11 +124,11 @@ This document inventories all viable improvements and ranks them by impact.
 | U17 | Pre-allocate common font sizes at startup (eliminates LRU eviction churn) | `ui/constants.py` | XS |
 | U18 | Recent-files section in `VHDLFilePicker` (consumes `recent[]` from U5 ✅) | `ui/vhdl_picker.py` | S |
 | U19 | Metrics-enable checkbox surfacing `FPGA_SIM_METRICS` env var | `ui/sim_panel.py` or Settings dialog | XS |
-| U28 | Auto-emit a `<design>.gtkw` GTKWave save file beside the dump (preload clk/sw/btn/led/seg) — reuse the `.gtkw`-writer idiom in `scripts/capture_waveform.py` | `sim_bridge.py` (or new `waveform.py`) | S |
+| ~~U28~~ | ~~Auto-emit a `<design>.gtkw` GTKWave save file beside the dump (preload clk/sw/btn/led/seg)~~ ✅ | `sim_bridge.py` (`_write_gtkw`) | S |
 | U29 | `FPGA_SIM_WAVEFORM` env to enable capture headlessly/CI + optional one-click auto-open in GTKWave after a run (reuse U4's platform opener) | `sim_bridge.py`, Settings dialog | S |
 | U30 | "Include memories" depth toggle — NVC `--dump-arrays` (GHDL dumps arrays already) so embedded-core RAM/ROM/registers appear in the trace | `sim_bridge.py` (`run_cmd`), Settings/env | S |
 
-**Note on U28–U30 (waveform-capture follow-ups):** all three extend **U10 ✅** and were raised 2026-07-09 during U10 review. U28 (a ready-made `.gtkw` view) and U29 (env-enable for CI/headless + one-click auto-open) are UX polish; **U30** makes capture useful for the mx65/t80 **embedded-core** designs, whose interesting state (RAM/ROM/registers) is exactly the nested arrays NVC skips by default (GHDL dumps them already). `scripts/capture_waveform.py` already contains a `.gtkw`-writer idiom U28 can reuse.
+**Note on U28–U30 (waveform-capture follow-ups):** all three extend **U10 ✅** and were raised 2026-07-09 during U10 review. U28 (a ready-made `.gtkw` view) and U29 (env-enable for CI/headless + one-click auto-open) are UX polish; **U30** makes capture useful for the mx65/t80 **embedded-core** designs, whose interesting state (RAM/ROM/registers) is exactly the nested arrays NVC skips by default (GHDL dumps them already). `scripts/capture_waveform.py` already contains a `.gtkw`-writer idiom U28 can reuse. **U28 shipped 2026-07-09** (Sprint 5 lead, issue #189) — `sim_bridge._write_gtkw` writes the save file after a produced dump, naming ports from the run generics (`sim_wrapper.led[N-1:0]`, `seg[8·digits-1:0]`); signal names were cross-checked against a real `sim_wrapper` VCD (plain + 7-seg).
 
 **Note on U12:** `BoardDef.summary` already includes 7-seg digit count as of v0.5.0. Remaining work is the formatting change (dot separators, abbreviated labels).
 
@@ -371,7 +371,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **2** | Foundations that unblock later UX | ~~D6a Screen-result enum~~ ✅ · ~~D6b ScreenController~~ ✅ · ~~D15 Color consolidation~~ ✅ · ~~U5 Settings dialog + extended session~~ ✅ · ~~D8 mypy strict~~ ✅ |
 | **3** | Visible polish | ~~U3 Tooltips~~ ✅ · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · ~~U7 In-sim toolbar~~ ✅ |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · ~~U10 Waveform~~ ✅ · U23 Dirty-flag redraw · U27 User JSON themes |
-| **5** | Waveform polish | U28 Auto-emit `.gtkw` · U29 `FPGA_SIM_WAVEFORM` env + one-click auto-open · U30 "Include memories" (`--dump-arrays`) |
+| **5** | Waveform polish | ~~U28 Auto-emit `.gtkw`~~ ✅ · U29 `FPGA_SIM_WAVEFORM` env + one-click auto-open · U30 "Include memories" (`--dump-arrays`) |
 | **6** | Board-native VHDL (lab↔sim round-trip) | U21 Board-native VHDL — **6a** clk/sw/btn/led remap + polarity → **6b** decomposed 7-seg adapter; + ~10-line sync shallow-merge. Own sprint (L/XL — may carry its own research/decisions) |
 | **7** | Iteration & panel UX | U18 Recent files (+ keep dir on retry) · U14 Pause/resume · U15 Compact SimPanel · U19 Metrics checkbox |
 | **8** | Startup hardening + dev-DRY base | U16 Min window size · U17 Font pre-alloc · **D5 Path helper** → D13 Env-branch tests · D12 Arch diagram |
