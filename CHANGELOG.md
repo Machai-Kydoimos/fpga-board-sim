@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   run ends. Capture is a simulator run-command flag (independent of the cocotb
   interface) and is off by default, so the standard run and benchmarks are
   unaffected. Refines the reserved `waveform_enabled` session key into the
-  tri-state `waveform` (#186)
+  tri-state `waveform` (#186, #187)
 
 ## [0.12.0] - 2026-07-08
 

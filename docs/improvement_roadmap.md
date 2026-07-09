@@ -89,7 +89,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### U10. Waveform capture ✅
 
-- Shipped 2026-07-09 (issue #186). New Settings **Waveform** row cycles **off / VCD / FST**; `launch_simulation(waveform=…)` writes `~/.fpga_simulator/waveforms/<design>.<ext>` (GHDL `--vcd=`/`--fst=` after the toplevel; NVC `--wave=` + `--format=` before it) and prints a GTKWave hint on exit. Native dump orthogonal to cocotb, so `sim_testbench.py` untouched; the reserved `waveform_enabled` key became the tri-state `waveform`. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
+- Shipped 2026-07-09 (PR #187, issue #186). New Settings **Waveform** row cycles **off / VCD / FST**; `launch_simulation(waveform=…)` writes `~/.fpga_simulator/waveforms/<design>.<ext>` (GHDL `--vcd=`/`--fst=` after the toplevel; NVC `--wave=` + `--format=` before it) and prints a GTKWave hint on exit. Native dump orthogonal to cocotb, so `sim_testbench.py` untouched; the reserved `waveform_enabled` key became the tri-state `waveform`. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U27. User-defined themes (JSON) + example scheme pack
 
@@ -368,7 +368,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · ~~U10 Waveform~~ ✅ · U23 Dirty-flag redraw · U27 User JSON themes |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-07-09).** Sprints 1a, 1b, **2, and 3 are fully shipped**, and **Sprint 4 (milestone v0.13.0) is now in progress** — its first card **U10 ✅** (Waveform capture, issue #186) has landed; **U8 / U9 / U23 / U27** remain. Sprint 3 (milestone v0.12.0) delivered **U6 ✅** (Theme system, PR #178), **U4 ✅** (Contextual errors, PR #181), **U7 ✅** (In-sim toolbar, PR #182), and **U3 ✅** (Tooltips, PR #184) — with the **D3 ✅** UIComponent-base refactor (PR #183) landed first as prep for U3. The phases otherwise remain correctly ordered.
+**Status (2026-07-09).** Sprints 1a, 1b, **2, and 3 are fully shipped**, and **Sprint 4 (milestone v0.13.0) is now in progress** — its first card **U10 ✅** (Waveform capture, PR #187, issue #186) has landed; **U8 / U9 / U23 / U27** remain. Sprint 3 (milestone v0.12.0) delivered **U6 ✅** (Theme system, PR #178), **U4 ✅** (Contextual errors, PR #181), **U7 ✅** (In-sim toolbar, PR #182), and **U3 ✅** (Tooltips, PR #184) — with the **D3 ✅** UIComponent-base refactor (PR #183) landed first as prep for U3. The phases otherwise remain correctly ordered.
 
 ---
 
