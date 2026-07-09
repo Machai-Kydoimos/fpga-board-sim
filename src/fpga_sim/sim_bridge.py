@@ -20,6 +20,7 @@ import sys
 import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -34,6 +35,26 @@ IS_WINDOWS = sys.platform == "win32"
 # time and gives the simulator domain a single source of truth.  Extend this
 # with ``"iverilog"`` when Verilog support (U20) lands.
 Simulator = Literal["ghdl", "nvc"]
+
+# Waveform-capture formats the sim run subprocess can dump natively.  ``None``
+# (off) is the default throughout; the Settings dialog persists a tri-state
+# ``waveform`` session key — ``"off"`` / ``"vcd"`` / ``"fst"`` — which
+# ``launch_simulation`` normalizes via :func:`_normalize_wave`.
+WaveFormat = Literal["vcd", "fst"]
+
+
+@dataclass(frozen=True)
+class WaveConfig:
+    """A resolved waveform-capture request: output path + format.
+
+    Handed to a backend's ``run_cmd`` when the user enabled capture.  GHDL and
+    NVC spell the flags differently (``--vcd=`` / ``--fst=`` after the toplevel
+    vs. ``--wave=`` + ``--format=`` before it), so only the abstract format is
+    stored here and each backend renders its own flags.
+    """
+
+    path: str
+    fmt: WaveFormat
 
 
 class SimExit(Enum):
@@ -129,7 +150,11 @@ class _SimBackend(ABC):
     @staticmethod
     @abstractmethod
     def run_cmd(
-        toplevel: str, generics: dict[str, str], plugin_lib: str, work_dir: str
+        toplevel: str,
+        generics: dict[str, str],
+        plugin_lib: str,
+        work_dir: str,
+        wave: WaveConfig | None = None,
     ) -> list[str]: ...
 
 
@@ -157,12 +182,17 @@ class _GHDLBackend(_SimBackend):
         generics: dict[str, str],
         plugin_lib: str,
         work_dir: str,
+        wave: WaveConfig | None = None,
     ) -> list[str]:
         cmd = [_GHDLBackend.find(), "-r", "--std=08", f"--workdir={work_dir}"]
         for k, v in (generics or {}).items():
             cmd.append(f"-g{k}={v}")
         cmd.append(toplevel)
         cmd.append(f"--vpi={plugin_lib}")
+        if wave is not None:
+            # GHDL simulation options follow the toplevel (like --vpi); the dump
+            # format is chosen by the flag name itself (--vcd= / --fst=).
+            cmd.append(f"--{wave.fmt}={wave.path}")
         return cmd
 
 
@@ -211,10 +241,14 @@ class _NVCBackend(_SimBackend):
 
     @staticmethod
     def run_cmd(
-        toplevel: str, generics: dict[str, str], plugin_lib: str, work_dir: str
+        toplevel: str,
+        generics: dict[str, str],
+        plugin_lib: str,
+        work_dir: str,
+        wave: WaveConfig | None = None,
     ) -> list[str]:
         # generics were baked in at elaboration (-e); ignored here
-        return [
+        cmd = [
             _NVCBackend.find(),
             f"--work=work:{work_dir}",
             "--std=2008",
@@ -222,8 +256,12 @@ class _NVCBackend(_SimBackend):
             _NVC_HEAP,
             "-r",
             f"--load={plugin_lib}",
-            toplevel,
         ]
+        if wave is not None:
+            # NVC run options precede the toplevel; format is an explicit flag.
+            cmd += [f"--wave={wave.path}", f"--format={wave.fmt}"]
+        cmd.append(toplevel)
+        return cmd
 
 
 def _backend(simulator: Simulator) -> type[_SimBackend]:
@@ -1002,6 +1040,51 @@ def _build_sim_env(
     return env, plugin_lib
 
 
+# ── Waveform capture ──────────────────────────────────────────────────────────
+
+#: Default directory for waveform dumps.  A module attribute (mirroring
+#: ``session_config.SESSION_FILE``) so tests can redirect it; overridable at
+#: runtime by the ``FPGA_SIM_WAVEFORM_DIR`` env var so a user working in their
+#: own project tree can keep captures in-tree.  The resolved path is absolute,
+#: so the run subprocess writes there regardless of its temp work-dir cwd.
+WAVEFORM_DIR: Path = Path.home() / ".fpga_simulator" / "waveforms"
+
+#: Env var overriding :data:`WAVEFORM_DIR` (blank/unset → the default).
+WAVEFORM_DIR_ENV = "FPGA_SIM_WAVEFORM_DIR"
+
+
+def _waveform_dir() -> Path:
+    """Effective output directory: ``$FPGA_SIM_WAVEFORM_DIR`` or :data:`WAVEFORM_DIR`."""
+    override = os.environ.get(WAVEFORM_DIR_ENV, "").strip()
+    return Path(override).expanduser() if override else WAVEFORM_DIR
+
+
+def _normalize_wave(value: str | None) -> WaveFormat | None:
+    """Coerce a persisted/CLI waveform value to a WaveFormat, or None (off).
+
+    Anything other than ``"vcd"`` / ``"fst"`` — ``"off"``, ``None``, or junk
+    from a hand-edited session file — means no capture.
+    """
+    if value == "vcd":
+        return "vcd"
+    if value == "fst":
+        return "fst"
+    return None
+
+
+def _waveform_path(entity: str, fmt: WaveFormat, *, now: datetime | None = None) -> Path:
+    """Absolute, timestamped output path for a waveform dump of *entity*.
+
+    ``<dir>/<entity>_<YYYY-MM-DD_HH-MM-SS>.<ext>`` under :func:`_waveform_dir`, so
+    successive runs of a design accumulate (compare iterations in GTKWave) instead
+    of overwriting, and same-named designs from different projects never collide.
+    Colons are avoided so the name is valid on Windows.  *now* is injectable so
+    tests are deterministic.
+    """
+    stamp = (now or datetime.now()).strftime("%Y-%m-%d_%H-%M-%S")
+    return _waveform_dir() / f"{entity}_{stamp}.{fmt}"
+
+
 def launch_simulation(
     board_json: str,
     vhdl_path: str | Path,
@@ -1014,6 +1097,7 @@ def launch_simulation(
     board_def: BoardDef | None = None,
     speed_factor: float | None = None,
     theme: str | None = None,
+    waveform: str | None = None,
 ) -> SimExit:
     """Launch an interactive simulator + cocotb simulation.
 
@@ -1036,6 +1120,13 @@ def launch_simulation(
     *theme* (when not ``None``) carries the launcher's active theme name into
     the subprocess via ``FPGA_SIM_THEME``; sim_testbench applies it before
     drawing.  Passed as a plain string so this module stays UI-import-free.
+
+    *waveform* (``"vcd"`` / ``"fst"``; anything else, incl. ``None``, means off)
+    enables native simulator waveform capture to a timestamped file under
+    ``~/.fpga_simulator/waveforms/`` — or ``$FPGA_SIM_WAVEFORM_DIR`` — (see
+    :func:`_waveform_path`).  Capture is a run-command flag on GHDL/NVC and
+    independent of cocotb, so ``sim_testbench`` is unaffected; the path is
+    printed after a run that produced a non-empty file, for opening in GTKWave.
 
     This call blocks until the simulation exits, then returns the
     :class:`SimExit` the user chose via the in-simulation toolbar
@@ -1094,8 +1185,16 @@ def launch_simulation(
         if elab.returncode != 0:
             raise RuntimeError(elab.stderr.strip() or "NVC elaboration failed.")
 
+    # Resolve the optional waveform request (off unless the user enabled it).
+    wave_fmt = _normalize_wave(waveform)
+    wave_cfg: WaveConfig | None = None
+    if wave_fmt is not None:
+        wave_target = _waveform_path(toplevel, wave_fmt)
+        wave_target.parent.mkdir(parents=True, exist_ok=True)
+        wave_cfg = WaveConfig(str(wave_target), wave_fmt)
+
     # Both backends share the same run_cmd signature; NVC ignores generics (already baked in).
-    cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir)
+    cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir, wave=wave_cfg)
 
     # Exit-intent side channel (see SimExit).  A reused work_dir — the reload
     # path re-analyzes in place — may hold a stale intent from the previous
@@ -1121,4 +1220,11 @@ def launch_simulation(
 
     print(f"Starting simulation: {toplevel} from {vhdl_path.name} [{simulator.upper()}]")
     result = subprocess.run(cmd, env=env, cwd=work_dir)
+
+    # A produced, non-empty dump is worth pointing at; a crashed/empty run is not.
+    if wave_cfg is not None:
+        wpath = Path(wave_cfg.path)
+        if wpath.is_file() and wpath.stat().st_size > 0:
+            print(f"Waveform written: {wpath}\n  Open it with:  gtkwave {wpath}")
+
     return _read_exit_intent(intent_file, result.returncode)

@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from fpga_sim.sim_bridge import (
+    WaveConfig,
     _build_sim_env,
     _NVCBackend,
     analyze_vhdl,
@@ -165,6 +166,37 @@ def test_nvc_cocotb_simulation_passes(nvc, nvc_sim_env, nvc_work_dir):
     assert "FAIL=0" in output and "PASS=" in output, (
         "cocotb tests did not all pass under NVC.\n" + "\n".join(output.splitlines()[-30:])
     )
+
+
+def test_nvc_fst_capture_produces_populated_file(nvc, nvc_sim_env, nvc_work_dir, tmp_path):
+    """U10: NVC --wave + --format=fst produces a valid FST alongside the VHPI run.
+
+    The NVC/FST counterpart to test_ghdl_vcd_capture_produces_populated_file:
+    proves the backend's wave flags work in a real cocotb run (FST is binary, so
+    only presence + non-emptiness are asserted; the GHDL/VCD test checks content).
+    """
+    env, vhpi_lib = nvc_sim_env
+    fst = tmp_path / "blinky.fst"
+    generics = {"NUM_SWITCHES": "4", "NUM_BUTTONS": "4", "NUM_LEDS": "4", "COUNTER_BITS": "10"}
+    subprocess.run(
+        _NVCBackend.elaborate_cmd("blinky", generics, nvc_work_dir),
+        env=env,
+        check=True,
+        cwd=nvc_work_dir,
+    )
+    run_cmd = _NVCBackend.run_cmd(
+        "blinky", generics, vhpi_lib, nvc_work_dir, wave=WaveConfig(str(fst), "fst")
+    )
+    run_cmd.append("--stop-time=100000ns")  # bound the run
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_blinky"
+    run_env["TOPLEVEL"] = "blinky"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+    result = subprocess.run(run_cmd, env=run_env, cwd=nvc_work_dir, capture_output=True, text=True)
+
+    assert fst.is_file(), f"FST not written.\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+    assert fst.stat().st_size > 0, "FST file is empty"
 
 
 # ── 7-seg: NVC analysis and simulation ───────────────────────────────────────

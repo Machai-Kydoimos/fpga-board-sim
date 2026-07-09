@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Waveform capture (U10).** The Settings dialog gains a **Waveform** row that
+  cycles **off / VCD / FST**. When enabled, the simulation dumps a native
+  waveform (GHDL `--vcd`/`--fst`; NVC `--wave` + `--format`) to a timestamped
+  `~/.fpga_simulator/waveforms/<design>_<timestamp>.<ext>` — overridable with
+  `FPGA_SIM_WAVEFORM_DIR` to keep captures in your own project tree — ready to
+  open in GTKWave; successive runs accumulate so you can compare iterations. The file's path is printed when the
+  run ends. Capture is a simulator run-command flag (independent of the cocotb
+  interface) and is off by default, so the standard run and benchmarks are
+  unaffected. Refines the reserved `waveform_enabled` session key into the
+  tri-state `waveform` (#186, #187)
+
 ## [0.12.0] - 2026-07-08
 
 ### Added

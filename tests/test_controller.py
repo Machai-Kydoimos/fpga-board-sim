@@ -681,6 +681,21 @@ def test_simulate_passes_active_theme_to_launch(
     assert launches[0]["theme"] == "dark"
 
 
+def test_simulate_passes_waveform_setting_to_launch(headless_pygame, monkeypatch, tmp_path):
+    """U10: the persisted waveform mode is read at launch and forwarded."""
+    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
+    monkeypatch.setattr(controller_mod, "load_session", lambda: {"waveform": "fst"})
+    ctrl.on_simulate()
+    assert launches[0]["waveform"] == "fst"
+
+
+def test_simulate_waveform_absent_forwards_none(headless_pygame, monkeypatch, tmp_path):
+    """No saved waveform key → capture stays off (None) at launch."""
+    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
+    ctrl.on_simulate()
+    assert launches[0]["waveform"] is None
+
+
 def test_simulate_junk_saved_speed_falls_back_to_default(headless_pygame, monkeypatch, tmp_path):
     ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
     monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": "fast"})

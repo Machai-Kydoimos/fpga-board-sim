@@ -1,6 +1,7 @@
 """Unit tests for _SimBackend ABC conformance and backend dispatch."""
 
 import inspect
+from datetime import datetime
 from pathlib import Path
 from typing import cast, get_args
 
@@ -9,10 +10,13 @@ import pytest
 from fpga_sim.sim_bridge import (
     _NVC_HEAP,
     Simulator,
+    WaveConfig,
     _backend,
     _GHDLBackend,
+    _normalize_wave,
     _NVCBackend,
     _SimBackend,
+    _waveform_path,
 )
 
 # ── ABC conformance ───────────────────────────────────────────────────────────
@@ -182,3 +186,82 @@ def test_sim_backend_is_abc() -> None:
     assert issubclass(_GHDLBackend, _SimBackend)
     assert issubclass(_NVCBackend, _SimBackend)
     assert _SimBackend.__abstractmethods__ == frozenset(_OVERRIDE_METHODS)
+
+
+# ── Waveform capture (U10): run_cmd wave flags + helpers ──────────────────────
+
+
+def test_ghdl_run_cmd_no_wave_by_default():
+    """No wave arg → GHDL command carries no --vcd/--fst dump flag."""
+    cmd = _GHDLBackend.run_cmd("top", {}, "/lib/vpi.so", "/work")
+    assert not any(a.startswith(("--vcd", "--fst")) for a in cmd)
+
+
+def test_nvc_run_cmd_no_wave_by_default():
+    """No wave arg → NVC command carries no --wave/--format dump flag."""
+    cmd = _NVCBackend.run_cmd("top", {}, "/lib/vhpi.so", "/work")
+    assert not any(a.startswith(("--wave", "--format")) for a in cmd)
+
+
+@pytest.mark.parametrize("fmt", ["vcd", "fst"])
+def test_ghdl_run_cmd_wave_flag_follows_toplevel(fmt):
+    """GHDL selects the format by flag name (--vcd=/--fst=), placed after the unit."""
+    cmd = _GHDLBackend.run_cmd(
+        "top", {}, "/lib/vpi.so", "/work", wave=WaveConfig(f"/w/o.{fmt}", fmt)
+    )
+    flag = f"--{fmt}=/w/o.{fmt}"
+    assert flag in cmd
+    assert cmd.index("top") < cmd.index(flag)  # simulation options follow the toplevel
+
+
+@pytest.mark.parametrize("fmt", ["vcd", "fst"])
+def test_nvc_run_cmd_wave_flags_precede_toplevel(fmt):
+    """NVC uses --wave=<path> + explicit --format=<fmt>, before the positional top."""
+    cmd = _NVCBackend.run_cmd(
+        "top", {}, "/lib/vhpi.so", "/work", wave=WaveConfig(f"/w/o.{fmt}", fmt)
+    )
+    assert f"--wave=/w/o.{fmt}" in cmd
+    assert f"--format={fmt}" in cmd
+    assert cmd[-1] == "top"  # the toplevel must stay last
+    assert cmd.index(f"--wave=/w/o.{fmt}") < cmd.index("top")
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("vcd", "vcd"),
+        ("fst", "fst"),
+        ("off", None),
+        ("", None),
+        (None, None),
+        ("VCD", None),  # case-sensitive: only exact lowercase activates
+        ("garbage", None),
+    ],
+)
+def test_normalize_wave(value, expected):
+    """Only exact 'vcd'/'fst' activate capture; everything else means off."""
+    assert _normalize_wave(value) == expected
+
+
+def test_waveform_path_is_timestamped_under_waveform_dir(monkeypatch, tmp_path):
+    """<entity>_<timestamp>.<ext> under the (redirectable) default dir."""
+    monkeypatch.setattr("fpga_sim.sim_bridge.WAVEFORM_DIR", tmp_path)
+    monkeypatch.delenv("FPGA_SIM_WAVEFORM_DIR", raising=False)
+    when = datetime(2026, 7, 9, 14, 30, 5)
+    assert _waveform_path("blinky", "vcd", now=when) == tmp_path / "blinky_2026-07-09_14-30-05.vcd"
+    assert (
+        _waveform_path("counter_7seg", "fst", now=when)
+        == tmp_path / "counter_7seg_2026-07-09_14-30-05.fst"
+    )
+
+
+def test_waveform_dir_env_override(monkeypatch, tmp_path):
+    """FPGA_SIM_WAVEFORM_DIR relocates output; a blank value falls back to the default."""
+    monkeypatch.setattr("fpga_sim.sim_bridge.WAVEFORM_DIR", tmp_path / "default")
+    proj = tmp_path / "proj" / "waves"
+    monkeypatch.setenv("FPGA_SIM_WAVEFORM_DIR", str(proj))
+    p = _waveform_path("blinky", "vcd")
+    assert p.parent == proj
+    assert p.name.startswith("blinky_") and p.suffix == ".vcd"
+    monkeypatch.setenv("FPGA_SIM_WAVEFORM_DIR", "   ")  # blank → default
+    assert _waveform_path("blinky", "vcd").parent == tmp_path / "default"

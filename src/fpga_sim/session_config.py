@@ -16,8 +16,10 @@ Schema (every key is optional; readers fall back to defaults):
   slider's final value at exit; the launcher passes it back in at launch)
 - ``theme`` — UI theme name (the Settings dialog writes and applies it; the
   launcher restores it at startup and forwards it to the sim subprocess)
-- ``metrics_enabled`` / ``waveform_enabled`` — reserved for the Settings
-  toggles that U19 / U10 add
+- ``metrics_enabled`` — reserved for the Settings metrics toggle that U19 adds
+- ``waveform`` — ``"off"`` / ``"vcd"`` / ``"fst"``: native simulator waveform
+  capture; the Settings dialog's Waveform row writes it and the launcher passes
+  it to the sim run subprocess (U10)
 - ``recent`` — the last :data:`RECENT_MAX` (board, VHDL) picks, newest first,
   as ``{"board_class", "board_source", "vhdl_path"}`` dicts (U18 surfaces
   them in the file picker)

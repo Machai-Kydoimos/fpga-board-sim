@@ -34,7 +34,13 @@ class TestDraw:
         assert dlg._panel_rect is None and dlg._close_rect is None
         dlg._draw()
         assert dlg._panel_rect is not None
-        for rect in (dlg._close_rect, dlg._theme_rect, dlg._reset_rect, dlg._clear_rect):
+        for rect in (
+            dlg._close_rect,
+            dlg._theme_rect,
+            dlg._reset_rect,
+            dlg._waveform_rect,
+            dlg._clear_rect,
+        ):
             assert rect is not None
             assert dlg._panel_rect.contains(rect)  # every control sits inside the panel
 
@@ -135,6 +141,31 @@ class TestActions:
         dlg._click(dlg._clear_rect.center)
         assert not session_file.exists()
 
+    def test_waveform_cycle_off_to_vcd(self, screen, session_file):
+        """U10: default (off) → first click selects VCD; row stays open."""
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._waveform_rect is not None
+        assert dlg._click(dlg._waveform_rect.center) is False  # stays open
+        assert load_session()["waveform"] == "vcd"
+
+    def test_waveform_cycle_full_loop(self, screen, session_file):
+        """off → vcd → fst → off, writing each state in turn."""
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._waveform_rect is not None
+        for expected in ("vcd", "fst", "off"):
+            dlg._click(dlg._waveform_rect.center)
+            assert load_session()["waveform"] == expected
+
+    def test_waveform_cycle_starts_from_saved_value(self, screen, session_file):
+        update_session(waveform="vcd")
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._waveform_rect is not None
+        dlg._click(dlg._waveform_rect.center)
+        assert load_session()["waveform"] == "fst"
+
     def test_actions_preserve_other_session_keys(self, screen, session_file):
         session_file.write_text(
             json.dumps({"board_class": "KeepMe", "speed_factor": 5.0, "recent": [{"a": 1}]})
@@ -176,6 +207,21 @@ class TestValues:
     def test_theme_name_valid_saved_name_is_returned(self, screen):
         update_session(theme=THEME_NAMES[1])
         assert SettingsDialog(screen)._theme_name() == THEME_NAMES[1]
+
+    def test_waveform_mode_defaults_to_off(self, screen):
+        assert SettingsDialog(screen)._waveform_mode() == "off"
+
+    def test_waveform_mode_junk_falls_back_to_off(self, screen):
+        update_session(waveform="wiggle")
+        assert SettingsDialog(screen)._waveform_mode() == "off"
+
+    def test_waveform_mode_non_string_falls_back_to_off(self, screen):
+        update_session(waveform=42)
+        assert SettingsDialog(screen)._waveform_mode() == "off"
+
+    def test_waveform_mode_valid_saved_value_is_returned(self, screen):
+        update_session(waveform="fst")
+        assert SettingsDialog(screen)._waveform_mode() == "fst"
 
 
 # ── Gear trigger button ───────────────────────────────────────────────────────

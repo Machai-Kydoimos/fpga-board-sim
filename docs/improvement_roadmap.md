@@ -13,7 +13,7 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 40 test files (1364 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, three UI themes, performance heavily tuned (PR #31), v0.12.0 released (2026-07-08).
+The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 40 test files (1393 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, three UI themes, performance heavily tuned (PR #31), v0.12.0 released (2026-07-08).
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
@@ -87,14 +87,9 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** None (opt-in, so no regression to existing behavior).
 - **Done when:** a PWM-driven LED shows intermediate brightness proportional to duty cycle, and the default (1 sub-step) matches current performance.
 
-#### U10. Waveform capture
+#### U10. Waveform capture ✅
 
-- **Why:** Queued in memory (#5). VCD/FST output is the natural complement to live LED viewing for debugging.
-- **What:** Add `Waveform: off / VCD / FST` toggle in Settings (U5 ✅). On enable: pass `--wave=<path>` (NVC) or `--vcd=<path>` (GHDL `-r`). Show "View in GTKWave" hint after sim ends.
-- **Touches:** `src/fpga_sim/sim_bridge.py` (`launch_simulation`), Settings dialog.
-- **Effort:** M.
-- **Dependencies:** ~~**U5** (Settings dialog)~~ ✅ — shipped; the session's `waveform_enabled` key is reserved for this toggle.
-- **Done when:** enabling waveform capture produces a valid VCD/FST file viewable in GTKWave.
+- Shipped 2026-07-09 (PR #187, issue #186). New Settings **Waveform** row cycles **off / VCD / FST**; `launch_simulation(waveform=…)` writes a timestamped `~/.fpga_simulator/waveforms/<design>_<timestamp>.<ext>` (dir overridable via `FPGA_SIM_WAVEFORM_DIR`; GHDL `--vcd=`/`--fst=` after the toplevel, NVC `--wave=` + `--format=` before it) and prints a GTKWave hint on exit. Native dump orthogonal to cocotb, so `sim_testbench.py` untouched; the reserved `waveform_enabled` key became the tri-state `waveform`. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U27. User-defined themes (JSON) + example scheme pack
 
@@ -129,6 +124,11 @@ This document inventories all viable improvements and ranks them by impact.
 | U17 | Pre-allocate common font sizes at startup (eliminates LRU eviction churn) | `ui/constants.py` | XS |
 | U18 | Recent-files section in `VHDLFilePicker` (consumes `recent[]` from U5 ✅) | `ui/vhdl_picker.py` | S |
 | U19 | Metrics-enable checkbox surfacing `FPGA_SIM_METRICS` env var | `ui/sim_panel.py` or Settings dialog | XS |
+| U28 | Auto-emit a `<design>.gtkw` GTKWave save file beside the dump (preload clk/sw/btn/led/seg) — reuse the `.gtkw`-writer idiom in `scripts/capture_waveform.py` | `sim_bridge.py` (or new `waveform.py`) | S |
+| U29 | `FPGA_SIM_WAVEFORM` env to enable capture headlessly/CI + optional one-click auto-open in GTKWave after a run (reuse U4's platform opener) | `sim_bridge.py`, Settings dialog | S |
+| U30 | "Include memories" depth toggle — NVC `--dump-arrays` (GHDL dumps arrays already) so embedded-core RAM/ROM/registers appear in the trace | `sim_bridge.py` (`run_cmd`), Settings/env | S |
+
+**Note on U28–U30 (waveform-capture follow-ups):** all three extend **U10 ✅** and were raised 2026-07-09 during U10 review. U28 (a ready-made `.gtkw` view) and U29 (env-enable for CI/headless + one-click auto-open) are UX polish; **U30** makes capture useful for the mx65/t80 **embedded-core** designs, whose interesting state (RAM/ROM/registers) is exactly the nested arrays NVC skips by default (GHDL dumps them already). `scripts/capture_waveform.py` already contains a `.gtkw`-writer idiom U28 can reuse.
 
 **Note on U12:** `BoardDef.summary` already includes 7-seg digit count as of v0.5.0. Remaining work is the formatting change (dot separators, abbreviated labels).
 
@@ -312,7 +312,7 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 | ~~**U6** (Theme system)~~ ✅ | ~~**U5** (Settings dialog)~~ ✅ | Theme row now enabled and applies the choice live — both shipped |
 | ~~**U6** (Theme system)~~ ✅ | ~~**D15** (Color consolidation)~~ ✅ | `set_theme()` swaps the `Theme` object's contents in place — both shipped |
 | **U27** (User JSON themes) | ~~**U6** (Theme system)~~ ✅ | Registry + `set_theme()` shipped; U27 makes the registry dynamic |
-| **U10** (Waveform capture) | ~~**U5** (Settings dialog)~~ ✅ | Settings dialog shipped; `waveform_enabled` session key reserved |
+| ~~**U10** (Waveform capture)~~ ✅ | ~~**U5** (Settings dialog)~~ ✅ | Both shipped; the reserved key became the tri-state `waveform` |
 | **U18** (Recent files) | ~~**U5** (Settings dialog)~~ ✅ | `recent[]` is populated on every pick + launch |
 | **U19** (Metrics checkbox) | ~~**U5** (Settings dialog)~~ ✅ | Settings dialog shipped; `metrics_enabled` session key reserved |
 | **U20** (Verilog support) | ~~**D2** (Backend ABC)~~ ✅ | Third backend now overrides only `NAME` + command builders |
@@ -341,9 +341,9 @@ D1 (wrapper merge) ✅ — U21 and U22 are now unblocked
 D2 (backend ABC) ✅ — U20 unblocked; a third backend overrides only NAME + command builders
  └──> U20 (Verilog support)
 
-U5 (settings dialog) ✅ — U6 shipped; U10 / U18 / U19 remain unblocked
+U5 (settings dialog) ✅ — U6 ✅ + U10 ✅ shipped; U18 / U19 remain unblocked
  ├──> U6  (theme system) ✅     # also required D15 (below)
- ├──> U10 (waveform capture)
+ ├──> U10 (waveform capture) ✅
  ├──> U18 (recent files)
  └──> U19 (metrics checkbox)
 
@@ -356,7 +356,7 @@ U6 (theme system) ✅ — U27 is now unblocked
 D6a (screen-result enum) ✅ — D6b (ScreenController) ✅ — both shipped
 ```
 
-All other items (U0, U1, U2, U3, U4, U8, U9, U11-U17, U21-U25, D3-D5, D7-D16) are independently shippable.
+All other items (U0, U1, U2, U3, U4, U8, U9, U11-U17, U21-U25, U28-U30, D3-D5, D7-D16) are independently shippable.
 
 ---
 
@@ -370,10 +370,10 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **1b** | Small features + DRY foundations | ~~D4 Shared button helper~~ ✅ → ~~U13 Arrow/Page nav~~ ✅ → ~~U1 Help dialog~~ ✅ → ~~U2 Analysis spinner~~ ✅ · ~~D2 Backend base class~~ ✅ · ~~U26 Visual README~~ ✅ |
 | **2** | Foundations that unblock later UX | ~~D6a Screen-result enum~~ ✅ · ~~D6b ScreenController~~ ✅ · ~~D15 Color consolidation~~ ✅ · ~~U5 Settings dialog + extended session~~ ✅ · ~~D8 mypy strict~~ ✅ |
 | **3** | Visible polish | ~~U3 Tooltips~~ ✅ · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · ~~U7 In-sim toolbar~~ ✅ |
-| **4** | Feature breadth | U8 Splash · U9 PWM brightness · U10 Waveform · U23 Dirty-flag redraw · U27 User JSON themes |
+| **4** | Feature breadth | U8 Splash · U9 PWM brightness · ~~U10 Waveform~~ ✅ · U23 Dirty-flag redraw · U27 User JSON themes |
 | **Long-horizon** | — | U20 Verilog support · U21 Board-native VHDL · U22 7-seg physical mux · U24 / U25 Performance deep-dive |
 
-**Status (2026-07-08).** Sprints 1a, 1b, **2, and 3 are all fully shipped**. Sprint 3 (milestone v0.12.0) delivered **U6 ✅** (Theme system, PR #178), **U4 ✅** (Contextual errors, PR #181), **U7 ✅** (In-sim toolbar, PR #182), and **U3 ✅** (Tooltips, PR #184) — with the **D3 ✅** UIComponent-base refactor (PR #183) landed first as prep for U3. Milestone v0.12.0 is complete; **Sprint 4 is next**. The phases otherwise remain correctly ordered.
+**Status (2026-07-09).** Sprints 1a, 1b, **2, and 3 are fully shipped**, and **Sprint 4 (milestone v0.13.0) is now in progress** — its first card **U10 ✅** (Waveform capture, PR #187, issue #186) has landed; **U8 / U9 / U23 / U27** remain. Sprint 3 (milestone v0.12.0) delivered **U6 ✅** (Theme system, PR #178), **U4 ✅** (Contextual errors, PR #181), **U7 ✅** (In-sim toolbar, PR #182), and **U3 ✅** (Tooltips, PR #184) — with the **D3 ✅** UIComponent-base refactor (PR #183) landed first as prep for U3. The phases otherwise remain correctly ordered.
 
 ---
 
@@ -442,7 +442,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (1364 tests across 40 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip, UIComponent base contract, component hover tooltips). All sprints must keep this green.
+1. **Tests** — `uv run pytest` (1393 tests across 40 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip, UIComponent base contract, component hover tooltips). All sprints must keep this green.
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy .` (`strict = true` since D8 ✅).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23). Baseline: 37.7 fps, 0.0036x real-time on Arty A7-35 (from `memory/project_sim_performance.md`).
