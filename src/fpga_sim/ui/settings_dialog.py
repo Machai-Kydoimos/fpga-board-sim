@@ -13,6 +13,8 @@ persisted session file (:mod:`fpga_sim.session_config`):
   passes the choice to the sim run subprocess, which writes a timestamped
   ``~/.fpga_simulator/waveforms/<design>_<timestamp>.<ext>`` (or under
   ``$FPGA_SIM_WAVEFORM_DIR``) for opening in GTKWave.
+* **Auto-open** — after a capture run, launch a waveform viewer on the dump
+  (the ``$FPGA_SIM_WAVEFORM_VIEWER`` command, default GTKWave); off by default.
 * **Recent files** — how many (board, VHDL) pairs are remembered (U18
   surfaces them in the file picker), with a [Clear].
 
@@ -96,6 +98,7 @@ class SettingsDialog:
         self._theme_rect: pygame.Rect | None = None
         self._reset_rect: pygame.Rect | None = None
         self._waveform_rect: pygame.Rect | None = None
+        self._autoopen_rect: pygame.Rect | None = None
         self._clear_rect: pygame.Rect | None = None
 
     # ── Session-derived row values ────────────────────────────────────────────
@@ -117,6 +120,10 @@ class SettingsDialog:
     def _waveform_mode(self) -> str:
         mode = self._session.get("waveform", "off")
         return mode if isinstance(mode, str) and mode in _WAVEFORM_MODES else "off"
+
+    def _waveform_open(self) -> bool:
+        """Whether auto-open-after-run is on (strict: only a real ``true`` counts)."""
+        return self._session.get("waveform_open") is True
 
     def _can_cycle_theme(self) -> bool:
         return len(THEME_NAMES) > 1
@@ -175,6 +182,10 @@ class SettingsDialog:
             update_session(waveform=_WAVEFORM_MODES[(idx + 1) % len(_WAVEFORM_MODES)])
             self._session = load_session()
             return False
+        if self._autoopen_rect and self._autoopen_rect.collidepoint(pos):
+            update_session(waveform_open=not self._waveform_open())
+            self._session = load_session()
+            return False
         return bool(self._panel_rect and not self._panel_rect.collidepoint(pos))
 
     # ── Drawing ───────────────────────────────────────────────────────────────
@@ -197,6 +208,7 @@ class SettingsDialog:
             ("Theme", THEME_LABELS.get(theme_name, theme_name), "Switch", self._can_cycle_theme()),
             ("Sim speed", f"{self._speed():.4g}x", "Reset", self._can_reset_speed()),
             ("Waveform", _WAVEFORM_LABELS[self._waveform_mode()], "Change", True),
+            ("Auto-open", "On" if self._waveform_open() else "Off", "Toggle", True),
             (
                 "Recent files",
                 f"{self._recent_count()} remembered",
@@ -254,7 +266,13 @@ class SettingsDialog:
             )
             action_rects.append(rect)
             y += row_h + gap
-        self._theme_rect, self._reset_rect, self._waveform_rect, self._clear_rect = action_rects
+        (
+            self._theme_rect,
+            self._reset_rect,
+            self._waveform_rect,
+            self._autoopen_rect,
+            self._clear_rect,
+        ) = action_rects
 
         # Hint line about the automatically-persisted state.
         self.screen.blit(hint_f.render(hint, True, THEME.dim_text), (px + pad, y))

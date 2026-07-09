@@ -696,6 +696,21 @@ def test_simulate_waveform_absent_forwards_none(headless_pygame, monkeypatch, tm
     assert launches[0]["waveform"] is None
 
 
+def test_simulate_passes_waveform_open_to_launch(headless_pygame, monkeypatch, tmp_path):
+    """U29: the persisted auto-open flag is read at launch and forwarded."""
+    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
+    monkeypatch.setattr(controller_mod, "load_session", lambda: {"waveform_open": True})
+    ctrl.on_simulate()
+    assert launches[0]["waveform_open"] is True
+
+
+def test_simulate_waveform_open_absent_forwards_none(headless_pygame, monkeypatch, tmp_path):
+    """No saved waveform_open key → None at launch (launch_simulation defaults it off)."""
+    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
+    ctrl.on_simulate()
+    assert launches[0]["waveform_open"] is None
+
+
 def test_simulate_junk_saved_speed_falls_back_to_default(headless_pygame, monkeypatch, tmp_path):
     ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
     monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": "fast"})

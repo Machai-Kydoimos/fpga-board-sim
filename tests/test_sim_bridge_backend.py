@@ -9,14 +9,18 @@ import pytest
 
 from fpga_sim.sim_bridge import (
     _NVC_HEAP,
+    DEFAULT_VIEWER,
     Simulator,
     WaveConfig,
     _backend,
+    _env_flag,
     _GHDLBackend,
     _gtkw_path,
     _normalize_wave,
     _NVCBackend,
+    _open_waveform,
     _SimBackend,
+    _viewer_argv,
     _waveform_path,
     _write_gtkw,
 )
@@ -313,3 +317,86 @@ def test_write_gtkw_skips_ports_with_missing_or_bad_generics(tmp_path):
     assert "sim_wrapper.clk" in text
     assert "sim_wrapper.sw" not in text and "sim_wrapper.btn" not in text
     assert "sim_wrapper.led" not in text  # garbage width → skipped, no "led[-1:0]"
+
+
+# ── auto-open viewer knob (U29) ───────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("1", True),
+        ("true", True),
+        ("YES", True),
+        ("  on  ", True),
+        ("0", False),
+        ("false", False),
+        ("no", False),
+        ("OFF", False),
+        ("maybe", None),
+        ("2", None),
+    ],
+)
+def test_env_flag_parses_values(monkeypatch, value, expected):
+    """1/true/yes/on → True, 0/false/no/off → False (case/space-insensitive), else None."""
+    monkeypatch.setenv("FPGA_SIM_TESTFLAG", value)
+    assert _env_flag("FPGA_SIM_TESTFLAG") is expected
+
+
+def test_env_flag_unset_is_none(monkeypatch):
+    monkeypatch.delenv("FPGA_SIM_TESTFLAG", raising=False)
+    assert _env_flag("FPGA_SIM_TESTFLAG") is None
+
+
+def test_viewer_argv_default_uses_gtkw():
+    """The default template opens GTKWave on the U28 save file."""
+    dump, gtkw = Path("/w/b.vcd"), Path("/w/b.gtkw")
+    assert _viewer_argv(DEFAULT_VIEWER, dump, gtkw) == ["gtkwave", str(gtkw)]
+
+
+def test_viewer_argv_custom_dump_placeholder():
+    dump, gtkw = Path("/w/b.fst"), Path("/w/b.gtkw")
+    assert _viewer_argv("surfer {dump}", dump, gtkw) == ["surfer", str(dump)]
+
+
+def test_viewer_argv_bare_command_appends_dump():
+    """A template naming no placeholder gets {dump} appended (bare command works)."""
+    dump, gtkw = Path("/w/b.vcd"), Path("/w/b.gtkw")
+    assert _viewer_argv("surfer", dump, gtkw) == ["surfer", str(dump)]
+
+
+def test_viewer_argv_keeps_quoted_flags():
+    dump, gtkw = Path("/w/b.vcd"), Path("/w/b.gtkw")
+    argv = _viewer_argv("gtkwave --rcvar 'time_dimension u' {gtkw}", dump, gtkw)
+    assert argv == ["gtkwave", "--rcvar", "time_dimension u", str(gtkw)]
+
+
+def test_viewer_argv_spaced_path_stays_one_token():
+    """Substitution happens after shlex.split, so a path with spaces stays one arg."""
+    dump, gtkw = Path("/a b/x.vcd"), Path("/a b/x.gtkw")
+    # str(dump) keeps this portable (Windows renders backslashes); the point is that
+    # the spaced path stays a single token — a split would make this a 3-element list.
+    assert _viewer_argv("surfer {dump}", dump, gtkw) == ["surfer", str(dump)]
+
+
+def test_open_waveform_launches_configured_viewer(monkeypatch, tmp_path):
+    """When the viewer's program is on PATH, launch it with the built argv."""
+    calls: list[list[str]] = []
+    monkeypatch.setenv("FPGA_SIM_WAVEFORM_VIEWER", "surfer {dump}")
+    monkeypatch.setattr("fpga_sim.sim_bridge.shutil.which", lambda exe: "/usr/bin/" + exe)
+    monkeypatch.setattr(
+        "fpga_sim.sim_bridge.subprocess.Popen", lambda argv, **kw: calls.append(argv)
+    )
+    dump, gtkw = tmp_path / "b.vcd", tmp_path / "b.gtkw"
+    _open_waveform(dump, gtkw)
+    assert calls == [["surfer", str(dump)]]
+
+
+def test_open_waveform_falls_back_when_viewer_missing(monkeypatch, tmp_path):
+    """Program not on PATH → hand the raw dump to the OS default handler."""
+    opened: list[Path] = []
+    monkeypatch.setattr("fpga_sim.sim_bridge.shutil.which", lambda exe: None)
+    monkeypatch.setattr("fpga_sim.sim_bridge.open_with_default_app", opened.append)
+    dump, gtkw = tmp_path / "b.vcd", tmp_path / "b.gtkw"
+    _open_waveform(dump, gtkw)
+    assert opened == [dump]

@@ -22,6 +22,24 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 from fpga_sim.sim_bridge import _find_ghdl, _NVCBackend  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def _isolate_waveform_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep ``FPGA_SIM_WAVEFORM*`` vars from a developer's shell out of every test.
+
+    ``launch_simulation`` and the waveform helpers read these; a value exported
+    in the dev/CI shell would silently flip capture, auto-open, or the output
+    dir under a test.  Tests that exercise a var set it explicitly via the same
+    (function-scoped) monkeypatch, which runs after this and wins.
+    """
+    for var in (
+        "FPGA_SIM_WAVEFORM",
+        "FPGA_SIM_WAVEFORM_OPEN",
+        "FPGA_SIM_WAVEFORM_VIEWER",
+        "FPGA_SIM_WAVEFORM_DIR",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+
 @pytest.fixture(scope="session")
 def headless_pygame() -> Iterator[ModuleType]:
     """Initialize pygame once per session with the dummy SDL drivers.
