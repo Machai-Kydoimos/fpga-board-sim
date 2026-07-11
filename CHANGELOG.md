@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   default in every format. GHDL's FST/GHW output already includes them, so the
   toggle is a no-op under GHDL — with the caveat that GHDL's VCD cannot represent
   a memory at all, so choose FST to inspect one. Off by default, since arrays add
-  significant dump size (#191)
+  significant dump size (#191, #196)
 
 ### Fixed
 
