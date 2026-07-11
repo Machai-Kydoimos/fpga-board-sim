@@ -1,0 +1,198 @@
+# Port-convention source registry — Machdyne
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; researched inline via GitHub API (batch b06).
+
+[[board]]
+name = "Machdyne Konfekt"
+files = ["litex-boards/machdyne_konfekt.json"]
+maker = "Machdyne"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11 (batch b06); the machdyne org keeps one repo per board with the canonical constraint file at a stable path."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/machdyne/konfekt/main/konfekt_v0.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official machdyne/konfekt org repo; ECP5 LPF LOCATE/IOBUF syntax"
+  clk = "clk48"
+  leds = "led_r, led_g, led_b"
+  buttons = "usr_btn"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk48\" SITE \"A7\";", "LOCATE COMP \"usr_btn\" SITE \"K1\";", "LOCATE COMP \"led_r\" SITE \"G1\";", "LOCATE COMP \"led_g\" SITE \"E1\";"]
+
+[[board]]
+name = "Machdyne Kopflos"
+files = ["litex-boards/machdyne_kopflos.json"]
+maker = "Machdyne"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11 (batch b06); the machdyne org keeps one repo per board with the canonical constraint file at a stable path."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/machdyne/kopflos/main/kopflos_v0.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official machdyne/kopflos org repo; ECP5 LPF LOCATE/IOBUF syntax"
+  clk = "CLK_48"
+  leds = "LED_R, LED_G, LED_B"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"CLK_48\" SITE \"A7\";", "LOCATE COMP \"LED_R\" SITE \"G1\";", "LOCATE COMP \"LED_G\" SITE \"C1\";", "LOCATE COMP \"LED_B\" SITE \"E1\";"]
+
+[[board]]
+name = "Machdyne Lakritz"
+files = ["litex-boards/machdyne_lakritz.json"]
+maker = "Machdyne"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11 (batch b06); the machdyne org keeps one repo per board with the canonical constraint file at a stable path."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/machdyne/lakritz/main/lakritz_v0.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official machdyne/lakritz org repo; ECP5 LPF LOCATE/IOBUF syntax"
+  clk = "CLK_48"
+  leds = "LED"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"CLK_48\" SITE \"A7\";", "LOCATE COMP \"LED\" SITE \"A2\";"]
+
+[[board]]
+name = "Machdyne Minze"
+files = ["litex-boards/machdyne_minze.json"]
+maker = "Machdyne"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11 (batch b06); the machdyne org keeps one repo per board with the canonical constraint file at a stable path."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/machdyne/minze/main/minze_v1.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official machdyne/minze org repo; ECP5 LPF LOCATE/IOBUF syntax"
+  clk = "CLK_48"
+  leds = "LED_A"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"CLK_48\" SITE \"A7\";", "LOCATE COMP \"LED_A\" SITE \"A2\";"]
+
+[[board]]
+name = "Machdyne Noir"
+files = ["litex-boards/machdyne_noir.json"]
+maker = "Machdyne"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11 (batch b06); the machdyne org keeps one repo per board with the canonical constraint file at a stable path."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/machdyne/noir/main/noir_v0.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official machdyne/noir org repo; ECP5 LPF LOCATE/IOBUF syntax"
+  clk = "CLK_48"
+  leds = "LED_R, LED_G, LED_B"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"CLK_48\" SITE \"A7\";", "LOCATE COMP \"LED_R\" SITE \"G1\";", "LOCATE COMP \"LED_G\" SITE \"C1\";", "LOCATE COMP \"LED_B\" SITE \"E1\";"]
+
+[[board]]
+name = "Machdyne Schoko"
+files = ["litex-boards/machdyne_schoko.json"]
+maker = "Machdyne"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11 (batch b06); the machdyne org keeps one repo per board with the canonical constraint file at a stable path."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/machdyne/schoko/main/schoko_v1.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official machdyne/schoko org repo; ECP5 LPF LOCATE/IOBUF syntax"
+  clk = "CLK_48"
+  leds = "LED_R, LED_G, LED_B"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"CLK_48\" SITE \"A7\";", "LOCATE COMP \"LED_R\" SITE \"B1\";", "LOCATE COMP \"LED_G\" SITE \"C1\";", "LOCATE COMP \"LED_B\" SITE \"D1\";"]
+
+[[board]]
+name = "Machdyne Vanille"
+files = ["litex-boards/machdyne_vanille.json"]
+maker = "Machdyne"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11 (batch b06); the machdyne org keeps one repo per board with the canonical constraint file at a stable path."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/machdyne/vanille/main/vanille_v2.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official machdyne/vanille org repo; ECP5 LPF LOCATE/IOBUF syntax"
+  clk = "clk48"
+  leds = "led"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk48\" SITE \"128\";", "LOCATE COMP \"led\" SITE \"52\";"]
+
+[[board]]
+name = "Machdyne Kolsch"
+files = ["litex-boards/machdyne_kolsch.json"]
+maker = "Machdyne"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11 (batch b06); the machdyne org keeps one repo per board with the canonical constraint file at a stable path."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "CCF"
+  url = "https://raw.githubusercontent.com/machdyne/kolsch/main/rtl/count/src/kolsch_v2.ccf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official machdyne/kolsch org repo; GateMate CCF pin syntax"
+  clk = "clk"
+  leds = "led"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["Pin_in   \"clk\"  Loc = \"IO_SB_A8\" | SCHMITT_TRIGGER=true;", "Pin_out  \"led\"  Loc = \"IO_NB_B4\";"]
+

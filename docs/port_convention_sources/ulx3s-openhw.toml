@@ -1,0 +1,189 @@
+# Port-convention source registry — ULX3S / open-hardware ECP5
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable consolidation.
+
+[[board]]
+name = "ULX3 S (all variants 12F-85F)"
+files = ["amaranth-boards/ulx3_s-12_f.json", "amaranth-boards/ulx3_s-25_f.json", "amaranth-boards/ulx3_s-45_f.json", "amaranth-boards/ulx3_s-85_f.json", "litex-boards/radiona_ulx3s.json"]
+maker = "Radiona"
+status = "verified"
+notes = "All four size variants (12F, 25F, 45F, 85F) share identical pinout despite different device capacities. Two sources provide identical pin information (amaranth-boards and litex-boards). Port names differ slightly between sources (generic indices vs named buttons). | inline fix 2026-07-11: canonical ulx3s_v20.lpf fetched via GitHub API (previous sources were own-upstream and dropped)"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/emard/ulx3s/master/doc/constraints/ulx3s_v20.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "canonical emard/ulx3s repo; one v20 LPF covers the 12F/25F/45F/85F variants"
+  clk = "clk_25mhz"
+  leds = "led[7:0]"
+  buttons = "btn[6:0] (btn[0]=BTN_PWRn, inverted logic per LPF comment; FIRE1/2 + UP/DOWN/LEFT/RIGHT)"
+  switches = "sw[3:0] (SW1-SW4)"
+  seven_seg = "none"
+  active_low = "btn[0] BTN_PWRn documented as inverted logic in the LPF comment; others not stated"
+  evidence = ["LOCATE COMP \"clk_25mhz\" SITE \"G2\";", "LOCATE COMP \"led[7]\" SITE \"H3\";", "LOCATE COMP \"btn[0]\" SITE \"D6\";  # BTN_PWRn (inverted logic)", "LOCATE COMP \"sw[0]\" SITE \"E8\"; # SW1"]
+
+[[board]]
+name = "Trellisboard"
+files = ["litex-boards/trellisboard.json"]
+maker = "David Shah (daveshah1)"
+status = "verified"
+notes = "Official Lattice ECP5-UM5G development board. Official LPF file from daveshah1/trellisboard repository matches litex-boards platform definition with identical pin assignments. Includes DIP switches (not captured in board JSON) and multiple clock options."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/daveshah1/trellisboard/master/gateware/simple/trellisboard.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "LPF for ECP5 gateware (LFE5UM5G-85F-8BG756C per litex definition)"
+  clk = "clk_12 (B3, LVCMOS33); also references clk100 (B29, LVDS) and clkref (E17, LVCMOS33) elsewhere in codebase"
+  leds = "12x led [C26, D26, A28, A29, A30, AK29, AH32, AH30, AH28, AG30, AG29, AK30]"
+  buttons = "4x btn [Y32, W31, AD30, AD29] (SSTL135_I)"
+  switches = "8x dip_sw [unspecified pins in LPF]"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["CLOCK: clk_12 = B3, IO_TYPE=LVCMOS33", "LED: led[0..11] pins listed with LVCMOS33, PULLMODE=NONE", "BUTTON: btn[0..3] = Y32, W31, AD30, AD29, IO_TYPE=SSTL135_I"]
+
+[[board]]
+name = "Radiona ULX4M LD V2"
+files = ["litex-boards/radiona_ulx4m_ld_v2.json"]
+maker = "Radiona"
+status = "verified"
+notes = "Community litex-boards platform definition only; no official constraint file found in radiona GitHub (organization shows no public repos). Pin assignments plausible for ECP5UM5G-85F-8BG381C. Recommend verifying against Radiona's internal documentation or project wiki. | inline fix 2026-07-11: official prototype LPF (v002) fetched \u2014 shows led[3:0]/btn[1:0]; the LD/LS V2 production boards may add ports (roster expects 8 LEDs); revision caveat applies"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/intergalaktik/ulx4m-ld/main/doc/constraints/prototype/ulx4m_v002.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "intergalaktik org (ULX4M maker, with Radiona); constraints under doc/constraints/prototype/"
+  clk = "clk_25mhz"
+  leds = "led[3:0]"
+  buttons = "btn[1:0]"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk_25mhz\" SITE \"G2\";", "LOCATE COMP \"led[3]\" SITE \"C1\";", "LOCATE COMP \"btn[0]\" SITE \"C3\";"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "LPF"
+  url = "https://github.com/lawrie/ulx4m_examples/blob/master/ulx4m_v002.lpf"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "path confirmed via GitHub API; Lawrie Griffiths' ULX4M examples"
+  clk = "not extracted"
+  leds = "not extracted"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+
+[[board]]
+name = "Radiona ULX4M LS V2"
+files = ["litex-boards/radiona_ulx4m_ls_v2.json"]
+maker = "Radiona"
+status = "verified"
+notes = "Community litex-boards platform definition only; no official constraint file found in radiona GitHub. Almost identical to ULX4M LD V2 except switches on different pins (L18, K18 vs C13, B13). Recommend official verification. | inline fix 2026-07-11: shares the official ULX4M prototype LPF; LS/LD differ only in switch pins per earlier research \u2014 verify per-variant when the production LPF appears"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/intergalaktik/ulx4m-ld/main/doc/constraints/prototype/ulx4m_v002.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "intergalaktik org (ULX4M maker); same constraint set as LD (variants differ in a few pins per previous research)"
+  clk = "clk_25mhz"
+  leds = "led[3:0]"
+  buttons = "btn[1:0]"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk_25mhz\" SITE \"G2\";", "LOCATE COMP \"led[0]\" SITE \"B2\";"]
+
+[[board]]
+name = "Icepi Zero"
+files = ["litex-boards/icepi_zero.json"]
+maker = "cheyao"
+status = "verified"
+notes = "Official LPF file from cheyao/icepi-zero repository (v1.3 variant) matches litex-boards platform definition exactly. Pin assignments verified against official constraint file."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/cheyao/icepi-zero/master/gateware/v1.3/icepi-zero-v1_3.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "LFE5U-25F-6BG256C (inferred from device in litex; not explicitly in LPF but directory structure v1.3 matches)"
+  clk = "clk (M1, LVCMOS33, 50MHz)"
+  leds = "5x led [E13, D14, E12, C13, D13] (LVCMOS33, pull-down)"
+  buttons = "2x button [C4 (pull-up), C5 (pull-up)]"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["CLOCK: clk, Site M1, IO_TYPE=LVCMOS33, Frequency 50 MHz", "LED: led[0..4] with pull-down and 4mA drive", "BUTTON: button[0..1], pull-up configuration"]
+
+[[board]]
+name = "Logicbone (45F and 85F variants)"
+files = ["amaranth-boards/logicbone.json", "amaranth-boards/logicbone85_f.json", "litex-boards/logicbone.json"]
+maker = "Owen Kirby (oskirby)"
+status = "candidate"
+notes = "Two device variants (LFE5UM5G-45F and LFE5UM5G-85F) share identical pinout. Verified in amaranth-boards (two platform classes). oskirby/logicbone GitHub repository is hardware-focused; no official FPGA constraint file publicly available, but amaranth-boards provides authoritative platform definition. | inline check 2026-07-11: official repo tree holds no constraint file (hardware-only); gateware constraints likely live elsewhere \u2014 candidate lead only"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/oskirby/logicbone"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official oskirby/logicbone repo exists but no .lpf/.pcf/.pdc found in its master tree via GitHub API"
+  clk = "not extracted"
+  leds = "not extracted"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+
+[[board]]
+name = "Hackaday Hadbadge (2019 badge)"
+files = ["litex-boards/hackaday_hadbadge.json"]
+maker = "Spritetm (Spritetm/hadbadge2019_fpgasoc)"
+status = "verified"
+notes = "Official LPF file from Spritetm/hadbadge2019_fpgasoc repository (had19_prod.lpf) verified. LED signals multiplexed via 10 cathodes + 3 anodes (LED matrix display). Button signals form an 8-bit button array (keypad-style: up/down/left/right/A/B/select/start). Clock is 8MHz LVCMOS33."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/Spritetm/hadbadge2019_fpgasoc/master/soc/had19_prod.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "LFE5U-45F-8CABGA381 (inferred from litex definition; device line not explicitly in LPF)"
+  clk = "clk (U18, LVCMOS33)"
+  leds = "10x ledc (cathodes) [E3, D3, C3, C4, C2, B1, K20, K19, B20, B19] + 3x leda (anodes) [P19, L18, K18] (LVCMOS33, multiplexed matrix)"
+  buttons = "8x btn (keypad) [F1 (up), C1 (down), G2 (left), F2 (right), E2 (B), D1 (A), D2 (select), E1 (start)] (LVCMOS33, pull-up)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["CLOCK: clk, Site U18, IO_TYPE=LVCMOS33", "LED cathodes: IOBUF ledc[0..9] on pins E3, D3, C3, C4, C2, B1, K20, K19, B20, B19", "LED anodes: IOBUF leda[0..2] on pins P19, L18, K18", "BUTTON: btn[0..7] array with pull-up resistors, pins F1, C1, G2, F2, E2, D1, D2, E1"]
+

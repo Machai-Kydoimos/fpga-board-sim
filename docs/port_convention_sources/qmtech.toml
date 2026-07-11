@@ -1,0 +1,419 @@
+# Port-convention source registry — QMTech
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable consolidation.
+
+[[board]]
+name = "Qmtech Cyclone10 Starterkit"
+files = ["litex-boards/qmtech_cyclone10_starterkit.json"]
+maker = "QMTech"
+status = "candidate"
+notes = "Official repository exists: CYCLONE_10_STARTER_KIT (github.com/ChinaQMTECH/CYCLONE_10_STARTER_KIT, 12 stars, 3 forks). Example projects in ZIP archives (Test01-04) confirmed present but constraint files not extractable via WebFetch. Device: Cyclone 10 (exact model unknown). No standalone QSF/constraint files accessible outside ZIPs."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/ChinaQMTECH/CYCLONE_10_STARTER_KIT"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repository name indicates Cyclone 10 family; exact device model not verified from accessible sources"
+  clk = "unknown (in ZIP archives)"
+  leds = "unknown (in ZIP archives, roster indicates 6)"
+  buttons = "unknown (in ZIP archives, roster indicates 2)"
+  switches = "unknown (in ZIP archives)"
+  seven_seg = "none"
+  active_low = "unknown (not visible in accessible sources)"
+
+[[board]]
+name = "Qmtech 5cefa5"
+files = ["litex-boards/qmtech_5cefa5.json"]
+maker = "QMTech"
+status = "none-found"
+notes = "No dedicated QMTech repository found for 5cefa5 variant. Search queries: 'QMTECH 5cefa5 github', 'ChinaQMTECH Cyclone V 5cefa5', '5cefa5 constraint'. 36 ChinaQMTECH repositories scanned; device variant not located. May be internal SKU or regional variant without public documentation."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "OTHER"
+  url = "https://github.com/ChinaQMTECH (36 repositories; 5cefa5 variant not found)"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "No device evidence found"
+  clk = "absent from this file"
+  leds = "none"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+
+[[board]]
+name = "Qmtech Ep4cgx150"
+files = ["litex-boards/qmtech_ep4cgx150.json"]
+maker = "QMTech"
+status = "candidate"
+notes = "Official repository: EP4CGX150DF27_CORE_BOARD (github.com/ChinaQMTECH/EP4CGX150DF27_CORE_BOARD, 20 stars, 11 forks). Device EP4CGX150DF27I7 confirmed in roster. Example projects in ZIP archives (Project01, Project04 visible) confirmed present but constraint files not extractable via WebFetch."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/ChinaQMTECH/EP4CGX150DF27_CORE_BOARD"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repository name matches device: EP4CGX150DF27; confirmed in roster as EP4CGX150DF27I7"
+  clk = "unknown (in ZIP archives)"
+  leds = "unknown (in ZIP archives, roster indicates 2)"
+  buttons = "unknown (in ZIP archives, roster indicates 2)"
+  switches = "unknown (in ZIP archives)"
+  seven_seg = "none"
+  active_low = "unknown (not visible in accessible sources)"
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://github.com/ChinaQMTECH/EP4CGX150DF27_CORE_BOARD/raw/master/QMTECH_CycloneIV_EP4CGX150GX_UserManual-%28Quartus15.1%29-V01.pdf"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "PDF manual title indicates device"
+  clk = "unknown (binary PDF, not extractable via WebFetch)"
+  leds = "unknown"
+  buttons = "unknown"
+  switches = "unknown"
+  seven_seg = "none"
+  active_low = "unknown"
+
+[[board]]
+name = "Qmtech Xc7k325t"
+files = ["litex-boards/qmtech_xc7k325t.json"]
+maker = "QMTech"
+status = "candidate"
+notes = "Official repository: QMTECH_XC7K325T_CORE_BOARD (github.com/ChinaQMTECH/QMTECH_XC7K325T_CORE_BOARD, 42 stars, 22 forks). Example projects (Test01_led_key.zip, Test04 DDR3) confirmed in Software directory; constraint files in ZIPs not extractable via WebFetch. Vivado manuals available but binary PDFs."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/ChinaQMTECH/QMTECH_XC7K325T_CORE_BOARD"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repository name matches device: XC7K325T"
+  clk = "unknown (in ZIP archives)"
+  leds = "unknown (in ZIP archives, roster indicates 2)"
+  buttons = "unknown (in ZIP archives, roster indicates 2)"
+  switches = "unknown (in ZIP archives)"
+  seven_seg = "none"
+  active_low = "unknown (not visible in accessible sources)"
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://github.com/ChinaQMTECH/QMTECH_XC7K325T_CORE_BOARD/raw/master/QMTECH_Kintex-7_XC7K325T_Core_Board_User_Manual%28Vivado2018.3%29-V01.pdf"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "PDF manual title indicates Kintex-7 XC7K325T"
+  clk = "unknown (binary PDF)"
+  leds = "unknown"
+  buttons = "unknown"
+  switches = "unknown"
+  seven_seg = "none"
+  active_low = "unknown"
+
+[[board]]
+name = "Qmtech 10cl006"
+files = ["litex-boards/qmtech_10cl006.json"]
+maker = "QMTech"
+status = "candidate"
+notes = "Official repository: QMTECH_Cyclone10_10CL006_025 (github.com/ChinaQMTECH/QMTECH_Cyclone10_10CL006_025, 22 stars, 13 forks). Contains 10CL006YU256 subdirectory with example projects (Test01-04 ZIPs) confirmed present; constraint files in archives not extractable via WebFetch. Device: 10CL006YU256 variant."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/ChinaQMTECH/QMTECH_Cyclone10_10CL006_025"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repository path 10CL006YU256 matches device naming; 10CL006 in roster"
+  clk = "unknown (in ZIP archives)"
+  leds = "unknown (in ZIP archives, roster indicates 1)"
+  buttons = "unknown (in ZIP archives, roster indicates 2)"
+  switches = "unknown (in ZIP archives)"
+  seven_seg = "none"
+  active_low = "unknown (not visible in accessible sources)"
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://github.com/ChinaQMTECH/QMTECH_Cyclone10_10CL006_025/raw/master/10CL006YU256/QMTECH_Cyclone10_10CL006_UserManual-%28Quartus17.0%29-V02.pdf"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "PDF filename indicates Cyclone10 10CL006"
+  clk = "unknown (binary PDF)"
+  leds = "unknown"
+  buttons = "unknown"
+  switches = "unknown"
+  seven_seg = "none"
+  active_low = "unknown"
+
+[[board]]
+name = "Qmtech 5cefa2"
+files = ["litex-boards/qmtech_5cefa2.json"]
+maker = "QMTech"
+status = "none-found"
+notes = "No dedicated QMTech repository found for 5cefa2 variant. Search queries: 'QMTECH 5cefa2 github', 'ChinaQMTECH Cyclone V 5cefa2', '5cefa2 constraint'. Scanned ChinaQMTECH org (36 repos); device variant not located. Possibly internal SKU or regional variant without public documentation."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "OTHER"
+  url = "https://github.com/ChinaQMTECH (36 repositories; 5cefa2 variant not found)"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "No device evidence found"
+  clk = "absent from this file"
+  leds = "none"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+
+[[board]]
+name = "Qmtech Ep4cex5"
+files = ["litex-boards/qmtech_ep4cex5.json"]
+maker = "QMTech"
+status = "candidate"
+notes = "Maps to official repository CYCLONE_IV_EP4CE15 (github.com/ChinaQMTECH/CYCLONE_IV_EP4CE15, 30 stars, 14 forks). Roster device: EP4CE15F23C8. Example projects (Project01-09 ZIPs) confirmed in Software directory; constraint files in archives not extractable via WebFetch."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/ChinaQMTECH/CYCLONE_IV_EP4CE15"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repository name indicates Cyclone IV EP4CE15 family; roster lists EP4CE15F23C8 variant"
+  clk = "unknown (in ZIP archives)"
+  leds = "unknown (in ZIP archives, roster indicates 1)"
+  buttons = "unknown (in ZIP archives, roster indicates 2)"
+  switches = "unknown (in ZIP archives)"
+  seven_seg = "none"
+  active_low = "unknown (not visible in accessible sources)"
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://github.com/ChinaQMTECH/CYCLONE_IV_EP4CE15/raw/master/QMTECH_CycloneIV_EP4CE15_UserManual-%28Quartus15.1%29-V03.pdf"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "PDF manual for Cyclone IV EP4CE15"
+  clk = "unknown (binary PDF)"
+  leds = "unknown"
+  buttons = "unknown"
+  switches = "unknown"
+  seven_seg = "none"
+  active_low = "unknown"
+
+[[board]]
+name = "Qmtech Kintex7 Devboard"
+files = ["litex-boards/qmtech_kintex7_devboard.json"]
+maker = "QMTech"
+status = "candidate"
+notes = "Likely maps to QMTECH_XC7K325T_CORE_BOARD or similar Kintex-7 variant. No dedicated 'Kintex7 Devboard' repository name found, but XC7K325T is closest match (42 stars, 22 forks). Example projects confirmed in Software directory; constraint files in ZIPs not accessible."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/ChinaQMTECH/QMTECH_XC7K325T_CORE_BOARD"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Kintex-7 family; XC7K325T is Kintex-7; exact match to 'Kintex7 Devboard' not confirmed by repository name"
+  clk = "unknown (in ZIP archives)"
+  leds = "unknown (in ZIP archives, roster indicates 3)"
+  buttons = "unknown (in ZIP archives, roster indicates 0)"
+  switches = "unknown (in ZIP archives)"
+  seven_seg = "none"
+  active_low = "unknown (not visible in accessible sources)"
+
+[[board]]
+name = "Qmtech Artix7 Fbg484"
+files = ["litex-boards/qmtech_artix7_fbg484.json"]
+maker = "QMTech"
+status = "none-found"
+notes = "No dedicated QMTech repository found for Artix-7 FBG484 package variant. Search queries: 'ChinaQMTECH Artix7 FBG484', 'QMTECH_XC7A*_FBG484', 'Artix7 fbg484'. Package variant 'FBG484' not matched in scanned ChinaQMTECH repositories (36 total). QMTech Artix boards use different package names."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "OTHER"
+  url = "https://github.com/ChinaQMTECH (36 repositories scanned; Artix7 FBG484 variant not found)"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "No device evidence found"
+  clk = "absent from this file"
+  leds = "none"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+
+[[board]]
+name = "Qmtech Artix7 Fgg676"
+files = ["litex-boards/qmtech_artix7_fgg676.json"]
+maker = "QMTech"
+status = "none-found"
+notes = "No dedicated QMTech repository found for Artix-7 FGG676 package variant. Search queries: 'ChinaQMTECH Artix7 FGG676', 'QMTECH_XC7A*_FGG676', 'Artix7 fgg676'. Package variant 'FGG676' not matched in scanned ChinaQMTECH repositories (36 total)."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "OTHER"
+  url = "https://github.com/ChinaQMTECH (36 repositories scanned; Artix7 FGG676 variant not found)"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "No device evidence found"
+  clk = "absent from this file"
+  leds = "none"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+
+[[board]]
+name = "Qmtech Ep4ce15 Starter Kit"
+files = ["litex-boards/qmtech_ep4ce15_starter_kit.json"]
+maker = "QMTech"
+status = "candidate"
+notes = "Maps to official repository CYCLONE_IV_EP4CE15 (github.com/ChinaQMTECH/CYCLONE_IV_EP4CE15, 30 stars, 14 forks). Repository contains example projects (Project01-09 ZIPs) confirmed in Software directory; constraint files in archives not extractable via WebFetch."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/ChinaQMTECH/CYCLONE_IV_EP4CE15"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repository name indicates Cyclone IV EP4CE15; roster variant name 'Starter Kit'"
+  clk = "unknown (in ZIP archives)"
+  leds = "unknown (in ZIP archives, roster indicates 1)"
+  buttons = "unknown (in ZIP archives, roster indicates 1)"
+  switches = "unknown (in ZIP archives)"
+  seven_seg = "none"
+  active_low = "unknown (not visible in accessible sources)"
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://github.com/ChinaQMTECH/CYCLONE_IV_EP4CE15/raw/master/QMTECH_CycloneIV_EP4CE15_UserManual-%28Quartus15.1%29-V03.pdf"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "PDF manual for Cyclone IV EP4CE15"
+  clk = "unknown (binary PDF)"
+  leds = "unknown"
+  buttons = "unknown"
+  switches = "unknown"
+  seven_seg = "none"
+  active_low = "unknown"
+
+[[board]]
+name = "Qmtech Wukong"
+files = ["litex-boards/qmtech_wukong.json"]
+maker = "QMTech"
+status = "candidate"
+notes = "Official repository: QM_XC7A100T_WUKONG_BOARD (github.com/ChinaQMTECH/QM_XC7A100T_WUKONG_BOARD, 44 stars, 18 forks). Contains V1, V2, V3 variants; Software/XC7A100T contains example projects (Test01-10 ZIPs) and DDR3.ucf (DDR3-only assignments). User IO constraints in example ZIPs not extractable via WebFetch."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/ChinaQMTECH/QM_XC7A100T_WUKONG_BOARD"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repository name matches board name: 'Wukong' = XC7A100T; multiple hardware versions (V1-V3)"
+  clk = "unknown (in ZIP archives)"
+  leds = "unknown (in ZIP archives, roster indicates 2)"
+  buttons = "unknown (in ZIP archives, roster indicates 0)"
+  switches = "unknown (in ZIP archives)"
+  seven_seg = "none"
+  active_low = "unknown (not visible in accessible sources)"
+
+  [[board.source]]
+  rank = 2
+  kind = "official-repo"
+  format = "UCF"
+  url = "https://raw.githubusercontent.com/ChinaQMTECH/QM_XC7A100T_WUKONG_BOARD/master/V3/Software/XC7A100T/DDR3.ucf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "UCF file for XC7A100T; verified device in repository"
+  clk = "present but DDR3-only (ck_p at F18, ck_n at F19 \u2014 memory clock, not system clock)"
+  leds = "absent from this file (DDR3 memory assignments only)"
+  buttons = "absent from this file"
+  switches = "absent from this file"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["ddr3_ck_p  : LOC = F18  | IOSTANDARD = DIFF_SSTL135;", "ddr3_ck_n  : LOC = F19  | IOSTANDARD = DIFF_SSTL135;"]
+
+[[board]]
+name = "Qmtech Xc7a35t"
+files = ["litex-boards/qmtech_xc7a35t.json"]
+maker = "QMTech"
+status = "candidate"
+notes = "Official repository: QM_XC7A35T_DDR3 (github.com/ChinaQMTECH/QM_XC7A35T_DDR3, 43 stars, 25 forks). Device XC7A35T confirmed. Software directory contains example projects (Test01-10 ZIPs) and DDR3.ucf (DDR3-only assignments). User IO constraints in example projects not extractable via WebFetch."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/ChinaQMTECH/QM_XC7A35T_DDR3"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repository name matches device: XC7A35T; described as 'Xilinx Artix-7 FPGA Development Board'"
+  clk = "unknown (in ZIP archives)"
+  leds = "unknown (in ZIP archives, roster indicates 1)"
+  buttons = "unknown (in ZIP archives, roster indicates 0)"
+  switches = "unknown (in ZIP archives)"
+  seven_seg = "none"
+  active_low = "unknown (not visible in accessible sources)"
+
+  [[board.source]]
+  rank = 2
+  kind = "official-repo"
+  format = "UCF"
+  url = "https://raw.githubusercontent.com/ChinaQMTECH/QM_XC7A35T_DDR3/master/Software/DDR3.ucf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "UCF file for XC7A35T DDR3 board; verified device in repository"
+  clk = "present but DDR3-only (ck_p at B9, ck_n at A10 \u2014 memory clock, not system clock)"
+  leds = "absent from this file (DDR3 memory assignments only)"
+  buttons = "absent from this file"
+  switches = "absent from this file"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_B9 -to ddr3_ck_p", "set_location_assignment PIN_A10 -to ddr3_ck_n"]
+

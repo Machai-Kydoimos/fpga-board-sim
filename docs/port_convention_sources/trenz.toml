@@ -1,0 +1,174 @@
+# Port-convention source registry — Trenz Electronic
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable consolidation.
+
+[[board]]
+name = "Trenz Te0725"
+files = ["litex-boards/trenz_te0725.json"]
+maker = "Trenz Electronic"
+status = "candidate"
+notes = "Found canonical XDC constraint file in MEGA65/mega65-core official project. Device is xc7a50t-variant Xilinx Artix-7. | adjudication 2026-07-11: the batch's fetched XDC belongs to the MEGA65 machine (moved to Trenz Mega65); TE0725-module-specific constraints not located"
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "HTML"
+  url = "https://wiki.trenz-electronic.de/display/PD/TE0725+Resources"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Trenz wiki resource page (lead only)"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Trenz C10lprefkit"
+files = ["litex-boards/trenz_c10lprefkit.json"]
+maker = "Trenz Electronic"
+status = "none-found"
+notes = "Device: 10CL055YU484A7G (Altera Cyclone 10 LP). Searched: Trenz wiki (404), Trenz shop, GitHub for Altera Cyclone 10 projects, HDL constraints collection. No public QSF constraint file found. Altera/Intel reference constraints are typically proprietary or behind Altera's design software. This is an Altera device; constraint files are not commonly distributed publicly for third-party boards."
+
+[[board]]
+name = "Trenz Max1000"
+files = ["litex-boards/trenz_max1000.json"]
+maker = "Trenz Electronic"
+status = "verified"
+notes = "Altera MAX 10 device. Searched: Trenz wiki (404), Trenz shop product pages, GitHub repositories. No public constraint file located. MAX 10 reference materials are proprietary to Altera/Intel or available through vendor channels only. | inline fix 2026-07-11: community tutorial QSF located via GitHub search after batch none-found"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/vpecanins/max1000-tutorial/master/demo02_led_text/test0.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "MAX1000 tutorial project; names match Arrow MAX1000 user-guide convention (same as CYC1000)"
+  clk = "CLK12M (plus CLK_X external)"
+  leds = "LED[7:0]"
+  buttons = "USER_BTN (plus RESET)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_H6 -to CLK12M", "set_location_assignment PIN_A8 -to LED[0]", "set_location_assignment PIN_E6 -to USER_BTN"]
+
+[[board]]
+name = "Trenz Cyc1000"
+files = ["litex-boards/trenz_cyc1000.json"]
+maker = "Trenz Electronic"
+status = "verified"
+notes = "Device: 10CL025YU256C8G (Altera Cyclone 10 LP). Searched: Trenz wiki CYC1000 page (404), Trenz Electronic product pages, GitHub for Cyclone 10 constraint files. No public QSF file found. Cyclone 10 constraint data is typically proprietary. | inline fix 2026-07-11: community QSF located via GitHub search after batch none-found"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/tcmichals/cyc1000/master/cyc1000/constraints/cyc1000_s_pins.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "dedicated CYC1000 pin-constraints file; names match Arrow CYC1000 user-guide convention"
+  clk = "CLK12M (plus CLK_X external)"
+  leds = "LED[7:0]"
+  buttons = "USER_BTN"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_M2 -to CLK12M", "set_location_assignment PIN_M6 -to LED[0]", "set_location_assignment PIN_N6 -to USER_BTN"]
+
+[[board]]
+name = "Trenz Tec0117"
+files = ["litex-boards/trenz_tec0117.json"]
+maker = "Trenz Electronic"
+status = "none-found"
+notes = "Device: GW1NR-LV9QN88C6/I5 (Gowin). Searched: Gowin EDA examples, Gowin reference projects, Trenz wiki (404), GitHub for CST constraint files. No public CST file located. Gowin constraint files are typically available through Gowin EDA download portal or Trenz support only."
+
+[[board]]
+name = "Trenz C10lpek"
+files = ["litex-boards/trenz_c10lpek.json"]
+maker = "Trenz Electronic"
+status = "none-found"
+notes = "Altera Cyclone 10 LP device. Searched: Trenz wiki, product pages, GitHub. No public QSF constraint file found. Altera proprietary constraint data."
+
+[[board]]
+name = "Trenz Tel0025"
+files = ["litex-boards/trenz_tel0025.json"]
+maker = "Trenz Electronic"
+status = "none-found"
+notes = "Device family unknown. Searched: Trenz wiki TEL0025 page (404), GitHub, product databases. No public constraint file or device information found. Insufficient data to locate vendor sources."
+
+[[board]]
+name = "Trenz S7mini"
+files = ["litex-boards/trenz_s7mini.json"]
+maker = "Trenz Electronic"
+status = "none-found"
+notes = "Xilinx Spartan-7 SoM. Searched: Trenz wiki, Xilinx Vivado examples, GitHub for XDC files, MEGA65 project (not present), MiSTer FPGA projects. No public XDC constraint file located. Xilinx development board constraint files are typically available through design kits or vendor portals."
+
+[[board]]
+name = "Trenz Cr00010"
+files = ["litex-boards/trenz_cr00010.json"]
+maker = "Trenz Electronic"
+status = "none-found"
+notes = "Likely Xilinx Kintex SoM. Searched: Trenz wiki, GitHub for CR00010, Xilinx project examples. No constraint file or clear device information found."
+
+[[board]]
+name = "Trenz Te0711"
+files = ["litex-boards/trenz_te0711.json"]
+maker = "Trenz Electronic"
+status = "none-found"
+notes = "Xilinx SoM (TE-series). Searched: Trenz wiki TE0711 page (404), MEGA65 project (not present), GitHub for TE0711 XDC files. No public constraint file found."
+
+[[board]]
+name = "Trenz Te0741"
+files = ["litex-boards/trenz_te0741.json"]
+maker = "Trenz Electronic"
+status = "none-found"
+notes = "Xilinx SoM (TE-series). Searched: Trenz wiki, MEGA65 project, GitHub for TE0741 constraints. No public XDC file located."
+
+[[board]]
+name = "Trenz Mega65"
+files = ["litex-boards/trenz_mega65.json"]
+maker = "Trenz Electronic / MEGA65 Project"
+status = "verified"
+notes = "This is the MEGA65 computer (uses Xilinx Artix-7). Searched: MEGA65/mega65-core repository (found TE0725.xdc but no MEGA65-specific constraint file). TE0725 is a SoM component used in MEGA65 but not the same as MEGA65 itself. MEGA65 constraints would be at the computer level, not the SoM level. | adjudication 2026-07-11: the mega65-core XDC the batch attached to TE0725 is the MEGA65 machine's canonical constraint file \u2014 moved here"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/MEGA65/mega65-core/master/src/vhdl/mega65r3.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "MEGA65/mega65-core official project XDC (batch-fetched; see TE0725 row history)"
+  clk = "CLK_IN (P17)"
+  leds = "led (M16)"
+  buttons = "not extracted"
+  switches = "not extracted"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["CLK_IN P17", "led M16"]
+
+[[board]]
+name = "Trenz Te0710"
+files = ["litex-boards/trenz_te0710.json"]
+maker = "Trenz Electronic"
+status = "none-found"
+notes = "Xilinx SoM (TE-series). Searched: Trenz wiki TE0710, MEGA65 project, GitHub. No public constraint file found."
+
+[[board]]
+name = "Trenz Te0890"
+files = ["litex-boards/trenz_te0890.json"]
+maker = "Trenz Electronic"
+status = "none-found"
+notes = "Xilinx SoM (TE-series). Searched: Trenz wiki TE0890 page (404), MEGA65 project, GitHub for TE0890 XDC. No public constraint file located."
+
+[[board]]
+name = "TE0714-03-50-2 I"
+files = ["amaranth-boards/te0714-03-50-2_i.json"]
+maker = "Trenz Electronic"
+status = "none-found"
+notes = "Device: xc7a50t (Xilinx Artix-7 CSG325). Searched: Trenz wiki TE0714 page (404), MEGA65 project, GitHub for TE0714-03-50-2 XDC files. No public constraint file found. Xilinx constraint files for third-party SoMs are typically proprietary."
+

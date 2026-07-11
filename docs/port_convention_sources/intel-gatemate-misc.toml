@@ -1,0 +1,324 @@
+# Port-convention source registry — Intel misc / GateMate / QuickLogic / retro
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable consolidation.
+
+[[board]]
+name = "RZEasy FPGAA2-2"
+files = ["amaranth-boards/rzeasy_fpgaa2-2.json"]
+maker = "RZ-EasyFPGA (community/opensource)"
+status = "verified"
+notes = "Identical to Rz Easyfpga; 7-segment teaching board; strong GitHub community projects available"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/inaciose/RZ-easyFPGA-A2.2/master/rz_easyfpga_2_2.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "EP4CE6E22C8 (Cyclone IV E); device name from QSF file extract"
+  clk = "CLOCK_50 (PIN_23)"
+  leds = "LEDG[0-3]: PIN_87, PIN_86, PIN_85, PIN_84"
+  buttons = "KEY[0-4]: PIN_88, PIN_89, PIN_90, PIN_91, PIN_25"
+  switches = "none"
+  seven_seg = "SEG[0-7] 8-bit segment bus (PIN_128, PIN_121, PIN_125, PIN_129, PIN_132, PIN_126, PIN_124, PIN_127); DIG[0-3] digit selects (PIN_133, PIN_135, PIN_136, PIN_137)"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_23 -to CLOCK_50", "set_location_assignment PIN_87 -to LEDG[0]", "set_location_assignment PIN_88 -to KEY[0]", "set_location_assignment PIN_128 -to SEG[0]"]
+
+[[board]]
+name = "Rz Easyfpga"
+files = ["litex-boards/rz_easyfpga.json"]
+maker = "RZ-EasyFPGA (community/opensource)"
+status = "verified"
+notes = "Duplicate entry of RZEasy FPGAA2-2; same physical board, same device EP4CE6E22C8"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/inaciose/RZ-easyFPGA-A2.2/master/rz_easyfpga_2_2.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "EP4CE6E22C8 (Cyclone IV E); identical to RZEasy FPGAA2-2"
+  clk = "CLOCK_50 (PIN_23)"
+  leds = "LEDG[0-3]: PIN_87, PIN_86, PIN_85, PIN_84"
+  buttons = "KEY[0-4]: PIN_88, PIN_89, PIN_90, PIN_91, PIN_25"
+  switches = "none"
+  seven_seg = "SEG[0-7] 8-bit segment bus (PIN_128, PIN_121, PIN_125, PIN_129, PIN_132, PIN_126, PIN_124, PIN_127); DIG[0-3] digit selects (PIN_133, PIN_135, PIN_136, PIN_137)"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_23 -to CLOCK_50", "set_location_assignment PIN_87 -to LEDG[0]", "set_location_assignment PIN_88 -to KEY[0]"]
+
+[[board]]
+name = "Mister"
+files = ["amaranth-boards/mister.json"]
+maker = "Terasic/Arrow (MiSTer community platform)"
+status = "candidate"
+notes = "MiSTer-devel/Template_MiSTer repo exists (https://github.com/MiSTer-devel/Template_MiSTer); contains Template.qsf but no pin definitions for base system; specific pin constraints are project/core-dependent; device 5CSEBA6 U23 (Cyclone V SoC)"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "REPO"
+  url = "https://github.com/MiSTer-devel/Template_MiSTer"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "5CSEBA6 (Cyclone V SoC, ARM + FPGA); U23 package from roster; MiSTer runs on DE10-Nano based on this device"
+  clk = "multiple clock domains; specific names not found in base template"
+  leds = "LED configuration is core-dependent; 11 user-facing indicators listed in roster"
+  buttons = "2 buttons per roster"
+  switches = "7 switches per roster"
+  seven_seg = "none (LED indicators instead)"
+  active_low = "not visible in this source"
+  evidence = ["set_global_assignment -name TOP_LEVEL_ENTITY sys_top", "set_global_assignment -name DEVICE 5CSEBA6U23I7"]
+
+[[board]]
+name = "Arrow DECA"
+files = ["amaranth-boards/arrow_deca.json"]
+maker = "Arrow Electronics / Terasic"
+status = "verified"
+notes = "DECA by Arrow = Terasic-designed board; 10M50DA F484 (MAX 10); manual provides pin assignments for LEDs, buttons, switches, and clocks"
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://www.manualslib.com/manual/1582501/Arrow-Deca.html"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "10M50DAF484C6G (MAX 10 50K LE, F484 BGA package); extracted from manual Table 3-6 (LED) and device specs"
+  clk = "MAX10_CLK1_50 (PIN_M8, 50 MHz, 2.5V); MAX10_CLK2_50 (PIN_P11, 50 MHz, 3.3V); also 10 MHz clock to PLL"
+  leds = "LED[0-7] (8 blue user LEDs); roster confirms 8 LEDs; 1.2V I/O standard per manual"
+  buttons = "2 push-buttons with Schmitt-trigger debouncing"
+  switches = "2 slide switches; logic levels from switches: DOWN=low, UP=high"
+  seven_seg = "none"
+  active_low = "not visible in this source; LEDs assumed active-high unless otherwise noted"
+  evidence = ["LED[0] through LED[7] connected to FPGA (manual Chapter 3, Table 3-6)", "MAX10_CLK1_50: PIN_M8 (50 MHz, 2.5V standard)", "MAX10_CLK2_50: PIN_P11 (50 MHz, 3.3V standard)"]
+
+[[board]]
+name = "Intergalaktik Ulx5m Gs"
+files = ["litex-boards/intergalaktik_ulx5m_gs.json"]
+maker = "Intergalaktik d.o.o. / Radiona.org"
+status = "candidate"
+notes = "ULX5M board with GateMate (CCGM1A1) and SDRAM; GitHub repo exists (intergalaktik/ulx5m-gs); README mentions 8 LEDs, 3 buttons, SD card, differential I/O; no actual CCF file fetched"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/intergalaktik/ulx5m-gs"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "CCGM1A1 (CologneChip GateMate); roster confirms; board features SDRAM and high-speed differential interfaces (DDMI, LVDS, PCIe, USB-C)"
+  clk = "unknown; not documented in README extract"
+  leds = "8 LEDs mentioned in README"
+  buttons = "3 BTNs mentioned in README"
+  switches = "none mentioned"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["8 LEDs (8), 3 BTNs (3), SD Card (4 data lines) documented in README"]
+
+[[board]]
+name = "Colognechip Gatemate Evb"
+files = ["litex-boards/colognechip_gatemate_evb.json"]
+maker = "CologneChip"
+status = "candidate"
+notes = "Likely the official CologneChip GateMate E1 Evaluation Board; community projects (openCologne, chili-chips-ba) reference this board but use Olimex hardware equivalent; no dedicated constraint file found; treated as distinct from Olimex variant pending field verification"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "REPO"
+  url = "https://github.com/colognechip/gatemate_ila"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "CCGM1A1 (CologneChip GateMate, roster confirms); ILA repo contains CCF files with IO_SB_B6 assigned to LED output"
+  clk = "clock pin assignments found in ILA repository (IO_SB_A8 is CLK0 per Olimex variant)"
+  leds = "8 LEDs per roster; openCologne ILA example assigns IO_EB_B1 through IO_EB_B8 for led[0-7]"
+  buttons = "1 button per roster"
+  switches = "none per roster"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LED pin assignments from gatemate_ila ILA_top.ccf reference implementation"]
+
+[[board]]
+name = "Olimex Gatemate A1 Evb"
+files = ["litex-boards/olimex_gatemate_a1_evb.json"]
+maker = "Olimex / CologneChip GateMate"
+status = "verified"
+notes = "Official Olimex board for CologneChip GateMate A1; openCologne project (chili-chips-ba) maintains authoritative constraint file (GateMateA1-EVB.ccf)"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "CCF"
+  url = "https://raw.githubusercontent.com/chili-chips-ba/openCologne/main/1.Blinky--Verilog-VHDL-Python.Amaranth/3.build/GateMateA1-EVB.ccf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "BSD-3-Clause"
+  device_evidence = "CCGM1A1 (CologneChip GateMate A1); CCF file header describes this as 'Gatemate A1-EVB Olimex board hardware pin constraints'"
+  clk = "CLK0 (IO_SB_A8); CLK3 (IO_SB_A5); GPIO23=CLK1 (IO_SB_A7); GPIO24=CLK2 (IO_SB_A6)"
+  leds = "FPGA_LED (IO_SB_B6); roster lists 1 LED; JTAG_LED (IO_SB_B5); board also has bank NA/NB/EB/WC/EA/SA GPIO"
+  buttons = "FPGA_BUT (IO_SB_B7); roster lists 1 button"
+  switches = "none; roster lists 0 switches"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["Net \"FPGA_LED\" Loc = \"IO_SB_B6\"; # FPGA LED", "Net \"FPGA_BUT\" Loc = \"IO_SB_B7\";", "Net \"CLK0\" Loc = \"IO_SB_A8\"; # CLK0", "Net \"CLK3\" Loc = \"IO_SB_A5\";"]
+
+[[board]]
+name = "Quickfeather"
+files = ["amaranth-boards/quickfeather.json"]
+maker = "QuickLogic Corporation"
+status = "verified"
+notes = "QuickLogic QuickFeather dev board; EOS-S3 in QFN64 (PU64) package; qorc-sdk contains authoritative PCF constraint files"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/QuickLogic-Corp/qorc-sdk/master/qorc_apps_au/qorc_advancedfpga/fpga/rtl/quickfeather.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "ql-eos-s3_wlcsp in PU64 package (QFN WLCSP 64-pin); PCF header documents 3 package variants (WR42 WLCSP, PD64 BGA, PU64 QFN) with QuickFeather using PU64"
+  clk = "not defined in PCF file (likely external clock or internally generated); absent from this file"
+  leds = "led_r_o (PIN 34 QFN / IO_22 common), led_g_o (PIN 39 QFN / IO_21 common), led_b_o (PIN 38 QFN / IO_18 common); roster lists 1 LED but device has RGB (3 outputs)"
+  buttons = "not defined in PCF files examined; roster lists 1 button; user button referenced in README but no PCF assignment"
+  switches = "not defined in PCF files examined; roster lists 1 switch; no PCF assignment found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_io led_r_o  34", "set_io led_g_o  39", "set_io led_b_o  38", "// QuickFeather uses the QFN package, others mostly use the BGA package."]
+
+[[board]]
+name = "Mi ST"
+files = ["amaranth-boards/mi_st.json"]
+maker = "Haas Automation / Till Harbaum (MiST author)"
+status = "verified"
+notes = "MiST retro FPGA board (Till Harbaum); EP3C25 E144 device; mist-devel GitHub org maintains core implementations with QSF files"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/mist-devel/mist-board/master/cores/minimig/fpga/altera/minimig_mist.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "EP3C25E144C8 (Cyclone III 25K); device line from QSF file set_global_assignment"
+  clk = "CLOCK_50[0] (PIN_22), CLOCK_50[1] (PIN_23); CLOCK_27[0] (PIN_54), CLOCK_27[1] (PIN_55); CLOCK_32[0] (PIN_128), CLOCK_32[1] (PIN_129)"
+  leds = "LED (single output, PIN_7); roster lists 1 LED"
+  buttons = "none found in QSF excerpt"
+  switches = "none found in QSF excerpt"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_22 -to CLOCK_50[0]", "set_location_assignment PIN_7 -to LED", "set_global_assignment -name DEVICE EP3C25E144C8"]
+
+[[board]]
+name = "Mist"
+files = ["litex-boards/mist.json"]
+maker = "MiST-devel community / Haas Automation"
+status = "verified"
+notes = "MiST retro board; litex-boards entry is duplicate of Mi ST; device unknown in roster but EP3C25 E144 confirmed from qorc-sdk and mist-devel repositories"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/mist-devel/mist-board/master/cores/minimig/fpga/altera/minimig_mist.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "EP3C25E144C8 (Cyclone III 25K); identical to Mi ST \u2014 same physical board"
+  clk = "CLOCK_50[0] (PIN_22), CLOCK_50[1] (PIN_23); CLOCK_27[0] (PIN_54), CLOCK_27[1] (PIN_55); CLOCK_32[0] (PIN_128), CLOCK_32[1] (PIN_129)"
+  leds = "LED (single output, PIN_7); roster lists 1 LED"
+  buttons = "none found in QSF excerpt"
+  switches = "none found in QSF excerpt"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_22 -to CLOCK_50[0]", "set_location_assignment PIN_7 -to LED"]
+
+[[board]]
+name = "Chameleon96"
+files = ["amaranth-boards/chameleon96.json"]
+maker = "NovTech / Arrow Electronics"
+status = "candidate"
+notes = "Chameleon96 is a 96Boards form-factor FPGA board featuring Cyclone V SoC (5CSEBA6 U19); SoCFPGA-learning GitHub repo exists but no constraint file was fetched; device verified from search results"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/SoCFPGA-learning/Chameleon96"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "5CSEBA6U19I7N (Cyclone V SE SoC); roster lists 5CSEBA6 U19; confirmed from 96Boards product listing"
+  clk = "unknown; 12 MHz default per roster but constraint file not found"
+  leds = "2 LEDs per roster; no constraint file examined"
+  buttons = "0 buttons per roster"
+  switches = "0 switches per roster"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["96Boards Chameleon96 product page confirms Intel PSG Cyclone V SE"]
+
+[[board]]
+name = "Arrow Axe5000"
+files = ["litex-boards/arrow_axe5000.json"]
+maker = "Arrow Electronics / Altera (Agilex 5 family)"
+status = "candidate"
+notes = "Arrow AXE5000 (Agilex 5 SoC devkit); RocketBoards.org documentation exists; no specific constraint file (.sdc/.tcl) fetched; device unknown in roster"
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-manual"
+  format = "REPO"
+  url = "https://www.rocketboards.org/foswiki/Documentation/ArrowAXE5000DevelopmentKit"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "device unknown in roster; Arria 10 SoC family implied by 'AXE5'; no device confirmation from constraint file"
+  clk = "unknown"
+  leds = "2 LEDs per roster; not found in search results"
+  buttons = "1 button per roster; not found in search results"
+  switches = "2 switches per roster; not found in search results"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+
+[[board]]
+name = "Altera Agilex5e 065b Premium Devkit"
+files = ["litex-boards/altera_agilex5e_065b_premium_devkit.json"]
+maker = "Intel / Altera (Agilex 5 E-Series family)"
+status = "candidate"
+notes = "Agilex 5 E-Series 065B Premium Development Kit (Quartus Prime + Modular GSRD available from altera-fpga GitHub); no specific pin constraint file (.sdc/.tcl) fetched in this pass"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/altera-fpga/agilex5e-ed-gsrd"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Agilex 5 E-Series 065B; device unknown in roster; ordering code MK-A5E065BB32AES1 (Modular) or DK-A5E065BB32AES1 (Premium)"
+  clk = "unknown; design reference may include clock configuration"
+  leds = "4 LEDs per roster; not found in search results"
+  buttons = "4 buttons per roster; not found in search results"
+  switches = "4 switches per roster; not found in search results"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["Altera Agilex 5 FPGA E-Series 065B Premium Development Kit official product page: https://www.altera.com/products/devkit/po-3284/agilex-5-fpga-e-series-065b-premium-development-kit"]
+
+[[board]]
+name = "Sitlinv A E115fb"
+files = ["litex-boards/sitlinv_a_e115fb.json"]
+maker = "Sitlinv (Chinese board maker)"
+status = "none-found"
+notes = "Sitlinv A-E115FB board; roster lists EP4CE115F23I7 device (Cyclone IV, Altera); no vendor constraint files found; GitHub search returned generic Xilinx SITLINV board (unrelated); this board's only locatable pin data appears to be in litex-boards platform files (which are this project's own upstreams, not vendor constraint data)"
+

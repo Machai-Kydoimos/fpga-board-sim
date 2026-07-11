@@ -1,0 +1,191 @@
+# Port-convention source registry — SDR / vision / special-purpose
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; researched inline via GitHub API.
+
+[[board]]
+name = "Fairwaves Xtrx"
+files = ["litex-boards/fairwaves_xtrx.json"]
+maker = "Fairwaves"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. xtrx-sdr org has no public fpga/constraints repo; the Lime derivative gateware (myriadrf/LimeSDR-XTRX_GW) is the nearest living lead."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "REPO"
+  url = "https://github.com/myriadrf/LimeSDR-XTRX_GW"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Lime derivative of the XTRX gateware"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Limesdr Mini V2"
+files = ["litex-boards/limesdr_mini_v2.json"]
+maker = "Lime Microsystems"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. Official gateware repo; top-level Diamond project LPF."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/myriadrf/LimeSDR-Mini-v2_GW/main/LimeSDR-Mini_lms7_trx/proj/lms7_trx.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "myriadrf official LimeSDR-Mini v2 gateware, lms7_trx project LPF"
+  clk = "LMK_CLK, FT_CLK, LMS_MCLK1, LMS_FCLK1, LMS_MCLK2, LMS_FCLK2, LMS_TXNRX2_or_CLK_SEL"
+  leds = "FPGA_LED1_R, FPGA_LED1_G"
+  buttons = "FT_RESETn, LMS_RESET"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"LMK_CLK\"", "LOCATE COMP \"FPGA_LED1_R\"", "LOCATE COMP \"FPGA_LED1_G\"", "LOCATE COMP \"FT_CLK\""]
+
+[[board]]
+name = "Limesdr Xtrx"
+files = ["litex-boards/limesdr_xtrx.json"]
+maker = "Lime Microsystems"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. Official gateware repo; target constraints."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/myriadrf/LimeSDR-XTRX_GW/master/src/constrs/constrs_target.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "myriadrf official LimeSDR-XTRX gateware target constraints"
+  clk = "absent from this file"
+  leds = "none found"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+
+[[board]]
+name = "Camlink 4k"
+files = ["litex-boards/camlink_4k.json"]
+maker = "Elgato (repurposed)"
+status = "none-found"
+notes = "Researched inline via GitHub API 2026-07-11. Capture-stick reverse engineering exists only as litex targets (excluded as own upstream); no independent constraint file located."
+
+[[board]]
+name = "Antmicro Artix Dc Scm"
+files = ["litex-boards/antmicro_artix_dc_scm.json"]
+maker = "Antmicro"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. Official hardware repo confirmed via API but KiCad-only (0 constraint files in tree); gateware is litex-based (excluded)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/antmicro/artix-dc-scm"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official Antmicro hardware repo (KiCad)"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Antmicro Lpddr4 Test Board"
+files = ["litex-boards/antmicro_lpddr4_test_board.json"]
+maker = "Antmicro"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. Official hardware repo confirmed via API but KiCad-only (0 constraint files in tree); gateware is litex-based (excluded)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/antmicro/lpddr4-test-board"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official Antmicro hardware repo (KiCad)"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Antmicro Sdi Mipi Video Converter"
+files = ["litex-boards/antmicro_sdi_mipi_video_converter.json"]
+maker = "Antmicro"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. Official hardware repo confirmed via API but KiCad-only (0 constraint files in tree); gateware is litex-based (excluded)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/antmicro/sdi-mipi-video-converter"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official Antmicro hardware repo (KiCad)"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Seeedstudio Spartan Edge Accelerator"
+files = ["litex-boards/seeedstudio_spartan_edge_accelerator.json"]
+maker = "Seeed Studio"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. Official documentation repo confirmed (no XDC in tree); wiki + schematic are the pin authority."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/SeeedDocument/Spartan-Edge-Accelerator-Board"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official Seeed documentation repo"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Pano Logic G2"
+files = ["litex-boards/pano_logic_g2.json"]
+maker = "Pano Logic (repurposed)"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. tomverbeure/panologic-g2 is the community canon; Saanlima/Pano_G2C covers the rev-C variant."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "UCF"
+  url = "https://raw.githubusercontent.com/tomverbeure/panologic-g2/master/Pano.ucf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "canonical community reverse-engineering repo for the G2"
+  clk = "osc_clk"
+  leds = "led_red, led_blue, led_green"
+  buttons = "pano_button"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["NET \"osc_clk\" LOC = Y13", "NET \"led_red\" LOC = E12", "NET \"led_blue\" LOC = H13", "NET \"led_green\" LOC = F13"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "REPO"
+  url = "https://github.com/Saanlima/Pano_G2C"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "rev-C variant projects"
+  clk = "not extracted"
+  leds = "not extracted"
+

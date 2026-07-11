@@ -1,0 +1,276 @@
+# Port-convention source registry — MachXO / Colorlight / misc Lattice
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable consolidation.
+
+[[board]]
+name = "Step MXO2"
+files = ["amaranth-boards/step_mxo2.json"]
+maker = "STEPFPGA / EIM Technology"
+status = "candidate"
+notes = "eimtechnology/STEPFPGA-MXO2Core GitHub repo found but contains only tutorial code and no constraint files (.lpf). Possible sources: stepfpga.com, eim.tech docs, or Lattice Diamond project files (not publicly available online)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/eimtechnology/STEPFPGA-MXO2Core"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "LCMXO2-4000HC per roster; repo contains tutorial code for MXO2 but no constraint file"
+  clk = "12MHz default per roster (12000000.0 Hz)"
+  leds = "10 LEDs per roster"
+  buttons = "4 buttons per roster"
+  switches = "4 switches per roster"
+  seven_seg = "2 digits per roster"
+  active_low = "not visible in this source"
+
+[[board]]
+name = "Mach XO3 LFSK"
+files = ["amaranth-boards/mach_xo3_lfsk.json"]
+maker = "Lattice"
+status = "none-found"
+notes = "No independent community constraint files or vendor documentation with pin assignments located. LCMXO3LF-6900C (BG256 package). Search queries attempted: MachXO3 LFSK, LCMXO3, Lattice MachXO3 evaluation board. The Lattice vendor site likely has constraint files but requires authentication or may not serve bot requests."
+
+[[board]]
+name = "Mach XO3 LSK"
+files = ["amaranth-boards/mach_xo3_lsk.json"]
+maker = "Lattice"
+status = "none-found"
+notes = "No independent community constraint files or vendor documentation with pin assignments located. LCMXO3L-6900C (BG256 package, same as LFSK variant). Shares pinout with LFSK per roster. The two MachXO3 variants use BG256 package and likely share identical pin assignments."
+
+[[board]]
+name = "Mach XO2-1200 ZE-Breakout"
+files = ["amaranth-boards/mach_xo2-1200_ze-breakout.json"]
+maker = "Lattice"
+status = "verified"
+notes = "Found via community demo project (logic sniffer). LCMXO2-1200ZE (TG144 package). Port names extracted from Verilog synthesis pragmas in top.v. The sniffer.lpf file provides minimal port mapping but synthesis pragmas in Verilog give full pinout."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/wendlers/lattice-logic-sniffer/master/logic/sniffer.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "MIT"
+  device_evidence = "LCMXO2-1200ZE (TG144) per roster; wendlers/lattice-logic-sniffer project README confirms MachXO2 Breakout Board usage"
+  clk = "clk (12 MHz per FREQUENCY constraint)"
+  leds = "led[7:0] (8 LEDs)"
+  buttons = "none in LPF"
+  switches = "pin[7:0] (8 input pins, likely used for sniffing, not general I/O)"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["FREQUENCY PORT \"clk\" 12.000000 MHz;", "IOBUF PORT \"clk\" PULLMODE=NONE;"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "OTHER"
+  url = "https://raw.githubusercontent.com/wendlers/lattice-logic-sniffer/master/logic/top.v"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "MIT"
+  device_evidence = "TG144 package via synthesis pragmas; Verilog module confirms MachXO2 Breakout Board"
+  clk = "clk at loc=27"
+  leds = "led[7:0] at loc=107, 106, 105, 104, 100, 99, 98, 97"
+  buttons = "none"
+  switches = "pin[7:0] at loc=10, 9, 6, 5, 4, 3, 2, 1"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["input clk /* synthesis loc=\"27\" pullmode=\"none\" */,", "output [7:0] led /* synthesis loc=\"107, 106, 105, 104, 100, 99, 98, 97\" */,", "input [7:0] pin /* synthesis loc=\"10, 9, 6, 5, 4, 3, 2, 1\" */,"]
+
+[[board]]
+name = "Mach XO2-7000 HE-Breakout"
+files = ["amaranth-boards/mach_xo2-7000_he-breakout.json"]
+maker = "Lattice"
+status = "candidate"
+notes = "LCMXO2-7000HE (TG144 package, same package as -1200ZE variant). Likely shares identical pinout with MachXO2-1200 ZE-Breakout per Lattice data sheet (both TG144, same I/O bank configuration). No dedicated constraint file found but the -1200ZE pinout is a strong candidate for this variant as well."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/wendlers/lattice-logic-sniffer/master/logic/sniffer.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "MIT"
+  device_evidence = "LCMXO2-7000HE (TG144) per roster; same package as -1200ZE, likely identical pinout; no device discriminator in LPF (generic banking/frequency)"
+  clk = "clk (12 MHz)"
+  leds = "led[7:0]"
+  buttons = "none in LPF"
+  switches = "pin[7:0]"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["FREQUENCY PORT \"clk\" 12.000000 MHz;"]
+
+[[board]]
+name = "Fpc Iii"
+files = ["litex-boards/fpc_iii.json"]
+maker = "FPC-III Community (ECP5 film scanner)"
+status = "none-found"
+notes = "LFE5U-85F-8BG381 (ECP5 variant). No public constraint file repositories, GitHub projects, or community documentation with pin assignments located. Search queries: FPC-III, film scanner ECP5, ECP5-85F. This is a specialized community project with limited public documentation."
+
+[[board]]
+name = "Colorlight-5 A75 B-R70"
+files = ["amaranth-boards/colorlight-5_a75_b-r70.json"]
+maker = "Colorlight"
+status = "verified"
+notes = "Variant designation R70 likely refers to PCB revision. LFE5U-25F (BG256 package). Found via q3k/chubby75 community reverse-engineering project. Multiple versions exist (V6.1, V7.0+); constraint files differ by revision."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/q3k/chubby75/master/5a-75b/blink/blink_v70.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "CC0"
+  device_evidence = "LFE5U-25F per roster; q3k/chubby75 is canonical community reverse-engineering resource for Colorlight boards"
+  clk = "osc_clk25 (25 MHz oscillator)"
+  leds = "led (single LED)"
+  buttons = "button (single button)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source (active-high assumed based on standard HUB75 receiver design)"
+  evidence = ["LOCATE COMP \"osc_clk25\" SITE \"P6\";", "LOCATE COMP \"led\" SITE \"P11\";", "LOCATE COMP \"button\" SITE \"M13\";"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/q3k/chubby75/master/5a-75b/blink/blink_v61.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "CC0"
+  device_evidence = "LFE5U-25F; older V6.1 revision of 5A-75B"
+  clk = "osc_clk25 (25 MHz)"
+  leds = "led (single LED)"
+  buttons = "button (single button)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"osc_clk25\" SITE \"P6\";", "LOCATE COMP \"led\" SITE \"P11\";", "LOCATE COMP \"button\" SITE \"M13\";"]
+
+[[board]]
+name = "Colorlight 5a 75b"
+files = ["litex-boards/colorlight_5a_75b.json"]
+maker = "Colorlight"
+status = "verified"
+notes = "LFE5U-25F-6BG256C (BG256 package). Identical to Colorlight-5 A75 B-R70 (same board, different naming conventions in upstreams). Constraint files from q3k/chubby75 apply."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/q3k/chubby75/master/5a-75b/blink/blink_v70.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "CC0"
+  device_evidence = "LFE5U-25F-6BG256C; same board as Colorlight-5 A75 B-R70"
+  clk = "osc_clk25 (25 MHz)"
+  leds = "led (single LED)"
+  buttons = "button (single button)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"osc_clk25\" SITE \"P6\";", "LOCATE COMP \"led\" SITE \"P11\";", "LOCATE COMP \"button\" SITE \"M13\";"]
+
+[[board]]
+name = "Colorlight 5a 75e"
+files = ["litex-boards/colorlight_5a_75e.json"]
+maker = "Colorlight"
+status = "candidate"
+notes = "LFE5U-25F-6BG256C (BG256 package, same device as 5A-75B). q3k/chubby75 repo contains hardware documentation (hardware_V6.0.md, hardware_V7.1.md) but no constraint files (.lpf) in repo. Board is 'almost identical to 5A-75B' per chubby75 README, differing only in number of HUB75 ports (8 vs 16); user I/O (LED/button) likely identical."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "MD"
+  url = "https://raw.githubusercontent.com/q3k/chubby75/master/5a-75e/README.md"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "CC0"
+  device_evidence = "LFE5U-25F (BG256 package, same as 5A-75B) per hardware_V6.0.md and hardware_V7.1.md"
+  clk = "25 MHz (assumed, same as 5A-75B per README)"
+  leds = "1 LED (assumed, same as 5A-75B)"
+  buttons = "1 button (assumed, same as 5A-75B)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["'This board is almost identical to Colorlight 5A-75B, but has twice as many HUB75 ports.'"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/q3k/chubby75/master/5a-75b/blink/blink_v70.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "CC0"
+  device_evidence = "LFE5U-25F-6BG256C; likely identical pinout to 5A-75E per chubby75 README"
+  clk = "osc_clk25 (25 MHz)"
+  leds = "led"
+  buttons = "button"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["5A-75B constraint file assumed applicable; boards share same BG256 device and differ only in HUB75 port count"]
+
+[[board]]
+name = "Colorlight I5a 907"
+files = ["litex-boards/colorlight_i5a_907.json"]
+maker = "Colorlight"
+status = "none-found"
+notes = "LFE5U-25F-6BG256C (BG256 package, same device as other Colorlight 5A variants). 'I5A-907' designation not explicitly mentioned in q3k/chubby75 repo documentation. The 'i' prefix and '907' variant code suggest this may be a rebrand or internal SKU variant. No dedicated documentation or constraint files located. Same device as 5A-75B/5A-75E but variant designation unclear."
+
+[[board]]
+name = "Colorlight I9plus"
+files = ["litex-boards/colorlight_i9plus.json"]
+maker = "Colorlight / Linsn (RV901T community variant)"
+status = "candidate"
+notes = "Device unknown per roster (likely LFE5U-75F or Spartan-6 based on Linsn RV901T specs). q3k/chubby75 documents 'Linsn RV901T HUB75 LED Receiver Card' which is a distinct board from Colorlight 5A series. RV901T typically uses Spartan-6 LX16 FPGA (Xilinx), not Lattice ECP5. 'I9plus' may refer to an RV901T variant or a later Colorlight receiver card; no explicit documentation or constraint files found."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "REPO"
+  url = "https://github.com/q3k/chubby75"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "CC0"
+  device_evidence = "Linsn RV901T uses Spartan-6 LX16 (not Colorlight device) per chubby75 README. 'I9plus' designation not found in repo; may be Colorlight internal SKU or later revision."
+  clk = "Spartan-6 (25 MHz assumed from chubby75 docs)"
+  leds = "2 LEDs per roster"
+  buttons = "0 per roster"
+  switches = "0 per roster"
+  seven_seg = "0"
+  active_low = "not visible in this source"
+  evidence = ["RV901T documented but 'I9plus' variant name not explicitly mentioned in chubby75"]
+
+[[board]]
+name = "Modretro Chromatic"
+files = ["litex-boards/modretro_chromatic.json"]
+maker = "ModRetro (Gowin-based handheld console)"
+status = "verified"
+notes = "Device unknown per roster. ModRetro/oss-chromatic-console-fpga contains CST constraint file. Board features Gowin FPGA (GW2A series based on typical Chromatic specs), RGB LED, D-pad buttons, cartridge interface. CST file shows comprehensive pinout for game console application, including HDMI, LCD, audio, and button matrix."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/ModRetro/oss-chromatic-console-fpga/main/esp32t/src/board/evt1_x2/evt1_x2.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Gowin device (GW2A family, specific part number not in CST); evt1_x2 is EVT1 engineering sample, X2 revision"
+  clk = "CLK_24MHz (24 MHz), CLK_27MHz (27 MHz), CLK_FPGA (external clock)"
+  leds = "FPGA_LED_R, FPGA_LED_G, FPGA_LED_B (RGB LED via PWM); roster shows 1 LED"
+  buttons = "BTN_A, BTN_B, BTN_DPAD_UP, BTN_DPAD_DOWN, BTN_DPAD_LEFT, BTN_DPAD_RIGHT, BTN_MENU, BTN_SEL, BTN_START (9 buttons); roster shows 0"
+  switches = "none (0 per roster)"
+  seven_seg = "none (LCD display instead, 0 per roster)"
+  active_low = "not visible in this source"
+  evidence = ["IO_LOC \"CLK_24MHz\" D12;", "IO_LOC \"FPGA_LED_R\" A6;", "IO_LOC \"FPGA_LED_G\" A7;", "IO_LOC \"FPGA_LED_B\" B6;"]
+

@@ -1,0 +1,93 @@
+# Port-convention source registry — Efinix
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable consolidation.
+
+[[board]]
+name = "Efinix Trion T120 Bga576 Dev Kit"
+files = ["litex-boards/efinix_trion_t120_bga576_dev_kit.json"]
+maker = "Efinix Inc."
+status = "none-found"
+notes = "Official Efinix dev kit; no vendor-official GitHub repos or publicly accessible constraint files found outside litex-boards (excluded as upstream). Efinix official website (efinixinc.com) does not provide public access to .peri.xml or constraint files without registration. Device: T120F576I4. No alternative community sources located."
+
+[[board]]
+name = "Efinix Trion T20 Bga256 Dev Kit"
+files = ["litex-boards/efinix_trion_t20_bga256_dev_kit.json"]
+maker = "Efinix Inc."
+status = "none-found"
+notes = "Official Efinix dev kit; no vendor-official GitHub repos or publicly accessible constraint files found outside litex-boards (excluded as upstream). Device: T20F256C4. No community sources located."
+
+[[board]]
+name = "Efinix Titanium Ti60 F225 Dev Kit"
+files = ["litex-boards/efinix_titanium_ti60_f225_dev_kit.json"]
+maker = "Efinix Inc."
+status = "none-found"
+notes = "Official Efinix dev kit; no vendor-official GitHub repos or publicly accessible constraint files found outside litex-boards (excluded as upstream). Device: Ti60F225C3. No community sources located."
+
+[[board]]
+name = "Efinix Tz170 J484 Dev Kit"
+files = ["litex-boards/efinix_tz170_j484_dev_kit.json"]
+maker = "Efinix Inc."
+status = "none-found"
+notes = "Official Efinix dev kit; no vendor-official GitHub repos or publicly accessible constraint files found outside litex-boards (excluded as upstream). Device: Tz170J484I3. No community sources located."
+
+[[board]]
+name = "Efinix T8f81 Dev Kit"
+files = ["litex-boards/efinix_t8f81_dev_kit.json"]
+maker = "Efinix Inc."
+status = "none-found"
+notes = "Official Efinix dev kit; no vendor-official GitHub repos or publicly accessible constraint files found outside litex-boards (excluded as upstream). Device: T8F81C2. No community sources located. Note: the Xyloni dev kit also uses T8F81C2 device, and Jungle Electronics FireAnt (community board) uses same device; however, no Efinix-branded constraint file located outside litex-boards."
+
+[[board]]
+name = "Efinix Ti375 C529 Dev Kit"
+files = ["litex-boards/efinix_ti375_c529_dev_kit.json"]
+maker = "Efinix Inc."
+status = "none-found"
+notes = "Official Efinix dev kit; no vendor-official GitHub repos or publicly accessible constraint files found outside litex-boards (excluded as upstream). Device: Ti375C529C4. No community sources located."
+
+[[board]]
+name = "Efinix Xyloni Dev Kit"
+files = ["litex-boards/efinix_xyloni_dev_kit.json"]
+maker = "Efinix Inc."
+status = "none-found"
+notes = "Official Efinix dev kit; no vendor-official GitHub repos or publicly accessible constraint files found outside litex-boards (excluded as upstream). Device: T8F81C2. No community sources located."
+
+[[board]]
+name = "Jungle Electronics Fireant"
+files = ["litex-boards/jungle_electronics_fireant.json"]
+maker = "Jungle Electronics"
+status = "verified"
+notes = "Third-party Efinix T8F81-based board. Community GitHub repo found with official peri.xml constraint file."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "XML"
+  url = "https://raw.githubusercontent.com/jungle-elec/fireant/main/examples/FireAnt.peri.xml"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "device_def=\"T8F81\" from XML root element; matches roster device T8F81C2"
+  clk = "pll_inst1_CLKIN (input clock to PLL, ref_clock_freq=\"33.33\" MHz)"
+  leds = "LED[0], LED[1], LED[2], LED[3] (4 total)"
+  buttons = "BTN[0], BTN[1] (2 total)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["<efxpt:gpio name=\"BTN[0]\" gpio_def=\"GPIOR_28\" mode=\"input\" bus_name=\"BTN\"", "<efxpt:gpio name=\"BTN[1]\" gpio_def=\"GPIOR_30\" mode=\"input\" bus_name=\"BTN\"", "<efxpt:gpio name=\"LED[0]\" gpio_def=\"GPIOR_02\" mode=\"output\" bus_name=\"LED\"", "<efxpt:gpio name=\"LED[1]\" gpio_def=\"GPIOR_05\" mode=\"output\" bus_name=\"LED\""]
+
+[[board]]
+name = "Efinix Trion T20 Mipi Dev Kit"
+files = ["litex-boards/efinix_trion_t20_mipi_dev_kit.json"]
+maker = "Efinix Inc."
+status = "none-found"
+notes = "Official Efinix dev kit; no vendor-official GitHub repos or publicly accessible constraint files found outside litex-boards (excluded as upstream). Device: T20F169C4. No community sources located."
+
+[[board]]
+name = "Adiuvo Forgix"
+files = ["litex-boards/adiuvo_forgix.json"]
+maker = "Adiuvo Engineering"
+status = "none-found"
+notes = "Third-party Efinix T8F49-based board from Adiuvo Engineering. No public GitHub repo or accessible constraint files found. Searched: github.com/adiuvoengineering, github.com/ATaylorCEngFIET. Device: T8F49C2. The only known reference is in litex-boards (excluded as upstream)."
+

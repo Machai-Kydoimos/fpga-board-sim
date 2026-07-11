@@ -1,0 +1,461 @@
+# Port-convention source registry — Terasic
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable verification.
+
+[[board]]
+name = "DE10 Lite"
+files = ["amaranth-boards/de10_lite.json"]
+maker = "Terasic"
+status = "verified"
+notes = "MAX 10 (10M50DA). Verified from two independent GitHub sources with matching pin assignments. | caution: the rank-1 course QSF renames the clock port to 'Clk'; Terasic golden_top uses MAX10_CLK1_50 / MAX10_CLK2_50 / ADC_CLK_10"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/AllenHeartcore/ECE385_UIUC23sp/main/de10_pin_assignment.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Project: DE10 Lite (device inferred from pin names and file path; ECE385 DE10 Lite course material)"
+  clk = "Clk \u2192 PIN_P11"
+  leds = "LEDR[0..9]"
+  buttons = "KEY[0..1]"
+  switches = "SW[0..9]"
+  seven_seg = "HEX0..HEX5, 7 bits per digit"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_A8 -to LEDR[0]", "set_location_assignment PIN_B8 -to KEY[0]"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "CSV"
+  url = "https://raw.githubusercontent.com/robertdunne/FPGA-ARM/master/DE10_Lite_pin_assignments.csv"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "CSV header confirms DE10 Lite project context"
+  clk = "not extracted"
+  leds = "LEDR[0..9]: PIN_A8, PIN_A9, PIN_A10, PIN_B10, PIN_D13, PIN_C13, PIN_E14, PIN_D14, PIN_A11, PIN_B11"
+  buttons = "KEY[0..1]: PIN_B8, PIN_A7"
+  switches = "SW[0..9]"
+  seven_seg = "HEX0..HEX5"
+  active_low = "not visible in this source"
+  evidence = ["LEDR[0] \u2192 PIN_A8", "KEY[0] \u2192 PIN_B8", "matches UIUC QSF exactly"]
+
+[[board]]
+name = "DE1 SoC"
+files = ["amaranth-boards/de1_so_c.json"]
+maker = "Terasic"
+status = "verified"
+notes = "Cyclone V SoC (5CSEMA5F31C6). Community reference design with full I/O coverage."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/norxander/DE1-SoC-HPSFPGA/master/DE1_SoC.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "set_global_assignment -name DEVICE 5CSEMA5F31C6"
+  clk = "Multiple clock sources; see QSF for details"
+  leds = "LEDR[0..9]"
+  buttons = "KEY[0..3]"
+  switches = "SW[0..9]"
+  seven_seg = "HEX0..HEX5, 7 bits per digit"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_V16 -to LEDR[0]", "set_location_assignment PIN_AA14 -to KEY[0]", "set_location_assignment PIN_AB12 -to SW[0]", "set_location_assignment PIN_AE26 -to HEX0[0]"]
+
+[[board]]
+name = "DE0 CV"
+files = ["amaranth-boards/de0_cv.json"]
+maker = "Terasic"
+status = "verified"
+notes = "Cyclone V (5CEBA4F23C7). Complete I/O assignments from working Quartus starter project."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/fb39ca4/quartus-vhdl-starter/master/DE0-CV.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "set_global_assignment -name DEVICE 5CEBA4F23C7"
+  clk = "not extracted"
+  leds = "LEDR[0..9]"
+  buttons = "KEY[0..3]"
+  switches = "SW[0..9]"
+  seven_seg = "HEX0..HEX5, 7 bits per digit"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_AA2 -to LEDR[0]", "set_location_assignment PIN_U7 -to KEY[0]", "set_location_assignment PIN_U13 -to SW[0]", "42 HEX assignments across HEX0-HEX5"]
+
+[[board]]
+name = "DE0"
+files = ["amaranth-boards/de0.json"]
+maker = "Terasic"
+status = "verified"
+notes = "Cyclone III (EP3C16F484C6). NOTE: uses LEDG (green LEDs) not LEDR; BUTTON naming vs KEY convention."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/thomasrussellmurphy/quartus-DE0-project/master/DE0_TOP/DE0_TOP.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "set_global_assignment -name DEVICE EP3C16F484C6"
+  clk = "not extracted"
+  leds = "LEDG[0..9] (green, not red)"
+  buttons = "BUTTON[0..2]"
+  switches = "SW[0..9]"
+  seven_seg = "HEX0..HEX3, 7 bits per digit"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_B1 -to LEDG[9]", "set_location_assignment PIN_H2 -to BUTTON[0]", "Cyclone III era board (earlier than CV); uses LEDG instead of LEDR"]
+
+[[board]]
+name = "DE10-Standard"
+files = ["custom/de10_standard.json"]
+maker = "Terasic"
+status = "verified"
+notes = "Cyclone V SoC (5CSXFC6D6F31C6). Verified from Quartus project in educational context."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/LeThanhHai-1610/DE10-Standard_miniproject/master/Miniproject.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "set_global_assignment -name DEVICE 5CSXFC6D6F31C6"
+  clk = "CLOCK_50 (plus CLOCK2_50 / CLOCK3_50 / CLOCK4_50) \u2014 verified by direct fetch 2026-07-11"
+  leds = "LEDR[0..9]"
+  buttons = "KEY[0..3]"
+  switches = "SW[0..9]"
+  seven_seg = "HEX0..HEX5, 7 bits per digit"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_AA24 -to LEDR[0]", "set_location_assignment PIN_AJ4 -to KEY[0]", "set_location_assignment PIN_AB30 -to SW[0]", "HEX0..HEX5 fully mapped"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "MD"
+  url = "https://github.com/C8H17OH/Pin-Assignment-for-DE10-Standard"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repository title and description confirm DE10-Standard focus"
+  clk = "not extracted"
+  leds = "LEDR[0..9]"
+  buttons = "KEY[0..3]"
+  switches = "SW[0..9]"
+  seven_seg = "HEX0..HEX5"
+  active_low = "not visible in search results"
+  evidence = ["GitHub repo description: FPGA experimental DE10-Standard development board pin table"]
+
+[[board]]
+name = "DE2-115"
+files = ["custom/de2_115.json", "litex-boards/terasic_de2_115.json"]
+maker = "Terasic"
+status = "verified"
+notes = "Cyclone IV E (EP4CE115F29C7). Complete pinout including 8 7-segment displays from 2015 examples."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/yuri-panchul/2015-examples/master/hello_world/de2_115/de2_115.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "set_global_assignment -name DEVICE EP4CE115F29C7"
+  clk = "CLOCK_50 (plus CLOCK2_50 / CLOCK3_50) \u2014 verified by direct fetch 2026-07-11"
+  leds = "LEDR[0..17]; LEDG[0..8] also present in this QSF \u2014 verified by direct fetch 2026-07-11"
+  buttons = "KEY[0..3]"
+  switches = "SW[0..17]"
+  seven_seg = "HEX0..HEX7, 7 bits per digit"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_G19 -to LEDR[0]", "set_location_assignment PIN_M23 -to KEY[0]", "set_location_assignment PIN_AB28 -to SW[0]", "56 HEX assignments for 8 displays"]
+
+[[board]]
+name = "DE0 Nano"
+files = ["amaranth-boards/de0_nano.json"]
+maker = "Terasic"
+status = "verified"
+notes = "Cyclone IV (EP4CE22F17C6). No 7-segment display on this board."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/gmarkall/DE0_NANO/master/DE0_NANO.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "set_global_assignment -name DEVICE EP4CE22F17C6"
+  clk = "not extracted"
+  leds = "LED[0..7]"
+  buttons = "KEY[0..1]"
+  switches = "SW[0..3]"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_A15 -to LED[0]", "set_location_assignment PIN_J15 -to KEY[0]", "set_location_assignment PIN_M1 -to SW[0]"]
+
+[[board]]
+name = "DE10 Nano"
+files = ["amaranth-boards/de10_nano.json", "litex-boards/terasic_de10nano.json"]
+maker = "Terasic"
+status = "candidate"
+notes = "Cyclone V (5CSEBA6U23I7). Partial QSF found (LEDs only); KEY and SW pins not in fetched source. No 7-segment on this board."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "QSF"
+  url = "https://raw.githubusercontent.com/t-crest/patmos/master/hardware/quartus/de10-nano/patmos.qsf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "set_global_assignment -name DEVICE 5CSEBA6U23I7"
+  clk = "not extracted"
+  leds = "oLedsPins_led[0..7] (8 LEDs found; port naming differs from standard)"
+  buttons = "not found in this QSF"
+  switches = "not found in this QSF"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_location_assignment PIN_W15 -to oLedsPins_led[0]", "This particular project omits button/switch pins"]
+
+[[board]]
+name = "SoCKit"
+files = ["litex-boards/terasic_sockit.json"]
+maker = "Terasic"
+status = "candidate"
+notes = "Cyclone V SoC (5CSXFC6D6F31C8, variant suffix differs from DE10-Standard). Extensive GitHub community activity but no complete QSF fetch obtained. Likely has LEDR[0..3], KEY[0..3], SW[0..3]."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "HTML"
+  url = "https://github.com/SoCFPGA-learning/SoCKit"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repository description: Arrow SoCKit development kit by Terasic based on Intel\u00ae Cyclone V SoC FPGA"
+  clk = "not extracted"
+  leds = "LEDR (0..3 inferred)"
+  buttons = "KEY (0..3 inferred)"
+  switches = "SW (0..3 inferred)"
+  seven_seg = "none (SoC-focused board)"
+  active_low = "not visible in this source"
+  evidence = ["Repository confirms Cyclone V 5CSXFC6D6 base; specific pin details in 'Documents' folder per README"]
+
+[[board]]
+name = "DE23-Lite"
+files = ["custom/de23_lite.json"]
+maker = "Terasic"
+status = "candidate"
+notes = "Agilex 3 (A3CZ135BB18AE7S). New board (2025). Golden_top project on vendor System CD; user manuals available but behind registration walls (Mouser, DigiKey). No public GitHub QSF found."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "PDF"
+  url = "https://www.mouser.com/pdfDocs/DE23_Lite_User_manual.pdf"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "Terasic/Altera proprietary"
+  device_evidence = "Title and Mouser metadata confirm Agilex 3 A3CZ135BB18AE7S device"
+  clk = "not extracted"
+  leds = "LEDR[0..9] (inferred from spec sheet)"
+  buttons = "KEY[0..3] (inferred)"
+  switches = "SW[0..9] (inferred)"
+  seven_seg = "HEX0..HEX5 (inferred, 6-digit board)"
+  active_low = "not visible"
+  evidence = ["PDF fetch timed out; manual is behind registration/download gate"]
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-official"
+  format = "PDF"
+  url = "https://www.mouser.com/pdfDocs/DE23_Lite_Getting_Started_Guide.pdf"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "Terasic/Altera proprietary"
+  device_evidence = "Mouser metadata: Terasic DE23-Lite, August 20, 2025"
+  clk = "not extracted"
+  leds = "not extracted"
+  buttons = "not extracted"
+  switches = "not extracted"
+  seven_seg = "not extracted"
+  active_low = "not visible"
+  evidence = ["PDF behind download gate; Terasic official source but not publicly accessible"]
+
+  [[board.source]]
+  rank = 3
+  kind = "vendor-official"
+  format = "HTML"
+  url = "http://de23-lite.terasic.com/cd/"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "Terasic proprietary"
+  device_evidence = "Terasic official System CD link mentioned in search results"
+  clk = "not extracted"
+  leds = "not extracted"
+  buttons = "not extracted"
+  switches = "not extracted"
+  seven_seg = "not extracted"
+  active_low = "not visible"
+  evidence = ["System CD requires download from Terasic; golden_top QSF is the authoritative source per Terasic pattern"]
+
+[[board]]
+name = "DE25-Standard"
+files = ["custom/de25_standard.json"]
+maker = "Terasic"
+status = "candidate"
+notes = "Agilex 5 SoC (A5ED013BB32AE4S). Very new (2025). Similar to DE23-Lite: System CD golden_top is authoritative; user manual behind registration."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "PDF"
+  url = "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/7704/P0781.pdf"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "Terasic/Altera proprietary"
+  device_evidence = "DigiKey metadata: Terasic DE25-Standard User Manual, October 7, 2025; Agilex 5 confirmed"
+  clk = "not extracted"
+  leds = "LEDR[0..9] (inferred)"
+  buttons = "KEY[0..3] (inferred)"
+  switches = "SW[0..9] (inferred)"
+  seven_seg = "HEX0..HEX5 (inferred)"
+  active_low = "not visible"
+  evidence = ["PDF behind DigiKey download gate; very recent release (Oct 2025)"]
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-official"
+  format = "HTML"
+  url = "http://de25-standard.terasic.com/cd/"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "Terasic proprietary"
+  device_evidence = "Terasic official System CD link pattern from search results"
+  clk = "not extracted"
+  leds = "not extracted"
+  buttons = "not extracted"
+  switches = "not extracted"
+  seven_seg = "not extracted"
+  active_low = "not visible"
+  evidence = ["Golden_top QSF is authoritative per Terasic development flow"]
+
+[[board]]
+name = "VEEK-MT2"
+files = ["custom/veek_mt2.json"]
+maker = "Terasic"
+status = "candidate"
+notes = "Cyclone IV E (EP4CE115) on DE2-115 base + multimedia extensions. Similar pin base to DE2-115 plus video/touch interfaces."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "PDF"
+  url = "https://dcenet.fel.cvut.cz/edu/fpga/veek-mt2/VEEK-MT2_User_Manual.pdf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "Terasic proprietary"
+  device_evidence = "Document title and URL confirm VEEK-MT2; based on EP4CE115"
+  clk = "not extracted"
+  leds = "LEDR[0..17] (shared with DE2-115 base)"
+  buttons = "KEY[0..3] (shared with DE2-115)"
+  switches = "SW[0..17] (shared with DE2-115)"
+  seven_seg = "HEX0..HEX7 (shared with DE2-115)"
+  active_low = "not visible in this source"
+  evidence = ["PDF fetch returned binary content; community mirror but not text-extractable"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "HTML"
+  url = "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=165&No=1020&PartNo=4"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "Terasic proprietary"
+  device_evidence = "Terasic official VEEK-MT2 product page"
+  clk = "not extracted"
+  leds = "LEDR[0..17]"
+  buttons = "KEY[0..3]"
+  switches = "SW[0..17]"
+  seven_seg = "HEX0..HEX7"
+  active_low = "not visible"
+  evidence = ["Product page accessible but full pin assignment requires System CD or extended manual"]
+
+[[board]]
+name = "VEEK-MT-SoCKit"
+files = ["custom/veek_mt_sockit.json"]
+maker = "Terasic"
+status = "candidate"
+notes = "Cyclone V SoC (5CSXFC6D6) on SoCKit base + multimedia/HSMC extensions. HSMC-connected daughter card."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "PDF"
+  url = "https://dsp-tdi.com/Terasic/VEEK-MT-SoCKit.pdf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Document title confirms VEEK-MT-SoCKit; SoCKit base (5CSXFC6D6)"
+  clk = "not extracted"
+  leds = "LEDR[0..3] (SoCKit base)"
+  buttons = "KEY[0..3] (SoCKit base)"
+  switches = "SW[0..3] (SoCKit base)"
+  seven_seg = "none (SoC-focused; video/touch via HSMC)"
+  active_low = "not visible"
+  evidence = ["PDF fetch returned binary; community mirror of vendor doc"]
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-official"
+  format = "PDF"
+  url = "https://www.mouser.com/pdfdocs/Terasic_VEEKMT_User_manual.pdf"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "Terasic proprietary"
+  device_evidence = "Mouser metadata and URL confirm VEEK-MT origin"
+  clk = "not extracted"
+  leds = "not extracted"
+  buttons = "not extracted"
+  switches = "not extracted"
+  seven_seg = "not extracted"
+  active_low = "not visible"
+  evidence = ["PDF available from Mouser but text extraction did not succeed"]
+
+[[board]]
+name = "Terasic Atum A3 Nano"
+files = ["litex-boards/terasic_atum_a3_nano.json"]
+maker = "Terasic"
+status = "candidate"
+notes = "Agilex 3 (A3CZ135BB18AE7S). Official GitHub repo available; projects contain designs but QSF pin assignments require per-project inspection. Very new board; likely has 8 LEDs, 2 buttons, 2 switches based on Nano form factor. | official github.com/terasic account + golden_top folder confirmed via GitHub API 2026-07-11"
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "REPO"
+  url = "https://github.com/terasic/Atum-A3-Nano"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown (Terasic official)"
+  device_evidence = "Official Terasic GitHub repository for Atum A3 Nano; A3CZ135BB18AE7S device confirmed"
+  clk = "not extracted"
+  leds = "likely 4 LEDs (inferred from Nano form factor)"
+  buttons = "likely 2 buttons (inferred)"
+  switches = "likely 2 switches (inferred)"
+  seven_seg = "unknown"
+  active_low = "not visible"
+  evidence = ["Repository README lists 10+ design examples (golden_top, HDMI, SDRAM, UART, etc.); each has its own QSF in individual project folder per README"]
+

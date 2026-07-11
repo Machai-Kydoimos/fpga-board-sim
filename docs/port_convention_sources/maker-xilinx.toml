@@ -1,0 +1,225 @@
+# Port-convention source registry — US/EU hobbyist Xilinx boards
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; researched inline via GitHub API (batch b11).
+
+[[board]]
+name = "Alchitry Au"
+files = ["amaranth-boards/alchitry_au.json", "litex-boards/alchitry_au.json"]
+maker = "alchitry"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11 (batch b11; agent died on session limit). One physical board; row covers the amaranth and litex files."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/alchitry/Au-Base-Project/master/au_base_project.srcs/constrs_1/new/au.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official alchitry org Vivado base project for the Au"
+  clk = "clk"
+  leds = "led[0], led[1], led[2], led[3], led[4], led[5], led[6], led[7]"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["[get_ports clk", "[get_ports clk", "[get_ports clk", "[get_ports {led[0]"]
+
+[[board]]
+name = "Numato Mimas A7"
+files = ["litex-boards/numato_mimas_a7.json"]
+maker = "numato"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11 (batch b11; agent died on session limit)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/numato/Mimas-A7/auto/MimasA7_TopModule/MimasA7_TopModule.srcs/constrs_1/new/MimasA7TopModule.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official numato/Mimas-A7 repo TopModule constraints"
+  clk = "Clk"
+  leds = "LED[0], LED[1], LED[2], LED[3], LED[4], LED[5], LED[6], LED[7]"
+  buttons = "rst"
+  switches = "DPSwitch[7], DPSwitch[6], DPSwitch[5], DPSwitch[4], DPSwitch[3], DPSwitch[2], DPSwitch[1], DPSwitch[0], Switch[0], Switch[1], Switch[2], Switch[3]"
+  seven_seg = "Enable[0], Enable[1], Enable[2], Enable[3], SevenSegment[7], SevenSegment[6], SevenSegment[5], SevenSegment[4], SevenSegment[3], SevenSegment[2], SevenSegment[1], SevenSegment[0] (scan-style shared segments + digit enables)"
+  active_low = "not visible in this source"
+  evidence = ["[get_ports { Clk", "[get_ports { rst", "[get_ports { Enable[0]", "[get_ports { Enable[1]"]
+
+[[board]]
+name = "Scarabhardware Minispartan6"
+files = ["litex-boards/scarabhardware_minispartan6.json"]
+maker = "scarabhardware"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11 (batch b11; agent died on session limit)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "UCF"
+  url = "https://raw.githubusercontent.com/scarabhardware/miniSpartan6-plus/master/projects/miniSpartan6-plus.ucf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official scarabhardware repo; top-level board UCF"
+  clk = "absent from this file"
+  leds = "LEDS<0>, LEDS<1>, LEDS<2>, LEDS<3>, LEDS<4>, LEDS<5>, LEDS<6>, LEDS<7>"
+  buttons = "none found"
+  switches = "SW<1>, SW<2>, SW<3>, SW<4>"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["NET \"LEDS<0>\" LOC=\"P11\"", "NET \"LEDS<1>\" LOC=\"N9\"", "NET \"LEDS<2>\" LOC=\"M9\"", "NET \"LEDS<3>\" LOC=\"P9\""]
+
+[[board]]
+name = "Saanlima Pipistrello"
+files = ["litex-boards/saanlima_pipistrello.json"]
+maker = "Saanlima"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11 (batch b11; agent died on session limit)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "UCF"
+  url = "https://raw.githubusercontent.com/Saanlima/Pipistrello/master/Projects/Oberon_lpddr/src/Pipistrello.ucf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official Saanlima repo; project UCF carries board pin canon (LED1-5, SWITCH)"
+  clk = "sys_clk"
+  leds = "LED1, LED2, LED3, LED4, LED5, leds[0], leds[1], leds[2], leds[3], leds[4], leds[5], leds[6], leds[7]"
+  buttons = "none found"
+  switches = "SWITCH, swi[0], swi[1], swi[2], swi[3], swi[4], swi[5], swi[6], swi[7]"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["NET \"sys_clk\" LOC = \"H17\"", "NET \"SWITCH\" LOC = \"N14\"", "NET \"LED1\" LOC = \"V16\"", "NET \"LED2\" LOC = \"U16\""]
+
+[[board]]
+name = "Alchitry Au V2"
+files = ["litex-boards/alchitry_au_v2.json"]
+maker = "alchitry"
+status = "candidate"
+notes = "Inline research 2026-07-11: alchitry org confirmed; Au-V2-specific base project not located (Alchitry-Labs-V2 likely embeds per-board ACF)"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/alchitry/Alchitry-Labs-V2"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "lead only (not fetch-verified)"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Alchitry Pt V2"
+files = ["amaranth-boards/alchitry_pt_v2.json", "amaranth-boards/alchitry_pt_v2_alpha.json", "litex-boards/alchitry_pt_v2.json"]
+maker = "alchitry"
+status = "candidate"
+notes = "Inline research 2026-07-11: Pt V2 base project not located in alchitry org; Alchitry-Labs-V2 is the lead. Row covers amaranth pt_v2 + pt_v2_alpha + litex pt_v2 files."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/alchitry/Alchitry-Labs-V2"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "lead only (not fetch-verified)"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Alchitry Mojo"
+files = ["litex-boards/alchitry_mojo.json"]
+maker = "alchitry"
+status = "candidate"
+notes = "Inline research 2026-07-11: legacy board; Mojo base project not in the current alchitry org listing \u2014 embeddedmicro-era archives are the lead"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/alchitry"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "lead only (not fetch-verified)"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Numato Mimas"
+files = ["amaranth-boards/numato_mimas.json"]
+maker = "numato"
+status = "candidate"
+notes = "Inline research 2026-07-11: numato/samplecode carries MimasV2 UCFs (FPGA/MimasV2/mimasV2Demo/ucf/MimasV2.ucf) but no V1 (XC6SLX9 TQG144) directory was found; V2 files are the nearest official data"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/numato/samplecode"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "lead only (not fetch-verified)"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Numato Aller"
+files = ["litex-boards/numato_aller.json"]
+maker = "numato"
+status = "none-found"
+notes = "Inline research 2026-07-11: numato org checked via API: no aller repo/dir in samplecode; PCIe board docs are registration-era"
+
+[[board]]
+name = "Numato Tagus"
+files = ["litex-boards/numato_tagus.json"]
+maker = "numato"
+status = "none-found"
+notes = "Inline research 2026-07-11: numato org checked via API: no tagus repo/dir in samplecode"
+
+[[board]]
+name = "Mercury"
+files = ["amaranth-boards/mercury.json"]
+maker = "micro-nova"
+status = "none-found"
+notes = "Inline research 2026-07-11: micro-nova org has pivoted to AmpliPi; Mercury-CTDSP contains no UCF; Mercury 1 baseboard UCF not public"
+
+[[board]]
+name = "Micronova Mercury2"
+files = ["litex-boards/micronova_mercury2.json"]
+maker = "micro-nova"
+status = "none-found"
+notes = "Inline research 2026-07-11: micro-nova org checked: mercury2_prog is a programmer, no constraint files; micro-nova.com docs are the offline lead"
+
+[[board]]
+name = "Gadgetfactory Papilio Pro"
+files = ["litex-boards/gadgetfactory_papilio_pro.json"]
+maker = "GadgetFactory"
+status = "candidate"
+notes = "Inline research 2026-07-11: GadgetFactory org confirmed (Papilio-Loader, Papilio-Arcade, DesignLab); board-generic Papilio Pro UCF not located in tree greps; papilio.cc wiki is the vendor lead"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/GadgetFactory/Papilio-Loader"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "lead only (not fetch-verified)"
+  clk = "not extracted"
+  leds = "not extracted"
+

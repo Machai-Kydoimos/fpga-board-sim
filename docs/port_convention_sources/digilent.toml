@@ -1,0 +1,604 @@
+# Port-convention source registry — Digilent (auto-generated from sync pipeline)
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable verification.
+
+[[board]]
+name = "Arty"
+files = ["digilent-xdc/arty.json", "litex-boards/digilent_arty.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Arty-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "CLK100MHZ"
+  leds = "led[3:0]"
+  buttons = "btn[3:0]"
+  switches = "sw[3:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Arty A7-100"
+files = ["digilent-xdc/arty_a7-100.json", "amaranth-boards/arty_a7-100.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Arty-A7-100-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "CLK100MHZ"
+  leds = "led[3:0]"
+  buttons = "btn[3:0]"
+  switches = "sw[3:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Arty A7-35"
+files = ["digilent-xdc/arty_a7-35.json", "amaranth-boards/arty_a7-35.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Arty-A7-35-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "CLK100MHZ"
+  leds = "led[3:0]"
+  buttons = "btn[3:0]"
+  switches = "sw[3:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Arty S7-25"
+files = ["digilent-xdc/arty_s7-25.json", "amaranth-boards/arty_s7-25.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Arty-S7-25-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "CLK12MHZ"
+  leds = "led[3:0]"
+  buttons = "btn[3:0]"
+  switches = "sw[3:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Arty S7-50"
+files = ["digilent-xdc/arty_s7-50.json", "amaranth-boards/arty_s7-50.json", "litex-boards/digilent_arty_s7.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Arty-S7-50-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "CLK12MHZ"
+  leds = "led[3:0]"
+  buttons = "btn[3:0]"
+  switches = "sw[3:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Arty Z7-10"
+files = ["digilent-xdc/arty_z7-10.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Arty-Z7-10-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "clk"
+  leds = "led[3:0]"
+  buttons = "btn[3:0]"
+  switches = "sw[1:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Arty Z7-20"
+files = ["digilent-xdc/arty_z7-20.json", "amaranth-boards/arty_z720.json", "litex-boards/digilent_arty_z7.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Arty-Z7-20-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "clk"
+  leds = "led[3:0]"
+  buttons = "btn[3:0]"
+  switches = "sw[1:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Basys 3"
+files = ["digilent-xdc/basys_3.json", "litex-boards/digilent_basys3.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Basys-3-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "clk"
+  leds = "led[15:0]"
+  buttons = "btn[4:0]"
+  switches = "sw[15:0]"
+  seven_seg = "packed_vector 'seg' (7 bits/digit, active-low)"
+  active_low = "buttons active_low=False; seven_seg active-low"
+
+[[board]]
+name = "Cmod A7"
+files = ["digilent-xdc/cmod_a7.json", "amaranth-boards/cmod_a7-15.json", "amaranth-boards/cmod_a7-35.json", "litex-boards/digilent_cmod_a7.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Cmod-A7-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "sysclk"
+  leds = "led[1:0]"
+  buttons = "btn[1:0]"
+  switches = "not in this convention"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Cmod S7-25"
+files = ["digilent-xdc/cmod_s7-25.json", "amaranth-boards/cmod_s7.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Cmod-S7-25-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "see XDC"
+  leds = "not in this convention"
+  buttons = "btn[1:0]"
+  switches = "not in this convention"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Cora Z7-07S"
+files = ["digilent-xdc/cora_z7-07s.json", "amaranth-boards/cora_z7-07_s.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Cora-Z7-07S-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "see XDC"
+  leds = "not in this convention"
+  buttons = "btn[1:0]"
+  switches = "not in this convention"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Cora Z7-10"
+files = ["digilent-xdc/cora_z7-10.json", "amaranth-boards/cora_z7-10.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Cora-Z7-10-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "see XDC"
+  leds = "not in this convention"
+  buttons = "btn[1:0]"
+  switches = "not in this convention"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Eclypse Z7"
+files = ["digilent-xdc/eclypse_z7.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Eclypse-Z7-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "see XDC"
+  leds = "not in this convention"
+  buttons = "btn[1:0]"
+  switches = "not in this convention"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Genesys 2"
+files = ["digilent-xdc/genesys_2.json", "amaranth-boards/genesys2.json", "litex-boards/digilent_genesys2.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Genesys-2-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "sysclk_n"
+  leds = "led[7:0]"
+  buttons = "btn[5:0]"
+  switches = "sw[7:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Genesys ZU-3EG"
+files = ["digilent-xdc/genesys_zu-3eg.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Genesys-ZU-3EG-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "see XDC"
+  leds = "ld[3:0]"
+  buttons = "btn[4:0]"
+  switches = "sw[3:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Genesys ZU-3EG-D"
+files = ["digilent-xdc/genesys_zu-3eg-d.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Genesys-ZU-3EG-D-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "see XDC"
+  leds = "ld[3:0]"
+  buttons = "btn[4:0]"
+  switches = "sw[3:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Genesys ZU-5EV-D"
+files = ["digilent-xdc/genesys_zu-5ev-d.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Genesys-ZU-5EV-D-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "see XDC"
+  leds = "ld[3:0]"
+  buttons = "btn[4:0]"
+  switches = "sw[3:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Nexys 4"
+files = ["digilent-xdc/nexys_4.json", "litex-boards/digilent_nexys4.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Nexys-4-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "clk"
+  leds = "led[21:0]"
+  buttons = "btnCpuReset[5:0]"
+  switches = "sw[15:0]"
+  seven_seg = "packed_vector 'seg' (7 bits/digit, active-low)"
+  active_low = "buttons active_low=False; seven_seg active-low"
+
+[[board]]
+name = "Nexys 4 DDR"
+files = ["digilent-xdc/nexys_4_ddr.json", "amaranth-boards/nexys4_ddr.json", "litex-boards/digilent_nexys4ddr.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Nexys-4-DDR-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "CLK100MHZ"
+  leds = "LED[21:0]"
+  buttons = "CPU_RESETN[5:0]"
+  switches = "SW[15:0]"
+  seven_seg = "individual ports CA, CB, CC, CD, CE, CF, CG (7 bits each, active-low)"
+  active_low = "buttons active_low=False; seven_seg active-low"
+
+[[board]]
+name = "Nexys A7-100T"
+files = ["digilent-xdc/nexys_a7-100t.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Nexys-A7-100T-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "CLK100MHZ"
+  leds = "LED[15:0]"
+  buttons = "CPU_RESETN[5:0]"
+  switches = "SW[15:0]"
+  seven_seg = "individual ports CA, CB, CC, CD, CE, CF, CG (7 bits each, active-low)"
+  active_low = "buttons active_low=False; seven_seg active-low"
+
+[[board]]
+name = "Nexys A7-50T"
+files = ["digilent-xdc/nexys_a7-50t.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Nexys-A7-50T-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "CLK100MHZ"
+  leds = "LED[15:0]"
+  buttons = "CPU_RESETN[5:0]"
+  switches = "SW[15:0]"
+  seven_seg = "individual ports CA, CB, CC, CD, CE, CF, CG (7 bits each, active-low)"
+  active_low = "buttons active_low=False; seven_seg active-low"
+
+[[board]]
+name = "Nexys Video"
+files = ["digilent-xdc/nexys_video.json", "litex-boards/digilent_nexys_video.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Nexys-Video-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "clk"
+  leds = "led[7:0]"
+  buttons = "btn[5:0]"
+  switches = "sw[7:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Sword"
+files = ["digilent-xdc/sword.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Sword-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "clk_p"
+  leds = "led[15:0]"
+  buttons = "rst[10:0]"
+  switches = "sw[15:0]"
+  seven_seg = "individual ports sseg_clk, sseg_en, sseg_sdo (7 bits each, active-low)"
+  active_low = "buttons active_low=False; seven_seg active-low"
+
+[[board]]
+name = "USB104 A7-100T"
+files = ["digilent-xdc/usb104_a7-100t.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/USB104-A7-100T-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "see XDC"
+  leds = "led[3:0]"
+  buttons = "btn[1:0]"
+  switches = "not in this convention"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Zybo"
+files = ["digilent-xdc/zybo.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Zybo-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "clk"
+  leds = "led[3:0]"
+  buttons = "btn[3:0]"
+  switches = "sw[3:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+
+[[board]]
+name = "Zybo Z7"
+files = ["digilent-xdc/zybo_z7.json", "litex-boards/digilent_zybo_z7.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Auto-generated row: this board's port_conventions block is mechanically parsed from the pinned master XDC by scripts/sync_digilent_xdc.py; the URL below is the commit-pinned upstream file."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Zybo-Z7-Master.xdc"
+  fetched = true
+  retrieved = "2026-05-25"
+  license = "MIT"
+  device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
+  clk = "sysclk"
+  leds = "led[3:0]"
+  buttons = "btn[3:0]"
+  switches = "sw[3:0]"
+  seven_seg = "none"
+  active_low = "buttons active_low=False"
+

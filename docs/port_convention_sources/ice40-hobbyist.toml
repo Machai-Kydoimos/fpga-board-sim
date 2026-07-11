@@ -1,0 +1,526 @@
+# Port-convention source registry — iCE40 hobbyist boards
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable verification.
+
+[[board]]
+name = "Nandland Go"
+files = ["amaranth-boards/nandland_go.json"]
+maker = "Nandland"
+status = "verified"
+notes = "The Go Board \u2014 iCE40HX1K VQ100; two 7-segment digit displays with A-G segments; active-high port names suggest active-high logic | billiegoose repo is a personal mirror of Russell Merrick's canonical tutorial constraints; no official Go-Board repo under the nandland GitHub user (checked via API 2026-07-11) \u2014 nandland.com is the official home"
+
+  [[board.source]]
+  rank = 1
+  kind = "personal"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/billiegoose/nandland-tutorial-projects/master/Go_Board_Constraints.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repo is nandland tutorial repo; pin count and package plausibility match iCE40HX1K VQ100 (100-pin)"
+  clk = "i_Clk"
+  leds = "o_LED_1, o_LED_2, o_LED_3, o_LED_4"
+  buttons = "i_Switch_1, i_Switch_2, i_Switch_3, i_Switch_4"
+  switches = "none"
+  seven_seg = "o_Segment1_A through o_Segment1_G, o_Segment2_A through o_Segment2_G"
+  active_low = "not visible in PCF; port names are active-high convention"
+  evidence = ["set_io i_Clk 15", "set_io o_LED_1 56", "set_io i_Switch_1 53", "set_io o_Segment1_A 3"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/Obijuan/Nandland-Go-Board-tutorial/master/leds_on/leds.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Standalone LED-only subset from Nandland tutorial; confirms same board pinout for LED ports"
+  clk = "none in this file"
+  leds = "LED1, LED2, LED3, LED4"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible"
+  evidence = ["set_io LED1 56", "set_io LED2 57"]
+
+[[board]]
+name = "ICEBreaker"
+files = ["amaranth-boards/icebreaker.json"]
+maker = "1BitSquared"
+status = "verified"
+notes = "iCEBreaker v1.0 \u2014 iCE40UP5K SG48; active-low naming convention (_N suffix); PMOD 2 has multiplexed LED/button aliases"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/icebreaker-fpga/icebreaker-verilog-examples/main/icebreaker/icebreaker.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Official icebreaker-fpga org verilog-examples repo; pin counts and package plausibility match SG48 iCE40UP5K"
+  clk = "CLK"
+  leds = "LEDR_N, LEDG_N, LED_RED_N, LED_GRN_N, LED_BLU_N (breakout PMOD: LED1-LED5 aliased to P2_7, P2_1-P2_3, P2_8)"
+  buttons = "BTN_N (main); P2_9/BTN1, P2_4/BTN2, P2_10/BTN3 (PMOD 2 aliases)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "LEDR_N, LEDG_N, LED_*_N, BTN_N naming implies active-low; confirmed by _N suffix convention"
+  evidence = ["set_io -nowarn CLK 35", "set_io -nowarn LEDR_N 11", "set_io -nowarn BTN_N 10", "set_io -nowarn LED_RED_N 39"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "PCF"
+  url = "https://github.com/projf/projf-explore/blob/main/graphics/fpga-graphics/ice40/icebreaker.pcf"
+  fetched = false
+  retrieved = "not-fetched"
+  license = "unknown"
+  device_evidence = "Project F community graphics examples targeting icebreaker; alternative constraint source"
+  clk = "CLK"
+  leds = "LEDR_N, LEDG_N, LED_RED_N, LED_GRN_N, LED_BLU_N"
+  buttons = "BTN_N"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "implied by naming"
+  evidence = ["community repo"]
+
+[[board]]
+name = "ICEstick"
+files = ["amaranth-boards/icestick.json"]
+maker = "Lattice Semiconductor"
+status = "verified"
+notes = "Lattice iCEstick Evaluation Kit \u2014 iCE40HX1K TQ144; 5 LEDs (4 red + 1 green), no buttons; clock on dedicated 12 MHz oscillator | no single canonical PCF; community port naming varies (clk/LED1..LED5 vs CLK_i/LED_o[]); the Lattice iCEstick user manual (EB82) is the pin authority"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/mcmayer/iCE40/master/iCEstick.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "mcmayer/iCE40 examples repo; pin numbers and TQ144 package match known iCEstick layout"
+  clk = "CLK_i"
+  leds = "LED_o[0] (red D1 top), LED_o[1] (red D2 right), LED_o[2] (red D3 bottom), LED_o[3] (red D4 left), LED_o[4] (green D5 center)"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in PCF"
+  evidence = ["set_io CLK_i 21", "set_io LED_o[0] 99", "set_io LED_o[4] 95"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/wd5gnr/icestick/master/icestick.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "wd5gnr/icestick examples; consistent LED port names and pin numbers with mcmayer source"
+  clk = "clk"
+  leds = "LED1-LED5 (aliases for LED_o[0-4])"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible"
+  evidence = ["set_io clk 21", "set_io LED1 99"]
+
+  [[board.source]]
+  rank = 3
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://www.latticesemi.com/~/media/LatticeSemi/Documents/UserManuals/EI/icestickusermanual.pdf"
+  fetched = false
+  retrieved = "blocked-403"
+  license = "unknown"
+  device_evidence = "Official Lattice Semiconductor iCEstick user manual (EB82_01.0); authoritative but fetched blocked by server"
+  clk = "12 MHz oscillator (TQ144)"
+  leds = "5 LEDs confirmed in manual description"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in abstract"
+  evidence = ["manual reference only"]
+
+[[board]]
+name = "TinyFPGA BX"
+files = ["amaranth-boards/tiny_fpgabx.json"]
+maker = "TinyFPGA"
+status = "verified"
+notes = "TinyFPGA BX \u2014 iCE40LP8K CM81; minimal I/O on board (clock + single LED); most pins on 0.1\" header; USB interface"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://github.com/tinyfpga/TinyFPGA-BX/blob/master/icestorm_template/pins.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Official tinyfpga/TinyFPGA-BX org repo; icestorm_template for open-toolchain users; CM81 package match"
+  clk = "CLK"
+  leds = "LED"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible"
+  evidence = ["set_io --warn-no-port CLK B2", "set_io --warn-no-port LED B3"]
+
+  [[board.source]]
+  rank = 2
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/tinyfpga/TinyFPGA-BX/master/apio_template/pins.pcf"
+  fetched = false
+  retrieved = "not-fetched"
+  license = "unknown"
+  device_evidence = "Official TinyFPGA BX APIO template variant of same board"
+  clk = "CLK"
+  leds = "LED"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible"
+  evidence = ["apio variant"]
+
+[[board]]
+name = "iCE40-HX8K Breakout (EVN)"
+files = ["amaranth-boards/ice40_hx8_kbevn.json"]
+maker = "Lattice Semiconductor"
+status = "verified"
+notes = "Lattice iCE40-HX8K Breakout Board \u2014 iCE40HX8K CT256; 8 LEDs, no buttons, extensive PMOD headers; clock on dedicated oscillator pin"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/mcmayer/iCE40/master/ice40hx8k.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "mcmayer/iCE40 examples repo; 8 LED outputs and CT256 package pinout are canonical for this board"
+  clk = "CLK_i"
+  leds = "LED_o[0-7] mapped to pins B5, B4, A2, A1, C5, C4, B3, C3"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in PCF"
+  evidence = ["set_io CLK_i J3", "set_io LED_o[0] B5", "set_io LED_o[7] C3"]
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://www.fpgakey.com/uploads/files/productFamilyDoc/LATTICE/iCE40HX8K.pdf"
+  fetched = false
+  retrieved = "not-fetched"
+  license = "unknown"
+  device_evidence = "Lattice official EVN board user guide; reference only"
+  clk = "oscillator"
+  leds = "8 LEDs"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "unknown"
+  evidence = ["datasheet reference"]
+
+[[board]]
+name = "Fomu PVT"
+files = ["amaranth-boards/fomu_pvt.json"]
+maker = "im-tomu"
+status = "verified"
+notes = "Queries tried: 'Fomu im-tomu PVT hacker constraints PCF pin definitions', raw.githubusercontent.com paths for fomu.pcf and fomu-pvt.pcf both returned 404. Repository structure unclear. | official per-revision PCF located + fetched via GitHub API 2026-07-11 (supersedes the earlier none-found)"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/im-tomu/fomu-workshop/master/pcf/fomu-pvt.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown (fomu-workshop repo)"
+  device_evidence = "official im-tomu org; fomu-workshop ships one PCF per board revision (evt2/evt3/hacker/pvt); UWG30-package pin names"
+  clk = "set_io clki F4 (48 MHz oscillator input)"
+  leds = "rgb0 / rgb1 / rgb2 (RGB LED channels)"
+  buttons = "user touch pads (user_*)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_io rgb0 A5", "set_io rgb1 B5", "set_io rgb2 C5"]
+
+[[board]]
+name = "iCESugar"
+files = ["amaranth-boards/icesugar.json"]
+maker = "Muselab (wuxx)"
+status = "verified"
+notes = "MuseLab iCESugar \u2014 iCE40UP5K SG48; RGB LED (3 channels), 4 DIP switches on board; extensive PMOD headers | official-org PCF (icicle example) fetched via GitHub API 2026-07-11; the earlier doc/icesugar.pcf lead 404s and was dropped; port names here follow the icicle project"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/wuxx/icesugar/master/src/advanced/icicle/boards/icesugar.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official wuxx/icesugar org repo; icicle example board file for iCESugar"
+  clk = "CLK (pin 35)"
+  leds = "leds[0..4] in this (icicle-naming) PCF; RGB LED on pins 39/40/41 per the blog source"
+  buttons = "none"
+  switches = "see blog source (DIP on 18-21)"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_io -nowarn CLK        35", "set_io -nowarn leds[0]    11", "set_io -nowarn leds[1]    37"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "HTML"
+  url = "https://www.techrm.com/fpga-ice40up5k-ubuntu-toolchain-first-project-rgb/"
+  fetched = false
+  retrieved = "not-fetched"
+  license = "unknown"
+  device_evidence = "Techrm blog tutorial for iCESugar RGB project; references pins 39/40/41 for RGB and pin 35 for clock"
+  clk = "35"
+  leds = "39, 40, 41 (RGB)"
+  buttons = "none"
+  switches = "18, 19, 20, 21"
+  seven_seg = "none"
+  active_low = "unknown"
+  evidence = ["blog post reference"]
+
+[[board]]
+name = "Upduino V3"
+files = ["amaranth-boards/upduino_v3.json"]
+maker = "tinyVision.ai"
+status = "verified"
+notes = "UPduino v3.x \u2014 iCE40UP5K SG48; single RGB LED (3 channels), no discrete buttons/switches; 12 MHz clock via gpio_20 or external oscillator | official pins file is RTL/common/upduino.pcf (fetched via GitHub API 2026-07-11); the constraints/pins.pcf path recorded earlier does not exist"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/tinyvision-ai-inc/UPduino-v3.0/master/RTL/common/upduino.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official tinyvision-ai-inc/UPduino-v3.0 org repo; 42 set_io lines"
+  clk = "no dedicated clock port; 12 MHz osc reaches gpio_20 (pin 20, global input) when the OSC/R16 jumper is shorted \u2014 per PCF comment"
+  leds = "led_green (39) / led_blue (40) / led_red (41)"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_io -nowarn led_green 39", "set_io -nowarn led_red\t41", "set_io -nowarn gpio_20 20"]
+
+  [[board.source]]
+  rank = 2
+  kind = "community"
+  format = "MD"
+  url = "https://github.com/XarkLabs/upduino-example/blob/master/UPduino_V3.x_Pins.md"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "XarkLabs upduino-example community repo; detailed pinout markdown; SG48 package match"
+  clk = "gpio_20 (12 MHz output), G3 PLL input"
+  leds = "led_red (gpio_2, pin 5), led_green (gpio_0, pin 6), led_blue (gpio_1, pin 7)"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible; RGB names suggest active-high"
+  evidence = ["GPIO pinout table in markdown"]
+
+[[board]]
+name = "ICEBreaker Bitsy"
+files = ["amaranth-boards/icebreaker_bitsy.json"]
+maker = "1BitSquared"
+status = "verified"
+notes = "ICEBreaker Bitsy v1.1c \u2014 iCE40UP5K SG48; 5 LEDs (red+green primary, RGB breakout), 1 button, USB interface"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/icebreaker-fpga/icebreaker-verilog-examples/main/icebitsy/icebitsy1.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Official icebreaker-fpga/icebreaker-verilog-examples org; bitsy variant PCF; SG48 UP5K match"
+  clk = "CLK"
+  leds = "LEDR_N (25), LEDG_N (6), LED_RED_N (39), LED_GRN_N (40), LED_BLU_N (41)"
+  buttons = "BTN_N (pin 2)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "LEDR_N, LEDG_N, LED_*_N, BTN_N naming implies active-low"
+  evidence = ["set_io -nowarn CLK 35", "set_io -nowarn LEDR_N 25", "set_io -nowarn BTN_N 2"]
+
+[[board]]
+name = "Black Ice II"
+files = ["amaranth-boards/black_ice_ii.json"]
+maker = "myStorm"
+status = "verified"
+notes = "Black Ice II \u2014 iCE40HX4K TQ144; 8 LEDs via PMOD mux, no discrete buttons/switches"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/mattvenn/fpga-sram/master/blackice.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "mattvenn/fpga-sram examples repo; myStorm blackice.pcf; HX4K TQ144 pinout match"
+  clk = "clk"
+  leds = "PMOD[0-3] remapped to LED pins 71 (LD4), 67 (LD3), 68 (LD2), 70 (LD1)"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in PCF"
+  evidence = ["set_io clk 129", "set_io PMOD[0] 71"]
+
+[[board]]
+name = "Black Ice"
+files = ["amaranth-boards/black_ice.json"]
+maker = "myStorm"
+status = "candidate"
+notes = "Black Ice (original) \u2014 iCE40HX4K TQ144; variant of Black Ice II; same device, possibly different pinout | no folknology/BlackIceII repo found via API 2026-07-11; myStorm documentation is the lead"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "PCF"
+  url = "https://github.com/hackaday.io/blacksoc/blob/master/boards/ice40hx4k/blackice-board.pcf"
+  fetched = false
+  retrieved = "not-fetched"
+  license = "unknown"
+  device_evidence = "hackaday.io blacksoc project; reference only"
+  clk = "unknown"
+  leds = "unknown"
+  buttons = "unknown"
+  switches = "unknown"
+  seven_seg = "none"
+  active_low = "unknown"
+  evidence = ["search results mention myStorm board but specific PCF not located"]
+
+[[board]]
+name = "iCE40-UP5K-B-EVN"
+files = ["amaranth-boards/ice40_up5_kbevn.json"]
+maker = "Lattice Semiconductor"
+status = "candidate"
+notes = "Queries tried: 'iCE40 UP5K breakout EVN constraints pins', 'iCE40-UP5K-B-EVN lattice user guide pdf'. User guide URLs return 403. No community PCF files located in search results."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://www.latticesemi.com/-/media/LatticeSemi/Documents/UserManuals/EI/FPGAUG0200110.ashx?document_id=51987"
+  fetched = false
+  retrieved = "blocked-403"
+  license = "unknown"
+  device_evidence = "Official Lattice Semiconductor iCE40 UltraPlus Breakout Board User Guide (FPGA-UG-02001); blocked by server"
+  clk = "unknown"
+  leds = "6 (expected from board spec)"
+  buttons = "none"
+  switches = "4 (expected from board spec)"
+  seven_seg = "none"
+  active_low = "unknown"
+  evidence = ["manual reference only"]
+
+[[board]]
+name = "iCEblink40-HX1K (blink EVN)"
+files = ["amaranth-boards/ice40_hx1_kblink_evn.json"]
+maker = "Lattice Semiconductor"
+status = "none-found"
+notes = "Queries tried: 'iCE40 HX1K blink EVN constraints pin'. Board is obsolete (out of production). No PCF files or constraint documentation accessible online."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://www.digikey.com/en/products/detail/lattice-semiconductor-corporation/ICE40HX1K-BLINK-EVN/3198285"
+  fetched = false
+  retrieved = "product-page-only"
+  license = "unknown"
+  device_evidence = "DigiKey product page; board is listed as obsolete/not in stock"
+  clk = "unknown"
+  leds = "4 (expected from board name)"
+  buttons = "up to 4 cap-touch (from project notes)"
+  switches = "unknown"
+  seven_seg = "none"
+  active_low = "unknown"
+  evidence = ["product page reference only"]
+
+[[board]]
+name = "iCESugar Nano"
+files = ["amaranth-boards/icesugar_nano.json"]
+maker = "Muselab (wuxx)"
+status = "verified"
+notes = "Queries tried: 'iCESugar Nano constraints PCF'. Only found iCESugar-nano repo reference; no raw PCF file accessible. | official per-example io.pcf fetched via GitHub API 2026-07-11"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/wuxx/icesugar-nano/main/src/basic/blink/io.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official wuxx/icesugar-nano org repo; per-example io.pcf files"
+  clk = "CLK (D1)"
+  leds = "LED (B6)"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_io LED B6", "set_io CLK D1"]
+
+[[board]]
+name = "Fomu Hacker"
+files = ["amaranth-boards/fomu_hacker.json"]
+maker = "im-tomu"
+status = "verified"
+notes = "Queries tried: 'Fomu im-tomu hacker constraints PCF'. No accessible PCF file found; fomu-hardware repository structure unclear. | official per-revision PCF located + fetched via GitHub API 2026-07-11"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/im-tomu/fomu-workshop/master/pcf/fomu-hacker.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown (fomu-workshop repo)"
+  device_evidence = "official im-tomu org; hacker-revision PCF with inline pin comments"
+  clk = "clki (F5, 48 MHz oscillator input)"
+  leds = "rgb0 (blue) / rgb1 (green) / rgb2 (red)"
+  buttons = "user_1..user_4 touch pads"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_io rgb0 A5\t\t# Blue LED", "set_io clki F5\t\t# Clock input from 48MHz Oscillator", "set_io user_1 F4\t# User touch pad 1"]
+
+[[board]]
+name = "Upduino V1"
+files = ["amaranth-boards/upduino_v1.json"]
+maker = "tinyVision.ai"
+status = "none-found"
+notes = "Queries tried: 'Upduino V1 constraints PCF'. Only V3.x documentation found; V1 is obsolete. | only UPduino-v3.0 exists in the tinyvision-ai-inc org (checked via API 2026-07-11)"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/tinyvision-ai-inc/UPduino-v3.0"
+  fetched = false
+  retrieved = "not-fetched"
+  license = "unknown"
+  device_evidence = "Official tinyvision-ai-inc org; only current V3.0 repo available; V1 obsolete"
+  clk = "unknown"
+  leds = "6 (expected from board spec)"
+  buttons = "unknown"
+  switches = "unknown"
+  seven_seg = "none"
+  active_low = "unknown"
+  evidence = ["only V3.x available"]
+

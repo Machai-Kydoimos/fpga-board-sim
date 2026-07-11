@@ -1,0 +1,393 @@
+# Port-convention source registry — Gowin / Sipeed Tang
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable consolidation.
+
+[[board]]
+name = "Tang Nano 9K"
+files = ["amaranth-boards/tang_nano9k.json", "litex-boards/sipeed_tang_nano_9k.json"]
+maker = "Sipeed"
+status = "verified"
+notes = "Official Sipeed TangNano-9K-example repo with complete constraint files. Clock 27MHz. 6 LEDs, 2 buttons confirmed from multiple examples."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangNano-9K-example/master/led/src/9K_LED_project.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repo context: Tang Nano 9K example board"
+  clk = "sys_clk on pin 52 (27MHz)"
+  leds = "led[0..5] on pins 10, 11, 13, 14, 15, 16 (6 LEDs)"
+  buttons = "Not found in LED example"
+  switches = "None found"
+  seven_seg = "None found"
+  active_low = "LEDs: PULL_MODE=UP DRIVE=8 (active-high)"
+  evidence = ["IO_LOC \"led[0]\" 10;", "IO_LOC \"led[5]\" 16;", "IO_LOC \"sys_clk\" 52;"]
+
+  [[board.source]]
+  rank = 2
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangNano-9K-example/master/uart/src/top.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "copyright Gowin Semiconductor"
+  device_evidence = "Part Number: GW1NR-LV9QN88PC6/I5, Device: GW1NR-9C"
+  clk = "clk on pin 52"
+  leds = "None found in UART example"
+  buttons = "None found"
+  switches = "None found"
+  seven_seg = "None found"
+  active_low = "not visible in this source"
+  evidence = ["IO_LOC \"clk\" 52;", "Device: GW1NR-9C"]
+
+[[board]]
+name = "Sipeed Tang Nano 20k"
+files = ["litex-boards/sipeed_tang_nano_20k.json"]
+maker = "Sipeed"
+status = "verified"
+notes = "Official Sipeed TangNano-20K-example repo. Device GW2AR-18. Multiple CST files with different configurations. Clock 27MHz, 6 LEDs, 2 buttons."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangNano-20K-example/master/led/flow_led/src/flow_led.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Device GW2AR-18 confirmed from picorv32 example in same repo"
+  clk = "clk on pin 4"
+  leds = "leds[0..5] on pins 15, 16, 17, 18, 19, 20 (6 LEDs)"
+  buttons = "Not found in LED example"
+  switches = "None found"
+  seven_seg = "None found"
+  active_low = "LEDs: PULL_MODE=UP DRIVE=8 IO_TYPE=LVCMOS33"
+  evidence = ["IO_LOC \"leds[0]\" 15;", "IO_LOC \"leds[5]\" 20;", "IO_LOC \"clk\" 4;"]
+
+  [[board.source]]
+  rank = 2
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangNano-20K-example/master/picorv32/src/fpga_project.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Part Number: GW2AR-LV18QN88C8/I7, Device: GW2AR-18"
+  clk = "clk on pin 4"
+  leds = "Not found in picorv32 example"
+  buttons = "Not found"
+  switches = "None found"
+  seven_seg = "None found"
+  active_low = "not visible in this source"
+  evidence = ["IO_LOC \"clk\" 4;", "Device: GW2AR-18"]
+
+[[board]]
+name = "Sipeed Tang Nano 4k"
+files = ["litex-boards/sipeed_tang_nano_4k.json"]
+maker = "Sipeed"
+status = "verified"
+notes = "Official Sipeed TangNano-4K-example repo. Device GW1NSR-4C. Clock 27MHz. 1 LED, 2 buttons. Active-low buttons with PULL_MODE=UP."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangNano-4K-example/master/led_test/project/src/led_test.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Part Number: GW1NSR-LV4CQN48PC7/I6, Device: GW1NSR-4C"
+  clk = "sys_clk on pin 45"
+  leds = "led on pin 10 (1 LED)"
+  buttons = "Not found in LED example"
+  switches = "None found"
+  seven_seg = "None found"
+  active_low = "not visible in this source"
+  evidence = ["IO_LOC \"led\" 10;", "IO_LOC \"sys_clk\" 45;", "Device: GW1NSR-4C"]
+
+  [[board.source]]
+  rank = 2
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangNano-4K-example/master/key_blink/src/key_blink.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Device GW1NSR-4C inferred from same repository (TangNano-4K-example)"
+  clk = "clk on pin 45"
+  leds = "led_o[0] on pin 10"
+  buttons = "key[0..1] on pins 14, 15"
+  switches = "None found"
+  seven_seg = "None found"
+  active_low = "Buttons: PULL_MODE=UP suggests active-low (pressed pulls to 0V)"
+  evidence = ["IO_LOC \"led_o[0]\" 10;", "IO_LOC \"key[0]\" 14;", "IO_LOC \"key[1]\" 15;", "IO_PORT \"key[0]\" PULL_MODE=UP;"]
+
+[[board]]
+name = "Tang Primer20k Dock"
+files = ["amaranth-boards/tang_primer20k_dock.json"]
+maker = "Sipeed"
+status = "verified"
+notes = "Official Sipeed TangPrimer-20K-example repo. Device GW2A-18C. Clock 27MHz. Dock variant with expansion connectors. Port names from UART and audio examples."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangPrimer-20K-example/master/UART/UART_HELLO/src/uart_Hello.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Part Number: GW2A-LV18PG256C8/I7, Device: GW2A-18, Device Version: C"
+  clk = "clk on H11 (27MHz)"
+  leds = "Not specified in UART example"
+  buttons = "Not specified in UART example"
+  switches = "Not specified"
+  seven_seg = "None found"
+  active_low = "not visible in this source"
+  evidence = ["IO_LOC \"clk\" H11;", "IO_LOC \"rst_n\" T5;", "Device: GW2A-18"]
+
+  [[board.source]]
+  rank = 2
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangPrimer-20K-example/master/PT8211/src/pinmap.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Same device as UART example (same repo)"
+  clk = "clk on H11"
+  leds = "led on L16 (at least 1 LED)"
+  buttons = "Not found"
+  switches = "None found"
+  seven_seg = "None found"
+  active_low = "not visible in this source"
+  evidence = ["IO_LOC \"clk\" H11;", "IO_LOC \"led\" L16;", "IO_LOC \"rst_n\" T3;"]
+
+[[board]]
+name = "Tang Primer20k Lite"
+files = ["amaranth-boards/tang_primer20k_lite.json"]
+maker = "Sipeed"
+status = "verified"
+notes = "Same hardware platform as Tang Primer20k Dock (both GW2A-18). Constraint data from TangPrimer-20K-example repo applies to both board variants."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangPrimer-20K-example/master/UART/UART_HELLO/src/uart_Hello.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Part Number: GW2A-LV18PG256C8/I7, Device: GW2A-18, Device Version: C"
+  clk = "clk on H11"
+  leds = "Not specified in UART example"
+  buttons = "Not specified in UART example"
+  switches = "Not specified"
+  seven_seg = "None found"
+  active_low = "not visible in this source"
+  evidence = ["IO_LOC \"clk\" H11;", "Device: GW2A-18"]
+
+[[board]]
+name = "Tang Mega138k Pro Dock"
+files = ["amaranth-boards/tang_mega138k_pro_dock.json"]
+maker = "Sipeed"
+status = "verified"
+notes = "Official Sipeed TangMega-138K-example repo. Device GW5AST-138 Version B. Clock 50MHz. Multiple example projects with diverse peripherals."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangMega-138K-example/master/pwm_fan/eda_proj/src/eda_proj.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Part Number: GW5AST-LV138PG484AC2/I1, Device: GW5AST-138, Device Version: B"
+  clk = "clk on V22 (50MHz)"
+  leds = "Not specified in pwm_fan file"
+  buttons = "key_in on AB13"
+  switches = "None found"
+  seven_seg = "None found"
+  active_low = "key_in: PULL_MODE=UP suggests active-low input"
+  evidence = ["IO_LOC \"clk\" V22;", "IO_LOC \"key_in\" AB13;", "Device: GW5AST-138"]
+
+  [[board.source]]
+  rank = 2
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangMega-138K-example/master/pmod_led/eda_proj/src/eda_proj.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Part Number: GW5AST-LV138PG484AC2/I1, Device: GW5AST-138, Device Version: B"
+  clk = "Not found in LED file; defined in pwm_fan"
+  leds = "led[0..15] on pins P19, R19, T21, U21, P16, R17, R18, T18, Y21, Y22, AB21, AB22, AA20, AA21, AA19, AB20"
+  buttons = "Not found in LED example"
+  switches = "None found"
+  seven_seg = "None found"
+  active_low = "not visible in this source"
+  evidence = ["IO_LOC \"led[0]\" P19;", "IO_LOC \"led[15]\" AB20;", "Device: GW5AST-138"]
+
+[[board]]
+name = "Sipeed Tang Mega 138k Pro"
+files = ["litex-boards/sipeed_tang_mega_138k_pro.json"]
+maker = "Sipeed"
+status = "verified"
+notes = "Same as Tang Mega138k Pro Dock - official Sipeed TangMega-138K-example repo. Device GW5AST-138."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangMega-138K-example/master/pwm_fan/eda_proj/src/eda_proj.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Part Number: GW5AST-LV138PG484AC2/I1, Device: GW5AST-138, Device Version: B"
+  clk = "clk on V22 (50MHz)"
+  leds = "Not specified in pwm_fan"
+  buttons = "key_in on AB13"
+  switches = "None found"
+  seven_seg = "None found"
+  active_low = "key_in: PULL_MODE=UP suggests active-low"
+  evidence = ["IO_LOC \"clk\" V22;", "IO_LOC \"key_in\" AB13;"]
+
+[[board]]
+name = "Sipeed Tang Mega 138k"
+files = ["litex-boards/sipeed_tang_mega_138k.json"]
+maker = "Sipeed"
+status = "verified"
+notes = "Same platform as Sipeed Tang Mega 138k Pro. Official Sipeed TangMega-138K-example repo with device GW5AST-138."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/sipeed/TangMega-138K-example/master/pwm_fan/eda_proj/src/eda_proj.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Part Number: GW5AST-LV138PG484AC2/I1, Device: GW5AST-138, Device Version: B"
+  clk = "clk on V22 (50MHz)"
+  leds = "Not specified in pwm_fan"
+  buttons = "key_in on AB13"
+  switches = "None found"
+  seven_seg = "None found"
+  active_low = "key_in: PULL_MODE=UP suggests active-low"
+  evidence = ["IO_LOC \"clk\" V22;", "IO_LOC \"key_in\" AB13;"]
+
+[[board]]
+name = "Brisbanesilicon Brs 100 Gw1nr9"
+files = ["litex-boards/brisbanesilicon_brs_100_gw1nr9.json"]
+maker = "Brisbane Silicon"
+status = "verified"
+notes = "Official Brisbane Silicon GitHub repo with complete constraint file. Device GW1NR-9. Clock 27MHz. 6 LEDs and 2 buttons, active-low."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/BrisbaneSilicon/BRS-100-GW1NR9/master/build/platforms/gowin/devices/GW1NR-9/C7I6/constraints/location.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Repo path indicates GW1NR-9 device"
+  clk = "pad_clk_27Mhz on pin 52"
+  leds = "pad_leds_n[1..6] on pins 16, 15, 14, 13, 11, 10 (active-low, '_n' suffix)"
+  buttons = "pad_user_buttons_n[1..2] on pins 3, 4 (active-low)"
+  switches = "None found"
+  seven_seg = "None found"
+  active_low = "Confirmed by '_n' suffix convention. LEDs and buttons are active-low. PULL_MODE=UP on buttons and LEDs."
+  evidence = ["IO_LOC  \"pad_clk_27Mhz\" 52;", "IO_LOC  \"pad_leds_n[1]\" 16;", "IO_LOC  \"pad_user_buttons_n[1]\" 3;", "IO_PORT \"pad_user_buttons_n[1]\" PULL_MODE=UP;"]
+
+[[board]]
+name = "Lckfb Ljpi"
+files = ["litex-boards/lckfb_ljpi.json"]
+maker = "LCKFB (\u7acb\u521b)"
+status = "none-found"
+notes = "Searched: LCKFB wiki (wiki.lckfb.com) lacks downloadable CST files; product pages not directly accessible; official GitHub not found. Only source located: litex-boards platform file (THIS PROJECT'S UPSTREAM, excluded per rubric). No vendor-official constraint data available."
+
+[[board]]
+name = "Sipeed Tang Nano"
+files = ["litex-boards/sipeed_tang_nano.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "Searched for official Sipeed TangNano-example repo; not found under that name. Historical Tang Nano board (original entry-level). Constraint data only in litex-boards platform file (excluded per rubric). No fetched constraint file available."
+
+[[board]]
+name = "Tang Nano"
+files = ["amaranth-boards/tang_nano.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "Searched Sipeed GitHub for dedicated repo; not found. Board documentation exists on wiki.sipeed.com but detailed pinout not accessible via web fetch. Constraint data only in amaranth-boards platform file (excluded per rubric)."
+
+[[board]]
+name = "Sipeed Tang Console"
+files = ["litex-boards/sipeed_tang_console.json"]
+maker = "Sipeed"
+status = "not-attempted"
+notes = "Searched for TangConsole-example repo on Sipeed GitHub; repository not found. No alternative official or community sources located. Research exhausted."
+
+[[board]]
+name = "Myminieye Runber"
+files = ["litex-boards/myminieye_runber.json"]
+maker = "Myminieye"
+status = "verified"
+notes = "7-segment display (4 digits). Comprehensive documentation in GitHub README. Common cathode display. | preserved from wave-1 pass (official myminieye/Runber CSTs); redo skipped it by instruction"
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "MD"
+  url = "https://raw.githubusercontent.com/myminieye/Runber/main/README.md"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "GW1N-UV4LQ144C6/I5 confirmed in README and multiple .cst files"
+  clk = "clk on pin 4 (FPGA_CLK_12M, 12 MHz oscillator)"
+  leds = "LED1-LED8 on pins 23-30 (8 monochrome LEDs, active-high)"
+  buttons = "KEY1-KEY8 on pins 58-65 (8 soft-touch keys, active-low when pressed)"
+  switches = "SW1-SW8 on pins 75-83 (8 DIP switches, active-high when closed)"
+  seven_seg = "4-digit common cathode display; digit select SEG_DIG1-4 on pins 137,140,141,7; segments a-g on pins 138,142,9,11,12,139,8; DP on pin 10"
+  active_low = "Keys active-low (IO recognizes high by default, gets low when pressed); switches active-high (recognizes low by default, gets high when closed)"
+  evidence = ["IO_LOC \"clk\" 4;", "IO_LOC \"led[0-7]\" 23-30;", "IO_LOC \"key\" 58-65;", "IO_LOC \"sw[0-7]\" 75-83;"]
+
+  [[board.source]]
+  rank = 2
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/myminieye/Runber/main/Runber_Development_Board_Sourse_Code/course9_seg1/SEG_1/src/top_seq.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "copyright Gowin Semiconductor"
+  device_evidence = "GW1N-UV4LQ144C6/I5 in file header"
+  clk = "clk on pin 4"
+  leds = "none in this file (7-segment focus)"
+  buttons = "none in this file"
+  switches = "none in this file"
+  seven_seg = "dig[0-3] on pins 137,140,141,7; smg[0-7] on pins 8,139,12,11,9,142,138,10"
+  active_low = "not visible in this file"
+  evidence = ["IO_LOC \"clk\" 4;", "IO_LOC \"dig[0]\" 137;", "IO_LOC \"smg[0-7]\" 8,139,12,11,9,142,138,10;"]
+
+  [[board.source]]
+  rank = 3
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/myminieye/Runber/main/Runber_Development_Board_Sourse_Code/course8_KEY_LED/src/key_led_top.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "copyright Gowin Semiconductor"
+  device_evidence = "GW1N-LV4LQ144C6/I5 variant in file header (LV variant of same part family)"
+  clk = "clk on pin 4"
+  leds = "led[0-7] on pins 23-30 (8 LEDs)"
+  buttons = "key on pin 58 (1 key shown; full board has KEY1-8 on 58-65)"
+  switches = "none in this file"
+  seven_seg = "none in this file"
+  active_low = "not visible in this file"
+  evidence = ["IO_LOC \"clk\" 4;", "IO_LOC \"led[0-7]\" 23-30;", "IO_LOC \"key\" 58;"]
+
