@@ -18,6 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   future `port_conventions` block in `boards/*/*.json` traces to an
   authoritative source, and better sources later mean editing one registry row.
   The simulator does not read these files at runtime (#198)
+- **U21 schema groundwork (Phase A0).** Extended `boards/schema/board.schema.json`
+  ahead of the board-native VHDL convention matcher: `seg_port_mapping.style`
+  gains `per_segment_scalars` / `scan` / `serial` alongside the existing
+  `packed_vector` / `individual`; `scan` boards get a typed `digit_enable`
+  strobe; `port_convention` gains a `source` provenance stamp
+  (`url`/`retrieved`/`registry_board`) and a `naming`
+  (`canonical`/`project-derived`) flag for data the upcoming A3 generator will
+  populate from the port-convention registry; the already-used `leds_green`
+  key (Terasic-style secondary LED bank) is now a typed `port_mapping` instead
+  of an ad-hoc extra key. Schema-only — no board JSON changes; all 278 boards
+  still validate (U21 arc, issue #200)
 
 ## [0.13.0] - 2026-07-11
 

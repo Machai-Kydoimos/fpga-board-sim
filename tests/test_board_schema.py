@@ -131,5 +131,87 @@ def test_schema_allows_extra_port_convention_key(schema):
     """port_conventions stay open while the feature's shape is still settling."""
     jsonschema = pytest.importorskip("jsonschema")
     board = _minimal_valid_board()
+    board["port_conventions"] = {"terasic": {"some_future_field": "x"}}
+    jsonschema.validate(board, schema)  # must not raise
+
+
+@pytest.mark.parametrize(
+    "style", ["packed_vector", "individual", "per_segment_scalars", "scan", "serial"]
+)
+def test_schema_validates_new_seg_styles(schema, style):
+    """Every seg_port_mapping.style value (incl. U21's three new ones) validates."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["port_conventions"] = {"conv": {"seven_seg": {"style": style}}}
+    jsonschema.validate(board, schema)  # must not raise
+
+
+def test_schema_rejects_invalid_seg_style(schema):
+    """An undeclared seg_port_mapping.style value fails validation."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["port_conventions"] = {"conv": {"seven_seg": {"style": "bogus"}}}
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(board, schema)
+
+
+def test_schema_validates_scan_digit_enable(schema):
+    """The 'scan' style's digit_enable port_mapping (shared segs + strobe) validates."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["port_conventions"] = {
+        "conv": {
+            "seven_seg": {
+                "style": "scan",
+                "name": "seg",
+                "width_per_digit": 7,
+                "digit_enable": {"name": "an", "width": 4, "active_low": True},
+            }
+        }
+    }
+    jsonschema.validate(board, schema)  # must not raise
+
+
+def test_schema_validates_convention_source_and_naming(schema):
+    """port_convention.source (registry provenance) and .naming validate."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["port_conventions"] = {
+        "conv": {
+            "naming": "canonical",
+            "source": {
+                "url": "https://example.com/board.xdc",
+                "retrieved": "2026-07-11",
+                "registry_board": "example_board",
+            },
+        }
+    }
+    jsonschema.validate(board, schema)  # must not raise
+
+
+def test_schema_rejects_invalid_naming(schema):
+    """naming is a closed enum: canonical / project-derived."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["port_conventions"] = {"conv": {"naming": "bogus"}}
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(board, schema)
+
+
+def test_schema_rejects_unknown_convention_source_key(schema):
+    """convention_source is closed (additionalProperties:false) — typos get caught."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["port_conventions"] = {
+        "conv": {"source": {"url": "https://x", "retrieved_at": "2026-07-11"}}
+    }
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(board, schema)
+
+
+def test_schema_validates_leds_green(schema):
+    """leds_green (Terasic-style secondary LED bank) is now a typed port_mapping."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
     board["port_conventions"] = {"terasic": {"leds_green": {"name": "LEDG", "width": 9}}}
     jsonschema.validate(board, schema)  # must not raise
