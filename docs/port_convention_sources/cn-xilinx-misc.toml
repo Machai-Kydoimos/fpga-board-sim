@@ -1,0 +1,138 @@
+# Port-convention source registry — CN-market and legacy Xilinx
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable consolidation.
+
+[[board]]
+name = "Ego1"
+files = ["litex-boards/ego1.json"]
+maker = "Digilent"
+status = "verified"
+notes = "Searched: DigilentInc/EGO1 repo (not found), Digilent GitHub orgs, Digilent legacy pages, Chinese university course repos with terms: 'ego1 xdc', 'EGO1 constraint', 'ego1 board', 'EGO1 Digilent'. No public constraint files located. The board is documented in litex-boards platform file only. | inline rescue 2026-07-12: genuine EGO1 course XDC located via GitHub search (P17 sys_clk matches the EGO1 100 MHz clock pin); port names are PROJECT-RENAMED (sys_clk/rst_n/ledbit[]) \u2014 pin locations are the durable value; Digilent China's EGO1 resource page remains the canonical vendor lead for master-XDC naming"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/JackHCC/EGo1-Vivado-Lock/master/lock.srcs/constrs_1/new/vtf_lock.xdc"
+  fetched = true
+  retrieved = "2026-07-12"
+  license = "unknown"
+  device_evidence = "EGO1 course project; PACKAGE_PIN P17 for the clock matches EGO1's known pinout"
+  clk = "sys_clk (P17) \u2014 project-renamed"
+  leds = "ledbit[7:0]-style \u2014 project-renamed"
+  buttons = "rst_n (P15) plus project inputs"
+  switches = "in file (project-named)"
+  seven_seg = "board has 8 digits; this project drives it with project-specific names"
+  active_low = "not visible in this source"
+  evidence = ["set_property PACKAGE_PIN P17 [get_ports {sys_clk}]", "set_property PACKAGE_PIN G6 [get_ports {ledbit[0]}]"]
+
+[[board]]
+name = "Atlys"
+files = ["amaranth-boards/atlys.json"]
+maker = "Digilent"
+status = "none-found"
+notes = "Searched: Digilent/Atlys repo (not found), legacy Digilent pages, ISE-era UCF files, GitHub repos (nelsoncx/atlys, jackdoane/Atlys - not found), queries: 'Atlys xdc', 'Atlys_C.ucf', 'Atlys-Master.ucf', 'Atlys ISE constraint'. Digilent XDC repo (live) does not include Atlys. No authoritative constraint file found publicly. The board is documented in amaranth-boards platform file only."
+
+[[board]]
+name = "Digilent Atlys"
+files = ["litex-boards/digilent_atlys.json"]
+maker = "Digilent"
+status = "none-found"
+notes = "Same physical board as 'Atlys' above - same research applies. No vendor-official constraint files located. Documented in litex-boards platform file only."
+
+[[board]]
+name = "Hyvision Pcie Opt01 Revf"
+files = ["litex-boards/hyvision_pcie_opt01_revf.json"]
+maker = "HyVision"
+status = "none-found"
+notes = "Searched: HyVision GitHub/Gitee orgs, Kintex7 + PCIe constraint files, queries: 'HyVision PCIe OPT01', 'hyvision pcie xdc', 'HyVision kintex7 constraint'. No public repositories or constraint files located. Documented in litex-boards platform file only."
+
+[[board]]
+name = "Opensourcesdrlab Kintex7"
+files = ["litex-boards/opensourcesdrlab_kintex7.json"]
+maker = "OpenSourceSDRLab"
+status = "none-found"
+notes = "Searched: OpenSourceSDRLab GitHub orgs (opensourcesdrlab/sdrlab, OpenSourceSDRLab/Kintex7 - not found), Kintex7 constraint file repos, queries: 'opensourcesdrlab kintex7', 'OpenSourceSDRLab xdc'. No public constraint files found. Documented in litex-boards platform file only."
+
+[[board]]
+name = "Aliexpress Xc7k420t"
+files = ["litex-boards/aliexpress_xc7k420t.json"]
+maker = "AliExpress"
+status = "none-found"
+notes = "Searched: Generic AliExpress Kintex7 K420T board vendors, queries: 'XC7K420T constraint xdc', 'aliexpress kintex7 k420t board', 'k420t ucf'. AliExpress seller boards typically lack authoritative constraint files. Documented in litex-boards platform file only."
+
+[[board]]
+name = "Bochenjingxin Kintex7 Basec"
+files = ["litex-boards/bochenjingxin_kintex7_basec.json"]
+maker = "Bochenjingxin"
+status = "none-found"
+notes = "Searched: Bochenjingxin GitHub/Gitee (queries: 'bochenjingxin kintex7', 'bochenjingxin github', 'kintex7 basec'), constraint file repos. No public resources located. Documented in litex-boards platform file only."
+
+[[board]]
+name = "Embedfire Rise Pro"
+files = ["litex-boards/embedfire_rise_pro.json"]
+maker = "EmbedFire"
+status = "none-found"
+notes = "Searched: embedfire Gitee/GitHub repos (embedfire/Rise-Pro not found, embedfire/embed_linux_tutorial checked but no constraint files), queries: 'embedfire rise pro xdc', 'embedfire kintex7', 'rise pro fpga'. EmbedFire documentation focuses on Linux/ARM, not FPGA constraint details. Documented in litex-boards platform file only."
+
+[[board]]
+name = "Hseda Xc7a35t"
+files = ["litex-boards/hseda_xc7a35t.json"]
+maker = "HSEDA"
+status = "none-found"
+notes = "Searched: HSEDA GitHub/Gitee (hseda/XC7A35T - not found), Artix7 A35T constraint sources, queries: 'HSEDA xc7a35t', 'hseda artix7', 'xc7a35t constraint'. No public constraint files located. Documented in litex-boards platform file only."
+
+[[board]]
+name = "Aliexpress Xc7k70t"
+files = ["litex-boards/aliexpress_xc7k70t.json"]
+maker = "AliExpress"
+status = "none-found"
+notes = "Searched: Generic AliExpress Kintex7 K70T seller resources, queries: 'XC7K70T constraint', 'aliexpress kintex7 k70t', 'k70t ucf'. Similar to K420T - AliExpress seller boards lack authoritative constraint documentation. Documented in litex-boards platform file only."
+
+[[board]]
+name = "Isx Im1283"
+files = ["litex-boards/isx_im1283.json"]
+maker = "ISX"
+status = "none-found"
+notes = "Searched: ISX GitHub/Gitee (isx_im1283 - not found), queries: 'isx im1283', 'im1283 fpga board', 'ISX FPGA'. No public resources or constraint files located. Documented in litex-boards platform file only."
+
+[[board]]
+name = "Microphase A7 Lite"
+files = ["litex-boards/microphase_a7_lite.json"]
+maker = "MicroPhase"
+status = "none-found"
+notes = "Searched: MicroPhase GitHub/Gitee (microphase/A7-Lite - not found), queries: 'microphase a7 lite', 'microphase artix7', 'microphase xdc'. No public constraint files found. MicroPhase documentation (when available) is proprietary or behind paywalls. Documented in litex-boards platform file only."
+
+[[board]]
+name = "Myir Myc J7a100t"
+files = ["litex-boards/myir_myc_j7a100t.json"]
+maker = "MyIR"
+status = "none-found"
+notes = "Searched: MyIR GitHub/Gitee (myirtech/MYC-J7A100T - not found), MyIR product pages, queries: 'myir myc j7a100t', 'myirtech fpga', 'MYC-J7A100T constraint'. No public constraint files accessible. Documented in litex-boards platform file only."
+
+[[board]]
+name = "Linsn Rv901t"
+files = ["litex-boards/linsn_rv901t.json"]
+maker = "Linsn"
+status = "verified"
+notes = "UCF constraint file found in q3k/chubby75 community LED panel controller project on GitHub (master branch, rv901t/blink subdirectory)."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "UCF"
+  url = "https://raw.githubusercontent.com/q3k/chubby75/master/rv901t/blink/rv901t.ucf"
+  fetched = true
+  retrieved = "2026-07-12"
+  license = "unknown"
+  device_evidence = "Roster indicates xc6slx16-2-ftg256 (Spartan6 LX16); UCF pin locations and LVCMOS33 I/O standards consistent with this device; no explicit device line in file"
+  clk = "clk25 (configured for 25 MHz)"
+  leds = "user_led (1 LED)"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["NET \"clk25\" LOC = M9 | IOSTANDARD = LVCMOS33;", "NET \"user_led\" LOC=F7 | IOSTANDARD = LVCMOS33;"]
+
