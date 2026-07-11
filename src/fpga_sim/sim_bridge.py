@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -24,6 +25,8 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
+
+from fpga_sim.platform_open import open_with_default_app
 
 if TYPE_CHECKING:
     from fpga_sim.board_loader import BoardDef
@@ -1052,6 +1055,20 @@ WAVEFORM_DIR: Path = Path.home() / ".fpga_simulator" / "waveforms"
 #: Env var overriding :data:`WAVEFORM_DIR` (blank/unset → the default).
 WAVEFORM_DIR_ENV = "FPGA_SIM_WAVEFORM_DIR"
 
+#: Env var enabling capture headlessly / in CI, overriding the session ``waveform``
+#: mode when set (blank/unset → the session value).  See :func:`launch_simulation`.
+WAVEFORM_ENV = "FPGA_SIM_WAVEFORM"
+
+#: Env var forcing waveform auto-open on/off, overriding the session
+#: ``waveform_open`` flag when set (parsed by :func:`_env_flag`).
+WAVEFORM_OPEN_ENV = "FPGA_SIM_WAVEFORM_OPEN"
+
+#: Env var holding the auto-open command template (see :func:`_viewer_argv`).
+WAVEFORM_VIEWER_ENV = "FPGA_SIM_WAVEFORM_VIEWER"
+
+#: Default auto-open command: open GTKWave on the U28 save file (preloaded view).
+DEFAULT_VIEWER = "gtkwave {gtkw}"
+
 
 def _waveform_dir() -> Path:
     """Effective output directory: ``$FPGA_SIM_WAVEFORM_DIR`` or :data:`WAVEFORM_DIR`."""
@@ -1138,6 +1155,57 @@ def _write_gtkw(gtkw_path: Path, dump_path: Path, generics: dict[str, str]) -> N
     gtkw_path.write_text("\n".join(lines) + "\n")
 
 
+def _env_flag(name: str) -> bool | None:
+    """Parse a boolean env var: ``1/true/yes/on`` → True, ``0/false/no/off`` → False.
+
+    Returns ``None`` when the var is unset or empty, so a caller can fall back to
+    another source (blank means "not specified", not "False").
+    """
+    raw = os.environ.get(name, "").strip().lower()
+    if raw in ("1", "true", "yes", "on"):
+        return True
+    if raw in ("0", "false", "no", "off"):
+        return False
+    return None
+
+
+def _viewer_argv(template: str, dump: Path, gtkw: Path) -> list[str]:
+    """Build the auto-open argv from a command *template*.
+
+    ``{dump}`` / ``{gtkw}`` expand to the capture file and its GTKWave save file;
+    a template naming neither gets ``{dump}`` appended (so a bare ``surfer`` still
+    works).  Tokenized with :func:`shlex.split` (no shell — no injection surface)
+    *before* substitution, so a path containing spaces stays one argument.
+    """
+    if "{dump}" not in template and "{gtkw}" not in template:
+        template = f"{template} {{dump}}"
+
+    def _sub(token: str) -> str:
+        return token.replace("{dump}", str(dump)).replace("{gtkw}", str(gtkw))
+
+    return [_sub(token) for token in shlex.split(template)]
+
+
+def _open_waveform(dump: Path, gtkw: Path) -> None:
+    """Launch the user's waveform viewer on a produced dump (best-effort, detached).
+
+    The command comes from ``$FPGA_SIM_WAVEFORM_VIEWER`` or :data:`DEFAULT_VIEWER`
+    (``gtkwave {gtkw}``).  If its program isn't on PATH — or launching it raises —
+    fall back to the OS default handler for the raw dump
+    (:func:`~fpga_sim.platform_open.open_with_default_app`), so a viewer the user
+    registered without setting the env var still opens.
+    """
+    template = os.environ.get(WAVEFORM_VIEWER_ENV, "").strip() or DEFAULT_VIEWER
+    argv = _viewer_argv(template, dump, gtkw)
+    if argv and shutil.which(argv[0]):
+        try:
+            subprocess.Popen(argv, start_new_session=True)
+            return
+        except OSError as e:
+            print(f"[waveform] could not launch {argv[0]}: {e}", file=sys.stderr, flush=True)
+    open_with_default_app(dump)
+
+
 def launch_simulation(
     board_json: str,
     vhdl_path: str | Path,
@@ -1151,6 +1219,7 @@ def launch_simulation(
     speed_factor: float | None = None,
     theme: str | None = None,
     waveform: str | None = None,
+    waveform_open: bool | None = None,
 ) -> SimExit:
     """Launch an interactive simulator + cocotb simulation.
 
@@ -1180,6 +1249,12 @@ def launch_simulation(
     :func:`_waveform_path`).  Capture is a run-command flag on GHDL/NVC and
     independent of cocotb, so ``sim_testbench`` is unaffected; the path is
     printed after a run that produced a non-empty file, for opening in GTKWave.
+
+    ``$FPGA_SIM_WAVEFORM`` (off/vcd/fst) overrides *waveform* when set, so capture
+    can be enabled headlessly / in CI.  *waveform_open* — or ``$FPGA_SIM_WAVEFORM_OPEN``,
+    which overrides it — then launches a viewer on the produced dump, using the
+    command in ``$FPGA_SIM_WAVEFORM_VIEWER`` (default ``gtkwave {gtkw}``); see
+    :func:`_open_waveform`.
 
     This call blocks until the simulation exits, then returns the
     :class:`SimExit` the user chose via the in-simulation toolbar
@@ -1238,8 +1313,9 @@ def launch_simulation(
         if elab.returncode != 0:
             raise RuntimeError(elab.stderr.strip() or "NVC elaboration failed.")
 
-    # Resolve the optional waveform request (off unless the user enabled it).
-    wave_fmt = _normalize_wave(waveform)
+    # Resolve the optional waveform request (off unless enabled).  The env var
+    # wins when set, so capture can be turned on headlessly / in CI (U29).
+    wave_fmt = _normalize_wave(os.environ.get(WAVEFORM_ENV, "").strip() or waveform)
     wave_cfg: WaveConfig | None = None
     if wave_fmt is not None:
         wave_target = _waveform_path(toplevel, wave_fmt)
@@ -1283,5 +1359,10 @@ def launch_simulation(
             gtkw = _gtkw_path(wpath)
             _write_gtkw(gtkw, wpath, generics)
             print(f"Waveform written: {wpath}\n  Open it with preloaded signals:  gtkwave {gtkw}")
+            # U29: optionally launch the user's viewer on the produced dump.
+            env_open = _env_flag(WAVEFORM_OPEN_ENV)
+            do_open = env_open if env_open is not None else bool(waveform_open)
+            if do_open:
+                _open_waveform(wpath, gtkw)
 
     return _read_exit_intent(intent_file, result.returncode)

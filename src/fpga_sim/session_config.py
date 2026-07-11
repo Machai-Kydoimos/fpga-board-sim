@@ -20,6 +20,9 @@ Schema (every key is optional; readers fall back to defaults):
 - ``waveform`` — ``"off"`` / ``"vcd"`` / ``"fst"``: native simulator waveform
   capture; the Settings dialog's Waveform row writes it and the launcher passes
   it to the sim run subprocess (U10)
+- ``waveform_open`` — ``true`` / ``false``: after a capture run, launch a viewer
+  on the dump (the Settings dialog's Auto-open row writes it; the launcher passes
+  it to the sim run subprocess) (U29)
 - ``recent`` — the last :data:`RECENT_MAX` (board, VHDL) picks, newest first,
   as ``{"board_class", "board_source", "vhdl_path"}`` dicts (U18 surfaces
   them in the file picker)

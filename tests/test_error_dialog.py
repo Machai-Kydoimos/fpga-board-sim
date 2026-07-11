@@ -2,13 +2,12 @@
 
 from pathlib import Path
 from types import ModuleType
-from typing import Any
 
 import pygame
 import pytest
 
 import fpga_sim.ui.error_dialog as error_dialog_mod
-from fpga_sim.ui.error_dialog import ErrorDialog, _open_file_external
+from fpga_sim.ui.error_dialog import ErrorDialog
 from fpga_sim.ui.results import DialogResult
 
 EXAMPLE = Path("/repo/hdl/blinky.vhd")
@@ -76,7 +75,7 @@ class TestClicks:
 
     def test_click_example_opens_file_and_stays_open(self, screen, monkeypatch):
         opened: list[Path] = []
-        monkeypatch.setattr(error_dialog_mod, "_open_file_external", opened.append)
+        monkeypatch.setattr(error_dialog_mod, "open_with_default_app", opened.append)
         dlg = _dialog(screen, EXAMPLE)
         dlg._draw()
         assert dlg._example_rect is not None
@@ -95,7 +94,7 @@ def _post_keys(pygame_: ModuleType, *keys: int) -> None:
 class TestKeys:
     def test_v_opens_example_then_enter_retries(self, screen, headless_pygame, monkeypatch):
         opened: list[Path] = []
-        monkeypatch.setattr(error_dialog_mod, "_open_file_external", opened.append)
+        monkeypatch.setattr(error_dialog_mod, "open_with_default_app", opened.append)
         dlg = _dialog(screen, EXAMPLE)
         _post_keys(headless_pygame, pygame.K_v, pygame.K_RETURN)
         assert dlg.run(headless_pygame.time.Clock()) is DialogResult.RETRY
@@ -104,43 +103,9 @@ class TestKeys:
     def test_v_ignored_without_example(self, screen, headless_pygame, monkeypatch):
         monkeypatch.setattr(
             error_dialog_mod,
-            "_open_file_external",
+            "open_with_default_app",
             lambda p: pytest.fail("opener must not be called without example_path"),
         )
         dlg = _dialog(screen)
         _post_keys(headless_pygame, pygame.K_v, pygame.K_ESCAPE)
         assert dlg.run(headless_pygame.time.Clock()) is DialogResult.BACK
-
-
-# ── Platform opener ───────────────────────────────────────────────────────────
-
-
-class TestOpenFileExternal:
-    def test_linux_uses_xdg_open(self, monkeypatch):
-        calls: list[list[str]] = []
-        monkeypatch.setattr("fpga_sim.ui.error_dialog.sys.platform", "linux")
-        monkeypatch.setattr(
-            "fpga_sim.ui.error_dialog.subprocess.Popen",
-            lambda argv, **kw: calls.append(argv),
-        )
-        _open_file_external(EXAMPLE)
-        assert calls == [["xdg-open", str(EXAMPLE)]]
-
-    def test_darwin_uses_open(self, monkeypatch):
-        calls: list[list[str]] = []
-        monkeypatch.setattr("fpga_sim.ui.error_dialog.sys.platform", "darwin")
-        monkeypatch.setattr(
-            "fpga_sim.ui.error_dialog.subprocess.Popen",
-            lambda argv, **kw: calls.append(argv),
-        )
-        _open_file_external(EXAMPLE)
-        assert calls == [["open", str(EXAMPLE)]]
-
-    def test_failure_is_swallowed(self, monkeypatch, capsys):
-        def _boom(*a: Any, **kw: Any) -> None:
-            raise OSError("no opener")
-
-        monkeypatch.setattr("fpga_sim.ui.error_dialog.sys.platform", "linux")
-        monkeypatch.setattr("fpga_sim.ui.error_dialog.subprocess.Popen", _boom)
-        _open_file_external(EXAMPLE)  # must not raise
-        assert "could not open" in capsys.readouterr().err

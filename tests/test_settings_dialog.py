@@ -39,6 +39,7 @@ class TestDraw:
             dlg._theme_rect,
             dlg._reset_rect,
             dlg._waveform_rect,
+            dlg._autoopen_rect,
             dlg._clear_rect,
         ):
             assert rect is not None
@@ -177,6 +178,22 @@ class TestActions:
         dlg._click(dlg._clear_rect.center)
         assert load_session()["board_class"] == "KeepMe"
 
+    def test_autoopen_toggle_on(self, screen, session_file):
+        """U29: default (off) → click turns Auto-open on; row stays open."""
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._autoopen_rect is not None
+        assert dlg._click(dlg._autoopen_rect.center) is False
+        assert load_session()["waveform_open"] is True
+
+    def test_autoopen_toggle_off(self, screen, session_file):
+        update_session(waveform_open=True)
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._autoopen_rect is not None
+        dlg._click(dlg._autoopen_rect.center)
+        assert load_session()["waveform_open"] is False
+
 
 # ── Session-derived values are defensive ──────────────────────────────────────
 
@@ -222,6 +239,17 @@ class TestValues:
     def test_waveform_mode_valid_saved_value_is_returned(self, screen):
         update_session(waveform="fst")
         assert SettingsDialog(screen)._waveform_mode() == "fst"
+
+    def test_waveform_open_defaults_off(self, screen):
+        assert SettingsDialog(screen)._waveform_open() is False
+
+    def test_waveform_open_non_bool_is_off(self, screen):
+        update_session(waveform_open="yes")  # only a real bool true counts as on
+        assert SettingsDialog(screen)._waveform_open() is False
+
+    def test_waveform_open_true_is_returned(self, screen):
+        update_session(waveform_open=True)
+        assert SettingsDialog(screen)._waveform_open() is True
 
 
 # ── Gear trigger button ───────────────────────────────────────────────────────

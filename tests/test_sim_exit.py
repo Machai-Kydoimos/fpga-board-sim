@@ -70,9 +70,19 @@ def launch_env(tmp_path, monkeypatch):
     monkeypatch.setattr(sim_bridge, "_build_sim_env", lambda **kw: ({}, "plugin.so"))
     # Redirect waveform output away from the real ~/.fpga_simulator (U10).
     monkeypatch.setattr(sim_bridge, "WAVEFORM_DIR", tmp_path / "waveforms")
+    # Record viewer auto-open calls instead of launching a real viewer (U29).
+    opened: list[tuple[Path, Path]] = []
+    monkeypatch.setattr(
+        sim_bridge, "_open_waveform", lambda dump, gtkw: opened.append((dump, gtkw))
+    )
+    captured["opened"] = opened
 
     def run(
-        *, write: str | None = None, returncode: int = 0, waveform: str | None = None
+        *,
+        write: str | None = None,
+        returncode: int = 0,
+        waveform: str | None = None,
+        waveform_open: bool | None = None,
     ) -> SimExit:
         def fake_run(cmd: Any, env: Any = None, cwd: Any = None, **kw: Any) -> Any:
             captured["cmd"] = cmd
@@ -99,6 +109,7 @@ def launch_env(tmp_path, monkeypatch):
             work_dir=str(work_dir),
             simulator="ghdl",  # ghdl path: no elaborate subprocess before the run
             waveform=waveform,
+            waveform_open=waveform_open,
         )
 
     return run, captured, work_dir
@@ -162,3 +173,45 @@ def test_launch_with_vcd_writes_gtkw_sidecar(launch_env):
     text = gtkw.read_text()
     assert f'[dumpfile] "{vcd}"' in text
     assert "sim_wrapper.clk" in text
+
+
+# ── auto-open + env enable (U29) ──────────────────────────────────────────────
+
+
+def test_launch_default_does_not_auto_open(launch_env):
+    """Capture on, auto-open off (default) → no viewer launched."""
+    run, captured, _work_dir = launch_env
+    run(waveform="vcd")
+    assert captured["opened"] == []
+
+
+def test_launch_waveform_open_launches_viewer(launch_env):
+    """waveform_open=True + a produced dump → _open_waveform(dump, its .gtkw)."""
+    run, captured, _work_dir = launch_env
+    run(waveform="vcd", waveform_open=True)
+    assert len(captured["opened"]) == 1
+    dump, gtkw = captured["opened"][0]
+    assert dump.suffix == ".vcd" and dump.with_suffix(".gtkw") == gtkw
+
+
+def test_launch_env_forces_auto_open(launch_env, monkeypatch):
+    """FPGA_SIM_WAVEFORM_OPEN=1 forces auto-open even with waveform_open unset."""
+    run, captured, _work_dir = launch_env
+    monkeypatch.setenv("FPGA_SIM_WAVEFORM_OPEN", "1")
+    run(waveform="vcd")
+    assert len(captured["opened"]) == 1
+
+
+def test_launch_no_auto_open_without_capture(launch_env):
+    """Auto-open never fires when nothing was captured."""
+    run, captured, _work_dir = launch_env
+    run(waveform="off", waveform_open=True)
+    assert captured["opened"] == []
+
+
+def test_launch_env_enables_capture(launch_env, monkeypatch):
+    """FPGA_SIM_WAVEFORM=vcd enables capture even when the waveform arg is None."""
+    run, captured, _work_dir = launch_env
+    monkeypatch.setenv("FPGA_SIM_WAVEFORM", "vcd")
+    run()  # no waveform argument
+    assert any(a.startswith("--vcd=") for a in captured["cmd"])

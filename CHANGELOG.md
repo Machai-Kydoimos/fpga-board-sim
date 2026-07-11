@@ -24,6 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   clk / sw / btn / led (plus seg on 7-seg boards) — instead of an empty signal
   tree. The save file names its dump, so it loads the trace on its own; a
   crashed/empty run writes none (#189, #192)
+- **Waveform env vars + auto-open (U29).** `FPGA_SIM_WAVEFORM=off|vcd|fst`
+  enables capture without the Settings dialog (headless / CI). A new Settings
+  **Auto-open** toggle — or `FPGA_SIM_WAVEFORM_OPEN=1` — launches a viewer on the
+  dump after a run: the command comes from `FPGA_SIM_WAVEFORM_VIEWER`, a template
+  with `{dump}` / `{gtkw}` placeholders (default `gtkwave {gtkw}`; `surfer {dump}`
+  or a wrapper script work too), falling back to the OS default handler when the
+  program isn't on `PATH`. The platform opener moved to a new
+  `fpga_sim.platform_open` module, shared with the error dialog's [View Example]
+  (#190, #193)
 
 ## [0.12.0] - 2026-07-08
 

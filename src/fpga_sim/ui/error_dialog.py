@@ -1,29 +1,15 @@
 """ErrorDialog: modal error overlay with scrollable message and retry/back buttons."""
 
-import os
-import subprocess
 import sys
 from pathlib import Path
 
 import pygame
 
+from fpga_sim.platform_open import open_with_default_app
 from fpga_sim.ui.constants import _ui_scale, get_font
 from fpga_sim.ui.results import DialogResult
 from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
-
-
-def _open_file_external(path: Path) -> None:
-    """Open *path* with the platform's default application (best-effort)."""
-    try:
-        if sys.platform == "win32":
-            os.startfile(path)  # noqa: S606
-        elif sys.platform == "darwin":
-            subprocess.Popen(["open", str(path)], start_new_session=True)
-        else:
-            subprocess.Popen(["xdg-open", str(path)], start_new_session=True)
-    except OSError as e:
-        print(f"[error_dialog] could not open {path}: {e}", file=sys.stderr, flush=True)
 
 
 class ErrorDialog:
@@ -74,7 +60,7 @@ class ErrorDialog:
                     elif ev.key == pygame.K_RETURN:
                         return DialogResult.RETRY
                     elif ev.key == pygame.K_v and self.example_path is not None:
-                        _open_file_external(self.example_path)
+                        open_with_default_app(self.example_path)
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
                     if ev.button == 1:
                         result = self._click(ev.pos)
@@ -96,7 +82,7 @@ class ErrorDialog:
         if self._example_rect and self._example_rect.collidepoint(pos):
             # Opens externally; the dialog stays up so the user can compare.
             assert self.example_path is not None
-            _open_file_external(self.example_path)
+            open_with_default_app(self.example_path)
         return None
 
     def _draw(self) -> None:
