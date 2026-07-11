@@ -57,11 +57,13 @@ class WaveConfig:
 
     *dump_arrays* is the U30 "include memories" depth: when set, nested arrays
     and memories (the embedded-core designs' RAM/ROM/registers) are captured
-    too.  It is **NVC-only**: NVC skips nested arrays in every format unless
-    given ``--dump-arrays``, whereas GHDL's FST/GHW output includes them by
-    default (only its legacy VCD cannot represent memories, and no flag changes
-    that) — so ``_GHDLBackend.run_cmd`` ignores the field.  Off by default,
-    since arrays add significant size (see roadmap P13).
+    too.  It is **NVC-only**: NVC skips nested arrays in every format (VCD and
+    FST) unless given ``--dump-arrays``, whereas GHDL's FST/GHW writers include
+    them by default — so ``_GHDLBackend.run_cmd`` ignores the field.  (GHDL's
+    *VCD* writer omits memories with or without a flag; a VCD *can* hold one,
+    flattened to a vector var per element, which NVC's VCD writer emits under
+    ``--dump-arrays`` but GHDL's does not.)  Off by default, since arrays add
+    significant size (see roadmap P13).
     """
 
     path: str
@@ -205,9 +207,9 @@ class _GHDLBackend(_SimBackend):
             # GHDL simulation options follow the toplevel (like --vpi); the dump
             # format is chosen by the flag name itself (--vcd= / --fst=).
             cmd.append(f"--{wave.fmt}={wave.path}")
-            # wave.dump_arrays (U30) needs no flag here: GHDL's FST/GHW output
-            # dumps nested arrays/memories by default (its VCD can represent
-            # neither, with or without a flag).  The opt-in is NVC-only.
+            # wave.dump_arrays (U30) needs no flag here: GHDL's FST/GHW writers
+            # dump nested arrays/memories by default (its VCD writer omits them,
+            # with or without a flag).  The opt-in is NVC-only.
         return cmd
 
 
@@ -1282,9 +1284,9 @@ def launch_simulation(
     is the U30 "include memories" depth: when on, NVC captures nested arrays and
     memories too (``--dump-arrays``), so the embedded-core designs' RAM/ROM/registers
     appear in the trace.  Applies to NVC, which otherwise skips nested arrays in
-    every format; GHDL's FST/GHW output already includes them (its VCD cannot
-    represent memories at all).  Off by default because arrays add significant
-    dump size.
+    every format (VCD and FST); GHDL's FST/GHW writers already include them (its
+    VCD writer omits them, with or without a flag).  Off by default because
+    arrays add significant dump size.
 
     This call blocks until the simulation exits, then returns the
     :class:`SimExit` the user chose via the in-simulation toolbar

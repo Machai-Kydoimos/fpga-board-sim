@@ -788,8 +788,10 @@ default:
   Settings **Memories** toggle, or `FPGA_SIM_WAVEFORM_MEMORIES=1`). With it, `cpu_ram`'s cells show up
   as `ram[0]`, `ram[1]`, … in the trace — e.g. `hello`'s `$var` count jumps ~202 → ~2254.
 - **GHDL** includes them automatically in **FST** (and its native GHW `--wave`) output — but **not** in
-  VCD, which cannot represent an array-of-vectors at all, with or without a flag. So under GHDL, pick
-  FST when you want to see a memory.
+  VCD: GHDL's VCD writer omits a memory (array-of-vectors), with or without a flag. So under GHDL, pick
+  FST when you want to see a memory. (This is a writer choice, not a VCD-format limit — a VCD can hold a
+  memory flattened to one vector per element, as NVC's VCD writer does under `--dump-arrays`; GHDL's
+  just doesn't.)
 
 Enable it only while you're actually inspecting memory: the dump grows by roughly the memory size.
 

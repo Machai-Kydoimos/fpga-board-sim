@@ -15,8 +15,8 @@ persisted session file (:mod:`fpga_sim.session_config`):
   ``$FPGA_SIM_WAVEFORM_DIR``) for opening in GTKWave.
 * **Memories** — include nested arrays / memories (the embedded-core designs'
   RAM/ROM/registers) in the capture.  Applies under NVC (which otherwise skips
-  them); GHDL's FST output already includes them.  Off by default, since arrays
-  add significant dump size.
+  them); GHDL's FST/GHW writers already include them, though its VCD writer does
+  not.  Off by default, since arrays add significant dump size.
 * **Auto-open** — after a capture run, launch a waveform viewer on the dump
   (the ``$FPGA_SIM_WAVEFORM_VIEWER`` command, default GTKWave); off by default.
 * **Recent files** — how many (board, VHDL) pairs are remembered (U18
