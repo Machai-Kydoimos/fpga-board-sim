@@ -199,6 +199,64 @@ def test_nvc_fst_capture_produces_populated_file(nvc, nvc_sim_env, nvc_work_dir,
     assert fst.stat().st_size > 0, "FST file is empty"
 
 
+def test_nvc_dump_arrays_captures_embedded_core_memory(nvc, nvc_sim_env, tmp_path):
+    """U30: --dump-arrays makes the mx65 RAM memory appear in an NVC capture.
+
+    The roadmap "done when": with "include memories" on, an embedded-core dump
+    under NVC contains the RAM/ROM array signals NVC skips by default.  Runs the
+    smallest embedded core (mx65_hello_7seg) standalone — sim_wrapper self-clocks,
+    so no cocotb is needed — and captures VCD (text, so the per-cell array vars
+    are greppable).  Both runs reuse one elaboration; the with/without pair proves
+    the flag is what pulls the memory in (NVC otherwise omits it in every format).
+    """
+    env, vhpi_lib = nvc_sim_env
+    work_dir = tempfile.mkdtemp(prefix="fpga_nvc_u30_")
+    ok, detail = analyze_vhdl(
+        HDL / "mx65_hello_7seg.vhd",
+        work_dir=work_dir,
+        toplevel="mx65_hello_7seg",
+        simulator="nvc",
+        board_def=_7seg_board(),
+    )
+    assert ok, f"NVC embedded-core analysis failed: {detail}"
+
+    # PRESCALER_BITS is an inner-core generic, not a sim_wrapper one, so it is not passed.
+    generics = {
+        "NUM_SWITCHES": "4",
+        "NUM_BUTTONS": "4",
+        "NUM_LEDS": "4",
+        "NUM_SEGS": "4",
+        "COUNTER_BITS": "18",
+    }
+    subprocess.run(
+        _NVCBackend.elaborate_cmd("sim_wrapper", generics, work_dir),
+        env=env,
+        check=True,
+        cwd=work_dir,
+    )
+
+    def ram_cell_count(*, dump_arrays: bool) -> int:
+        out = tmp_path / f"mx65_hello_{int(dump_arrays)}.vcd"
+        cmd = _NVCBackend.run_cmd(
+            "sim_wrapper",
+            generics,
+            vhpi_lib,
+            work_dir,
+            wave=WaveConfig(str(out), "vcd", dump_arrays=dump_arrays),
+        )
+        # Standalone dump: drop the cocotb VHPI plugin (wrapper self-clocks), bound the run.
+        cmd = [a for a in cmd if not a.startswith("--load=")]
+        cmd.append("--stop-time=20us")
+        result = subprocess.run(cmd, env=env, cwd=work_dir, capture_output=True, text=True)
+        assert out.is_file(), f"VCD (dump_arrays={dump_arrays}) not written.\n{result.stderr}"
+        text = out.read_text(errors="ignore")
+        # NVC expands the cpu_ram memory into per-cell vars ram[0][7:0]..ram[N-1][7:0].
+        return sum(1 for line in text.splitlines() if "$var" in line and "ram[" in line)
+
+    assert ram_cell_count(dump_arrays=True) > 100, "RAM memory not captured with --dump-arrays"
+    assert ram_cell_count(dump_arrays=False) == 0, "RAM memory must be absent without --dump-arrays"
+
+
 # ── 7-seg: NVC analysis and simulation ───────────────────────────────────────
 
 

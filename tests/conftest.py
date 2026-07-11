@@ -34,6 +34,7 @@ def _isolate_waveform_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for var in (
         "FPGA_SIM_WAVEFORM",
         "FPGA_SIM_WAVEFORM_OPEN",
+        "FPGA_SIM_WAVEFORM_MEMORIES",
         "FPGA_SIM_WAVEFORM_VIEWER",
         "FPGA_SIM_WAVEFORM_DIR",
     ):
