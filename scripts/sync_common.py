@@ -84,6 +84,47 @@ def validate_board_jsons(board_jsons: dict[str, str], schema_path: Path) -> None
         raise ValueError(f"Board schema validation failed ({len(errors)} issue(s)):\n{listing}")
 
 
+def _fold_forward_unmanaged_keys(content: str, out_path: Path) -> str:
+    """Fold board-JSON keys a sync script doesn't generate forward from disk.
+
+    A parser regenerates a board file from scratch each run, so anything it
+    doesn't itself produce -- today, ``port_conventions`` / ``peripherals`` --
+    would otherwise be silently wiped on the next sync. ``port_conventions`` is
+    merged per top-level sub-key (new overlays old): a parser that generates no
+    conventions at all (amaranth, litex) contributes an empty overlay and every
+    existing sub-key survives untouched; ``sync_digilent_xdc.py``, which
+    generates only the ``digilent`` sub-key, correctly overwrites just that key
+    while any other convention (hand-authored or populated by U21's later
+    generator) survives. ``peripherals`` has no sync-script generator yet, so
+    it is preserved wholesale when the fresh content doesn't supply one.
+
+    Returns ``content`` unchanged (same string, no re-parse/re-serialize) when
+    there is nothing on disk to preserve, so files with no existing
+    ``port_conventions``/``peripherals`` are byte-identical to a from-scratch
+    write -- the common case, and the one a re-sync's ``git diff`` must stay
+    silent on.
+    """
+    if not out_path.exists():
+        return content
+
+    existing = json.loads(out_path.read_text(encoding="utf-8"))
+    existing_conventions = existing.get("port_conventions") or {}
+    existing_peripherals = existing.get("peripherals") or []
+    if not existing_conventions and not existing_peripherals:
+        return content
+
+    data = json.loads(content)
+
+    merged_conventions = {**existing_conventions, **data.get("port_conventions", {})}
+    if merged_conventions:
+        data["port_conventions"] = merged_conventions
+
+    if not data.get("peripherals") and existing_peripherals:
+        data["peripherals"] = existing_peripherals
+
+    return json.dumps(data, indent=2) + "\n"
+
+
 def write_outputs(
     output_dir: Path,
     board_jsons: dict[str, str],
@@ -92,15 +133,25 @@ def write_outputs(
     dry_run: bool = False,
     schema_path: Path | None = None,
 ) -> None:
-    """Validate, then write JSON board files and a ``_sync_metadata.json``.
+    """Fold forward unmanaged keys, validate, then write board files + metadata.
 
-    Every board is validated against the schema before anything is written, so a
-    single invalid board aborts the whole sync with no partial output (and
-    ``--dry-run`` doubles as a schema check). ``schema_path`` defaults to
+    Every board is first merged against whatever is already on disk (see
+    ``_fold_forward_unmanaged_keys``), so hand-authored or previously
+    populated ``port_conventions``/``peripherals`` survive a re-sync. The
+    *merged* result is what gets validated against the schema, so a corrupt
+    on-disk convention block is caught here rather than written silently.
+    Validation runs before anything is written, so a single invalid board
+    aborts the whole sync with no partial output (and ``--dry-run`` doubles as
+    a schema check). ``schema_path`` defaults to
     ``<output_dir>/../schema/board.schema.json``.
     """
     if schema_path is None:
         schema_path = output_dir.parent / "schema" / "board.schema.json"
+
+    board_jsons = {
+        filename: _fold_forward_unmanaged_keys(content, output_dir / filename)
+        for filename, content in board_jsons.items()
+    }
     validate_board_jsons(board_jsons, schema_path)
 
     if not dry_run:

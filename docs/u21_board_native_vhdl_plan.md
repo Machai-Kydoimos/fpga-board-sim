@@ -1,6 +1,6 @@
 # U21 — Board-native VHDL: arc plan (conventions population + matcher + wrapper)
 
-**Status:** IN PROGRESS — A0 in review (PR #209). Update the [status ledger](#status-ledger) as phases land.
+**Status:** IN PROGRESS — A0 merged (PR #209), A1 underway. Update the [status ledger](#status-ledger) as phases land.
 **Decided 2026-07-12 (Rick):** the port-conventions population pipeline is **folded into the
 U21 arc** as its opening phases (Part A), rather than run as a separate arc.
 **Source data:** [`docs/port_convention_sources/`](port_convention_sources/) (PR #198) — ranked,
@@ -269,7 +269,7 @@ sim-supported 7-seg boards except the scan/serial set have populated conventions
 
 | Phase | Scope | PR | Status |
 |---|---|---|---|
-| A0 | Schema deltas | #209 | in review |
+| A0 | Schema deltas | #209 | merged |
 | A1 | Re-sync guard | — | not started |
 | A2 | Dialect parsers | — | not started |
 | A3 | Generator + overlay | — | not started |
