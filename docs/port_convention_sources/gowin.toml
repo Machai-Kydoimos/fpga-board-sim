@@ -1,0 +1,162 @@
+# Port-convention source registry — Gowin / Sipeed Tang
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable consolidation.
+
+[[board]]
+name = "Myminieye Runber"
+files = ["litex-boards/myminieye_runber.json"]
+maker = "Myminieye"
+status = "verified"
+notes = "7-segment display (4 digits). Comprehensive documentation in GitHub README. Common cathode display."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "MD"
+  url = "https://raw.githubusercontent.com/myminieye/Runber/main/README.md"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "GW1N-UV4LQ144C6/I5 confirmed in README and multiple .cst files"
+  clk = "clk on pin 4 (FPGA_CLK_12M, 12 MHz oscillator)"
+  leds = "LED1-LED8 on pins 23-30 (8 monochrome LEDs, active-high)"
+  buttons = "KEY1-KEY8 on pins 58-65 (8 soft-touch keys, active-low when pressed)"
+  switches = "SW1-SW8 on pins 75-83 (8 DIP switches, active-high when closed)"
+  seven_seg = "4-digit common cathode display; digit select SEG_DIG1-4 on pins 137,140,141,7; segments a-g on pins 138,142,9,11,12,139,8; DP on pin 10"
+  active_low = "Keys active-low (IO recognizes high by default, gets low when pressed); switches active-high (recognizes low by default, gets high when closed)"
+  evidence = ["IO_LOC \"clk\" 4;", "IO_LOC \"led[0-7]\" 23-30;", "IO_LOC \"key\" 58-65;", "IO_LOC \"sw[0-7]\" 75-83;"]
+
+  [[board.source]]
+  rank = 2
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/myminieye/Runber/main/Runber_Development_Board_Sourse_Code/course9_seg1/SEG_1/src/top_seq.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "copyright Gowin Semiconductor"
+  device_evidence = "GW1N-UV4LQ144C6/I5 in file header"
+  clk = "clk on pin 4"
+  leds = "none in this file (7-segment focus)"
+  buttons = "none in this file"
+  switches = "none in this file"
+  seven_seg = "dig[0-3] on pins 137,140,141,7; smg[0-7] on pins 8,139,12,11,9,142,138,10"
+  active_low = "not visible in this file"
+  evidence = ["IO_LOC \"clk\" 4;", "IO_LOC \"dig[0]\" 137;", "IO_LOC \"smg[0-7]\" 8,139,12,11,9,142,138,10;"]
+
+  [[board.source]]
+  rank = 3
+  kind = "official-repo"
+  format = "CST"
+  url = "https://raw.githubusercontent.com/myminieye/Runber/main/Runber_Development_Board_Sourse_Code/course8_KEY_LED/src/key_led_top.cst"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "copyright Gowin Semiconductor"
+  device_evidence = "GW1N-LV4LQ144C6/I5 variant in file header (LV variant of same part family)"
+  clk = "clk on pin 4"
+  leds = "led[0-7] on pins 23-30 (8 LEDs)"
+  buttons = "key on pin 58 (1 key shown; full board has KEY1-8 on 58-65)"
+  switches = "none in this file"
+  seven_seg = "none in this file"
+  active_low = "not visible in this file"
+  evidence = ["IO_LOC \"clk\" 4;", "IO_LOC \"led[0-7]\" 23-30;", "IO_LOC \"key\" 58;"]
+
+[[board]]
+name = "Tang Primer20k Dock"
+files = ["amaranth-boards/tang_primer20k_dock.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "Expansion connector variant with 6 LEDs, 5 buttons, WS2812 RGB LED, ethernet interface"
+
+[[board]]
+name = "Tang Mega138k Pro Dock"
+files = ["amaranth-boards/tang_mega138k_pro_dock.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "Large FPGA board with 8 LEDs (6 + done + ready status), 4 buttons, WS2812 RGB LED"
+
+[[board]]
+name = "Sipeed Tang Nano 20k"
+files = ["litex-boards/sipeed_tang_nano_20k.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "Entry-level 20K board with 6 LEDs (active-low, inverted), 2 buttons, embedded SDRAM"
+
+[[board]]
+name = "Tang Nano9k"
+files = ["amaranth-boards/tang_nano9k.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "9K variant board with 6 LEDs (active-high), 2 buttons (active-low), 27 MHz clock"
+
+[[board]]
+name = "Sipeed Tang Mega 138k Pro"
+files = ["litex-boards/sipeed_tang_mega_138k_pro.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "Large 138K board variant with 8 controllable LEDs, 4 buttons on expansion header, 50 MHz clock"
+
+[[board]]
+name = "Sipeed Tang Nano 9k"
+files = ["litex-boards/sipeed_tang_nano_9k.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "LiteX platform variant of Tang Nano 9K with 6 user LEDs, 2 user buttons, PSRAM, LCD support"
+
+[[board]]
+name = "Brisbanesilicon Brs 100 Gw1nr9"
+files = ["litex-boards/brisbanesilicon_brs_100_gw1nr9.json"]
+maker = "Brisbane Silicon"
+status = "candidate"
+notes = "Community board derivative of Tang Nano 9K with 6 LEDs (active-low), 2 buttons (active-low), PSRAM"
+
+[[board]]
+name = "Lckfb Ljpi"
+files = ["litex-boards/lckfb_ljpi.json"]
+maker = "LCKFB (\u7acb\u521b/JLC EDA)"
+status = "candidate"
+notes = "Community FPGA board with 6 LEDs, 1 button, 7-segment display (partial), HDMI LVDS, DDR3 SDRAM"
+
+[[board]]
+name = "Sipeed Tang Nano"
+files = ["litex-boards/sipeed_tang_nano.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "Original entry-level Tang Nano with 4 LEDs (active-high), 2 buttons (active-low), 24 MHz clock, PSRAM"
+
+[[board]]
+name = "Tang Primer20k Lite"
+files = ["amaranth-boards/tang_primer20k_lite.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "Minimal variant of Tang Primer 20K with 2 buttons, 2 switches, no discrete LEDs (has PMOD connectors)"
+
+[[board]]
+name = "Tang Nano"
+files = ["amaranth-boards/tang_nano.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "Original 9K-class board (not 20K/4K) with 1 LED, 2 buttons, 12 MHz clock"
+
+[[board]]
+name = "Sipeed Tang Nano 4k"
+files = ["litex-boards/sipeed_tang_nano_4k.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "Smallest Tang Nano variant (4K) with 1 LED, 2 buttons, 27 MHz clock"
+
+[[board]]
+name = "Sipeed Tang Console"
+files = ["litex-boards/sipeed_tang_console.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "Variant of Tang Mega 138K with 2 controllable LEDs (done/ready status LEDs only), 3 buttons"
+
+[[board]]
+name = "Sipeed Tang Mega 138k"
+files = ["litex-boards/sipeed_tang_mega_138k.json"]
+maker = "Sipeed"
+status = "candidate"
+notes = "Large 138K FPGA board with 2 controllable LEDs (status only), 3 buttons on expansion header"
+
