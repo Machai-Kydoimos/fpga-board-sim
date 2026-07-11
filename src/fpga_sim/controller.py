@@ -488,7 +488,8 @@ class ScreenController:
             # The sim writes the slider's final value back to the session file at
             # exit, so re-read the session each (re)launch: the slider resumes
             # where the user left it — across runs, reloads, and restarts.  The
-            # waveform mode + auto-open (launcher-owned; U10/U29) ride along too.
+            # waveform mode + memories + auto-open (launcher-owned; U10/U29/U30)
+            # ride along too.
             sess = load_session()
             try:
                 speed = float(sess.get("speed_factor", SPEED_DEFAULT))
@@ -496,6 +497,7 @@ class ScreenController:
                 speed = SPEED_DEFAULT
             waveform = sess.get("waveform")
             waveform_open = sess.get("waveform_open")
+            waveform_memories = sess.get("waveform_memories")
 
             try:
                 sim_exit = launch_simulation(
@@ -512,6 +514,7 @@ class ScreenController:
                     theme=current_theme_name(),
                     waveform=waveform,
                     waveform_open=waveform_open,
+                    waveform_memories=waveform_memories,
                 )
             except Exception as e:
                 sim_error = str(e)

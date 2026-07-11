@@ -40,6 +40,7 @@ class TestDraw:
             dlg._theme_rect,
             dlg._reset_rect,
             dlg._waveform_rect,
+            dlg._memories_rect,
             dlg._autoopen_rect,
             dlg._clear_rect,
         ):
@@ -195,6 +196,22 @@ class TestActions:
         dlg._click(dlg._autoopen_rect.center)
         assert load_session()["waveform_open"] is False
 
+    def test_memories_toggle_on(self, screen, session_file):
+        """U30: default (off) → click turns "include memories" on; row stays open."""
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._memories_rect is not None
+        assert dlg._click(dlg._memories_rect.center) is False
+        assert load_session()["waveform_memories"] is True
+
+    def test_memories_toggle_off(self, screen, session_file):
+        update_session(waveform_memories=True)
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._memories_rect is not None
+        dlg._click(dlg._memories_rect.center)
+        assert load_session()["waveform_memories"] is False
+
 
 # ── Session-derived values are defensive ──────────────────────────────────────
 
@@ -251,6 +268,17 @@ class TestValues:
     def test_waveform_open_true_is_returned(self, screen):
         update_session(waveform_open=True)
         assert SettingsDialog(screen)._waveform_open() is True
+
+    def test_waveform_memories_defaults_off(self, screen):
+        assert SettingsDialog(screen)._waveform_memories() is False
+
+    def test_waveform_memories_non_bool_is_off(self, screen):
+        update_session(waveform_memories="yes")  # only a real bool true counts as on
+        assert SettingsDialog(screen)._waveform_memories() is False
+
+    def test_waveform_memories_true_is_returned(self, screen):
+        update_session(waveform_memories=True)
+        assert SettingsDialog(screen)._waveform_memories() is True
 
 
 # ── Gear trigger button ───────────────────────────────────────────────────────

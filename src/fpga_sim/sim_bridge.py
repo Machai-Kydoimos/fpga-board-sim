@@ -48,16 +48,27 @@ WaveFormat = Literal["vcd", "fst"]
 
 @dataclass(frozen=True)
 class WaveConfig:
-    """A resolved waveform-capture request: output path + format.
+    """A resolved waveform-capture request: output path + format + array depth.
 
     Handed to a backend's ``run_cmd`` when the user enabled capture.  GHDL and
     NVC spell the flags differently (``--vcd=`` / ``--fst=`` after the toplevel
     vs. ``--wave=`` + ``--format=`` before it), so only the abstract format is
     stored here and each backend renders its own flags.
+
+    *dump_arrays* is the U30 "include memories" depth: when set, nested arrays
+    and memories (the embedded-core designs' RAM/ROM/registers) are captured
+    too.  It is **NVC-only**: NVC skips nested arrays in every format (VCD and
+    FST) unless given ``--dump-arrays``, whereas GHDL's FST/GHW writers include
+    them by default — so ``_GHDLBackend.run_cmd`` ignores the field.  (GHDL's
+    *VCD* writer omits memories with or without a flag; a VCD *can* hold one,
+    flattened to a vector var per element, which NVC's VCD writer emits under
+    ``--dump-arrays`` but GHDL's does not.)  Off by default, since arrays add
+    significant size (see roadmap P13).
     """
 
     path: str
     fmt: WaveFormat
+    dump_arrays: bool = False
 
 
 class SimExit(Enum):
@@ -196,6 +207,9 @@ class _GHDLBackend(_SimBackend):
             # GHDL simulation options follow the toplevel (like --vpi); the dump
             # format is chosen by the flag name itself (--vcd= / --fst=).
             cmd.append(f"--{wave.fmt}={wave.path}")
+            # wave.dump_arrays (U30) needs no flag here: GHDL's FST/GHW writers
+            # dump nested arrays/memories by default (its VCD writer omits them,
+            # with or without a flag).  The opt-in is NVC-only.
         return cmd
 
 
@@ -263,6 +277,10 @@ class _NVCBackend(_SimBackend):
         if wave is not None:
             # NVC run options precede the toplevel; format is an explicit flag.
             cmd += [f"--wave={wave.path}", f"--format={wave.fmt}"]
+            if wave.dump_arrays:
+                # U30: NVC skips nested arrays/memories by default; opt them in so
+                # the embedded-core designs' RAM/ROM/registers land in the trace.
+                cmd.append("--dump-arrays")
         cmd.append(toplevel)
         return cmd
 
@@ -1063,6 +1081,11 @@ WAVEFORM_ENV = "FPGA_SIM_WAVEFORM"
 #: ``waveform_open`` flag when set (parsed by :func:`_env_flag`).
 WAVEFORM_OPEN_ENV = "FPGA_SIM_WAVEFORM_OPEN"
 
+#: Env var forcing the U30 "include memories" depth on/off (NVC ``--dump-arrays``),
+#: overriding the session ``waveform_memories`` flag when set (parsed by
+#: :func:`_env_flag`).  Lets CI/headless capture the embedded-core RAM/ROM arrays.
+WAVEFORM_MEMORIES_ENV = "FPGA_SIM_WAVEFORM_MEMORIES"
+
 #: Env var holding the auto-open command template (see :func:`_viewer_argv`).
 WAVEFORM_VIEWER_ENV = "FPGA_SIM_WAVEFORM_VIEWER"
 
@@ -1220,6 +1243,7 @@ def launch_simulation(
     theme: str | None = None,
     waveform: str | None = None,
     waveform_open: bool | None = None,
+    waveform_memories: bool | None = None,
 ) -> SimExit:
     """Launch an interactive simulator + cocotb simulation.
 
@@ -1255,6 +1279,14 @@ def launch_simulation(
     which overrides it — then launches a viewer on the produced dump, using the
     command in ``$FPGA_SIM_WAVEFORM_VIEWER`` (default ``gtkwave {gtkw}``); see
     :func:`_open_waveform`.
+
+    *waveform_memories* — or ``$FPGA_SIM_WAVEFORM_MEMORIES``, which overrides it —
+    is the U30 "include memories" depth: when on, NVC captures nested arrays and
+    memories too (``--dump-arrays``), so the embedded-core designs' RAM/ROM/registers
+    appear in the trace.  Applies to NVC, which otherwise skips nested arrays in
+    every format (VCD and FST); GHDL's FST/GHW writers already include them (its
+    VCD writer omits them, with or without a flag).  Off by default because
+    arrays add significant dump size.
 
     This call blocks until the simulation exits, then returns the
     :class:`SimExit` the user chose via the in-simulation toolbar
@@ -1320,7 +1352,10 @@ def launch_simulation(
     if wave_fmt is not None:
         wave_target = _waveform_path(toplevel, wave_fmt)
         wave_target.parent.mkdir(parents=True, exist_ok=True)
-        wave_cfg = WaveConfig(str(wave_target), wave_fmt)
+        # U30 "include memories": env wins over the session flag when set.
+        env_mem = _env_flag(WAVEFORM_MEMORIES_ENV)
+        dump_arrays = env_mem if env_mem is not None else bool(waveform_memories)
+        wave_cfg = WaveConfig(str(wave_target), wave_fmt, dump_arrays=dump_arrays)
 
     # Both backends share the same run_cmd signature; NVC ignores generics (already baked in).
     cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir, wave=wave_cfg)

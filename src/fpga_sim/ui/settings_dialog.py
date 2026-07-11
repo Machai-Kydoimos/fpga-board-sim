@@ -13,6 +13,10 @@ persisted session file (:mod:`fpga_sim.session_config`):
   passes the choice to the sim run subprocess, which writes a timestamped
   ``~/.fpga_simulator/waveforms/<design>_<timestamp>.<ext>`` (or under
   ``$FPGA_SIM_WAVEFORM_DIR``) for opening in GTKWave.
+* **Memories** — include nested arrays / memories (the embedded-core designs'
+  RAM/ROM/registers) in the capture.  Applies under NVC (which otherwise skips
+  them); GHDL's FST/GHW writers already include them, though its VCD writer does
+  not.  Off by default, since arrays add significant dump size.
 * **Auto-open** — after a capture run, launch a waveform viewer on the dump
   (the ``$FPGA_SIM_WAVEFORM_VIEWER`` command, default GTKWave); off by default.
 * **Recent files** — how many (board, VHDL) pairs are remembered (U18
@@ -141,6 +145,7 @@ class SettingsDialog:
         self._theme_rect: pygame.Rect | None = None
         self._reset_rect: pygame.Rect | None = None
         self._waveform_rect: pygame.Rect | None = None
+        self._memories_rect: pygame.Rect | None = None
         self._autoopen_rect: pygame.Rect | None = None
         self._clear_rect: pygame.Rect | None = None
 
@@ -167,6 +172,10 @@ class SettingsDialog:
     def _waveform_open(self) -> bool:
         """Whether auto-open-after-run is on (strict: only a real ``true`` counts)."""
         return self._session.get("waveform_open") is True
+
+    def _waveform_memories(self) -> bool:
+        """Whether U30 "include memories" is on (strict: only a real ``true`` counts)."""
+        return self._session.get("waveform_memories") is True
 
     def _can_cycle_theme(self) -> bool:
         return len(THEME_NAMES) > 1
@@ -225,6 +234,10 @@ class SettingsDialog:
             update_session(waveform=_WAVEFORM_MODES[(idx + 1) % len(_WAVEFORM_MODES)])
             self._session = load_session()
             return False
+        if self._memories_rect and self._memories_rect.collidepoint(pos):
+            update_session(waveform_memories=not self._waveform_memories())
+            self._session = load_session()
+            return False
         if self._autoopen_rect and self._autoopen_rect.collidepoint(pos):
             update_session(waveform_open=not self._waveform_open())
             self._session = load_session()
@@ -251,6 +264,7 @@ class SettingsDialog:
             ("Theme", THEME_LABELS.get(theme_name, theme_name), "Switch", self._can_cycle_theme()),
             ("Sim speed", f"{self._speed():.4g}x", "Reset", self._can_reset_speed()),
             ("Waveform", _WAVEFORM_LABELS[self._waveform_mode()], "Change", True),
+            ("Memories", "On" if self._waveform_memories() else "Off", "Toggle", True),
             ("Auto-open", "On" if self._waveform_open() else "Off", "Toggle", True),
             (
                 "Recent files",
@@ -313,6 +327,7 @@ class SettingsDialog:
             self._theme_rect,
             self._reset_rect,
             self._waveform_rect,
+            self._memories_rect,
             self._autoopen_rect,
             self._clear_rect,
         ) = action_rects

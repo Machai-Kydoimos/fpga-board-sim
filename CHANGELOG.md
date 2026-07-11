@@ -33,6 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   program isn't on `PATH`. The platform opener moved to a new
   `fpga_sim.platform_open` module, shared with the error dialog's [View Example]
   (#190, #193)
+- **Waveform "include memories" depth (U30).** A new Settings **Memories** toggle
+  — or `FPGA_SIM_WAVEFORM_MEMORIES=1` (env wins, for headless / CI) — captures
+  nested arrays and memories in the waveform, so the embedded-core designs'
+  RAM/ROM/registers appear in the trace instead of just the top-level ports. This
+  drives NVC's `--dump-arrays`, which NVC needs because it omits nested arrays by
+  default in every format (VCD and FST). GHDL's FST/GHW writers already include
+  them, so the toggle is a no-op under GHDL — with the caveat that GHDL's VCD
+  writer omits memories (with or without a flag), so choose FST to inspect one.
+  Off by default, since arrays add significant dump size (#191, #196)
 
 ### Fixed
 

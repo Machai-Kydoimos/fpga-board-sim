@@ -711,6 +711,21 @@ def test_simulate_waveform_open_absent_forwards_none(headless_pygame, monkeypatc
     assert launches[0]["waveform_open"] is None
 
 
+def test_simulate_passes_waveform_memories_to_launch(headless_pygame, monkeypatch, tmp_path):
+    """U30: the persisted "include memories" flag is read at launch and forwarded."""
+    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
+    monkeypatch.setattr(controller_mod, "load_session", lambda: {"waveform_memories": True})
+    ctrl.on_simulate()
+    assert launches[0]["waveform_memories"] is True
+
+
+def test_simulate_waveform_memories_absent_forwards_none(headless_pygame, monkeypatch, tmp_path):
+    """No saved waveform_memories key → None at launch (launch_simulation defaults it off)."""
+    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
+    ctrl.on_simulate()
+    assert launches[0]["waveform_memories"] is None
+
+
 def test_simulate_junk_saved_speed_falls_back_to_default(headless_pygame, monkeypatch, tmp_path):
     ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
     monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": "fast"})

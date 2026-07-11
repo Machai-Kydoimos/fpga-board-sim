@@ -232,6 +232,46 @@ def test_nvc_run_cmd_wave_flags_precede_toplevel(fmt):
     assert cmd.index(f"--wave=/w/o.{fmt}") < cmd.index("top")
 
 
+# ── Include-memories depth (U30): --dump-arrays ───────────────────────────────
+
+
+def test_wave_config_dump_arrays_defaults_off():
+    """A capture request excludes nested arrays/memories unless opted in."""
+    assert WaveConfig("/w/o.vcd", "vcd").dump_arrays is False
+
+
+def test_nvc_run_cmd_adds_dump_arrays_when_requested():
+    """U30: dump_arrays=True → NVC gets --dump-arrays (before the positional top)."""
+    cmd = _NVCBackend.run_cmd(
+        "top", {}, "/lib/vhpi.so", "/work", wave=WaveConfig("/w/o.fst", "fst", dump_arrays=True)
+    )
+    assert "--dump-arrays" in cmd
+    assert cmd[-1] == "top"  # the toplevel must stay last
+    assert cmd.index("--dump-arrays") < cmd.index("top")
+
+
+def test_nvc_run_cmd_no_dump_arrays_by_default():
+    """A capture with dump_arrays off must not add --dump-arrays."""
+    cmd = _NVCBackend.run_cmd(
+        "top", {}, "/lib/vhpi.so", "/work", wave=WaveConfig("/w/o.fst", "fst")
+    )
+    assert "--dump-arrays" not in cmd
+
+
+def test_nvc_run_cmd_no_dump_arrays_without_capture():
+    """No wave at all → no --dump-arrays even though the flag is NVC's."""
+    cmd = _NVCBackend.run_cmd("top", {}, "/lib/vhpi.so", "/work")
+    assert "--dump-arrays" not in cmd
+
+
+def test_ghdl_run_cmd_never_adds_dump_arrays():
+    """--dump-arrays is NVC-only; GHDL dumps arrays natively and must not carry it."""
+    cmd = _GHDLBackend.run_cmd(
+        "top", {}, "/lib/vpi.so", "/work", wave=WaveConfig("/w/o.vcd", "vcd", dump_arrays=True)
+    )
+    assert "--dump-arrays" not in cmd
+
+
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
