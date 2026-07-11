@@ -1,0 +1,301 @@
+# Port-convention source registry — Greg Davill / LambdaConcept ECP5
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable consolidation.
+
+[[board]]
+name = "Gsd Butterstick"
+files = ["litex-boards/gsd_butterstick.json"]
+maker = "Greg Davill / ButterStick FPGA"
+status = "none-found"
+notes = "Searched butterstick-fpga/butterstick GitHub repo (main branch); found only KiCad schematics (hardware/ButterStick_r1.0/), no constraint files (*.pcf, *.lpf, *.xdc, *.qsf). No official constraint file accessible."
+
+[[board]]
+name = "Gsd Orangecrab"
+files = ["litex-boards/gsd_orangecrab.json"]
+maker = "Greg Davill / OrangeCrab"
+status = "verified"
+notes = "OrangeCrab R0.2 variant; physical board same as 'Orange Crab R0-2' and 'Orange Crab R0-2-25 F' from amaranth-boards (different upstream listings). Constraint file found in official orangecrab-fpga/orangecrab-examples GitHub repo."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/orangecrab-fpga/orangecrab-examples/main/verilog/orangecrab_r0.2.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "File is orangecrab_r0.2.pcf in official orangecrab-examples repo; device LFE5U-25F-8MG285C per roster"
+  clk = "clk48 (48 MHz)"
+  leds = "rgb_led0_r, rgb_led0_g, rgb_led0_b (1x RGB, 3 components)"
+  buttons = "usr_btn (1 button)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk48\" SITE \"A9\";", "LOCATE COMP \"rgb_led0_r\" SITE \"K4\";", "LOCATE COMP \"rgb_led0_g\" SITE \"M3\";", "LOCATE COMP \"rgb_led0_b\" SITE \"J3\";"]
+
+[[board]]
+name = "ECPIX545"
+files = ["amaranth-boards/ecpix545.json"]
+maker = "LambdaConcept"
+status = "verified"
+notes = "Physical board is same as 'Lambdaconcept Ecpix5' (official name variant). Constraint-file pins extracted from official LambdaConcept documentation site (vendor-manual style: docs.lambdaconcept.com/ecpix-5/). Density is 45F (550K LUTs); 85F variant is ECPIX585. Four RGB LEDs present (active-low per documentation)."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-manual"
+  format = "HTML"
+  url = "https://docs.lambdaconcept.com/ecpix-5/features/clock-reset.html"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "ECPIX-5 official documentation; system clock is FPGA pin K23, 100MHz per table. Device LFE5UM5G-45F (BG554) per roster for 'ECPIX545'."
+  clk = "System clock: K23 (100 MHz)"
+  leds = "none extracted from this source"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["System clock | K23 | 100MHz", "SERDES reference clock | AF12 (P) / AF13 (N) | 100MHz"]
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "HTML"
+  url = "https://docs.lambdaconcept.com/ecpix-5/features/rgb-led.html"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Official ECPIX-5 documentation; 4x RGB LEDs documented (LD5-LD8)."
+  clk = "absent from this file"
+  leds = "LD5(R:T23/G:R21/B:T22), LD6(R:U21/G:W21/B:T24), LD7(R:K21/G:K24/B:M21), LD8(R:P21/G:R23/B:P22) - 4 RGB LEDs, 12 total pins"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "All LEDs are active-low per documentation"
+  evidence = ["LD5 | T23 | R21 | T22", "LD6 | U21 | W21 | T24", "LD7 | K21 | K24 | M21", "LD8 | P21 | R23 | P22"]
+
+[[board]]
+name = "ECPIX585"
+files = ["amaranth-boards/ecpix585.json"]
+maker = "LambdaConcept"
+status = "verified"
+notes = "Physical board is same as ECPIX545 and 'Lambdaconcept Ecpix5' (only difference: density is 85F instead of 45F). Pin assignments identical to ECPIX545. Extracted from official LambdaConcept documentation."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-manual"
+  format = "HTML"
+  url = "https://docs.lambdaconcept.com/ecpix-5/features/clock-reset.html"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "ECPIX-5 official documentation; physical board is same as ECPIX545. Device LFE5UM5G-85F (BG554) per roster."
+  clk = "System clock: K23 (100 MHz)"
+  leds = "none extracted from this source"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["System clock | K23 | 100MHz"]
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "HTML"
+  url = "https://docs.lambdaconcept.com/ecpix-5/features/rgb-led.html"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Official ECPIX-5 documentation; same physical board as ECPIX545."
+  clk = "absent from this file"
+  leds = "LD5(R:T23/G:R21/B:T22), LD6(R:U21/G:W21/B:T24), LD7(R:K21/G:K24/B:M21), LD8(R:P21/G:R23/B:P22) - 4 RGB LEDs"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "All LEDs are active-low per documentation"
+  evidence = ["LD5 | T23 | R21 | T22", "LD6 | U21 | W21 | T24", "LD7 | K21 | K24 | M21", "LD8 | P21 | R23 | P22"]
+
+[[board]]
+name = "Lambdaconcept Ecpix5"
+files = ["litex-boards/lambdaconcept_ecpix5.json"]
+maker = "LambdaConcept"
+status = "verified"
+notes = "Physical board is the ECPIX-5 (official product name); same board as 'ECPIX545' and 'ECPIX585' (different density variants). LiteX platform file listing provides this name; vendor pins from official LambdaConcept docs."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-manual"
+  format = "HTML"
+  url = "https://docs.lambdaconcept.com/ecpix-5/features/clock-reset.html"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "ECPIX-5 official documentation; physical board same across all three roster entries (ECPIX545/ECPIX585/Lambdaconcept Ecpix5). Device LFE5UM5G-85F-8BG554I per roster for this entry."
+  clk = "System clock: K23 (100 MHz)"
+  leds = "none extracted from this source"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["System clock | K23 | 100MHz"]
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "HTML"
+  url = "https://docs.lambdaconcept.com/ecpix-5/features/rgb-led.html"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Official ECPIX-5 documentation."
+  clk = "absent from this file"
+  leds = "LD5(R:T23/G:R21/B:T22), LD6(R:U21/G:W21/B:T24), LD7(R:K21/G:K24/B:M21), LD8(R:P21/G:R23/B:P22) - 4 RGB LEDs"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "All LEDs are active-low per documentation"
+  evidence = ["LD5 | T23 | R21 | T22", "LD6 | U21 | W21 | T24", "LD7 | K21 | K24 | M21", "LD8 | P21 | R23 | P22"]
+
+[[board]]
+name = "Lambdaconcept Pcie Screamer"
+files = ["litex-boards/lambdaconcept_pcie_screamer.json"]
+maker = "LambdaConcept"
+status = "none-found"
+notes = "Searched docs.lambdaconcept.com/screamer/ (official LambdaConcept documentation); found navigation structure but no accessible constraint files or pinout tables. No LED/button port names discoverable from public sources. Marked 'none-found' per rubric (no fetched constraint file for this exact board)."
+
+[[board]]
+name = "Muselab Icesugar Pro"
+files = ["litex-boards/muselab_icesugar_pro.json"]
+maker = "Muselab / wuxx"
+status = "verified"
+notes = "Found constraint file in official wuxx/icesugar-pro GitHub repo (Muselab's community-maintained examples). LiteX Linux build includes full board constraint (top_bg256.lpf) with LED/clock info."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/wuxx/icesugar-pro/main/src/litex_linux/top_bg256.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "File from wuxx/icesugar-pro (official Muselab repository for iCESugar-Pro board examples). Device LFE5U-25F-6BG256C per roster. Pin P6 for clk25 is consistent with iCESugar-Pro schematic pin P6=clock input."
+  clk = "clk25 (25 MHz)"
+  leds = "user_led0 (B11), user_led1 (A11), user_led2 (A12), user_led3 (R1), user_led4 (R2), user_led5 (R3), user_led6 (R4), user_led7 (R5) - 8 LEDs total"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk25\" SITE \"P6\";", "LOCATE COMP \"user_led0\" SITE \"B11\";", "LOCATE COMP \"user_led7\" SITE \"R5\";", "FREQUENCY PORT \"clk25\" 25.0 MHz;"]
+
+[[board]]
+name = "Orange Crab R0-2-25 F"
+files = ["amaranth-boards/orange_crab_r0-2-25_f.json"]
+maker = "Greg Davill / OrangeCrab"
+status = "verified"
+notes = "Physical board is same as 'Gsd Orangecrab' (different source/name; amaranth-boards vs litex-boards). The '25 F' density designation matches the LFE5U-25F device. Constraint file found in official orangecrab-examples repo (same board, different source listing)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/orangecrab-fpga/orangecrab-examples/main/verilog/orangecrab_r0.2.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "File from official orangecrab-fpga/orangecrab-examples repo; R0.2 variant. Device LFE5U-25F (MG285 package) per roster matches 'orangecrab_r0.2.pcf' naming and pin set."
+  clk = "clk48 (48 MHz)"
+  leds = "rgb_led0_r, rgb_led0_g, rgb_led0_b (1x RGB, 3 components)"
+  buttons = "usr_btn (1 button)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk48\" SITE \"A9\";", "LOCATE COMP \"rgb_led0_r\" SITE \"K4\";", "LOCATE COMP \"rgb_led0_g\" SITE \"M3\";", "LOCATE COMP \"rgb_led0_b\" SITE \"J3\";"]
+
+[[board]]
+name = "Orange Crab R0-2-85 F"
+files = ["amaranth-boards/orange_crab_r0-2-85_f.json"]
+maker = "Greg Davill / OrangeCrab"
+status = "verified"
+notes = "Physical board is same as 'Gsd Orangecrab' and 'Orange Crab R0-2' (only difference: density is 85F instead of 25F). Pin assignments identical. Constraint file from same official orangecrab-examples repo (R0.2 variant constraint applies to both density options)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/orangecrab-fpga/orangecrab-examples/main/verilog/orangecrab_r0.2.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "File from official orangecrab-examples repo. Device LFE5U-85F (MG285 package) per roster. Same R0.2 board as 'Gsd Orangecrab' and 'Orange Crab R0-2'; only density differs (85F vs 25F)."
+  clk = "clk48 (48 MHz)"
+  leds = "rgb_led0_r, rgb_led0_g, rgb_led0_b (1x RGB, 3 components)"
+  buttons = "usr_btn (1 button)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk48\" SITE \"A9\";", "LOCATE COMP \"rgb_led0_r\" SITE \"K4\";", "LOCATE COMP \"rgb_led0_g\" SITE \"M3\";", "LOCATE COMP \"rgb_led0_b\" SITE \"J3\";"]
+
+[[board]]
+name = "Orange Crab R0-2"
+files = ["amaranth-boards/orange_crab_r0-2.json"]
+maker = "Greg Davill / OrangeCrab"
+status = "verified"
+notes = "Physical board same as 'Gsd Orangecrab' (amaranth-boards vs litex-boards listing). R0.2 variant; constraint file found in official orangecrab-examples repo."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/orangecrab-fpga/orangecrab-examples/main/verilog/orangecrab_r0.2.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "File from official orangecrab-examples repo. Device LFE5U-25F (MG285) per roster; naming orangecrab_r0.2.pcf confirms R0.2 variant."
+  clk = "clk48 (48 MHz)"
+  leds = "rgb_led0_r, rgb_led0_g, rgb_led0_b (1x RGB, 3 components)"
+  buttons = "usr_btn (1 button)"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk48\" SITE \"A9\";", "LOCATE COMP \"rgb_led0_r\" SITE \"K4\";", "LOCATE COMP \"rgb_led0_g\" SITE \"M3\";", "LOCATE COMP \"rgb_led0_b\" SITE \"J3\";"]
+
+[[board]]
+name = "Lambdaconcept Pcie Screamer M2"
+files = ["litex-boards/lambdaconcept_pcie_screamer_m2.json"]
+maker = "LambdaConcept"
+status = "none-found"
+notes = "M.2 variant of LambdaConcept Screamer (PCIe board). Searched docs.lambdaconcept.com/screamer/ (mentioned in docs as discontinued model 'R04 M.2', 'R03 M.2'); no publicly accessible constraint files or pinout tables. Marked 'none-found' per rubric."
+
+[[board]]
+name = "Litex Acorn Baseboard"
+files = ["litex-boards/litex_acorn_baseboard.json"]
+maker = "Acorn / enjoy-digital"
+status = "none-found"
+notes = "Searched multiple GitHub organizations (acorn-fpga/acorn-baseboard, enjoy-digital/litex_acorn_baseboard, GProCPU/acorn-baseboard); no official repository found. No public constraint file or pinout documentation accessible. Marked 'none-found' per rubric."
+
+[[board]]
+name = "Orange Crab R0-1"
+files = ["amaranth-boards/orange_crab_r0-1.json"]
+maker = "Greg Davill / OrangeCrab"
+status = "verified"
+notes = "Older (R0.1) variant of OrangeCrab. Constraint file found in official orangecrab-examples repo. Same physical board concept as R0.2 variants, but R0.1 revision has different RGB LED pins (per PCF: T17/V17/J3 vs R0.2's K4/M3/J3)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "PCF"
+  url = "https://raw.githubusercontent.com/orangecrab-fpga/orangecrab-examples/main/verilog/orangecrab_r0.1.pcf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "File from official orangecrab-examples repo. Device LFE5U-25F (MG285) per roster; file naming orangecrab_r0.1.pcf confirms R0.1 hardware revision."
+  clk = "clk48 (48 MHz)"
+  leds = "rgb_led0_r (T17), rgb_led0_g (V17), rgb_led0_b (J3) - 1x RGB, 3 components (different pin set than R0.2)"
+  buttons = "absent from this file"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk48\" SITE \"A9\";", "LOCATE COMP \"rgb_led0_r\" SITE \"T17\";", "LOCATE COMP \"rgb_led0_g\" SITE \"V17\";", "LOCATE COMP \"rgb_led0_b\" SITE \"J3\";"]
+
