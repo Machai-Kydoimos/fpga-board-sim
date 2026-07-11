@@ -204,6 +204,27 @@
       },
       "additionalProperties": false
     },
+    "convention_source": {
+      "type": "object",
+      "description": "Provenance for a port_convention block populated from the port-convention registry (docs/port_convention_sources/)",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Canonical constraint-file URL the convention was parsed from"
+        },
+        "retrieved": {
+          "type": "string",
+          "format": "date",
+          "description": "Date the source was fetched, e.g. '2026-07-11'"
+        },
+        "registry_board": {
+          "type": "string",
+          "description": "Board identifier as listed in docs/port_convention_sources/"
+        }
+      },
+      "additionalProperties": false
+    },
     "peripheral": {
       "type": "object",
       "required": ["type"],
@@ -231,7 +252,20 @@
         "leds": { "$ref": "#/$defs/port_mapping" },
         "buttons": { "$ref": "#/$defs/port_mapping" },
         "switches": { "$ref": "#/$defs/port_mapping" },
-        "seven_seg": { "$ref": "#/$defs/seg_port_mapping" }
+        "seven_seg": { "$ref": "#/$defs/seg_port_mapping" },
+        "leds_green": {
+          "$ref": "#/$defs/port_mapping",
+          "description": "Secondary (e.g. green) LED bank on boards with two-color LED rows, such as Terasic DE2-115's LEDG"
+        },
+        "source": {
+          "$ref": "#/$defs/convention_source",
+          "description": "Provenance for a convention populated from the port-convention registry (absent for hand-authored blocks)"
+        },
+        "naming": {
+          "type": "string",
+          "enum": ["canonical", "project-derived"],
+          "description": "'canonical': port names come from the vendor/official source; 'project-derived': names were renamed by a downstream project. Absent means canonical (the default for existing hand-authored blocks)."
+        }
       }
     },
     "port_mapping": {
@@ -247,7 +281,8 @@
       "properties": {
         "style": {
           "type": "string",
-          "enum": ["packed_vector", "individual"]
+          "enum": ["packed_vector", "individual", "per_segment_scalars", "scan", "serial"],
+          "description": "'packed_vector': one vector spanning all digits; 'individual': one port per digit, e.g. HEX0..n; 'per_segment_scalars': one scalar port per segment per digit, e.g. o_Segment1_A; 'scan': shared segment lines multiplexed via digit_enable; 'serial': shift-register driven"
         },
         "name": { "type": "string" },
         "names": {
@@ -255,7 +290,11 @@
           "items": { "type": "string" }
         },
         "width_per_digit": { "type": "integer" },
-        "active_low": { "type": "boolean", "default": false }
+        "active_low": { "type": "boolean", "default": false },
+        "digit_enable": {
+          "$ref": "#/$defs/port_mapping",
+          "description": "Digit-select/enable strobe used by the 'scan' style"
+        }
       }
     }
   }
