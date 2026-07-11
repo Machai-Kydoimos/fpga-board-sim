@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pipeline's pinned upstream. Groundwork for **U21** (board-native VHDL): every
   future `port_conventions` block in `boards/*/*.json` traces to an
   authoritative source, and better sources later mean editing one registry row.
-  The simulator does not read these files at runtime
+  The simulator does not read these files at runtime (#198)
 
 ## [0.13.0] - 2026-07-11
 
