@@ -34,6 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `fpga_sim.platform_open` module, shared with the error dialog's [View Example]
   (#190, #193)
 
+### Fixed
+
+- **Settings gear icon.** The gear trigger in the board-preview header is now
+  drawn as a proper cog — a body disc ringed by eight identical trapezoidal
+  teeth with a see-through hub — instead of eight radial spokes whose diagonal
+  tips rendered as jagged diamonds rather than teeth. The glyph is supersampled
+  for clean anti-aliased edges and cached (#194)
+
 ## [0.12.0] - 2026-07-08
 
 ### Added

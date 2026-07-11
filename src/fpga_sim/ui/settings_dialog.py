@@ -28,6 +28,7 @@ than a font glyph (``⚙``) so it looks identical on every platform.
 
 from __future__ import annotations
 
+import functools
 import math
 
 import pygame
@@ -44,22 +45,64 @@ _WAVEFORM_MODES = ("off", "vcd", "fst")
 _WAVEFORM_LABELS = {"off": "Off", "vcd": "VCD", "fst": "FST"}
 
 
+@functools.lru_cache(maxsize=32)
+def _gear_glyph(radius: int, color: tuple[int, int, int]) -> pygame.Surface:
+    """Build an eight-tooth gear glyph as a small anti-aliased surface.
+
+    A body disc ringed by identical trapezoidal teeth, with a punched-through
+    (transparent) hub hole.  Drawn on a 4x-supersampled per-pixel-alpha canvas
+    and smoothscaled down, so every tooth reads as the same crisp trapezoid at
+    any orientation.  (The previous version radiated eight thick lines and
+    capped them with a disc, so only the axis-aligned tips were rectangular —
+    the diagonal ones poked out as rotated, jagged diamonds.)  The whole canvas
+    is flooded with *color* and only the alpha varies, so the downscale's edge
+    blend never fringes toward black; the hub is punched fully transparent so it
+    shows the live button fill in either hover state.  Cached because the glyph
+    is static per (size, color).
+    """
+    ss = 4  # supersample factor for antialiasing
+    teeth = 8
+    pitch = 2 * math.pi / teeth
+    r_tip = radius  # tooth tip (outer) radius
+    r_root = radius * 0.68  # tooth root — where a tooth meets the body
+    r_body = radius * 0.70  # body disc (just past the root so teeth merge in)
+    r_hub = radius * 0.30  # hub hole
+    half_base = pitch * 0.24  # tooth angular half-width at the root
+    half_top = pitch * 0.16  # ...tapering narrower toward the tip
+
+    side = int(math.ceil((radius + 1) * 2))
+    big = pygame.Surface((side * ss, side * ss), pygame.SRCALPHA)
+    big.fill((*color, 0))  # transparent, but RGB=color so edges don't darken
+    c = side * ss / 2  # canvas center
+
+    def pt(r: float, ang: float) -> tuple[float, float]:
+        return (c + r * ss * math.cos(ang), c + r * ss * math.sin(ang))
+
+    pygame.draw.circle(big, color, (round(c), round(c)), round(r_body * ss))
+    for i in range(teeth):
+        a = pitch * i
+        pygame.draw.polygon(
+            big,
+            color,
+            [
+                pt(r_root, a - half_base),
+                pt(r_tip, a - half_top),
+                pt(r_tip, a + half_top),
+                pt(r_root, a + half_base),
+            ],
+        )
+    pygame.draw.circle(big, (*color, 0), (round(c), round(c)), round(r_hub * ss))  # punch hub
+
+    return pygame.transform.smoothscale(big, (side, side))
+
+
 def _draw_gear_icon(
     surface: pygame.Surface, center: tuple[int, int], radius: int, color: tuple[int, int, int]
 ) -> None:
-    """Draw an eight-tooth gear glyph: tooth spokes, body disc, hub hole.
-
-    The hub hole is punched in ``THEME.panel_bg`` — visually close enough to
-    the button fill in both hover states that the gear reads correctly.
-    """
-    cx, cy = center
-    tooth_w = max(2, round(radius * 0.55))
-    for i in range(8):
-        ang = math.pi * i / 4
-        tip = (cx + radius * math.cos(ang), cy + radius * math.sin(ang))
-        pygame.draw.line(surface, color, (cx, cy), tip, tooth_w)
-    pygame.draw.circle(surface, color, (cx, cy), max(2, round(radius * 0.78)))
-    pygame.draw.circle(surface, THEME.panel_bg, (cx, cy), max(1, round(radius * 0.38)))
+    """Blit the cached gear glyph (see :func:`_gear_glyph`) centered at *center*."""
+    key = (int(color[0]), int(color[1]), int(color[2]))  # hashable + defensive coerce
+    glyph = _gear_glyph(int(radius), key)
+    surface.blit(glyph, glyph.get_rect(center=center))
 
 
 def draw_settings_button(

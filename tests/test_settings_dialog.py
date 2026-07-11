@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 
+import pygame
 import pytest
 
 from fpga_sim.session_config import load_session, update_session
-from fpga_sim.ui.settings_dialog import SettingsDialog, draw_settings_button
+from fpga_sim.ui.settings_dialog import SettingsDialog, _gear_glyph, draw_settings_button
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 from fpga_sim.ui.theme import THEME_NAMES, current_theme_name
 
@@ -263,3 +264,31 @@ class TestGearButton:
 
     def test_tiny_size_does_not_crash(self, screen):
         draw_settings_button(screen, right=50, top=0, size=8, mouse=(0, 0))
+
+
+# ── Gear glyph (the cog rendering) ────────────────────────────────────────────
+
+
+class TestGearGlyph:
+    """The gear is a cached, anti-aliased cog with a see-through hub."""
+
+    def test_glyph_is_cached(self, screen):
+        # Identical (radius, color) returns the very same cached surface.
+        assert _gear_glyph(10, (255, 255, 255)) is _gear_glyph(10, (255, 255, 255))
+
+    def test_hub_hole_is_transparent(self, screen):
+        # The hub is punched fully transparent so it shows the live button fill
+        # (the old glyph hard-filled it with a mismatched panel color).
+        glyph = _gear_glyph(12, (255, 255, 255))
+        assert glyph.get_flags() & pygame.SRCALPHA
+        w, h = glyph.get_size()
+        assert glyph.get_at((w // 2, h // 2)).a == 0
+
+    def test_body_ring_is_solid_gear_color(self, screen):
+        # A point between the hub and the rim is opaque and exactly the color.
+        color = (200, 210, 255)
+        glyph = _gear_glyph(12, color)
+        w, h = glyph.get_size()
+        px = glyph.get_at((w // 2 + 6, h // 2))
+        assert px.a == 255
+        assert (px.r, px.g, px.b) == color
