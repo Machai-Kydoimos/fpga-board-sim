@@ -1,0 +1,172 @@
+# Port-convention source registry — Zynq / CN commercial Xilinx
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable consolidation.
+
+[[board]]
+name = "Puzhi Pz A7xxt Kfb"
+files = ["litex-boards/puzhi_pz_a7xxt_kfb.json"]
+maker = "Puzhi"
+status = "none-found"
+notes = "Searched: github.com/puzhitech/puzhi, github.com/puzhitech/fpga, github.com/Puzhi/puzhi, github.com/puzhi-tech \u2014 no public vendor repos with XDC files found. Board specifications come from litex-boards only (excluded per rubric)."
+
+[[board]]
+name = "Tul Pynq Z2"
+files = ["litex-boards/tul_pynq_z2.json"]
+maker = "Tul / Xilinx"
+status = "verified"
+notes = "TUL-licensed board; constraint file found in official Xilinx/PYNQ GitHub repository (verified on 2026-07-11)"
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/Xilinx/PYNQ/master/boards/Pynq-Z2/base/vivado/constraints/base.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "BSD-3-Clause"
+  device_evidence = "xc7z020clg400-1 (verified in petalinux_bsp/hardware_project/pynqz2.tcl line 55: 'create_project pynqz2 pynqz2 -part xc7z020clg400-1')"
+  clk = "hdmi_in_clk_p (create_clock -period 8.334 -waveform {0.000 4.167}, ~120MHz)"
+  leds = "leds_4bits_tri_o[0:3] = 4 LEDs"
+  buttons = "btns_4bits_tri_i[0:3] = 4 buttons"
+  switches = "sws_2bits_tri_i[0:1] = 2 switches"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_property -dict {PACKAGE_PIN M20 IOSTANDARD LVCMOS33} [get_ports {sws_2bits_tri_i[0]}]", "set_property -dict {PACKAGE_PIN M19 IOSTANDARD LVCMOS33} [get_ports {sws_2bits_tri_i[1]}]", "set_property -dict {PACKAGE_PIN D19 IOSTANDARD LVCMOS33} [get_ports {btns_4bits_tri_i[0]}]", "set_property -dict {PACKAGE_PIN D20 IOSTANDARD LVCMOS33} [get_ports {btns_4bits_tri_i[1]}]"]
+
+[[board]]
+name = "Alinx Ax7010"
+files = ["litex-boards/alinx_ax7010.json"]
+maker = "Alinx"
+status = "none-found"
+notes = "Searched: github.com/ALINX/AX7010, github.com/alinx/ax7010, github.com/alinxfpga/ax7010, github.com/lishi2019/AX7010 \u2014 no public vendor or community repos with XDC files found."
+
+[[board]]
+name = "Alinx Ax7020"
+files = ["litex-boards/alinx_ax7020.json"]
+maker = "Alinx"
+status = "none-found"
+notes = "Searched: github.com/ALINX/AX7020, github.com/alinx/ax7020, github.com/alinxfpga/ax7020 \u2014 no public vendor or community repos with XDC files found."
+
+[[board]]
+name = "Alinx Axu2cga"
+files = ["litex-boards/alinx_axu2cga.json"]
+maker = "Alinx"
+status = "none-found"
+notes = "Searched: github.com/ALINX/AXU2CGA, github.com/alinx/axu2cga, github.com/alinxfpga/axu2cga \u2014 no public vendor or community repos with XDC files found."
+
+[[board]]
+name = "Alientek Davincipro"
+files = ["litex-boards/alientek_davincipro.json"]
+maker = "Alientek"
+status = "none-found"
+notes = "Searched: github.com/alientek/openedv, github.com/openedv/fpga, github.com/yatuli/openedv, github.com/yatuli/FPGA \u2014 no public vendor or community repos with XDC files found. Board specifications come from litex-boards only (excluded per rubric)."
+
+[[board]]
+name = "Redpitaya"
+files = ["litex-boards/redpitaya.json"]
+maker = "Red Pitaya"
+status = "verified"
+notes = "Official Red Pitaya FPGA constraint file; device xc7z010clg400-1 inferred from package pins"
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/RedPitaya/RedPitaya-FPGA/master/sdc/red_pitaya.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "xc7z010 (inferred from package pin assignments matching Zynq-7010 BGA pin layout; file header notes '(c) Red Pitaya http://www.redpitaya.com')"
+  clk = "adc_clk_i[1] (create_clock -period 8.000, 125MHz)"
+  leds = "led_o[0:7] = 8 LEDs (F16, F17, G15, H15, K14, G14, J15, J14)"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["set_property IOSTANDARD LVCMOS33 [get_ports {led_o[*]}]", "set_property PACKAGE_PIN F16     [get_ports {led_o[0]}]", "set_property PACKAGE_PIN F17     [get_ports {led_o[1]}]", "set_property PACKAGE_PIN G15     [get_ports {led_o[2]}]"]
+
+[[board]]
+name = "Red Pitaya14"
+files = ["amaranth-boards/red_pitaya14.json"]
+maker = "Red Pitaya"
+status = "none-found"
+notes = "Only locatable pin data is in amaranth-boards platform files (excluded per rubric). No public vendor XDC found (variant: Red Pitaya14 vs standard Redpitaya)."
+
+[[board]]
+name = "Alinx Ax7203"
+files = ["litex-boards/alinx_ax7203.json"]
+maker = "Alinx"
+status = "none-found"
+notes = "Searched: github.com/ALINX/AX7203, github.com/alinx/ax7203, github.com/alinxfpga/ax7203 \u2014 no public vendor or community repos with XDC files found. Device marked unknown in roster."
+
+[[board]]
+name = "AX7325 B"
+files = ["amaranth-boards/ax7325_b.json"]
+maker = "Alinx"
+status = "none-found"
+notes = "Only locatable pin data is in amaranth-boards platform files (excluded per rubric). Searched: github.com/ALINX/AX7325B, github.com/alinx/ax7325b \u2014 no public vendor XDC found."
+
+[[board]]
+name = "Alinx Axau15"
+files = ["litex-boards/alinx_axau15.json"]
+maker = "Alinx"
+status = "none-found"
+notes = "Searched: github.com/ALINX/AXAU15, github.com/alinx/axau15, github.com/alinxfpga/axau15 \u2014 no public vendor or community repos with XDC files found. Device is Zynq UltraScale+ (xcau15p-ffvb676-2-i)."
+
+[[board]]
+name = "Puzhi P7 Starlite"
+files = ["litex-boards/puzhi_p7_starlite.json"]
+maker = "Puzhi"
+status = "none-found"
+notes = "Searched: github.com/puzhitech/P7, github.com/puzhitech/Starlite, github.com/Puzhi/P7 \u2014 no public vendor or community repos with XDC files found."
+
+[[board]]
+name = "EBAZ4205"
+files = ["amaranth-boards/ebaz4205.json"]
+maker = "Ebang / Community"
+status = "verified"
+notes = "Community-maintained Ebang mining board; XDC found in xjtuecho/EBAZ4205 GitHub repository"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/xjtuecho/EBAZ4205/master/Development/EBAZ4205.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "xc7z010-clg400 (inferred from package pin assignments; all pin names follow Zynq-7010 BGA pinout; file header: '## This file is a general .xdc for the EBAZ425' [note: typo in header, EBAZ4205 confirmed by roster and filename])"
+  clk = "absent from this file (optional external oscillator at N18, commented out in template with note 'Use if you have X5 Oscillator soldered on')"
+  leds = "greenLED (W13), redLED (W14) = 2 LEDs"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["## This file is a general .xdc for the EBAZ425", "#set_property -dict { PACKAGE_PIN N18   IOSTANDARD LVCMOS33 } [get_ports { clk }]; # Use if you have X5 Oscillator soldered on", "#set_property -dict { PACKAGE_PIN W13   IOSTANDARD LVCMOS33 } [get_ports { greenLED }];", "#set_property -dict { PACKAGE_PIN W14   IOSTANDARD LVCMOS33 } [get_ports { redLED }];"]
+
+[[board]]
+name = "Ebaz4205"
+files = ["litex-boards/ebaz4205.json"]
+maker = "Ebang / Community"
+status = "verified"
+notes = "Same physical board as EBAZ4205 (amaranth variant); shares community XDC from xjtuecho/EBAZ4205"
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/xjtuecho/EBAZ4205/master/Development/EBAZ4205.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "xc7z010-clg400-1 (from roster; package pins match Zynq-7010)"
+  clk = "absent from this file (optional external oscillator, commented out)"
+  leds = "greenLED (W13), redLED (W14) = 2 LEDs"
+  buttons = "none"
+  switches = "none"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["#set_property -dict { PACKAGE_PIN N18   IOSTANDARD LVCMOS33 } [get_ports { clk }];", "#set_property -dict { PACKAGE_PIN W13   IOSTANDARD LVCMOS33 } [get_ports { greenLED }];", "#set_property -dict { PACKAGE_PIN W14   IOSTANDARD LVCMOS33 } [get_ports { redLED }];"]
+

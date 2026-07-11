@@ -1,0 +1,212 @@
+# Port-convention source registry — Lattice official eval boards
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; discovery: Haiku batch agents (rubric v2) + Fable consolidation.
+
+[[board]]
+name = "Lattice Certuspro Nx Versa"
+files = ["litex-boards/lattice_certuspro_nx_versa.json"]
+maker = "Lattice Semiconductor"
+status = "none-found"
+notes = "Roster claims 8 LEDs, 6 buttons, 3 7-seg digits. No constraint file found for CertusPro-NX Versa specifically in prjoxide examples or accessible Lattice repos. The available prjoxide PDC examples (evn, vip, vvml) do not include a Versa variant."
+
+[[board]]
+name = "Lattice Certuspro Nx Evn"
+files = ["litex-boards/lattice_certuspro_nx_evn.json"]
+maker = "Lattice Semiconductor"
+status = "candidate"
+notes = "Roster claims 24 LEDs, 11 buttons. Found CertusPro-NX EVN references in prjoxide as 'LIFCL-40-EVN' device, but only blinky_evn example available (CrossLink-NX EVN) with 14 LEDs visible in PDC. Lattice's official site 403s bot fetches; CertusPro-NX support in prjoxide marked as 'early investigations' in README."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "PDC"
+  url = "https://raw.githubusercontent.com/gatecat/prjoxide/main/examples/blinky_evn/evn.pdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "LIFCL-40 family device; prjoxide README documents CrossLink-NX EVN examples. CertusPro-NX support noted as 'early investigations'."
+  clk = "absent from this file"
+  leds = "led[0-13] (14 LEDs, not 24 as listed in roster)"
+  buttons = "absent from this file"
+  switches = "absent from this file"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["ldc_set_location -site {E17} [get_ports {led[0]}]", "ldc_set_location -site {V20} [get_ports {led[13]}]", "ldc_set_location -site {G19} [get_ports gsrn]"]
+
+[[board]]
+name = "Lattice Crosslink Nx Evn"
+files = ["litex-boards/lattice_crosslink_nx_evn.json"]
+maker = "Lattice Semiconductor"
+status = "verified"
+notes = "Roster claims 14 LEDs, 10 buttons. Constraint file found in prjoxide with 14 LEDs visible; clock and button definitions absent from example PDC (internal oscillator used in example design)."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "PDC"
+  url = "https://raw.githubusercontent.com/gatecat/prjoxide/main/examples/blinky_evn/evn.pdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "prjoxide/examples/blinky_evn/blinky.v header states 'LIFCL-40-EVN board'; device LIFCL-40-9BG400C matches roster device."
+  clk = "absent from this file"
+  leds = "led[0-13] (14 LEDs)"
+  buttons = "absent from this file"
+  switches = "absent from this file"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["ldc_set_location -site {E17} [get_ports {led[0]}]", "ldc_set_location -site {R18} [get_ports {led[9]}]", "ldc_set_location -site {V20} [get_ports {led[13]}]"]
+
+[[board]]
+name = "ECP55 GEVN"
+files = ["amaranth-boards/ecp55_gevn.json"]
+maker = "Lattice Semiconductor"
+status = "verified"
+notes = "Roster claims 8 LEDs, 1 button, 8 switches. Found in prjtrellis examples as 'ecp5_evn'. Constraint file has 8 LEDs and 1 button (btn). Switch definitions absent from example (Versa board has disp instead of switches)."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/YosysHQ/prjtrellis/main/examples/ecp5_evn/ecp5evn.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "File located in prjtrellis/examples/ecp5_evn/ directory; port naming and pin counts plausible for ECP5-5G EVN device (LFE5UM5G-85F per roster)."
+  clk = "clk at site A10"
+  leds = "led[0-7] (8 LEDs)"
+  buttons = "btn at site P4 (1 button)"
+  switches = "absent from this file"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk\" SITE \"A10\";", "LOCATE COMP \"btn\" SITE \"P4\";", "LOCATE COMP \"led[0]\" SITE \"A13\"; ... LOCATE COMP \"led[7]\" SITE \"B17\";"]
+
+[[board]]
+name = "Versa ECP5"
+files = ["amaranth-boards/versa_ecp5.json"]
+maker = "Lattice Semiconductor"
+status = "verified"
+notes = "Roster claims 9 LEDs, 0 buttons, 8 switches. Found in prjtrellis as 'versa5g' (Versa ECP5-5G). Constraint file has 9 LEDs and display outputs (disp[0-13], possibly for optional 7-segment module). No button/switch pins visible in example."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/YosysHQ/prjtrellis/main/examples/versa5g/versa.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "File in prjtrellis/examples/versa5g/ directory; device LFE5UM-45F plausible for Versa ECP5; port counts consistent (9 LEDs, differential clock at P3)."
+  clk = "clk at site P3 (LVDS differential)"
+  leds = "led[0-7] (8 LEDs, but also led[8] appears in context)"
+  buttons = "absent from this file"
+  switches = "absent from this file"
+  seven_seg = "disp[0-13] (14 display outputs, may be optional module or raw segment signals)"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk\" SITE \"P3\";", "LOCATE COMP \"led[0]\" SITE \"E16\"; ... LOCATE COMP \"led[7]\" SITE \"F16\";", "LOCATE COMP \"disp[0]\" SITE \"M20\"; ... LOCATE COMP \"disp[13]\" SITE \"R17\";"]
+
+[[board]]
+name = "Lattice Ecp5 Evn"
+files = ["litex-boards/lattice_ecp5_evn.json"]
+maker = "Lattice Semiconductor"
+status = "verified"
+notes = "Roster claims 8 LEDs, 9 buttons. Constraint file found (same as ECP55 GEVN - same physical board, different documentation sources). Example has 8 LEDs and 1 button only; additional button ports not visible in this example."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/YosysHQ/prjtrellis/main/examples/ecp5_evn/ecp5evn.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Device LFE5UM5G-85F-8BG381 (from roster) is ECP5-5G variant; prjtrellis example is for same EVN board. Port counts plausible given example scope."
+  clk = "clk at site A10"
+  leds = "led[0-7] (8 LEDs)"
+  buttons = "btn at site P4 (1 button visible, roster claims 9)"
+  switches = "absent from this file"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk\" SITE \"A10\";", "LOCATE COMP \"btn\" SITE \"P4\";", "LOCATE COMP \"led[7]\" SITE \"B17\";"]
+
+[[board]]
+name = "Lattice Ecp5 Vip"
+files = ["litex-boards/lattice_ecp5_vip.json"]
+maker = "Lattice Semiconductor"
+status = "none-found"
+notes = "Roster claims 8 LEDs, 9 buttons, device LFE5UM-85F-8BG756. No constraint file found in prjtrellis (only ecp5_evn examples, which are for a different device/package). Lattice's official site is gated."
+
+[[board]]
+name = "Lattice Versa Ecp5"
+files = ["litex-boards/lattice_versa_ecp5.json"]
+maker = "Lattice Semiconductor"
+status = "verified"
+notes = "Roster claims 9 LEDs, 8 buttons. Constraint file found in prjtrellis as 'versa5g'; same physical board as 'Versa ECP5' from amaranth-boards. Example shows 9 LEDs + display outputs; button/switch definitions absent from example."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "LPF"
+  url = "https://raw.githubusercontent.com/YosysHQ/prjtrellis/main/examples/versa5g/versa.lpf"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "Device LFE5UM5G-45F-8BG381C (from roster) matches prjtrellis example for Versa board; naming and port structure consistent across sources."
+  clk = "clk at site P3 (LVDS differential)"
+  leds = "led[0-7] (8 LEDs, total 9 LED pins in files)"
+  buttons = "absent from this file"
+  switches = "absent from this file"
+  seven_seg = "disp[0-13] (14 display outputs)"
+  active_low = "not visible in this source"
+  evidence = ["LOCATE COMP \"clk\" SITE \"P3\";", "LOCATE COMP \"led[0]\" SITE \"E16\"; ... LOCATE COMP \"led[7]\" SITE \"F16\";"]
+
+[[board]]
+name = "Lattice Certuspro Nx Vvml"
+files = ["litex-boards/lattice_certuspro_nx_vvml.json"]
+maker = "Lattice Semiconductor"
+status = "verified"
+notes = "Roster claims 6 LEDs, 6 buttons. Constraint file found in prjoxide for LIFCL-40-VVML variant. Example shows only 4 LEDs; additional LED and button definitions likely exist but absent from this minimal example."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "PDC"
+  url = "https://raw.githubusercontent.com/gatecat/prjoxide/main/examples/blinky_vvml/vvml.pdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "prjoxide/examples/blinky_vvml/blinky.v header confirms 'LIFCL-40-VVML board'; device LIFCL-40-9BG400C is CertusPro-NX family."
+  clk = "absent from this file"
+  leds = "led[0-3] (4 LEDs visible, roster claims 6)"
+  buttons = "absent from this file"
+  switches = "absent from this file"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["ldc_set_location -site {H1} [get_ports {led[0]}]", "ldc_set_location -site {H6} [get_ports {led[3]}]"]
+
+[[board]]
+name = "Lattice Crosslink Nx Vip"
+files = ["litex-boards/lattice_crosslink_nx_vip.json"]
+maker = "Lattice Semiconductor"
+status = "verified"
+notes = "Roster claims 4 LEDs, 6 buttons. Constraint file found in prjoxide with 4 LEDs matching exactly. Clock and button definitions absent from example PDC (internal oscillator)."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "PDC"
+  url = "https://raw.githubusercontent.com/gatecat/prjoxide/main/examples/blinky_vip/vip.pdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "prjoxide/examples/blinky_vip/ directory; device LIFCL-40-9BG400C (CrossLink-NX) matches roster. PDC shows 4 LEDs, consistent with roster claims."
+  clk = "absent from this file"
+  leds = "led[0-3] (4 LEDs)"
+  buttons = "absent from this file"
+  switches = "absent from this file"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["ldc_set_location -site {G14} [get_ports {led[0]}]", "ldc_set_location -site {L14} [get_ports {led[3]}]"]
+
