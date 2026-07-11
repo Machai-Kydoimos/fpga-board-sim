@@ -1,0 +1,168 @@
+# Port-convention source registry — AMD-Xilinx official eval kits
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; researched inline via GitHub API.
+
+[[board]]
+name = "KC705"
+files = ["amaranth-boards/kc705.json"]
+maker = "AMD-Xilinx"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. Vendor board-file pin list (Vivado BoardStore)."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XML"
+  url = "https://raw.githubusercontent.com/Xilinx/XilinxBoardStore/2022.2/boards/Xilinx/kc705/1.6/part0_pins.xml"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "Apache-2.0"
+  device_evidence = "Xilinx official BoardStore kc705/1.6 part0_pins.xml"
+  clk = "USER_SMA_CLOCK_N, USER_SMA_CLOCK_P, SGMIICLK_Q0_P, SGMIICLK_Q0_N"
+  leds = "GPIO_LED_0_LS, GPIO_LED_1_LS, GPIO_LED_2_LS, GPIO_LED_3_LS, GPIO_LED_4_LS, GPIO_LED_5_LS, GPIO_LED_6_LS, GPIO_LED_7_LS"
+  buttons = "IIC_MUX_RESET_B, USER_SMA_GPIO_N, USER_SMA_GPIO_P, CPU_RESET"
+  switches = "GPIO_DIP_SW0, GPIO_DIP_SW1, GPIO_DIP_SW2, GPIO_DIP_SW3"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["<pin index=\"0\" name =\"GPIO_DIP_SW0\"", "<pin index=\"1\" name =\"GPIO_DIP_SW1\"", "<pin index=\"2\" name =\"GPIO_DIP_SW2\"", "<pin index=\"3\" name =\"GPIO_DIP_SW3\""]
+
+[[board]]
+name = "KCU105"
+files = ["amaranth-boards/kcu105.json"]
+maker = "AMD-Xilinx"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. Vendor board-file pin list (Vivado BoardStore)."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XML"
+  url = "https://raw.githubusercontent.com/Xilinx/XilinxBoardStore/2022.2/boards/Xilinx/kcu105/1.7/part0_pins.xml"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "Apache-2.0"
+  device_evidence = "Xilinx official BoardStore kcu105/1.7 part0_pins.xml"
+  clk = "SGMIICLK_P, SGMIICLK_N, user_prog_clock_p, user_prog_clock_n, jitter_attn_clk_p, jitter_attn_clk_n"
+  leds = "GPIO_LED_0_LS, GPIO_LED_1_LS, GPIO_LED_2_LS, GPIO_LED_3_LS, GPIO_LED_4_LS, GPIO_LED_5_LS, GPIO_LED_6_LS, GPIO_LED_7_LS"
+  buttons = "IIC_MUX_RESET_B, CPU_RESET"
+  switches = "GPIO_DIP_SW0, GPIO_DIP_SW1, GPIO_DIP_SW2, GPIO_DIP_SW3"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["<pin index=\"0\" name =\"GPIO_DIP_SW0\"", "<pin index=\"1\" name =\"GPIO_DIP_SW1\"", "<pin index=\"2\" name =\"GPIO_DIP_SW2\"", "<pin index=\"3\" name =\"GPIO_DIP_SW3\""]
+
+[[board]]
+name = "Xilinx Kcu116"
+files = ["litex-boards/xilinx_kcu116.json"]
+maker = "AMD-Xilinx"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. Vendor board-file pin list (Vivado BoardStore)."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XML"
+  url = "https://raw.githubusercontent.com/Xilinx/XilinxBoardStore/2022.2/boards/Xilinx/kcu116/1.5/part0_pins.xml"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "Apache-2.0"
+  device_evidence = "Xilinx official BoardStore kcu116/1.5 part0_pins.xml"
+  clk = "SGMIICLK_P, SGMIICLK_N, user_sma_clock_p, user_sma_clock_n"
+  leds = "GPIO_LED_0_LS, GPIO_LED_1_LS, GPIO_LED_2_LS, GPIO_LED_3_LS, GPIO_LED_4_LS, GPIO_LED_5_LS, GPIO_LED_6_LS, GPIO_LED_7_LS"
+  buttons = "CPU_RESET"
+  switches = "GPIO_DIP_SW1, GPIO_DIP_SW2, GPIO_DIP_SW3, GPIO_DIP_SW4"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["<pin index=\"0\" name =\"GPIO_DIP_SW1\"", "<pin index=\"1\" name =\"GPIO_DIP_SW2\"", "<pin index=\"2\" name =\"GPIO_DIP_SW3\"", "<pin index=\"3\" name =\"GPIO_DIP_SW4\""]
+
+[[board]]
+name = "Xilinx Zcu102"
+files = ["litex-boards/xilinx_zcu102.json"]
+maker = "AMD-Xilinx"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. Vendor board-file pin list (Vivado BoardStore)."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XML"
+  url = "https://raw.githubusercontent.com/Xilinx/XilinxBoardStore/2022.2/boards/Xilinx/zcu102/3.4/part0_pins.xml"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "Apache-2.0"
+  device_evidence = "Xilinx official BoardStore zcu102/3.4 part0_pins.xml"
+  clk = "absent from this file"
+  leds = "GPIO_LED_0_LS, GPIO_LED_1_LS, GPIO_LED_2_LS, GPIO_LED_3_LS, GPIO_LED_4_LS, GPIO_LED_5_LS, GPIO_LED_6_LS, GPIO_LED_7_LS"
+  buttons = "CPU_RESET"
+  switches = "GPIO_DIP_SW0, GPIO_DIP_SW1, GPIO_DIP_SW2, GPIO_DIP_SW3, GPIO_DIP_SW4, GPIO_DIP_SW5, GPIO_DIP_SW6, GPIO_DIP_SW7"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["<pin index=\"58\" name =\"CPU_RESET\"", "<pin index=\"61\" name =\"GPIO_DIP_SW0\"", "<pin index=\"62\" name =\"GPIO_DIP_SW1\"", "<pin index=\"63\" name =\"GPIO_DIP_SW2\""]
+
+[[board]]
+name = "Xilinx Zcu216"
+files = ["litex-boards/xilinx_zcu216.json"]
+maker = "AMD-Xilinx"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. Vendor board-file pin list (Vivado BoardStore)."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "XML"
+  url = "https://raw.githubusercontent.com/Xilinx/XilinxBoardStore/2022.2/boards/Xilinx/zcu216/production/2.0/part0_pins.xml"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "Apache-2.0"
+  device_evidence = "Xilinx official BoardStore zcu216/production/2.0 part0_pins.xml"
+  clk = "clk_125_p, clk_125_n, clk_100_p, clk_100_n"
+  leds = "GPIO_LED_4_LS, GPIO_LED_5_LS, GPIO_LED_6_LS, GPIO_LED_7_LS, RGB_R_LED_0, RGB_R_LED_1, RGB_R_LED_2, RGB_R_LED_3, RGB_R_LED_4, RGB_R_LED_5, \u2026 (28 total)"
+  buttons = "CPU_RESET"
+  switches = "GPIO_DIP_SW0, GPIO_DIP_SW1, GPIO_DIP_SW2, GPIO_DIP_SW3, GPIO_DIP_SW4, GPIO_DIP_SW5, GPIO_DIP_SW6, GPIO_DIP_SW7"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["<pin index=\"170\" name =\"GPIO_DIP_SW0\"", "<pin index=\"171\" name =\"GPIO_DIP_SW1\"", "<pin index=\"172\" name =\"GPIO_DIP_SW2\"", "<pin index=\"173\" name =\"GPIO_DIP_SW3\""]
+
+[[board]]
+name = "Xilinx Sp605"
+files = ["litex-boards/xilinx_sp605.json"]
+maker = "AMD-Xilinx"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. ISE-era kit: absent from the Vivado BoardStore; the master UCF ships with kit documentation behind xilinx.com registration."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "HTML"
+  url = "https://www.xilinx.com/products/boards-and-kits/ek-s6-sp605-g.html"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "kit page (UCF via registered download)"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Adi Adrv2crr Fmc"
+files = ["litex-boards/adi_adrv2crr_fmc.json"]
+maker = "Analog Devices"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. Carrier constraints live in the ADI HDL mono-repo (corundum variant fetched; LED/GPIO pins minimal on this carrier)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/analogdevicesinc/hdl/main/projects/adrv9009zu11eg/adrv2crr_fmc/system_constr_corundum.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "analogdevicesinc/hdl adrv2crr_fmc carrier constraints"
+  clk = "absent from this file"
+  leds = "none found"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+

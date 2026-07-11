@@ -1,0 +1,280 @@
+# Port-convention source registry — PCIe accelerator / appliance / SoM Xilinx
+# One [[board]] per physical board; ranked, fetch-verified pointers to the
+# canonical constraint/pin file(s). See README.md in this directory for the
+# schema, enums, and status semantics. Machine-parseable (tomllib).
+# Curated 2026-07-11; researched inline via GitHub API.
+
+[[board]]
+name = "Litefury"
+files = ["amaranth-boards/litefury.json"]
+maker = "RHS Research"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. Official sample-project constraints."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/RHSResearchLLC/NiteFury-and-LiteFury/master/Sample-Projects/Project-0/FPGA/LiteFury/project/project.srcs/constrs_1/imports/constraints/normal.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "RHSResearchLLC official repo, LiteFury sample project"
+  clk = "sys_clk_clk_p, sys_clk_clk_n"
+  leds = "LED_A1, LED_A2, LED_A3, LED_A4, LED_M2"
+  buttons = "pci_reset"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["[get_ports sys_clk_clk_p", "[get_ports sys_clk_clk_n", "[get_ports LED_A1", "[get_ports LED_A1"]
+
+[[board]]
+name = "Nitefury II"
+files = ["amaranth-boards/nitefury_ii.json"]
+maker = "RHS Research"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. Official sample-project constraints."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/RHSResearchLLC/NiteFury-and-LiteFury/master/Sample-Projects/Project-0/FPGA/Nitefury-II/project/project.srcs/constrs_1/imports/constraints/normal.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "RHSResearchLLC official repo, Nitefury-II sample project"
+  clk = "sys_clk_clk_p, sys_clk_clk_n"
+  leds = "LED_A1, LED_A2, LED_A3, LED_A4, LED_M2"
+  buttons = "pci_reset"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["[get_ports sys_clk_clk_p", "[get_ports sys_clk_clk_n", "[get_ports LED_A1", "[get_ports LED_A1"]
+
+[[board]]
+name = "Sqrl Acorn"
+files = ["litex-boards/sqrl_acorn.json"]
+maker = "SQRL"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. No official SQRL sources; community blinky constraints are the canon."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/mng2/AcornCLE215p/stable/test00_blinky/constr/pins.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "community Acorn CLE-215+ project pins"
+  clk = "CLK200_P, CLK200_N"
+  leds = "LEDs_N[1], LEDs_N[2], LEDs_N[3], LEDs_N[4]"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["[get_ports CLK200_P", "[get_ports CLK200_P", "[get_ports CLK200_N", "[get_ports CLK200_N"]
+
+[[board]]
+name = "Sqrl Fk33"
+files = ["litex-boards/sqrl_fk33.json"]
+maker = "SQRL"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. Community Vivado board files for the FK33."
+
+  [[board.source]]
+  rank = 1
+  kind = "community"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/d953i/SQRL_FK33/Vivado_2022_2/board_files/sqrl_fk33/1.1/sqrl_fk33.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "community FK33 board-file XDC"
+  clk = "absent from this file"
+  leds = "GPIO_LED_0_LS, GPIO_LED_1_LS, GPIO_LED_2_LS, GPIO_LED_3_LS, GPIO_LED_4_LS, GPIO_LED_5_LS, GPIO_LED_6_LS"
+  buttons = "none found"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["[get_ports { GPIO_LED_0_LS", "[get_ports { GPIO_LED_1_LS", "[get_ports { GPIO_LED_2_LS", "[get_ports { GPIO_LED_3_LS"]
+
+[[board]]
+name = "Alibaba Xcku3p"
+files = ["litex-boards/alibaba_xcku3p.json"]
+maker = "Alibaba"
+status = "none-found"
+notes = "Researched inline via GitHub API 2026-07-11. Recycled datacenter accelerator; no public constraint data located (searches: alibaba xcku3p xdc, cloud accelerator kintex ultrascale+ constraints)."
+
+[[board]]
+name = "Microsoft Catapult V3"
+files = ["litex-boards/microsoft_catapult_v3.json"]
+maker = "Microsoft"
+status = "none-found"
+notes = "Researched inline via GitHub API 2026-07-11. Recycled datacenter card; Project Catapult shells were never published with pin constraints (searches: catapult v3 xdc, longs peak fpga constraints)."
+
+[[board]]
+name = "Siglent Sds1104xe"
+files = ["litex-boards/siglent_sds1104xe.json"]
+maker = "Siglent"
+status = "none-found"
+notes = "Researched inline via GitHub API 2026-07-11. Oscilloscope mainboard; community work exists only as litex targets (excluded as own upstream); no independent constraint file located."
+
+[[board]]
+name = "Ocp Tap Timecard"
+files = ["litex-boards/ocp_tap_timecard.json"]
+maker = "OCP"
+status = "verified"
+notes = "Researched inline via GitHub API 2026-07-11. Official OCP Time Appliance Project pinout constraints."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "XDC"
+  url = "https://raw.githubusercontent.com/opencomputeproject/Time-Appliance-Project/master/FPGA/Open-Source/Implementation/Xilinx/TimeCard/Constraints/PinoutConstraint.xdc"
+  fetched = true
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "opencomputeproject official TimeCard constraints"
+  clk = "Mhz10ClkDcxo1_ClkIn, Mhz10Clk0_ClkIn, Mhz10Clk1_ClkIn, Mhz200ClkP_ClkIn, Mhz200ClkN_ClkIn, Mhz125ClkP_ClkIn, Mhz125ClkN_ClkIn"
+  leds = "Led_DatOut[0], Led_DatOut[1], Led_DatOut[2], Led_DatOut[3], IoLed_DatOut[0], IoLed_DatOut[1], IoLed_DatOut[2], IoLed_DatOut[3]"
+  buttons = "RstN_RstIn, Key_DatIn[0], Key_DatIn[1], Gnss1RstN_RstOut, Gnss2RstN_RstOut"
+  switches = "none found"
+  seven_seg = "none"
+  active_low = "not visible in this source"
+  evidence = ["[get_ports Mhz10ClkDcxo1_ClkIn", "[get_ports Mhz10ClkDcxo1_ClkIn", "[get_ports Mhz10ClkDcxo1_ClkIn", "[get_ports Mhz10Clk0_ClkIn"]
+
+[[board]]
+name = "Opalkelly Xem8320"
+files = ["litex-boards/opalkelly_xem8320.json"]
+maker = "Opal Kelly"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. No public GitHub org; pin documentation lives on docs.opalkelly.com."
+
+  [[board.source]]
+  rank = 1
+  kind = "vendor-official"
+  format = "HTML"
+  url = "https://docs.opalkelly.com/xem8320/"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official docs site (pin tables)"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Krtkl Snickerdoodle"
+files = ["litex-boards/krtkl_snickerdoodle.json"]
+maker = "krtkl"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. Official org confirmed; snickerdoodle-board-files repo is the lead (no loose XDC located in tree)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/krtkl/snickerdoodle-board-files"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official krtkl board-files repo"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Kosagi Netv2"
+files = ["litex-boards/kosagi_netv2.json"]
+maker = "Kosagi"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. Author's gateware repo confirmed (xobs/netv2-fpga); exact constraint path not yet mined."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/xobs/netv2-fpga"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "board author's gateware repo"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Newae Cw305"
+files = ["litex-boards/newae_cw305.json"]
+maker = "NewAE"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. Official org confirmed; cw305-artix-target repo is the lead (constraints inside project tree)."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/newaetech/cw305-artix-target"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official NewAE CW305 target repo"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Enclustra Mercury Xu5"
+files = ["litex-boards/enclustra_mercury_xu5.json"]
+maker = "Enclustra"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. Official reference-design repos exist (PE1/PE3/ST1) but hold no loose XDC \u2014 constraints come via Enclustra's download portal."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/enclustra/Mercury_XU5_PE1_Reference_Design"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official Enclustra reference design"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Enclustra Mercury Xu8 Pe3"
+files = ["litex-boards/enclustra_mercury_xu8_pe3.json"]
+maker = "Enclustra"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. Official reference-design repo exists; constraints via Enclustra download portal."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/enclustra/Mercury_XU8_PE3_Reference_Design"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official Enclustra reference design"
+  clk = "not extracted"
+  leds = "not extracted"
+
+[[board]]
+name = "Berkeleylab Marble"
+files = ["litex-boards/berkeleylab_marble.json"]
+maker = "Berkeley Lab"
+status = "candidate"
+notes = "Researched inline via GitHub API 2026-07-11. Official hardware repo confirmed; gateware constraints live in the bedrock ecosystem \u2014 not yet mined."
+
+  [[board.source]]
+  rank = 1
+  kind = "official-repo"
+  format = "REPO"
+  url = "https://github.com/BerkeleyLab/Marble"
+  fetched = false
+  retrieved = "2026-07-11"
+  license = "unknown"
+  device_evidence = "official BerkeleyLab Marble hardware repo"
+  clk = "not extracted"
+  leds = "not extracted"
+
