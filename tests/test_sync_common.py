@@ -131,3 +131,187 @@ def test_write_outputs_dry_run_writes_nothing_when_valid(tmp_path):
     out = root / "test-source"
     write_outputs(out, _jsons({"ok.json": _valid_board()}), "abc123", "owner/repo", dry_run=True)
     assert not out.exists()
+
+
+# ── write_outputs (re-sync preservation guard, U21 A1) ───────────────────────
+
+
+def test_write_outputs_first_sync_no_existing_file(tmp_path):
+    """No prior file on disk: content passes through byte-identical."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    content = json.dumps(_valid_board(), indent=2) + "\n"
+    write_outputs(out, {"board.json": content}, "abc123", "owner/repo")
+    assert (out / "board.json").read_text() == content
+
+
+def test_write_outputs_no_conventions_round_trips_byte_identical(tmp_path):
+    """An existing file with no port_conventions/peripherals: fresh content is
+    written verbatim, not re-serialized -- proves a re-sync's git diff stays
+    silent on the vast majority of boards that carry neither key."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["device"] = "old-device"
+    (out / "board.json").write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+    fresh = _valid_board()
+    fresh["device"] = "new-device"
+    fresh_content = json.dumps(fresh, indent=2) + "\n"
+    write_outputs(out, {"board.json": fresh_content}, "abc123", "owner/repo")
+
+    assert (out / "board.json").read_text() == fresh_content
+
+
+def test_write_outputs_preserves_existing_port_conventions(tmp_path):
+    """A hand-authored/populated port_conventions block survives a re-sync
+    that itself generates none (the amaranth/litex case)."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["device"] = "old-device"
+    existing["port_conventions"] = {"custom": {"clk": "CLK"}}
+    (out / "board.json").write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+    fresh = _valid_board()
+    fresh["device"] = "new-device"
+    write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
+
+    written = json.loads((out / "board.json").read_text())
+    assert written["device"] == "new-device"  # the parser's regenerated key updates
+    assert written["port_conventions"] == {"custom": {"clk": "CLK"}}  # preserved
+
+
+def test_write_outputs_digilent_per_key_merge(tmp_path):
+    """sync_digilent_xdc.py generates only the 'digilent' sub-key: that one
+    updates, every other convention key (hand-authored or U21-populated)
+    survives untouched."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["port_conventions"] = {
+        "digilent": {"clk": "CLK_STALE"},
+        "terasic": {"clk": "CLOCK_50"},
+    }
+    (out / "board.json").write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+    fresh = _valid_board()
+    fresh["port_conventions"] = {"digilent": {"clk": "CLK_FRESH"}}
+    write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
+
+    written = json.loads((out / "board.json").read_text())
+    assert written["port_conventions"]["digilent"] == {"clk": "CLK_FRESH"}
+    assert written["port_conventions"]["terasic"] == {"clk": "CLOCK_50"}
+
+
+def test_write_outputs_preserves_existing_peripherals(tmp_path):
+    """peripherals has no generator yet, so an existing list is kept wholesale."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["peripherals"] = [{"type": "vga", "name": "ADV7123"}]
+    (out / "board.json").write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+    write_outputs(out, _jsons({"board.json": _valid_board()}), "abc123", "owner/repo")
+
+    written = json.loads((out / "board.json").read_text())
+    assert written["peripherals"] == [{"type": "vga", "name": "ADV7123"}]
+
+
+def test_write_outputs_validates_merged_content_not_just_fresh(tmp_path):
+    """A corrupted on-disk port_conventions block is caught by the schema
+    gate, not silently folded into the output unvalidated."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["port_conventions"] = {"custom": {"seven_seg": {"style": "not-a-real-style"}}}
+    (out / "board.json").write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="board.json"):
+        write_outputs(out, _jsons({"board.json": _valid_board()}), "abc123", "owner/repo")
+
+
+def test_write_outputs_dry_run_preserves_without_writing(tmp_path):
+    """The merge-and-validate path runs under --dry-run too (read-only), but
+    nothing is written to disk."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["port_conventions"] = {"custom": {"clk": "CLK"}}
+    original = json.dumps(existing, indent=2) + "\n"
+    (out / "board.json").write_text(original, encoding="utf-8")
+
+    write_outputs(out, _jsons({"board.json": _valid_board()}), "abc123", "owner/repo", dry_run=True)
+
+    assert (out / "board.json").read_text() == original  # untouched
+
+
+def test_write_outputs_rejects_corrupt_existing_json(tmp_path):
+    """An existing file that isn't valid JSON (crashed prior write, bad hand
+    edit, merge-conflict markers, ...) fails with a clear error naming the
+    file, not a raw JSONDecodeError with no context."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    (out / "board.json").write_text('{"name": "T", "port_conventions": {oops', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="board.json.*not valid JSON"):
+        write_outputs(out, _jsons({"board.json": _valid_board()}), "abc123", "owner/repo")
+
+
+def test_write_outputs_rejects_non_object_existing_json(tmp_path):
+    """An existing file that's valid JSON but not an object (e.g. someone
+    overwrote it with an array) fails clearly instead of an AttributeError
+    from a bare .get() call."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    (out / "board.json").write_text("[1, 2, 3]", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="board.json.*not an object"):
+        write_outputs(out, _jsons({"board.json": _valid_board()}), "abc123", "owner/repo")
+
+
+def test_write_outputs_tolerates_explicit_null_fresh_conventions(tmp_path):
+    """A fresh board dict with port_conventions explicitly None (not absent --
+    a hypothetical future generator bug) is treated the same as absent, not a
+    crash, and existing data is still preserved."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["port_conventions"] = {"custom": {"clk": "CLK"}}
+    (out / "board.json").write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+    fresh = _valid_board()
+    fresh["port_conventions"] = None
+    write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
+
+    written = json.loads((out / "board.json").read_text())
+    assert written["port_conventions"] == {"custom": {"clk": "CLK"}}
+
+
+def test_write_outputs_fresh_peripherals_wins_over_existing(tmp_path):
+    """When both sides supply a non-empty peripherals list, the fresh value
+    wins outright -- no per-item merge, since list entries aren't keyed.
+    Locks in the current behavior so a future peripherals-generating parser
+    doesn't silently change it."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["peripherals"] = [{"type": "vga", "name": "OLD"}]
+    (out / "board.json").write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+    fresh = _valid_board()
+    fresh["peripherals"] = [{"type": "audio", "name": "NEW"}]
+    write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
+
+    written = json.loads((out / "board.json").read_text())
+    assert written["peripherals"] == [{"type": "audio", "name": "NEW"}]

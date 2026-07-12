@@ -29,6 +29,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   key (Terasic-style secondary LED bank) is now a typed `port_mapping` instead
   of an ad-hoc extra key. Schema-only — no board JSON changes; all 278 boards
   still validate (U21 arc, issue #200)
+- **U21 re-sync preservation guard (Phase A1).** `scripts/sync_common.py`'s
+  shared `write_outputs()` now folds `port_conventions` / `peripherals`
+  forward from whatever board JSON is already on disk before writing, so
+  re-running an upstream sync can never silently wipe hand-authored or
+  U21-populated convention data. `port_conventions` merges per top-level
+  sub-key (new overlays old): `sync_digilent_xdc.py`'s generated `digilent`
+  key always wins, every other convention key survives untouched; a parser
+  that generates no conventions at all (amaranth, litex) contributes an empty
+  overlay, so existing data passes through unchanged. The merged result — not
+  just the freshly generated content — is what gets schema-validated, so a
+  corrupted on-disk block is caught rather than folded in silently. Boards
+  with nothing to preserve are written byte-identical to today's output (no
+  re-serialization), verified against a real amaranth-boards sync (79 boards,
+  diff limited to the expected `sync_commit`/`sync_timestamp` refresh) and a
+  real digilent-xdc sync with a hand-added sibling convention (survived
+  intact). An existing board file that isn't valid JSON, or whose top level
+  isn't an object, now fails with a clear error naming the file instead of a
+  raw traceback (U21 arc, issue #201)
 
 ## [0.13.0] - 2026-07-11
 
