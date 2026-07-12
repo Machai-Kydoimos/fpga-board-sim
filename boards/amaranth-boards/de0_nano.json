@@ -203,5 +203,30 @@
     "upstream_file": "de0nano.py",
     "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
     "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  },
+  "port_conventions": {
+    "terasic": {
+      "clk": "CLOCK_50",
+      "leds": {
+        "name": "LED",
+        "width": 8
+      },
+      "switches": {
+        "name": "SW",
+        "width": 4
+      },
+      "buttons": {
+        "name": "KEY",
+        "width": 2,
+        "active_low": true
+      },
+      "description": "Cyclone IV (EP4CE22F17C6). No 7-segment display on this board.",
+      "naming": "canonical",
+      "source": {
+        "url": "https://raw.githubusercontent.com/gmarkall/DE0_NANO/00102c543eef9a01edb08cc535d4e8cc5c354892/DE0_NANO.qsf",
+        "retrieved": "2026-07-12",
+        "registry_board": "DE0 Nano"
+      }
+    }
   }
 }

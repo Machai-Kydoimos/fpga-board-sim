@@ -118,6 +118,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accuracy one). Confirmed empirically: DE10-Standard and DE2-115 now pass the
   real gate rather than needing `--board` to force them through, and A3's
   hand-authored regression test was updated to prove exactly that (U21 arc)
+- **U21 `port_conventions` population — Wave 1 (Phase A4).** Three Terasic teaching boards —
+  DE0-CV, DE1-SoC, DE0-Nano — gain generated `port_conventions.terasic` blocks (canonical
+  `CLOCK_50` / `LEDR`|`LED` / `SW` / `KEY` / `HEX0..5` names, cited signal polarity, and
+  commit-pinned source stamps). To reach them, `sync_port_conventions.py`'s row gate gains a
+  second cited `kind` bypass alongside A3's `boards/custom/` one: a rank-1 registry source may
+  be vouched `naming = "canonical"` with a `naming_cite`, because `kind` labels where a
+  constraint file is *hosted*, not whether its port names are the vendor's canonical ones —
+  Terasic's teaching-board QSFs in the wild are community-hosted course files that nonetheless
+  use the manual's names. The vouch is per-source, requires a citation (uncited claims are
+  ignored, fail-safe), and is still width-cross-checked against each board JSON. The remaining
+  Wave-1 candidates (DE0, DE10-Lite, DE10-Nano, Nandland Go, RZ-EasyFPGA, Runber) stay listed
+  but are held back with recorded reasons (see `docs/port_convention_sources/waves.toml` and the
+  arc plan). Data-only for the runtime — conventions stay inert until Part B (U21 arc, issue #204)
 
 ## [0.13.0] - 2026-07-11
 

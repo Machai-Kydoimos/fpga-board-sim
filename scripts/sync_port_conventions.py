@@ -15,9 +15,10 @@ one target can be written while a sibling target is skipped.
 Trust gate (a board only reaches a write if *all* of these hold, unless
 ``--board`` forces it): registry ``status == "verified"``, a rank-1 source
 of ``kind`` in ``vendor-official``/``official-repo`` (or a `files[]` target
-under ``boards/custom/``, whose hand-verified-against-vendor-docs status is
-itself the trust signal -- see `_targets_a_custom_board`), a fetched source
-in a dialect this package parses, and the board listed in
+under ``boards/custom/`` -- see `_targets_a_custom_board`; or a rank-1 source
+citedly vouched ``naming = "canonical"`` -- see `_rank1_vouched_canonical`;
+both because ``kind`` is a hosting-location label, not an accuracy one), a
+fetched source in a dialect this package parses, and the board listed in
 `docs/port_convention_sources/waves.toml`. ``--board`` overrides trust,
 never correctness -- a width mismatch always skips that target file
 regardless.
@@ -147,6 +148,25 @@ def _targets_a_custom_board(row: dict[str, Any]) -> bool:
     return any(f.startswith("custom/") for f in row.get("files", []))
 
 
+def _rank1_vouched_canonical(rank1: dict[str, Any]) -> bool:
+    """Return whether a rank-1 source is explicitly, citedly vouched canonical.
+
+    A community-/personal-hosted constraint file can still use the vendor's
+    *canonical* port names -- Terasic's ``CLOCK_50``/``SW``/``LEDR``/``KEY``/
+    ``HEXn`` are a family-wide standard set by the board manuals and Quartus
+    System Builder, whoever happens to re-host a course QSF that uses them.
+    ``kind`` labels *where a file is hosted*, not *whether its names are
+    canonical* -- the same distinction `_targets_a_custom_board` rests on.
+    This is the affirmative, per-source, *cited* form of that trust: a
+    maintainer records ``naming = "canonical"`` plus a ``naming_cite`` on the
+    registry row's rank-1 source. Both are required -- an uncited claim is
+    ignored (fails safe), and a project-renamed course file, by construction,
+    never earns the vouch (this is where the plan's "exclude project-renamed
+    naming" rule is actually enforced).
+    """
+    return rank1.get("naming") == "canonical" and bool(rank1.get("naming_cite"))
+
+
 def check_row_gate(row: dict[str, Any], waves: set[str], *, force: bool = False) -> GateResult:
     """Decide whether `row` may be processed.
 
@@ -156,10 +176,12 @@ def check_row_gate(row: dict[str, Any], waves: set[str], *, force: bool = False)
     tier -- but never bypasses having a usable, structured-format source:
     there is nothing to parse otherwise, forced or not.
 
-    Independently of `force`, a row that targets a board in
-    ``boards/custom/`` skips the ``kind`` check specifically (see
-    `_targets_a_custom_board`) -- `status`/wave-membership still apply, since
-    those weren't part of that reasoning and stay meaningful regardless.
+    Independently of `force`, two things skip the ``kind`` check
+    specifically (never `status`/wave-membership, which stay meaningful
+    regardless): a row that targets a board in ``boards/custom/`` (see
+    `_targets_a_custom_board`), and a rank-1 source citedly vouched
+    ``naming = "canonical"`` (see `_rank1_vouched_canonical`) -- both encode
+    that ``kind`` is a hosting-location label, not a port-name-accuracy one.
     """
     sources = row.get("source", [])
     rank1 = next((s for s in sources if s.get("rank") == 1), None)
@@ -175,7 +197,11 @@ def check_row_gate(row: dict[str, Any], waves: set[str], *, force: bool = False)
 
     if row.get("status") != "verified":
         return GateResult(False, f"status is {row.get('status')!r}, not verified")
-    if rank1.get("kind") not in _TRUSTED_KINDS and not _targets_a_custom_board(row):
+    if (
+        rank1.get("kind") not in _TRUSTED_KINDS
+        and not _targets_a_custom_board(row)
+        and not _rank1_vouched_canonical(rank1)
+    ):
         return GateResult(False, f"rank-1 kind is {rank1.get('kind')!r}")
     if row["name"] not in waves:
         return GateResult(False, "not listed in any wave")

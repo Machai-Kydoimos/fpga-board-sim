@@ -87,6 +87,62 @@ def test_row_gate_custom_board_exemption_requires_at_least_one_custom_file() -> 
     assert not spc.check_row_gate(row, waves={"Test Board"}).ok
 
 
+def test_row_gate_untrusted_kind_passes_when_rank1_vouched_canonical() -> None:
+    # A community-/personal-hosted file can still use vendor-canonical port
+    # names; an explicit, cited naming="canonical" vouch on the rank-1 source
+    # bypasses the kind check the same way a boards/custom/ target does.
+    row = _row(
+        source=[
+            {
+                "rank": 1,
+                "kind": "community",
+                "format": "QSF",
+                "fetched": True,
+                "url": "u",
+                "naming": "canonical",
+                "naming_cite": "Terasic user-manual names, verified by direct fetch",
+            }
+        ]
+    )
+    assert spc.check_row_gate(row, waves={"Test Board"}).ok
+
+
+def test_row_gate_canonical_naming_vouch_requires_a_cite() -> None:
+    # naming="canonical" with no naming_cite is ignored (fail-safe): an
+    # uncited claim must not grant trust, so this still fails on kind.
+    row = _row(
+        source=[
+            {
+                "rank": 1,
+                "kind": "community",
+                "format": "QSF",
+                "fetched": True,
+                "url": "u",
+                "naming": "canonical",
+            }
+        ]
+    )
+    gate = spc.check_row_gate(row, waves={"Test Board"})
+    assert not gate.ok
+    assert "community" in gate.reason
+
+
+def test_row_gate_canonical_naming_vouch_does_not_bypass_status_or_wave() -> None:
+    # Like the custom/ exemption, the canonical-naming vouch skips only the
+    # kind check -- status and wave-membership stay in force.
+    src = {
+        "rank": 1,
+        "kind": "community",
+        "format": "QSF",
+        "fetched": True,
+        "url": "u",
+        "naming": "canonical",
+        "naming_cite": "cited",
+    }
+    assert not spc.check_row_gate(_row(source=[src], status="candidate"), waves={"Test Board"}).ok
+    assert not spc.check_row_gate(_row(source=[src]), waves=set()).ok
+
+
 def test_row_gate_rejects_board_not_in_any_wave() -> None:
     gate = spc.check_row_gate(_row(), waves=set())
     assert not gate.ok
@@ -780,3 +836,21 @@ def test_load_registry_excludes_waves_and_overlay_toml(
     (tmp_path / "overlay.toml").write_text('[[board]]\nname = "Not A Registry Row"\nclk = "x"\n')
     registry = spc.load_registry()
     assert registry == {"Real Board": {"name": "Real Board", "maker": "Acme"}}
+
+
+def test_registry_canonical_naming_sources_always_carry_a_cite() -> None:
+    """Every source vouched naming="canonical" in the real registry states a cite.
+
+    The gate treats an uncited canonical claim as no vouch at all
+    (`_rank1_vouched_canonical` fails safe), but a claim written *without* its
+    citation is almost certainly an authoring mistake -- catch it against the
+    committed registry rather than let it silently grant nothing.
+    """
+    registry = spc.load_registry()
+    offenders = [
+        (name, src.get("url", "?"))
+        for name, row in registry.items()
+        for src in row.get("source", [])
+        if src.get("naming") == "canonical" and not src.get("naming_cite")
+    ]
+    assert offenders == [], f"canonical-naming sources missing naming_cite: {offenders}"
