@@ -208,7 +208,9 @@ held back, each with a recorded reason:
   per-digit naming variant (A2 follow-up).
 - **DE10-Lite** — rank-1 course QSF renames `LEDR`→`LED` and `MAX10_CLK1_50`→`Clk`; the overlay
   corrects the clk *name* but not resource names, so LEDs would ship non-canonical. Needs a
-  canonical-named source or an overlay resource-name-override capability (candidate follow-up).
+  canonical-named source or an overlay resource-name-override capability. The official Terasic
+  DE10-Lite System CD v2.2.0 golden top confirms canonical `LEDR` + `MAX10_CLK1_50`, so this is
+  now a concrete rescue target (see the System-CD follow-up below).
 - **DE10-Nano** — registry `candidate` (+ sparse source); populate once upgraded to `verified`.
 - **Nandland Go** — board JSON has 0 switches vs the PCF's 4; needs a resource supplement (not a
   hand-edit — A1's guard doesn't preserve resource-count edits across re-sync). Also `personal` kind.
@@ -225,6 +227,30 @@ held back, each with a recorded reason:
 - Spot-check three boards per wave by opening the recorded source URL and comparing names.
 
 **Quality gates:** as A0; CHANGELOG entry per wave PR.
+
+### A4 follow-up (proposed, not yet scheduled) — Terasic System-CD wave via overlay name-override
+
+Discovered during A4: Rick provided the official Terasic System CDs / Resource Packages
+(DE0-CV, DE0-Nano, DE10-Lite, DE10-Standard, DE23-Lite, DE25-Standard, VEEK-MT2, VEEK-MT-SoCKit).
+Their `golden_top` / `Default` QSFs are the **vendor-official** canonical source; they validated
+the three A4 boards and the hand-authored `custom/` DE10-Standard block field-for-field, and they
+unlock boards the registry can't currently populate:
+
+- **DE10-Lite** — official golden top confirms canonical `LEDR`/`SW`/`KEY`/`HEX0..5` +
+  `MAX10_CLK1_50`. Its community rank-1 renames only `LEDR`→`LED` (clk is already overlay-fixable,
+  the rest are canonical), so a single **overlay resource-name-override** rescues it.
+- **DE23-Lite, DE25-Standard, VEEK-MT2** — registry `candidate`/PDF-gated (no machine-parseable
+  source today); their Resource-Package golden tops carry clean canonical `LEDR`/`SW`/`KEY`/`HEX`
+  (VEEK-MT2: 27 LEDs = LEDR18 + LEDG9, 8 digits). Authoritative source for validating/completing
+  the hand-authored `custom/` candidate blocks and for a future wave.
+
+**Mechanism:** extend `overlay.toml` (+ `apply_overlay`) to override a `port_mapping`'s `name`
+(today it overrides only `clk` name + `active_low`), each carrying a `cite` to the System-CD
+version + file. **Licensing: cite-not-copy** — the CDs are Terasic-copyrighted, so record the
+*fact* (the canonical name) with a versioned citation and do **not** commit the QSFs (respects
+Locked Decision #1). This also addresses the model gap that Terasic's best source is a downloaded
+ZIP, not a raw URL. **Scope:** small additive `apply_overlay` change + tests, then a data wave;
+its own PR, not folded into A4.
 
 ---
 
