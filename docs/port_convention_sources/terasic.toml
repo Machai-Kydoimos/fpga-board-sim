@@ -9,7 +9,7 @@ name = "DE10 Lite"
 files = ["amaranth-boards/de10_lite.json"]
 maker = "Terasic"
 status = "verified"
-notes = "MAX 10 (10M50DA). Verified from two independent GitHub sources with matching pin assignments. | caution: the rank-1 course QSF renames the clock port to 'Clk'; Terasic golden_top uses MAX10_CLK1_50 / MAX10_CLK2_50 / ADC_CLK_10"
+notes = "MAX 10 (10M50DA). Verified from two independent GitHub sources with matching pin assignments. | caution: the rank-1 course QSF renames the clock MAX10_CLK1_50 -> 'Clk' and the LEDs LEDR -> 'LED'; the Terasic golden_top (System CD v2.2.0) uses MAX10_CLK1_50 / MAX10_CLK2_50 / ADC_CLK_10 and LEDR[9:0]. Both are restored to canonical via a cited overlay name-override (see overlay.toml DE10 Lite)."
 
   [[board.source]]
   rank = 1

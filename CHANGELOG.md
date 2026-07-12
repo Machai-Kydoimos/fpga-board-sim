@@ -153,6 +153,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   board data), optional secondary LED banks (`leds_green`), and scalar-port banks;
   `packed_vector` / `scan` / `serial` decline to the generic path / U22. Inert until the native
   wrapper (B3) turns it on (U21 arc, issue #206)
+- **U21 DE10-Lite board-native rescue (A4 System-CD follow-up).** DE10-Lite now ships a canonical
+  `port_conventions.terasic` block, so a board-native DE10-Lite design (`MAX10_CLK1_50` / `SW` /
+  `KEY` / `LEDR` / `HEX0..5`) is recognized by the B2 matcher. Its verified community source uses
+  vendor-canonical names for most ports but renames `LEDR`→`LED` and the clock→`Clk`;
+  `scripts/sync_port_conventions.py`'s `apply_overlay` gains a cited resource-`name` override
+  (alongside the existing `clk` / `active_low` overrides) that restores both to canonical, verified
+  against the official Terasic DE10-Lite System CD v2.2.0 golden top (cite-not-copy: the fact plus a
+  versioned file citation live in `overlay.toml`, never the copyrighted QSF). A third row-gate
+  bypass, `_overlay_supplies_cited_canonical_names`, admits such a board — parallel to the
+  `boards/custom/` and `naming = "canonical"` bypasses, all encoding that `kind` is a hosting-location
+  label, not a port-name-accuracy one. Data-only for the board fleet; DE0 (needs an A2 `HEXn_D`/`_DP`
+  classifier extension) and the candidate boards DE23-Lite / DE25-Standard / VEEK-MT2 remain for later
+  System-CD-wave PRs (U21 arc)
 
 ## [0.13.0] - 2026-07-11
 

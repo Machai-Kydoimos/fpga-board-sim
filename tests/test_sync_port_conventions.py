@@ -143,6 +143,37 @@ def test_row_gate_canonical_naming_vouch_does_not_bypass_status_or_wave() -> Non
     assert not spc.check_row_gate(_row(source=[src]), waves=set()).ok
 
 
+def test_row_gate_untrusted_kind_passes_when_overlay_supplies_cited_names() -> None:
+    # System-CD rescue (DE10-Lite): a community QSF that renamed a resource is
+    # admitted when a cited overlay name-override restores the canonical name.
+    row = _row(
+        source=[{"rank": 1, "kind": "community", "format": "QSF", "fetched": True, "url": "u"}]
+    )
+    overlay = {"Test Board": {"leds": {"name": "LEDR", "cite": "vendor System CD golden top"}}}
+    assert spc.check_row_gate(row, waves={"Test Board"}, overlay=overlay).ok
+
+
+def test_row_gate_overlay_name_vouch_requires_a_cite() -> None:
+    # An uncited name override does not grant trust (fail-safe), exactly like the
+    # naming="canonical" vouch.
+    row = _row(
+        source=[{"rank": 1, "kind": "community", "format": "QSF", "fetched": True, "url": "u"}]
+    )
+    overlay = {"Test Board": {"leds": {"name": "LEDR"}}}  # no cite
+    gate = spc.check_row_gate(row, waves={"Test Board"}, overlay=overlay)
+    assert not gate.ok
+    assert "community" in gate.reason
+
+
+def test_row_gate_overlay_name_vouch_does_not_bypass_status_or_wave() -> None:
+    src = [{"rank": 1, "kind": "community", "format": "QSF", "fetched": True, "url": "u"}]
+    overlay = {"Test Board": {"leds": {"name": "LEDR", "cite": "cited"}}}
+    assert not spc.check_row_gate(
+        _row(source=src, status="candidate"), waves={"Test Board"}, overlay=overlay
+    ).ok
+    assert not spc.check_row_gate(_row(source=src), waves=set(), overlay=overlay).ok
+
+
 def test_row_gate_rejects_board_not_in_any_wave() -> None:
     gate = spc.check_row_gate(_row(), waves=set())
     assert not gate.ok
@@ -215,6 +246,36 @@ def test_apply_overlay_ignores_active_low_for_unclassified_section() -> None:
     # not fabricate a phantom {"active_low": True} port_mapping out of thin air.
     result = spc.apply_overlay({"clk": "clk"}, {"buttons": {"active_low": True}})
     assert "buttons" not in result
+
+
+def test_apply_overlay_name_override() -> None:
+    # Restore a vendor-canonical resource name a course source renamed (DE10-Lite: LED -> LEDR).
+    convention = {"leds": {"name": "LED", "width": 10}}
+    overlay_row = {"leds": {"name": "LEDR", "cite": "vendor System CD golden top"}}
+    result = spc.apply_overlay(convention, overlay_row)
+    assert result["leds"] == {"name": "LEDR", "width": 10}
+
+
+def test_apply_overlay_name_and_active_low_together() -> None:
+    convention = {"buttons": {"name": "BTN", "width": 2}}
+    overlay_row = {"buttons": {"name": "KEY", "active_low": True, "cite": "manual"}}
+    result = spc.apply_overlay(convention, overlay_row)
+    assert result["buttons"] == {"name": "KEY", "width": 2, "active_low": True}
+
+
+def test_apply_overlay_ignores_name_for_unclassified_section() -> None:
+    # classify() found no leds; a name override must not fabricate a phantom port_mapping.
+    result = spc.apply_overlay({"clk": "clk"}, {"leds": {"name": "LEDR", "cite": "c"}})
+    assert "leds" not in result
+
+
+def test_apply_overlay_does_not_name_override_seven_seg() -> None:
+    # seven_seg carries a `names` list, not a single `name`; a stray `name` override is ignored,
+    # while its active_low still applies.
+    convention = {"seven_seg": {"style": "individual", "names": ["HEX0"], "width_per_digit": 7}}
+    result = spc.apply_overlay(convention, {"seven_seg": {"name": "SEG", "active_low": True}})
+    assert "name" not in result["seven_seg"]
+    assert result["seven_seg"]["active_low"] is True
 
 
 def test_apply_overlay_does_not_mutate_its_input() -> None:

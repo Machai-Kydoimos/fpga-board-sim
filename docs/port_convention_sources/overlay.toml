@@ -77,3 +77,28 @@ name = "DE0 Nano"
   [board.buttons]
   active_low = true
   cite = "Terasic KEY pushbuttons are active-low (pressed = 0), per the DE0-Nano user manual. (DE0-Nano has no 7-segment display, so no seven_seg override.)"
+
+# --- U21 A4 follow-up: Terasic System-CD rescue via cited overlay name-override ---
+# DE10-Lite's verified rank-1 course QSF uses the vendor-canonical SW / KEY / HEX
+# names but renames LEDR -> LED and the clock MAX10_CLK1_50 -> Clk. The cited
+# overrides below restore both to canonical -- the per-board trust signal
+# _overlay_supplies_cited_canonical_names reads -- verified against the official
+# DE10-Lite System CD golden top. cite-not-copy: the Terasic CD is copyrighted, so
+# we record the fact plus a versioned file citation, never the QSF itself.
+
+[[board]]
+name = "DE10 Lite"
+clk = "MAX10_CLK1_50"
+clk_cite = "The DE10-Lite's primary 50 MHz clock is MAX10_CLK1_50 (the board also exposes MAX10_CLK2_50 and ADC_CLK_10), per the official DE10-Lite System CD v2.2.0 golden top (Demonstrations/Golden_Top/DE10_LITE_Golden_Top.qsf). The rank-1 course QSF renames it to 'Clk'."
+
+  [board.leds]
+  name = "LEDR"
+  cite = "The DE10-Lite's 10 user LEDs are canonically LEDR[9:0], per the official DE10-Lite System CD v2.2.0 golden top (Demonstrations/Golden_Top/DE10_LITE_Golden_Top.qsf, 'set_location_assignment ... -to LEDR[0..9]'). The rank-1 course QSF renames them to 'LED'."
+
+  [board.buttons]
+  active_low = true
+  cite = "Terasic KEY pushbuttons are active-low (pressed = 0), per the DE10-Lite user manual; a QSF only binds names to pins, so classify() cannot derive polarity."
+
+  [board.seven_seg]
+  active_low = true
+  cite = "Terasic HEX 7-segment displays are active-low (segment lit = 0), per the DE10-Lite user manual."
