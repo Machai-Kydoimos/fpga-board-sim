@@ -172,6 +172,16 @@ def test_schema_validates_scan_digit_enable(schema):
     jsonschema.validate(board, schema)  # must not raise
 
 
+def test_schema_validates_port_mapping_names(schema):
+    """port_mapping.names (distinct scalar ports, e.g. Nandland Go's o_LED_1..4) validates."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["port_conventions"] = {
+        "conv": {"leds": {"names": ["o_LED_1", "o_LED_2", "o_LED_3", "o_LED_4"], "width": 4}}
+    }
+    jsonschema.validate(board, schema)  # must not raise
+
+
 def test_schema_validates_convention_source_and_naming(schema):
     """port_convention.source (registry provenance) and .naming validate."""
     jsonschema = pytest.importorskip("jsonschema")

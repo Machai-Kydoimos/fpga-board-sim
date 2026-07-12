@@ -97,6 +97,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `classify()` gains `leds_green` detection (Terasic's secondary LED bank,
   e.g. DE2-115's `LEDG`), matched narrowly enough that it can never win the
   primary `leds` slot regardless of relative bank size (U21 arc, issue #203)
+- **`port_mapping.names` (U21 schema follow-up).** `boards/schema/board.schema.json`'s
+  `port_mapping` (used for `leds`/`switches`/`buttons`) gains an optional `names`
+  array, symmetric with `seg_port_mapping`'s existing one. Closes a gap A2 found and
+  deliberately left open (flagged in its PR body rather than reopening A0's
+  already-merged schema unilaterally): boards whose LEDs/switches/buttons are
+  distinct un-bracketed scalars sharing a common prefix (Nandland Go's
+  `o_LED_1`..`o_LED_4`, a Wave-1 board) previously got no convention for that
+  resource at all, since inventing a shared vector port name would describe
+  something no real design declares. `classify()` now populates `names` for
+  that shape instead of declining — real port names, not a fabrication —
+  while two genuinely unrelated scalar names with no common prefix (GateMate's
+  `FPGA_LED`/`JTAG_LED`) still correctly yield nothing (U21 arc)
 
 ## [0.13.0] - 2026-07-11
 

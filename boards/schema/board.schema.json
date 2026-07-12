@@ -273,6 +273,11 @@
       "properties": {
         "name": { "type": "string" },
         "width": { "type": "integer" },
+        "names": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Distinct scalar port names, for boards where this resource isn't one shared vector port (e.g. Nandland Go's o_LED_1..o_LED_4, each a separate std_logic port). When present, alongside or instead of 'name'/'width' (width is redundant with len(names) but may still be set for convenience)."
+        },
         "active_low": { "type": "boolean", "default": false }
       }
     },
