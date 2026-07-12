@@ -139,6 +139,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Threaded as the schema-shaped dict — a typed view is deferred to the matcher phase; a board with
   no conventions gets an empty mapping. Inert data until the convention matcher (B2) consumes it
   (U21 arc, issue #205)
+- **U21 board-native convention matcher (Phase B2).** `check_vhdl_contract` now returns a frozen
+  `ContractResult(ok, message, match)` instead of an `(ok, message)` tuple, and a new pure
+  `match_convention()` recognizes a VHDL file that uses a board's *native* port names + fixed
+  widths (e.g. DE10-Standard's `CLOCK_50` / `SW` / `KEY` / `LEDR` / `HEX0..5`) against the
+  selected board's `port_conventions`. When a design fails the generic contract it is now checked
+  against the board's conventions: a full match is reported with a precise message (naming the
+  board and its native ports) and the `ConventionMatch` carried on the result, and a near-miss
+  (≥2 roles matched) names the convention and lists what's missing/mis-sized. Detection only —
+  `ok` stays False, because *running* a native design needs the B3 wrapper; accepting it before
+  that exists would trade a clear contract rejection for a cryptic elaboration crash. Generic
+  designs are entirely unaffected. Scope: the `individual` 7-seg style (the only one in canonical
+  board data), optional secondary LED banks (`leds_green`), and scalar-port banks;
+  `packed_vector` / `scan` / `serial` decline to the generic path / U22. Inert until the native
+  wrapper (B3) turns it on (U21 arc, issue #206)
 
 ## [0.13.0] - 2026-07-11
 

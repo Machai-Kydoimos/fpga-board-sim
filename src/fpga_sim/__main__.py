@@ -116,7 +116,8 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) ->
         print(f"[benchmark] VHDL encoding error: {msg}", file=sys.stderr)
         return 1
     toplevel_name = vhdl_path.stem
-    ok, msg = check_vhdl_contract(vhdl_path, board_def=chosen)
+    res = check_vhdl_contract(vhdl_path, board_def=chosen)
+    ok, msg = res.ok, res.message
     if not ok:
         print(f"[benchmark] VHDL contract error: {msg}", file=sys.stderr)
         return 1

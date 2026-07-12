@@ -1,6 +1,6 @@
 # U21 — Board-native VHDL: arc plan (conventions population + matcher + wrapper)
 
-**Status:** IN PROGRESS — A0 (#209), A1 (#210), A2 (#211), A3 (#212) merged; the schema-symmetry follow-up (#213) and the `boards/custom/`-trust gate follow-up (#214) merged; A4 Wave 1 (#215) merged. Part A done; **Part B started** — B1 (thread conventions into `BoardDef`) in review. Update the [status ledger](#status-ledger) as phases land.
+**Status:** IN PROGRESS — A0 (#209), A1 (#210), A2 (#211), A3 (#212) merged; the schema-symmetry follow-up (#213) and the `boards/custom/`-trust gate follow-up (#214) merged; A4 Wave 1 (#215) merged. Part A done; **Part B in progress** — B1 (thread conventions into `BoardDef`) merged (#216); B2 (convention matcher + typed `ContractResult`) in review. Update the [status ledger](#status-ledger) as phases land.
 **Decided 2026-07-12 (Rick):** the port-conventions population pipeline is **folded into the
 U21 arc** as its opening phases (Part A), rather than run as a separate arc.
 **Source data:** [`docs/port_convention_sources/`](port_convention_sources/) (PR #198) — ranked,
@@ -295,6 +295,28 @@ an empty mapping; serialization round-trips; all 278 boards still load
 clear error; a generic-contract file is untouched by the new branch; a board without
 conventions short-circuits. Test file naming/entity rules unchanged (entity = filename stem).
 
+**Realized (B2, this PR):** `check_vhdl_contract` now returns a frozen
+`ContractResult(ok, message, match)`; `match_convention()` + `ConventionMatch`/`NativePort`/
+`NativeSeg` are the pure detector. Deltas from the sketch above, all toward correctness:
+
+- **`naming`:** the schema documents *absent = canonical*, and every hand-authored Terasic
+  block (incl. the flagship DE10-Standard) omits it — so the matcher skips only an explicit
+  `project-derived`, not "== canonical" (which would have excluded every custom board).
+- **7-seg scope:** only `individual` (the sole style in canonical board data) is matched;
+  `packed_vector`/`scan`/`serial`/`per_segment_scalars` decline (→ generic path / U22 / a B3
+  extension once a real example pins the `per_segment_scalars` port layout).
+- **`leds_green`** is an optional secondary bank (captured if the design declares it, never
+  required); LED/switch/button banks accept both the `name`+`width` vector form and the
+  `names` scalar-bank form (Nandland-style).
+- **Native-detection guard:** a design that declares the simulator's own sizing generics
+  (`NUM_SWITCHES/BUTTONS/LEDS/SEGS`) is a broken *generic* design, not board-native.
+- **`ok` stays False for a native match** (the message names the board + native ports and
+  points at B3); `match` rides on the result for B3 to consume. **5 call sites** updated, not
+  4 — `scripts/gen_embedded_core.py` was the missed one (it mixed the tuple unpack with
+  `check_vhdl_encoding`).
+- Tests: new `tests/test_convention_matcher.py` (27 cases); the generic-contract suites keep a
+  local `_contract()` → `(ok, message)` shim so their assertions are untouched.
+
 ### B3. Native wrapper generation (`sim_bridge._generate_wrapper` + template)
 
 **Do:** for a convention match, generate the uut instantiation from the parsed interface +
@@ -346,8 +368,8 @@ sim-supported 7-seg boards except the scan/serial set have populated conventions
 | A2 | Dialect parsers | #211 | merged |
 | A3 | Generator + overlay | #212 | merged |
 | A4 | Wave 1 population (3 boards; Wave 2 later) | #215 | merged |
-| B1 | BoardDef threading | #216 | in review |
-| B2 | Convention matcher | — | not started |
+| B1 | BoardDef threading | #216 | merged |
+| B2 | Convention matcher + typed `ContractResult` | — | in review |
 | B3 | Native wrapper + e2e | — | not started |
 | B4 | Docs + closeout | — | not started |
 

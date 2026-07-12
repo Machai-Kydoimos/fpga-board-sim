@@ -12,9 +12,21 @@ from pathlib import Path
 
 import pytest
 
+from fpga_sim.board_loader import BoardDef
 from fpga_sim.sim_bridge import analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
 
 HDL = Path(__file__).resolve().parent.parent / "hdl"
+
+
+def _contract(path: str | Path, board_def: BoardDef | None = None) -> tuple[bool, str]:
+    """(ok, message) from check_vhdl_contract, for the generic-contract assertions.
+
+    U21 B2 changed check_vhdl_contract to return a ContractResult; the tests here
+    assert only the ok/message the generic contract has always produced.  The typed
+    result and its .match field are covered in tests/test_convention_matcher.py.
+    """
+    res = check_vhdl_contract(path, board_def=board_def)
+    return res.ok, res.message
 
 
 # ── check_vhdl_encoding: missing file ─────────────────────────────────────────
@@ -55,12 +67,12 @@ def test_encoding_nonascii_on_first_line_reports_line_1(tmp_path):
 
 
 def test_contract_missing_file_returns_false(tmp_path):
-    ok, _ = check_vhdl_contract(tmp_path / "nonexistent.vhd")
+    ok, _ = _contract(tmp_path / "nonexistent.vhd")
     assert not ok
 
 
 def test_contract_missing_file_returns_nonempty_message(tmp_path):
-    _, msg = check_vhdl_contract(tmp_path / "nonexistent.vhd")
+    _, msg = _contract(tmp_path / "nonexistent.vhd")
     assert msg
 
 
@@ -75,7 +87,7 @@ def test_contract_entity_mismatch_message_names_found_entity(tmp_path):
         "  port (clk: in bit; sw: in bit; btn: in bit; led: out bit);\n"
         "end entity;\n"
     )
-    _, msg = check_vhdl_contract(vhd)
+    _, msg = _contract(vhd)
     assert "gadget" in msg
 
 
@@ -87,7 +99,7 @@ def test_contract_entity_mismatch_message_names_expected_stem(tmp_path):
         "  port (clk: in bit; sw: in bit; btn: in bit; led: out bit);\n"
         "end entity;\n"
     )
-    _, msg = check_vhdl_contract(vhd)
+    _, msg = _contract(vhd)
     assert "widget" in msg
 
 
@@ -100,7 +112,7 @@ def test_contract_missing_clk_message_names_clk(tmp_path):
     vhd.write_text(
         "entity noclk is\n  port (sw: in bit; btn: in bit; led: out bit);\nend entity;\n"
     )
-    ok, msg = check_vhdl_contract(vhd)
+    ok, msg = _contract(vhd)
     assert not ok
     assert "clk" in msg.lower()
 
@@ -109,7 +121,7 @@ def test_contract_missing_led_message_names_led(tmp_path):
     """Missing 'led' port error must identify 'led' explicitly."""
     vhd = tmp_path / "noled.vhd"
     vhd.write_text("entity noled is\n  port (clk: in bit; sw: in bit; btn: in bit);\nend entity;\n")
-    ok, msg = check_vhdl_contract(vhd)
+    ok, msg = _contract(vhd)
     assert not ok
     assert "led" in msg.lower()
 
@@ -120,7 +132,7 @@ def test_contract_missing_sw_message_names_sw(tmp_path):
     vhd.write_text(
         "entity nosw is\n  port (clk: in bit; btn: in bit; led: out bit);\nend entity;\n"
     )
-    ok, msg = check_vhdl_contract(vhd)
+    ok, msg = _contract(vhd)
     assert not ok
     assert "sw" in msg.lower()
 
@@ -130,13 +142,13 @@ def test_contract_missing_sw_message_names_sw(tmp_path):
 
 def test_bad_contract_message_names_mismatched_entity():
     """bad_contract_blinky.vhdl has entity 'blinky'; error must mention it."""
-    _, msg = check_vhdl_contract(HDL / "bad_contract_blinky.vhdl")
+    _, msg = _contract(HDL / "bad_contract_blinky.vhdl")
     assert "blinky" in msg
 
 
 def test_bad_contract_message_names_expected_filename_stem():
     """bad_contract_blinky.vhdl error must mention 'bad_contract_blinky'."""
-    _, msg = check_vhdl_contract(HDL / "bad_contract_blinky.vhdl")
+    _, msg = _contract(HDL / "bad_contract_blinky.vhdl")
     assert "bad_contract_blinky" in msg
 
 

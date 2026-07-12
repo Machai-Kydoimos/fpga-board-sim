@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from fpga_sim.platform_open import open_with_default_app
 
@@ -720,10 +720,312 @@ def _check_parsed_contract(
     return True, ""
 
 
+# ── U21 B2: board-native port-convention matcher ─────────────────────────────
+#
+# A board-native VHDL file uses the *board's* port names and fixed widths (e.g.
+# DE10-Standard's CLOCK_50 / SW / KEY / LEDR / HEX0..5) instead of the
+# simulator's generic clk/sw/btn/led[/seg] contract with NUM_* generics.  These
+# fail `_check_parsed_contract` (no `clk`/`btn`/`led`), so when that happens we
+# try to recognize the design against the selected board's `port_conventions`.
+#
+# B2 only *detects* a native design (and reports it precisely); it does not yet
+# accept it — the native wrapper that would let it elaborate lands in B3, and
+# flipping `ok=True` before that exists would swap a clear rejection for a
+# cryptic elaboration crash.  The matched `ConventionMatch` is carried on the
+# result so B3's wrapper/badge/session-log can consume it unchanged.
+
+
+@dataclass(frozen=True)
+class NativePort:
+    """A matched native LED/switch/button bank for one contract role.
+
+    ``names`` holds the board-native port name(s) (original case, as spelled in
+    the convention): a single entry for a shared vector (e.g. ``("LEDR",)``) or
+    several for a bank of distinct scalar ports (e.g. Nandland Go's
+    ``("o_LED_1", ...)``).  ``width`` is the vector width or the scalar count.
+    """
+
+    names: tuple[str, ...]
+    width: int
+    active_low: bool = False
+
+
+@dataclass(frozen=True)
+class NativeSeg:
+    """A matched native 7-segment interface (B2 in-scope: ``individual`` style).
+
+    ``names`` are the per-digit port names (e.g. ``("HEX0", ..., "HEX5")``), each
+    a ``width_per_digit``-bit vector.  ``digit_enable`` is unused by the in-scope
+    styles (it belongs to the ``scan`` style, which B2 declines).
+    """
+
+    style: str
+    names: tuple[str, ...]
+    width_per_digit: int
+    active_low: bool = False
+    digit_enable: NativePort | None = None
+
+
+@dataclass(frozen=True)
+class ConventionMatch:
+    """A design recognized as board-native, with everything B3 needs to wrap it.
+
+    Names are the board-native identifiers from the convention (original case);
+    VHDL is case-insensitive, so B3 can emit them verbatim.
+    """
+
+    maker: str  # convention slug, e.g. "terasic"
+    board_name: str  # BoardDef.name, for messages/badge
+    clk: str  # native clock port name, e.g. "CLOCK_50"
+    leds: NativePort
+    switches: NativePort
+    buttons: NativePort
+    seven_seg: NativeSeg | None = None
+    leds_green: NativePort | None = None  # optional secondary LED bank (e.g. LEDG)
+
+
+@dataclass(frozen=True)
+class ContractResult:
+    """Outcome of :func:`check_vhdl_contract`.
+
+    ``ok``/``message`` mirror the former ``(bool, str)`` tuple; ``match`` is the
+    board-native recognition (U21) when the design uses a board's native port
+    convention — populated even while ``ok`` is False (native execution is B3).
+    """
+
+    ok: bool
+    message: str = ""
+    match: ConventionMatch | None = None
+
+
+@dataclass(frozen=True)
+class _ConventionAttempt:
+    """Result of trying one convention block: a full match, or the near-miss detail."""
+
+    maker: str
+    board_name: str
+    match: ConventionMatch | None  # a complete board-native match, else None
+    matched_roles: tuple[str, ...]  # role tags that matched (near-miss scoring)
+    problems: tuple[str, ...]  # human-readable missing/mismatched roles
+
+
+_SIZING_GENERICS = {"num_switches", "num_buttons", "num_leds", "num_segs"}
+
+
+def _match_native_port(
+    mapping: dict[str, Any],
+    port_by_name: dict[str, _IfaceDecl],
+    mode: str,
+) -> NativePort | None:
+    """Match a leds/switches/buttons/leds_green convention mapping to native ports.
+
+    Accepts a shared vector (``name`` + ``width``) or a bank of distinct scalars
+    (``names``).  Returns None unless the design declares the native port(s) at
+    the convention's fixed width, in the expected direction (*mode*).
+    """
+    active_low = bool(mapping.get("active_low", False))
+    scalar_names = mapping.get("names")
+    if isinstance(scalar_names, list) and scalar_names:
+        for nm in scalar_names:
+            decl = port_by_name.get(str(nm).lower())
+            if decl is None or decl.mode != mode:
+                return None
+        return NativePort(tuple(str(n) for n in scalar_names), len(scalar_names), active_low)
+    name = mapping.get("name")
+    width = mapping.get("width")
+    if not isinstance(name, str) or not isinstance(width, int):
+        return None
+    decl = port_by_name.get(name.lower())
+    if decl is None or decl.mode != mode or decl.literal_width != width:
+        return None  # absent, wrong direction, or not a fixed vector of that exact width
+    return NativePort((name,), width, active_low)
+
+
+def _match_native_seg(
+    seg: dict[str, Any],
+    port_by_name: dict[str, _IfaceDecl],
+) -> NativeSeg | None:
+    """Match an ``individual``-style 7-seg convention to native per-digit ports.
+
+    B2 supports only the ``individual`` style (one fixed-width vector per digit,
+    e.g. HEX0..n) — the only style present in canonical board data.  Other styles
+    (``packed_vector``/``per_segment_scalars``/``scan``/``serial``) decline here
+    and are left to the generic path / U22 / a later B3 extension.
+    """
+    if seg.get("style") != "individual":
+        return None
+    names = seg.get("names")
+    wpd = seg.get("width_per_digit")
+    if not isinstance(names, list) or not names or not isinstance(wpd, int):
+        return None
+    for nm in names:
+        decl = port_by_name.get(str(nm).lower())
+        if decl is None or decl.mode != "out" or decl.literal_width != wpd:
+            return None
+    return NativeSeg("individual", tuple(str(n) for n in names), wpd, bool(seg.get("active_low")))
+
+
+def _attempt_convention(
+    maker: str,
+    block: dict[str, Any],
+    board_def: BoardDef,
+    port_by_name: dict[str, _IfaceDecl],
+) -> _ConventionAttempt:
+    """Try to match one maker's convention block against the parsed interface."""
+    problems: list[str] = []
+    matched: list[str] = []
+
+    clk_port: str | None = None
+    clk_name = block.get("clk")
+    if isinstance(clk_name, str):
+        decl = port_by_name.get(clk_name.lower())
+        if decl is not None and decl.mode == "in":
+            clk_port = clk_name
+            matched.append("clk")
+    if clk_port is None:
+        problems.append(f"clock '{clk_name}'" if isinstance(clk_name, str) else "clock")
+
+    leds = _match_native_port(block.get("leds") or {}, port_by_name, "out")
+    switches = _match_native_port(block.get("switches") or {}, port_by_name, "in")
+    buttons = _match_native_port(block.get("buttons") or {}, port_by_name, "in")
+    for role, port, label in (
+        ("led", leds, "LEDs"),
+        ("sw", switches, "switches"),
+        ("btn", buttons, "buttons"),
+    ):
+        (matched if port is not None else problems).append(role if port is not None else label)
+
+    # 7-seg is required only when the board physically has a display.
+    seven_seg: NativeSeg | None = None
+    board_seg = board_def.seven_seg
+    if board_seg is not None:
+        seven_seg = _match_native_seg(block.get("seven_seg") or {}, port_by_name)
+        (matched if seven_seg is not None else problems).append(
+            "seg" if seven_seg is not None else "7-segment display"
+        )
+
+    # Secondary LED bank (e.g. LEDG): captured when the design declares it, but
+    # never required -- like the generic wrapper leaving `seg` dark, an unused
+    # second bank does not block a match.
+    leds_green: NativePort | None = None
+    green = block.get("leds_green")
+    if isinstance(green, dict):
+        leds_green = _match_native_port(green, port_by_name, "out")
+
+    match: ConventionMatch | None = None
+    if (
+        clk_port is not None
+        and leds is not None
+        and switches is not None
+        and buttons is not None
+        and (board_seg is None or seven_seg is not None)
+    ):
+        match = ConventionMatch(
+            maker=maker,
+            board_name=board_def.name,
+            clk=clk_port,
+            leds=leds,
+            switches=switches,
+            buttons=buttons,
+            seven_seg=seven_seg,
+            leds_green=leds_green,
+        )
+    return _ConventionAttempt(maker, board_def.name, match, tuple(matched), tuple(problems))
+
+
+def _best_convention_attempt(
+    ports: list[_IfaceDecl],
+    generics: list[_IfaceDecl],
+    board_def: BoardDef | None,
+) -> _ConventionAttempt | None:
+    """Best board-native match attempt across the board's canonical conventions.
+
+    Returns the first *full* match, else the closest near-miss, else None (no
+    board / no conventions / the design is structurally a generic-contract one).
+    """
+    if board_def is None or not board_def.port_conventions:
+        return None
+    # A design that declares the simulator's own sizing generics is a generic
+    # design that failed the contract for some other reason -- not board-native.
+    generic_names = {n for d in generics for n in d.names}
+    if generic_names & _SIZING_GENERICS:
+        return None
+    port_by_name = {n: d for d in ports for n in d.names}
+    best: _ConventionAttempt | None = None
+    for maker, block in board_def.port_conventions.items():
+        if not isinstance(block, dict):
+            continue
+        # Schema: absent `naming` means canonical; only skip explicitly renamed
+        # ("project-derived") blocks, whose names aren't the board's native ones.
+        if block.get("naming", "canonical") == "project-derived":
+            continue
+        attempt = _attempt_convention(maker, block, board_def, port_by_name)
+        if attempt.match is not None:
+            return attempt
+        if best is None or len(attempt.matched_roles) > len(best.matched_roles):
+            best = attempt
+    return best
+
+
+def match_convention(
+    ports: list[_IfaceDecl],
+    generics: list[_IfaceDecl],
+    board_def: BoardDef | None,
+) -> ConventionMatch | None:
+    """Recognize a board-native VHDL interface against *board_def*'s conventions.
+
+    Pure (no I/O).  Returns a :class:`ConventionMatch` when the parsed toplevel
+    interface fully matches one of the board's canonical port conventions by name
+    + fixed width + direction (native designs use fixed widths, not NUM_*
+    generics), else None.  This is the detection half of U21's board-native VHDL
+    support; the wrapper that runs such a design lands in B3.
+    """
+    attempt = _best_convention_attempt(ports, generics, board_def)
+    return attempt.match if attempt is not None else None
+
+
+def _role_span(port: NativePort) -> str:
+    """Compact port label for a native role, e.g. 'LEDR' or 'o_LED_1..o_LED_4'."""
+    if len(port.names) == 1:
+        return port.names[0]
+    return f"{port.names[0]}..{port.names[-1]}"
+
+
+def _native_convention_message(match: ConventionMatch, filename: str) -> str:
+    """User-facing message for a design recognized as board-native (B2: not yet run)."""
+    parts = [
+        match.clk,
+        _role_span(match.switches),
+        _role_span(match.buttons),
+        _role_span(match.leds),
+    ]
+    if match.seven_seg is not None:
+        segs = match.seven_seg.names
+        parts.append(segs[0] if len(segs) == 1 else f"{segs[0]}..{segs[-1]}")
+    seg = "/seg" if match.seven_seg is not None else ""
+    return (
+        f"'{filename}' uses {match.board_name}'s board-native port names "
+        f"({', '.join(parts)}) rather than the simulator's generic "
+        f"clk/sw/btn/led{seg} contract.\n"
+        "Board-native simulation is coming in U21 B3. For now, rewrite the design to the "
+        "generic contract (see the example) to simulate it today."
+    )
+
+
+def _near_miss_convention_message(attempt: _ConventionAttempt, filename: str) -> str:
+    """User-facing message for a design that partially matches a board convention."""
+    return (
+        f"'{filename}' is close to {attempt.board_name}'s board-native interface but does "
+        f"not fully match it (missing/mismatched: {', '.join(attempt.problems)}).\n"
+        "Board-native simulation (U21 B3) needs the complete native interface; until then, "
+        "use the generic clk/sw/btn/led contract (see the example)."
+    )
+
+
 def check_vhdl_contract(
     path: str | Path,
     board_def: BoardDef | None = None,
-) -> tuple[bool, str]:
+) -> ContractResult:
     """Stage 2: contract validation (text-based, no simulator needed).
 
     Parses the toplevel entity's port/generic clauses and checks them against
@@ -732,33 +1034,51 @@ def check_vhdl_contract(
     whole-text scan when the interface cannot be parsed, so exotic-but-valid
     formatting is never rejected on parser limitations alone.
 
-    Returns (ok: bool, message: str).
+    When the generic contract fails, the design is checked against the board's
+    board-native port conventions (U21): a full native match is reported with a
+    precise message and the :class:`ConventionMatch` on the result, but ``ok``
+    stays False — running a native design needs the B3 wrapper.
+
+    Returns a :class:`ContractResult`.
     """
     path = Path(path)
     stem = path.stem.lower()
     try:
         text = path.read_text(errors="replace")
     except OSError as e:
-        return False, f"Cannot read file: {e}"
+        return ContractResult(False, f"Cannot read file: {e}")
 
     # Check entity name matches filename
     entities = re.findall(r"entity\s+(\w+)\s+is", text, re.IGNORECASE)
     if not entities:
-        return False, (
+        return ContractResult(
+            False,
             f"No entity declaration found in '{path.name}'.\n"
-            "The file must contain: entity <name> is ... end entity;"
+            "The file must contain: entity <name> is ... end entity;",
         )
     entity_names_lower = [e.lower() for e in entities]
     if stem not in entity_names_lower:
         found = ", ".join(f"'{e}'" for e in entities)
-        return False, (
+        return ContractResult(
+            False,
             f"Entity name mismatch: found {found} but filename is '{path.name}'.\n"
-            f"Rename the file to '{entities[0]}{path.suffix}' or rename the entity to '{stem}'."
+            f"Rename the file to '{entities[0]}{path.suffix}' or rename the entity to '{stem}'.",
         )
 
     parsed = _parse_toplevel_interface(text, stem)
     if parsed is not None:
-        return _check_parsed_contract(path.name, parsed[0], parsed[1], board_def)
+        ok, msg = _check_parsed_contract(path.name, parsed[0], parsed[1], board_def)
+        if ok:
+            return ContractResult(True)
+        # Generic contract failed -- is this instead a board-native design?
+        attempt = _best_convention_attempt(parsed[0], parsed[1], board_def)
+        if attempt is not None and attempt.match is not None:
+            return ContractResult(
+                False, _native_convention_message(attempt.match, path.name), attempt.match
+            )
+        if attempt is not None and len(attempt.matched_roles) >= 2:
+            return ContractResult(False, _near_miss_convention_message(attempt, path.name))
+        return ContractResult(False, msg)
 
     # ── Legacy whole-text fallback (interface not parseable) ──────────────
 
@@ -767,16 +1087,18 @@ def check_vhdl_contract(
         p for p in _REQUIRED_PORTS if not re.search(r"\b" + p + r"\b", text, re.IGNORECASE)
     ]
     if missing_ports:
-        return False, (
+        return ContractResult(
+            False,
             f"Missing required port(s) in '{path.name}': {', '.join(missing_ports)}.\n"
-            "The top-level entity must have ports: clk, sw, btn, led."
+            "The top-level entity must have ports: clk, sw, btn, led.",
         )
 
     # NUM_SEGS without a seg port is a contract error: the generic is meaningless alone
     if re.search(r"\bNUM_SEGS\b", text, re.IGNORECASE) and not _has_seg_port(text):
-        return False, (
+        return ContractResult(
+            False,
             f"'{path.name}' declares NUM_SEGS generic but has no 'seg' output port.\n"
-            "Add:  seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)"
+            "Add:  seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)",
         )
 
     # Warn (non-fatal) about missing generics
@@ -786,7 +1108,7 @@ def check_vhdl_contract(
     if missing_generics:
         print(f"[warn] Missing generics (will use VHDL defaults): {', '.join(missing_generics)}")
 
-    return True, ""
+    return ContractResult(True)
 
 
 def add_error_hints(message: str, board_def: BoardDef | None = None) -> str:
