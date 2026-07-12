@@ -83,6 +83,11 @@ ignore = [
 "sim/test_cpu_hello.py" = ["ANN"]    # cocotb headless tests: dut signals are dynamic
 "sim/test_cpu_dice.py" = ["ANN"]     # cocotb headless tests: dut signals are dynamic
 "sim/test_stopwatch.py" = ["ANN"]    # cocotb headless tests: dut signals are dynamic
+# these embed verbatim/near-verbatim real constraint-file excerpts as fixtures;
+# line length is a property of the source format, not authored prose.
+"tests/test_port_convention_parser_xdc.py" = ["E501"]
+"tests/test_port_convention_parser_ucf.py" = ["E501"]
+"tests/test_port_convention_parsers_golden.py" = ["E501"]
 
 [tool.ruff.format]
 quote-style = "double"
