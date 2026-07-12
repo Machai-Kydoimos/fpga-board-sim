@@ -67,13 +67,15 @@ def test_single_scalar_led_and_switch_get_width_one() -> None:
     assert result["switches"] == {"name": "SWITCH", "width": 1}
 
 
-def test_bare_digit_multi_count_led_group_is_declined() -> None:
+def test_bare_digit_multi_count_led_group_lists_names() -> None:
     # Nandland Go's real o_LED_1..o_LED_4: four distinct scalar ports, no
-    # brackets. The schema's port_mapping has no list-of-names shape (unlike
-    # seg_port_mapping), so populating a fake vector "o_LED" width 4 would
-    # describe a port no real design declares -- decline instead.
+    # brackets. port_mapping's `names` list (added alongside this test)
+    # records the real port names rather than fabricating a vector "o_LED".
     table = _table({f"o_LED_{i}": str(i) for i in range(1, 5)})
-    assert "leds" not in classify(table)
+    assert classify(table)["leds"] == {
+        "names": ["o_LED_1", "o_LED_2", "o_LED_3", "o_LED_4"],
+        "width": 4,
+    }
 
 
 def test_two_unrelated_scalar_leds_are_declined() -> None:

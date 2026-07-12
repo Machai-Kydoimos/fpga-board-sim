@@ -23,18 +23,18 @@ name itself (e.g. ICEBreaker's ``BTN_N``, ``LEDR_N``) — that is derived
 because it is literally spelled out in the name, not inferred from outside
 knowledge.
 
-**Why some real boards end up with no ``leds``/``switches``/``buttons``
-entry:** the schema's ``port_mapping`` (used for those three) only has
-``name``/``width``/``active_low`` — one shared vector name, no per-port list.
-That fits a bracket-indexed vector (``led[0..7]``) or a single scalar
-(``btn``) exactly. It does *not* fit boards whose LEDs are named as distinct
-un-bracketed scalars (Nandland Go's ``o_LED_1``..``o_LED_4``, Pipistrello's
-``LED1``..``LED5``) — inventing a vector name no real design declares would
-be worse than reporting nothing, so this module declines (omits the key)
-rather than guess. ``seven_seg`` does not have this problem because its
-schema shape already has a ``names`` list (added in A0 for exactly the
-per-digit / per-segment-scalar cases), which is real port-name data, not a
-fabrication.
+**Distinct scalar ports vs. a shared vector:** a bracket-indexed group
+(``led[0..7]``) or a single scalar (``btn``) becomes ``{"name":
+..., "width": ...}``. Boards whose LEDs/switches/buttons are named as
+distinct un-bracketed scalars sharing a common prefix (Nandland Go's
+``o_LED_1``..``o_LED_4``, Pipistrello's ``LED1``..``LED5``) instead become
+``{"names": [...], "width": ...}`` — real port names, not a fabricated
+vector port nothing declares. (This mirrors ``seven_seg``'s ``names`` list,
+added in A0 for the same per-digit / per-segment-scalar reason;
+``port_mapping`` gained the same field later for exactly this case.) Two
+*unrelated* scalar names with no shared prefix at all (GateMate's
+``FPGA_LED``/``JTAG_LED``) still yield nothing — there is no single
+convention to name there, invented or otherwise.
 """
 
 from __future__ import annotations
@@ -115,29 +115,49 @@ def _maybe_set_active_low(result: dict[str, Any], name: str) -> None:
 
 
 def _vector_or_scalar(names: list[str]) -> dict[str, Any] | None:
-    """Populate a ``port_mapping``-shaped dict from bracket-indexed or single-scalar names.
+    """Populate a ``port_mapping``-shaped dict from `names`.
 
-    Returns ``None`` when `names` is empty, or when it is a group of more
-    than one *bare-digit* (non-bracketed) scalar — the schema has no way to
-    express that shape without inventing a port name nothing declares (see
-    the module docstring).
+    Three shapes, in priority order: a bracket-indexed vector (``name[idx]``,
+    width = max index + 1); a single scalar (width 1); or -- since the
+    schema's ``port_mapping`` gained a ``names`` list, symmetric with
+    ``seg_port_mapping``'s -- more than one *bare-digit* (non-bracketed)
+    scalar sharing a common prefix (Nandland Go's ``o_LED_1``..``o_LED_4``),
+    listed by name rather than fabricating a vector port nothing declares.
+    Returns ``None`` only when `names` is empty or shares no such structure.
     """
     if not names:
         return None
-    groups: dict[str, list[int]] = {}
+
+    bracket_groups: dict[str, list[int]] = {}
+    bare_groups: dict[str, list[tuple[int, str]]] = {}
     for name in names:
-        m = _RE_BRACKET_INDEX.match(name)
-        if m:
-            groups.setdefault(m.group(1), []).append(int(m.group(2)))
-    if groups:
-        base, indices = max(groups.items(), key=lambda kv: len(kv[1]))
+        bracket_m = _RE_BRACKET_INDEX.match(name)
+        if bracket_m:
+            bracket_groups.setdefault(bracket_m.group(1), []).append(int(bracket_m.group(2)))
+            continue
+        bare_m = _RE_BARE_DIGIT.match(name)
+        if bare_m:
+            bare_groups.setdefault(bare_m.group(1), []).append((int(bare_m.group(2)), name))
+
+    if bracket_groups:
+        base, indices = max(bracket_groups.items(), key=lambda kv: len(kv[1]))
         result: dict[str, Any] = {"name": base, "width": max(indices) + 1}
         _maybe_set_active_low(result, base)
         return result
+
     if len(names) == 1:
         result = {"name": names[0], "width": 1}
         _maybe_set_active_low(result, names[0])
         return result
+
+    if bare_groups:
+        prefix, members = max(bare_groups.items(), key=lambda kv: len(kv[1]))
+        if len(members) > 1:
+            ordered = [name for _, name in sorted(members)]
+            result = {"names": ordered, "width": len(ordered)}
+            _maybe_set_active_low(result, prefix)
+            return result
+
     return None
 
 
