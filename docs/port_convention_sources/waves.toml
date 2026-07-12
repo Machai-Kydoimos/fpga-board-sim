@@ -17,19 +17,20 @@
 
 [[wave]]
 number = 1
-description = "Teaching / 7-seg first (docs/u21_board_native_vhdl_plan.md Part A, A4, Wave 1). Realized scope: 3 boards populate (DE0-CV, DE1-SoC, DE0-Nano) via cited canonical-naming trust; the other 7 stay listed but are held back by the gate or the width cross-check for the per-board reasons noted below (each auto-includes itself once its blocker is resolved)."
+description = "Teaching / 7-seg first (docs/u21_board_native_vhdl_plan.md Part A, A4, Wave 1). Realized scope: 4 boards populate -- DE0-CV, DE1-SoC, DE0-Nano via cited canonical-naming trust, and DE10-Lite via a cited overlay resource-name override (the A4 System-CD follow-up); the other 6 stay listed but are held back by the gate or the width cross-check for the per-board reasons noted below (each auto-includes itself once its blocker is resolved)."
 boards = [
   # -- Populated in A4 Wave 1 (cited canonical-naming trust; see terasic.toml naming_cite + overlay.toml):
   "DE0 CV",
   "DE1 SoC",
   "DE0 Nano",
+  # -- Populated via the A4 System-CD follow-up (cited overlay resource-name override; see overlay.toml):
+  "DE10 Lite",        # rank-1 course QSF renames LEDR -> LED and MAX10_CLK1_50 -> Clk; a cited overlay
+                      # name-override restores both to canonical (DE10-Lite System CD v2.2.0 golden top),
+                      # so the shipped convention names are vendor-canonical.
   # -- Listed but held back (by design -- they stay listed so a later fix auto-includes them):
   "DE0",              # rank-1 QSF's 7-seg is HEXn_D[6:0] + HEXn_DP -> classify() yields a degenerate
                       # packed_vector, not 4 individual digits; needs A2 support for that naming variant.
                       # (clk is also mis-picked to GPIO0_CLKIN -- overlay-fixable -- but the seg is the blocker.)
-  "DE10 Lite",        # rank-1 course QSF renames canonical LEDR -> LED and MAX10_CLK1_50 -> Clk; the overlay
-                      # corrects the clk NAME but not resource names, so LEDs would ship non-canonical. Needs a
-                      # canonical-named source or an overlay resource-name-override capability (out of A4 scope).
   "DE10 Nano",        # registry status "candidate" (gate holds until "verified"); source is sparse (clk+leds only).
   "Nandland Go",      # board JSON has 0 switches vs the PCF's 4 (width cross-check skips); also rank-1 kind "personal".
   "RZEasy FPGAA2-2",  # rank-1 QSF has 5 buttons (KEY[0..4]) but the board JSON lists 4 (pin 25 / KEY[4] missing upstream).

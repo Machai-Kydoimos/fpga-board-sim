@@ -17,7 +17,9 @@ Trust gate (a board only reaches a write if *all* of these hold, unless
 of ``kind`` in ``vendor-official``/``official-repo`` (or a `files[]` target
 under ``boards/custom/`` -- see `_targets_a_custom_board`; or a rank-1 source
 citedly vouched ``naming = "canonical"`` -- see `_rank1_vouched_canonical`;
-both because ``kind`` is a hosting-location label, not an accuracy one), a
+or a cited overlay resource-name override that restores a vendor-canonical
+name a course source renamed -- see `_overlay_supplies_cited_canonical_names`;
+all because ``kind`` is a hosting-location label, not an accuracy one), a
 fetched source in a dialect this package parses, and the board listed in
 `docs/port_convention_sources/waves.toml`. ``--board`` overrides trust,
 never correctness -- a width mismatch always skips that target file
@@ -70,6 +72,10 @@ _DIALECT_PARSERS = {
 _RAW_GITHUB_RE = re.compile(r"^https://raw\.githubusercontent\.com/([^/]+/[^/]+)/([^/]+)/(.+)$")
 
 _ACTIVE_LOW_OVERRIDABLE = ("leds", "leds_green", "switches", "buttons", "seven_seg")
+# Sections whose port *name* an overlay may override to restore a vendor-canonical
+# name a course source renamed. `seven_seg` is excluded: it carries a `names` list,
+# not a single `name`.
+_NAME_OVERRIDABLE = ("leds", "leds_green", "switches", "buttons")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -167,7 +173,35 @@ def _rank1_vouched_canonical(rank1: dict[str, Any]) -> bool:
     return rank1.get("naming") == "canonical" and bool(rank1.get("naming_cite"))
 
 
-def check_row_gate(row: dict[str, Any], waves: set[str], *, force: bool = False) -> GateResult:
+def _overlay_supplies_cited_canonical_names(overlay_row: dict[str, Any] | None) -> bool:
+    """Whether the overlay supplies a cited canonical port-*name* correction.
+
+    The System-CD rescue case (U21 A4 follow-up): a verified community QSF uses
+    the vendor's canonical names for most ports but *renames* a few (e.g.
+    DE10-Lite's LEDR -> LED). A maintainer restores the canonical name with a
+    cited `name` override in overlay.toml (see `apply_overlay`), verified against
+    the vendor's official System CD golden-top. That cited correction is the
+    per-board signal that the *shipped* convention's names are vendor-canonical
+    -- parallel to `_rank1_vouched_canonical`, but for the source-plus-overlay
+    case rather than source-alone. Both a `name` and a `cite` are required on the
+    same section; an uncited name override does not count (fails safe), just as
+    the naming vouch requires its cite.
+    """
+    if not overlay_row:
+        return False
+    return any(
+        isinstance(ov, dict) and bool(ov.get("name")) and bool(ov.get("cite"))
+        for ov in (overlay_row.get(s) for s in _NAME_OVERRIDABLE)
+    )
+
+
+def check_row_gate(
+    row: dict[str, Any],
+    waves: set[str],
+    overlay: dict[str, Any] | None = None,
+    *,
+    force: bool = False,
+) -> GateResult:
     """Decide whether `row` may be processed.
 
     `force` (``--board``) bypasses the status/kind/wave-membership checks --
@@ -176,12 +210,15 @@ def check_row_gate(row: dict[str, Any], waves: set[str], *, force: bool = False)
     tier -- but never bypasses having a usable, structured-format source:
     there is nothing to parse otherwise, forced or not.
 
-    Independently of `force`, two things skip the ``kind`` check
+    Independently of `force`, three things skip the ``kind`` check
     specifically (never `status`/wave-membership, which stay meaningful
     regardless): a row that targets a board in ``boards/custom/`` (see
-    `_targets_a_custom_board`), and a rank-1 source citedly vouched
-    ``naming = "canonical"`` (see `_rank1_vouched_canonical`) -- both encode
-    that ``kind`` is a hosting-location label, not a port-name-accuracy one.
+    `_targets_a_custom_board`), a rank-1 source citedly vouched
+    ``naming = "canonical"`` (see `_rank1_vouched_canonical`), and a cited
+    overlay resource-name override that restores canonical names a course
+    source renamed (see `_overlay_supplies_cited_canonical_names`) -- all
+    encode that ``kind`` is a hosting-location label, not a port-name-accuracy
+    one.
     """
     sources = row.get("source", [])
     rank1 = next((s for s in sources if s.get("rank") == 1), None)
@@ -197,10 +234,12 @@ def check_row_gate(row: dict[str, Any], waves: set[str], *, force: bool = False)
 
     if row.get("status") != "verified":
         return GateResult(False, f"status is {row.get('status')!r}, not verified")
+    overlay_row = (overlay or {}).get(row.get("name", ""))
     if (
         rank1.get("kind") not in _TRUSTED_KINDS
         and not _targets_a_custom_board(row)
         and not _rank1_vouched_canonical(rank1)
+        and not _overlay_supplies_cited_canonical_names(overlay_row)
     ):
         return GateResult(False, f"rank-1 kind is {rank1.get('kind')!r}")
     if row["name"] not in waves:
@@ -244,11 +283,13 @@ def apply_overlay(convention: dict[str, Any], overlay_row: dict[str, Any] | None
     """Layer `overlay_row`'s cited overrides on top of a classified convention dict.
 
     An overlay value always wins for the field it states; classify()'s value
-    is only ever a fallback. `clk` overrides the whole clk name; the other
-    overridable sections (`leds`/`leds_green`/`switches`/`buttons`/
-    `seven_seg`) only ever override `active_low` -- see classify.py's module
-    docstring for why that field is the one thing overlay data routinely
-    needs to supply.
+    is only ever a fallback. `clk` overrides the whole clk name;
+    `leds`/`leds_green`/`switches`/`buttons`/`seven_seg` may override
+    `active_low` (classify() derives polarity only from a literal `_N`/`_n`
+    suffix -- see classify.py's module docstring); and `leds`/`leds_green`/
+    `switches`/`buttons` may also override the port `name`, to restore a
+    vendor-canonical name a course source renamed (e.g. DE10-Lite's LED ->
+    LEDR). Each override is cited in overlay.toml.
     """
     result = {k: (dict(v) if isinstance(v, dict) else v) for k, v in convention.items()}
     if overlay_row is None:
@@ -259,11 +300,12 @@ def apply_overlay(convention: dict[str, Any], overlay_row: dict[str, Any] | None
 
     for section in _ACTIVE_LOW_OVERRIDABLE:
         override = overlay_row.get(section)
-        if not isinstance(override, dict) or "active_low" not in override:
-            continue
-        if section not in result:
-            continue  # nothing classified for this section; no port_mapping to attach polarity to
-        result[section]["active_low"] = override["active_low"]
+        if not isinstance(override, dict) or section not in result:
+            continue  # no override for this section, or nothing classified to attach it to
+        if "active_low" in override:
+            result[section]["active_low"] = override["active_low"]
+        if "name" in override and section in _NAME_OVERRIDABLE:
+            result[section]["name"] = override["name"]
 
     return result
 
@@ -358,7 +400,7 @@ def process_board(
     Returns a `BoardResult` with either a `skipped` reason or one convention
     dict per `files[]` target -- writing (or not) is the caller's job.
     """
-    gate = check_row_gate(row, waves, force=force)
+    gate = check_row_gate(row, waves, overlay, force=force)
     if not gate.ok:
         return BoardResult(name, skipped=gate.reason)
     assert gate.rank1 is not None

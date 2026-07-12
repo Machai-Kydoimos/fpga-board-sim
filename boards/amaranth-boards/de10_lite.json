@@ -313,5 +313,43 @@
     "upstream_file": "de10_lite.py",
     "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
     "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  },
+  "port_conventions": {
+    "terasic": {
+      "clk": "MAX10_CLK1_50",
+      "leds": {
+        "name": "LEDR",
+        "width": 10
+      },
+      "switches": {
+        "name": "SW",
+        "width": 10
+      },
+      "buttons": {
+        "name": "KEY",
+        "width": 2,
+        "active_low": true
+      },
+      "seven_seg": {
+        "style": "individual",
+        "names": [
+          "HEX0",
+          "HEX1",
+          "HEX2",
+          "HEX3",
+          "HEX4",
+          "HEX5"
+        ],
+        "width_per_digit": 7,
+        "active_low": true
+      },
+      "description": "MAX 10 (10M50DA). Verified from two independent GitHub sources with matching pin assignments. | caution: the rank-1 course QSF renames the clock MAX10_CLK1_50 -> 'Clk' and the LEDs LEDR -> 'LED'; the Terasic golden_top (System CD v2.2.0) uses MAX10_CLK1_50 / MAX10_CLK2_50 / ADC_CLK_10 and LEDR[9:0]. Both are restored to canonical via a cited overlay name-override (see overlay.toml DE10 Lite).",
+      "naming": "canonical",
+      "source": {
+        "url": "https://raw.githubusercontent.com/AllenHeartcore/ECE385_UIUC23sp/b49e1c2f39815810b44e19c23064a0ee4db2756a/de10_pin_assignment.qsf",
+        "retrieved": "2026-07-12",
+        "registry_board": "DE10 Lite"
+      }
+    }
   }
 }

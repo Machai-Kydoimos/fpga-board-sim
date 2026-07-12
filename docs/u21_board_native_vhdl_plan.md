@@ -206,11 +206,10 @@ held back, each with a recorded reason:
 - **DE0** — rank-1 QSF's 7-seg is `HEXn_D[6:0]` + `HEXn_DP`; the A2 classifier collapses it to a
   degenerate `packed_vector` instead of 4 individual digits. Needs classifier support for that
   per-digit naming variant (A2 follow-up).
-- **DE10-Lite** — rank-1 course QSF renames `LEDR`→`LED` and `MAX10_CLK1_50`→`Clk`; the overlay
-  corrects the clk *name* but not resource names, so LEDs would ship non-canonical. Needs a
-  canonical-named source or an overlay resource-name-override capability. The official Terasic
-  DE10-Lite System CD v2.2.0 golden top confirms canonical `LEDR` + `MAX10_CLK1_50`, so this is
-  now a concrete rescue target (see the System-CD follow-up below).
+- **DE10-Lite** — **RESCUED** (System-CD follow-up, PR below): its rank-1 course QSF renames
+  `LEDR`→`LED` and `MAX10_CLK1_50`→`Clk`; a cited overlay resource-name override (verified against
+  the DE10-Lite System CD v2.2.0 golden top) restores both to canonical, admitted by the new
+  `_overlay_supplies_cited_canonical_names` gate bypass. Now populated in Wave 1.
 - **DE10-Nano** — registry `candidate` (+ sparse source); populate once upgraded to `verified`.
 - **Nandland Go** — board JSON has 0 switches vs the PCF's 4; needs a resource supplement (not a
   hand-edit — A1's guard doesn't preserve resource-count edits across re-sync). Also `personal` kind.
@@ -228,7 +227,7 @@ held back, each with a recorded reason:
 
 **Quality gates:** as A0; CHANGELOG entry per wave PR.
 
-### A4 follow-up (proposed, not yet scheduled) — Terasic System-CD wave via overlay name-override
+### A4 follow-up (in progress) — Terasic System-CD wave via overlay name-override
 
 Discovered during A4: Rick provided the official Terasic System CDs / Resource Packages
 (DE0-CV, DE0-Nano, DE10-Lite, DE10-Standard, DE23-Lite, DE25-Standard, VEEK-MT2, VEEK-MT-SoCKit).
@@ -236,9 +235,12 @@ Their `golden_top` / `Default` QSFs are the **vendor-official** canonical source
 the three A4 boards and the hand-authored `custom/` DE10-Standard block field-for-field, and they
 unlock boards the registry can't currently populate:
 
-- **DE10-Lite** — official golden top confirms canonical `LEDR`/`SW`/`KEY`/`HEX0..5` +
-  `MAX10_CLK1_50`. Its community rank-1 renames only `LEDR`→`LED` (clk is already overlay-fixable,
-  the rest are canonical), so a single **overlay resource-name-override** rescues it.
+- **DE10-Lite** — **DONE (this follow-up's first PR).** Official golden top confirms canonical
+  `LEDR`/`SW`/`KEY`/`HEX0..5` + `MAX10_CLK1_50`; the community rank-1 renames only `LEDR`→`LED`
+  and the clk (confirmed by direct fetch — the registry's normalized `leds = "LEDR[0..9]"` masked
+  the literal `LED`). A cited overlay `[board.leds] name` + `clk` override restore both to
+  canonical, and the new `_overlay_supplies_cited_canonical_names` gate bypass admits the board.
+  HEX ships 7-bit (segments only, per the source), matching DE0-CV/DE1-SoC.
 - **DE0** (original Cyclone III — a *different* board from DE0-CV: EP3C16 vs 5CEBA4, 3 buttons vs 4,
   4 digits vs 6) — official DE0 CD-ROM v1.1 golden top (`DE0_Default.qsf`) confirms canonical
   `LEDG`(10) / `SW`(10) / `BUTTON`(3) / `CLOCK_50` + four 7-seg digits named `HEXn_D[6:0]` **plus a
@@ -259,7 +261,10 @@ Locked Decision #1). This also addresses the model gap that Terasic's best sourc
 ZIP, not a raw URL. A **second, independent mechanism** is needed for DE0: teach the A2 classifier
 the `<name>_D[k]` + `<name>_DP` per-digit 7-seg style (see the DE0 bullet). **Scope:** small
 additive `apply_overlay` name-override + the A2 classifier extension + tests, then a data wave;
-its own PR(s), not folded into A4.
+its own PR(s), not folded into A4. **Status:** the `apply_overlay` name-override + the
+`_overlay_supplies_cited_canonical_names` gate bypass + the DE10-Lite rescue shipped as this
+follow-up's first PR; the A2 classifier `<name>_D`/`_DP` extension (DE0) and the DE23/DE25/VEEK
+read-only validation are the remaining pieces.
 
 ---
 
