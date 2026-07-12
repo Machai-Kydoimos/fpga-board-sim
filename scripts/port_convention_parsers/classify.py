@@ -1,0 +1,277 @@
+"""Dialect-agnostic classification of a parsed port table into a convention dict.
+
+Produces a ``port_convention``-shaped dict (``clk``/``leds``/``switches``/
+``buttons``/``seven_seg``) from a :class:`PortTable`.
+
+This module knows nothing about QSF/XDC/UCF/etc. syntax — it only looks at
+already-extracted ``(port, pin)`` pairs and reasons about *names*. That is a
+deliberate split from the per-dialect ``parse()`` functions: the same
+name-shape rules apply to a board regardless of which constraint format its
+source happens to use.
+
+**Why ``active_low`` is almost always absent from the output:** none of the
+eight constraint dialects state signal polarity as syntax — ``PACKAGE_PIN``/
+``LOC``/``SITE``/``IO_LOC`` bind a name to a physical pin, full stop. Polarity
+is normally answered by a schematic or manual, which is exactly why the U21
+arc plan puts it in the (hand-maintained, cited) generator overlay rather than
+asking the parser to guess it. The one exception handled here is a genuine
+*textual* convention some sources do use: a trailing ``_N``/``_n`` on the port
+name itself (e.g. ICEBreaker's ``BTN_N``, ``LEDR_N``) — that is derived
+because it is literally spelled out in the name, not inferred from outside
+knowledge.
+
+**Why some real boards end up with no ``leds``/``switches``/``buttons``
+entry:** the schema's ``port_mapping`` (used for those three) only has
+``name``/``width``/``active_low`` — one shared vector name, no per-port list.
+That fits a bracket-indexed vector (``led[0..7]``) or a single scalar
+(``btn``) exactly. It does *not* fit boards whose LEDs are named as distinct
+un-bracketed scalars (Nandland Go's ``o_LED_1``..``o_LED_4``, Pipistrello's
+``LED1``..``LED5``) — inventing a vector name no real design declares would
+be worse than reporting nothing, so this module declines (omits the key)
+rather than guess. ``seven_seg`` does not have this problem because its
+schema shape already has a ``names`` list (added in A0 for exactly the
+per-digit / per-segment-scalar cases), which is real port-name data, not a
+fabrication.
+"""
+
+from __future__ import annotations
+
+import re
+from collections.abc import Callable
+from typing import Any
+
+from port_convention_parsers.types import PortTable
+
+_RE_BRACKET_INDEX = re.compile(r"^(.*?)[\[(<](\d+)[\])>]$")
+_RE_BARE_DIGIT = re.compile(r"^(.*?)(\d+)$")
+_RE_ACTIVE_LOW_SUFFIX = re.compile(r"_[nN]$")
+
+_LED_INTEREST = re.compile(r"led", re.IGNORECASE)
+_SWITCH_INTEREST = re.compile(r"switch", re.IGNORECASE)
+_BUTTON_INTEREST = re.compile(r"button|btn", re.IGNORECASE)
+_CLOCK_INTEREST = re.compile(r"clk|clock", re.IGNORECASE)
+_SEG_INTEREST = re.compile(r"seg|hex", re.IGNORECASE)
+
+# Digilent's compass-direction button names: a shared prefix plus exactly one
+# of C(enter)/U(p)/D(own)/L(eft)/R(ight), nothing else after it.
+_RE_DIRECTION_BUTTON = re.compile(r"^(.+?)([CUDLRcudlr])$")
+
+# Two-level 7-seg shapes: a digit index folded into the prefix, then a
+# bracketed per-digit index (Terasic-style HEX0[3]) or a bracket-free
+# per-digit-per-segment-letter suffix (Nandland-style o_Segment1_A).
+_RE_DIGIT_THEN_BRACKET = re.compile(r"^(.*?[A-Za-z_])(\d+)\[(\d+)\]$")
+_RE_DIGIT_THEN_LETTER = re.compile(r"^(.+?)(\d+)_?([A-Ga-g])$")
+
+
+def _strip_index(name: str) -> str:
+    """Return `name` with a trailing bracketed or bare-digit index removed."""
+    m = _RE_BRACKET_INDEX.match(name) or _RE_BARE_DIGIT.match(name)
+    return m.group(1) if m else name
+
+
+def _exact_base(name: str, token: str) -> bool:
+    """Return whether `name`'s base (after stripping a trailing index) is exactly `token`."""
+    return _strip_index(name).lower() == token.lower()
+
+
+def _is_led(name: str) -> bool:
+    return bool(_LED_INTEREST.search(name))
+
+
+def _is_switch(name: str) -> bool:
+    return bool(_SWITCH_INTEREST.search(name)) or _exact_base(name, "sw")
+
+
+def _is_button(name: str) -> bool:
+    return bool(_BUTTON_INTEREST.search(name)) or _exact_base(name, "key")
+
+
+def _is_clock(name: str) -> bool:
+    return bool(_CLOCK_INTEREST.search(name))
+
+
+def _is_seg(name: str) -> bool:
+    return bool(_SEG_INTEREST.search(name))
+
+
+def _is_digit_enable(name: str) -> bool:
+    return _exact_base(name, "an") or _exact_base(name, "enable")
+
+
+def _maybe_set_active_low(result: dict[str, Any], name: str) -> None:
+    if _RE_ACTIVE_LOW_SUFFIX.search(name):
+        result["active_low"] = True
+
+
+def _vector_or_scalar(names: list[str]) -> dict[str, Any] | None:
+    """Populate a ``port_mapping``-shaped dict from bracket-indexed or single-scalar names.
+
+    Returns ``None`` when `names` is empty, or when it is a group of more
+    than one *bare-digit* (non-bracketed) scalar — the schema has no way to
+    express that shape without inventing a port name nothing declares (see
+    the module docstring).
+    """
+    if not names:
+        return None
+    groups: dict[str, list[int]] = {}
+    for name in names:
+        m = _RE_BRACKET_INDEX.match(name)
+        if m:
+            groups.setdefault(m.group(1), []).append(int(m.group(2)))
+    if groups:
+        base, indices = max(groups.items(), key=lambda kv: len(kv[1]))
+        result: dict[str, Any] = {"name": base, "width": max(indices) + 1}
+        _maybe_set_active_low(result, base)
+        return result
+    if len(names) == 1:
+        result = {"name": names[0], "width": 1}
+        _maybe_set_active_low(result, names[0])
+        return result
+    return None
+
+
+def _named_direction_group(names: list[str]) -> dict[str, Any] | None:
+    """Digilent's ``btnC``/``btnU``/``btnD``/``btnL``/``btnR`` named-button convention."""
+    if len(names) < 2:
+        return None
+    bases = set()
+    for name in names:
+        m = _RE_DIRECTION_BUTTON.match(name)
+        if not m:
+            return None
+        bases.add(m.group(1))
+    if len(bases) != 1:
+        return None
+    (base,) = bases
+    return {"name": base, "width": len(names)}
+
+
+def _matching_ports(table: PortTable, predicate: Callable[[str], bool]) -> list[str]:
+    """Distinct port names (first-seen order) whose port matches `predicate`.
+
+    Deduplicated so a constraint file that states the same port twice (a
+    stray copy-paste repeat, or a second line adding an attribute to a port
+    already bound to a pin) can't inflate a count-based classification, e.g.
+    ``_named_direction_group``'s ``len(names)`` or the largest-group pick in
+    ``_vector_or_scalar``.
+    """
+    seen: dict[str, None] = {}
+    for entry in table.pins:
+        if predicate(entry.port):
+            seen.setdefault(entry.port, None)
+    return list(seen)
+
+
+def _classify_clock(table: PortTable) -> str | None:
+    if table.clocks:
+        return table.clocks[0].port
+    for entry in table.pins:
+        if _is_clock(entry.port):
+            return entry.port
+    return None
+
+
+def _classify_individual_seven_seg(seg_names: list[str]) -> dict[str, Any] | None:
+    """Per-digit ports, e.g. Terasic ``HEX0[0..6]``..``HEX5[0..6]``."""
+    per_prefix: dict[str, dict[int, list[int]]] = {}
+    for name in seg_names:
+        m = _RE_DIGIT_THEN_BRACKET.match(name)
+        if not m:
+            return None
+        prefix, digit, seg_idx = m.group(1), int(m.group(2)), int(m.group(3))
+        per_prefix.setdefault(prefix, {}).setdefault(digit, []).append(seg_idx)
+    if len(per_prefix) != 1:
+        return None
+    ((prefix, per_digit),) = per_prefix.items()
+    widths = {len(idxs) for idxs in per_digit.values()}
+    if len(widths) != 1:
+        return None
+    names = [f"{prefix}{d}" for d in sorted(per_digit)]
+    return {"style": "individual", "names": names, "width_per_digit": widths.pop()}
+
+
+def _classify_per_segment_scalars(seg_names: list[str]) -> dict[str, Any] | None:
+    """Per-digit-per-segment scalars, e.g. Nandland Go's ``o_Segment1_A..G``."""
+    prefixes: set[str] = set()
+    per_digit: dict[int, list[str]] = {}
+    order: dict[str, tuple[int, str]] = {}
+    for name in seg_names:
+        m = _RE_DIGIT_THEN_LETTER.match(name)
+        if not m:
+            return None
+        prefix, digit, letter = m.group(1), int(m.group(2)), m.group(3).upper()
+        prefixes.add(prefix)
+        per_digit.setdefault(digit, []).append(name)
+        order[name] = (digit, letter)
+    if len(prefixes) != 1:
+        return None
+    widths = {len(members) for members in per_digit.values()}
+    if len(widths) != 1:
+        return None
+    names_sorted = sorted(seg_names, key=lambda n: order[n])
+    return {"style": "per_segment_scalars", "names": names_sorted, "width_per_digit": widths.pop()}
+
+
+def _classify_seven_seg(table: PortTable) -> dict[str, Any] | None:
+    seg_names = _matching_ports(table, _is_seg)
+    if not seg_names:
+        return None
+
+    individual = _classify_individual_seven_seg(seg_names)
+    if individual:
+        return individual
+
+    scalars = _classify_per_segment_scalars(seg_names)
+    if scalars:
+        return scalars
+
+    vector = _vector_or_scalar(seg_names)
+    if not vector:
+        return None
+    result: dict[str, Any] = {
+        "style": "packed_vector",
+        "name": vector["name"],
+        "width_per_digit": vector["width"],
+    }
+
+    enable_names = _matching_ports(table, _is_digit_enable)
+    enable = _vector_or_scalar(enable_names)
+    if enable:
+        result["style"] = "scan"
+        result["digit_enable"] = enable
+    return result
+
+
+def classify(table: PortTable) -> dict[str, Any]:
+    """Bucket a parsed constraint file's ports into a ``port_convention``-shaped dict.
+
+    Only keys the table has enough evidence for are present; a board with no
+    recognizable LEDs, say, simply has no ``"leds"`` key. Callers (the A3
+    generator) are expected to attach ``description``/``source``/``naming``
+    themselves, since those require board-level context this function does
+    not have.
+    """
+    result: dict[str, Any] = {}
+
+    clk = _classify_clock(table)
+    if clk:
+        result["clk"] = clk
+
+    leds = _vector_or_scalar(_matching_ports(table, _is_led))
+    if leds:
+        result["leds"] = leds
+
+    switches = _vector_or_scalar(_matching_ports(table, _is_switch))
+    if switches:
+        result["switches"] = switches
+
+    button_names = _matching_ports(table, _is_button)
+    buttons = _vector_or_scalar(button_names) or _named_direction_group(button_names)
+    if buttons:
+        result["buttons"] = buttons
+
+    seven_seg = _classify_seven_seg(table)
+    if seven_seg:
+        result["seven_seg"] = seven_seg
+
+    return result

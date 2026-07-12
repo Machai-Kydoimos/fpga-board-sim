@@ -47,6 +47,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   intact). An existing board file that isn't valid JSON, or whose top level
   isn't an object, now fails with a clear error naming the file instead of a
   raw traceback (U21 arc, issue #201)
+- **U21 constraint-dialect parsers (Phase A2).** New `scripts/port_convention_parsers/`
+  package: one pure `parse(text) -> PortTable` module per constraint dialect
+  (QSF, XDC, UCF, PCF, LPF, CST, CCF, BoardStore XML), plus a shared,
+  dialect-agnostic `classify()` that buckets the parsed ports into a
+  `port_convention`-shaped dict (clk/leds/switches/buttons/seven_seg) by
+  name-shape alone — bracket-indexed vector widths, Digilent's
+  compass-direction named buttons, and three 7-seg structures (per-digit,
+  per-segment-scalars, shared-segment + digit-enable ⇒ scan) are all detected
+  without any dialect-specific knowledge. Every gotcha the #198 registry
+  research found in the wild is encoded as a fixture taken from a real,
+  fetch-verified source: quoted vs. bare `PACKAGE_PIN` values in the same XDC
+  file (Numato Mimas A7), Digilent's fully-commented master XDC convention,
+  UCF's bracket/paren/angle-bracket vector syntax, PCF's `-nowarn` flag and
+  `_N` active-low naming convention, LPF's `FREQUENCY PORT` clock statement,
+  and BoardStore XML's valid-but-unusual `name ="X"` spacing. A golden test
+  parses the real Digilent Basys3 master XDC and reproduces
+  `boards/digilent-xdc/basys_3.json`'s existing clk/leds/switches/buttons
+  convention — and, now that A0 added the `scan` style, correctly
+  reclassifies its 7-segment display from the on-disk `packed_vector` to
+  `scan` (a shared `seg` vector plus an `an` digit-enable, a distinction the
+  pre-A0 `digilent_parser.py` had no schema support to express). Parsers are
+  pure and network-free (U21 arc, issue #202)
 
 ## [0.13.0] - 2026-07-11
 
