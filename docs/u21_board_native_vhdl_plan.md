@@ -1,6 +1,6 @@
 # U21 — Board-native VHDL: arc plan (conventions population + matcher + wrapper)
 
-**Status:** IN PROGRESS — A0 merged (PR #209), A1 merged (PR #210), A2 in review (PR #211). Update the [status ledger](#status-ledger) as phases land.
+**Status:** IN PROGRESS — A0 merged (PR #209), A1 merged (PR #210), A2 merged (PR #211), A3 in review (PR #212). Update the [status ledger](#status-ledger) as phases land.
 **Decided 2026-07-12 (Rick):** the port-conventions population pipeline is **folded into the
 U21 arc** as its opening phases (Part A), rather than run as a separate arc.
 **Source data:** [`docs/port_convention_sources/`](port_convention_sources/) (PR #198) — ranked,
@@ -271,8 +271,8 @@ sim-supported 7-seg boards except the scan/serial set have populated conventions
 |---|---|---|---|
 | A0 | Schema deltas | #209 | merged |
 | A1 | Re-sync guard | #210 | merged |
-| A2 | Dialect parsers | #211 | in review |
-| A3 | Generator + overlay | — | not started |
+| A2 | Dialect parsers | #211 | merged |
+| A3 | Generator + overlay | #212 | in review |
 | A4 | Wave 1 + Wave 2 population | — | not started |
 | B1 | BoardDef threading | — | not started |
 | B2 | Convention matcher | — | not started |
@@ -299,3 +299,4 @@ sim-supported 7-seg boards except the scan/serial set have populated conventions
 | Schema churn between A0 and U22 | style enum is additive; scan fields land now, consumed later |
 | Sipeed-style per-example naming instability | those families need `naming` review before population; hold if unclear |
 | Course-QSF renamed clocks (Terasic) | clk names come from the overlay with citations, never from course files |
+| `port_mapping` (leds/switches/buttons) has no `names` list like `seg_port_mapping` got in A0 -- boards with distinct un-bracketed scalar LEDs (Nandland Go's `o_LED_1..4`, a Wave-1 board; Pipistrello's `LED1..5`) can't get a `leds` convention populated; A2's `classify.py` declines rather than inventing a fake vector name | Rick-confirmed follow-up (2026-07-12): add optional `names: string[]` to `$defs/port_mapping`, symmetric with `seg_port_mapping`; teach `classify.py` to populate it instead of declining; add schema + classify.py tests. Do before/during A3-A4 (see `project_u21_arc_progress` memory for the fuller writeup) |

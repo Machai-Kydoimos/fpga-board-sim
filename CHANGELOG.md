@@ -69,6 +69,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `scan` (a shared `seg` vector plus an `an` digit-enable, a distinction the
   pre-A0 `digilent_parser.py` had no schema support to express). Parsers are
   pure and network-free (U21 arc, issue #202)
+- **U21 port_conventions generator + overlay (Phase A3).** New
+  `scripts/sync_port_conventions.py`: turns a `docs/port_convention_sources/`
+  registry row into a board JSON's `port_conventions.<maker-slug>` block —
+  resolve the rank-1 source URL to a commit-pinned raw URL, fetch it (new
+  `sync_common.fetch_url()`, with an on-disk cache), parse + classify it with
+  A2's pipeline, layer any `overlay.toml` override on top, cross-check widths
+  against that board's own already-known resource counts, and shallow-merge
+  the result into every board JSON the row's `files` lists — independently
+  per target file, since one registry row can point at more than one board
+  JSON for the same physical board (discovered live: DE2-115's litex-derived
+  file never captured its `LEDG` bank, so it now cleanly skips there while
+  the hand-authored `custom/de2_115.json` still gets populated). A board only
+  reaches a write if registry `status == "verified"`, its rank-1 source is
+  `vendor-official`/`official-repo`, and it's listed in new
+  `docs/port_convention_sources/waves.toml` (Wave 1's teaching-priority
+  boards populated now; Wave 2 deliberately left for its own population
+  phase rather than risk a mistranscribed name); `--board <name>` bypasses
+  that trust gate for targeted testing/curation, never the width
+  cross-check. New `docs/port_convention_sources/overlay.toml` holds cited
+  facts no constraint file states (the canonical clock on a multi-clock
+  board, signal polarity) — proven against two real, fetched Terasic
+  sources: DE10-Standard and DE2-115 both reproduce Rick's existing
+  hand-authored `boards/custom/` blocks field-for-field once overlaid, and a
+  forced run against Digilent's Basys 3 reproduces `sync_digilent_xdc.py`'s
+  output the same way A2's golden test already established.
+  `classify()` gains `leds_green` detection (Terasic's secondary LED bank,
+  e.g. DE2-115's `LEDG`), matched narrowly enough that it can never win the
+  primary `leds` slot regardless of relative bank size (U21 arc, issue #203)
 
 ## [0.13.0] - 2026-07-11
 
