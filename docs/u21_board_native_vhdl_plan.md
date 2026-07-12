@@ -346,7 +346,7 @@ sim-supported 7-seg boards except the scan/serial set have populated conventions
 | A2 | Dialect parsers | #211 | merged |
 | A3 | Generator + overlay | #212 | merged |
 | A4 | Wave 1 population (3 boards; Wave 2 later) | #215 | merged |
-| B1 | BoardDef threading | — | in review |
+| B1 | BoardDef threading | #216 | in review |
 | B2 | Convention matcher | — | not started |
 | B3 | Native wrapper + e2e | — | not started |
 | B4 | Docs + closeout | — | not started |
