@@ -20,6 +20,13 @@ def test_board():
         leds=[ComponentInfo("led", "led", 0, pins=["P1"], attrs={"IO": "LVCMOS"})],
         buttons=[ComponentInfo("button", "button_up", 0, pins=["B1"], connector=("pmod", 0))],
         switches=[ComponentInfo("switch", "switch", 0, pins=["S1"])],
+        port_conventions={
+            "terasic": {
+                "clk": "CLOCK_50",
+                "leds": {"name": "LEDR", "width": 1},
+                "naming": "canonical",
+            }
+        },
     )
 
 
@@ -65,6 +72,11 @@ def test_json_has_connector(parsed):
     assert parsed["buttons"][0]["connector"] == ["pmod", 0]
 
 
+def test_json_has_port_conventions(parsed):
+    assert parsed["port_conventions"]["terasic"]["clk"] == "CLOCK_50"
+    assert parsed["port_conventions"]["terasic"]["leds"] == {"name": "LEDR", "width": 1}
+
+
 @pytest.fixture(scope="module")
 def round_tripped(serialized):
     return BoardDef.from_json(serialized)
@@ -96,3 +108,29 @@ def test_roundtrip_led_pin(round_tripped):
 
 def test_roundtrip_btn_connector(round_tripped):
     assert round_tripped.buttons[0].connector == ("pmod", 0)
+
+
+def test_roundtrip_port_conventions(round_tripped):
+    # U21 B1: conventions survive the to_json -> from_json round-trip verbatim
+    # (the same trip the launcher -> subprocess handoff makes via FPGA_SIM_BOARD_JSON).
+    assert round_tripped.port_conventions == {
+        "terasic": {
+            "clk": "CLOCK_50",
+            "leds": {"name": "LEDR", "width": 1},
+            "naming": "canonical",
+        }
+    }
+
+
+def test_board_without_conventions_roundtrips_to_empty_mapping():
+    # A board that declares no conventions gets an empty mapping, not None --
+    # both freshly constructed and after a serialization round-trip.
+    board = BoardDef(name="Bare", class_name="Bare")
+    assert board.port_conventions == {}
+    assert BoardDef.from_json(board.to_json()).port_conventions == {}
+
+
+def test_from_json_treats_null_port_conventions_as_empty():
+    # An explicit "port_conventions": null on disk must not become None.
+    raw = json.dumps({"name": "N", "class_name": "N", "port_conventions": None})
+    assert BoardDef.from_json(raw).port_conventions == {}
