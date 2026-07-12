@@ -203,9 +203,10 @@ polarity (and DE1-SoC's canonical clock):
 The other seven Wave-1 rows stay listed in `waves.toml` (they self-include once fixed) but are
 held back, each with a recorded reason:
 
-- **DE0** — rank-1 QSF's 7-seg is `HEXn_D[6:0]` + `HEXn_DP`; the A2 classifier collapses it to a
-  degenerate `packed_vector` instead of 4 individual digits. Needs classifier support for that
-  per-digit naming variant (A2 follow-up).
+- **DE0** — **RESCUED** (System-CD follow-up, PR below): the A2 classifier learned the split
+  `HEXn_D[6:0]` + `HEXn_DP` per-digit style (→ `individual`) and now routes a green-only LED bank
+  (`LEDG`) to `leds`; clk pinned to `CLOCK_50` via overlay. Names are golden-top-confirmed
+  canonical, so it uses the standard naming vouch. Now populated in Wave 1.
 - **DE10-Lite** — **RESCUED** (System-CD follow-up, PR below): its rank-1 course QSF renames
   `LEDR`→`LED` and `MAX10_CLK1_50`→`Clk`; a cited overlay resource-name override (verified against
   the DE10-Lite System CD v2.2.0 golden top) restores both to canonical, admitted by the new
@@ -242,12 +243,13 @@ unlock boards the registry can't currently populate:
   canonical, and the new `_overlay_supplies_cited_canonical_names` gate bypass admits the board.
   HEX ships 7-bit (segments only, per the source), matching DE0-CV/DE1-SoC.
 - **DE0** (original Cyclone III — a *different* board from DE0-CV: EP3C16 vs 5CEBA4, 3 buttons vs 4,
-  4 digits vs 6) — official DE0 CD-ROM v1.1 golden top (`DE0_Default.qsf`) confirms canonical
-  `LEDG`(10) / `SW`(10) / `BUTTON`(3) / `CLOCK_50` + four 7-seg digits named `HEXn_D[6:0]` **plus a
-  separate `HEXn_DP` scalar** per digit. LEDG/SW/BUTTON populate fine; the blocker is that A2's
-  classifier collapses `HEXn_D` into a degenerate `packed_vector`. Needs A2 support for the
-  `<name>_D[k]` + `<name>_DP` per-digit style (7 segments + a separate DP scalar → the sim's 8-bit
-  `{dp,g,f,e,d,c,b,a}` digit) — a reusable older-Terasic convention, not DE0-only.
+  4 digits vs 6) — **DONE (this follow-up's second PR).** Official DE0 CD-ROM v1.1 golden top
+  (`DE0_Default.qsf`) confirms canonical `LEDG`(10) / `SW`(10) / `BUTTON`(3) / `CLOCK_50` + four
+  7-seg digits `HEXn_D[6:0]` **plus a separate `HEXn_DP` scalar**. Two `classify.py` additions
+  landed it: a split `<name>_D[k]`+`_DP` per-digit branch (→ `individual` over the `_D` ports, the
+  DP recognized-but-unlisted → the sim's 8th bit stays unused, as on the bare-`HEXn` boards) and
+  green-only-bank → `leds` routing. Names are canonical verbatim in the source, so standard naming
+  vouch + a clk overlay (classify mis-picks `GPIO0_CLKIN`). Reusable older-Terasic convention.
 - **DE23-Lite, DE25-Standard, VEEK-MT2** — registry `candidate`/PDF-gated (no machine-parseable
   source today); their Resource-Package golden tops carry clean canonical `LEDR`/`SW`/`KEY`/`HEX`
   (VEEK-MT2: 27 LEDs = LEDR18 + LEDG9, 8 digits). Authoritative source for validating/completing
@@ -261,10 +263,10 @@ Locked Decision #1). This also addresses the model gap that Terasic's best sourc
 ZIP, not a raw URL. A **second, independent mechanism** is needed for DE0: teach the A2 classifier
 the `<name>_D[k]` + `<name>_DP` per-digit 7-seg style (see the DE0 bullet). **Scope:** small
 additive `apply_overlay` name-override + the A2 classifier extension + tests, then a data wave;
-its own PR(s), not folded into A4. **Status:** the `apply_overlay` name-override + the
-`_overlay_supplies_cited_canonical_names` gate bypass + the DE10-Lite rescue shipped as this
-follow-up's first PR; the A2 classifier `<name>_D`/`_DP` extension (DE0) and the DE23/DE25/VEEK
-read-only validation are the remaining pieces.
+its own PR(s), not folded into A4. **Status:** PR 1 shipped the `apply_overlay` name-override +
+the `_overlay_supplies_cited_canonical_names` gate bypass + DE10-Lite; PR 2 shipped the A2
+`<name>_D`/`_DP` classifier extension + green-only-LED routing + DE0. **Remaining:** the
+DE23/DE25/VEEK read-only validation against the golden tops.
 
 ---
 

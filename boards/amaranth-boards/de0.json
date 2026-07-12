@@ -326,5 +326,41 @@
     "upstream_file": "de0.py",
     "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
     "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+  },
+  "port_conventions": {
+    "terasic": {
+      "clk": "CLOCK_50",
+      "leds": {
+        "name": "LEDG",
+        "width": 10
+      },
+      "switches": {
+        "name": "SW",
+        "width": 10
+      },
+      "buttons": {
+        "name": "BUTTON",
+        "width": 3,
+        "active_low": true
+      },
+      "seven_seg": {
+        "style": "individual",
+        "names": [
+          "HEX0_D",
+          "HEX1_D",
+          "HEX2_D",
+          "HEX3_D"
+        ],
+        "width_per_digit": 7,
+        "active_low": true
+      },
+      "description": "Cyclone III (EP3C16F484C6). NOTE: uses LEDG (green LEDs) not LEDR; BUTTON naming vs KEY convention.",
+      "naming": "canonical",
+      "source": {
+        "url": "https://raw.githubusercontent.com/thomasrussellmurphy/quartus-DE0-project/48c001b66cf4bd22dfda6a860ae4e601b0720b06/DE0_TOP/DE0_TOP.qsf",
+        "retrieved": "2026-07-12",
+        "registry_board": "DE0"
+      }
+    }
   }
 }
