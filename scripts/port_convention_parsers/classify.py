@@ -2,9 +2,11 @@
 
 Produces a ``port_convention``-shaped dict (``clk``/``leds``/``leds_green``/
 ``switches``/``buttons``/``seven_seg``) from a :class:`PortTable`. ``leds_green``
-(Terasic-style secondary LED bank, e.g. DE2-115's ``LEDG``) is detected the
-same way as the primary ``leds`` bank, just matched on the more specific
-``ledg`` substring so it can never win the primary slot by count.
+(a Terasic-style *secondary* LED bank, e.g. DE2-115's ``LEDG`` alongside its red
+``LEDR``) is matched on the more specific ``ledg`` substring so it can never win
+the primary ``leds`` slot by count. A board whose *only* LED bank is green
+(e.g. DE0's lone ``LEDG``) has no separate primary, so that bank becomes ``leds``
+and ``leds_green`` is absent.
 
 This module knows nothing about QSF/XDC/UCF/etc. syntax — it only looks at
 already-extracted ``(port, pin)`` pairs and reasons about *names*. That is a
@@ -65,6 +67,13 @@ _RE_DIRECTION_BUTTON = re.compile(r"^(.+?)([CUDLRcudlr])$")
 # per-digit-per-segment-letter suffix (Nandland-style o_Segment1_A).
 _RE_DIGIT_THEN_BRACKET = re.compile(r"^(.*?[A-Za-z_])(\d+)\[(\d+)\]$")
 _RE_DIGIT_THEN_LETTER = re.compile(r"^(.+?)(\d+)_?([A-Ga-g])$")
+
+# Older-Terasic split per-digit 7-seg: a 7-bit segment vector `<prefix><n>_D[k]`
+# plus a separate decimal-point scalar `<prefix><n>_DP` (e.g. DE0's HEX0_D[6:0]
+# + HEX0_DP). The `_D` sits between the digit and the bracket, so these never
+# match `_RE_DIGIT_THEN_BRACKET`.
+_RE_DIGIT_D_SEGMENT = re.compile(r"^(.*?)(\d+)_[Dd]\[(\d+)\]$")
+_RE_DIGIT_DP = re.compile(r"^(.*?)(\d+)_[Dd][Pp]$")
 
 
 def _strip_index(name: str) -> str:
@@ -221,6 +230,38 @@ def _classify_individual_seven_seg(seg_names: list[str]) -> dict[str, Any] | Non
     return {"style": "individual", "names": names, "width_per_digit": widths.pop()}
 
 
+def _classify_split_dp_seven_seg(seg_names: list[str]) -> dict[str, Any] | None:
+    """Split per-digit style: a `<prefix><n>_D[k]` segment vector + separate `_DP` scalar.
+
+    Older Terasic boards (e.g. DE0) drive each digit's 7 segments through a
+    vector port `HEX0_D[6:0]` and its decimal point through a companion scalar
+    `HEX0_DP`. Reported as ``individual`` over the segment-vector ports (which is
+    what the sim drives); the `_DP` scalars are recognized so they don't derail
+    classification, but stay out of the block -- the sim's 8th (dp) bit is simply
+    unused for this style, matching how the bare-`HEXn` boards ship 7-bit here.
+    """
+    segments: dict[str, dict[int, list[int]]] = {}  # prefix -> digit -> [segment index]
+    bases: dict[tuple[str, int], str] = {}  # (prefix, digit) -> the actual port name
+    for name in seg_names:
+        seg_m = _RE_DIGIT_D_SEGMENT.match(name)
+        if seg_m:
+            prefix, digit = seg_m.group(1), int(seg_m.group(2))
+            segments.setdefault(prefix, {}).setdefault(digit, []).append(int(seg_m.group(3)))
+            bases[(prefix, digit)] = _strip_index(name)
+            continue
+        if _RE_DIGIT_DP.match(name):
+            continue  # companion decimal-point scalar
+        return None  # a seg name fitting neither shape -> not this style
+    if len(segments) != 1:
+        return None
+    ((prefix, per_digit),) = segments.items()
+    widths = {len(idxs) for idxs in per_digit.values()}
+    if len(widths) != 1:
+        return None
+    names = [bases[(prefix, d)] for d in sorted(per_digit)]
+    return {"style": "individual", "names": names, "width_per_digit": widths.pop()}
+
+
 def _classify_per_segment_scalars(seg_names: list[str]) -> dict[str, Any] | None:
     """Per-digit-per-segment scalars, e.g. Nandland Go's ``o_Segment1_A..G``."""
     prefixes: set[str] = set()
@@ -251,6 +292,10 @@ def _classify_seven_seg(table: PortTable) -> dict[str, Any] | None:
     individual = _classify_individual_seven_seg(seg_names)
     if individual:
         return individual
+
+    split_dp = _classify_split_dp_seven_seg(seg_names)
+    if split_dp:
+        return split_dp
 
     scalars = _classify_per_segment_scalars(seg_names)
     if scalars:
@@ -288,11 +333,19 @@ def classify(table: PortTable) -> dict[str, Any]:
     if clk:
         result["clk"] = clk
 
-    leds = _vector_or_scalar(_matching_ports(table, _is_led))
+    led_names = _matching_ports(table, _is_led)
+    green_names = _matching_ports(table, _is_leds_green)
+    if not led_names and green_names:
+        # A board whose only LED bank is green (e.g. DE0's LEDG) -- the green
+        # bank IS the primary `leds`. `leds_green` is only for a *secondary*
+        # green bank alongside a primary (red) one (e.g. DE2-115's LEDR + LEDG).
+        led_names, green_names = green_names, []
+
+    leds = _vector_or_scalar(led_names)
     if leds:
         result["leds"] = leds
 
-    leds_green = _vector_or_scalar(_matching_ports(table, _is_leds_green))
+    leds_green = _vector_or_scalar(green_names)
     if leds_green:
         result["leds_green"] = leds_green
 

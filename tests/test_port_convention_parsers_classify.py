@@ -58,6 +58,15 @@ def test_leds_green_never_wins_the_primary_leds_slot_even_if_larger() -> None:
     assert result["leds_green"] == {"name": "LEDG", "width": 10}
 
 
+def test_green_only_led_bank_is_the_primary_leds() -> None:
+    # DE0 has only green LEDs (LEDG). With no red bank, the green bank IS the
+    # primary `leds`; leds_green is only for a secondary bank alongside a red one.
+    names = {f"LEDG[{i}]": f"G{i}" for i in range(10)}
+    result = classify(_table(names))
+    assert result["leds"] == {"name": "LEDG", "width": 10}
+    assert "leds_green" not in result
+
+
 def test_single_scalar_led_and_switch_get_width_one() -> None:
     # Pipistrello's lone "SWITCH" and rv901t's lone "user_led" (see the UCF
     # parser fixtures) are single scalar ports, not vectors.
@@ -128,6 +137,20 @@ def test_seven_seg_individual_style_two_digits() -> None:
         "style": "individual",
         "names": ["HEX0", "HEX1"],
         "width_per_digit": 3,
+    }
+
+
+def test_seven_seg_split_dp_style_is_individual_over_segment_ports() -> None:
+    # DE0 shape: each digit is a 7-bit segment vector HEXn_D[6:0] plus a separate
+    # HEXn_DP scalar. Reported as `individual` over the segment ports; the DP
+    # scalars are recognized (so they don't derail classification) but not listed.
+    names = {f"HEX{d}_D[{s}]": f"P{d}{s}" for d in range(4) for s in range(7)}
+    names |= {f"HEX{d}_DP": f"D{d}" for d in range(4)}
+    result = classify(_table(names))
+    assert result["seven_seg"] == {
+        "style": "individual",
+        "names": ["HEX0_D", "HEX1_D", "HEX2_D", "HEX3_D"],
+        "width_per_digit": 7,
     }
 
 

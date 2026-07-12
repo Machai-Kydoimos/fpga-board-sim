@@ -117,8 +117,10 @@ notes = "Cyclone III (EP3C16F484C6). NOTE: uses LEDG (green LEDs) not LEDR; BUTT
   leds = "LEDG[0..9] (green, not red)"
   buttons = "BUTTON[0..2]"
   switches = "SW[0..9]"
-  seven_seg = "HEX0..HEX3, 7 bits per digit"
+  seven_seg = "HEX0..HEX3, 7 bits per digit (HEXn_D[6:0] + separate HEXn_DP scalar)"
   active_low = "not visible in this source"
+  naming = "canonical"
+  naming_cite = "DE0's port names (LEDG / SW / BUTTON / CLOCK_50, and per-digit HEXn_D[6:0] + HEXn_DP) are the vendor-canonical names, confirmed field-for-field against the official DE0 CD-ROM v1.1 golden top (Demonstrations/DE0_Default/DE0_Default.qsf) -- this community QSF uses them verbatim, no rename. cite-not-copy: the fact is recorded, not the copyrighted QSF."
   evidence = ["set_location_assignment PIN_B1 -to LEDG[9]", "set_location_assignment PIN_H2 -to BUTTON[0]", "Cyclone III era board (earlier than CV); uses LEDG instead of LEDR"]
 
 [[board]]

@@ -166,6 +166,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   label, not a port-name-accuracy one. Data-only for the board fleet; DE0 (needs an A2 `HEXn_D`/`_DP`
   classifier extension) and the candidate boards DE23-Lite / DE25-Standard / VEEK-MT2 remain for later
   System-CD-wave PRs (U21 arc)
+- **U21 DE0 board-native rescue + split-DP 7-seg classifier (A4 System-CD follow-up).** DE0 (the
+  original Cyclone III board, distinct from DE0-CV) now ships a canonical `port_conventions.terasic`
+  block, so a board-native DE0 design (`CLOCK_50` / `SW` / `BUTTON` / `LEDG` / `HEX0_D`..`HEX3_D`) is
+  recognized by the B2 matcher. Two additive `classify.py` fixes: (1) a split per-digit 7-seg branch
+  reads `<prefix><n>_D[6:0]` segment vectors + companion `<prefix><n>_DP` scalars (an older Terasic
+  style) as `individual` over the segment ports (the `_DP` decimal points are recognized but
+  unmodeled — 7-bit, as on the bare-`HEXn` boards); (2) a green-only LED bank (DE0's `LEDG`, with no
+  red `LEDR`) now populates the primary `leds` slot instead of `leds_green` (which stays reserved for
+  a *secondary* green bank alongside a red one, e.g. DE2-115). DE0's names are vendor-canonical
+  verbatim (golden-top-confirmed), so it takes the standard cited naming vouch plus a `clk` overlay
+  (classify() otherwise mis-picks `GPIO0_CLKIN`). cite-not-copy. Data-only for the board fleet
+  (U21 arc)
 
 ## [0.13.0] - 2026-07-11
 
