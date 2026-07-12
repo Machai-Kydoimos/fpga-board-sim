@@ -109,6 +109,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that shape instead of declining — real port names, not a fabrication —
   while two genuinely unrelated scalar names with no common prefix (GateMate's
   `FPGA_LED`/`JTAG_LED`) still correctly yield nothing (U21 arc)
+- **`sync_port_conventions.py` trusts `boards/custom/` targets (U21 arc, pre-A4-Wave-1
+  refinement).** The generator's row gate now skips its `kind` check (but not
+  `status`/wave-membership) for any registry row whose `files[]` includes a
+  `boards/custom/` target — that directory is where a human has already verified
+  a board's port names against real vendor documentation, which is a stronger
+  trust signal than the registry's `kind` field (a hosting-location fact, not an
+  accuracy one). Confirmed empirically: DE10-Standard and DE2-115 now pass the
+  real gate rather than needing `--board` to force them through, and A3's
+  hand-authored regression test was updated to prove exactly that (U21 arc)
 
 ## [0.13.0] - 2026-07-11
 

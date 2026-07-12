@@ -54,6 +54,39 @@ def test_row_gate_rejects_untrusted_kind() -> None:
     assert "community" in gate.reason
 
 
+def test_row_gate_untrusted_kind_passes_when_targeting_a_custom_board() -> None:
+    # boards/custom/ is where a human already verified port names against
+    # real vendor docs -- that's the trust signal, not the registry's
+    # kind label (a hosting-location fact, not an accuracy one). Confirmed
+    # by Rick 2026-07-12: DE10-Standard/DE2-115 are exactly this case.
+    row = _row(
+        files=["custom/some_board.json"],
+        source=[{"rank": 1, "kind": "community", "format": "QSF", "fetched": True, "url": "u"}],
+    )
+    gate = spc.check_row_gate(row, waves={"Test Board"})
+    assert gate.ok
+
+
+def test_row_gate_custom_board_exemption_does_not_bypass_status_or_wave() -> None:
+    # Only the `kind` check is exempted for boards/custom/ targets --
+    # status/wave-membership are unrelated to that reasoning and still apply.
+    custom_row = _row(files=["custom/some_board.json"], status="candidate")
+    assert not spc.check_row_gate(custom_row, waves={"Test Board"}).ok
+    custom_row_2 = _row(files=["custom/some_board.json"])
+    assert not spc.check_row_gate(custom_row_2, waves=set()).ok
+
+
+def test_row_gate_custom_board_exemption_requires_at_least_one_custom_file() -> None:
+    # A row with no boards/custom/ target at all still needs a trusted kind --
+    # e.g. DE2-115's second file (litex-boards/...) doesn't itself grant trust,
+    # the row does, via its *other* (custom/) target.
+    row = _row(
+        files=["litex-boards/some_board.json"],
+        source=[{"rank": 1, "kind": "community", "format": "QSF", "fetched": True, "url": "u"}],
+    )
+    assert not spc.check_row_gate(row, waves={"Test Board"}).ok
+
+
 def test_row_gate_rejects_board_not_in_any_wave() -> None:
     gate = spc.check_row_gate(_row(), waves=set())
     assert not gate.ok
@@ -625,9 +658,10 @@ def test_hand_authored_terasic_regression(monkeypatch: pytest.MonkeyPatch, tmp_p
     """New pipeline + a cited overlay entry reproduce Rick's hand-authored DE10-Standard block.
 
     DE10-Standard's registry row is rank-1 kind "community" (not
-    vendor-official/official-repo), so this forces it through like
-    ``--board`` would -- the trust gate is a separate, deliberate concern
-    from "does the tool produce correct output given a source."
+    vendor-official/official-repo) -- ordinarily gated out, but its
+    files[] target lives in boards/custom/, which is itself the trust
+    signal (a human already verified it against vendor docs), so this
+    passes the *real* (unforced) gate rather than needing ``--board``.
     """
     monkeypatch.setattr(spc, "BOARDS_DIR", tmp_path)
     board_dir = tmp_path / "custom"
@@ -678,7 +712,7 @@ def test_hand_authored_terasic_regression(monkeypatch: pytest.MonkeyPatch, tmp_p
         }
     }
     result = spc.process_board(
-        "DE10-Standard", row, overlay=overlay, force=True, waves=set(), cache_dir=None
+        "DE10-Standard", row, overlay=overlay, force=False, waves={"DE10-Standard"}, cache_dir=None
     )
 
     assert result.skipped is None

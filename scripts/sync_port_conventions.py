@@ -14,8 +14,10 @@ one target can be written while a sibling target is skipped.
 
 Trust gate (a board only reaches a write if *all* of these hold, unless
 ``--board`` forces it): registry ``status == "verified"``, a rank-1 source
-of ``kind`` in ``vendor-official``/``official-repo``, a fetched source in a
-dialect this package parses, and the board listed in
+of ``kind`` in ``vendor-official``/``official-repo`` (or a `files[]` target
+under ``boards/custom/``, whose hand-verified-against-vendor-docs status is
+itself the trust signal -- see `_targets_a_custom_board`), a fetched source
+in a dialect this package parses, and the board listed in
 `docs/port_convention_sources/waves.toml`. ``--board`` overrides trust,
 never correctness -- a width mismatch always skips that target file
 regardless.
@@ -128,6 +130,23 @@ class GateResult:
     rank1: dict[str, Any] | None = None
 
 
+def _targets_a_custom_board(row: dict[str, Any]) -> bool:
+    """Return whether any of `row`'s files[] targets live under boards/custom/.
+
+    ``boards/custom/`` (per CLAUDE.md: "manually maintained boards") is
+    where a human has independently verified a board's port names against
+    real vendor documentation -- that already happened for e.g. DE10-Standard
+    and DE2-115 (confirmed by Rick 2026-07-12), regardless of what the
+    registry's own ``kind`` field says about *where the constraint file
+    happens to be hosted*. ``kind`` is a hosting-location label, not an
+    accuracy label -- A3 already proved this empirically, twice, by
+    reproducing those two boards' hand-authored blocks field-for-field from
+    community-hosted course QSFs. A board living in boards/custom/ is the
+    trust signal itself; it doesn't need a second one from ``kind``.
+    """
+    return any(f.startswith("custom/") for f in row.get("files", []))
+
+
 def check_row_gate(row: dict[str, Any], waves: set[str], *, force: bool = False) -> GateResult:
     """Decide whether `row` may be processed.
 
@@ -136,6 +155,11 @@ def check_row_gate(row: dict[str, Any], waves: set[str], *, force: bool = False)
     curation or regression-testing ahead of (or regardless of) its trust
     tier -- but never bypasses having a usable, structured-format source:
     there is nothing to parse otherwise, forced or not.
+
+    Independently of `force`, a row that targets a board in
+    ``boards/custom/`` skips the ``kind`` check specifically (see
+    `_targets_a_custom_board`) -- `status`/wave-membership still apply, since
+    those weren't part of that reasoning and stay meaningful regardless.
     """
     sources = row.get("source", [])
     rank1 = next((s for s in sources if s.get("rank") == 1), None)
@@ -151,7 +175,7 @@ def check_row_gate(row: dict[str, Any], waves: set[str], *, force: bool = False)
 
     if row.get("status") != "verified":
         return GateResult(False, f"status is {row.get('status')!r}, not verified")
-    if rank1.get("kind") not in _TRUSTED_KINDS:
+    if rank1.get("kind") not in _TRUSTED_KINDS and not _targets_a_custom_board(row):
         return GateResult(False, f"rank-1 kind is {rank1.get('kind')!r}")
     if row["name"] not in waves:
         return GateResult(False, "not listed in any wave")
