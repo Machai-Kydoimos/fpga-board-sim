@@ -1118,8 +1118,8 @@ def test_generated_design_passes_contract_and_lists_all_entities():
         probe.write_text(generated)
         ok, msg = check_vhdl_encoding(probe)
         assert ok, msg
-        ok, msg = check_vhdl_contract(probe)
-        assert ok, msg
+        res = check_vhdl_contract(probe)
+        assert res.ok, res.message
 
 
 def test_memory_map_drives_widths_and_decode():

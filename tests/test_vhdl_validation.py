@@ -20,6 +20,18 @@ from tests.conftest import _7seg_board, _plain_board
 
 HDL = Path(__file__).resolve().parent.parent / "hdl"
 
+
+def _contract(path: str | Path, board_def: BoardDef | None = None) -> tuple[bool, str]:
+    """(ok, message) from check_vhdl_contract, for the generic-contract assertions.
+
+    U21 B2 changed check_vhdl_contract to return a ContractResult; the tests here
+    assert only the ok/message the generic contract has always produced.  The typed
+    result and its .match field are covered in tests/test_convention_matcher.py.
+    """
+    res = check_vhdl_contract(path, board_def=board_def)
+    return res.ok, res.message
+
+
 GOOD_BLINKYS = [
     "blinky.vhd",
     "blinky_alt.vhd",
@@ -60,18 +72,18 @@ def test_bad_semantic_passes_stage1():
 
 @pytest.mark.parametrize("filename", GOOD_BLINKYS)
 def test_good_blinky_contract_pass(filename):
-    ok, msg = check_vhdl_contract(HDL / filename)
+    ok, msg = _contract(HDL / filename)
     assert ok, f"Unexpected contract failure in {filename}: {msg}"
 
 
 def test_bad_contract_fails_stage2():
-    ok, msg = check_vhdl_contract(HDL / "bad_contract_blinky.vhdl")
+    ok, msg = _contract(HDL / "bad_contract_blinky.vhdl")
     assert not ok, "Expected contract check to fail on mismatched entity"
     assert "mismatch" in msg.lower()
 
 
 def test_bad_semantic_passes_stage2():
-    ok, msg = check_vhdl_contract(HDL / "bad_semantic_blinky.vhdl")
+    ok, msg = _contract(HDL / "bad_semantic_blinky.vhdl")
     assert ok, f"Unexpected contract failure: {msg}"
 
 
@@ -105,14 +117,14 @@ def test_bad_encoding_error_names_the_bom():
 
 def test_bad_contract_error_names_found_entity():
     """Mismatch error must include the entity name that was found in the file."""
-    _, msg = check_vhdl_contract(HDL / "bad_contract_blinky.vhdl")
+    _, msg = _contract(HDL / "bad_contract_blinky.vhdl")
     # entity is 'blinky'; error must say so
     assert "blinky" in msg
 
 
 def test_bad_contract_error_names_expected_stem():
     """Mismatch error must include the filename stem so the user knows the fix."""
-    _, msg = check_vhdl_contract(HDL / "bad_contract_blinky.vhdl")
+    _, msg = _contract(HDL / "bad_contract_blinky.vhdl")
     assert "bad_contract_blinky" in msg
 
 
@@ -135,7 +147,7 @@ def test_bad_7seg_missing_seg_passes_stage1():
 
 def test_bad_7seg_missing_seg_fails_stage2():
     """NUM_SEGS generic without a seg port must be rejected by the contract checker."""
-    ok, msg = check_vhdl_contract(HDL / "bad_contract_7seg_missing_seg.vhdl")
+    ok, msg = _contract(HDL / "bad_contract_7seg_missing_seg.vhdl")
     assert not ok, "Expected contract check to fail: NUM_SEGS declared but no seg port"
     assert "NUM_SEGS" in msg
     assert "seg" in msg.lower()
@@ -143,7 +155,7 @@ def test_bad_7seg_missing_seg_fails_stage2():
 
 def test_bad_7seg_missing_seg_error_names_fix():
     """The missing-seg error must suggest the correct port declaration."""
-    _, msg = check_vhdl_contract(HDL / "bad_contract_7seg_missing_seg.vhdl")
+    _, msg = _contract(HDL / "bad_contract_7seg_missing_seg.vhdl")
     assert "8 * NUM_SEGS" in msg
 
 
@@ -155,7 +167,7 @@ def test_bad_7seg_extra_seg_passes_stage1():
 
 def test_bad_7seg_extra_seg_passes_stage2():
     """bad_contract_7seg_extra_seg.vhdl must pass the contract check (seg port present)."""
-    ok, msg = check_vhdl_contract(HDL / "bad_contract_7seg_extra_seg.vhdl")
+    ok, msg = _contract(HDL / "bad_contract_7seg_extra_seg.vhdl")
     assert ok, f"Unexpected contract rejection: {msg}"
 
 
@@ -198,25 +210,25 @@ def test_bad_7seg_extra_seg_passes_stage3_on_plain_board_nvc(nvc):
 
 def test_7seg_board_accepts_standard_design():
     """A 7-seg board must accept a standard design (segments will be dark)."""
-    ok, msg = check_vhdl_contract(HDL / "blinky.vhd", board_def=_7seg_board())
+    ok, msg = _contract(HDL / "blinky.vhd", board_def=_7seg_board())
     assert ok, f"Unexpected rejection: {msg}"
 
 
 def test_non7seg_board_accepts_7seg_design():
     """A non-7-seg board must accept a 7-seg design (seg output ignored)."""
-    ok, msg = check_vhdl_contract(HDL / "counter_7seg.vhd", board_def=_plain_board())
+    ok, msg = _contract(HDL / "counter_7seg.vhd", board_def=_plain_board())
     assert ok, f"Unexpected rejection: {msg}"
 
 
 def test_7seg_board_accepts_7seg_design():
     """A 7-seg board must accept a design with a seg port."""
-    ok, _ = check_vhdl_contract(HDL / "counter_7seg.vhd", board_def=_7seg_board())
+    ok, _ = _contract(HDL / "counter_7seg.vhd", board_def=_7seg_board())
     assert ok
 
 
 def test_non7seg_board_accepts_standard_design():
     """A non-7-seg board with no board_def must accept a standard design."""
-    ok, _ = check_vhdl_contract(HDL / "blinky.vhd", board_def=None)
+    ok, _ = _contract(HDL / "blinky.vhd", board_def=None)
     assert ok
 
 
@@ -323,7 +335,7 @@ def test_fixed_width_fixture_encoding_clean():
 
 
 def test_fixed_width_fixture_fails_stage2_with_board():
-    ok, msg = check_vhdl_contract(HDL / "bad_contract_fixed_width.vhdl", board_def=_plain_board())
+    ok, msg = _contract(HDL / "bad_contract_fixed_width.vhdl", board_def=_plain_board())
     assert not ok, "Expected contract check to reject fixed 16-bit led with a board selected"
     assert "led" in msg
     assert "16" in msg
@@ -332,15 +344,13 @@ def test_fixed_width_fixture_fails_stage2_with_board():
 
 def test_fixed_width_fixture_passes_stage2_without_board():
     """Without a board the fixed width cannot be judged at stage 2."""
-    ok, msg = check_vhdl_contract(HDL / "bad_contract_fixed_width.vhdl")
+    ok, msg = _contract(HDL / "bad_contract_fixed_width.vhdl")
     assert ok, f"Unexpected rejection: {msg}"
 
 
 def test_fixed_width_mismatch_message_names_board_and_count():
     """The flagship U4 message: board name, its LED count, and the generic fix."""
-    _, msg = check_vhdl_contract(
-        HDL / "bad_contract_fixed_width.vhdl", board_def=_rich_7seg_board()
-    )
+    _, msg = _contract(HDL / "bad_contract_fixed_width.vhdl", board_def=_rich_7seg_board())
     assert "DE10-Lite" in msg
     assert "10 LEDs" in msg
     assert "NUM_LEDS=10" in msg
@@ -356,7 +366,7 @@ def test_fixed_width_matching_board_but_not_default_rejected(tmp_path):
         "    led : out std_logic_vector(9 downto 0)"
     )
     f = _write(tmp_path, "ten_led", _design("ten_led", ports=ports))
-    ok, msg = check_vhdl_contract(f, board_def=_rich_7seg_board())
+    ok, msg = _contract(f, board_def=_rich_7seg_board())
     assert not ok
     assert "matches" in msg.lower()
     assert "NUM_LEDS" in msg
@@ -371,7 +381,7 @@ def test_fixed_width_equal_to_default_and_board_accepted(tmp_path):
         "    led : out std_logic_vector(3 downto 0)"
     )
     f = _write(tmp_path, "four_led", _design("four_led", ports=ports))
-    ok, msg = check_vhdl_contract(f, board_def=_four_led_board())
+    ok, msg = _contract(f, board_def=_four_led_board())
     assert ok, f"Unexpected rejection: {msg}"
 
 
@@ -392,7 +402,7 @@ def test_fixed_seg_width_mismatch_names_digits(tmp_path):
         "    seg : out std_logic_vector(31 downto 0)"
     )
     f = _write(tmp_path, "seg32", _design("seg32", generics=generics, ports=ports))
-    ok, msg = check_vhdl_contract(f, board_def=_rich_7seg_board())
+    ok, msg = _contract(f, board_def=_rich_7seg_board())
     assert not ok
     assert "6-digit" in msg
     assert "48" in msg
@@ -416,7 +426,7 @@ def test_fixed_seg_width_ignored_on_plain_board(tmp_path):
         "    seg : out std_logic_vector(31 downto 0)"
     )
     f = _write(tmp_path, "seg32p", _design("seg32p", generics=generics, ports=ports))
-    ok, msg = check_vhdl_contract(f, board_def=_plain_board())
+    ok, msg = _contract(f, board_def=_plain_board())
     assert ok, f"Unexpected rejection: {msg}"
 
 
@@ -430,7 +440,7 @@ def test_wrong_direction_fixture_encoding_clean():
 
 def test_wrong_direction_fixture_fails_stage2():
     """led : in must be rejected — GHDL/NVC accept it silently, so this is the only guard."""
-    ok, msg = check_vhdl_contract(HDL / "bad_contract_wrong_direction.vhdl")
+    ok, msg = _contract(HDL / "bad_contract_wrong_direction.vhdl")
     assert not ok, "Expected contract check to reject led with mode IN"
     assert "OUT" in msg
     assert "led : out std_logic_vector(NUM_LEDS - 1 downto 0)" in msg
@@ -444,7 +454,7 @@ def test_wrong_direction_sw_out_fails(tmp_path):
         "    led : out std_logic_vector(NUM_LEDS - 1 downto 0)"
     )
     f = _write(tmp_path, "sw_out", _design("sw_out", ports=ports))
-    ok, msg = check_vhdl_contract(f)
+    ok, msg = _contract(f)
     assert not ok
     assert "'sw'" in msg
     assert "IN" in msg
@@ -460,7 +470,7 @@ def test_missing_generic_is_fatal(tmp_path):
         "    NUM_LEDS     : positive := 4"
     )
     f = _write(tmp_path, "no_cb", _design("no_cb", generics=generics))
-    ok, msg = check_vhdl_contract(f)
+    ok, msg = _contract(f)
     assert not ok, "Expected contract check to reject a design without COUNTER_BITS"
     assert "COUNTER_BITS" in msg
     assert "generic (" in msg  # the message shows the full block to add
@@ -478,7 +488,7 @@ def test_missing_all_generics_lists_them(tmp_path):
         "architecture rtl of bare is begin led <= sw; end architecture;\n"
     )
     f = _write(tmp_path, "bare", text)
-    ok, msg = check_vhdl_contract(f)
+    ok, msg = _contract(f)
     assert not ok
     for g in ("NUM_SWITCHES", "NUM_BUTTONS", "NUM_LEDS", "COUNTER_BITS"):
         assert g in msg
@@ -496,7 +506,7 @@ def test_extra_input_port_without_default_fails(tmp_path):
         "    led : out std_logic_vector(NUM_LEDS - 1 downto 0)"
     )
     f = _write(tmp_path, "with_rst", _design("with_rst", ports=ports))
-    ok, msg = check_vhdl_contract(f)
+    ok, msg = _contract(f)
     assert not ok
     assert "'rst'" in msg
     assert ":= '0'" in msg  # suggests the default-value fix
@@ -511,7 +521,7 @@ def test_extra_input_port_with_default_passes(tmp_path):
         "    led : out std_logic_vector(NUM_LEDS - 1 downto 0)"
     )
     f = _write(tmp_path, "with_rst_d", _design("with_rst_d", ports=ports))
-    ok, msg = check_vhdl_contract(f)
+    ok, msg = _contract(f)
     assert ok, f"Unexpected rejection: {msg}"
 
 
@@ -524,7 +534,7 @@ def test_extra_output_port_passes(tmp_path):
         "    dbg : out std_logic"
     )
     f = _write(tmp_path, "with_dbg", _design("with_dbg", ports=ports))
-    ok, msg = check_vhdl_contract(f)
+    ok, msg = _contract(f)
     assert ok, f"Unexpected rejection: {msg}"
 
 
@@ -537,7 +547,7 @@ def test_extra_generic_without_default_fails(tmp_path):
         "    MY_PARAM     : positive"
     )
     f = _write(tmp_path, "gen_nd", _design("gen_nd", generics=generics))
-    ok, msg = check_vhdl_contract(f)
+    ok, msg = _contract(f)
     assert not ok
     assert "'my_param'" in msg
 
@@ -552,7 +562,7 @@ def test_extra_generic_with_default_passes(tmp_path):
         "    PRESCALER_BITS : positive := 16"
     )
     f = _write(tmp_path, "gen_d", _design("gen_d", generics=generics))
-    ok, msg = check_vhdl_contract(f)
+    ok, msg = _contract(f)
     assert ok, f"Unexpected rejection: {msg}"
 
 
@@ -568,7 +578,7 @@ def test_seg_without_num_segs_fails_on_7seg_board(tmp_path):
         "    seg : out std_logic_vector(31 downto 0)"
     )
     f = _write(tmp_path, "seg_ng", _design("seg_ng", ports=ports))
-    ok, msg = check_vhdl_contract(f, board_def=_7seg_board())
+    ok, msg = _contract(f, board_def=_7seg_board())
     assert not ok
     assert "NUM_SEGS" in msg
 
@@ -582,7 +592,7 @@ def test_seg_without_num_segs_passes_on_plain_board(tmp_path):
         "    seg : out std_logic_vector(31 downto 0)"
     )
     f = _write(tmp_path, "seg_ngp", _design("seg_ngp", ports=ports))
-    ok, msg = check_vhdl_contract(f, board_def=_plain_board())
+    ok, msg = _contract(f, board_def=_plain_board())
     assert ok, f"Unexpected rejection: {msg}"
 
 
@@ -600,7 +610,7 @@ def test_inner_entity_fixed_widths_ignored(tmp_path):
         "architecture rtl of helper is begin led <= (others => '0'); end architecture;\n\n"
     )
     f = _write(tmp_path, "outer", inner + _design("outer"))
-    ok, msg = check_vhdl_contract(f, board_def=_rich_7seg_board())
+    ok, msg = _contract(f, board_def=_rich_7seg_board())
     assert ok, f"Inner entity's fixed led width was wrongly flagged: {msg}"
 
 
@@ -609,14 +619,14 @@ def test_inner_entity_fixed_widths_ignored(tmp_path):
 )
 def test_committed_embedded_cores_pass_contract(filename):
     """The generated multi-entity designs must pass the parsed contract checks."""
-    ok, msg = check_vhdl_contract(HDL / filename, board_def=_7seg_board())
+    ok, msg = _contract(HDL / filename, board_def=_7seg_board())
     assert ok, f"Unexpected rejection of {filename}: {msg}"
 
 
 def test_num_segs_in_comment_does_not_require_seg_port(tmp_path):
     """Comments are stripped before parsing: a NUM_SEGS mention is not a declaration."""
     f = _write(tmp_path, "commented", "-- NUM_SEGS is not used here\n" + _design("commented"))
-    ok, msg = check_vhdl_contract(f)
+    ok, msg = _contract(f)
     assert ok, f"Unexpected rejection: {msg}"
 
 

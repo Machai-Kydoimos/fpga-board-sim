@@ -57,9 +57,11 @@ def generate_vhdl(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
     with tempfile.TemporaryDirectory() as d:
         probe = Path(d) / f"{spec.name}.vhd"
         probe.write_text(vhdl)
-        for label, (ok, msg) in (
-            ("encoding", check_vhdl_encoding(probe)),
-            ("contract", check_vhdl_contract(probe)),
+        enc_ok, enc_msg = check_vhdl_encoding(probe)
+        contract = check_vhdl_contract(probe)  # U21: now a ContractResult, not a tuple
+        for label, ok, msg in (
+            ("encoding", enc_ok, enc_msg),
+            ("contract", contract.ok, contract.message),
         ):
             if not ok:
                 raise SystemExit(f"generated VHDL failed {label} check: {msg}")

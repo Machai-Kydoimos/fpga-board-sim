@@ -357,7 +357,8 @@ class ScreenController:
                     self.clock
                 )
             else:
-                ok, detail = check_vhdl_contract(picked, board_def=self.board)
+                res = check_vhdl_contract(picked, board_def=self.board)
+                ok, detail = res.ok, res.message
                 if not ok:
                     intent = ErrorDialog(
                         self.screen, "VHDL Error", detail, example_path=example
@@ -454,7 +455,8 @@ class ScreenController:
         # here so a stale session cannot bypass it.
         if s.work_dir_simulator != s.simulator:
             example = example_vhdl_for(board)
-            ok, msg = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
+            res = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
+            ok, msg = res.ok, res.message
             if not ok:
                 ErrorDialog(self.screen, "VHDL Error", msg, example_path=example).run(self.clock)
                 s.clear_vhdl()
@@ -576,7 +578,8 @@ class ScreenController:
 
         ok, detail = check_vhdl_encoding(s.vhdl_path)
         if ok:
-            ok, detail = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
+            res = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
+            ok, detail = res.ok, res.message
         title = "VHDL Error"
         if ok:
             title = f"{s.simulator.upper()} Error"
