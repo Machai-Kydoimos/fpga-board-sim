@@ -1,6 +1,6 @@
 # U21 — Board-native VHDL: arc plan (conventions population + matcher + wrapper)
 
-**Status:** IN PROGRESS — A0 (#209), A1 (#210), A2 (#211), A3 (#212) merged; the schema-symmetry follow-up (#213) and the `boards/custom/`-trust gate follow-up (#214) merged; A4 Wave 1 in progress. Update the [status ledger](#status-ledger) as phases land.
+**Status:** IN PROGRESS — A0 (#209), A1 (#210), A2 (#211), A3 (#212) merged; the schema-symmetry follow-up (#213) and the `boards/custom/`-trust gate follow-up (#214) merged; A4 Wave 1 in review (#215). Update the [status ledger](#status-ledger) as phases land.
 **Decided 2026-07-12 (Rick):** the port-conventions population pipeline is **folded into the
 U21 arc** as its opening phases (Part A), rather than run as a separate arc.
 **Source data:** [`docs/port_convention_sources/`](port_convention_sources/) (PR #198) — ranked,
@@ -310,7 +310,7 @@ sim-supported 7-seg boards except the scan/serial set have populated conventions
 | A1 | Re-sync guard | #210 | merged |
 | A2 | Dialect parsers | #211 | merged |
 | A3 | Generator + overlay | #212 | merged |
-| A4 | Wave 1 population (3 boards; Wave 2 later) | — | in review |
+| A4 | Wave 1 population (3 boards; Wave 2 later) | #215 | in review |
 | B1 | BoardDef threading | — | not started |
 | B2 | Convention matcher | — | not started |
 | B3 | Native wrapper + e2e | — | not started |
