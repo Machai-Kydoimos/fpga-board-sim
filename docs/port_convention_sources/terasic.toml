@@ -55,6 +55,8 @@ notes = "Cyclone V SoC (5CSEMA5F31C6). Community reference design with full I/O 
   [[board.source]]
   rank = 1
   kind = "community"
+  naming = "canonical"
+  naming_cite = "Uses the canonical Terasic DE1-SoC port names LEDR[9:0] / SW[9:0] / KEY[3:0] / HEX0..HEX5 / CLOCK_50 (Cyclone V SoC DE-series naming), not project-renamed ones -- verified by direct fetch 2026-07-12. CLOCK_50 is present and canonical; the file also defines CLOCK2_50/CLOCK3_50/CLOCK4_50 and ADC_SCLK, so the canonical primary oscillator is pinned via overlay.toml (classify() otherwise picks a wrong clk-shaped name by file order). Community-hosted, but the names are vendor-canonical."
   format = "QSF"
   url = "https://raw.githubusercontent.com/norxander/DE1-SoC-HPSFPGA/master/DE1_SoC.qsf"
   fetched = true
@@ -79,6 +81,8 @@ notes = "Cyclone V (5CEBA4F23C7). Complete I/O assignments from working Quartus 
   [[board.source]]
   rank = 1
   kind = "community"
+  naming = "canonical"
+  naming_cite = "Uses the canonical Terasic DE0-CV port names LEDR[9:0] / SW[9:0] / KEY[3:0] / HEX0..HEX5 / CLOCK_50 (Cyclone V DE-series System Builder / user-manual naming), not project-renamed ones -- verified by direct fetch 2026-07-12. Community-hosted starter project, but 'community' labels where the QSF is hosted, not whether its names are canonical (see sync_port_conventions._rank1_vouched_canonical)."
   format = "QSF"
   url = "https://raw.githubusercontent.com/fb39ca4/quartus-vhdl-starter/master/DE0-CV.qsf"
   fetched = true
@@ -192,6 +196,8 @@ notes = "Cyclone IV (EP4CE22F17C6). No 7-segment display on this board."
   [[board.source]]
   rank = 1
   kind = "community"
+  naming = "canonical"
+  naming_cite = "Uses the canonical Terasic DE0-Nano port names LED[7:0] / SW[3:0] / KEY[1:0] / CLOCK_50 (DE0-Nano user-manual naming -- note the DE0-Nano's LEDs are canonically 'LED', not 'LEDR'), not project-renamed ones -- verified by direct fetch 2026-07-12. Community-hosted, but the names are vendor-canonical."
   format = "QSF"
   url = "https://raw.githubusercontent.com/gmarkall/DE0_NANO/master/DE0_NANO.qsf"
   fetched = true

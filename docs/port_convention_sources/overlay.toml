@@ -39,3 +39,41 @@ clk_cite = "docs/port_convention_sources/terasic.toml DE2-115 row's own clk evid
   [board.seven_seg]
   active_low = true
   cite = "Rick's existing hand-authored boards/custom/de2_115.json."
+
+# --- U21 A4 Wave 1 (cited canonical-naming trust; see waves.toml + terasic.toml) ---
+# These three Terasic teaching boards populate from community-hosted QSFs whose
+# port names are vendor-canonical (vouched per-source in terasic.toml). Their
+# rank-1 QSFs, like every constraint file, cannot state signal polarity, so the
+# active-low facts below come from the Terasic user manuals (same as the two
+# hand-authored boards above). LEDs are active-high on these boards (no override).
+
+[[board]]
+name = "DE0 CV"
+
+  [board.buttons]
+  active_low = true
+  cite = "Terasic KEY pushbuttons are active-low (pressed = 0), per the DE0-CV user manual; a QSF only binds names to pins, so classify() cannot derive polarity."
+
+  [board.seven_seg]
+  active_low = true
+  cite = "Terasic HEX 7-segment displays are active-low (segment lit = 0), per the DE0-CV user manual."
+
+[[board]]
+name = "DE1 SoC"
+clk = "CLOCK_50"
+clk_cite = "The DE1-SoC's primary 50 MHz oscillator is CLOCK_50 (Terasic DE1-SoC user manual). The rank-1 QSF also defines CLOCK2_50 / CLOCK3_50 / CLOCK4_50 and ADC_SCLK, and classify()'s file-order fallback picks ADC_SCLK; verified by direct fetch 2026-07-12 ('PIN_AF14 -to CLOCK_50')."
+
+  [board.buttons]
+  active_low = true
+  cite = "Terasic KEY pushbuttons are active-low (pressed = 0), per the DE1-SoC user manual."
+
+  [board.seven_seg]
+  active_low = true
+  cite = "Terasic HEX 7-segment displays are active-low (segment lit = 0), per the DE1-SoC user manual."
+
+[[board]]
+name = "DE0 Nano"
+
+  [board.buttons]
+  active_low = true
+  cite = "Terasic KEY pushbuttons are active-low (pressed = 0), per the DE0-Nano user manual. (DE0-Nano has no 7-segment display, so no seven_seg override.)"

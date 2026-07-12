@@ -1,6 +1,6 @@
 # U21 — Board-native VHDL: arc plan (conventions population + matcher + wrapper)
 
-**Status:** IN PROGRESS — A0 merged (PR #209), A1 merged (PR #210), A2 merged (PR #211), A3 in review (PR #212). Update the [status ledger](#status-ledger) as phases land.
+**Status:** IN PROGRESS — A0 (#209), A1 (#210), A2 (#211), A3 (#212) merged; the schema-symmetry follow-up (#213) and the `boards/custom/`-trust gate follow-up (#214) merged; A4 Wave 1 in progress. Update the [status ledger](#status-ledger) as phases land.
 **Decided 2026-07-12 (Rick):** the port-conventions population pipeline is **folded into the
 U21 arc** as its opening phases (Part A), rather than run as a separate arc.
 **Source data:** [`docs/port_convention_sources/`](port_convention_sources/) (PR #198) — ranked,
@@ -134,6 +134,13 @@ wiped by the next re-sync).
 - Row gate: registry `status == "verified"` **and** rank-1 `kind ∈ {vendor-official,
   official-repo}` **and** the registry row/notes do not mark naming as project-renamed
   **and** the board is listed in the current wave file.
+  - *Refined after A3, since `kind` labels where a file is hosted, not whether its port
+    names are canonical:* the `kind` check (only that check — never `status`/wave) is also
+    satisfied by (a) a `files[]` target under `boards/custom/` (#214: a human already verified
+    it against vendor docs), or (b) a rank-1 source explicitly vouched `naming = "canonical"`
+    with a `naming_cite` (A4 #204: `_rank1_vouched_canonical`). (b) is *how* the "exclude
+    project-renamed naming" rule above is actually enforced — a renamed course file simply
+    never earns the cited vouch.
 - Wave file `docs/port_convention_sources/waves.toml`: explicit board-name lists per wave
   (reviewable data, not code).
 - Overlay `docs/port_convention_sources/overlay.toml`: cited, hand-maintained facts the
@@ -179,6 +186,36 @@ mismatch-skip behavior.
   look example-specific).
 - Run the generator per wave; review the diff board-by-board before commit (the PR body lists
   each board with its source URL).
+
+**Realized — Wave 1 (A4, closes #204).** The pedagogical Wave-1 list above and the A3 row gate
+were composed independently and don't fully intersect (root cause of the "0/10 populate" pause):
+Terasic ships no vendor-official per-board QSF repo, so its teaching-board constraint files in
+the wild are community-hosted, and the un-refined `kind` gate rejected all of them. Resolved by
+the cited canonical-naming trust signal (see the A3 row-gate refinement note). **3 boards ship**,
+each verified by direct fetch to use vendor-canonical Terasic names, with cited `overlay.toml`
+polarity (and DE1-SoC's canonical clock):
+
+- **DE0-CV** (`amaranth-boards/de0_cv.json`) — LEDR/SW/KEY/HEX0..5/CLOCK_50.
+- **DE1-SoC** (`amaranth-boards/de1_so_c.json`) — same; clk pinned to CLOCK_50 via overlay
+  (the QSF's CLOCK2/3/4_50 + ADC_SCLK otherwise mislead classify()).
+- **DE0-Nano** (`amaranth-boards/de0_nano.json`) — LED(8)/SW(4)/KEY(2)/CLOCK_50, no 7-seg.
+
+The other seven Wave-1 rows stay listed in `waves.toml` (they self-include once fixed) but are
+held back, each with a recorded reason:
+
+- **DE0** — rank-1 QSF's 7-seg is `HEXn_D[6:0]` + `HEXn_DP`; the A2 classifier collapses it to a
+  degenerate `packed_vector` instead of 4 individual digits. Needs classifier support for that
+  per-digit naming variant (A2 follow-up).
+- **DE10-Lite** — rank-1 course QSF renames `LEDR`→`LED` and `MAX10_CLK1_50`→`Clk`; the overlay
+  corrects the clk *name* but not resource names, so LEDs would ship non-canonical. Needs a
+  canonical-named source or an overlay resource-name-override capability (candidate follow-up).
+- **DE10-Nano** — registry `candidate` (+ sparse source); populate once upgraded to `verified`.
+- **Nandland Go** — board JSON has 0 switches vs the PCF's 4; needs a resource supplement (not a
+  hand-edit — A1's guard doesn't preserve resource-count edits across re-sync). Also `personal` kind.
+- **RZ-EasyFPGA (both files)** — rank-1 QSF has 5 buttons (`KEY[0..4]`) vs the board JSON's 4
+  (pin 25 / `KEY[4]` missing upstream); same resource-supplement caveat.
+- **Runber** — rank-1 is `MD` (no parser); the CST alternates are incomplete → partial convention
+  only (Decision #4 defers partial-interface support).
 
 **Verify:**
 
@@ -272,8 +309,8 @@ sim-supported 7-seg boards except the scan/serial set have populated conventions
 | A0 | Schema deltas | #209 | merged |
 | A1 | Re-sync guard | #210 | merged |
 | A2 | Dialect parsers | #211 | merged |
-| A3 | Generator + overlay | #212 | in review |
-| A4 | Wave 1 + Wave 2 population | — | not started |
+| A3 | Generator + overlay | #212 | merged |
+| A4 | Wave 1 population (3 boards; Wave 2 later) | — | in review |
 | B1 | BoardDef threading | — | not started |
 | B2 | Convention matcher | — | not started |
 | B3 | Native wrapper + e2e | — | not started |
@@ -299,4 +336,5 @@ sim-supported 7-seg boards except the scan/serial set have populated conventions
 | Schema churn between A0 and U22 | style enum is additive; scan fields land now, consumed later |
 | Sipeed-style per-example naming instability | those families need `naming` review before population; hold if unclear |
 | Course-QSF renamed clocks (Terasic) | clk names come from the overlay with citations, never from course files |
+| Community QSF renamed *resources* (not just clk), admitted via the canonical-naming vouch | vouch is per-source, cited, and width-cross-checked; the overlay corrects the clk name but *not* resource names, so a board whose course QSF renames LEDs/switches/buttons is held back with a recorded reason (DE10-Lite: `LEDR`→`LED`), never shipped with non-canonical names |
 | ~~`port_mapping` (leds/switches/buttons) had no `names` list like `seg_port_mapping` got in A0~~ | **RESOLVED, PR #213** (pre-A4-Wave-1): added optional `names: string[]` to `$defs/port_mapping`; `classify.py` now populates it for distinct un-bracketed scalar groups (Nandland Go's `o_LED_1..4`) instead of declining |
