@@ -1,0 +1,41 @@
+# Hand-maintained, cited facts the constraint files themselves cannot state:
+# signal polarity, the canonical clock on a multi-clock board, 7-seg style
+# overrides. Every override sub-table carries a `cite` explaining where the
+# fact comes from -- never invented, always traceable.
+#
+# The A3 generator applies these AFTER parse+classify and BEFORE the width
+# cross-check, so an overlay value always wins over whatever was classified
+# for the same field. `clk` overrides the whole clk name directly; `buttons`/
+# `leds`/`switches`/`seven_seg` override just their `active_low` (classify()
+# only ever derives that from a literal `_N`/`_n` name suffix -- see
+# port_convention_parsers/classify.py's module docstring -- so most real
+# boards need it stated here instead).
+#
+# Board names must match a docs/port_convention_sources/*.toml row's `name`
+# field exactly, same as waves.toml.
+
+[[board]]
+name = "DE10-Standard"
+clk = "CLOCK_50"
+clk_cite = "docs/port_convention_sources/terasic.toml DE10-Standard row's own clk evidence (verified by direct fetch 2026-07-11): 'CLOCK_50 (plus CLOCK2_50 / CLOCK3_50 / CLOCK4_50)'. The fetched QSF's other clk-shaped names are PLL-derived auxiliary clocks, not the board's primary 50 MHz oscillator classify() would otherwise pick by file order."
+
+  [board.buttons]
+  active_low = true
+  cite = "Rick's existing hand-authored boards/custom/de10_standard.json (Terasic KEY pushbuttons are active-low, per Terasic user-manual convention)."
+
+  [board.seven_seg]
+  active_low = true
+  cite = "Rick's existing hand-authored boards/custom/de10_standard.json."
+
+[[board]]
+name = "DE2-115"
+clk = "CLOCK_50"
+clk_cite = "docs/port_convention_sources/terasic.toml DE2-115 row's own clk evidence (verified by direct fetch 2026-07-11): 'CLOCK_50 (plus CLOCK2_50 / CLOCK3_50)'. The fetched QSF's other clk-shaped names are Ethernet PHY/GTX clocks, not the board's primary oscillator."
+
+  [board.buttons]
+  active_low = true
+  cite = "Rick's existing hand-authored boards/custom/de2_115.json."
+
+  [board.seven_seg]
+  active_low = true
+  cite = "Rick's existing hand-authored boards/custom/de2_115.json."

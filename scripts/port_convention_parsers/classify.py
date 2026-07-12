@@ -1,7 +1,10 @@
 """Dialect-agnostic classification of a parsed port table into a convention dict.
 
-Produces a ``port_convention``-shaped dict (``clk``/``leds``/``switches``/
-``buttons``/``seven_seg``) from a :class:`PortTable`.
+Produces a ``port_convention``-shaped dict (``clk``/``leds``/``leds_green``/
+``switches``/``buttons``/``seven_seg``) from a :class:`PortTable`. ``leds_green``
+(Terasic-style secondary LED bank, e.g. DE2-115's ``LEDG``) is detected the
+same way as the primary ``leds`` bank, just matched on the more specific
+``ledg`` substring so it can never win the primary slot by count.
 
 This module knows nothing about QSF/XDC/UCF/etc. syntax — it only looks at
 already-extracted ``(port, pin)`` pairs and reasons about *names*. That is a
@@ -47,6 +50,7 @@ _RE_BARE_DIGIT = re.compile(r"^(.*?)(\d+)$")
 _RE_ACTIVE_LOW_SUFFIX = re.compile(r"_[nN]$")
 
 _LED_INTEREST = re.compile(r"led", re.IGNORECASE)
+_LEDS_GREEN_INTEREST = re.compile(r"ledg", re.IGNORECASE)
 _SWITCH_INTEREST = re.compile(r"switch", re.IGNORECASE)
 _BUTTON_INTEREST = re.compile(r"button|btn", re.IGNORECASE)
 _CLOCK_INTEREST = re.compile(r"clk|clock", re.IGNORECASE)
@@ -74,8 +78,15 @@ def _exact_base(name: str, token: str) -> bool:
     return _strip_index(name).lower() == token.lower()
 
 
+def _is_leds_green(name: str) -> bool:
+    return bool(_LEDS_GREEN_INTEREST.search(name))
+
+
 def _is_led(name: str) -> bool:
-    return bool(_LED_INTEREST.search(name))
+    # Excludes leds_green matches outright (rather than relying on the
+    # primary group always being larger) so a green LED bank can never win
+    # the primary "leds" slot regardless of relative counts.
+    return bool(_LED_INTEREST.search(name)) and not _is_leds_green(name)
 
 
 def _is_switch(name: str) -> bool:
@@ -260,6 +271,10 @@ def classify(table: PortTable) -> dict[str, Any]:
     leds = _vector_or_scalar(_matching_ports(table, _is_led))
     if leds:
         result["leds"] = leds
+
+    leds_green = _vector_or_scalar(_matching_ports(table, _is_leds_green))
+    if leds_green:
+        result["leds_green"] = leds_green
 
     switches = _vector_or_scalar(_matching_ports(table, _is_switch))
     if switches:

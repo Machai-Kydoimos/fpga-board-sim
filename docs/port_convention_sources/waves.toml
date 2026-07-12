@@ -1,0 +1,37 @@
+# Explicit, reviewable board-name lists per port_conventions population wave
+# (U21 arc, Part A). A board name here must match a
+# docs/port_convention_sources/*.toml row's `name` field exactly -- the A3
+# generator's row gate checks wave membership by that name.
+#
+# Waves accumulate: once a wave has shipped (A4), its boards stay listed
+# here (harmless -- a board with an already-populated, unchanged convention
+# just regenerates identically on a later --check run) and the next wave's
+# list is appended, never replaces a prior one.
+#
+# Being listed here is necessary but not sufficient: the row gate also
+# requires registry status "verified", a rank-1 source of kind
+# vendor-official/official-repo, and a usable (fetched, structured-format)
+# source. A board can appear here ahead of its registry row catching up --
+# the gate then holds it back until that happens, which is by design, not
+# a bug to route around.
+
+[[wave]]
+number = 1
+description = "Teaching / 7-seg first (docs/u21_board_native_vhdl_plan.md Part A, A4, Wave 1)"
+boards = [
+  "DE0",
+  "DE0 CV",
+  "DE10 Lite",
+  "DE1 SoC",
+  "DE0 Nano",
+  "DE10 Nano", # registry status is "candidate" as of A3 -- row gate holds until upgraded to "verified"
+  "Nandland Go",
+  "RZEasy FPGAA2-2", # "RZ-EasyFPGA (both files)" in the plan: two registry rows, one per board JSON source
+  "Rz Easyfpga",
+  "Myminieye Runber", # "Runber" in the plan
+]
+
+[[wave]]
+number = 2
+description = "Clean official-org families (docs/u21_board_native_vhdl_plan.md Part A, A4, Wave 2) -- NOT YET POPULATED. TODO before this wave runs: transcribe its ~35 boards from the plan doc against current docs/port_convention_sources/*.toml row names. Left empty deliberately in A3 rather than risk a mistranscribed name silently failing to match (wrong names just never pass the row gate, with no error) -- this is Wave 2's own population phase's job, not A3's."
+boards = []

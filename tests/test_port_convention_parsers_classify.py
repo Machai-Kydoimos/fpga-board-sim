@@ -40,6 +40,24 @@ def test_bracket_vector_width_is_max_index_plus_one() -> None:
     assert result["switches"] == {"name": "sw", "width": 1}
 
 
+def test_leds_green_is_detected_separately_from_primary_leds() -> None:
+    # Real DE2-115 shape: LEDR[0..17] (primary) + LEDG[0..8] (secondary bank).
+    names = {f"LEDR[{i}]": f"R{i}" for i in range(18)} | {f"LEDG[{i}]": f"G{i}" for i in range(9)}
+    result = classify(_table(names))
+    assert result["leds"] == {"name": "LEDR", "width": 18}
+    assert result["leds_green"] == {"name": "LEDG", "width": 9}
+
+
+def test_leds_green_never_wins_the_primary_leds_slot_even_if_larger() -> None:
+    # A hypothetically bigger LEDG group must still surface as leds_green,
+    # not usurp "leds" -- classify() excludes it from the primary interest
+    # filter outright rather than relying on group size.
+    names = {f"LEDR[{i}]": f"R{i}" for i in range(4)} | {f"LEDG[{i}]": f"G{i}" for i in range(10)}
+    result = classify(_table(names))
+    assert result["leds"] == {"name": "LEDR", "width": 4}
+    assert result["leds_green"] == {"name": "LEDG", "width": 10}
+
+
 def test_single_scalar_led_and_switch_get_width_one() -> None:
     # Pipistrello's lone "SWITCH" and rv901t's lone "user_led" (see the UCF
     # parser fixtures) are single scalar ports, not vectors.

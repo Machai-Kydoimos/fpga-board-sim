@@ -6,6 +6,7 @@ Each parser lives in its own module (``amaranth_parser`` / ``litex_parser`` /
 ``digilent_parser``); this module is the plumbing they share.
 """
 
+import hashlib
 import json
 import urllib.request
 from datetime import datetime, timezone
@@ -51,6 +52,29 @@ def download_archive(repo: str, ref: str, timeout: int = 120) -> bytes:
     print(f"Downloading {url} ...")
     with urllib.request.urlopen(url, timeout=timeout) as resp:
         return bytes(resp.read())
+
+
+def fetch_url(url: str, cache_dir: Path | None = None, timeout: int = 30) -> str:
+    """Fetch a single URL's text content, optionally through an on-disk cache.
+
+    Unlike ``download_archive`` (one whole-repo tarball per sync run), the A3
+    port-convention generator fetches one small file per board from whatever
+    repo that board's registry row cites -- a different repo per call, so
+    per-URL caching (keyed by a hash of the URL) is what actually helps
+    repeated ``--check``/debugging runs avoid re-fetching the same file.
+    """
+    if cache_dir is not None:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = cache_dir / hashlib.sha256(url.encode()).hexdigest()
+        if cache_path.exists():
+            return cache_path.read_text(encoding="utf-8")
+
+    with urllib.request.urlopen(url, timeout=timeout) as resp:
+        text: str = resp.read().decode("utf-8")
+
+    if cache_dir is not None:
+        cache_path.write_text(text, encoding="utf-8")
+    return text
 
 
 def validate_board_jsons(board_jsons: dict[str, str], schema_path: Path) -> None:

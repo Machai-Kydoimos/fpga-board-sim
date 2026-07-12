@@ -11,6 +11,7 @@ board_images/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+.cache/
 
 # Build / packaging
 *.egg-info/
