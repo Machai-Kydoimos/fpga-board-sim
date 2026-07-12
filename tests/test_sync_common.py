@@ -250,3 +250,68 @@ def test_write_outputs_dry_run_preserves_without_writing(tmp_path):
     write_outputs(out, _jsons({"board.json": _valid_board()}), "abc123", "owner/repo", dry_run=True)
 
     assert (out / "board.json").read_text() == original  # untouched
+
+
+def test_write_outputs_rejects_corrupt_existing_json(tmp_path):
+    """An existing file that isn't valid JSON (crashed prior write, bad hand
+    edit, merge-conflict markers, ...) fails with a clear error naming the
+    file, not a raw JSONDecodeError with no context."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    (out / "board.json").write_text('{"name": "T", "port_conventions": {oops', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="board.json.*not valid JSON"):
+        write_outputs(out, _jsons({"board.json": _valid_board()}), "abc123", "owner/repo")
+
+
+def test_write_outputs_rejects_non_object_existing_json(tmp_path):
+    """An existing file that's valid JSON but not an object (e.g. someone
+    overwrote it with an array) fails clearly instead of an AttributeError
+    from a bare .get() call."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    (out / "board.json").write_text("[1, 2, 3]", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="board.json.*not an object"):
+        write_outputs(out, _jsons({"board.json": _valid_board()}), "abc123", "owner/repo")
+
+
+def test_write_outputs_tolerates_explicit_null_fresh_conventions(tmp_path):
+    """A fresh board dict with port_conventions explicitly None (not absent --
+    a hypothetical future generator bug) is treated the same as absent, not a
+    crash, and existing data is still preserved."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["port_conventions"] = {"custom": {"clk": "CLK"}}
+    (out / "board.json").write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+    fresh = _valid_board()
+    fresh["port_conventions"] = None
+    write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
+
+    written = json.loads((out / "board.json").read_text())
+    assert written["port_conventions"] == {"custom": {"clk": "CLK"}}
+
+
+def test_write_outputs_fresh_peripherals_wins_over_existing(tmp_path):
+    """When both sides supply a non-empty peripherals list, the fresh value
+    wins outright -- no per-item merge, since list entries aren't keyed.
+    Locks in the current behavior so a future peripherals-generating parser
+    doesn't silently change it."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["peripherals"] = [{"type": "vga", "name": "OLD"}]
+    (out / "board.json").write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+    fresh = _valid_board()
+    fresh["peripherals"] = [{"type": "audio", "name": "NEW"}]
+    write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
+
+    written = json.loads((out / "board.json").read_text())
+    assert written["peripherals"] == [{"type": "audio", "name": "NEW"}]

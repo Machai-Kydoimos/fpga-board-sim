@@ -103,11 +103,27 @@ def _fold_forward_unmanaged_keys(content: str, out_path: Path) -> str:
     ``port_conventions``/``peripherals`` are byte-identical to a from-scratch
     write -- the common case, and the one a re-sync's ``git diff`` must stay
     silent on.
+
+    Raises ``ValueError`` (naming ``out_path``) if the existing file is not
+    valid JSON, or not a JSON object -- a re-sync that reads a board file for
+    the first time is the first thing to notice a corrupted one, and should
+    say so clearly rather than crash on a raw ``.get()`` call.
     """
     if not out_path.exists():
         return content
 
-    existing = json.loads(out_path.read_text(encoding="utf-8"))
+    try:
+        existing = json.loads(out_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"{out_path}: existing file is not valid JSON ({e}); fix or remove it before re-syncing"
+        ) from e
+    if not isinstance(existing, dict):
+        raise ValueError(
+            f"{out_path}: existing file's top level is a "
+            f"{type(existing).__name__}, not an object; fix or remove it before re-syncing"
+        )
+
     existing_conventions = existing.get("port_conventions") or {}
     existing_peripherals = existing.get("peripherals") or []
     if not existing_conventions and not existing_peripherals:
@@ -115,7 +131,7 @@ def _fold_forward_unmanaged_keys(content: str, out_path: Path) -> str:
 
     data = json.loads(content)
 
-    merged_conventions = {**existing_conventions, **data.get("port_conventions", {})}
+    merged_conventions = {**existing_conventions, **(data.get("port_conventions") or {})}
     if merged_conventions:
         data["port_conventions"] = merged_conventions
 

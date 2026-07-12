@@ -44,7 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   re-serialization), verified against a real amaranth-boards sync (79 boards,
   diff limited to the expected `sync_commit`/`sync_timestamp` refresh) and a
   real digilent-xdc sync with a hand-added sibling convention (survived
-  intact) (U21 arc, issue #201)
+  intact). An existing board file that isn't valid JSON, or whose top level
+  isn't an object, now fails with a clear error naming the file instead of a
+  raw traceback (U21 arc, issue #201)
 
 ## [0.13.0] - 2026-07-11
 
