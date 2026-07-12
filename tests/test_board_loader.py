@@ -315,8 +315,13 @@ def test_discover_boards_json_skips_invalid(tmp_path):
     assert len(boards) == 1
 
 
-def test_json_extra_fields_ignored(tmp_path):
-    """Extra fields (source, peripherals, port_conventions) are ignored."""
+def test_json_unknown_fields_ignored_but_port_conventions_loaded(tmp_path):
+    """Unknown extra fields don't break loading; port_conventions is now loaded (U21 B1).
+
+    The board-JSON provenance ``source`` object, ``peripherals``, and ``$schema``
+    remain unread by the runtime loader, but ``port_conventions`` is threaded into
+    ``BoardDef`` for the board-native VHDL matcher.
+    """
     import json
 
     data = json.loads(_SAMPLE_BOARD_JSON)
@@ -331,6 +336,18 @@ def test_json_extra_fields_ignored(tmp_path):
     boards = discover_boards(tmp_path)
     assert len(boards) == 1
     assert boards[0].name == "Test Board"
+    assert boards[0].port_conventions == {"vendor": {"clk": "CLK50"}}
+    # the provenance `source` object is not the runtime `source` field (subdir name)
+    assert boards[0].source == "custom"
+
+
+def test_discover_board_without_conventions_gets_empty_mapping(tmp_path):
+    """A board JSON with no port_conventions key loads with an empty mapping."""
+    src = tmp_path / "source_a"
+    src.mkdir()
+    (src / "test.json").write_text(_SAMPLE_BOARD_JSON)  # has no port_conventions
+    boards = discover_boards(tmp_path)
+    assert boards[0].port_conventions == {}
 
 
 def test_clocks_object_format(tmp_path):

@@ -1,6 +1,6 @@
 # U21 — Board-native VHDL: arc plan (conventions population + matcher + wrapper)
 
-**Status:** IN PROGRESS — A0 (#209), A1 (#210), A2 (#211), A3 (#212) merged; the schema-symmetry follow-up (#213) and the `boards/custom/`-trust gate follow-up (#214) merged; A4 Wave 1 in review (#215). Update the [status ledger](#status-ledger) as phases land.
+**Status:** IN PROGRESS — A0 (#209), A1 (#210), A2 (#211), A3 (#212) merged; the schema-symmetry follow-up (#213) and the `boards/custom/`-trust gate follow-up (#214) merged; A4 Wave 1 (#215) merged. Part A done; **Part B started** — B1 (thread conventions into `BoardDef`) in review. Update the [status ledger](#status-ledger) as phases land.
 **Decided 2026-07-12 (Rick):** the port-conventions population pipeline is **folded into the
 U21 arc** as its opening phases (Part A), rather than run as a separate arc.
 **Source data:** [`docs/port_convention_sources/`](port_convention_sources/) (PR #198) — ranked,
@@ -239,6 +239,13 @@ unlock boards the registry can't currently populate:
 - **DE10-Lite** — official golden top confirms canonical `LEDR`/`SW`/`KEY`/`HEX0..5` +
   `MAX10_CLK1_50`. Its community rank-1 renames only `LEDR`→`LED` (clk is already overlay-fixable,
   the rest are canonical), so a single **overlay resource-name-override** rescues it.
+- **DE0** (original Cyclone III — a *different* board from DE0-CV: EP3C16 vs 5CEBA4, 3 buttons vs 4,
+  4 digits vs 6) — official DE0 CD-ROM v1.1 golden top (`DE0_Default.qsf`) confirms canonical
+  `LEDG`(10) / `SW`(10) / `BUTTON`(3) / `CLOCK_50` + four 7-seg digits named `HEXn_D[6:0]` **plus a
+  separate `HEXn_DP` scalar** per digit. LEDG/SW/BUTTON populate fine; the blocker is that A2's
+  classifier collapses `HEXn_D` into a degenerate `packed_vector`. Needs A2 support for the
+  `<name>_D[k]` + `<name>_DP` per-digit style (7 segments + a separate DP scalar → the sim's 8-bit
+  `{dp,g,f,e,d,c,b,a}` digit) — a reusable older-Terasic convention, not DE0-only.
 - **DE23-Lite, DE25-Standard, VEEK-MT2** — registry `candidate`/PDF-gated (no machine-parseable
   source today); their Resource-Package golden tops carry clean canonical `LEDR`/`SW`/`KEY`/`HEX`
   (VEEK-MT2: 27 LEDs = LEDR18 + LEDG9, 8 digits). Authoritative source for validating/completing
@@ -249,8 +256,10 @@ unlock boards the registry can't currently populate:
 version + file. **Licensing: cite-not-copy** — the CDs are Terasic-copyrighted, so record the
 *fact* (the canonical name) with a versioned citation and do **not** commit the QSFs (respects
 Locked Decision #1). This also addresses the model gap that Terasic's best source is a downloaded
-ZIP, not a raw URL. **Scope:** small additive `apply_overlay` change + tests, then a data wave;
-its own PR, not folded into A4.
+ZIP, not a raw URL. A **second, independent mechanism** is needed for DE0: teach the A2 classifier
+the `<name>_D[k]` + `<name>_DP` per-digit 7-seg style (see the DE0 bullet). **Scope:** small
+additive `apply_overlay` name-override + the A2 classifier extension + tests, then a data wave;
+its own PR(s), not folded into A4.
 
 ---
 
@@ -336,8 +345,8 @@ sim-supported 7-seg boards except the scan/serial set have populated conventions
 | A1 | Re-sync guard | #210 | merged |
 | A2 | Dialect parsers | #211 | merged |
 | A3 | Generator + overlay | #212 | merged |
-| A4 | Wave 1 population (3 boards; Wave 2 later) | #215 | in review |
-| B1 | BoardDef threading | — | not started |
+| A4 | Wave 1 population (3 boards; Wave 2 later) | #215 | merged |
+| B1 | BoardDef threading | — | in review |
 | B2 | Convention matcher | — | not started |
 | B3 | Native wrapper + e2e | — | not started |
 | B4 | Docs + closeout | — | not started |

@@ -131,6 +131,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Wave-1 candidates (DE0, DE10-Lite, DE10-Nano, Nandland Go, RZ-EasyFPGA, Runber) stay listed
   but are held back with recorded reasons (see `docs/port_convention_sources/waves.toml` and the
   arc plan). Data-only for the runtime — conventions stay inert until Part B (U21 arc, issue #204)
+- **U21 board-native conventions threaded into the runtime (Phase B1).** `BoardDef` now carries a
+  `port_conventions` mapping: the runtime loader reads it from each board JSON (previously dropped
+  as an unknown key), and `to_json`/`from_json` round-trip it, so a board's board-native VHDL port
+  conventions ride along to the simulation subprocess via `FPGA_SIM_BOARD_JSON` (consumed
+  launcher-side by the upcoming matcher/wrapper, so the subprocess carries them harmlessly).
+  Threaded as the schema-shaped dict — a typed view is deferred to the matcher phase; a board with
+  no conventions gets an empty mapping. Inert data until the convention matcher (B2) consumes it
+  (U21 arc, issue #205)
 
 ## [0.13.0] - 2026-07-11
 

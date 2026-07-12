@@ -112,6 +112,7 @@ class BoardDef:
     buttons: list[ComponentInfo] = field(default_factory=list)
     switches: list[ComponentInfo] = field(default_factory=list)
     seven_seg: "SevenSegDef | None" = None
+    port_conventions: dict[str, Any] = field(default_factory=dict)
     source: str = ""
 
     @property
@@ -153,6 +154,11 @@ class BoardDef:
                 "buttons": [_comp(c) for c in self.buttons],
                 "switches": [_comp(c) for c in self.switches],
                 "seven_seg": self.seven_seg.to_dict() if self.seven_seg else None,
+                # Board-native VHDL port conventions (U21). Carried verbatim as
+                # the schema-shaped dict; consumed launcher-side (contract
+                # matcher + native wrapper), so it rides to the subprocess
+                # harmlessly and needs no typed round-trip here.
+                "port_conventions": self.port_conventions,
             }
         )
 
@@ -193,6 +199,9 @@ class BoardDef:
             buttons=_make(data.get("buttons", []), "button"),
             switches=_make(data.get("switches", []), "switch"),
             seven_seg=SevenSegDef.from_dict(raw_7seg) if raw_7seg else None,
+            # `or {}` also covers an explicit ``"port_conventions": null``, not
+            # just an absent key -- a board without conventions gets an empty mapping.
+            port_conventions=data.get("port_conventions") or {},
         )
 
 
