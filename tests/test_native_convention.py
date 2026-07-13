@@ -274,6 +274,8 @@ def test_no_cross_board_native_match_flips_polarity() -> None:
             if m is None:
                 continue
             for role, mport in (("leds", m.leds), ("switches", m.switches), ("buttons", m.buttons)):
+                if mport is None:  # U31: absent bank in a partial convention
+                    continue
                 fm = block.get(role)
                 f_low = bool(fm.get("active_low")) if isinstance(fm, dict) else False
                 if mport.active_low != f_low:
@@ -293,6 +295,218 @@ def test_de10_native_file_on_de25_board_is_near_miss_not_silent_run() -> None:
     assert res.match is None
     assert "DE25-Standard" in res.message
     assert "CLOCK0_50" in res.message
+
+
+# ── U31: partial-interface board-native support ──────────────────────────────
+#
+# Most FPGA boards have no switches, so a convention may declare only a subset of
+# the clk/led/sw/btn roles.  A design matching just the declared roles runs; the
+# wrapper ties off the absent input banks.  No shipped board carries a partial
+# convention yet (all are full; U32 will supply partial ones), so these drive it
+# with synthetic conventions.
+
+
+def _synth_board(block: dict[str, Any], *, seven_seg: Any = None) -> BoardDef:
+    """A minimal board carrying one canonical ``terasic`` convention *block*."""
+    return BoardDef(
+        name="SynthBoard",
+        class_name="SynthBoard",
+        port_conventions={"terasic": block},
+        seven_seg=seven_seg,
+    )
+
+
+_LED_ONLY_BLOCK: dict[str, Any] = {"clk": "CLOCK_50", "leds": {"name": "LEDR", "width": 10}}
+_LED_BTN_BLOCK: dict[str, Any] = {
+    "clk": "CLOCK_50",
+    "leds": {"name": "LEDR", "width": 10},
+    "buttons": {"name": "KEY", "width": 2, "active_low": True},
+}
+_LED_SW_BLOCK: dict[str, Any] = {
+    "clk": "CLOCK_50",
+    "leds": {"name": "LEDR", "width": 10},
+    "switches": {"name": "SW", "width": 4},
+}
+
+_LED_ONLY_SRC = """\
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity led_blink is
+  port (
+    CLOCK_50 : in  std_logic;
+    LEDR     : out std_logic_vector(9 downto 0)
+  );
+end entity;
+
+architecture rtl of led_blink is
+  signal cnt : unsigned(23 downto 0) := (others => '0');
+begin
+  process (CLOCK_50)
+  begin
+    if rising_edge(CLOCK_50) then
+      cnt <= cnt + 1;
+    end if;
+  end process;
+  LEDR <= std_logic_vector(cnt(23 downto 14));
+end architecture;
+"""
+
+_LED_BTN_SRC = """\
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity led_key is
+  port (
+    CLOCK_50 : in  std_logic;
+    KEY      : in  std_logic_vector(1 downto 0);
+    LEDR     : out std_logic_vector(9 downto 0)
+  );
+end entity;
+
+architecture rtl of led_key is
+  signal cnt : unsigned(23 downto 0) := (others => '0');
+begin
+  process (CLOCK_50)
+  begin
+    if rising_edge(CLOCK_50) then
+      if KEY(0) = '0' then
+        cnt <= (others => '0');
+      else
+        cnt <= cnt + 1;
+      end if;
+    end if;
+  end process;
+  LEDR <= std_logic_vector(cnt(23 downto 14));
+end architecture;
+"""
+
+
+def test_partial_convention_led_only_matches() -> None:
+    m = match_convention(_synth_iface(_LED_ONLY_BLOCK), [], _synth_board(_LED_ONLY_BLOCK))
+    assert m is not None
+    assert m.leds == NativePort(("LEDR",), 10, False)
+    assert m.switches is None
+    assert m.buttons is None
+
+
+def test_partial_convention_led_plus_button_matches() -> None:
+    m = match_convention(_synth_iface(_LED_BTN_BLOCK), [], _synth_board(_LED_BTN_BLOCK))
+    assert m is not None
+    assert m.buttons == NativePort(("KEY",), 2, True)
+    assert m.switches is None
+
+
+def test_partial_convention_led_plus_switch_matches() -> None:
+    m = match_convention(_synth_iface(_LED_SW_BLOCK), [], _synth_board(_LED_SW_BLOCK))
+    assert m is not None
+    assert m.switches == NativePort(("SW",), 4, False)
+    assert m.buttons is None
+
+
+def test_partial_convention_extra_input_is_near_miss() -> None:
+    # The convention declares no switches; a design that adds an `sw` input would
+    # be left unbound in the wrapper's uut port map, so it must NOT full-match.
+    ports = [*_synth_iface(_LED_ONLY_BLOCK), _IfaceDecl(["sw"], "in", False, 4)]
+    assert match_convention(ports, [], _synth_board(_LED_ONLY_BLOCK)) is None
+
+
+def test_partial_convention_extra_output_still_matches() -> None:
+    # An unmapped *output* is fine -- the wrapper leaves it `open` (dark), like
+    # the DE0 example's split-DP HEXn_DP scalars.
+    ports = [*_synth_iface(_LED_ONLY_BLOCK), _IfaceDecl(["dbg"], "out", False, 1)]
+    assert match_convention(ports, [], _synth_board(_LED_ONLY_BLOCK)) is not None
+
+
+def test_native_wrapper_ties_off_absent_input_banks() -> None:
+    m = ConventionMatch(
+        maker="terasic",
+        board_name="SynthBoard",
+        clk="CLOCK_50",
+        leds=NativePort(("LEDR",), 10, False),
+    )
+    w = _render_native_wrapper("led_blink", m)
+    # generics floored to 1 (mirrors controller.build_generics' max(1, ...))
+    assert "NUM_SWITCHES     : positive := 1;" in w
+    assert "NUM_BUTTONS      : positive := 1;" in w
+    # the top sw/btn ports still exist (cocotb reads dut.sw/dut.btn) ...
+    assert "sw          : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);" in w
+    assert "btn         : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0);" in w
+    # ... but nothing adapts them and the uut gets no sw/btn association
+    assert "sw_uut" not in w
+    assert "btn_uut" not in w
+    assert "CLOCK_50 => clk" in w
+    assert "LEDR => led_uut" in w
+
+
+def test_partial_match_message_lists_only_declared_roles(tmp_path: Any) -> None:
+    vhd = tmp_path / "led_key.vhd"
+    vhd.write_text(_LED_BTN_SRC)
+    res = check_vhdl_contract(vhd, board_def=_synth_board(_LED_BTN_BLOCK))
+    assert res.ok and res.match is not None
+    # clk, buttons, LEDs -- no switches placeholder between clk and LEDR
+    assert "(CLOCK_50, KEY, LEDR)" in res.message
+
+
+def test_partial_extra_input_near_miss_message(tmp_path: Any) -> None:
+    vhd = tmp_path / "led_extra.vhd"
+    vhd.write_text(
+        "library ieee;\nuse ieee.std_logic_1164.all;\n"
+        "entity led_extra is\n  port (\n"
+        "    CLOCK_50 : in  std_logic;\n"
+        "    SW       : in  std_logic_vector(3 downto 0);\n"
+        "    LEDR     : out std_logic_vector(9 downto 0)\n"
+        "  );\nend entity;\n"
+        "architecture rtl of led_extra is\nbegin\n  LEDR <= (others => SW(0));\nend architecture;\n"
+    )
+    res = check_vhdl_contract(vhd, board_def=_synth_board(_LED_ONLY_BLOCK))
+    assert res.ok is False
+    assert res.match is None
+    assert "unmapped input port(s): sw" in res.message
+
+
+def test_partial_match_gtkw_omits_absent_switch(tmp_path: Any) -> None:
+    m = ConventionMatch(
+        maker="terasic",
+        board_name="SynthBoard",
+        clk="CLOCK_50",
+        leds=NativePort(("LEDR",), 10, False),
+        buttons=NativePort(("KEY",), 2, True),
+    )
+    gtkw = tmp_path / "p.gtkw"
+    _write_gtkw(gtkw, tmp_path / "p.vcd", {"NUM_BUTTONS": "2", "NUM_LEDS": "10"}, match=m)
+    text = gtkw.read_text()
+    assert "sim_wrapper.uut.ledr[9:0]" in text
+    assert "sim_wrapper.uut.key[1:0]" in text
+    assert "uut.sw" not in text  # absent bank not preselected
+
+
+@pytest.mark.slow
+def test_partial_native_wrapper_analyzes_under_ghdl(ghdl: str, tmp_path: Any) -> None:
+    vhd = tmp_path / "led_blink.vhd"
+    vhd.write_text(_LED_ONLY_SRC)
+    bd = _synth_board(_LED_ONLY_BLOCK)
+    res = check_vhdl_contract(vhd, board_def=bd)
+    assert res.ok and res.match is not None
+    ok, detail = analyze_vhdl(
+        vhd, toplevel="led_blink", simulator="ghdl", board_def=bd, match=res.match
+    )
+    assert ok, f"GHDL partial-native analysis failed: {detail}"
+
+
+@pytest.mark.slow
+def test_partial_native_wrapper_analyzes_under_nvc(nvc: str, tmp_path: Any) -> None:
+    vhd = tmp_path / "led_blink.vhd"
+    vhd.write_text(_LED_ONLY_SRC)
+    bd = _synth_board(_LED_ONLY_BLOCK)
+    res = check_vhdl_contract(vhd, board_def=bd)
+    assert res.ok and res.match is not None
+    ok, detail = analyze_vhdl(
+        vhd, toplevel="led_blink", simulator="nvc", board_def=bd, match=res.match
+    )
+    assert ok, f"NVC partial-native analysis failed: {detail}"
 
 
 # ── end-to-end: GHDL + NVC analysis of the example designs ───────────────────

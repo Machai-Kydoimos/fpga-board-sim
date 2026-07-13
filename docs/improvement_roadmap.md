@@ -176,36 +176,30 @@ This document inventories all viable improvements and ranks them by impact.
 U21 ✅ shipped the matcher + native wrapper, but a full-fleet sweep (2026-07-13, U21 closeout) shows
 only **23 of 278 boards** are genuinely native-usable today — the feature is **data-starved, not
 broken**. **241 boards carry no `port_conventions` at all** (all 167 litex + 74 of 79 amaranth), and
-even where data exists the matcher's **"all four roles required"** rule throttles it: of those 241
-boards, 238 have clk + LED but only **52** have clk + LED + switch + button (most FPGA boards have no
-switches). The native names / counts / clock for those 238 are **already parsed** into the board
-JSON, just not emitted as a convention. The three cards below raise coverage; **U31 (relax the
-requirement) and U32 (emit the data) are synergistic** — U32 without U31 caps at ~52, U31 multiplies
-it to ~238 — while **U33** adds vendor-*canonical* quality where it matters most. Realistic combined
-ceiling ≈ 150–200 (not 278: scan/serial displays need **U22**, and some boards have no
-machine-parseable source). Recommended order: **U31 → U32**, with **U33** in parallel.
+even where data existed the matcher's former **"all four roles required"** rule throttled it — of
+those 241 boards, 238 have clk + LED but only **52** have clk + LED + switch + button (most FPGA
+boards have no switches). **U31 ✅** (2026-07-13, issue #223) removed that rule: a design now matches
+whatever roles its board's convention declares (clk + LEDs minimum), so partial-interface boards are
+no longer capped — the remaining throttle is purely missing data. The native names / counts / clock
+for those 238 boards are **already parsed** into the board JSON, just not emitted as a convention,
+which is **U32**'s job (the single biggest lever, now unblocked by U31 to reach ~238 rather than
+~52); **U33** adds vendor-*canonical* quality where it matters most. Realistic combined ceiling ≈
+150–200 (not 278: scan/serial displays need **U22**, and some boards have no machine-parseable
+source). Recommended next: **U32**, with **U33** in parallel (**U31 ✅** done).
 
-#### U31. Board-native partial-interface support
+#### U31. Board-native partial-interface support ✅
 
-- **Why:** `_attempt_convention` requires clk **and** LEDs **and** switches **and** buttons all
-  present for a full match — but most FPGA boards lack switches (only 66 of the 241 uncovered boards
-  have any), so this one rule caps addressable coverage at 52 of 241 even with perfect data. Seg is
-  *already* conditional (required only when the board physically has a display); extending that
-  "match the roles the board actually has" principle to switches/buttons is the cheapest large
-  coverage lever. It was flagged as a follow-up in the U21 arc plan (Decision #4: "partial-interface
-  support is a follow-up").
-- **What:** Relax the required-role set to the roles the convention actually declares — clk + LEDs as
-  the minimum meaningful demo; switches/buttons matched-if-present. The native wrapper
-  (`_render_native_wrapper`) ties off absent input banks and leaves absent output banks dark, exactly
-  as it already does for a board with no display. Near-miss messaging stays honest (a design
-  declaring a port the board's convention lacks is still a near-miss).
-- **Touches:** `src/fpga_sim/sim_bridge.py` (`_attempt_convention`, `_render_native_wrapper`,
-  near-miss messaging); `tests/test_native_convention.py` (partial-interface matrix: LED-only,
-  LED+btn, LED+sw).
-- **Effort:** M.
-- **Dependencies:** U21 ✅.
-- **Done when:** a board-native design for a switch-less board (LEDs + buttons + clock, no `sw`)
-  simulates unmodified, and a board with only LEDs + clock does too.
+- Shipped 2026-07-13 (issue #223). `_attempt_convention` no longer requires all four roles: it now
+  matches whatever roles the selected board's convention declares — clk + LEDs minimum, switches /
+  buttons matched-if-the-convention-names-them — generalizing the existing "seg required only when
+  the board has a display" rule, so a **switch-less or button-less** board-native design runs
+  unmodified. `_render_native_wrapper` ties off an absent input bank (the top `sw`/`btn` boundary
+  ports stay so the cocotb testbench is untouched, floored to a one-bit dummy and left unconnected —
+  mirroring the generic path's `NUM_* = max(1, count)`) and leaves absent outputs dark; a design
+  declaring an *input* the convention lacks stays an honest near-miss (an extra *output* is left
+  `open`, as the DE0 example's decimal-point pins already are). `ConventionMatch.switches`/`.buttons`
+  became `NativePort | None`. On today's full-interface conventions behavior is unchanged — the
+  payoff is as the multiplier for **U32** (52 → ~238). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U32. Auto-derive `port_conventions` from the litex & amaranth platform files
 
@@ -226,8 +220,8 @@ machine-parseable source). Recommended order: **U31 → U32**, with **U33** in p
   possibly `scripts/port_convention_parsers/classify.py` (reuse the grouping); regenerated
   `boards/{litex-boards,amaranth-boards}/*.json`; per-parser tests.
 - **Effort:** L.
-- **Dependencies:** U21 ✅; strongly synergistic with **U31** (without it, framework-derived data only
-  unlocks ~52 boards; with it, ~238). Related surface: **P5** (peripheral extraction — same parsers).
+- **Dependencies:** U21 ✅; strongly synergistic with **U31 ✅** (without it, framework-derived data
+  only unlocked ~52 boards; with it, ~238). Related surface: **P5** (peripheral extraction — same parsers).
 - **Done when:** the litex/amaranth sync emits conventions for the bulk of their boards, and a
   board-native design for a representative litex board (e.g. an Arty using litex names) simulates
   unmodified.
@@ -449,7 +443,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **3** | Visible polish | ~~U3 Tooltips~~ ✅ · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · ~~U7 In-sim toolbar~~ ✅ |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · ~~U10 Waveform~~ ✅ · U23 Dirty-flag redraw · U27 User JSON themes |
 | **5** | Waveform polish | ~~U28 Auto-emit `.gtkw`~~ ✅ · ~~U29 `FPGA_SIM_WAVEFORM` env + auto-open~~ ✅ · ~~U30 "Include memories" (`--dump-arrays`)~~ ✅ |
-| **6** | Board-native VHDL (lab↔sim round-trip) | ~~U21~~ ✅ **shipped 2026-07-13** (A0–B4, PRs #209–#222) per [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md). **Coverage follow-on (raise the 23/278 genuine-usable count — see the "Board-native VHDL coverage" note under U22):** **U31** partial-interface → **U32** litex/amaranth auto-derive (synergistic) · **U33** canonical population waves (parallel). U31/U32 are near-term |
+| **6** | Board-native VHDL (lab↔sim round-trip) | ~~U21~~ ✅ **shipped 2026-07-13** (A0–B4, PRs #209–#222) per [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md). **Coverage follow-on (raise the 23/278 genuine-usable count — see the "Board-native VHDL coverage" note under U22):** ~~U31~~ ✅ partial-interface → **U32** litex/amaranth auto-derive (synergistic) · **U33** canonical population waves (parallel). U32 is near-term |
 | **7** | Iteration & panel UX | U18 Recent files (+ keep dir on retry) · U14 Pause/resume · U15 Compact SimPanel · U19 Metrics checkbox |
 | **8** | Startup hardening + dev-DRY base | U16 Min window size · U17 Font pre-alloc · **D5 Path helper** → D13 Env-branch tests · D12 Arch diagram |
 | **9** | Untrusted-VHDL isolation | **D7 Decompose `launch_simulation`** → D16 Sandbox the sim subprocess |

@@ -224,6 +224,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   detection (**P15**), Surfer waveform signal *preselection* (**P16**), and a board-native
   frozen-divider warning heuristic (**P17**). Docs only — no code change. Completes **U21** (U21
   arc, closes #207 and #208)
+- **Board-native partial-interface support (U31).** A board-native design no longer has to declare
+  the full clk + LEDs + switches + buttons interface — the matcher now requires only the roles the
+  selected board's `port_conventions` block declares (clk + LEDs at minimum, switches/buttons
+  matched only when the convention names them), generalizing the existing "7-seg required only when
+  the board has a display" rule. So a design for a **switch-less** or **button-less** board (most
+  FPGA boards have no switches) now simulates unmodified. The generated native wrapper ties off an
+  absent input bank — the `sw`/`btn` boundary ports stay so the cocotb testbench is untouched, but
+  are floored to one dummy bit and left unconnected to the design, mirroring the generic path's
+  `NUM_* = max(1, count)` — and leaves absent output banks dark. A design that declares an *input*
+  the convention lacks stays an honest near-miss (it would otherwise be an unbound port), while an
+  extra *output* is left `open` (as the DE0 example already does for its decimal-point pins).
+  Behavior on today's full-interface conventions is unchanged; this is the coverage lever that lets
+  board-native mode reach the bulk of the fleet once the litex/amaranth conventions land (U32).
+  `ConventionMatch.switches`/`.buttons` are now optional (#223)
 
 ## [0.13.0] - 2026-07-11
 
