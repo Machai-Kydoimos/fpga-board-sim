@@ -178,7 +178,7 @@ only **23 of 278 boards** are genuinely native-usable today — the feature is *
 broken**. **241 boards carry no `port_conventions` at all** (all 167 litex + 74 of 79 amaranth), and
 even where data existed the matcher's former **"all four roles required"** rule throttled it — of
 those 241 boards, 238 have clk + LED but only **52** have clk + LED + switch + button (most FPGA
-boards have no switches). **U31 ✅** (2026-07-13, issue #223) removed that rule: a design now matches
+boards have no switches). **U31 ✅** (2026-07-13, PR #226, issue #223) removed that rule: a design now matches
 whatever roles its board's convention declares (clk + LEDs minimum), so partial-interface boards are
 no longer capped — the remaining throttle is purely missing data. The native names / counts / clock
 for those 238 boards are **already parsed** into the board JSON, just not emitted as a convention,
@@ -189,7 +189,7 @@ source). Recommended next: **U32**, with **U33** in parallel (**U31 ✅** done).
 
 #### U31. Board-native partial-interface support ✅
 
-- Shipped 2026-07-13 (issue #223). `_attempt_convention` no longer requires all four roles: it now
+- Shipped 2026-07-13 (PR #226, issue #223). `_attempt_convention` no longer requires all four roles: it now
   matches whatever roles the selected board's convention declares — clk + LEDs minimum, switches /
   buttons matched-if-the-convention-names-them — generalizing the existing "seg required only when
   the board has a display" rule, so a **switch-less or button-less** board-native design runs

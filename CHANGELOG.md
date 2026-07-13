@@ -237,7 +237,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   extra *output* is left `open` (as the DE0 example already does for its decimal-point pins).
   Behavior on today's full-interface conventions is unchanged; this is the coverage lever that lets
   board-native mode reach the bulk of the fleet once the litex/amaranth conventions land (U32).
-  `ConventionMatch.switches`/`.buttons` are now optional (#223)
+  `ConventionMatch.switches`/`.buttons` are now optional (#223, #226)
 
 ## [0.13.0] - 2026-07-11
 
