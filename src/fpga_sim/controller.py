@@ -33,6 +33,7 @@ import pygame
 from fpga_sim.board_loader import BoardDef
 from fpga_sim.session_config import load_session, push_recent, save_session
 from fpga_sim.sim_bridge import (
+    ConventionMatch,
     SimExit,
     Simulator,
     analyze_vhdl,
@@ -119,6 +120,9 @@ class SessionState:
     vhdl_path: str | None = None
     work_dir: str | None = None
     work_dir_simulator: Simulator | None = None
+    # U21 B3: set when the loaded VHDL is board-native (its port names match the
+    # selected board's convention); drives native wrapper generation + the badge.
+    convention: ConventionMatch | None = None
     last_vhdl_path: str = ""
     board_class: str = ""
     board_source: str = ""
@@ -134,6 +138,7 @@ class SessionState:
     def clear_vhdl(self) -> None:
         """Drop the loaded VHDL file and its analysis products."""
         self.vhdl_path = None
+        self.convention = None
         self.clear_analysis()
 
 
@@ -359,6 +364,7 @@ class ScreenController:
             else:
                 res = check_vhdl_contract(picked, board_def=self.board)
                 ok, detail = res.ok, res.message
+                s.convention = res.match  # board-native (U21 B3) when set, else None
                 if not ok:
                     intent = ErrorDialog(
                         self.screen, "VHDL Error", detail, example_path=example
@@ -424,6 +430,7 @@ class ScreenController:
                 toplevel=Path(vhdl_path).stem,
                 simulator=self.state.simulator,
                 board_def=self.board,
+                match=self.state.convention,
             ),
             detail=f"Running {self.state.simulator.upper()} analysis & elaboration…",
         )
@@ -457,6 +464,7 @@ class ScreenController:
             example = example_vhdl_for(board)
             res = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
             ok, msg = res.ok, res.message
+            s.convention = res.match  # board-native (U21 B3) when set, else None
             if not ok:
                 ErrorDialog(self.screen, "VHDL Error", msg, example_path=example).run(self.clock)
                 s.clear_vhdl()
@@ -517,6 +525,7 @@ class ScreenController:
                     waveform=waveform,
                     waveform_open=waveform_open,
                     waveform_memories=waveform_memories,
+                    match=s.convention,
                 )
             except Exception as e:
                 sim_error = str(e)
@@ -580,6 +589,7 @@ class ScreenController:
         if ok:
             res = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
             ok, detail = res.ok, res.message
+            s.convention = res.match  # board-native (U21 B3) when set, else None
         title = "VHDL Error"
         if ok:
             title = f"{s.simulator.upper()} Error"

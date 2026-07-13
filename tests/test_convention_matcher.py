@@ -4,8 +4,9 @@
 names + fixed widths (e.g. DE10-Standard's CLOCK_50 / SW / KEY / LEDR / HEX0..5)
 against the selected board's `port_conventions`.  `check_vhdl_contract()` reports
 such a design precisely (naming the convention) and carries the `ConventionMatch`
-on its result — but keeps ``ok=False``: running a native design needs the B3
-wrapper, so B2 only *detects*.
+on its result.  Since U21 B3 a full native match returns ``ok=True`` (the native
+wrapper runs it); the B3-specific execution/wrapper behavior is covered by
+`test_native_convention.py`.
 
 All matcher tests are hermetic (synthetic BoardDef + parsed interface, no I/O).
 """
@@ -304,14 +305,14 @@ def test_scalar_led_bank_matches() -> None:
 # ── check_vhdl_contract integration ──────────────────────────────────────────
 
 
-def test_contract_native_file_reports_match_but_stays_not_ok(tmp_path: Any) -> None:
+def test_contract_native_file_is_ok_with_match(tmp_path: Any) -> None:
     f = _write(tmp_path, "de10_native", _de10_decls())
     res = check_vhdl_contract(f, board_def=_board(_terasic_conv()))
     assert isinstance(res, ContractResult)
-    assert res.ok is False  # detection only; execution is B3
+    assert res.ok is True  # U21 B3: a full native match runs
     assert res.match is not None and res.match.maker == "terasic"
-    # message names the board, the native ports, and points at B3
-    for token in ("DE10-Standard", "board-native", "CLOCK_50", "LEDR", "HEX0..HEX5", "B3"):
+    # message names the board, the convention, and the native ports
+    for token in ("DE10-Standard", "board-native", "terasic", "CLOCK_50", "LEDR", "HEX0..HEX5"):
         assert token in res.message
 
 

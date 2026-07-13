@@ -178,6 +178,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   verbatim (golden-top-confirmed), so it takes the standard cited naming vouch plus a `clk` overlay
   (classify() otherwise mis-picks `GPIO0_CLKIN`). cite-not-copy. Data-only for the board fleet
   (U21 arc)
+- **U21 board-native VHDL runs (Phase B3a — core).** A design written to a board's *own* port
+  names and fixed widths (no `NUM_*` generics) now simulates unmodified: `check_vhdl_contract`
+  returns `ok=True` for a full native match, and `_generate_wrapper` emits a *native* `sim_wrapper`
+  that instantiates the design by its native names and adapts them to the simulator's
+  `clk/sw/btn/led/seg` boundary — inverting active-low LEDs (`led <= not led_uut`) and buttons
+  (`key_uut <= not btn`), and packing an `individual`-style 7-seg per digit into the display byte
+  (decimal point off). The native wrapper carries the same entity/generics/top-ports/clock process
+  as the generic one (so the run mechanics and the cocotb testbench are untouched) but bakes the
+  board widths as its generic *defaults*, so the analysis-time default-generic elaboration lines up
+  with the native fixed widths — no launch-path changes. The `ConventionMatch` from the contract
+  check threads through `SessionState` → `analyze_vhdl` / `launch_simulation` → the wrapper, and a
+  board-native run also exports `FPGA_SIM_NATIVE_CONVENTION` for the upcoming badge/session-log
+  (B3b). Three example designs land under `hdl/native/` (DE10-Standard with active-high `LEDR`, DE0
+  with split-DP `HEXn_D` + green `LEDG` + `BUTTON`, DE25-Standard with active-low `LEDR`), each
+  analyzed end-to-end under **GHDL and NVC**; a standalone NVC run proves the active-low-LED
+  inversion (`led == not ledr`). The auto-written GTKWave save file for a native run now preselects
+  the design's *own* signals (`sim_wrapper.uut.<native>`) plus the board-logical `led`/`seg` so the
+  inversion is visible, instead of the contract names. **Cross-board safety:** loading a native
+  file against the wrong board either near-misses (different port names — e.g. a DE10-Standard file
+  on a DE25 board differs on the clock name) or matches an electrically identical board; a
+  data-invariant regression test asserts no cross-board full match ever silently flips polarity.
+  Generic designs are entirely unaffected (U21 arc, issue #207)
 
 ## [0.13.0] - 2026-07-11
 
