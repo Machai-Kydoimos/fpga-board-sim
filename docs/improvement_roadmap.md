@@ -164,6 +164,92 @@ This document inventories all viable improvements and ranks them by impact.
 - **Carried forward (2026-07-02):** physical-mux mode must keep the logical packed-`seg` contract as
   the design-side **default** — every 7-seg example, including the generated embedded-core designs
   (`hdl/mx65_*.vhd`, `hdl/t80_*.vhd`), assumes it.
+- **Data-quality prerequisite (found 2026-07-13):** the Digilent classifier currently emits
+  `style: individual` for Nexys 4 DDR / Nexys A7-100T / A7-50T even though their `CA..CG` are
+  *shared* scan segments (7 segment names for an 8-digit display), so those three boards **falsely**
+  full-match board-native today (a physically faithful scan design would not). Fix the classifier to
+  emit `scan` for shared-segment names as part of (or ahead of) this card — touches
+  `scripts/port_convention_parsers/classify.py` + the regenerated `boards/digilent-xdc/*.json`.
+
+#### Board-native VHDL coverage (post-U21 ✅) — raising the 23/278 usable count
+
+U21 ✅ shipped the matcher + native wrapper, but a full-fleet sweep (2026-07-13, U21 closeout) shows
+only **23 of 278 boards** are genuinely native-usable today — the feature is **data-starved, not
+broken**. **241 boards carry no `port_conventions` at all** (all 167 litex + 74 of 79 amaranth), and
+even where data exists the matcher's **"all four roles required"** rule throttles it: of those 241
+boards, 238 have clk + LED but only **52** have clk + LED + switch + button (most FPGA boards have no
+switches). The native names / counts / clock for those 238 are **already parsed** into the board
+JSON, just not emitted as a convention. The three cards below raise coverage; **U31 (relax the
+requirement) and U32 (emit the data) are synergistic** — U32 without U31 caps at ~52, U31 multiplies
+it to ~238 — while **U33** adds vendor-*canonical* quality where it matters most. Realistic combined
+ceiling ≈ 150–200 (not 278: scan/serial displays need **U22**, and some boards have no
+machine-parseable source). Recommended order: **U31 → U32**, with **U33** in parallel.
+
+#### U31. Board-native partial-interface support
+
+- **Why:** `_attempt_convention` requires clk **and** LEDs **and** switches **and** buttons all
+  present for a full match — but most FPGA boards lack switches (only 66 of the 241 uncovered boards
+  have any), so this one rule caps addressable coverage at 52 of 241 even with perfect data. Seg is
+  *already* conditional (required only when the board physically has a display); extending that
+  "match the roles the board actually has" principle to switches/buttons is the cheapest large
+  coverage lever. It was flagged as a follow-up in the U21 arc plan (Decision #4: "partial-interface
+  support is a follow-up").
+- **What:** Relax the required-role set to the roles the convention actually declares — clk + LEDs as
+  the minimum meaningful demo; switches/buttons matched-if-present. The native wrapper
+  (`_render_native_wrapper`) ties off absent input banks and leaves absent output banks dark, exactly
+  as it already does for a board with no display. Near-miss messaging stays honest (a design
+  declaring a port the board's convention lacks is still a near-miss).
+- **Touches:** `src/fpga_sim/sim_bridge.py` (`_attempt_convention`, `_render_native_wrapper`,
+  near-miss messaging); `tests/test_native_convention.py` (partial-interface matrix: LED-only,
+  LED+btn, LED+sw).
+- **Effort:** M.
+- **Dependencies:** U21 ✅.
+- **Done when:** a board-native design for a switch-less board (LEDs + buttons + clock, no `sw`)
+  simulates unmodified, and a board with only LEDs + clock does too.
+
+#### U32. Auto-derive `port_conventions` from the litex & amaranth platform files
+
+- **Why:** 241 boards (all litex, most amaranth) have no convention, yet the litex `_io` and amaranth
+  `.py` files already declare the native port names, pins, widths, and (amaranth) polarity — and the
+  two sync parsers already read them (the board JSON even carries the component net-names
+  `led` / `switch` / `button` + clocks). Emitting a `port_conventions` block from that data is the
+  single biggest coverage lever (up to the full 241-board gap).
+- **What:** Extend `scripts/litex_parser.py` and `scripts/amaranth_parser.py` to emit a
+  `port_conventions.{litex,amaranth}` block alongside the existing led/btn/sw extraction: group
+  scalar-indexed resources into a vector or `names[]` scalar bank, pick the primary LED group (`led`
+  over `rgb_led`), resolve a clock name from the platform's clock resource, and capture polarity
+  where the source encodes it — amaranth `PinsN` = active-low (directly available); litex is murkier
+  (default active-high, refine later). Stamp `source` provenance and an honest `naming` value
+  (framework-canonical). Rides the existing re-sync preservation guard (A1 ✅), so hand-authored /
+  registry conventions always win.
+- **Touches:** `scripts/litex_parser.py`, `scripts/amaranth_parser.py` (+ their sync scripts),
+  possibly `scripts/port_convention_parsers/classify.py` (reuse the grouping); regenerated
+  `boards/{litex-boards,amaranth-boards}/*.json`; per-parser tests.
+- **Effort:** L.
+- **Dependencies:** U21 ✅; strongly synergistic with **U31** (without it, framework-derived data only
+  unlocks ~52 boards; with it, ~238). Related surface: **P5** (peripheral extraction — same parsers).
+- **Done when:** the litex/amaranth sync emits conventions for the bulk of their boards, and a
+  board-native design for a representative litex board (e.g. an Arty using litex names) simulates
+  unmodified.
+
+#### U33. Board-native population waves 2+ (registry-driven canonical conventions)
+
+- **Why:** U21 Part A built the whole registry → parser → generator → overlay pipeline but only
+  **Wave 1 (3 Terasic boards)** shipped; the registry (#198) has ~124 fetch-verified sources awaiting
+  population. This is the *quality* path — vendor-**canonical** conventions with distinctive real
+  names (Terasic `LEDR` / `KEY` / `HEX`) and manual-verified polarity, which is where board-native
+  mode earns its keep versus U32's framework names.
+- **What:** Run successive population waves via `scripts/sync_port_conventions.py` (`waves.toml`),
+  curating per-board as A4 did: verify each source is parseable + trusted, cross-check widths, add
+  cited overlay entries for polarity / multi-clock / name-overrides. Prioritize boards users actually
+  hand-write HDL for (Terasic teaching boards, popular Digilent / Xilinx dev boards).
+- **Touches:** `docs/port_convention_sources/waves.toml` + `overlay.toml`; regenerated
+  `boards/*/*.json` (production path); no code (the generator is done).
+- **Effort:** L (incremental; per-wave S–M).
+- **Dependencies:** U21 ✅ (pipeline complete). Overlaps **P2** (sync curation).
+- **Done when:** the registry's verified-source boards are populated wave-by-wave, each wave recorded
+  in `waves.toml` with cited sources; unparseable-source boards (PDF / README-only) explicitly
+  deferred.
 
 ### Performance (mostly already done)
 
@@ -363,7 +449,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **3** | Visible polish | ~~U3 Tooltips~~ ✅ · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · ~~U7 In-sim toolbar~~ ✅ |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · ~~U10 Waveform~~ ✅ · U23 Dirty-flag redraw · U27 User JSON themes |
 | **5** | Waveform polish | ~~U28 Auto-emit `.gtkw`~~ ✅ · ~~U29 `FPGA_SIM_WAVEFORM` env + auto-open~~ ✅ · ~~U30 "Include memories" (`--dump-arrays`)~~ ✅ |
-| **6** | Board-native VHDL (lab↔sim round-trip) | U21 per [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md): **Part A** A0 schema → A1 re-sync guard → A2 parsers → A3 generator+overlay → A4 population waves; **Part B** B1 loader → B2 matcher → B3 native wrapper + e2e → B4 docs/closeout. (Former 6a ≈ B2+B3 scalar remap/polarity; 6b ≈ B3 7-seg adapters; the shallow-merge = A1.) Own sprint, XL |
+| **6** | Board-native VHDL (lab↔sim round-trip) | ~~U21~~ ✅ **shipped 2026-07-13** (A0–B4, PRs #209–#222) per [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md). **Coverage follow-on (raise the 23/278 genuine-usable count — see the "Board-native VHDL coverage" note under U22):** **U31** partial-interface → **U32** litex/amaranth auto-derive (synergistic) · **U33** canonical population waves (parallel). U31/U32 are near-term |
 | **7** | Iteration & panel UX | U18 Recent files (+ keep dir on retry) · U14 Pause/resume · U15 Compact SimPanel · U19 Metrics checkbox |
 | **8** | Startup hardening + dev-DRY base | U16 Min window size · U17 Font pre-alloc · **D5 Path helper** → D13 Env-branch tests · D12 Arch diagram |
 | **9** | Untrusted-VHDL isolation | **D7 Decompose `launch_simulation`** → D16 Sandbox the sim subprocess |
