@@ -60,6 +60,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `sim/sim_wrapper_template.vhd` | Unified VHDL wrapper template; seg port/generic spliced in by `_generate_wrapper()` when needed |
 | `src/fpga_sim/sim_session_log.py` | Writes per-session JSON summaries to ~/.fpga_simulator/sessions/ |
 | `hdl/blinky.vhd` | Example VHDL design (use as template for the expected port interface) |
+| `hdl/native/` | Board-native reference designs (a board's own port names + fixed widths, no `NUM_*`): `de10_standard.vhd`, `de0.vhd`, `de25_standard.vhd`; each matches only its own board via `port_conventions` and is not in the file picker (U21) |
 | `tests/` | pytest integration test suite |
 | `sim/test_blinky.py` | Headless cocotb tests for the blinky design |
 | `sim/test_7seg.py` | Headless cocotb tests for the counter_7seg design |
@@ -137,6 +138,10 @@ The simulator sets generics to match the selected board's resource counts and pr
 
 A design can instead be a **single self-contained file** that embeds a soft CPU core (the vendored mx65 6502 or T80 Z80) + ROM + RAM + IO (memory-mapped, or Z80 port-mapped) + a top satisfying the same `clk/sw/btn/led[/seg]` contract above. These are **generated** by `scripts/gen_embedded_core.py` from a vendored core + a `systems/*.toml` spec + an assembled firmware `.bin`; the firmware reads the board's resource counts from IO config registers, so one design fits any board (proven across 2/4/6-digit boards). Two spec axes select optional features — `irq_mode` (none/simple/vectored interrupts) and `io_transport` (memory/port) — each realized by a per-core bus adapter under `scripts/embedded_core/adapters/`. They add a generation-time **`PRESCALER_BITS`** generic — a free-running tick the firmware polls to decouple the visible rate from raw CPU speed; the wrapper never overrides it, so it keeps its default (`--prescaler-bits` on the generator overrides that default at generation time, e.g. for a temporary faster-stepping capture build). The generated file also embeds the firmware assembly source verbatim as a `--` comment block above the ROM constant, so the single file shows the program it runs. The committed `hdl/{mx65,t80}_*.vhd` designs are the generator's output — **regenerate them** (and the firmware `.bin`) rather than hand-editing. See `docs/embedded_core_system_guide.md`.
 
+#### Board-native designs (a board's own port names)
+
+A design can instead be written to a **board's own port names and fixed widths** rather than the generic contract — e.g. a Terasic design using `CLOCK_50`, `KEY(3 downto 0)`, `LEDR(9 downto 0)`, `SW(9 downto 0)`, and `HEX0`-`HEX5`, with **no `NUM_*` generics**. When the toplevel's ports don't match the generic contract, `check_vhdl_contract()` (`sim_bridge.py`) matches them against the *selected board's* `port_conventions` (the `terasic` block, etc.); on a full match the file is accepted and a native `sim_wrapper` adapts the native ports to the simulator's `clk/sw/btn/led/seg` boundary — inverting active-low LEDs (`led <= not led_uut`) and buttons (`key_uut <= not btn`), and packing an `individual`-style 7-seg per digit — so the cocotb testbench and run mechanics stay untouched. **The simulator always models the selected board, and the board's convention supplies polarity.** Loading a file written for a *different* board is user error and resolves safely: a differing port name (e.g. the clock is `CLOCK_50` but the selected board's is `CLOCK0_50`) makes it a *near-miss* — rejected with a message naming the mismatch, never silently coerced or polarity-flipped. Only the `individual` 7-seg style is adapted (scan / serial / per-segment-scalars stay generic → U22). Board-native designs get **no `COUNTER_BITS` override** (that generic belongs to the generic contract), so a design that derives its visible rate from the top bits of a full 50 MHz divider looks frozen at the simulator's sub-real-time speed — the `hdl/native/*.vhd` reference examples tap *mid* counter bits so motion stays visible. Those examples each match only their own board and are deliberately **not** surfaced in the file picker. See `docs/u21_board_native_vhdl_plan.md`.
+
 ### Platform Notes
 
 - GHDL must be installed system-wide (`ghdl` on PATH)
@@ -154,7 +159,7 @@ Board definitions live in `boards/` as JSON files, organized by source:
 - `boards/custom/` — manually maintained boards (e.g., DE10-Standard)
 - Additional source directories can be added freely; the loader discovers them automatically
 
-To add a new board, create a JSON file in `boards/custom/` following the schema at `boards/schema/board.schema.json`. The JSON format includes optional `peripherals` and `port_conventions` sections for future use.
+To add a new board, create a JSON file in `boards/custom/` following the schema at `boards/schema/board.schema.json`. The JSON format includes an optional `port_conventions` section — consumed by board-native VHDL mode (U21; see "Board-native designs" above) — and an optional `peripherals` section (not yet consumed; P5).
 
 ### Amaranth Parser Mock Namespace (sync script only)
 

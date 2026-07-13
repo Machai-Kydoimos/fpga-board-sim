@@ -150,31 +150,106 @@ This document inventories all viable improvements and ranks them by impact.
 - **Dependencies:** ~~**Requires D2** (backend ABC)~~ ✅ — the ABC now shares `find()` / `available()` / `lib_dir()` / `sim_bin_lib()`, so a third backend overrides only `NAME` + the command builders.
 - **Done when:** a `.v` file with the correct port contract simulates successfully with Icarus Verilog.
 
-#### U21. Board-native VHDL mode (port conventions)
+#### U21. Board-native VHDL mode (port conventions) ✅
 
-- **Why:** Users currently must write VHDL to our generic contract (`clk`, `sw`, `btn`, `led`, `seg` with `NUM_*` generics). A real DE10-Standard design uses `CLOCK_50`, `KEY(3 downto 0)`, `LEDR(9 downto 0)`, `HEX0`-`HEX5` — these fail `check_vhdl_contract()`, the wrapper, and cocotb signal binding. The `port_conventions` data is already stored in board JSON files (e.g. `boards/custom/de10_standard.json` has a `terasic` convention) but nothing consumes it yet.
-- **What:** Three changes, each building on the previous:
-  1. **Contract checker** — when the user's VHDL ports don't match the generic contract, attempt to match them against the board's `port_conventions`. If a convention matches, accept the file and record which convention was used.
-  2. **Wrapper generator** — generate a port-adapter wrapper that maps between cocotb's signal names (`sw`, `btn`, `led`, `seg`) and the user's actual port names (`KEY`, `LEDR`, `HEX0`-`HEX5`). Handle polarity differences (the convention records `active_low` flags). Handle decomposed 7-seg ports (`individual` style: 6 separate `HEX` ports vs. one packed `seg` vector).
-  3. **cocotb testbench** — no change needed if the wrapper does the adaptation; cocotb continues reading `dut.sw`, `dut.btn`, `dut.led`, `dut.seg` from the wrapper, which internally connects to the user's port names.
-- **Touches:** Part B — `src/fpga_sim/board_loader.py` (`BoardDef.port_conventions`, B1), `src/fpga_sim/sim_bridge.py` (`check_vhdl_contract`, `_generate_wrapper`), `sim/sim_wrapper_template.vhd` (port-adapter generation). Part A — `boards/schema/board.schema.json` (style discriminator, provenance, `naming`), `scripts/sync_common.py` (A1 guard), new `scripts/port_convention_parsers/` + `scripts/sync_port_conventions.py`, `docs/port_convention_sources/{overlay,waves}.toml`, populated `boards/*/*.json`.
-- **Sync script merge logic:** When this feature lands, `scripts/sync_amaranth_boards.py` needs a shallow-merge update: before writing a board JSON, read the existing file (if any) and preserve top-level keys the script didn't generate (`port_conventions`, `peripherals`, etc.). This lets users add conventions directly to `boards/amaranth-boards/*.json` without losing them on re-sync. ~10 lines: read existing -> update auto-generated keys -> write back. (Post-#107 the shared write path lives in `scripts/sync_common.py` — implement it there once. **= arc-plan Phase A1**, hard-ordered before any population.)
-- **Source data (2026-07-12, PR #198):** [`docs/port_convention_sources/`](port_convention_sources/) holds ranked, fetch-verified pointers to every board's canonical constraint file (278/278 board files; 124 boards verified) — the authoritative inputs for authoring `port_conventions` blocks at U21 time. Research there also surfaced the 7-seg interface-style spread U21's schema must discriminate (per-digit HEXn, packed vector, per-segment scalars like Nandland Go, scan-mux like Basys3/Mimas A7 → **U22**, serial like Sword).
-- **Arc plan (2026-07-12):** [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md) — phase-by-phase execution plan with per-phase verification and quality gates. The conventions-population pipeline is **folded into this arc** as Part A (schema deltas → re-sync guard → dialect parsers → generator + curated overlay → population waves); the matcher/wrapper feature is Part B.
-- **Dependencies:** D1 ✅ (unified wrapper template is in place).
-- **Effort:** XL (2026-07-12: grew from L/XL by folding in Part A, the conventions-population pipeline; the research/decisions the sprint note anticipated are done — registry #198 + arc plan).
-- **Done when:** a DE10-Standard-style VHDL file with native port names (`CLOCK_50`, `KEY`, `LEDR`, `HEX0`-`HEX5`) simulates without modification.
+- Shipped 2026-07-13 (arc: groundwork #198/#199, Part A #209–#215 + follow-ups #213/#214/#218/#219, Part B #216/#217/#220/#221 + this closeout; issues #200–#208). A design written to a board's *own* port names and fixed widths (Terasic `CLOCK_50` / `KEY` / `LEDR` / `SW` / `HEX0`-`HEX5`, **no `NUM_*` generics**) now simulates unmodified. **Part A** populated `port_conventions` across the fleet — schema deltas (A0) → re-sync preservation guard (A1) → dialect parsers + `classify()` (A2) → generator + curated overlay (A3) → population waves (A4). **Part B** consumes it: `BoardDef.port_conventions` (B1); a `check_vhdl_contract()` matcher returning a typed `ContractResult` + `ConventionMatch` (B2); a native `sim_wrapper` (`_generate_wrapper`) that adapts native ports to the `clk/sw/btn/led/seg` boundary — active-low LED/button inversion, `individual` 7-seg per-digit packing — with the cocotb testbench untouched, plus `hdl/native/` examples and GHDL/NVC e2e (B3a); and the run affordances / mode badge / session-log fields (B3b). **Contract:** the simulator always models the *selected* board and the board's convention supplies polarity, so a file written for the wrong board near-misses (rejected, mismatch named) rather than silently coercing or flipping polarity. Registry + arc plan: [`docs/port_convention_sources/`](port_convention_sources/), [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U22. 7-segment v2 — physical mux mode
 
 - **Why:** Queued in memory (#8); current v1 is logical-only. v2 enables the hardware-accurate scan interface on Nexys4-DDR, RZ-EasyFPGA, StepMXO2.
 - **What:** New conditional placeholders in the unified wrapper template, updated testbench readback, new `physical_mux: bool` toggle per board.
 - **Effort:** L.
-- **Dependencies:** D1 ✅ (unified wrapper template is in place). U21 Part A additionally lands the scan-style schema fields (`style: scan` + `digit_enable`) and registry-verified scan data (Basys3 packed `seg`+`an`, Nexys4-DDR `CA..CG`, Mimas A7 `SevenSegment`+`Enable` — see `docs/port_convention_sources/`) — consume that, don't re-research.
+- **Dependencies:** D1 ✅ (unified wrapper template is in place). U21 ✅ Part A landed the scan-style schema fields (`style: scan` + `digit_enable`) and registry-verified scan data (Basys3 packed `seg`+`an`, Nexys4-DDR `CA..CG`, Mimas A7 `SevenSegment`+`Enable` — see `docs/port_convention_sources/`) — consume that, don't re-research.
 - **Done when:** a muxed 7-seg board (e.g. Nexys4-DDR) shows correct digits via the physical scan interface.
 - **Carried forward (2026-07-02):** physical-mux mode must keep the logical packed-`seg` contract as
   the design-side **default** — every 7-seg example, including the generated embedded-core designs
   (`hdl/mx65_*.vhd`, `hdl/t80_*.vhd`), assumes it.
+- **Data-quality prerequisite (found 2026-07-13):** the Digilent classifier currently emits
+  `style: individual` for Nexys 4 DDR / Nexys A7-100T / A7-50T even though their `CA..CG` are
+  *shared* scan segments (7 segment names for an 8-digit display), so those three boards **falsely**
+  full-match board-native today (a physically faithful scan design would not). Fix the classifier to
+  emit `scan` for shared-segment names as part of (or ahead of) this card — touches
+  `scripts/port_convention_parsers/classify.py` + the regenerated `boards/digilent-xdc/*.json`.
+
+#### Board-native VHDL coverage (post-U21 ✅) — raising the 23/278 usable count
+
+U21 ✅ shipped the matcher + native wrapper, but a full-fleet sweep (2026-07-13, U21 closeout) shows
+only **23 of 278 boards** are genuinely native-usable today — the feature is **data-starved, not
+broken**. **241 boards carry no `port_conventions` at all** (all 167 litex + 74 of 79 amaranth), and
+even where data exists the matcher's **"all four roles required"** rule throttles it: of those 241
+boards, 238 have clk + LED but only **52** have clk + LED + switch + button (most FPGA boards have no
+switches). The native names / counts / clock for those 238 are **already parsed** into the board
+JSON, just not emitted as a convention. The three cards below raise coverage; **U31 (relax the
+requirement) and U32 (emit the data) are synergistic** — U32 without U31 caps at ~52, U31 multiplies
+it to ~238 — while **U33** adds vendor-*canonical* quality where it matters most. Realistic combined
+ceiling ≈ 150–200 (not 278: scan/serial displays need **U22**, and some boards have no
+machine-parseable source). Recommended order: **U31 → U32**, with **U33** in parallel.
+
+#### U31. Board-native partial-interface support
+
+- **Why:** `_attempt_convention` requires clk **and** LEDs **and** switches **and** buttons all
+  present for a full match — but most FPGA boards lack switches (only 66 of the 241 uncovered boards
+  have any), so this one rule caps addressable coverage at 52 of 241 even with perfect data. Seg is
+  *already* conditional (required only when the board physically has a display); extending that
+  "match the roles the board actually has" principle to switches/buttons is the cheapest large
+  coverage lever. It was flagged as a follow-up in the U21 arc plan (Decision #4: "partial-interface
+  support is a follow-up").
+- **What:** Relax the required-role set to the roles the convention actually declares — clk + LEDs as
+  the minimum meaningful demo; switches/buttons matched-if-present. The native wrapper
+  (`_render_native_wrapper`) ties off absent input banks and leaves absent output banks dark, exactly
+  as it already does for a board with no display. Near-miss messaging stays honest (a design
+  declaring a port the board's convention lacks is still a near-miss).
+- **Touches:** `src/fpga_sim/sim_bridge.py` (`_attempt_convention`, `_render_native_wrapper`,
+  near-miss messaging); `tests/test_native_convention.py` (partial-interface matrix: LED-only,
+  LED+btn, LED+sw).
+- **Effort:** M.
+- **Dependencies:** U21 ✅.
+- **Done when:** a board-native design for a switch-less board (LEDs + buttons + clock, no `sw`)
+  simulates unmodified, and a board with only LEDs + clock does too.
+
+#### U32. Auto-derive `port_conventions` from the litex & amaranth platform files
+
+- **Why:** 241 boards (all litex, most amaranth) have no convention, yet the litex `_io` and amaranth
+  `.py` files already declare the native port names, pins, widths, and (amaranth) polarity — and the
+  two sync parsers already read them (the board JSON even carries the component net-names
+  `led` / `switch` / `button` + clocks). Emitting a `port_conventions` block from that data is the
+  single biggest coverage lever (up to the full 241-board gap).
+- **What:** Extend `scripts/litex_parser.py` and `scripts/amaranth_parser.py` to emit a
+  `port_conventions.{litex,amaranth}` block alongside the existing led/btn/sw extraction: group
+  scalar-indexed resources into a vector or `names[]` scalar bank, pick the primary LED group (`led`
+  over `rgb_led`), resolve a clock name from the platform's clock resource, and capture polarity
+  where the source encodes it — amaranth `PinsN` = active-low (directly available); litex is murkier
+  (default active-high, refine later). Stamp `source` provenance and an honest `naming` value
+  (framework-canonical). Rides the existing re-sync preservation guard (A1 ✅), so hand-authored /
+  registry conventions always win.
+- **Touches:** `scripts/litex_parser.py`, `scripts/amaranth_parser.py` (+ their sync scripts),
+  possibly `scripts/port_convention_parsers/classify.py` (reuse the grouping); regenerated
+  `boards/{litex-boards,amaranth-boards}/*.json`; per-parser tests.
+- **Effort:** L.
+- **Dependencies:** U21 ✅; strongly synergistic with **U31** (without it, framework-derived data only
+  unlocks ~52 boards; with it, ~238). Related surface: **P5** (peripheral extraction — same parsers).
+- **Done when:** the litex/amaranth sync emits conventions for the bulk of their boards, and a
+  board-native design for a representative litex board (e.g. an Arty using litex names) simulates
+  unmodified.
+
+#### U33. Board-native population waves 2+ (registry-driven canonical conventions)
+
+- **Why:** U21 Part A built the whole registry → parser → generator → overlay pipeline but only
+  **Wave 1 (3 Terasic boards)** shipped; the registry (#198) has ~124 fetch-verified sources awaiting
+  population. This is the *quality* path — vendor-**canonical** conventions with distinctive real
+  names (Terasic `LEDR` / `KEY` / `HEX`) and manual-verified polarity, which is where board-native
+  mode earns its keep versus U32's framework names.
+- **What:** Run successive population waves via `scripts/sync_port_conventions.py` (`waves.toml`),
+  curating per-board as A4 did: verify each source is parseable + trusted, cross-check widths, add
+  cited overlay entries for polarity / multi-clock / name-overrides. Prioritize boards users actually
+  hand-write HDL for (Terasic teaching boards, popular Digilent / Xilinx dev boards).
+- **Touches:** `docs/port_convention_sources/waves.toml` + `overlay.toml`; regenerated
+  `boards/*/*.json` (production path); no code (the generator is done).
+- **Effort:** L (incremental; per-wave S–M).
+- **Dependencies:** U21 ✅ (pipeline complete). Overlaps **P2** (sync curation).
+- **Done when:** the registry's verified-source boards are populated wave-by-wave, each wave recorded
+  in `waves.toml` with cited sources; unparseable-source boards (PDF / README-only) explicitly
+  deferred.
 
 ### Performance (mostly already done)
 
@@ -374,7 +449,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **3** | Visible polish | ~~U3 Tooltips~~ ✅ · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · ~~U7 In-sim toolbar~~ ✅ |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · ~~U10 Waveform~~ ✅ · U23 Dirty-flag redraw · U27 User JSON themes |
 | **5** | Waveform polish | ~~U28 Auto-emit `.gtkw`~~ ✅ · ~~U29 `FPGA_SIM_WAVEFORM` env + auto-open~~ ✅ · ~~U30 "Include memories" (`--dump-arrays`)~~ ✅ |
-| **6** | Board-native VHDL (lab↔sim round-trip) | U21 per [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md): **Part A** A0 schema → A1 re-sync guard → A2 parsers → A3 generator+overlay → A4 population waves; **Part B** B1 loader → B2 matcher → B3 native wrapper + e2e → B4 docs/closeout. (Former 6a ≈ B2+B3 scalar remap/polarity; 6b ≈ B3 7-seg adapters; the shallow-merge = A1.) Own sprint, XL |
+| **6** | Board-native VHDL (lab↔sim round-trip) | ~~U21~~ ✅ **shipped 2026-07-13** (A0–B4, PRs #209–#222) per [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md). **Coverage follow-on (raise the 23/278 genuine-usable count — see the "Board-native VHDL coverage" note under U22):** **U31** partial-interface → **U32** litex/amaranth auto-derive (synergistic) · **U33** canonical population waves (parallel). U31/U32 are near-term |
 | **7** | Iteration & panel UX | U18 Recent files (+ keep dir on retry) · U14 Pause/resume · U15 Compact SimPanel · U19 Metrics checkbox |
 | **8** | Startup hardening + dev-DRY base | U16 Min window size · U17 Font pre-alloc · **D5 Path helper** → D13 Env-branch tests · D12 Arch diagram |
 | **9** | Untrusted-VHDL isolation | **D7 Decompose `launch_simulation`** → D16 Sandbox the sim subprocess |
@@ -395,7 +470,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | ID | Item | Trigger to schedule | Effort | Notes |
 |---|---|---|---|---|
 | **P1** | NVC backend tuning — elaborate-once, run-many | Any push to raise NVC simulation throughput | M | `launch_simulation()` re-elaborates NVC (`-e`) on every run (see **D7**). Caching the elaborated design across runs of the same VHDL would cut per-run startup. NVC-only (GHDL has no separate elaborate step); benchmark before/after. |
-| **P2** | Board-sync Phase 3 — merge-aware / curation sync | Upstream removes a board we ship (recon to date: 0 removed) | L | Retain upstream-removed boards, dual upstream/adopted timestamps, `--check`, `--with-dates`. The schema `source` block permits additive provenance fields. A *subset* (preserve hand-added `port_conventions` / `peripherals` on re-sync, ~10 lines) is now **U21 arc-plan Phase A1**. Maintainer tooling in `scripts/sync_*.py`, not the app. |
+| **P2** | Board-sync Phase 3 — merge-aware / curation sync | Upstream removes a board we ship (recon to date: 0 removed) | L | Retain upstream-removed boards, dual upstream/adopted timestamps, `--check`, `--with-dates`. The schema `source` block permits additive provenance fields. A *subset* (preserve hand-added `port_conventions` / `peripherals` on re-sync, ~10 lines) shipped as **U21 Phase A1 ✅** (#210). Maintainer tooling in `scripts/sync_*.py`, not the app. |
 | **P3** | Mercury board 7-segment | A user requests it, or the I2C-expander path becomes worth modeling | M/L | Mercury's display sits behind an I2C GPIO expander (not directly pinned), so it was excluded from 7-seg v1. Needs an expander model + readback path. |
 | **P4** | Python 3.14 in the CI matrix | pygame **and** cocotb both ship `cp314` wheels | S | As of 2026-06, pygame 2.6.1 / cocotb 2.0.1 top out at `cp313`; adding 3.14 breaks `uv sync` (pygame sdist build). Re-check PyPI wheel tags before bumping the matrix upper bound. |
 | **P5** | Sync-time peripheral extraction | A peripheral type becomes consumable — the sim gains a peripheral model (VGA/audio/…), or the board-info UI wants to list on-board peripherals | M | All three parsers extract only LED/button/switch (+clock/7-seg) and discard everything else — `peripheral` appears nowhere in `scripts/` or `src/`. Upstream exposes the data richly: amaranth already has typed `Resource` stubs (`VGAResource`, `UARTResource`, `SDRAMResource`, `DDR3Resource`, …) that are currently inert; Digilent XDC section headers (`## VGA`, `## Audio`, …) are already parsed, then dropped; litex `_io` names (`serial`, `sdram`, `eth`, …) need a name→type map. `BoardDef` has no `peripherals` field, so the 6 hand-authored `custom/` boards' `peripherals` blocks are schema-valid but silently dropped at load. Needs: parser extraction → new `BoardDef.peripherals` field → JSON round-trip (the schema already defines `peripheral`). Auto-extracted data is shallower than the hand-curated attributes (`bits_per_channel`, `size_mb`, chip names). Complements **P2** / **U21** (preserve hand-added peripherals on re-sync) and the eventual per-type discriminated-union schema. |
@@ -408,6 +483,9 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **P12** | Hex-counter firmware variant | Never, by design — unless the guide gains a solutions appendix | S | Deliberately **not** implemented: `docs/embedded_core_system_guide.md` §13 already names "hex vs BCD" as the reader's own first-firmware exercise (the walking counter's BCD ripple is the worked example to adapt). Implementing it here would remove the homework value it is meant to have. |
 | **P13** | Waveform capture is unbounded in size — weigh the consequences | A capture fills the disk or hits a quota (the U29 smoke run's `/tmp` `EDQUOT`-truncated a dump mid-write), or a user reports a surprisingly large file | S/M | Native waveform capture (**U10 / U28 / U29**, now shipped) writes for the **entire** simulated run with **no size bound**. Concrete: ~1–2 s smoke runs produced **42–119 MB** VCDs; FST is ~10–20× leaner (2–5 MB) but still unbounded, and a mid-write `/tmp` `EDQUOT` **truncated** one dump (GTKWave then reads the torn VCD as "times range zero"). **Consequences to weigh:** filling `~/.fpga_simulator/waveforms/` / the disk / a tmpfs quota; torn dumps on `ENOSPC`; sluggish viewer loads; and that successive runs **accumulate** timestamped dumps with no retention/cleanup. **Candidate resolutions (open — decide at schedule time, not prescriptive):** a **size cap** (stop at *N* MB, keep + flag the partial); a **pre-/post-run "capture is ~N MB" heads-up** (Settings hint or an end-of-run line); nudging **FST as the leaner default**; a **retention sweep** of the waveforms dir; documenting the existing `FPGA_SIM_WAVEFORM_DIR` escape hatch; or something else we choose then. **Not a U29 bug** — capture works as designed; this is about the ergonomics/safety of the unbounded default. (The `/tmp` tmpfs per-user quota that triggered the truncation is a separate environmental footgun.) |
 | **P14** | GHDL-VCD + Memories=On is a silent dead-end — steer users to FST | A user enables the **Memories** toggle under GHDL with VCD selected and sees no memories (or reports it) | XS/S | U30's Memories toggle drives NVC `--dump-arrays` but is a **no-op under GHDL**: GHDL's VCD *writer* omits memories (its FST/GHW writers include them by default, no flag), so **GHDL + VCD + Memories=On silently yields nothing**, with no indication why. Correct-by-design, but a confusing combination. **Candidate resolutions (open):** a Settings hint when GHDL+VCD+Memories is selected ("memories need FST under GHDL"); auto-suggesting/switching to FST; or a one-line end-of-run note. Cosmetic/ergonomic only — the format matrix is documented (embedded-core guide §15, CHANGELOG, `WaveConfig` docstring). Sibling of **P13** (both waveform-capture ergonomics). |
+| **P15** | Global cross-board convention *ambiguity* detection | A future board introduces a name+width-identical, polarity-*different* collision (today's `test_native_convention.py` invariant would fail loudly first), or a user reports a board-native file matching the "wrong" board | S/M | U21 ✅ resolves the wrong-board case safely by construction: a native file either near-misses on a differing port name or matches an electrically identical board (the only cross-board full match in the current data is DE23-Lite ↔ DE25-Standard, same polarity). What's **not** built is *global* ambiguity detection — "does this file also match another board *better* than the selected one?" Not needed for the current fleet (proven by the data-invariant regression test, which fails loudly if a name+width-identical, polarity-different pair ever appears), so it's deferred rather than speculatively built. **If triggered:** sweep the fleet's canonical conventions at match time and surface a "this also matches board X" note, or gate on a distinct discriminator (e.g. a unique clock name). See U21's plan §"Cross-board safety". |
+| **P16** | Surfer waveform signal *preselection* (`-c`/`--command-file`) | A user asks for an auto-preselected signal list in Surfer (not just GTKWave), or Surfer's command-file API stabilizes | S | U21 B3 ✅ made the auto-`.gtkw` save file preselect a board-native run's *own* `sim_wrapper.uut.<native>` signals (was contract names) — but `.gtkw` is **GTKWave-only**. Surfer (installed; opened via `$FPGA_SIM_WAVEFORM_VIEWER=surfer {dump}`) already shows the full tree with both the native and contract names present, so there's no wrong-default — just no auto-*preselect*. A symmetric Surfer preselection via its `-c`/`--command-file` is **orthogonal to U21** (it would help generic mode too), and Surfer's `--help` flags that API as "not permanent," so it's parked rather than built. Pairs with **U29 ✅** (the configurable-viewer template that already launches Surfer). |
+| **P17** | Board-native "frozen-divider" warning heuristic | A user reports a board-native design that renders as static LEDs/digits because it divides the full clock down, or board-native authoring becomes common enough to warrant a lint | S | Board-native designs (U21 ✅) carry **no `COUNTER_BITS` override** — that generic is generic-contract-only — so a design that derives its visible rate from the top bits of a real 50 MHz divider looks **frozen** at the simulator's sub-real-time throughput (a real board would tick it fast). U21 handled this **by documentation**: the `hdl/native/*.vhd` examples tap *mid* counter bits, and CLAUDE.md's board-native section calls out the gotcha. A **literal-constant warning heuristic** — detect a large fixed divider threshold / top-bit tap in a native design and warn "this may look static at sim speed; tap lower bits or reduce the divider" — was parked here (U21 decision 6) rather than built, since it's advisory and easy to get wrong (false positives on legitimate slow signals). |
 
 **Also parked (speculative, no trigger):** *LCD / OLED display support* — a stretch goal from the original `prompt_info` vision (alongside 7-seg, which shipped). No board JSON models a character LCD / OLED and no user has requested it; recorded for completeness only.
 
@@ -415,23 +493,23 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 ## Critical files modified across the roadmap
 
-- `src/fpga_sim/__main__.py` — U2 ✅, U5 ✅ (window-size restore), U16, D6a ✅, D6b ✅ (now a thin driver), D9 ✅
-- `src/fpga_sim/controller.py` — D6b ✅ (new: `ScreenController` + `SessionState`), U4 ✅ (`example_vhdl_for` wiring), U5 ✅ (save-on-pick/change/quit + speed plumbing), U7 ✅ (`on_simulate` acts on the returned `SimExit`; reload/back/change routing), U18 (retry start-dir)
-- `src/fpga_sim/sim_bridge.py` — U4 ✅ (parsed contract checks + `add_error_hints`), U5 ✅ (`speed_factor` → `FPGA_SIM_SPEED`), U7 ✅ (`SimExit` enum + exit-intent sidecar; `launch_simulation()` returns it), U10, U21, D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`), D16 (wrap the run subprocess)
-- `src/fpga_sim/board_loader.py` — U12, D11 ✅, U21 (B1: `BoardDef.port_conventions` + serialization)
+- `src/fpga_sim/__main__.py` — U2 ✅, U5 ✅ (window-size restore), U21 ✅ (`res.match` → analyze/launch), U16, D6a ✅, D6b ✅ (now a thin driver), D9 ✅
+- `src/fpga_sim/controller.py` — D6b ✅ (new: `ScreenController` + `SessionState`), U4 ✅ (`example_vhdl_for` wiring), U5 ✅ (save-on-pick/change/quit + speed plumbing), U7 ✅ (`on_simulate` acts on the returned `SimExit`; reload/back/change routing), U21 ✅ (`SessionState.convention` + `ConventionMatch` threading), U18 (retry start-dir)
+- `src/fpga_sim/sim_bridge.py` — U4 ✅ (parsed contract checks + `add_error_hints`), U5 ✅ (`speed_factor` → `FPGA_SIM_SPEED`), U7 ✅ (`SimExit` enum + exit-intent sidecar; `launch_simulation()` returns it), U10 ✅, U21 ✅ (convention matcher + native `_render_native_wrapper`; native `.gtkw` preselection), D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`), D16 (wrap the run subprocess)
+- `src/fpga_sim/board_loader.py` — U12, D11 ✅, U21 ✅ (B1: `BoardDef.port_conventions` + serialization)
 - `src/fpga_sim/session_config.py` — U5 ✅ (merge-on-write; new `update_session` / `push_recent`), U18, D9 ✅, D14 ✅, D16 (sandbox toggle)
 - `src/fpga_sim/ui/constants.py` — D15 ✅ (now base neutrals only), U17
 - `src/fpga_sim/ui/theme.py` — D15 ✅ (new: `Theme` dataclass + `THEME`), U2 ✅ (`spinner_arc` / `spinner_track` roles), U5 ✅ (`THEME_NAMES` / `THEME_LABELS` + settings button styles), U6 ✅ (`dark` / `high-contrast` instances + `set_theme` / `current_theme_name`), U27 (dynamic registry + JSON loader)
 - `src/fpga_sim/ui/components.py` — U3 ✅, U9, D3 ✅, D15
 - `src/fpga_sim/ui/board_display.py` — U1 ✅, U3 ✅, U5 ✅ (gear trigger), U11, U16, D3 ✅, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15
 - `src/fpga_sim/ui/board_selector.py` — U0, U1 ✅, U8, U12, U13 ✅, D15
-- `src/fpga_sim/ui/sim_panel.py` — U5 ✅ (`speed_factor` ctor param; public `SPEED_DEFAULT`), U14, U15, U19, D4 ✅, D15
+- `src/fpga_sim/ui/sim_panel.py` — U5 ✅ (`speed_factor` ctor param; public `SPEED_DEFAULT`), U21 ✅ (native-convention INFO note), U14, U15, U19, D4 ✅, D15
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15
 - `src/fpga_sim/ui/error_dialog.py` — U4 ✅ (`example_path` → [View Example]), D4 ✅, D6a ✅ (`run()` returns `DialogResult`), D15
 - New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/sim_toolbar.py` (U7 ✅), `ui/tooltip.py` (U3 ✅), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
 - `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
-- `sim/sim_testbench.py` — U5 ✅ (speed restore + write-back), U7 ✅ (toolbar draw + click → intent-file write; F1/`?` → in-sim `HelpDialog`), U9, U14, U22, D15
+- `sim/sim_testbench.py` — U5 ✅ (speed restore + write-back), U7 ✅ (toolbar draw + click → intent-file write; F1/`?` → in-sim `HelpDialog`), U21 ✅ (board-native mode tag + session-log `mode`/`convention`), U9, U14, U22, D15
 - `pyproject.toml` — D8 ✅ (`[tool.mypy]` now just `strict = true`), U26 (`dev` group gains Pillow)
 - `.pre-commit-config.yaml`, new `.editorconfig` — D10 ✅
 - `CONTRIBUTING.md` — D12

@@ -1,6 +1,6 @@
 # U21 — Board-native VHDL: arc plan (conventions population + matcher + wrapper)
 
-**Status:** IN PROGRESS — A0 (#209), A1 (#210), A2 (#211), A3 (#212) merged; the schema-symmetry follow-up (#213) and the `boards/custom/`-trust gate follow-up (#214) merged; A4 Wave 1 (#215) merged. Part A done; **Part B in progress** — B1 (thread conventions into `BoardDef`) merged (#216); B2 (convention matcher + typed `ContractResult`) in review. Update the [status ledger](#status-ledger) as phases land.
+**Status:** ✅ COMPLETE (2026-07-13). Part A: A0 (#209), A1 (#210), A2 (#211), A3 (#212) merged; schema-symmetry follow-up (#213) and `boards/custom/`-trust gate follow-up (#214) merged; A4 Wave 1 (#215) + DE10-Lite (#218) and DE0 (#219) rescues merged. Part B: B1 (#216), B2 (#217), B3a (#220), B3b (#221) merged; B4 (docs + closeout) is the PR carrying this update. See the [status ledger](#status-ledger) and [lessons learned](#lessons-learned). The board-native done-when is met: a Terasic-native file (`CLOCK_50` / `KEY` / `LEDR` / `SW` / `HEX0`-`HEX5`) simulates unmodified.
 **Decided 2026-07-12 (Rick):** the port-conventions population pipeline is **folded into the
 U21 arc** as its opening phases (Part A), rather than run as a separate arc.
 **Source data:** [`docs/port_convention_sources/`](port_convention_sources/) (PR #198) — ranked,
@@ -36,13 +36,16 @@ post-merge `main`.
    50 MHz divider looks frozen at sim speed): handled by documentation in this arc; a
    literal-constant warning heuristic is parked (add to Icebox at closeout).
 
-## Open questions (answer during B1 design review, before coding B2)
+## Open questions (resolved) — both recommendations adopted
 
 - Where the matched convention surfaces in UX. *Recommendation:* analysis-spinner text +
-  `sim_session_log` field; no new dialog.
+  `sim_session_log` field; no new dialog. **✅ Adopted** (B3b): spinner reads "Analyzing
+  board-native …", the session log gained `mode`/`convention`, plus an info-strip mode tag and a
+  stats-panel active-low note — no new dialog.
 - Whether `check_vhdl_contract`'s return grows a typed result object now or a third tuple
   element. *Recommendation:* small frozen dataclass `ContractResult` (repo precedent: typed
-  results, D6a/U7).
+  results, D6a/U7). **✅ Adopted** (B2): frozen `ContractResult(ok, message, match)` +
+  `ConventionMatch`.
 
 ---
 
@@ -228,7 +231,7 @@ held back, each with a recorded reason:
 
 **Quality gates:** as A0; CHANGELOG entry per wave PR.
 
-### A4 follow-up (in progress) — Terasic System-CD wave via overlay name-override
+### A4 follow-up ✅ — Terasic System-CD wave via overlay name-override
 
 Discovered during A4: Rick provided the official Terasic System CDs / Resource Packages
 (DE0-CV, DE0-Nano, DE10-Lite, DE10-Standard, DE23-Lite, DE25-Standard, VEEK-MT2, VEEK-MT-SoCKit).
@@ -263,10 +266,13 @@ Locked Decision #1). This also addresses the model gap that Terasic's best sourc
 ZIP, not a raw URL. A **second, independent mechanism** is needed for DE0: teach the A2 classifier
 the `<name>_D[k]` + `<name>_DP` per-digit 7-seg style (see the DE0 bullet). **Scope:** small
 additive `apply_overlay` name-override + the A2 classifier extension + tests, then a data wave;
-its own PR(s), not folded into A4. **Status:** PR 1 shipped the `apply_overlay` name-override +
-the `_overlay_supplies_cited_canonical_names` gate bypass + DE10-Lite; PR 2 shipped the A2
-`<name>_D`/`_DP` classifier extension + green-only-LED routing + DE0. **Remaining:** the
-DE23/DE25/VEEK read-only validation against the golden tops.
+its own PR(s), not folded into A4. **Status: ✅ done.** PR 1 (#218) shipped the `apply_overlay`
+name-override + the `_overlay_supplies_cited_canonical_names` gate bypass + DE10-Lite; PR 2 (#219)
+shipped the A2 `<name>_D`/`_DP` classifier extension + green-only-LED routing + DE0. DE25-Standard's
+candidate `terasic` block was then exercised end-to-end as B3a's active-low-LED example
+(`hdl/native/de25_standard.vhd`, GHDL + NVC), validating it against a real native design. DE23-Lite
+and VEEK-MT2 remain read-only-validation candidates for a future data wave (no machine-parseable
+source today) — not blockers for U21's done-when.
 
 ---
 
@@ -374,21 +380,57 @@ sim-supported 7-seg boards except the scan/serial set have populated conventions
 | A1 | Re-sync guard | #210 | merged |
 | A2 | Dialect parsers | #211 | merged |
 | A3 | Generator + overlay | #212 | merged |
-| A4 | Wave 1 population (3 boards; Wave 2 later) | #215 | merged |
+| A4 | Wave 1 population (3 boards) + DE10-Lite / DE0 rescues | #215, #218, #219 | merged |
 | B1 | BoardDef threading | #216 | merged |
-| B2 | Convention matcher + typed `ContractResult` | — | in review |
-| B3 | Native wrapper + e2e | — | not started |
-| B4 | Docs + closeout | — | not started |
+| B2 | Convention matcher + typed `ContractResult` | #217 | merged |
+| B3a | Native wrapper + GHDL/NVC e2e + `hdl/native/` examples | #220 | merged |
+| B3b | Run affordances (info tag, stats note, session log, spinner) | #221 | merged |
+| B4 | Docs + closeout | this PR | merged |
 
 ## Closeout checklist (do not skip — explicit step per the planning-lessons memory)
 
-- [ ] Roadmap: U21 card marked shipped with PR list; downstream refs updated (U22 note about
-      scan data being ready; Icebox: add frozen-divider heuristic; P2 subset note resolved).
-- [ ] Registry README: add the "how population consumes this" section pointing at the
-      generator; statuses of enriched rows updated.
-- [ ] This doc: status ledger complete; lessons-learned section appended.
-- [ ] Memory: arc memory updated (plan → shipped), release-plan memory updated.
-- [ ] CHANGELOG entries verified across all phase PRs before the release that ships U21.
+- [x] Roadmap: U21 card condensed to a shipped ✅ stub with the PR list; downstream refs updated
+      (U22 dependency note now past-tense "landed"; Icebox **P15** cross-board ambiguity + **P16**
+      Surfer preselection + **P17** frozen-divider heuristic added; P2 subset note resolved to
+      "shipped as A1 ✅ (#210)"). *(B4)*
+- [x] Registry README: "How population consumes this" section added pointing at
+      `sync_port_conventions.py` + the A2 parsers; the stale "(planned)" pipeline wording fixed.
+      Row-level `status`/enrichment updates are maintained per population PR (A3 #212 / A4 #215).
+      *(B4)*
+- [x] This doc: status ledger complete (all phases merged); lessons-learned section appended;
+      CLAUDE.md gained a board-native VHDL subsection + `hdl/native/` file-table row. *(B4)*
+- [x] Memory: `project_u21_arc_progress` flipped to arc-complete; index hook updated. *(B4)*
+- [x] CHANGELOG: per-phase [Unreleased] entries present for A0–A4, B1, B2, B3a, B3b + a B4
+      closeout entry (all under one release bucket when U21 ships).
+
+## Lessons learned
+
+- **Bake the board widths as the native wrapper's generic *defaults*.** Because `analyze_vhdl`'s
+  early elaboration calls `elaborate_cmd("sim_wrapper", {}, …)` with *no* generics, emitting
+  `NUM_LEDS := 10` (etc.) as the wrapper entity's defaults makes the top ports line up with the
+  native uut's fixed widths with zero changes to the launch/run path or the cocotb testbench — the
+  key move that kept B3a localized to `sim_bridge.py` + a thin `match` thread. Avoid a "defaults
+  dance" (re-elaborating with explicit generics just for the early check).
+- **Cross-board safety is data-dependent — make it a regression *invariant*, not detection.** No
+  silent polarity flip is possible with today's data (the only cross-board full match, DE23↔DE25,
+  agrees on polarity), but that hinges on names/widths/polarity differing. A sweep-all-pairs test
+  that asserts no cross-board full match diverges on polarity turns an incidental safety property
+  into one that **fails loudly** if a future board breaks it — better than speculative global
+  ambiguity detection (parked P15).
+- **GHDL and NVC both emit lowercase identifiers in the VCD/FST.** Verified against a real native
+  dump; the `.gtkw` native preselection lowercases the `sim_wrapper.uut.<native>` names accordingly.
+  Don't assume the source-case `LEDR`/`HEX0` survives into the dump.
+- **Split by review surface, not just by layer.** Rick's B3a (core execution: `ok=True` flip +
+  native wrapper + e2e) / B3b (UX: mode tag, stats note, session log, spinner) split kept each PR
+  independently reviewable; B3b consumed the `FPGA_SIM_NATIVE_CONVENTION` env B3a already exported,
+  so it added *no* new detection logic.
+- **Fit new overlays into fixed panel geometry.** The stats-panel active-low note is one small-font
+  line in the ~13 px of slack below the existing INFO rows, so the panel height (and therefore the
+  board size) is unchanged — verified with headless screenshots before merge. "Don't let the stats
+  overlay shrink the board into obscurity" was an explicit constraint.
+- **Inspect source *names*, not just widths, when vouching a board.** (Carried from A4.) The "5
+  clean boards" count was a width-only over-count; boards whose community QSF renamed resources
+  (DE10-Lite `LEDR`→`LED`, DE0 `HEXn_D`) needed a cited overlay name-override, not a straight ship.
 
 ## Risk register
 

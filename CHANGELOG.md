@@ -212,6 +212,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`generic`/`native`) and `convention` (the maker slug) fields. All of this is driven by the
   `FPGA_SIM_NATIVE_CONVENTION` metadata B3a already exports — no new detection logic (U21 arc,
   issue #207)
+- **U21 board-native VHDL docs + arc closeout (Phase B4).** Documented the shipped feature and
+  closed out the arc. `CLAUDE.md` gains a "Board-native designs" subsection — the
+  simulates-the-*selected*-board / board-supplies-polarity / wrong-board-near-miss contract, plus
+  the no-`COUNTER_BITS` "frozen-divider" gotcha (native designs tap mid counter bits so motion
+  stays visible at sim speed) — and an `hdl/native/` file-table row. The roadmap U21 card is
+  condensed to a shipped ✅ stub with the full record moved to `docs/roadmap_delivered.md`; the arc
+  plan's status ledger and closeout checklist are completed and a lessons-learned section appended;
+  and `docs/port_convention_sources/README.md` now documents how the A3 generator consumes the
+  registry. Three follow-ups parked to the Icebox: global cross-board convention *ambiguity*
+  detection (**P15**), Surfer waveform signal *preselection* (**P16**), and a board-native
+  frozen-divider warning heuristic (**P17**). Docs only — no code change. Completes **U21** (U21
+  arc, closes #207 and #208)
 
 ## [0.13.0] - 2026-07-11
 

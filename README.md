@@ -313,7 +313,7 @@ Board definitions are stored as JSON files in `boards/`, organized by source:
 
 - **`boards/amaranth-boards/`** — auto-synced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via `scripts/sync_amaranth_boards.py` (~79 boards)
 - **`boards/litex-boards/`** — auto-synced from [litex-boards](https://github.com/litex-hub/litex-boards) via `scripts/sync_litex_boards.py` (~167 boards across Xilinx, Intel, Lattice, Gowin, Efinix)
-- **`boards/digilent-xdc/`** — auto-synced from [Digilent XDC](https://github.com/Digilent/digilent-xdc) via `scripts/sync_digilent_xdc.py` (~26 Digilent boards with `port_conventions` for future board-native VHDL mode)
+- **`boards/digilent-xdc/`** — auto-synced from [Digilent XDC](https://github.com/Digilent/digilent-xdc) via `scripts/sync_digilent_xdc.py` (~26 Digilent boards with `port_conventions` for board-native VHDL mode)
 - **`boards/custom/`** — manually maintained boards (new boards go here)
 
 Each subdirectory under `boards/` is a "source." The loader scans all sources and returns every board — if two sources define the same board, both appear in the selector with a source annotation.
@@ -508,6 +508,10 @@ would on real silicon. Captured headlessly via
 [`scripts/capture_demo.py`](scripts/capture_demo.py).*
 
 These are **generated**, not hand-written — `uv run python scripts/gen_embedded_core.py --system systems/<name>.toml` (re)builds one from a vendored CPU core + a `systems/*.toml` spec + an assembled firmware `.bin`; `uv run python scripts/regen_embedded_cores.py` regenerates every system in one command. See [`docs/embedded_core_system_guide.md`](docs/embedded_core_system_guide.md) for the full development guide (quickstart, architecture, extending) and [`docs/embedded_core_improvement_plan.md`](docs/embedded_core_improvement_plan.md) for the arc that hardened it.
+
+### Board-native designs
+
+You can also write a design to a **board's own port names and fixed widths** instead of the generic contract — for example a Terasic board's `CLOCK_50`, `SW(9 downto 0)`, `KEY(3 downto 0)`, `LEDR(9 downto 0)`, and `HEX0`-`HEX5`, with **no `NUM_*` generics**. When you load such a file, the simulator matches its ports against the *selected* board's known port convention; on a match it runs the design unmodified, adapting the native ports — including active-low LEDs/buttons and per-digit 7-segment outputs — to the simulator behind the scenes. The board you pick supplies the pin names and polarity, so a file written for a *different* board is rejected with a message naming the mismatch (e.g. a clock called `CLOCK_50` when the selected board's is `CLOCK0_50`) rather than run incorrectly. See the reference examples in [`hdl/native/`](hdl/native/) — `de10_standard.vhd`, `de0.vhd`, `de25_standard.vhd`, one per board. (Board-native designs have no `COUNTER_BITS` override, so drive anything you want to *see* from mid-range counter bits — as the examples do — or it will look frozen at simulation speed.)
 
 ## Dependencies
 
