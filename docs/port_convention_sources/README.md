@@ -16,8 +16,24 @@ the files. It exists so that:
   so the search is not silently repeated.
 
 The simulator does **not** read these files at runtime; they are maintainer
-data for the (planned) `scripts/sync_port_conventions.py` pipeline and human
-reference. See `docs/improvement_roadmap.md` (U21, Icebox P2/P5).
+data for the `scripts/sync_port_conventions.py` generator (U21 Phase A3 ✅)
+and human reference. See `docs/improvement_roadmap.md` (U21 ✅, Icebox P2/P5)
+and `docs/u21_board_native_vhdl_plan.md`.
+
+**How population consumes this (U21 Phase A3 ✅).**
+`scripts/sync_port_conventions.py` turns a registry row into a board JSON's
+`port_conventions.<maker-slug>` block: it resolves the row's rank-1 source to a
+commit-pinned raw URL, fetches it, parses it with the matching A2 dialect module
+under `scripts/port_convention_parsers/` (`qsf.py` / `xdc.py` / `ucf.py` /
+`pcf.py` / `lpf.py` / `cst.py` / `ccf.py` / `boardstore_xml.py`) through the
+shared `classify()`, applies any `overlay.toml` overrides (citations,
+name-overrides), cross-checks widths against each target file's own resource
+counts, and shallow-merges the result into every board JSON the row's `files`
+list names. A trust gate (verified status + an official/canonical-vouched
+rank-1 source + a wave-listed board) governs which rows write; `--board` forces
+a row but never bypasses the per-file width check. The runtime side that
+*consumes* the populated blocks is U21 Part B (`BoardDef.port_conventions` →
+`check_vhdl_contract` matcher → native `sim_wrapper`).
 
 ## Files
 
