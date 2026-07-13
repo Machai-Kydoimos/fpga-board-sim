@@ -41,6 +41,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import cocotb
 import pygame
@@ -55,6 +56,37 @@ from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.sim_panel import _PANEL_H_BASE, SPEED_DEFAULT
 from fpga_sim.ui.theme import THEME, THEME_NAMES, set_theme
 from fpga_sim.ui.widgets import draw_button
+
+
+def _native_convention() -> dict[str, Any] | None:
+    """Parse ``FPGA_SIM_NATIVE_CONVENTION`` (set by launch_simulation for a native run).
+
+    Returns the decoded dict (``maker`` / ``board_name`` / per-role ``*_active_low``
+    / ``has_seg``) or ``None`` for an ordinary generic-contract run.
+    """
+    raw = os.environ.get("FPGA_SIM_NATIVE_CONVENTION", "").strip()
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _active_low_roles(conv: dict[str, Any]) -> str:
+    """Comma-joined role labels the convention drives active-low (else ``"none"``)."""
+    roles = []
+    if conv.get("leds_active_low"):
+        roles.append("LED")
+    if conv.get("switches_active_low"):
+        roles.append("SW")
+    if conv.get("buttons_active_low"):
+        roles.append("BTN")
+    if conv.get("has_seg") and conv.get("seg_active_low"):
+        roles.append("HEX")
+    return ", ".join(roles) if roles else "none"
+
 
 # ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
 _METRICS_PATH: str = os.environ.get("FPGA_SIM_METRICS", "")
@@ -200,12 +232,15 @@ async def interactive_sim(dut: object) -> None:
     # Build the SimPanel with the base height; panel.panel_height is a property
     # that re-scales automatically on every access as the window changes.
     clk_hz = board_def.default_clock_hz if board_def else _FALLBACK_CLOCK_HZ
+    # U21 B3b: board-native run metadata (None for an ordinary generic run).
+    _native = _native_convention()
     panel = SimPanel(
         screen,
         height=_PANEL_H_BASE,
         board_clock_hz=clk_hz,
         board_clocks_hz=board_def.clocks if board_def else None,
         speed_factor=_SPEED_INIT,
+        native_active_low=_active_low_roles(_native) if _native else None,
     )
 
     # Initial scaled panel height for the board layout.
@@ -228,10 +263,15 @@ async def interactive_sim(dut: object) -> None:
     _sim_name = os.environ.get("FPGA_SIM_SIMULATOR", "ghdl").upper()
     _vhdl_basename = os.path.basename(os.environ.get("FPGA_SIM_VHDL_PATH", ""))
     _board_name = board_def.name if board_def else "Generic"
+    # U21 B3b: mode tag right after the filename -- "(native: <maker>)" or "(generic)".
+    _mode_tag = f"(native: {_native.get('maker', '?')})" if _native else "(generic)"
     pygame.display.set_caption(
-        f"FPGA Simulator \u2013 {_board_name} \u2013 {_vhdl_basename} ({_sim_name})"
+        f"FPGA Simulator \u2013 {_board_name} \u2013 {_vhdl_basename} {_mode_tag} ({_sim_name})"
     )
-    _info_text = "  |  ".join(p for p in (_board_name, _vhdl_basename, _sim_name) if p)
+    # The info strip renders in segments so the native tag can carry an accent
+    # color.  _info_prefix ends with a space; the tag is blitted, then the suffix.
+    _info_prefix = "  |  ".join(p for p in (_board_name, _vhdl_basename) if p) + " "
+    _info_suffix = f"  |  {_sim_name}" if _sim_name else ""
 
     # ── Sync initial clock half-period to the VHDL wrapper ───────────────────
     # The wrapper's CLK_HALF_NS generic seeds the port default; writing it
@@ -454,16 +494,25 @@ async def interactive_sim(dut: object) -> None:
         _ov_fs = max(10, round(13 * _ov_s))
         _ov_font = _get_font(_ov_fs, bold=True)
 
-        # ── Info strip (top-left): board | VHDL | simulator ───────────────────
+        # ── Info strip (top-left): board | VHDL (mode) | simulator ───────────
+        # Rendered in segments so the mode tag gets an accent color for a native
+        # run (a restrained visual "pop"); the rest stays in the normal color.
         _info_font = _get_font(max(9, round(11 * _ov_s)))
-        _info_surf = _info_font.render(_info_text, True, THEME.sim_info)
-        _info_bg = pygame.Surface(
-            (_info_surf.get_width() + 12, _info_surf.get_height() + 6),
-            pygame.SRCALPHA,
-        )
+        _tag_color = THEME.info_green if _native else THEME.sim_info
+        _info_segs = [
+            (_info_font.render(_info_prefix, True, THEME.sim_info)),
+            (_info_font.render(_mode_tag, True, _tag_color)),
+            (_info_font.render(_info_suffix, True, THEME.sim_info)),
+        ]
+        _info_w = sum(s.get_width() for s in _info_segs)
+        _info_h = max(s.get_height() for s in _info_segs)
+        _info_bg = pygame.Surface((_info_w + 12, _info_h + 6), pygame.SRCALPHA)
         _info_bg.fill((0, 0, 0, 130))
         screen.blit(_info_bg, (0, 0))
-        screen.blit(_info_surf, (6, 3))
+        _info_x = 6
+        for _seg in _info_segs:
+            screen.blit(_seg, (_info_x, 3))
+            _info_x += _seg.get_width()
 
         # ── Bottom-right Pause + Stop buttons ─────────────────────────────────
         _ov_pad_x = max(8, round(10 * _ov_s))
@@ -610,6 +659,8 @@ async def interactive_sim(dut: object) -> None:
             avg_draw_pct=_avg_draw_pct,
             avg_idle_pct=_avg_idle_pct,
             clock_hz=panel.current_clock_hz,
+            mode="native" if _native else "generic",
+            convention=_native.get("maker") if _native else None,
         )
         if _BENCHMARK_MODE:
             _sim_rate = (panel._sim_elapsed_ns / 1e9) / max(_duration_s, 1e-9)

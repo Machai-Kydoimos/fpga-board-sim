@@ -66,8 +66,22 @@ def test_json_has_required_keys(session_dir):
         "avg_draw_pct",
         "avg_idle_pct",
         "clock_hz",
+        "mode",
+        "convention",
     ):
         assert key in data, f"missing key: {key}"
+
+
+def test_mode_defaults_to_generic(session_dir):
+    data = json.loads(_call().read_text())
+    assert data["mode"] == "generic"
+    assert data["convention"] is None
+
+
+def test_native_mode_and_convention_stored(session_dir):
+    data = json.loads(_call(mode="native", convention="terasic").read_text())
+    assert data["mode"] == "native"
+    assert data["convention"] == "terasic"
 
 
 def test_board_and_simulator_stored(session_dir):

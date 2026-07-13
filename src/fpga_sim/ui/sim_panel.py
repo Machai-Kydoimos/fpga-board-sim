@@ -130,6 +130,7 @@ class SimPanel:
         board_clock_hz: float,
         board_clocks_hz: list[float] | None = None,
         speed_factor: float = SPEED_DEFAULT,
+        native_active_low: str | None = None,
     ) -> None:
         """Initialize the panel with screen surface, pixel height, and board clock.
 
@@ -151,11 +152,18 @@ class SimPanel:
         speed_factor:
             Initial speed multiplier (e.g. restored from the saved session).
             Clamped to the slider range.
+        native_active_low:
+            For a board-native run (U21), the roles the convention drives
+            active-low (e.g. ``"LED, KEY, HEX"``), shown as a compact note in
+            the INFO zone.  ``None`` for an ordinary generic-contract run.
 
         """
         self.screen = screen
         self._panel_h_base: int = height
         self._board_clock_hz = board_clock_hz
+        # U21 B3b: for a board-native run, the roles the convention drives
+        # active-low (e.g. "LED, KEY, HEX"), shown as a compact INFO-zone note.
+        self._native_active_low = native_active_low
 
         # Use the board's actual clock options when provided; fall back to the
         # generic preset list for boards whose clock data is unavailable.
@@ -381,6 +389,18 @@ class SimPanel:
             self.screen.blit(lbl_surf, (x + lpad, ty))
             self.screen.blit(val_surf, (x + lpad + lbl_surf.get_width() + 4, ty))
             ty += line_h
+
+        # U21 B3b: board-native convention note — one compact line (small font)
+        # tucked below the rows, so the INFO zone gains detail without growing
+        # the fixed panel height (the board keeps its size).
+        if self._native_active_low is not None:
+            small = get_font(max(8, round(9 * s)))
+            note = small.render(
+                f"board-native · active-low: {self._native_active_low}",
+                True,
+                THEME.info_green,
+            )
+            self.screen.blit(note, (x + lpad, ty))
 
     def _draw_speed_zone(
         self,

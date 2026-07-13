@@ -88,6 +88,27 @@ def test_rolling_average_converges(dummy_screen):
     assert panel._idle_us == pytest.approx(300.0)
 
 
+# ── U21 B3b: board-native convention note ─────────────────────────────────────
+
+
+def test_native_active_low_defaults_none(dummy_screen):
+    from fpga_sim.ui.sim_panel import SimPanel
+
+    panel = SimPanel(dummy_screen, height=120, board_clock_hz=100e6)
+    assert panel._native_active_low is None
+
+
+def test_native_active_low_stored_and_draws(dummy_screen):
+    """A board-native run stores the active-low roles and renders without error."""
+    from fpga_sim.ui.sim_panel import SimPanel
+
+    panel = SimPanel(
+        dummy_screen, height=120, board_clock_hz=100e6, native_active_low="LED, KEY, HEX"
+    )
+    assert panel._native_active_low == "LED, KEY, HEX"
+    panel.draw()  # INFO-zone native note is drawn; must not raise
+
+
 def test_panel_height_scales_with_window(headless_pygame):
     """panel_height must grow proportionally when the window is enlarged."""
     from fpga_sim.ui.sim_panel import _PANEL_H_BASE, SimPanel

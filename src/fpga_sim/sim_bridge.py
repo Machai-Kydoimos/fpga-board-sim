@@ -1920,6 +1920,7 @@ def launch_simulation(
                 "buttons_active_low": match.buttons.active_low,
                 "switches_active_low": match.switches.active_low,
                 "has_seg": match.seven_seg is not None,
+                "seg_active_low": match.seven_seg.active_low if match.seven_seg else False,
             }
         )
 

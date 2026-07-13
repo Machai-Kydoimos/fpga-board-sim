@@ -57,6 +57,8 @@ def save_session_stats(
     avg_draw_pct: float,
     avg_idle_pct: float,
     clock_hz: float,
+    mode: str = "generic",
+    convention: str | None = None,
 ) -> Path:
     """Write a compact JSON performance summary for the just-completed session.
 
@@ -83,6 +85,12 @@ def save_session_stats(
         (frame-rate cap sleep).
     clock_hz:
         Virtual clock frequency in Hz at the end of the session.
+    mode:
+        ``"native"`` when the design ran as board-native VHDL (U21), else
+        ``"generic"`` (the standard clk/sw/btn/led/seg contract).
+    convention:
+        The matched convention slug (e.g. ``"terasic"``) for a native run,
+        else ``None``.
 
     Returns
     -------
@@ -110,6 +118,8 @@ def save_session_stats(
         "avg_draw_pct": round(avg_draw_pct, 1),
         "avg_idle_pct": round(avg_idle_pct, 1),
         "clock_hz": clock_hz,
+        "mode": mode,
+        "convention": convention,
     }
     path.write_text(json.dumps(data, indent=2) + "\n")
     print(f"[session] Stats saved → {path}")
