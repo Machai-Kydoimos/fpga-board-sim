@@ -130,7 +130,11 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) ->
     # Analyze VHDL
     generics = build_generics(chosen)
     ok, work_dir = analyze_vhdl(
-        vhdl_path, toplevel=toplevel_name, simulator=simulator, board_def=chosen
+        vhdl_path,
+        toplevel=toplevel_name,
+        simulator=simulator,
+        board_def=chosen,
+        match=res.match,
     )
     if not ok:
         print(f"[benchmark] VHDL analysis failed: {work_dir}", file=sys.stderr)
@@ -153,6 +157,7 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) ->
             work_dir=work_dir,
             simulator=simulator,
             board_def=chosen,
+            match=res.match,
         )
     finally:
         os.environ.pop("FPGA_SIM_BENCHMARK", None)

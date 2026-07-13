@@ -992,7 +992,12 @@ def _role_span(port: NativePort) -> str:
 
 
 def _native_convention_message(match: ConventionMatch, filename: str) -> str:
-    """User-facing message for a design recognized as board-native (B2: not yet run)."""
+    """Info message for a design recognized as board-native (U21 B3: runs).
+
+    ``check_vhdl_contract`` returns this with ``ok=True``; the launcher does not
+    show it as an error, but it is carried on the result for the analysis spinner
+    and session log (B3b) and for tests.
+    """
     parts = [
         match.clk,
         _role_span(match.switches),
@@ -1004,11 +1009,9 @@ def _native_convention_message(match: ConventionMatch, filename: str) -> str:
         parts.append(segs[0] if len(segs) == 1 else f"{segs[0]}..{segs[-1]}")
     seg = "/seg" if match.seven_seg is not None else ""
     return (
-        f"'{filename}' uses {match.board_name}'s board-native port names "
-        f"({', '.join(parts)}) rather than the simulator's generic "
-        f"clk/sw/btn/led{seg} contract.\n"
-        "Board-native simulation is coming in U21 B3. For now, rewrite the design to the "
-        "generic contract (see the example) to simulate it today."
+        f"'{filename}' matches {match.board_name}'s board-native '{match.maker}' port "
+        f"convention ({', '.join(parts)}); running it board-native — the simulator adapts "
+        f"these to its clk/sw/btn/led{seg} boundary."
     )
 
 
@@ -1073,8 +1076,10 @@ def check_vhdl_contract(
         # Generic contract failed -- is this instead a board-native design?
         attempt = _best_convention_attempt(parsed[0], parsed[1], board_def)
         if attempt is not None and attempt.match is not None:
+            # U21 B3: a full native match runs -- the native wrapper adapts the
+            # board's own port names to the sw/btn/led/seg boundary.
             return ContractResult(
-                False, _native_convention_message(attempt.match, path.name), attempt.match
+                True, _native_convention_message(attempt.match, path.name), attempt.match
             )
         if attempt is not None and len(attempt.matched_roles) >= 2:
             return ContractResult(False, _near_miss_convention_message(attempt, path.name))
@@ -1203,18 +1208,157 @@ def add_error_hints(message: str, board_def: BoardDef | None = None) -> str:
 _WRAPPER_TEMPLATE: Path = Path(__file__).parent.parent.parent / "sim" / "sim_wrapper_template.vhd"
 
 
+def _native_port_map(port: NativePort, sig: str) -> list[str]:
+    """Association line(s) tying a native LED/switch/button bank to wrapper signal *sig*.
+
+    A shared vector (one name) maps whole (``LEDR => led_uut``); a bank of distinct
+    scalar ports maps bit-by-bit (``o_LED_1 => led_uut(0)``, ...).
+    """
+    if len(port.names) == 1:
+        return [f"{port.names[0]} => {sig}"]
+    return [f"{name} => {sig}({k})" for k, name in enumerate(port.names)]
+
+
+def _render_native_wrapper(toplevel: str, match: ConventionMatch) -> str:
+    """Render a ``sim_wrapper`` that runs a board-native design (U21 B3).
+
+    The design uses the board's native port names + fixed widths (no ``NUM_*``
+    generics), so the wrapper adapts them to the simulator's ``sw/btn/led[/seg]``
+    boundary via intermediate signals:
+
+    * the native clock port is driven by the VHDL free-running ``clk``;
+    * switches/buttons are buffered (inverted when the convention is active-low)
+      and fed to the native inputs;
+    * LED outputs are read back and inverted onto ``led`` when active-low;
+    * an ``individual``-style 7-seg is packed per digit into ``seg`` as the
+      active-high ``{dp, g..a}`` byte the display expects (dp forced off).
+
+    The entity, generics, top ports and clock process are identical to the generic
+    wrapper (so ``launch_simulation``/``run_cmd``/``_write_gtkw``/the cocotb
+    testbench are unchanged); only the architecture body differs -- a
+    generic-map-less uut with native names.  Generic *defaults* are baked to the
+    board's widths so ``analyze_vhdl``'s default-generic early elaboration lines the
+    top ports up with the native uut's fixed widths (no "defaults dance").
+    """
+    sw, btn, led, seg, green = (
+        match.switches,
+        match.buttons,
+        match.leds,
+        match.seven_seg,
+        match.leds_green,
+    )
+    decls: list[str] = []  # architecture declarative signals
+    assigns: list[str] = []  # concurrent assignments (adapters)
+    pmap: list[str] = [f"{match.clk} => clk"]  # uut port-map association lines
+
+    # Switches / buttons: buffer (invert if active-low) then feed the native inputs.
+    for role, port, wrapper_port in (("sw", sw, "sw"), ("btn", btn, "btn")):
+        sig = f"{role}_uut"
+        decls.append(f"  signal {sig} : std_logic_vector({port.width} - 1 downto 0);")
+        assigns.append(f"  {sig} <= {'not ' if port.active_low else ''}{wrapper_port};")
+        pmap += _native_port_map(port, sig)
+
+    # LEDs: read the native output back; invert onto `led` when active-low.
+    decls.append(f"  signal led_uut : std_logic_vector({led.width} - 1 downto 0);")
+    assigns.append(f"  led <= {'not ' if led.active_low else ''}led_uut;")
+    pmap += _native_port_map(led, "led_uut")
+
+    # Secondary green bank (rare): captured so the output has a driver, not shown --
+    # like the generic wrapper leaving `seg` dark on a non-7-seg design.
+    if green is not None:
+        decls.append(f"  signal ledg_uut : std_logic_vector({green.width} - 1 downto 0);")
+        pmap += _native_port_map(green, "ledg_uut")
+
+    # 7-seg (individual style): each digit is a wpd-bit vector packed into seg's byte.
+    if seg is not None:
+        wpd = seg.width_per_digit
+        inv = "not " if seg.active_low else ""
+        for i, name in enumerate(seg.names):
+            sig = f"hex{i}_uut"
+            decls.append(f"  signal {sig} : std_logic_vector({wpd} - 1 downto 0);")
+            assigns.append(f"  seg({8 * i + wpd - 1} downto {8 * i}) <= {inv}{sig};")
+            if wpd < 8:  # remaining high bits of the digit byte (e.g. dp) -> off
+                assigns.append(f"  seg({8 * i + 7} downto {8 * i + wpd}) <= (others => '0');")
+            pmap.append(f"{name} => {sig}")
+
+    seg_generic = [f"    NUM_SEGS         : positive := {len(seg.names)};"] if seg else []
+    seg_port = ["    seg         : out std_logic_vector(8 * NUM_SEGS - 1 downto 0);"] if seg else []
+    lines = [
+        "-- sim_wrapper.vhd (board-native, generated by sim_bridge.py -- U21 B3)",
+        f"-- Design '{toplevel}' uses {match.board_name}'s native '{match.maker}' port names.",
+        "-- Adapts polarity + 7-seg packing to the sw/btn/led[/seg] boundary so the cocotb",
+        "-- testbench and waveform tooling see the usual contract ports.",
+        "",
+        "library ieee;",
+        "use ieee.std_logic_1164.all;",
+        "",
+        "entity sim_wrapper is",
+        "  generic (",
+        f"    NUM_SWITCHES     : positive := {sw.width};",
+        f"    NUM_BUTTONS      : positive := {btn.width};",
+        f"    NUM_LEDS         : positive := {led.width};",
+        *seg_generic,
+        "    COUNTER_BITS     : positive := 24;",
+        "    CLK_HALF_NS_INIT : positive := 20",
+        "  );",
+        "  port (",
+        "    sw          : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);",
+        "    btn         : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0);",
+        "    led         : out std_logic_vector(NUM_LEDS     - 1 downto 0);",
+        *seg_port,
+        "    clk_half_ns : in  natural := CLK_HALF_NS_INIT",
+        "  );",
+        "end entity;",
+        "",
+        "architecture rtl of sim_wrapper is",
+        "  signal clk : std_logic := '0';",
+        *decls,
+        "begin",
+        "",
+        "  clk_proc : process",
+        "  begin",
+        "    clk <= '0';",
+        "    wait for clk_half_ns * 1 ns;",
+        "    clk <= '1';",
+        "    wait for clk_half_ns * 1 ns;",
+        "  end process;",
+        "",
+        *assigns,
+        "",
+        f"  uut : entity work.{toplevel}",
+        "    port map (",
+        "      " + ",\n      ".join(pmap),
+        "    );",
+        "",
+        "end architecture;",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def _generate_wrapper(
     toplevel: str,
     work_dir: str,
     board_def: BoardDef | None = None,
     design_has_seg: bool = False,
+    match: ConventionMatch | None = None,
 ) -> Path:
     """Write ``sim_wrapper.vhd`` to *work_dir* with placeholders substituted.
 
     When both *board_def* has a seven_seg display and the design declares a
     ``seg`` output port, the generated wrapper includes the ``NUM_SEGS``
     generic and ``seg`` port.  Otherwise those lines are omitted.
+
+    When *match* is given the design is board-native (U21 B3): the wrapper
+    instantiates it by its native port names + fixed widths (see
+    :func:`_render_native_wrapper`).  The generic path (``match is None``) is
+    byte-for-byte unchanged.
     """
+    out = Path(work_dir) / "sim_wrapper.vhd"
+    if match is not None:
+        out.write_text(_render_native_wrapper(toplevel, match))
+        return out
+
     use_seg = board_def is not None and board_def.seven_seg is not None and design_has_seg
     if use_seg:
         seg_generic = "    NUM_SEGS         : positive := 4;\n"
@@ -1234,7 +1378,6 @@ def _generate_wrapper(
         seg_generic_map=seg_generic_map,
         seg_port_map=seg_port_map,
     )
-    out = Path(work_dir) / "sim_wrapper.vhd"
     out.write_text(content)
     return out
 
@@ -1245,6 +1388,7 @@ def analyze_vhdl(
     toplevel: str | None = None,
     simulator: Simulator = "ghdl",
     board_def: BoardDef | None = None,
+    match: ConventionMatch | None = None,
 ) -> tuple[bool, str]:
     """Analyze the user's VHDL and the generated sim_wrapper.
 
@@ -1258,6 +1402,11 @@ def analyze_vhdl(
          board generics before running — but this early check still catches
          structural errors (port-width mismatches, missing libraries, etc.)
          at validation time rather than at simulation launch.
+
+    When *match* is given the design is board-native (U21 B3): the wrapper
+    instantiates it by its native port names, and the step-3 default-generic
+    elaboration works because the native wrapper bakes the board widths as its
+    generic defaults.
 
     Returns ``(ok: bool, detail: str)``.  On success *detail* is the work dir.
     """
@@ -1280,7 +1429,11 @@ def analyze_vhdl(
         _vhdl_text = Path(vhdl_path).read_text(encoding="utf-8", errors="ignore")
         _design_has_seg = _has_seg_port(_vhdl_text)
         wrapper_path = _generate_wrapper(
-            toplevel, work_dir, board_def=board_def, design_has_seg=_design_has_seg
+            toplevel,
+            work_dir,
+            board_def=board_def,
+            design_has_seg=_design_has_seg,
+            match=match,
         )
         result2 = subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir),
@@ -1457,8 +1610,39 @@ def _gtkw_path(wave_path: Path) -> Path:
     return wave_path.with_suffix(".gtkw")
 
 
-def _write_gtkw(gtkw_path: Path, dump_path: Path, generics: dict[str, str]) -> None:
-    """Write a GTKWave save file that preloads the ``sim_wrapper`` top-level ports.
+def _native_gtkw_signals(match: ConventionMatch) -> list[str]:
+    """GTKWave signal paths for a board-native run: the design's own ports under ``uut``.
+
+    Names are lowercased to match the identifier case GHDL/NVC emit in the dump
+    hierarchy.  A shared vector carries a ``[msb:0]`` range; a scalar bank lists
+    each scalar; the clock is a scalar.
+    """
+    scope = "sim_wrapper.uut"
+
+    def _port(port: NativePort) -> list[str]:
+        if len(port.names) == 1:
+            return [f"{scope}.{port.names[0].lower()}[{port.width - 1}:0]"]
+        return [f"{scope}.{name.lower()}" for name in port.names]
+
+    sigs = [f"{scope}.{match.clk.lower()}"]
+    sigs += _port(match.switches)
+    sigs += _port(match.buttons)
+    sigs += _port(match.leds)
+    if match.leds_green is not None:
+        sigs += _port(match.leds_green)
+    if match.seven_seg is not None:
+        wpd = match.seven_seg.width_per_digit
+        sigs += [f"{scope}.{name.lower()}[{wpd - 1}:0]" for name in match.seven_seg.names]
+    return sigs
+
+
+def _write_gtkw(
+    gtkw_path: Path,
+    dump_path: Path,
+    generics: dict[str, str],
+    match: ConventionMatch | None = None,
+) -> None:
+    """Write a GTKWave save file that preloads the interesting ``sim_wrapper`` signals.
 
     Opening ``gtkwave <gtkw_path>`` lands the user on clk / sw / btn / led (and
     seg, for 7-seg runs) instead of an empty view with the whole signal tree —
@@ -1468,6 +1652,11 @@ def _write_gtkw(gtkw_path: Path, dump_path: Path, generics: dict[str, str]) -> N
     (a port whose generic is absent or unparseable is skipped, so an unusual
     design yields a shorter list rather than a broken line).  ``[dumpfile]`` names
     *dump_path*, so the save file also loads the trace on its own.
+
+    When *match* is given the run is board-native (U21 B3): preselect the design's
+    own native ports (``sim_wrapper.uut.<native>``) — the names the user wrote —
+    followed by the top-level ``led``/``seg`` so the active-low inversion is
+    visible (``uut.ledr`` vs ``led``).
     """
     top = "sim_wrapper"
 
@@ -1478,24 +1667,37 @@ def _write_gtkw(gtkw_path: Path, dump_path: Path, generics: dict[str, str]) -> N
             return None
         return f"{top}.{name}[{msb}:0]" if msb >= 0 else None
 
-    ports = [
-        f"{top}.clk",
-        _vector("sw", "NUM_SWITCHES"),
-        _vector("btn", "NUM_BUTTONS"),
-        _vector("led", "NUM_LEDS"),
-        _vector("seg", "NUM_SEGS", scale=8),  # seg packs 8 bits per digit
-    ]
+    if match is not None:
+        signals = _native_gtkw_signals(match)
+        signals += [
+            s for s in (_vector("led", "NUM_LEDS"), _vector("seg", "NUM_SEGS", scale=8)) if s
+        ]
+        note = "[*] Preloads the design's native ports (sim_wrapper.uut.*) + board led/seg."
+    else:
+        signals = [
+            p
+            for p in (
+                f"{top}.clk",
+                _vector("sw", "NUM_SWITCHES"),
+                _vector("btn", "NUM_BUTTONS"),
+                _vector("led", "NUM_LEDS"),
+                _vector("seg", "NUM_SEGS", scale=8),  # seg packs 8 bits per digit
+            )
+            if p is not None
+        ]
+        note = "[*] Preloads the sim_wrapper top-level ports; load beside the matching dump."
+
     lines = [
         "[*]",
         "[*] GTKWave save file auto-written by fpga-sim (roadmap U28).",
-        "[*] Preloads the sim_wrapper top-level ports; load beside the matching dump.",
+        note,
         "[*]",
         f'[dumpfile] "{dump_path}"',
         "[timestart] 0",
         "[signals_width] 200",
         "[sst_width] 200",
         f"-{top}",
-        *[p for p in ports if p is not None],
+        *signals,
     ]
     gtkw_path.write_text("\n".join(lines) + "\n")
 
@@ -1566,6 +1768,7 @@ def launch_simulation(
     waveform: str | None = None,
     waveform_open: bool | None = None,
     waveform_memories: bool | None = None,
+    match: ConventionMatch | None = None,
 ) -> SimExit:
     """Launch an interactive simulator + cocotb simulation.
 
@@ -1646,7 +1849,11 @@ def launch_simulation(
             cwd=work_dir,
         )
         wrapper_path = _generate_wrapper(
-            toplevel, work_dir, board_def=board_def, design_has_seg=_design_has_seg
+            toplevel,
+            work_dir,
+            board_def=board_def,
+            design_has_seg=_design_has_seg,
+            match=match,
         )
         subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir),
@@ -1703,6 +1910,18 @@ def launch_simulation(
     env["FPGA_SIM_SIMULATOR"] = simulator
     env["FPGA_SIM_VHDL_PATH"] = str(vhdl_path)
     env["FPGA_SIM_GENERICS"] = json.dumps(generics)
+    # U21 B3: board-native run metadata (badge + session log, consumed by B3b).
+    if match is not None:
+        env["FPGA_SIM_NATIVE_CONVENTION"] = json.dumps(
+            {
+                "maker": match.maker,
+                "board_name": match.board_name,
+                "leds_active_low": match.leds.active_low,
+                "buttons_active_low": match.buttons.active_low,
+                "switches_active_low": match.switches.active_low,
+                "has_seg": match.seven_seg is not None,
+            }
+        )
 
     print(f"Starting simulation: {toplevel} from {vhdl_path.name} [{simulator.upper()}]")
     result = subprocess.run(cmd, env=env, cwd=work_dir)
@@ -1713,8 +1932,10 @@ def launch_simulation(
         if wpath.is_file() and wpath.stat().st_size > 0:
             # U28: drop a matching GTKWave save file so the dump opens on the
             # interesting ports (clk/sw/btn/led[/seg]) instead of an empty view.
+            # U21 B3: for a board-native run, preselect the design's own native
+            # ports (sim_wrapper.uut.<native>) rather than the contract names.
             gtkw = _gtkw_path(wpath)
-            _write_gtkw(gtkw, wpath, generics)
+            _write_gtkw(gtkw, wpath, generics, match=match)
             print(f"Waveform written: {wpath}\n  Open it with preloaded signals:  gtkwave {gtkw}")
             # U29: optionally launch the user's viewer on the produced dump.
             env_open = _env_flag(WAVEFORM_OPEN_ENV)
