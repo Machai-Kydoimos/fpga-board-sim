@@ -285,6 +285,32 @@ def test_no_cross_board_native_match_flips_polarity() -> None:
     )
 
 
+def test_every_canonical_board_matches_its_own_synthesized_interface() -> None:
+    """Fleet-wide self-consistency: an interface synthesized from a board's own
+    convention must match that board.  This guards the matcher against a data or
+    logic regression that would break a real board, and encodes U31's additive
+    property (relaxing the required-role set never stops a board from matching
+    itself).  Boards whose 7-seg style is not ``individual`` (packed_vector / scan
+    / serial -- U22 territory) legitimately decline and are skipped.
+    """
+    boards = _canonical_boards()
+    assert len(boards) >= 20
+    checked = 0
+    failures: list[str] = []
+    for bd in boards:
+        block = _canonical_block(bd)
+        if block is None or not (block.get("clk") and block.get("leds")):
+            continue
+        seg = block.get("seven_seg") or {}
+        if bd.seven_seg is not None and seg.get("style") != "individual":
+            continue  # non-individual seg not adaptable yet -> U22
+        checked += 1
+        if match_convention(_synth_iface(block), [], bd) is None:
+            failures.append(bd.name)
+    assert checked >= 20, f"expected many self-checkable boards, got {checked}"
+    assert not failures, f"boards that fail to match their own native interface: {failures}"
+
+
 def test_de10_native_file_on_de25_board_is_near_miss_not_silent_run() -> None:
     # The concrete case: a DE10-Standard native file selected against a DE25 board.
     # The clock names differ (CLOCK_50 vs CLOCK0_50) so it is a near-miss, rejected
@@ -413,10 +439,13 @@ def test_partial_convention_extra_input_is_near_miss() -> None:
     assert match_convention(ports, [], _synth_board(_LED_ONLY_BLOCK)) is None
 
 
-def test_partial_convention_extra_output_still_matches() -> None:
-    # An unmapped *output* is fine -- the wrapper leaves it `open` (dark), like
-    # the DE0 example's split-DP HEXn_DP scalars.
-    ports = [*_synth_iface(_LED_ONLY_BLOCK), _IfaceDecl(["dbg"], "out", False, 1)]
+@pytest.mark.parametrize("mode", ["out", "inout", "buffer"])
+def test_partial_convention_extra_non_input_still_matches(mode: str) -> None:
+    # An unmapped *non-input* port is fine: GHDL and NVC both leave an
+    # unassociated out/inout/buffer `open` at elaboration (verified against both
+    # toolchains), so the wrapper simply omits it -- like the DE0 example's
+    # split-DP HEXn_DP outputs.  Only an unmapped `in` is an unbound port.
+    ports = [*_synth_iface(_LED_ONLY_BLOCK), _IfaceDecl(["dbg"], mode, False, 1)]
     assert match_convention(ports, [], _synth_board(_LED_ONLY_BLOCK)) is not None
 
 
