@@ -18,7 +18,9 @@ from __future__ import annotations
 
 import glob
 import json
+import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -406,3 +408,64 @@ def test_native_de25_run_inverts_leds_under_nvc(nvc: str, tmp_path: Any) -> None
     ledr_bits = ledr_val.rjust(rw, "0")
     inverted = "".join("1" if c == "0" else "0" for c in ledr_bits)
     assert led_bits == inverted, f"led {led_bits} is not the inverse of ledr {ledr_bits}"
+
+
+# ── B3b: sim_testbench convention parsing (subprocess -- module imports cocotb) ──
+
+
+def _testbench_native_helpers(env_value: str | None) -> dict[str, Any]:
+    """Run sim_testbench's _native_convention/_active_low_roles in a subprocess.
+
+    sim_testbench imports cocotb and is never imported into the pytest process
+    (see test_sim_testbench_lint.py), so its env-driven helpers are exercised via
+    a subprocess import -- mirroring the FPGA_SIM_THEME handoff test.
+    """
+    env = os.environ.copy()
+    env.setdefault("SDL_VIDEODRIVER", "dummy")
+    env.setdefault("SDL_AUDIODRIVER", "dummy")
+    if env_value is None:
+        env.pop("FPGA_SIM_NATIVE_CONVENTION", None)
+    else:
+        env["FPGA_SIM_NATIVE_CONVENTION"] = env_value
+    env["PYTHONPATH"] = os.pathsep.join(
+        [str(PROJECT / "src"), str(PROJECT / "sim"), env.get("PYTHONPATH", "")]
+    )
+    code = (
+        "import json, sim_testbench as t; "
+        "c = t._native_convention(); "
+        "print(json.dumps({"
+        "'is_none': c is None, "
+        "'maker': (c or {}).get('maker'), "
+        "'roles': (t._active_low_roles(c) if c else None)}))"
+    )
+    r = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, env=env, timeout=60
+    )
+    assert r.returncode == 0, r.stderr
+    out: dict[str, Any] = json.loads(r.stdout.strip().splitlines()[-1])
+    return out
+
+
+def test_testbench_parses_native_convention_and_active_low_roles() -> None:
+    out = _testbench_native_helpers(
+        json.dumps(
+            {
+                "maker": "terasic",
+                "board_name": "DE25-Standard",
+                "leds_active_low": True,
+                "switches_active_low": False,
+                "buttons_active_low": True,
+                "has_seg": True,
+                "seg_active_low": True,
+            }
+        )
+    )
+    assert out["is_none"] is False
+    assert out["maker"] == "terasic"
+    assert out["roles"] == "LED, BTN, HEX"  # SW omitted (active-high)
+
+
+def test_testbench_generic_run_has_no_convention() -> None:
+    out = _testbench_native_helpers(None)
+    assert out["is_none"] is True
+    assert out["maker"] is None

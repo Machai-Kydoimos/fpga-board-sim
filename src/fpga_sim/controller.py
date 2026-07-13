@@ -419,10 +419,22 @@ class ScreenController:
         ``(ok, work_dir_or_error_message)``.
         """
         assert self.board is not None
+        _conv = self.state.convention
+        _title = (
+            f"Analyzing board-native {Path(vhdl_path).name}…"
+            if _conv is not None
+            else f"Analyzing {Path(vhdl_path).name}…"
+        )
+        _detail = f"Running {self.state.simulator.upper()} analysis & elaboration…"
+        if _conv is not None:
+            _detail = (
+                f"Board-native ({_conv.maker}) – {self.state.simulator.upper()} "
+                "analysis & elaboration…"
+            )
         return run_with_spinner(
             self.screen,
             self.clock,
-            f"Analyzing {Path(vhdl_path).name}…",
+            _title,
             partial(
                 analyze_vhdl,
                 vhdl_path,
@@ -430,9 +442,9 @@ class ScreenController:
                 toplevel=Path(vhdl_path).stem,
                 simulator=self.state.simulator,
                 board_def=self.board,
-                match=self.state.convention,
+                match=_conv,
             ),
-            detail=f"Running {self.state.simulator.upper()} analysis & elaboration…",
+            detail=_detail,
         )
 
     def on_simulate(self) -> NextScreen:

@@ -200,6 +200,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on a DE25 board differs on the clock name) or matches an electrically identical board; a
   data-invariant regression test asserts no cross-board full match ever silently flips polarity.
   Generic designs are entirely unaffected (U21 arc, issue #207)
+- **U21 board-native run affordances (Phase B3b — UX).** When a board-native design runs, the
+  simulator now says so. The top-left info strip tags the mode right after the filename —
+  `(native: terasic)` in an accent color (a restrained visual "pop") for a native run, `(generic)`
+  in the normal color otherwise — and the same tag appears in the window title. Pressing **S**
+  (stats panel) shows a compact `board-native · active-low: LED, KEY, HEX` note in the INFO zone,
+  spelling out which roles the board drives active-low (the detail behind the wrapper's polarity
+  inversion); it's a single small-font line tucked below the existing rows, so the fixed-height
+  panel doesn't grow and the board keeps its size. The analysis spinner reads "Analyzing
+  board-native …" and the per-session log (`~/.fpga_simulator/sessions/`) gains `mode`
+  (`generic`/`native`) and `convention` (the maker slug) fields. All of this is driven by the
+  `FPGA_SIM_NATIVE_CONVENTION` metadata B3a already exports — no new detection logic (U21 arc,
+  issue #207)
 
 ## [0.13.0] - 2026-07-11
 
