@@ -94,21 +94,23 @@ def _de0_match() -> ConventionMatch:
 
 def test_native_wrapper_inverts_active_low_leds() -> None:
     vhd = _render_native_wrapper("de25_standard", _de25_match())
-    assert "led <= not led_uut;" in vhd
+    # LEDs invert (active-low) then zero-extend onto the board's NUM_LEDS boundary.
+    assert "led <= std_logic_vector(resize(unsigned(not led_uut), NUM_LEDS));" in vhd
     assert "LEDR => led_uut" in vhd
     assert "generic map" not in vhd  # native uut has no NUM_* generics
 
 
 def test_native_wrapper_active_high_leds_are_not_inverted() -> None:
     vhd = _render_native_wrapper("de10_standard", _de10_match())
-    assert "led <= led_uut;" in vhd
-    assert "led <= not led_uut;" not in vhd
+    assert "led <= std_logic_vector(resize(unsigned(led_uut), NUM_LEDS));" in vhd
+    assert "not led_uut" not in vhd
 
 
 def test_native_wrapper_inverts_active_low_buttons() -> None:
     vhd = _render_native_wrapper("de25_standard", _de25_match())
-    assert "btn_uut <= not btn;" in vhd
-    assert "sw_uut <= sw;" in vhd  # SW is active-high: no inversion
+    # Inputs take the low NUM_* boundary bits (bank width may be < board count).
+    assert "btn_uut <= not btn(4 - 1 downto 0);" in vhd
+    assert "sw_uut <= sw(10 - 1 downto 0);" in vhd  # SW is active-high: no inversion
     assert "KEY => btn_uut" in vhd
 
 
@@ -120,6 +122,21 @@ def test_native_wrapper_bakes_board_widths_as_generic_defaults() -> None:
     assert "NUM_BUTTONS      : positive := 4;" in vhd
     assert "NUM_LEDS         : positive := 10;" in vhd
     assert "NUM_SEGS         : positive := 6;" in vhd
+
+
+def test_native_wrapper_bank_narrower_than_board_boundary() -> None:
+    # U32: a litex board whose 8 LED components (user_led + rgb_led) exceed the
+    # 4-bit user_led bank.  The matcher advertises the bank (4), while the wrapper's
+    # NUM_LEDS default is the board count (8, matching build_generics / the run) and
+    # the bank zero-extends onto it -- board LEDs the convention omits stay dark.
+    arty = PROJECT / "boards" / "litex-boards" / "digilent_arty.json"
+    bd = BoardDef.from_json(arty.read_text())
+    res = check_vhdl_contract(NATIVE / "arty_litex.vhd", board_def=bd)
+    assert res.ok and res.match is not None
+    assert res.match.leds == NativePort(("user_led",), 4, False)  # the bank, not 8 board LEDs
+    vhd = _render_native_wrapper("arty_litex", res.match, bd)
+    assert "NUM_LEDS         : positive := 8;" in vhd  # board count, not the bank width 4
+    assert "led <= std_logic_vector(resize(unsigned(led_uut), NUM_LEDS));" in vhd
 
 
 def test_native_wrapper_packs_active_low_seg_with_dp_off() -> None:
@@ -138,7 +155,7 @@ def test_native_wrapper_de0_maps_segment_ports_leaves_dp_open() -> None:
     assert "HEX3_D => hex3_uut" in vhd
     assert "HEX0_DP" not in vhd
     # LEDG active-high (no invert), BUTTON active-low, green bank is the primary led.
-    assert "led <= led_uut;" in vhd
+    assert "led <= std_logic_vector(resize(unsigned(led_uut), NUM_LEDS));" in vhd
     assert "LEDG => led_uut" in vhd
     assert "BUTTON => btn_uut" in vhd
 
@@ -205,9 +222,13 @@ def _canonical_boards() -> list[BoardDef]:
         pc = d.get("port_conventions")
         if not isinstance(pc, dict):
             continue
+        # Only vendor-*canonical* conventions: the no-flip invariant is about
+        # electrically-identical boards sharing distinctive vendor names (DE23 /
+        # DE25).  Framework-derived blocks (U32) use generic names (led / user_led)
+        # shared across unrelated boards, where a cross-board match applying the
+        # *selected* board's own polarity is correct, not a silent flip.
         if any(
-            isinstance(b, dict) and b.get("naming", "canonical") != "project-derived"
-            for b in pc.values()
+            isinstance(b, dict) and b.get("naming", "canonical") == "canonical" for b in pc.values()
         ):
             boards.append(BoardDef.from_json(json.dumps(d)))
     return boards
@@ -215,7 +236,7 @@ def _canonical_boards() -> list[BoardDef]:
 
 def _canonical_block(bd: BoardDef) -> dict[str, Any] | None:
     for b in bd.port_conventions.values():
-        if isinstance(b, dict) and b.get("naming", "canonical") != "project-derived":
+        if isinstance(b, dict) and b.get("naming", "canonical") == "canonical":
             return b
     return None
 
@@ -432,6 +453,29 @@ def test_partial_convention_led_plus_switch_matches() -> None:
     assert m.buttons is None
 
 
+def test_canonical_convention_wins_over_framework_derived() -> None:
+    # U32: a board can carry both an auto-derived (framework) block and an
+    # authoritative (canonical) one that match the same interface.  The canonical
+    # block must win -- even though the framework block is listed first on disk --
+    # so vendor ground truth added later takes precedence over the derived guess.
+    canonical: dict[str, Any] = {"clk": "CLOCK_50", "leds": {"name": "LEDR", "width": 10}}
+    framework: dict[str, Any] = {
+        "clk": "CLOCK_50",
+        "leds": {"name": "LEDR", "width": 10, "active_low": True},
+        "naming": "framework-derived",
+    }
+    bd = BoardDef(
+        name="Dual",
+        class_name="Dual",
+        # framework block deliberately first in insertion order
+        port_conventions={"litex": framework, "terasic": canonical},
+    )
+    m = match_convention(_synth_iface(canonical), [], bd)
+    assert m is not None
+    assert m.maker == "terasic"  # authoritative block chosen over the framework guess
+    assert m.leds.active_low is False  # canonical polarity, not the derived active-low
+
+
 def test_partial_convention_extra_input_is_near_miss() -> None:
     # The convention declares no switches; a design that adds an `sw` input would
     # be left unbound in the wrapper's uut port map, so it must NOT full-match.
@@ -544,6 +588,10 @@ _E2E_CASES = [
     ("de25_standard", "custom/de25_standard.json"),
     ("de10_standard", "custom/de10_standard.json"),
     ("de0", "amaranth-boards/de0.json"),
+    # U32: a litex board-native design (LiteX names) whose 8-LED board boundary
+    # exceeds its 4-bit user_led bank -- exercises the wrapper's zero-extend under
+    # both simulators at the real board-count NUM_LEDS.
+    ("arty_litex", "litex-boards/digilent_arty.json"),
 ]
 
 

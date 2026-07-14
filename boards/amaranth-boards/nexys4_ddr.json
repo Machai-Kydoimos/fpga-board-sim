@@ -545,11 +545,38 @@
     "inverted": true,
     "select_inverted": true
   },
+  "port_conventions": {
+    "amaranth": {
+      "description": "amaranth-boards platform port names (auto-derived from the board .py file)",
+      "clk": "clk100",
+      "leds": {
+        "name": "led",
+        "width": 16
+      },
+      "naming": "framework-derived",
+      "switches": {
+        "name": "switch",
+        "width": 16
+      },
+      "buttons": {
+        "names": [
+          "button_center",
+          "button_down",
+          "button_left",
+          "button_reset",
+          "button_right",
+          "button_up"
+        ],
+        "width": 6,
+        "active_low": true
+      }
+    }
+  },
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "amaranth-boards",
     "upstream_file": "nexys4ddr.py",
-    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
-    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+    "sync_commit": "fd2f0df811a8dbcf6aa0b94ac0788dc71ac79e1e",
+    "sync_timestamp": "2026-07-14T05:53:55.055741+00:00"
   }
 }

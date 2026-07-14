@@ -54,6 +54,28 @@ class BarePlatform(Xilinx7SeriesPlatform):
         Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)
 """
 
+# user_led + rgb_led (primary-group drop) and directional buttons (names[] cluster).
+_RGB_AND_CLUSTER = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io = [
+    ("clk100", 0, Pins("E3"), IOStandard("LVCMOS33")),
+    ("user_led", 0, Pins("A1"), IOStandard("LVCMOS33")),
+    ("user_led", 1, Pins("A2"), IOStandard("LVCMOS33")),
+    ("rgb_led", 0, Subsignal("r", Pins("B1")), Subsignal("g", Pins("B2"))),
+    ("user_btnu", 0, Pins("C1"), IOStandard("LVCMOS33")),
+    ("user_btnd", 0, Pins("C2"), IOStandard("LVCMOS33")),
+    ("user_btnc", 0, Pins("C3"), IOStandard("LVCMOS33")),
+]
+
+class RgbPlatform(Xilinx7SeriesPlatform):
+    default_clk_name = "clk100"
+    default_clk_period = 1e9 / 100e6
+    def __init__(self):
+        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)
+"""
+
 
 def test_basic_counts_and_metadata():
     boards = parse_litex_board(_BASIC, "test_board.py")
@@ -85,6 +107,27 @@ def test_seven_seg_multiplexed():
     assert ss["num_digits"] == 4  # from the 4 ctrl (digit-select) pins
     assert ss["is_multiplexed"] is True
     assert ss["has_dp"] is True  # 8 segment pins → includes DP
+
+
+def test_port_conventions_litex_uses_raw_names():
+    # U32: the convention advertises the LiteX *raw* port names (user_led, not led).
+    b = parse_litex_board(_BASIC, "test_board.py")[0]
+    conv = b["port_conventions"]["litex"]
+    assert conv["clk"] == "clk100"
+    assert conv["leds"] == {"name": "user_led", "width": 2}
+    assert conv["switches"] == {"name": "user_sw", "width": 2}
+    assert conv["buttons"] == {"name": "user_btn", "width": 1}
+    assert conv["naming"] == "framework-derived"
+
+
+def test_port_conventions_primary_group_and_cluster():
+    b = parse_litex_board(_RGB_AND_CLUSTER, "rgb_board.py")[0]
+    conv = b["port_conventions"]["litex"]
+    assert conv["leds"] == {"name": "user_led", "width": 2}  # rgb_led dropped
+    assert conv["buttons"] == {  # distinct directional buttons -> names[] cluster
+        "names": ["user_btnc", "user_btnd", "user_btnu"],
+        "width": 3,
+    }
 
 
 def test_no_simulatable_resources_skipped():
