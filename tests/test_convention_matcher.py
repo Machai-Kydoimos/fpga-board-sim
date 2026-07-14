@@ -150,6 +150,7 @@ def test_matches_full_de10_native_interface() -> None:
     assert m.board_name == "DE10-Standard"
     assert m.clk == "CLOCK_50"
     assert (m.leds.names, m.leds.width) == (("LEDR",), 10)
+    assert m.switches is not None and m.buttons is not None
     assert (m.switches.names, m.switches.width) == (("SW",), 10)
     assert (m.buttons.names, m.buttons.width, m.buttons.active_low) == (("KEY",), 4, True)
     assert m.leds.active_low is False  # LEDR is active-high on this board
@@ -299,6 +300,7 @@ def test_scalar_led_bank_matches() -> None:
     assert m is not None
     assert m.leds.names == ("o_LED_1", "o_LED_2", "o_LED_3", "o_LED_4")
     assert m.leds.width == 4
+    assert m.switches is not None
     assert m.switches.width == 2
 
 

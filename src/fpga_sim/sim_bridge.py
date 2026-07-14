@@ -778,8 +778,11 @@ class ConventionMatch:
     board_name: str  # BoardDef.name, for messages/badge
     clk: str  # native clock port name, e.g. "CLOCK_50"
     leds: NativePort
-    switches: NativePort
-    buttons: NativePort
+    # switches/buttons are optional (U31): a switch-less or button-less board's
+    # convention simply omits the role, so the design need not declare it (clk +
+    # LEDs are the minimum meaningful board-native demo).
+    switches: NativePort | None = None
+    buttons: NativePort | None = None
     seven_seg: NativeSeg | None = None
     leds_green: NativePort | None = None  # optional secondary LED bank (e.g. LEDG)
 
@@ -886,14 +889,32 @@ def _attempt_convention(
         problems.append(f"clock '{clk_name}'" if isinstance(clk_name, str) else "clock")
 
     leds = _match_native_port(block.get("leds") or {}, port_by_name, "out")
-    switches = _match_native_port(block.get("switches") or {}, port_by_name, "in")
-    buttons = _match_native_port(block.get("buttons") or {}, port_by_name, "in")
-    for role, port, label in (
-        ("led", leds, "LEDs"),
-        ("sw", switches, "switches"),
-        ("btn", buttons, "buttons"),
-    ):
-        (matched if port is not None else problems).append(role if port is not None else label)
+    (matched if leds is not None else problems).append("led" if leds is not None else "LEDs")
+
+    # Switches / buttons are matched only when the convention declares the role
+    # (U31): most FPGA boards have no switches, so a switch-less convention
+    # neither requires nor adapts an `sw` bank -- exactly as `seg` is conditional
+    # on the board having a display.  The requirement keys off the *convention*
+    # (the native-name source of truth), not the board's physical resources, so a
+    # board whose convention has not captured its switches yet simply cannot drive
+    # them natively rather than never matching.  A declared-but-unmatched bank is
+    # a near-miss.
+    sw_declared = bool(block.get("switches"))
+    btn_declared = bool(block.get("buttons"))
+    switches = (
+        _match_native_port(block.get("switches") or {}, port_by_name, "in") if sw_declared else None
+    )
+    buttons = (
+        _match_native_port(block.get("buttons") or {}, port_by_name, "in") if btn_declared else None
+    )
+    if sw_declared:
+        (matched if switches is not None else problems).append(
+            "sw" if switches is not None else "switches"
+        )
+    if btn_declared:
+        (matched if buttons is not None else problems).append(
+            "btn" if buttons is not None else "buttons"
+        )
 
     # 7-seg is required only when the board physically has a display.
     seven_seg: NativeSeg | None = None
@@ -912,13 +933,31 @@ def _attempt_convention(
     if isinstance(green, dict):
         leds_green = _match_native_port(green, port_by_name, "out")
 
+    # U31: an *input* the convention does not map would be left unbound in the
+    # wrapper's uut port map (an elaboration error), so a native design that
+    # declares one is a near-miss.  Unmapped *outputs* are fine -- the wrapper
+    # leaves them `open` (dark), exactly as the DE0 example leaves its split-DP
+    # HEXn_DP scalars open.  (Names in port_by_name are already lowercased.)
+    consumed = {clk_port.lower()} if clk_port is not None else set()
+    for port in (leds, switches, buttons, leds_green):
+        if port is not None:
+            consumed.update(n.lower() for n in port.names)
+    if seven_seg is not None:
+        consumed.update(n.lower() for n in seven_seg.names)
+        if seven_seg.digit_enable is not None:
+            consumed.update(n.lower() for n in seven_seg.digit_enable.names)
+    extra = sorted(n for n in port_by_name if n not in consumed and port_by_name[n].mode == "in")
+    if extra:
+        problems.append(f"unmapped input port(s): {', '.join(extra)}")
+
     match: ConventionMatch | None = None
     if (
         clk_port is not None
         and leds is not None
-        and switches is not None
-        and buttons is not None
+        and (not sw_declared or switches is not None)
+        and (not btn_declared or buttons is not None)
         and (board_seg is None or seven_seg is not None)
+        and not extra
     ):
         match = ConventionMatch(
             maker=maker,
@@ -998,12 +1037,12 @@ def _native_convention_message(match: ConventionMatch, filename: str) -> str:
     show it as an error, but it is carried on the result for the analysis spinner
     and session log (B3b) and for tests.
     """
-    parts = [
-        match.clk,
-        _role_span(match.switches),
-        _role_span(match.buttons),
-        _role_span(match.leds),
-    ]
+    parts = [match.clk]
+    if match.switches is not None:
+        parts.append(_role_span(match.switches))
+    if match.buttons is not None:
+        parts.append(_role_span(match.buttons))
+    parts.append(_role_span(match.leds))
     if match.seven_seg is not None:
         segs = match.seven_seg.names
         parts.append(segs[0] if len(segs) == 1 else f"{segs[0]}..{segs[-1]}")
@@ -1251,8 +1290,13 @@ def _render_native_wrapper(toplevel: str, match: ConventionMatch) -> str:
     assigns: list[str] = []  # concurrent assignments (adapters)
     pmap: list[str] = [f"{match.clk} => clk"]  # uut port-map association lines
 
-    # Switches / buttons: buffer (invert if active-low) then feed the native inputs.
+    # Switches / buttons: buffer (invert if active-low) then feed the native
+    # inputs.  An absent bank (U31 partial interface) leaves the wrapper's top
+    # `sw`/`btn` port present (cocotb still drives it) but unconnected to the uut,
+    # mirroring the generic path's NUM_* floor of 1 for a bank-less board.
     for role, port, wrapper_port in (("sw", sw, "sw"), ("btn", btn, "btn")):
+        if port is None:
+            continue
         sig = f"{role}_uut"
         decls.append(f"  signal {sig} : std_logic_vector({port.width} - 1 downto 0);")
         assigns.append(f"  {sig} <= {'not ' if port.active_low else ''}{wrapper_port};")
@@ -1294,8 +1338,8 @@ def _render_native_wrapper(toplevel: str, match: ConventionMatch) -> str:
         "",
         "entity sim_wrapper is",
         "  generic (",
-        f"    NUM_SWITCHES     : positive := {sw.width};",
-        f"    NUM_BUTTONS      : positive := {btn.width};",
+        f"    NUM_SWITCHES     : positive := {sw.width if sw is not None else 1};",
+        f"    NUM_BUTTONS      : positive := {btn.width if btn is not None else 1};",
         f"    NUM_LEDS         : positive := {led.width};",
         *seg_generic,
         "    COUNTER_BITS     : positive := 24;",
@@ -1625,8 +1669,10 @@ def _native_gtkw_signals(match: ConventionMatch) -> list[str]:
         return [f"{scope}.{name.lower()}" for name in port.names]
 
     sigs = [f"{scope}.{match.clk.lower()}"]
-    sigs += _port(match.switches)
-    sigs += _port(match.buttons)
+    if match.switches is not None:
+        sigs += _port(match.switches)
+    if match.buttons is not None:
+        sigs += _port(match.buttons)
     sigs += _port(match.leds)
     if match.leds_green is not None:
         sigs += _port(match.leds_green)
@@ -1912,17 +1958,21 @@ def launch_simulation(
     env["FPGA_SIM_GENERICS"] = json.dumps(generics)
     # U21 B3: board-native run metadata (badge + session log, consumed by B3b).
     if match is not None:
-        env["FPGA_SIM_NATIVE_CONVENTION"] = json.dumps(
-            {
-                "maker": match.maker,
-                "board_name": match.board_name,
-                "leds_active_low": match.leds.active_low,
-                "buttons_active_low": match.buttons.active_low,
-                "switches_active_low": match.switches.active_low,
-                "has_seg": match.seven_seg is not None,
-                "seg_active_low": match.seven_seg.active_low if match.seven_seg else False,
-            }
-        )
+        native_meta: dict[str, Any] = {
+            "maker": match.maker,
+            "board_name": match.board_name,
+            "leds_active_low": match.leds.active_low,
+            "has_seg": match.seven_seg is not None,
+            "seg_active_low": match.seven_seg.active_low if match.seven_seg else False,
+        }
+        # Absent banks (U31) omit their *_active_low key -- sim_testbench's
+        # _active_low_roles reads via .get(), so an omitted role is simply not
+        # listed in the board-native active-low note.
+        if match.switches is not None:
+            native_meta["switches_active_low"] = match.switches.active_low
+        if match.buttons is not None:
+            native_meta["buttons_active_low"] = match.buttons.active_low
+        env["FPGA_SIM_NATIVE_CONVENTION"] = json.dumps(native_meta)
 
     print(f"Starting simulation: {toplevel} from {vhdl_path.name} [{simulator.upper()}]")
     result = subprocess.run(cmd, env=env, cwd=work_dir)
