@@ -236,6 +236,32 @@ source). Recommended next: **U33** (canonical population waves) — **U31 ✅** 
 - **Done when:** the registry's verified-source boards are populated wave-by-wave, each wave recorded
   in `waves.toml` with cited sources; unparseable-source boards (PDF / README-only) explicitly
   deferred.
+- **Family disambiguation (the Arty case — keep in mind going forward):** "Arty" is a *family*, not a
+  board. The repo already carries **15 Arty files**: **7 authoritative Digilent variants**
+  (`digilent-xdc/`: original Arty + A7-35 / A7-100 / S7-25 / S7-50 / Z7-10 / Z7-20, each its own master
+  XDC with a real `device`), 5 amaranth, and 3 litex (the litex A7/S7 leave `device: ""` because the
+  variant is a runtime param, so they don't pin the silicon). A canonical convention must attach to the
+  *exact* variant — key on `class_name` + `device`, never the fuzzy "Arty" name — and the
+  low-specificity framework entries (litex's generic "Digilent Arty") are precisely the ones
+  authoritative `digilent-xdc` data should out-rank via `_convention_precedence`. Multi-variant,
+  multi-source families are the population-wave (and P18) stress test.
+- **Candidate — digilent XDC parser section-header fragility (small code touch, ~+2 boards):**
+  `digilent_parser._classify_section` recognizes a clock section only when the header contains **both**
+  "clock" *and* "signal", and a plain-LED section only by the *exact* string `led`/`leds`. Digilent's
+  titles vary, so real clock ports get silently dropped (the frequency still survives via the separate
+  non-section-gated `create_clock` regex, which is why these boards keep a correct `default_clock_hz`
+  but an empty `clocks[]` and no `clk` in the convention → they fail the native clk+LEDs floor). Traced
+  2026-07-14 from the 8 `digilent-xdc` floor-fails: headers seen are `Clock signal` (matches),
+  `100MHz Clock`, `12 MHz System Clock`, `PL System Clock`, `125MHz Clock from Ethernet PHY`; plus
+  Cmod-S7-25's `4 LEDs` (exact-match miss). **Fix:** broaden the clock matcher to accept "clock" + a
+  freq/`system`/`signal` qualifier (still excluding the "clock"-bearing false positives `Note: QSPI
+  clock…` and `GTH reference clock jitter…`), and the LED matcher to a `\bleds?\b` word-boundary match;
+  then re-run `sync_digilent_xdc.py` + parser tests and diff board data before/after (U32 regen
+  discipline). **Recovers cleanly:** `usb104_a7-100t`, `cmod_s7-25` (→ 267/278). **Partial / separate
+  calls:** `cora_z7-07s`/`cora_z7-10`/`eclypse_z7` regain the clock but have **RGB-LEDs only** (needs a
+  decision to treat RGB as the LED bank); `genesys_zu-3eg`/`-3eg-d`/`-5ev-d` have **no fabric clock in
+  the XDC** (Zynq US+ PL clock is PS-sourced) → need a cited **overlay** clock, not a parser change.
+  Note: this is a rare U33 *code* touch — the population waves themselves are overlay-only.
 
 ### Performance (mostly already done)
 
