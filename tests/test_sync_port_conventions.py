@@ -298,16 +298,24 @@ def test_cross_check_leds_plus_leds_green_combined() -> None:
     assert spc.cross_check_widths(convention, board) is None
 
 
-def test_cross_check_leds_mismatch() -> None:
-    convention = {"leds": {"name": "LEDR", "width": 18}}
-    board: dict[str, Any] = {"leds": [{}] * 10}
-    assert spc.cross_check_widths(convention, board) is not None
-
-
-def test_cross_check_switches_and_buttons_mismatch() -> None:
+def test_cross_check_bank_wider_than_board_is_mismatch() -> None:
+    # A source claiming MORE than the board models is a real mismatch.
+    over_leds: dict[str, Any] = {"leds": {"name": "LEDR", "width": 18}}
+    assert spc.cross_check_widths(over_leds, {"leds": [{}] * 10}) is not None
     board: dict[str, Any] = {"switches": [{}] * 4, "buttons": [{}] * 2}
     assert spc.cross_check_widths({"switches": {"name": "sw", "width": 5}}, board) is not None
     assert spc.cross_check_widths({"buttons": {"name": "btn", "width": 5}}, board) is not None
+
+
+def test_cross_check_bank_narrower_than_board_is_allowed() -> None:
+    # A source narrower than the board is a legitimate partial convention -- the
+    # native wrapper zero-extends a short LED bank and feeds the low bits of a
+    # short input bank (U31/U32), so it must not be rejected here.
+    part_leds: dict[str, Any] = {"leds": {"name": "led", "width": 4}}
+    assert spc.cross_check_widths(part_leds, {"leds": [{}] * 8}) is None
+    board: dict[str, Any] = {"switches": [{}] * 4, "buttons": [{}] * 13}
+    assert spc.cross_check_widths({"switches": {"name": "sw", "width": 2}}, board) is None
+    assert spc.cross_check_widths({"buttons": {"name": "btn", "width": 7}}, board) is None
 
 
 def test_cross_check_seven_seg_individual_digit_count() -> None:

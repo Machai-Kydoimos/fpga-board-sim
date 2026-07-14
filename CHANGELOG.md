@@ -45,6 +45,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unauthenticated GitHub API rate limit was silently degrading pinned source
   URLs to branch URLs mid-wave), and two stale registry source URLs were
   repointed from a renamed `master` branch to `main` (#231).
+- **Board-native partial conventions + Sipeed Tang Nano 20K (U33 Wave 3).** The
+  port-convention generator's width cross-check now accepts a source bank
+  *narrower* than the board — a board whose own constraint file wires up only
+  some of its LEDs/buttons is a legitimate partial convention the native
+  wrapper already adapts (zero-extending a short LED bank, feeding the low bits
+  of a short input bank, exactly as it does for U32's framework banks); only a
+  source *wider* than the board (claiming resources the board doesn't model)
+  stays a mismatch. Populates **Sipeed Tang Nano 20K** — its source `leds[6]`
+  covers the 6 plain LEDs and the board's 7th is an RGB — active-low via a
+  cited overlay (#233).
 - **Port-convention source registry.** New maintainer-facing registry at
   `docs/port_convention_sources/` — one TOML per board family holding ranked,
   fetch-verified pointers to each board's canonical constraint/pin file (QSF,

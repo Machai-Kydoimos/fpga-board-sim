@@ -133,3 +133,12 @@ name = "Tang Nano 9K"
   [board.leds]
   active_low = true
   cite = "The Sipeed Tang Nano 9K's 6 user LEDs are active-low (driven low to light: LED anode to 3V3 through a resistor, cathode to the FPGA pin), per the Sipeed Tang Nano 9K schematic; the litex-boards platform already captures this (boards/litex-boards/sipeed_tang_nano_9k.json leds[].inverted = true). A Gowin CST binds names to pins only, so classify() cannot derive polarity."
+
+# --- U33 Wave 3 (subset partial conventions; see waves.toml, #233) ---
+
+[[board]]
+name = "Sipeed Tang Nano 20k"
+
+  [board.leds]
+  active_low = true
+  cite = "The Sipeed Tang Nano 20K's 6 user LEDs are active-low (driven low to light), consistent with its Tang Nano 9K sibling (U33 Wave 2): the litex-boards platform names the bank `led_n` -- litex's active-low naming convention. A Gowin CST binds names to pins only, so classify() cannot derive polarity."
