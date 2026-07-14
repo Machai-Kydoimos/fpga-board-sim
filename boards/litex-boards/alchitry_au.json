@@ -131,6 +131,20 @@
         "width": 8
       },
       "naming": "framework-derived"
+    },
+    "alchitry": {
+      "clk": "clk",
+      "leds": {
+        "name": "led",
+        "width": 8
+      },
+      "description": "Researched inline via GitHub API 2026-07-11 (batch b11; agent died on session limit). One physical board; row covers the amaranth and litex files.",
+      "naming": "canonical",
+      "source": {
+        "url": "https://raw.githubusercontent.com/alchitry/Au-Base-Project/e27480fa5d1ee6dda1e7b28846c6f886bd778312/au_base_project.srcs/constrs_1/new/au.xdc",
+        "retrieved": "2026-07-14",
+        "registry_board": "Alchitry Au"
+      }
     }
   },
   "$schema": "../schema/board.schema.json",

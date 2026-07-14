@@ -32,6 +32,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   old parser silently dropped — that let **USB104 A7-100T** and **Cmod S7-25**
   run board-native. Three Zynq boards (Cora Z7-07S / Z7-10, Eclypse Z7) regain
   their clock but stay non-native pending RGB-LED-bank handling (#229).
+- **Vendor-canonical board-native conventions for 4 more boards (U33 Wave 2).**
+  Alchitry Au, Sipeed Tang Nano 9K, Icepi Zero, and Trellisboard gain
+  vendor-canonical `port_conventions` — their real constraint-file port names
+  (e.g. Tang Nano's Gowin `led` / `sys_clk` rather than the litex framework
+  names) — so a design hand-written to a board's own names runs board-native on
+  it. Populated from each board's official-repo constraint file via
+  `scripts/sync_port_conventions.py`; Tang Nano 9K's active-low LEDs carry a
+  cited polarity overlay, and the canonical blocks take precedence over the
+  framework-derived ones (U32). Supporting fixes: the sync scripts'
+  `resolve_commit_sha` now sends `GITHUB_TOKEN` / `GH_TOKEN` when set (the
+  unauthenticated GitHub API rate limit was silently degrading pinned source
+  URLs to branch URLs mid-wave), and two stale registry source URLs were
+  repointed from a renamed `master` branch to `main` (#231).
 - **Port-convention source registry.** New maintainer-facing registry at
   `docs/port_convention_sources/` — one TOML per board family holding ranked,
   fetch-verified pointers to each board's canonical constraint/pin file (QSF,

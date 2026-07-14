@@ -137,6 +137,21 @@
         "width": 2,
         "active_low": true
       }
+    },
+    "sipeed": {
+      "clk": "sys_clk",
+      "leds": {
+        "name": "led",
+        "width": 6,
+        "active_low": true
+      },
+      "description": "Official Sipeed TangNano-9K-example repo with complete constraint files. Clock 27MHz. 6 LEDs, 2 buttons confirmed from multiple examples.",
+      "naming": "canonical",
+      "source": {
+        "url": "https://raw.githubusercontent.com/sipeed/TangNano-9K-example/c3b795799f23de91982be52db4273a8eea100cdb/led/src/9K_LED_project.cst",
+        "retrieved": "2026-07-14",
+        "registry_board": "Tang Nano 9K"
+      }
     }
   },
   "$schema": "../schema/board.schema.json",

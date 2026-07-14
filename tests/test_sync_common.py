@@ -15,7 +15,7 @@ import pytest
 # Add scripts/ to path for importing (conftest also does this; kept for standalone runs).
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from sync_common import validate_board_jsons, write_outputs  # noqa: E402
+from sync_common import resolve_commit_sha, validate_board_jsons, write_outputs  # noqa: E402
 
 SCHEMA_PATH = Path(__file__).parent.parent / "boards" / "schema" / "board.schema.json"
 
@@ -315,3 +315,74 @@ def test_write_outputs_fresh_peripherals_wins_over_existing(tmp_path):
 
     written = json.loads((out / "board.json").read_text())
     assert written["peripherals"] == [{"type": "audio", "name": "NEW"}]
+
+
+# ── resolve_commit_sha (GITHUB_TOKEN auth, U33) ──────────────────────────────
+
+
+class _FakeResp:
+    """Minimal context-manager stand-in for an ``http.client.HTTPResponse``."""
+
+    def __init__(self, body: bytes) -> None:
+        self._body = body
+
+    def __enter__(self) -> "_FakeResp":
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self._body
+
+
+def _capture_urlopen(captured: list[Any]) -> Any:
+    """Return a urlopen stand-in that records each Request and returns a SHA."""
+
+    def _fake(req: Any, timeout: int = 30) -> _FakeResp:
+        captured.append(req)
+        return _FakeResp(b"abcdef1234\n")
+
+    return _fake
+
+
+def test_resolve_commit_sha_adds_auth_header_when_token_set(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "secret-token")
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    captured: list[Any] = []
+    monkeypatch.setattr("sync_common.urllib.request.urlopen", _capture_urlopen(captured))
+
+    assert resolve_commit_sha("owner/repo", "main") == "abcdef1234"
+    assert captured[0].get_header("Authorization") == "Bearer secret-token"
+
+
+def test_resolve_commit_sha_uses_gh_token_fallback(monkeypatch):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setenv("GH_TOKEN", "gh-secret")
+    captured: list[Any] = []
+    monkeypatch.setattr("sync_common.urllib.request.urlopen", _capture_urlopen(captured))
+
+    resolve_commit_sha("owner/repo", "main")
+    assert captured[0].get_header("Authorization") == "Bearer gh-secret"
+
+
+def test_resolve_commit_sha_no_auth_header_without_token(monkeypatch):
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    captured: list[Any] = []
+    monkeypatch.setattr("sync_common.urllib.request.urlopen", _capture_urlopen(captured))
+
+    assert resolve_commit_sha("owner/repo", "main") == "abcdef1234"
+    assert captured[0].get_header("Authorization") is None
+
+
+def test_resolve_commit_sha_falls_back_to_ref_on_error(monkeypatch):
+    def _boom(req: Any, timeout: int = 30) -> None:
+        raise OSError("network down")
+
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.setattr("sync_common.urllib.request.urlopen", _boom)
+
+    # A resolution failure must never break a sync -- fall back to the ref.
+    assert resolve_commit_sha("owner/repo", "v1.2.3") == "v1.2.3"

@@ -40,5 +40,25 @@ boards = [
 
 [[wave]]
 number = 2
-description = "Clean official-org families (docs/u21_board_native_vhdl_plan.md Part A, A4, Wave 2) -- NOT YET POPULATED. TODO before this wave runs: transcribe its ~35 boards from the plan doc against current docs/port_convention_sources/*.toml row names. Left empty deliberately in A3 rather than risk a mistranscribed name silently failing to match (wrong names just never pass the row gate, with no error) -- this is Wave 2's own population phase's job, not A3's."
-boards = []
+description = "Clean official-repo boards (U33, #231). Scope was set empirically, not by the plan doc's old ~35 estimate: force-checking all 61 gate-eligible framework-only boards through the A3 generator showed only 13 produce a clean, complete, width-passing convention today (the rest are clk-only, width-mismatched vs the board JSON, or fetch/classifier failures -- see the deferred map below). This wave ships the 4 highest-confidence of those 13 -- popular boards whose canonical names genuinely differ from the framework block, each an official-repo (auto-trust-gated) source with polarity that matches the board JSON's own framework-derived `inverted` model (so nothing is invented): Alchitry Au (Xilinx, active-high), Tang Nano 9K (Gowin, active-low -- cited overlay), Icepi Zero + Trellisboard (ECP5, active-high, full clk+led+btn)."
+boards = [
+  "Alchitry Au",    # amaranth/XDC; led[8] + clk (canonical `clk` vs amaranth `clk100`); active-high.
+  "Tang Nano 9K",   # litex+amaranth/Gowin CST; led[6] + sys_clk (real Gowin names vs litex user_led/clk100);
+                    # LEDs active-low -> cited overlay (board JSON leds[].inverted=true, Sipeed schematic).
+  "Icepi Zero",     # litex/LPF; led[5] + button[2] + clk; active-high.
+  "Trellisboard",   # litex/LPF; led[12] + btn[4] + clk_12; active-high.
+]
+
+# --- Wave 3+ deferred map (from the 2026-07-14 force-check of the 61 gate-eligible boards) ---
+# Clean but lower-priority (populate next, same mechanism): Sipeed Tang Nano 4k, iCESugar Nano,
+#   Machdyne Kolsch/Lakritz/Minze/Vanille (a coherent machdyne family; 4 more machdyne are clk-only).
+# Wrong clock (need a cited overlay clk before vouching): Mi ST / Mist (`CLOCK_50[0]`), Redpitaya
+#   (`adc_clk_i[1]` -- ADC clock, not fabric).
+# Width mismatch source-vs-boardJSON (the RZEasy pattern -- need per-board truth + likely a boards/
+#   JSON fix, not just an overlay): ICEBreaker (btn 3!=1), iCESugar (led 8!=6), ICEBreaker Bitsy (4!=5),
+#   Sipeed Tang Nano 20k (6!=7), Radiona ULX4M LD/LS V2 (4!=8), ULX3S (btn 7!=13), Litefury/Nitefury II
+#   (4!=5), Saanlima Pipistrello (8!=5), Tul Pynq Z2 (6!=4), Xilinx Zcu216 (8!=16), and more.
+# clk-only (no LED bank in the source -> not native): the Xilinx BoardStore XML boards (KC705, KCU105,
+#   Kcu116, Zcu102 -- pin XML is DDR/FMC/clock-centric, GPIO LEDs absent), Fomu (RGB-only), Tang
+#   Primer20k boards, several machdyne. Fetch/classifier failures: OrangeCrab*, Upduino V3, Numato
+#   Mimas A7 (404), Muselab Icesugar Pro (404), TinyFPGA BX (non-raw URL -- registry URL needs fixing).
