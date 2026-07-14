@@ -107,11 +107,28 @@
   ],
   "switches": [],
   "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk27",
+      "leds": {
+        "name": "user_led_n",
+        "width": 6,
+        "active_low": true
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "user_btn_n",
+        "width": 2,
+        "active_low": true
+      }
+    }
+  },
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "litex-boards",
     "upstream_file": "brisbaneSilicon_brs_100_gw1nr9.py",
     "sync_commit": "08e6a063e365a8baebc0cd92ebee6d9e97ce0a50",
-    "sync_timestamp": "2026-06-23T08:11:25.262005+00:00"
+    "sync_timestamp": "2026-07-14T05:56:36.171404+00:00"
   }
 }

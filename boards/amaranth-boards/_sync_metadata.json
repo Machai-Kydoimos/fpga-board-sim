@@ -1,7 +1,7 @@
 {
   "source_repo": "https://github.com/amaranth-lang/amaranth-boards",
   "source_commit": "fd2f0df811a8dbcf6aa0b94ac0788dc71ac79e1e",
-  "sync_timestamp": "2026-06-23T02:31:22.624692+00:00",
+  "sync_timestamp": "2026-07-14T05:53:55.176394+00:00",
   "board_count": 79,
   "files_written": [
     "alchitry_au.json",
