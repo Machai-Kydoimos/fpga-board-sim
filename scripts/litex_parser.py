@@ -214,10 +214,26 @@ def _make_litex_namespace() -> dict[str, object]:
 # ═══════════════════════════════════════════════════════════════════════
 
 
+# A resource is a user LED only when "led" appears at a token boundary: at the
+# start, or after `_`/`-`/a digit (so `m2led` -- the M.2 status LED -- and `led0`
+# both count).  A bare `"led" in name` substring test wrongly swept in `oled*`
+# (OLED display buses) and `segled_*` (7-segment display lines) because those have
+# a *letter* before "led"; that inflated the LED bank on several boards (U33 Wave 4).
+_LED_TOKEN = re.compile(r"(?:^|[_\-0-9])led")
+
+
 def _classify_resource(name: str) -> str | None:
     """Classify a LiteX resource name into a type."""
     n = name.lower()
-    if n in ("user_led", "led") or ("led" in n and "ctrl" not in n):
+    # 7-segment displays declared as scalar `segled_*` resources (older Digilent /
+    # Numato naming): `segled_an` are the digit-select anodes, `segled_ca`..`_cg` /
+    # `segled_dp` the shared segment lines.  Tested before the LED rule because
+    # "segled" contains "led".
+    if n.startswith("segled_an"):
+        return "seven_seg_ctrl"
+    if n.startswith("segled"):
+        return "seven_seg"
+    if n in ("user_led", "led") or (_LED_TOKEN.search(n) and "ctrl" not in n):
         return "led"
     if n in ("user_btn", "key", "usr_btn", "user_dip_btn", "button_1") or "btn" in n:
         return "button"
@@ -347,9 +363,12 @@ def _build_seven_seg_def(
         return None
 
     has_dp = False
-    for _, _, *ios in seg_tuples:
-        pin_names, _, _, _ = _extract_io_pins(tuple(ios))
-        if len(pin_names) == 8:
+    for seg in seg_tuples:
+        seg_name = str(seg[0]).lower()
+        pin_names, _, _, _ = _extract_io_pins(tuple(seg[2:]))
+        # A single 8-pin bus (`seven_seg` a..g + dp) or a scalar `segled_dp` line
+        # both signal the decimal point is present.
+        if len(pin_names) == 8 or seg_name.endswith("dp"):
             has_dp = True
             break
 

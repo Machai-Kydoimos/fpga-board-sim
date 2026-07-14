@@ -28,24 +28,6 @@
       }
     },
     {
-      "name": "oled",
-      "number": 0,
-      "pins": [
-        "AC17",
-        "AB17",
-        "AF17",
-        "Y15",
-        "AB22",
-        "AG17"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS18"
-      }
-    },
-    {
       "name": "led",
       "number": 1,
       "pins": [

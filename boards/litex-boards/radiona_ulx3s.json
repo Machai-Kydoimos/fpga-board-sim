@@ -28,35 +28,6 @@
       }
     },
     {
-      "name": "oled_spi",
-      "number": 0,
-      "pins": [
-        "P4",
-        "P3"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "oled_ctl",
-      "number": 0,
-      "pins": [
-        "P1",
-        "P2",
-        "N2"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "led",
       "number": 1,
       "pins": [

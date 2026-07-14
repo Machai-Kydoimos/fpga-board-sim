@@ -55,6 +55,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stays a mismatch. Populates **Sipeed Tang Nano 20K** — its source `leds[6]`
   covers the 6 plain LEDs and the board's 7th is an RGB — active-low via a
   cited overlay (#233).
+- **OLED / 7-segment pins no longer counted as user LEDs (U33 Wave 4).** The litex
+  and amaranth board parsers classified a resource as a user LED with a bare
+  `"led" in name` substring test, which wrongly swept in `oled*` (OLED display
+  buses) and `segled_*` (7-segment display lines) — both merely *contain* "led" —
+  inflating the LED bank on seven boards. LED classification now requires "led" at a
+  token boundary (start, or after `_`/`-`/a digit), so `m2led` (the M.2 status LED)
+  and `led0` still count while `oled` and `segled` do not. Regenerated from the same
+  pinned upstream, this corrects the user-LED count on **Genesys2** (amaranth +
+  litex), **Kintex7-BaseC**, **Nexys Video**, and **ULX3S** (each had one phantom
+  OLED "LED"), and on **Nexys4** (34→18) and **Numato Mimas A7** (20→8) — whose
+  `segled_*` pins are now modeled as their real multiplexed 7-segment displays (8
+  and 4 digits, common-anode active-low, matching the golden Nexys4-DDR model)
+  rather than phantom LEDs. Buttons and switches are unaffected fleet-wide and no
+  legitimate LED is dropped (#235).
 - **Port-convention source registry.** New maintainer-facing registry at
   `docs/port_convention_sources/` — one TOML per board family holding ranked,
   fetch-verified pointers to each board's canonical constraint/pin file (QSF,

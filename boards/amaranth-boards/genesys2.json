@@ -112,21 +112,6 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
       }
-    },
-    {
-      "name": "oled",
-      "number": 0,
-      "pins": [
-        "AC17",
-        "AG17",
-        "AB22"
-      ],
-      "direction": "o",
-      "inverted": true,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS18"
-      }
     }
   ],
   "buttons": [

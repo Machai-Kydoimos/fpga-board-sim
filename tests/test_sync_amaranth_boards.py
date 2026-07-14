@@ -89,6 +89,32 @@ def test_generate_board_json_emits_amaranth_convention():
     assert conv["naming"] == "framework-derived"
 
 
+_OLED_SOURCE = """
+from amaranth.build import *
+from amaranth.vendor import XilinxPlatform
+__all__ = ["OledPlatform"]
+class OledPlatform(XilinxPlatform):
+    default_clk = "clk100"
+    resources = [
+        Resource("clk100", 0, Pins("E3", dir="i"), Clock(100e6), Attrs(IO="LVCMOS")),
+        *LEDResources(pins="A B C D", attrs=Attrs(IO="TEST")),
+        Resource("m2led", 0, Pins("M1", dir="o"), Attrs(IO="TEST")),
+        Resource("oled", 0, Pins("P1 P2 P3", dir="o"), Attrs(IO="TEST")),
+    ]
+"""
+
+
+def test_oled_dropped_but_m2led_kept():
+    """U33 Wave 4: `oled` (OLED bus) is not a LED; `m2led` (M.2 status LED) is."""
+    results = generate_board_json({"oled_test.py": _OLED_SOURCE}, "abc123def")
+    data = json.loads(next(iter(results.values())))
+    names = [c["name"] for c in data["leds"]]
+    assert names.count("led") == 4  # the LEDResources
+    assert "m2led" in names  # digit before "led" -> kept
+    assert not any("oled" in n for n in names)  # OLED bus dropped
+    assert len(data["leds"]) == 5
+
+
 def test_generate_board_json_skips_broken():
     """Broken board files are skipped without raising."""
     board_files = {
