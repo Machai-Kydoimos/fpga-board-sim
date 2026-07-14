@@ -220,6 +220,16 @@ source). Recommended next: **U33** (canonical population waves) — **U31 ✅** 
 
 #### U33. Board-native population waves 2+ (registry-driven canonical conventions)
 
+- **Progress:** ✅ **Wave 1** (5 Terasic teaching boards, U21) + the ✅ digilent-parser coverage fix
+  (#229, +2). ✅ **Wave 2** (#231): 4 clean official-repo boards — Alchitry Au, Tang Nano 9K
+  (active-low, cited), Icepi Zero, Trellisboard — plus a `resolve_commit_sha` `GITHUB_TOKEN` auth fix
+  that unblocks clean commit-pinning for every future wave. **Empirical scoping (2026-07-14):**
+  force-checking all 61 gate-eligible boards showed only **13** produce a clean, complete convention
+  today; the *marquee* hobbyist boards (ICEBreaker, iCESugar, Tang Nano 20K, ULX3S, ULX4M) are
+  **width-blocked** (source-vs-board-JSON count mismatch — the RZEasy pattern, needs per-board
+  reconciliation and likely board-JSON edits), the Xilinx eval boards are **clk-only** (their pin-XML
+  has no GPIO LEDs), so the "prioritize popular boards" aim below needs that reconciliation first
+  (Wave 3+). Deferred map recorded in `waves.toml`.
 - **Why:** U21 Part A built the whole registry → parser → generator → overlay pipeline but only
   **Wave 1 (3 Terasic boards)** shipped; the registry (#198) has ~124 fetch-verified sources awaiting
   population. This is the *quality* path — vendor-**canonical** conventions with distinctive real

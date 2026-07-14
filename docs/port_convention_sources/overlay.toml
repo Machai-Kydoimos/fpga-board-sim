@@ -120,3 +120,16 @@ clk_cite = "The DE10-Lite's primary 50 MHz clock is MAX10_CLK1_50 (the board als
   [board.seven_seg]
   active_low = true
   cite = "Terasic HEX 7-segment displays are active-low (segment lit = 0), per the DE10-Lite user manual."
+
+# --- U33 Wave 2 (clean official-repo boards; see waves.toml, #231) ---
+# Only Tang Nano 9K needs an overlay: its LEDs are active-low, which a Gowin CST
+# (like every constraint file) cannot state. Alchitry Au / Icepi Zero / Trellisboard
+# are active-high, matching their board JSON's framework-derived `inverted` model, so
+# they need no overlay.
+
+[[board]]
+name = "Tang Nano 9K"
+
+  [board.leds]
+  active_low = true
+  cite = "The Sipeed Tang Nano 9K's 6 user LEDs are active-low (driven low to light: LED anode to 3V3 through a resistor, cathode to the FPGA pin), per the Sipeed Tang Nano 9K schematic; the litex-boards platform already captures this (boards/litex-boards/sipeed_tang_nano_9k.json leds[].inverted = true). A Gowin CST binds names to pins only, so classify() cannot derive polarity."

@@ -8,6 +8,7 @@ Each parser lives in its own module (``amaranth_parser`` / ``litex_parser`` /
 
 import hashlib
 import json
+import os
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -36,9 +37,21 @@ def unique_name(base: str, seen: dict[str, int]) -> str:
 
 
 def resolve_commit_sha(repo: str, ref: str) -> str:
-    """Resolve a git ref to a commit SHA via the GitHub API (falls back to ref)."""
+    """Resolve a git ref to a commit SHA via the GitHub API (falls back to ref).
+
+    Sends ``GITHUB_TOKEN`` / ``GH_TOKEN`` as a bearer credential when either is
+    set. The port-convention generator resolves one ref per board to pin its
+    source URL; the unauthenticated GitHub API's 60-request/hour limit is low
+    enough that a real population wave otherwise exhausts it mid-run and
+    silently falls back to unpinned branch URLs. Auth is optional -- with no
+    token the request is unchanged.
+    """
     url = f"https://api.github.com/repos/{repo}/commits/{ref}"
-    req = urllib.request.Request(url, headers={"Accept": "application/vnd.github.sha"})
+    headers = {"Accept": "application/vnd.github.sha"}
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return str(resp.read().decode().strip())
