@@ -77,6 +77,61 @@ class RgbPlatform(Xilinx7SeriesPlatform):
 """
 
 
+# U33 Wave 4: `oled*` (OLED display buses) and `segled_*` (7-seg lines) merely
+# *contain* "led" and must not be user LEDs; `m2led` (M.2 status LED -- a digit
+# precedes "led") must stay one.
+_OLED_M2LED = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io = [
+    ("clk100", 0, Pins("E3"), IOStandard("LVCMOS33")),
+    ("user_led", 0, Pins("A1"), IOStandard("LVCMOS33")),
+    ("m2led", 0, Pins("M1"), IOStandard("LVCMOS33")),
+    ("oled", 0, Pins("P1 P2 P3"), IOStandard("LVCMOS33")),
+    ("oled_ctl", 0, Pins("N1 N2"), IOStandard("LVCMOS33")),
+]
+
+class OledPlatform(Xilinx7SeriesPlatform):
+    default_clk_name = "clk100"
+    default_clk_period = 1e9 / 100e6
+    def __init__(self):
+        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)
+"""
+
+# U33 Wave 4: scalar `segled_*` 7-seg (older Digilent / Numato naming) -- `segled_an`
+# digit-selects + `segled_ca`..`_cg`/`_dp` segment lines -- routed to a multiplexed
+# seven_seg def, not leaked into the LED bank.
+_SEGLED = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io = [
+    ("clk100", 0, Pins("E3"), IOStandard("LVCMOS33")),
+    ("user_led", 0, Pins("A1"), IOStandard("LVCMOS33")),
+    ("user_led", 1, Pins("A2"), IOStandard("LVCMOS33")),
+    ("segled_an", 0, Pins("N6"), IOStandard("LVCMOS33")),
+    ("segled_an", 1, Pins("M6"), IOStandard("LVCMOS33")),
+    ("segled_an", 2, Pins("M3"), IOStandard("LVCMOS33")),
+    ("segled_an", 3, Pins("N5"), IOStandard("LVCMOS33")),
+    ("segled_ca", 0, Pins("L3"), IOStandard("LVCMOS33")),
+    ("segled_cb", 0, Pins("N1"), IOStandard("LVCMOS33")),
+    ("segled_cc", 0, Pins("L5"), IOStandard("LVCMOS33")),
+    ("segled_cd", 0, Pins("L4"), IOStandard("LVCMOS33")),
+    ("segled_ce", 0, Pins("K3"), IOStandard("LVCMOS33")),
+    ("segled_cf", 0, Pins("M2"), IOStandard("LVCMOS33")),
+    ("segled_cg", 0, Pins("L6"), IOStandard("LVCMOS33")),
+    ("segled_dp", 0, Pins("M4"), IOStandard("LVCMOS33")),
+]
+
+class SegledPlatform(Xilinx7SeriesPlatform):
+    default_clk_name = "clk100"
+    default_clk_period = 1e9 / 100e6
+    def __init__(self):
+        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)
+"""
+
+
 def test_basic_counts_and_metadata():
     boards = parse_litex_board(_BASIC, "test_board.py")
     assert len(boards) == 1
@@ -107,6 +162,26 @@ def test_seven_seg_multiplexed():
     assert ss["num_digits"] == 4  # from the 4 ctrl (digit-select) pins
     assert ss["is_multiplexed"] is True
     assert ss["has_dp"] is True  # 8 segment pins → includes DP
+
+
+def test_oled_not_a_led_but_m2led_is():
+    # U33 Wave 4: `oled`/`oled_ctl` dropped from the LED bank; `m2led` kept.
+    b = parse_litex_board(_OLED_M2LED, "oled_board.py")[0]
+    names = sorted(c["name"] for c in b["leds"])
+    assert names == ["led", "m2led"]  # user_led -> led; oled/oled_ctl gone
+    assert b["seven_seg"] is None
+
+
+def test_segled_routed_to_seven_seg_not_leds():
+    # U33 Wave 4: scalar segled_* becomes a multiplexed 7-seg, not phantom LEDs.
+    b = parse_litex_board(_SEGLED, "segled_board.py")[0]
+    assert len(b["leds"]) == 2  # only the two user_led; no segled_* leak
+    ss = b["seven_seg"]
+    assert ss is not None
+    assert ss["num_digits"] == 4  # four segled_an digit-selects
+    assert ss["has_dp"] is True  # segled_dp present
+    assert ss["is_multiplexed"] is True
+    assert ss["inverted"] is True and ss["select_inverted"] is True
 
 
 def test_port_conventions_litex_uses_raw_names():

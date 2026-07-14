@@ -409,12 +409,21 @@ def _extract_pins(
     return pins, direction, inverted, connector
 
 
+# "led" only counts as a user LED at a token boundary: start, or after `_`/`-`/a
+# digit -- so `m2led` (the M.2 status LED on litefury/nitefury) and `led0` both
+# count, while a *letter* before "led" (`oled*` OLED buses) does not.  A bare
+# substring test wrongly classified `oled*` as LEDs and inflated the LED bank
+# (U33 Wave 4).  amaranth 7-seg uses `display_7seg` names (handled above), so
+# there is no `segled_*` case here.
+_LED_TOKEN = re.compile(r"(?:^|[_\-0-9])led")
+
+
 def _classify(resource: _Resource) -> str | None:
     """Return 'led', 'button', 'switch', or None."""
     n = resource.name.lower()
     if n == "_stub" or n.startswith("display_7seg"):
         return None
-    if "led" in n:
+    if _LED_TOKEN.search(n):
         return "led"
     if "button" in n or n.startswith("btn"):
         return "button"

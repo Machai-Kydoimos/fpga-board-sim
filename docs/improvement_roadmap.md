@@ -226,13 +226,19 @@ source). Recommended next: **U33** (canonical population waves) — **U31 ✅** 
   that unblocks clean commit-pinning for every future wave. ✅ **Wave 3** (#233): aligned the width
   cross-check with U32 (a source bank *narrower* than the board is a legit partial the native wrapper
   zero-extends — only *wider* is a mismatch) + Sipeed Tang Nano 20K (partial 6/7; the 7th LED is an
-  RGB; active-low cited). **Empirical scoping (2026-07-14):**
-  force-checking all 61 gate-eligible boards showed only **13** produce a clean, complete convention
-  today; the *marquee* hobbyist boards (ICEBreaker, iCESugar, Tang Nano 20K, ULX3S, ULX4M) are
-  **width-blocked** (source-vs-board-JSON count mismatch — the RZEasy pattern, needs per-board
-  reconciliation and likely board-JSON edits), the Xilinx eval boards are **clk-only** (their pin-XML
-  has no GPIO LEDs), so the "prioritize popular boards" aim below needs that reconciliation first
-  (Wave 3+). Deferred map recorded in `waves.toml`.
+  RGB; active-low cited). ✅ **Wave 4** (#235): board-data quality fix — the litex & amaranth parsers
+  classified LEDs with a bare `"led" in name` substring test that swept in `oled*` (OLED buses) and
+  `segled_*` (7-seg lines); tightened to a token-boundary rule (keeps `m2led`/`led0`, drops
+  `oled`/`segled`), fixing the phantom-LED counts on 7 boards and modeling Nexys4 (34→18 LEDs) + Numato
+  Mimas A7 (20→8) `segled_*` as their real multiplexed 7-seg displays. This was the ULX3S "10-vs-8
+  LEDs" blocker (a data-quality wart, not a canonical-population gap). **Empirical scoping
+  (2026-07-14):** force-checking all 61 gate-eligible boards showed only **13** produce a clean,
+  complete convention today; the *marquee* hobbyist boards (ICEBreaker, iCESugar, Tang Nano 20K, ULX3S,
+  ULX4M) are **width-blocked** (source-vs-board-JSON count mismatch — the RZEasy pattern, needs
+  per-board reconciliation and likely board-JSON edits, part of which Wave 4 addressed at the parser
+  level), the Xilinx eval boards are **clk-only** (their pin-XML has no GPIO LEDs), so the "prioritize
+  popular boards" aim below needs that reconciliation first (Wave 3+). Deferred map recorded in
+  `waves.toml`.
 - **Why:** U21 Part A built the whole registry → parser → generator → overlay pipeline but only
   **Wave 1 (3 Terasic boards)** shipped; the registry (#198) has ~124 fetch-verified sources awaiting
   population. This is the *quality* path — vendor-**canonical** conventions with distinctive real
@@ -243,7 +249,9 @@ source). Recommended next: **U33** (canonical population waves) — **U31 ✅** 
   cited overlay entries for polarity / multi-clock / name-overrides. Prioritize boards users actually
   hand-write HDL for (Terasic teaching boards, popular Digilent / Xilinx dev boards).
 - **Touches:** `docs/port_convention_sources/waves.toml` + `overlay.toml`; regenerated
-  `boards/*/*.json` (production path); no code (the generator is done).
+  `boards/*/*.json` (production path). Mostly overlay-only, but two board-*parser* quality fixes fell
+  out of the arc: the digilent section-header fix (#229) and the litex/amaranth LED-classifier
+  token-boundary fix (#235).
 - **Effort:** L (incremental; per-wave S–M).
 - **Dependencies:** U21 ✅ (pipeline complete). Overlaps **P2** (sync curation).
 - **Done when:** the registry's verified-source boards are populated wave-by-wave, each wave recorded
@@ -258,8 +266,9 @@ source). Recommended next: **U33** (canonical population waves) — **U31 ✅** 
   low-specificity framework entries (litex's generic "Digilent Arty") are precisely the ones
   authoritative `digilent-xdc` data should out-rank via `_convention_precedence`. Multi-variant,
   multi-source families are the population-wave (and P18) stress test.
-- **✅ Digilent XDC parser section-header fix (shipped 2026-07-14, #229 — the arc's one code touch;
-  population waves themselves are overlay-only).** `digilent_parser._classify_section` recognized a
+- **✅ Digilent XDC parser section-header fix (shipped 2026-07-14, #229 — one of the arc's two code
+  touches; the other is the Wave 4 litex/amaranth LED-classifier fix #235; population waves themselves
+  are overlay-only).** `digilent_parser._classify_section` recognized a
   clock section only when the header contained **both** "clock" *and* "signal", and a plain-LED section
   only by the *exact* string `led`/`leds`. Digilent's titles vary, so real clock/LED ports were silently
   dropped (the frequency still survived via the section-agnostic `create_clock` regex, so

@@ -28,140 +28,10 @@
       }
     },
     {
-      "name": "segled_an",
-      "number": 0,
-      "pins": [
-        "N3"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "segled_ca",
-      "number": 0,
-      "pins": [
-        "L5"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "segled_cb",
-      "number": 0,
-      "pins": [
-        "P4"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "segled_cc",
-      "number": 0,
-      "pins": [
-        "N4"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "segled_cd",
-      "number": 0,
-      "pins": [
-        "P5"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "segled_ce",
-      "number": 0,
-      "pins": [
-        "M6"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "segled_cf",
-      "number": 0,
-      "pins": [
-        "L6"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "segled_cg",
-      "number": 0,
-      "pins": [
-        "M5"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "segled_dp",
-      "number": 0,
-      "pins": [
-        "M3"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "led",
       "number": 1,
       "pins": [
         "J17"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "segled_an",
-      "number": 1,
-      "pins": [
-        "R1"
       ],
       "direction": "o",
       "inverted": false,
@@ -184,36 +54,10 @@
       }
     },
     {
-      "name": "segled_an",
-      "number": 2,
-      "pins": [
-        "P1"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "led",
       "number": 3,
       "pins": [
         "L15"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "segled_an",
-      "number": 3,
-      "pins": [
-        "L4"
       ],
       "direction": "o",
       "inverted": false,
@@ -435,7 +279,13 @@
       }
     }
   ],
-  "seven_seg": null,
+  "seven_seg": {
+    "num_digits": 4,
+    "has_dp": true,
+    "is_multiplexed": true,
+    "inverted": true,
+    "select_inverted": true
+  },
   "port_conventions": {
     "litex": {
       "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",

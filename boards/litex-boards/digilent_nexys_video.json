@@ -28,24 +28,6 @@
       }
     },
     {
-      "name": "oled",
-      "number": 0,
-      "pins": [
-        "W22",
-        "U21",
-        "W21",
-        "Y22",
-        "P20",
-        "V22"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "led",
       "number": 1,
       "pins": [
