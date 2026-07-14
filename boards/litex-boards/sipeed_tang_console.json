@@ -44,11 +44,22 @@
   "buttons": [],
   "switches": [],
   "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk50",
+      "leds": {
+        "name": "led",
+        "width": 2
+      },
+      "naming": "framework-derived"
+    }
+  },
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "litex-boards",
     "upstream_file": "sipeed_tang_console.py",
-    "sync_commit": "7dda61109d951b6c1ca9cf7331e7a26c0ed84a65",
-    "sync_timestamp": "2026-05-25T22:17:21.475851+00:00"
+    "sync_commit": "08e6a063e365a8baebc0cd92ebee6d9e97ce0a50",
+    "sync_timestamp": "2026-07-14T05:56:36.171404+00:00"
   }
 }

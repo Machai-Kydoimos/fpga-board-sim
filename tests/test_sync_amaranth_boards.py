@@ -77,6 +77,18 @@ def test_generate_board_json_roundtrip():
     assert data["source"]["upstream_file"] == "sync_test.py"
 
 
+def test_generate_board_json_emits_amaranth_convention():
+    """U32: the amaranth parser emits a framework-derived port_conventions block."""
+    results = generate_board_json({"sync_test.py": _INLINE_BOARD_SOURCE}, "abc123def")
+    data = json.loads(next(iter(results.values())))
+    conv = data["port_conventions"]["amaranth"]
+    assert conv["clk"] == "clk100"
+    assert conv["leds"] == {"name": "led", "width": 4}
+    assert conv["switches"] == {"name": "switch", "width": 3}
+    assert conv["buttons"] == {"name": "button", "width": 2}
+    assert conv["naming"] == "framework-derived"
+
+
 def test_generate_board_json_skips_broken():
     """Broken board files are skipped without raising."""
     board_files = {

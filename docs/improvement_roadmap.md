@@ -181,11 +181,11 @@ those 241 boards, 238 have clk + LED but only **52** have clk + LED + switch + b
 boards have no switches). **U31 ✅** (2026-07-13, PR #226, issue #223) removed that rule: a design now matches
 whatever roles its board's convention declares (clk + LEDs minimum), so partial-interface boards are
 no longer capped — the remaining throttle is purely missing data. The native names / counts / clock
-for those 238 boards are **already parsed** into the board JSON, just not emitted as a convention,
-which is **U32**'s job (the single biggest lever, now unblocked by U31 to reach ~238 rather than
-~52); **U33** adds vendor-*canonical* quality where it matters most. Realistic combined ceiling ≈
+for those 238 boards were **already parsed** into the board JSON, just not emitted as a convention —
+**U32 ✅** (2026-07-14) did that, emitting framework-derived conventions for **241/246** litex+amaranth
+boards; **U33** adds vendor-*canonical* quality where it matters most. Realistic combined ceiling ≈
 150–200 (not 278: scan/serial displays need **U22**, and some boards have no machine-parseable
-source). Recommended next: **U32**, with **U33** in parallel (**U31 ✅** done).
+source). Recommended next: **U33** (canonical population waves) — **U31 ✅** and **U32 ✅** done.
 
 #### U31. Board-native partial-interface support ✅
 
@@ -201,30 +201,22 @@ source). Recommended next: **U32**, with **U33** in parallel (**U31 ✅** done).
   became `NativePort | None`. On today's full-interface conventions behavior is unchanged — the
   payoff is as the multiplier for **U32** (52 → ~238). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
-#### U32. Auto-derive `port_conventions` from the litex & amaranth platform files
+#### U32. Auto-derive `port_conventions` from the litex & amaranth platform files ✅
 
-- **Why:** 241 boards (all litex, most amaranth) have no convention, yet the litex `_io` and amaranth
-  `.py` files already declare the native port names, pins, widths, and (amaranth) polarity — and the
-  two sync parsers already read them (the board JSON even carries the component net-names
-  `led` / `switch` / `button` + clocks). Emitting a `port_conventions` block from that data is the
-  single biggest coverage lever (up to the full 241-board gap).
-- **What:** Extend `scripts/litex_parser.py` and `scripts/amaranth_parser.py` to emit a
-  `port_conventions.{litex,amaranth}` block alongside the existing led/btn/sw extraction: group
-  scalar-indexed resources into a vector or `names[]` scalar bank, pick the primary LED group (`led`
-  over `rgb_led`), resolve a clock name from the platform's clock resource, and capture polarity
-  where the source encodes it — amaranth `PinsN` = active-low (directly available); litex is murkier
-  (default active-high, refine later). Stamp `source` provenance and an honest `naming` value
-  (framework-canonical). Rides the existing re-sync preservation guard (A1 ✅), so hand-authored /
-  registry conventions always win.
-- **Touches:** `scripts/litex_parser.py`, `scripts/amaranth_parser.py` (+ their sync scripts),
-  possibly `scripts/port_convention_parsers/classify.py` (reuse the grouping); regenerated
-  `boards/{litex-boards,amaranth-boards}/*.json`; per-parser tests.
-- **Effort:** L.
-- **Dependencies:** U21 ✅; strongly synergistic with **U31 ✅** (without it, framework-derived data
-  only unlocked ~52 boards; with it, ~238). Related surface: **P5** (peripheral extraction — same parsers).
-- **Done when:** the litex/amaranth sync emits conventions for the bulk of their boards, and a
-  board-native design for a representative litex board (e.g. an Arty using litex names) simulates
-  unmodified.
+- Shipped 2026-07-14 (unreleased on main, bundled with U21 + U31). The litex and amaranth sync parsers
+  now emit a framework-derived `port_conventions.{litex,amaranth}` block for **241/246** boards
+  (164/167 litex + 77/79 amaranth; the rest lack a clock or LEDs) via the new shared
+  `scripts/framework_conventions.py`. Each advertises the framework's *own* port names — litex
+  `clk100`/`user_led`/`user_sw`/`user_btn` (the raw `_io` names, not the normalized JSON net-names),
+  amaranth `clk100`/`led`/`switch`/`button` — grouped into a vector or a `names[]` scalar bank (Basys3 /
+  Nexys4 directional buttons), primary LED group picked (`led` over `rgb_led`), amaranth polarity from
+  `PinsN`. Stamped `naming: "framework-derived"`; the matcher tries canonical blocks **first**
+  (`_convention_precedence` in `sim_bridge.py`) so authoritative vendor data added later wins, and the
+  A1 per-sub-key merge lets a framework block coexist with a canonical one. Exposed and fixed a native
+  wrapper gap: a bank **narrower than the board's resource count** (litex `rgb_led` inflate `NUM_LEDS`
+  past `user_led`) now zero-extends onto the board boundary, with wrapper default generics baked to the
+  board counts so analyze == run. A litex Arty design (`hdl/native/arty_litex.vhd`) simulates unmodified
+  on GHDL + NVC. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U33. Board-native population waves 2+ (registry-driven canonical conventions)
 
@@ -443,7 +435,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **3** | Visible polish | ~~U3 Tooltips~~ ✅ · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · ~~U7 In-sim toolbar~~ ✅ |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · ~~U10 Waveform~~ ✅ · U23 Dirty-flag redraw · U27 User JSON themes |
 | **5** | Waveform polish | ~~U28 Auto-emit `.gtkw`~~ ✅ · ~~U29 `FPGA_SIM_WAVEFORM` env + auto-open~~ ✅ · ~~U30 "Include memories" (`--dump-arrays`)~~ ✅ |
-| **6** | Board-native VHDL (lab↔sim round-trip) | ~~U21~~ ✅ **shipped 2026-07-13** (A0–B4, PRs #209–#222) per [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md). **Coverage follow-on (raise the 23/278 genuine-usable count — see the "Board-native VHDL coverage" note under U22):** ~~U31~~ ✅ partial-interface → **U32** litex/amaranth auto-derive (synergistic) · **U33** canonical population waves (parallel). U32 is near-term |
+| **6** | Board-native VHDL (lab↔sim round-trip) | ~~U21~~ ✅ **shipped 2026-07-13** (A0–B4, PRs #209–#222) per [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md). **Coverage follow-on (raise the 23/278 genuine-usable count — see the "Board-native VHDL coverage" note under U22):** ~~U31~~ ✅ partial-interface → ~~U32~~ ✅ litex/amaranth auto-derive (241/246 boards) → **U33** canonical population waves (parallel). U33 is near-term |
 | **7** | Iteration & panel UX | U18 Recent files (+ keep dir on retry) · U14 Pause/resume · U15 Compact SimPanel · U19 Metrics checkbox |
 | **8** | Startup hardening + dev-DRY base | U16 Min window size · U17 Font pre-alloc · **D5 Path helper** → D13 Env-branch tests · D12 Arch diagram |
 | **9** | Untrusted-VHDL isolation | **D7 Decompose `launch_simulation`** → D16 Sandbox the sim subprocess |
@@ -480,6 +472,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **P15** | Global cross-board convention *ambiguity* detection | A future board introduces a name+width-identical, polarity-*different* collision (today's `test_native_convention.py` invariant would fail loudly first), or a user reports a board-native file matching the "wrong" board | S/M | U21 ✅ resolves the wrong-board case safely by construction: a native file either near-misses on a differing port name or matches an electrically identical board (the only cross-board full match in the current data is DE23-Lite ↔ DE25-Standard, same polarity). What's **not** built is *global* ambiguity detection — "does this file also match another board *better* than the selected one?" Not needed for the current fleet (proven by the data-invariant regression test, which fails loudly if a name+width-identical, polarity-different pair ever appears), so it's deferred rather than speculatively built. **If triggered:** sweep the fleet's canonical conventions at match time and surface a "this also matches board X" note, or gate on a distinct discriminator (e.g. a unique clock name). See U21's plan §"Cross-board safety". |
 | **P16** | Surfer waveform signal *preselection* (`-c`/`--command-file`) | A user asks for an auto-preselected signal list in Surfer (not just GTKWave), or Surfer's command-file API stabilizes | S | U21 B3 ✅ made the auto-`.gtkw` save file preselect a board-native run's *own* `sim_wrapper.uut.<native>` signals (was contract names) — but `.gtkw` is **GTKWave-only**. Surfer (installed; opened via `$FPGA_SIM_WAVEFORM_VIEWER=surfer {dump}`) already shows the full tree with both the native and contract names present, so there's no wrong-default — just no auto-*preselect*. A symmetric Surfer preselection via its `-c`/`--command-file` is **orthogonal to U21** (it would help generic mode too), and Surfer's `--help` flags that API as "not permanent," so it's parked rather than built. Pairs with **U29 ✅** (the configurable-viewer template that already launches Surfer). |
 | **P17** | Board-native "frozen-divider" warning heuristic | A user reports a board-native design that renders as static LEDs/digits because it divides the full clock down, or board-native authoring becomes common enough to warrant a lint | S | Board-native designs (U21 ✅) carry **no `COUNTER_BITS` override** — that generic is generic-contract-only — so a design that derives its visible rate from the top bits of a real 50 MHz divider looks **frozen** at the simulator's sub-real-time throughput (a real board would tick it fast). U21 handled this **by documentation**: the `hdl/native/*.vhd` examples tap *mid* counter bits, and CLAUDE.md's board-native section calls out the gotcha. A **literal-constant warning heuristic** — detect a large fixed divider threshold / top-bit tap in a native design and warn "this may look static at sim speed; tap lower bits or reduce the divider" — was parked here (U21 decision 6) rather than built, since it's advisory and easy to get wrong (false positives on legitimate slow signals). |
+| **P18** | `add_port_convention.py` — one-command authoritative-convention authoring | A user (or maintainer) finds an authoritative source for a specific board's port names and wants it usable board-native without hand-editing JSON | S | Today, adding a *vendor-canonical* convention for one board means either the registry + `waves.toml` + `overlay.toml` path (rigorous, cited, but needs a machine-parseable constraint file) or a hand-edited `port_conventions.<vendor>` block in the board JSON (preserved by the A1 guard, but hand-written JSON). Neither is a *single* command. A small helper — `add_port_convention.py --board X --key terasic --clk CLOCK_50 --leds LEDR:10 --buttons KEY:4:active_low --seg HEX:6:active_low --cite <URL>` — would emit a schema-valid `naming: "canonical"` block with a `source` citation and merge it via the existing `merged_board_json` path (coexisting with any U32 framework-derived block, winning via `_convention_precedence`). Raised during U32 (2026-07-14) when weighing how a future authoritative source gets incorporated as ground truth; the data model already supports it, so this is pure authoring ergonomics. |
 
 **Also parked (speculative, no trigger):** *LCD / OLED display support* — a stretch goal from the original `prompt_info` vision (alongside 7-seg, which shipped). No board JSON models a character LCD / OLED and no user has requested it; recorded for completeness only.
 

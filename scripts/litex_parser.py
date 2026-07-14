@@ -10,6 +10,8 @@ test suite.
 import re
 from typing import Any
 
+from framework_conventions import RoleEntry, build_convention
+
 # ═══════════════════════════════════════════════════════════════════════
 #  Mock LiteX build system classes
 # ═══════════════════════════════════════════════════════════════════════
@@ -307,6 +309,7 @@ def _parse_io_as_component(
 
     return {
         "name": name,
+        "raw_name": res_name,
         "number": res_num,
         "pins": pin_names,
         "direction": direction,
@@ -371,6 +374,62 @@ def _build_seven_seg_def(
         "inverted": False,
         "select_inverted": False,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  Framework-derived port conventions (U32)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _litex_role_entries(components: list[dict[str, Any]]) -> list[RoleEntry]:
+    """Adapt litex component dicts to the shared ``RoleEntry`` shape.
+
+    ``name`` is the normalized net-name (``led`` / ``switch`` / ``button``) used
+    to pick the primary group; ``raw_name`` is the litex port name (``user_led`` /
+    ``user_sw`` / ``user_btn``) the convention actually advertises.  litex does not
+    encode LED/switch polarity in the ``_io`` file, so ``inverted`` is always
+    ``False`` here -- an ``_n`` name suffix is the only active-low signal.
+    """
+    return [
+        RoleEntry(
+            normalized=str(comp["name"]),
+            raw=str(comp.get("raw_name", comp["name"])),
+            bit=int(comp["number"]),
+            inverted=bool(comp.get("inverted")),
+        )
+        for comp in components
+    ]
+
+
+def _default_clock_name(clocks: list[dict[str, Any]]) -> str | None:
+    """Return the platform's default clock net-name (``is_default`` wins, else first)."""
+    for clk in clocks:
+        if clk.get("is_default"):
+            return str(clk["name"])
+    return str(clocks[0]["name"]) if clocks else None
+
+
+def _build_litex_convention(
+    clocks: list[dict[str, Any]],
+    leds: list[dict[str, Any]],
+    buttons: list[dict[str, Any]],
+    switches: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Assemble a framework-derived ``port_conventions.litex`` block, or ``None``.
+
+    Advertises the LiteX platform's own port names (``clk100`` / ``user_led`` /
+    ``user_sw`` / ``user_btn``), so a design hand-written to those names simulates
+    unmodified.  The clk+LEDs floor and the raw-name / polarity rules live in
+    :mod:`framework_conventions`, shared with the amaranth parser.
+    """
+    return build_convention(
+        "litex",
+        _default_clock_name(clocks),
+        _litex_role_entries(leds),
+        _litex_role_entries(switches),
+        _litex_role_entries(buttons),
+        description="LiteX platform port names (auto-derived from the litex-boards _io file)",
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -539,18 +598,25 @@ def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
     board_name = _prettify_filename(filename)
     class_name = _make_class_name(filename)
 
-    return [
-        {
-            "name": board_name,
-            "class_name": class_name,
-            "vendor": vendor,
-            "device": device,
-            "package": "",
-            "clocks": clocks,
-            "default_clock_hz": default_clock_hz or 12e6,
-            "leds": sorted(leds, key=lambda c: c["number"]),
-            "buttons": sorted(buttons, key=lambda c: c["number"]),
-            "switches": sorted(switches, key=lambda c: c["number"]),
-            "seven_seg": seven_seg,
-        }
-    ]
+    port_conventions = _build_litex_convention(clocks, leds, buttons, switches)
+    # `raw_name` exists only to build the convention above; keep it out of the
+    # persisted component JSON so the serialized led/btn/sw shape is unchanged.
+    for comp in (*leds, *buttons, *switches):
+        comp.pop("raw_name", None)
+
+    board: dict[str, Any] = {
+        "name": board_name,
+        "class_name": class_name,
+        "vendor": vendor,
+        "device": device,
+        "package": "",
+        "clocks": clocks,
+        "default_clock_hz": default_clock_hz or 12e6,
+        "leds": sorted(leds, key=lambda c: c["number"]),
+        "buttons": sorted(buttons, key=lambda c: c["number"]),
+        "switches": sorted(switches, key=lambda c: c["number"]),
+        "seven_seg": seven_seg,
+    }
+    if port_conventions:
+        board["port_conventions"] = port_conventions
+    return [board]

@@ -70,11 +70,26 @@
   ],
   "switches": [],
   "seven_seg": null,
+  "port_conventions": {
+    "amaranth": {
+      "description": "amaranth-boards platform port names (auto-derived from the board .py file)",
+      "clk": "clk125",
+      "leds": {
+        "name": "rgb_led",
+        "width": 2
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "button",
+        "width": 2
+      }
+    }
+  },
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "amaranth-boards",
     "upstream_file": "cora_z7.py",
     "sync_commit": "fd2f0df811a8dbcf6aa0b94ac0788dc71ac79e1e",
-    "sync_timestamp": "2026-06-23T02:31:22.563354+00:00"
+    "sync_timestamp": "2026-07-14T05:53:55.055741+00:00"
   }
 }

@@ -18,6 +18,8 @@ the two can evolve independently.
 import re
 from collections.abc import Sequence
 
+from framework_conventions import RoleEntry, build_convention
+
 from fpga_sim.board_loader import (
     _FALLBACK_CLOCK_HZ,
     BoardDef,
@@ -435,6 +437,47 @@ def _to_component(resource: _Resource, kind: str) -> ComponentInfo:
     )
 
 
+def _amaranth_role_entries(components: list[ComponentInfo]) -> list[RoleEntry]:
+    """Adapt amaranth ``ComponentInfo`` to the shared ``RoleEntry`` shape.
+
+    amaranth's resource names are already the framework's own port names (``led`` /
+    ``button`` / ``switch`` / ``rgb_led``), so ``raw`` and ``normalized`` are the
+    same here -- unlike litex, whose ``user_led`` normalizes to ``led``.  Polarity
+    comes straight from ``inverted`` (an amaranth ``PinsN`` pin).
+    """
+    return [
+        RoleEntry(normalized=c.name, raw=c.name, bit=c.number, inverted=c.inverted)
+        for c in components
+    ]
+
+
+def _build_amaranth_convention(
+    default_clk: object,
+    leds: list[ComponentInfo],
+    buttons: list[ComponentInfo],
+    switches: list[ComponentInfo],
+) -> dict[str, object]:
+    """Assemble a framework-derived ``port_conventions.amaranth`` block, or ``{}``.
+
+    Advertises the amaranth board's own port names (its ``default_clk`` resource
+    plus ``led`` / ``switch`` / ``button``), so a design hand-written to those
+    names simulates unmodified.  The clk+LEDs floor and the raw-name / polarity
+    rules live in :mod:`framework_conventions`, shared with the litex parser.
+    """
+    desc = "amaranth-boards platform port names (auto-derived from the board .py file)"
+    return (
+        build_convention(
+            "amaranth",
+            default_clk if isinstance(default_clk, str) else None,
+            _amaranth_role_entries(leds),
+            _amaranth_role_entries(switches),
+            _amaranth_role_entries(buttons),
+            description=desc,
+        )
+        or {}
+    )
+
+
 def _extract_sevenseg(resources: list[_Resource]) -> "SevenSegDef | None":
     """Return a SevenSegDef if any display_7seg resources are present, else None."""
     seg_resources = [r for r in resources if isinstance(r, _Resource) and r.name == "display_7seg"]
@@ -558,6 +601,7 @@ def load_board_from_source(source: str, filename: str = "<string>") -> list[Boar
                 buttons=buttons,
                 switches=switches,
                 seven_seg=seven_seg,
+                port_conventions=_build_amaranth_convention(default_clk, leds, buttons, switches),
             )
         )
 

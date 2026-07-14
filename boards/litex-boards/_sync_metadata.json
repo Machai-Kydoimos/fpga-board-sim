@@ -1,7 +1,7 @@
 {
   "source_repo": "https://github.com/litex-hub/litex-boards",
   "source_commit": "08e6a063e365a8baebc0cd92ebee6d9e97ce0a50",
-  "sync_timestamp": "2026-06-23T08:11:25.499615+00:00",
+  "sync_timestamp": "2026-07-14T05:56:36.457914+00:00",
   "board_count": 167,
   "files_written": [
     "adi_adrv2crr_fmc.json",
