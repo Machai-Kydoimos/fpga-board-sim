@@ -22,6 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whose RGB LEDs sit alongside `user_led`) light the bank and leave the rest
   dark. A committed litex Arty example (`hdl/native/arty_litex.vhd`) simulates
   on both GHDL and NVC.
+- **Board-native coverage for two more Digilent boards (U33).** The Digilent
+  XDC parser now recognizes clock sections titled by frequency or `System` /
+  `PL` (`100MHz Clock`, `12 MHz System Clock`, `PL System Clock`) and LED
+  sections named `N LEDs`, not only the exact `Clock signal` / `LEDs` strings —
+  while still rejecting a mezzanine/transceiver reference clock (an FMC card's
+  GTP/MGT clock, not the FPGA fabric's). Regenerated from the same pinned
+  upstream, this recovers the clock — and, for Cmod S7-25, four user LEDs the
+  old parser silently dropped — that let **USB104 A7-100T** and **Cmod S7-25**
+  run board-native. Three Zynq boards (Cora Z7-07S / Z7-10, Eclypse Z7) regain
+  their clock but stay non-native pending RGB-LED-bank handling (#229).
 - **Port-convention source registry.** New maintainer-facing registry at
   `docs/port_convention_sources/` — one TOML per board family holding ranked,
   fetch-verified pointers to each board's canonical constraint/pin file (QSF,

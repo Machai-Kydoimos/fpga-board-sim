@@ -5,7 +5,14 @@
   "vendor": "Xilinx",
   "device": "xc7a100t",
   "package": "csg324",
-  "clocks": [],
+  "clocks": [
+    {
+      "name": "clk",
+      "hz": 100000000.0,
+      "pin": "E3",
+      "is_default": true
+    }
+  ],
   "default_clock_hz": 100000000.0,
   "leds": [
     {
@@ -100,6 +107,7 @@
   "port_conventions": {
     "digilent": {
       "description": "Digilent USB104-A7-100T Master XDC port names",
+      "clk": "clk",
       "leds": {
         "name": "led",
         "width": 4
