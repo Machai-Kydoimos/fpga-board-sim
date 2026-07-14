@@ -263,8 +263,8 @@
         },
         "naming": {
           "type": "string",
-          "enum": ["canonical", "project-derived"],
-          "description": "'canonical': port names come from the vendor/official source; 'project-derived': names were renamed by a downstream project. Absent means canonical (the default for existing hand-authored blocks)."
+          "enum": ["canonical", "project-derived", "framework-derived"],
+          "description": "'canonical': port names come from the vendor/official source; 'project-derived': names were renamed by a downstream project; 'framework-derived': names come from an HDL-framework platform file (litex/amaranth) auto-derived by the sync parsers (U32). Absent means canonical (the default for existing hand-authored blocks)."
         }
       }
     },

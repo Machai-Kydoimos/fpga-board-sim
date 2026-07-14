@@ -184,11 +184,33 @@
     }
   ],
   "seven_seg": null,
+  "port_conventions": {
+    "amaranth": {
+      "description": "amaranth-boards platform port names (auto-derived from the board .py file)",
+      "clk": "clk12",
+      "leds": {
+        "name": "led",
+        "width": 8,
+        "active_low": true
+      },
+      "naming": "framework-derived",
+      "switches": {
+        "name": "switch",
+        "width": 4,
+        "active_low": true
+      },
+      "buttons": {
+        "name": "button",
+        "width": 1,
+        "active_low": true
+      }
+    }
+  },
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "amaranth-boards",
     "upstream_file": "machxo3_sk.py",
-    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
-    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
+    "sync_commit": "fd2f0df811a8dbcf6aa0b94ac0788dc71ac79e1e",
+    "sync_timestamp": "2026-07-14T05:53:55.055741+00:00"
   }
 }

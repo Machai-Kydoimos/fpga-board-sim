@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Auto-derived board-native conventions for litex & amaranth boards (U32).**
+  The litex and amaranth board syncs now emit a framework-derived
+  `port_conventions` block for **241 of their 246 boards**, so a VHDL design
+  written to a board's framework-native port names — litex `clk100` /
+  `user_led` / `user_sw` / `user_btn`, amaranth `clk100` / `led` / `switch` /
+  `button` — runs **board-native** on that board (unmodified, no `NUM_*`
+  generics), extending the U21 experience previously limited to a few
+  hand-authored Terasic boards to nearly the whole litex/amaranth fleet. The
+  blocks are marked `framework-derived`; a vendor-authoritative convention
+  added for a board later coexists with and takes precedence over the derived
+  one. Boards whose LED bank is narrower than their full LED count (e.g. an Arty
+  whose RGB LEDs sit alongside `user_led`) light the bank and leave the rest
+  dark. A committed litex Arty example (`hdl/native/arty_litex.vhd`) simulates
+  on both GHDL and NVC.
 - **Port-convention source registry.** New maintainer-facing registry at
   `docs/port_convention_sources/` — one TOML per board family holding ranked,
   fetch-verified pointers to each board's canonical constraint/pin file (QSF,

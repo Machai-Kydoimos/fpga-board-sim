@@ -972,6 +972,21 @@ def _attempt_convention(
     return _ConventionAttempt(maker, board_def.name, match, tuple(matched), tuple(problems))
 
 
+# Convention match precedence.  Authoritative blocks -- vendor-canonical or
+# hand-authored (``naming`` absent or ``"canonical"``) -- are tried before a
+# ``"framework-derived"`` guess (U32), so ground-truth data added for a board
+# later wins even if a port name overlaps a derived block.  A stable sort keyed
+# on this rank alone leaves same-rank blocks in their on-disk order.
+_CONVENTION_NAMING_RANK = {"canonical": 0, "framework-derived": 1}
+
+
+def _convention_precedence(item: tuple[str, Any]) -> int:
+    """Sort key: authoritative conventions before framework-derived ones."""
+    _maker, block = item
+    naming = block.get("naming", "canonical") if isinstance(block, dict) else "canonical"
+    return _CONVENTION_NAMING_RANK.get(naming, 0)
+
+
 def _best_convention_attempt(
     ports: list[_IfaceDecl],
     generics: list[_IfaceDecl],
@@ -981,6 +996,7 @@ def _best_convention_attempt(
 
     Returns the first *full* match, else the closest near-miss, else None (no
     board / no conventions / the design is structurally a generic-contract one).
+    Conventions are tried authoritative-first (see ``_CONVENTION_NAMING_RANK``).
     """
     if board_def is None or not board_def.port_conventions:
         return None
@@ -991,7 +1007,8 @@ def _best_convention_attempt(
         return None
     port_by_name = {n: d for d in ports for n in d.names}
     best: _ConventionAttempt | None = None
-    for maker, block in board_def.port_conventions.items():
+    ordered = sorted(board_def.port_conventions.items(), key=_convention_precedence)
+    for maker, block in ordered:
         if not isinstance(block, dict):
             continue
         # Schema: absent `naming` means canonical; only skip explicitly renamed
@@ -1258,7 +1275,9 @@ def _native_port_map(port: NativePort, sig: str) -> list[str]:
     return [f"{name} => {sig}({k})" for k, name in enumerate(port.names)]
 
 
-def _render_native_wrapper(toplevel: str, match: ConventionMatch) -> str:
+def _render_native_wrapper(
+    toplevel: str, match: ConventionMatch, board_def: BoardDef | None = None
+) -> str:
     """Render a ``sim_wrapper`` that runs a board-native design (U21 B3).
 
     The design uses the board's native port names + fixed widths (no ``NUM_*``
@@ -1294,17 +1313,26 @@ def _render_native_wrapper(toplevel: str, match: ConventionMatch) -> str:
     # inputs.  An absent bank (U31 partial interface) leaves the wrapper's top
     # `sw`/`btn` port present (cocotb still drives it) but unconnected to the uut,
     # mirroring the generic path's NUM_* floor of 1 for a bank-less board.
+    # The wrapper's NUM_* boundary is the board's full resource count, which can
+    # exceed the convention bank width -- e.g. a litex board whose rgb_led inflate
+    # NUM_LEDS past the user_led bank, or more board buttons than the primary bank.
+    # Inputs take the low boundary bits; the LED output zero-extends the bank onto
+    # the wider boundary so uncovered board LEDs stay dark.  For a board whose count
+    # equals the bank width (every Terasic example) these reduce to the plain form.
     for role, port, wrapper_port in (("sw", sw, "sw"), ("btn", btn, "btn")):
         if port is None:
             continue
         sig = f"{role}_uut"
+        inv = "not " if port.active_low else ""
         decls.append(f"  signal {sig} : std_logic_vector({port.width} - 1 downto 0);")
-        assigns.append(f"  {sig} <= {'not ' if port.active_low else ''}{wrapper_port};")
+        assigns.append(f"  {sig} <= {inv}{wrapper_port}({port.width} - 1 downto 0);")
         pmap += _native_port_map(port, sig)
 
-    # LEDs: read the native output back; invert onto `led` when active-low.
+    # LEDs: read the native bank back (invert when active-low) and zero-extend it
+    # onto the board `led` boundary -- board LEDs the convention omits stay dark.
+    led_inv = "not " if led.active_low else ""
     decls.append(f"  signal led_uut : std_logic_vector({led.width} - 1 downto 0);")
-    assigns.append(f"  led <= {'not ' if led.active_low else ''}led_uut;")
+    assigns.append(f"  led <= std_logic_vector(resize(unsigned({led_inv}led_uut), NUM_LEDS));")
     pmap += _native_port_map(led, "led_uut")
 
     # Secondary green bank (rare): captured so the output has a driver, not shown --
@@ -1325,6 +1353,20 @@ def _render_native_wrapper(toplevel: str, match: ConventionMatch) -> str:
                 assigns.append(f"  seg({8 * i + 7} downto {8 * i + wpd}) <= (others => '0');")
             pmap.append(f"{name} => {sig}")
 
+    # Generic *defaults* mirror ``build_generics`` (the board's resource counts,
+    # floored at 1) so ``analyze_vhdl``'s default-generic elaboration validates the
+    # same NUM_* widths the run passes -- which, for a litex board whose rgb_led
+    # inflate the LED count past the user_led bank, differ from the bank widths.
+    # Without a board (hermetic wrapper-gen unit tests) fall back to the bank widths.
+    if board_def is not None:
+        num_sw_def = max(1, len(board_def.switches))
+        num_btn_def = max(1, len(board_def.buttons))
+        num_led_def = max(1, len(board_def.leds))
+    else:
+        num_sw_def = sw.width if sw is not None else 1
+        num_btn_def = btn.width if btn is not None else 1
+        num_led_def = led.width
+
     seg_generic = [f"    NUM_SEGS         : positive := {len(seg.names)};"] if seg else []
     seg_port = ["    seg         : out std_logic_vector(8 * NUM_SEGS - 1 downto 0);"] if seg else []
     lines = [
@@ -1335,12 +1377,13 @@ def _render_native_wrapper(toplevel: str, match: ConventionMatch) -> str:
         "",
         "library ieee;",
         "use ieee.std_logic_1164.all;",
+        "use ieee.numeric_std.all;",  # resize/unsigned for the LED boundary zero-extend
         "",
         "entity sim_wrapper is",
         "  generic (",
-        f"    NUM_SWITCHES     : positive := {sw.width if sw is not None else 1};",
-        f"    NUM_BUTTONS      : positive := {btn.width if btn is not None else 1};",
-        f"    NUM_LEDS         : positive := {led.width};",
+        f"    NUM_SWITCHES     : positive := {num_sw_def};",
+        f"    NUM_BUTTONS      : positive := {num_btn_def};",
+        f"    NUM_LEDS         : positive := {num_led_def};",
         *seg_generic,
         "    COUNTER_BITS     : positive := 24;",
         "    CLK_HALF_NS_INIT : positive := 20",
@@ -1400,7 +1443,7 @@ def _generate_wrapper(
     """
     out = Path(work_dir) / "sim_wrapper.vhd"
     if match is not None:
-        out.write_text(_render_native_wrapper(toplevel, match))
+        out.write_text(_render_native_wrapper(toplevel, match, board_def))
         return out
 
     use_seg = board_def is not None and board_def.seven_seg is not None and design_has_seg

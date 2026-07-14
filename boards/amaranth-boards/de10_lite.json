@@ -307,13 +307,6 @@
     "inverted": true,
     "select_inverted": false
   },
-  "$schema": "../schema/board.schema.json",
-  "source": {
-    "origin": "amaranth-boards",
-    "upstream_file": "de10_lite.py",
-    "sync_commit": "d2bbc7f81fabc7bb613660a54182ee76246dce46",
-    "sync_timestamp": "2026-05-24T22:41:53.819344+00:00"
-  },
   "port_conventions": {
     "terasic": {
       "clk": "MAX10_CLK1_50",
@@ -350,6 +343,31 @@
         "retrieved": "2026-07-12",
         "registry_board": "DE10 Lite"
       }
+    },
+    "amaranth": {
+      "description": "amaranth-boards platform port names (auto-derived from the board .py file)",
+      "clk": "clk50",
+      "leds": {
+        "name": "led",
+        "width": 10
+      },
+      "naming": "framework-derived",
+      "switches": {
+        "name": "switch",
+        "width": 10
+      },
+      "buttons": {
+        "name": "button",
+        "width": 2,
+        "active_low": true
+      }
     }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "de10_lite.py",
+    "sync_commit": "fd2f0df811a8dbcf6aa0b94ac0788dc71ac79e1e",
+    "sync_timestamp": "2026-07-14T05:53:55.055741+00:00"
   }
 }
