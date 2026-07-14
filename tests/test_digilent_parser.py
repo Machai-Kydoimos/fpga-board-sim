@@ -3,7 +3,7 @@
 Hermetic: exercises parse_xdc() / build_board_json() with inline XDC text, no network.
 """
 
-from digilent_parser import build_board_json, parse_xdc
+from digilent_parser import _classify_section, build_board_json, parse_xdc
 
 _XDC = """
 ## Clock signal
@@ -68,3 +68,55 @@ def test_build_board_json_emits_port_conventions():
 
 def test_build_board_json_no_resources_returns_none():
     assert build_board_json(_XDC_NO_RES, "Bare-Master.xdc", "sha") is None
+
+
+def test_classify_section_clock_frequency_and_system_headers():
+    # Digilent varies its clock section titles; all of these name the fabric clock.
+    assert _classify_section("Clock signal") == "clock"
+    assert _classify_section("100MHz Clock") == "clock"
+    assert _classify_section("12 MHz System Clock") == "clock"
+    assert _classify_section("PL System Clock") == "clock"
+    # A fabric clock that merely sources from a peripheral is still a clock.
+    assert _classify_section("125MHz Clock from Ethernet PHY") == "clock"
+
+
+def test_classify_section_rejects_non_fabric_clocks():
+    # Prose mentions lack a frequency / system / signal qualifier.
+    assert _classify_section("Note: QSPI clock can only be accessed via STARTUPE2") is None
+    assert _classify_section("GTH reference clock jitter filter auxiliary") is None
+    # An FMC mezzanine transceiver clock carries a frequency but belongs to the
+    # mezzanine card, not the FPGA fabric, so it must not be classified as one.
+    assert _classify_section("FMC Transceiver clocks (currently set to 156.25 MHz)") is None
+
+
+def test_classify_section_led_word_boundary():
+    assert _classify_section("LEDs") == "led"
+    assert _classify_section("4 LEDs") == "led"
+    # RGB rule wins over the plain-LED rule.
+    assert _classify_section("RGB LEDs") == "rgb_led"
+    # The word boundary keeps substring matches out.
+    assert _classify_section("OLED Display") is None
+    assert _classify_section("Bank = 15, Sch name = LED16_G") is None
+
+
+_XDC_FREQ_CLOCK = """
+## 100MHz Clock
+set_property -dict { PACKAGE_PIN E3 IOSTANDARD LVCMOS33 } [get_ports { clk }];
+create_clock -add -name sys_clk_pin -waveform {0.000 5.000} -period 10.00 [get_ports { clk }];
+
+## 4 LEDs
+set_property -dict { PACKAGE_PIN A1 IOSTANDARD LVCMOS33 } [get_ports { led[0] }];
+set_property -dict { PACKAGE_PIN A2 IOSTANDARD LVCMOS33 } [get_ports { led[1] }];
+"""
+
+
+def test_build_board_json_frequency_clock_and_bare_led_header():
+    # A frequency-only clock header and an "N LEDs" header (neither matched by
+    # the old exact-string rules) now yield a populated clk + leds convention.
+    board = build_board_json(_XDC_FREQ_CLOCK, "Freq-Master.xdc", "sha")
+    assert board is not None
+    assert board["clocks"] and board["clocks"][0]["name"] == "clk"
+    assert board["default_clock_hz"] == 100e6
+    conv = board["port_conventions"]["digilent"]
+    assert conv["clk"] == "clk"
+    assert conv["leds"] == {"name": "led", "width": 2}

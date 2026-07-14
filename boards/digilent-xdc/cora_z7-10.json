@@ -5,7 +5,14 @@
   "vendor": "Xilinx",
   "device": "xc7z010",
   "package": "clg400",
-  "clocks": [],
+  "clocks": [
+    {
+      "name": "clk",
+      "hz": 125000000.0,
+      "pin": "H16",
+      "is_default": true
+    }
+  ],
   "default_clock_hz": 125000000.0,
   "leds": [
     {
@@ -78,6 +85,7 @@
   "port_conventions": {
     "digilent": {
       "description": "Digilent Cora-Z7-10 Master XDC port names",
+      "clk": "clk",
       "buttons": {
         "name": "btn",
         "width": 2,

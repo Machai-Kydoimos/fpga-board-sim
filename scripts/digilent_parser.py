@@ -186,17 +186,51 @@ _RE_CLOCK_PERIOD = re.compile(r"create_clock\s+.*-period\s+([\d.]+)")
 
 _RE_INDEXED_PORT = re.compile(r"^(\w+)\[(\d+)\]$")
 
+# A clock section names a "clock" with a frequency / "system" / "signal"
+# qualifier, but not a transceiver or mezzanine reference clock (an FMC card's
+# GTP/MGT clock belongs to the mezzanine, not the FPGA fabric).
+_RE_CLOCK_FREQ = re.compile(r"\d+\s*m?hz")
+_RE_CLOCK_NONFABRIC = re.compile(r"transceiver|mezzanine|refclk|\bmgt\b")
+# An LED section names "led"/"leds" as a whole word, so "OLED Display" and
+# schematic-name headers ("Sch name = LED16_G") don't masquerade as one.
+_RE_LED_WORD = re.compile(r"\bleds?\b")
+
 
 def _classify_section(header: str) -> str | None:
-    """Map an XDC section header to a resource type."""
+    """Map an XDC section header to a resource type.
+
+    Digilent's section titles are inconsistent between boards, so the clock and
+    LED headers are matched fuzzily but guarded:
+
+    * A *clock* section names a "clock" together with a frequency
+      (``100MHz Clock``), the word ``system`` (``PL System Clock``), or
+      ``signal`` (``Clock signal``), and is not a transceiver/mezzanine
+      reference clock. Requiring a qualifier rejects prose mentions such as
+      ``Note: QSPI clock can only be accessed ...`` and ``GTH reference clock
+      jitter filter ...`` (their frequency, when they carry one, still reaches
+      ``default_clock_hz`` via the section-agnostic ``create_clock`` regex). The
+      transceiver/mezzanine exclusion rejects an FMC card's clock
+      (``FMC Transceiver clocks ... 156.25 MHz``), which is the mezzanine's, not
+      the FPGA fabric's; a genuine fabric clock that merely *sources* from a
+      peripheral (``125MHz Clock from Ethernet PHY``, whose port is the
+      ``sysclk``) is still matched.
+    * An *LED* section names ``led``/``leds`` as a whole word (``LEDs``,
+      ``4 LEDs``), checked after the RGB rule so ``RGB LEDs`` routes to
+      ``rgb_led``; the word boundary keeps ``OLED Display`` and
+      ``Sch name = LED16_G`` out.
+    """
     h = header.lower().strip()
-    if "clock" in h and "signal" in h:
+    if (
+        "clock" in h
+        and (_RE_CLOCK_FREQ.search(h) or "system" in h or "signal" in h)
+        and not _RE_CLOCK_NONFABRIC.search(h)
+    ):
         return "clock"
     if "switch" in h:
         return "switch"
     if "rgb" in h and "led" in h:
         return "rgb_led"
-    if h == "leds" or h == "led":
+    if _RE_LED_WORD.search(h):
         return "led"
     if "button" in h:
         return "button"
