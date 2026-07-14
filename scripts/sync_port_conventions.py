@@ -316,31 +316,41 @@ def apply_overlay(convention: dict[str, Any], overlay_row: dict[str, Any] | None
 
 
 def cross_check_widths(convention: dict[str, Any], board: dict[str, Any]) -> str | None:
-    """Return a mismatch description, or None if everything present agrees.
+    """Return a mismatch description, or None if every present bank fits the board.
 
     Compares against the board JSON's *own* already-known resource counts
     (its `leds`/`switches`/`buttons`/`seven_seg` lists/dict) -- never against
     another convention or the registry. A board's `leds` count includes both
     the primary and `leds_green` banks (DE2-115-style boards list all 27 LEDs
     together), so those two widths are summed before comparing.
+
+    A source bank *narrower* than the board is allowed: it is a legitimate
+    partial convention (a board's own constraint file often wires up only some
+    of its LEDs/buttons), and the native wrapper already adapts it -- zero-
+    extending a short LED bank and feeding the low bits of a short input bank,
+    exactly as it does for U32's framework-derived banks. Only a bank *wider*
+    than the board is a real mismatch: it claims resources the board JSON does
+    not model, so either the source is for a different variant or the board is
+    under-modeled -- either way, not safe to write. 7-segment digit counts stay
+    exact (the wrapper packs a fixed digit count, not a partial one).
     """
     if "leds" in convention:
         total = convention["leds"]["width"] + convention.get("leds_green", {}).get("width", 0)
         board_total = len(board.get("leds", []))
-        if total != board_total:
-            return f"leds(+leds_green) width {total} != board's {board_total} LEDs"
+        if total > board_total:
+            return f"leds(+leds_green) width {total} exceeds board's {board_total} LEDs"
 
     if "switches" in convention:
         want = convention["switches"]["width"]
         got = len(board.get("switches", []))
-        if want != got:
-            return f"switches width {want} != board's {got} switches"
+        if want > got:
+            return f"switches width {want} exceeds board's {got} switches"
 
     if "buttons" in convention:
         want = convention["buttons"]["width"]
         got = len(board.get("buttons", []))
-        if want != got:
-            return f"buttons width {want} != board's {got} buttons"
+        if want > got:
+            return f"buttons width {want} exceeds board's {got} buttons"
 
     seg = convention.get("seven_seg")
     if seg and seg["style"] in ("individual", "per_segment_scalars"):

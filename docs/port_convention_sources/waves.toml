@@ -49,15 +49,29 @@ boards = [
   "Trellisboard",   # litex/LPF; led[12] + btn[4] + clk_12; active-high.
 ]
 
-# --- Wave 3+ deferred map (from the 2026-07-14 force-check of the 61 gate-eligible boards) ---
+[[wave]]
+number = 3
+description = "Subset partial conventions (U33, #233). cross_check_widths was stricter than U31/U32 need -- it rejected a source bank NARROWER than the board, but the native wrapper already zero-extends a short LED bank and feeds the low bits of a short input bank (the same adaptation U32 gives framework banks). It now allows source <= board (blocks only source > board), so a board whose own constraint file wires up only some of its LEDs/buttons can get a canonical PARTIAL convention. Per-board verification matters (a subset isn't automatically a legit partial): most gate-eligible subset boards are unclean (see the deferred map). Tang Nano 20k is the clean one -- its source `leds`[6] covers the 6 plain LEDs and the board's 7th LED is an RGB (the Arty pattern), so 6/7 is correct."
+boards = [
+  "Sipeed Tang Nano 20k",  # litex/Gowin CST; leds[6] + clk (real Sipeed names vs litex user_led/clk100);
+                           # board's 7th LED is an RGB -> partial 6/7 (wrapper zero-extends). LEDs
+                           # active-low (litex `led_n` naming, sibling of Wave-2 Tang Nano 9K) -> overlay.
+]
+
+# --- Wave 4+ deferred map (from the 2026-07-14 force-check of the 61 gate-eligible boards) ---
 # Clean but lower-priority (populate next, same mechanism): Sipeed Tang Nano 4k, iCESugar Nano,
 #   Machdyne Kolsch/Lakritz/Minze/Vanille (a coherent machdyne family; 4 more machdyne are clk-only).
 # Wrong clock (need a cited overlay clk before vouching): Mi ST / Mist (`CLOCK_50[0]`), Redpitaya
 #   (`adc_clk_i[1]` -- ADC clock, not fabric).
-# Width mismatch source-vs-boardJSON (the RZEasy pattern -- need per-board truth + likely a boards/
-#   JSON fix, not just an overlay): ICEBreaker (btn 3!=1), iCESugar (led 8!=6), ICEBreaker Bitsy (4!=5),
-#   Sipeed Tang Nano 20k (6!=7), Radiona ULX4M LD/LS V2 (4!=8), ULX3S (btn 7!=13), Litefury/Nitefury II
-#   (4!=5), Saanlima Pipistrello (8!=5), Tul Pynq Z2 (6!=4), Xilinx Zcu216 (8!=16), and more.
+# Width SUBSET (source < board -- now allowed by cross_check_widths, but these verified UNCLEAN and need
+#   a boards/ JSON quality fix, not just population): ICEBreaker Bitsy (source bank is the RGB, not the
+#   plain LEDs), Litefury / Nitefury II / Xilinx Zcu216 (LED bank classifies to name=None), ULX3S (litex
+#   JSON mislabels oled_spi as an LED + amaranth files over-count buttons 13 vs 7), Radiona ULX4M LD/LS
+#   V2 (only 4/8 LEDs), Ocp Tap Timecard (4/9).
+# Width SUPERSET (source > board -- still blocked; source claims more than the board models, needs
+#   per-board board-JSON truth): ICEBreaker (btn 3>1), iCESugar (led 8>6), Saanlima Pipistrello (8>5),
+#   Tul Pynq Z2 (6>4), Scarabhardware Minispartan6 (sw 5>4), RZEasy (btn 5>4), Genesys ZU (btn 7>5),
+#   Brisbanesilicon (7>6), Hackaday Hadbadge (10>2).
 # clk-only (no LED bank in the source -> not native): the Xilinx BoardStore XML boards (KC705, KCU105,
 #   Kcu116, Zcu102 -- pin XML is DDR/FMC/clock-centric, GPIO LEDs absent), Fomu (RGB-only), Tang
 #   Primer20k boards, several machdyne. Fetch/classifier failures: OrangeCrab*, Upduino V3, Numato
