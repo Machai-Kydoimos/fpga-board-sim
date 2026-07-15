@@ -720,7 +720,7 @@ def _check_parsed_contract(
     return True, ""
 
 
-# ── U21 B2: board-native port-convention matcher ─────────────────────────────
+# ── Board-native port-convention matcher (U21) ───────────────────────────────
 #
 # A board-native VHDL file uses the *board's* port names and fixed widths (e.g.
 # DE10-Standard's CLOCK_50 / SW / KEY / LEDR / HEX0..5) instead of the
@@ -728,11 +728,13 @@ def _check_parsed_contract(
 # fail `_check_parsed_contract` (no `clk`/`btn`/`led`), so when that happens we
 # try to recognize the design against the selected board's `port_conventions`.
 #
-# B2 only *detects* a native design (and reports it precisely); it does not yet
-# accept it — the native wrapper that would let it elaborate lands in B3, and
-# flipping `ok=True` before that exists would swap a clear rejection for a
-# cryptic elaboration crash.  The matched `ConventionMatch` is carried on the
-# result so B3's wrapper/badge/session-log can consume it unchanged.
+# A full match returns `ok=True` with a `ConventionMatch` on the result, and the
+# native wrapper (`_render_native_wrapper`) adapts the design's own port names --
+# polarity inversion, zero-extend, per-digit 7-seg packing -- onto the
+# simulator's sw/btn/led[/seg] boundary, so the cocotb testbench and run
+# mechanics are unchanged.  A partial (near-miss) match is reported precisely
+# and rejected, never silently coerced.  The badge and session log consume the
+# match too.
 
 
 @dataclass(frozen=True)
@@ -743,11 +745,20 @@ class NativePort:
     the convention): a single entry for a shared vector (e.g. ``("LEDR",)``) or
     several for a bank of distinct scalar ports (e.g. Nandland Go's
     ``("o_LED_1", ...)``).  ``width`` is the vector width or the scalar count.
+
+    ``scalar_ports`` marks a bank whose ``names`` are each an individual scalar
+    port (``std_logic``) rather than one shared vector: either a ``names[]``
+    cluster, or a width-1 vector bank the design spelled as a plain scalar (the
+    natural ``led : out std_logic`` on a one-LED board).  It -- not
+    ``len(names)`` -- drives the per-bit vs whole-vector choice in the wrapper
+    port map and the ``.gtkw`` writer, so a single-member scalar cluster is
+    handled correctly too.
     """
 
     names: tuple[str, ...]
     width: int
     active_low: bool = False
+    scalar_ports: bool = False
 
 
 @dataclass(frozen=True)
@@ -825,23 +836,40 @@ def _match_native_port(
     Accepts a shared vector (``name`` + ``width``) or a bank of distinct scalars
     (``names``).  Returns None unless the design declares the native port(s) at
     the convention's fixed width, in the expected direction (*mode*).
+
+    A width-1 vector bank also matches a plain scalar port (``std_logic``) -- the
+    natural spelling for a one-LED / one-button board -- returning a
+    ``scalar_ports`` bank the wrapper associates per element.  A
+    ``std_logic_vector(0 downto 0)`` spelling still matches as a (non-scalar)
+    vector, so both forms work.
     """
     active_low = bool(mapping.get("active_low", False))
     scalar_names = mapping.get("names")
     if isinstance(scalar_names, list) and scalar_names:
         for nm in scalar_names:
             decl = port_by_name.get(str(nm).lower())
-            if decl is None or decl.mode != mode:
+            # names[] members are individual scalar ports by definition; a
+            # vector-typed member (literal_width set) is a mismatch caught here,
+            # not a cryptic association failure at elaboration.
+            if decl is None or decl.mode != mode or decl.literal_width is not None:
                 return None
-        return NativePort(tuple(str(n) for n in scalar_names), len(scalar_names), active_low)
+        return NativePort(
+            tuple(str(n) for n in scalar_names), len(scalar_names), active_low, scalar_ports=True
+        )
     name = mapping.get("name")
     width = mapping.get("width")
     if not isinstance(name, str) or not isinstance(width, int):
         return None
     decl = port_by_name.get(name.lower())
-    if decl is None or decl.mode != mode or decl.literal_width != width:
-        return None  # absent, wrong direction, or not a fixed vector of that exact width
-    return NativePort((name,), width, active_low)
+    if decl is None or decl.mode != mode:
+        return None  # absent or wrong direction
+    if decl.literal_width == width:
+        return NativePort((name,), width, active_low)  # exact fixed-width vector
+    if width == 1 and decl.literal_width is None:
+        # A one-bit bank declared as a plain scalar (`led : out std_logic`):
+        # associate it per element in the wrapper (`led => led_uut(0)`).
+        return NativePort((name,), 1, active_low, scalar_ports=True)
+    return None  # width mismatch
 
 
 def _match_native_seg(
@@ -933,11 +961,14 @@ def _attempt_convention(
     if isinstance(green, dict):
         leds_green = _match_native_port(green, port_by_name, "out")
 
-    # U31: an *input* the convention does not map would be left unbound in the
-    # wrapper's uut port map (an elaboration error), so a native design that
-    # declares one is a near-miss.  Unmapped *outputs* are fine -- the wrapper
-    # leaves them `open` (dark), exactly as the DE0 example leaves its split-DP
-    # HEXn_DP scalars open.  (Names in port_by_name are already lowercased.)
+    # U31: a *default-less* input the convention does not map would be left
+    # unbound in the wrapper's uut port map (an elaboration error), so a native
+    # design that declares one is a near-miss.  An extra input carrying a default
+    # expression is legal unassociated in both GHDL and NVC -- exactly as the
+    # generic path allows one (`_check_parsed_contract`) -- so it does not block a
+    # match.  Unmapped *outputs* are fine too: the wrapper leaves them `open`
+    # (dark), as the DE0 example leaves its split-DP HEXn_DP scalars open.
+    # (Names in port_by_name are already lowercased.)
     consumed = {clk_port.lower()} if clk_port is not None else set()
     for port in (leds, switches, buttons, leds_green):
         if port is not None:
@@ -946,7 +977,11 @@ def _attempt_convention(
         consumed.update(n.lower() for n in seven_seg.names)
         if seven_seg.digit_enable is not None:
             consumed.update(n.lower() for n in seven_seg.digit_enable.names)
-    extra = sorted(n for n in port_by_name if n not in consumed and port_by_name[n].mode == "in")
+    extra = sorted(
+        n
+        for n, d in port_by_name.items()
+        if n not in consumed and d.mode == "in" and not d.has_default
+    )
     if extra:
         problems.append(f"unmapped input port(s): {', '.join(extra)}")
 
@@ -1074,10 +1109,11 @@ def _native_convention_message(match: ConventionMatch, filename: str) -> str:
 def _near_miss_convention_message(attempt: _ConventionAttempt, filename: str) -> str:
     """User-facing message for a design that partially matches a board convention."""
     return (
-        f"'{filename}' is close to {attempt.board_name}'s board-native interface but does "
-        f"not fully match it (missing/mismatched: {', '.join(attempt.problems)}).\n"
-        "Board-native simulation (U21 B3) needs the complete native interface; until then, "
-        "use the generic clk/sw/btn/led contract (see the example)."
+        f"'{filename}' is close to {attempt.board_name}'s board-native '{attempt.maker}' "
+        f"interface but does not fully match it "
+        f"(missing/mismatched: {', '.join(attempt.problems)}).\n"
+        "Fix those ports to run it board-native, or use the generic clk/sw/btn/led "
+        "contract (see hdl/blinky.vhd)."
     )
 
 
@@ -1094,9 +1130,11 @@ def check_vhdl_contract(
     formatting is never rejected on parser limitations alone.
 
     When the generic contract fails, the design is checked against the board's
-    board-native port conventions (U21): a full native match is reported with a
-    precise message and the :class:`ConventionMatch` on the result, but ``ok``
-    stays False — running a native design needs the B3 wrapper.
+    board-native port conventions (U21): a full native match returns ``ok=True``
+    with a precise message and the :class:`ConventionMatch` on the result (the
+    native wrapper adapts its ports onto the sw/btn/led[/seg] boundary at run
+    time), while a partial match is rejected with a near-miss message naming the
+    convention.
 
     Returns a :class:`ContractResult`.
     """
@@ -1267,12 +1305,14 @@ _WRAPPER_TEMPLATE: Path = Path(__file__).parent.parent.parent / "sim" / "sim_wra
 def _native_port_map(port: NativePort, sig: str) -> list[str]:
     """Association line(s) tying a native LED/switch/button bank to wrapper signal *sig*.
 
-    A shared vector (one name) maps whole (``LEDR => led_uut``); a bank of distinct
-    scalar ports maps bit-by-bit (``o_LED_1 => led_uut(0)``, ...).
+    A shared vector maps whole (``LEDR => led_uut``); a scalar-port bank maps each
+    element (``o_LED_1 => led_uut(0)``, ...) -- including a one-bit bank the design
+    spelled as a scalar (``led => led_uut(0)``).  Keyed on ``scalar_ports``, not
+    ``len(names)``, so a single-member scalar cluster still maps per element.
     """
-    if len(port.names) == 1:
-        return [f"{port.names[0]} => {sig}"]
-    return [f"{name} => {sig}({k})" for k, name in enumerate(port.names)]
+    if port.scalar_ports:
+        return [f"{name} => {sig}({k})" for k, name in enumerate(port.names)]
+    return [f"{port.names[0]} => {sig}"]
 
 
 def _render_native_wrapper(
@@ -1707,9 +1747,12 @@ def _native_gtkw_signals(match: ConventionMatch) -> list[str]:
     scope = "sim_wrapper.uut"
 
     def _port(port: NativePort) -> list[str]:
-        if len(port.names) == 1:
-            return [f"{scope}.{port.names[0].lower()}[{port.width - 1}:0]"]
-        return [f"{scope}.{name.lower()}" for name in port.names]
+        # A scalar-port bank dumps as individual unranged scalars; a shared
+        # vector carries a [msb:0] range.  (A one-bit scalar bank has no range,
+        # unlike a std_logic_vector(0 downto 0), so key on scalar_ports.)
+        if port.scalar_ports:
+            return [f"{scope}.{name.lower()}" for name in port.names]
+        return [f"{scope}.{port.names[0].lower()}[{port.width - 1}:0]"]
 
     sigs = [f"{scope}.{match.clk.lower()}"]
     if match.switches is not None:

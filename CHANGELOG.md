@@ -309,6 +309,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   board-native mode reach the bulk of the fleet once the litex/amaranth conventions land (U32).
   `ConventionMatch.switches`/`.buttons` are now optional (#223, #226)
 
+### Fixed
+
+- **Board-native mode accepts a one-LED board's natural scalar port (U21).** A design for a
+  single-LED board (e.g. a TinyFPGA BX with just `led`) can now declare it as `led : out std_logic`
+  — the natural spelling — instead of being forced to write `std_logic_vector(0 downto 0)`. A
+  width-1 convention bank matches either form; the generated wrapper associates the scalar per
+  element, and the `.gtkw` preselection uses the unranged signal path GHDL/NVC actually emit for a
+  scalar. Previously the scalar spelling fell through to the misleading generic-contract "missing
+  clk/sw/btn" error (#240).
+- **Board-native mode allows extra input ports that carry a default (U21).** An input the board's
+  convention doesn't map — e.g. `UART_RX : in std_logic := '1'` — no longer makes a design a
+  near-miss when it has a default value, matching the generic contract's long-standing rule and the
+  VHDL LRM (an unassociated `in` with a default is legal in both GHDL and NVC). A *default-less*
+  unmapped input is still an honest near-miss, since it would otherwise be an unbound port (#240).
+- **Clearer board-native near-miss message (U21).** A design that only partially matches a board's
+  native interface now names the specific convention it is close to and points at `hdl/blinky.vhd`,
+  dropping stale wording that implied the feature was unshipped. A `names[]` convention member
+  declared as a vector (rather than a scalar) is now reported as a clean near-miss instead of failing
+  later with a cryptic elaboration error (#240).
+
 ## [0.13.0] - 2026-07-11
 
 ### Added

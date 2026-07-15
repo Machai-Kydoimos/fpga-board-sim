@@ -300,8 +300,65 @@ def test_scalar_led_bank_matches() -> None:
     assert m is not None
     assert m.leds.names == ("o_LED_1", "o_LED_2", "o_LED_3", "o_LED_4")
     assert m.leds.width == 4
+    assert m.leds.scalar_ports is True  # each o_LED_n is an individual scalar port
     assert m.switches is not None
     assert m.switches.width == 2
+
+
+def test_scalar_led_bank_rejects_vector_member() -> None:
+    # F6: a names[] member declared as a vector (not a scalar) disqualifies the
+    # bank cleanly here, instead of "matching" then failing at elaboration.
+    conv: dict[str, Any] = {
+        "acme": {
+            "clk": "i_Clk",
+            "leds": {"names": ["o_LED_1", "o_LED_2"]},
+            "naming": "canonical",
+        }
+    }
+    ports = [
+        "i_Clk : in std_logic",
+        "o_LED_1 : out std_logic",
+        "o_LED_2 : out std_logic_vector(7 downto 0)",  # vector, not a scalar
+    ]
+    assert _match("go", ports, _board(conv, digits=None, name="Go")) is None
+
+
+# ── width-1 LED banks: scalar or std_logic_vector(0 downto 0) (F1) ────────────
+
+
+def _led1_board() -> BoardDef:
+    """A one-LED board carrying a width-1 shared-vector LED convention."""
+    conv: dict[str, Any] = {"amaranth": {"clk": "clk16", "leds": {"name": "led", "width": 1}}}
+    return _board(conv, digits=None, name="Tiny FPGABX")
+
+
+def test_width1_led_bank_matches_scalar_port() -> None:
+    # F1: `led : out std_logic` -- the natural one-LED spelling -- matches a
+    # width-1 vector bank, yielding a scalar_ports bank the wrapper maps per bit.
+    m = _match("bx", ["clk16 : in std_logic", "led : out std_logic"], _led1_board())
+    assert m is not None
+    assert (m.leds.names, m.leds.width) == (("led",), 1)
+    assert m.leds.scalar_ports is True
+
+
+def test_width1_led_bank_matches_vector_0_downto_0() -> None:
+    # F1: the std_logic_vector(0 downto 0) spelling still matches as a plain
+    # (non-scalar) vector, so both forms work.
+    m = _match(
+        "bx", ["clk16 : in std_logic", "led : out std_logic_vector(0 downto 0)"], _led1_board()
+    )
+    assert m is not None
+    assert (m.leds.names, m.leds.width) == (("led",), 1)
+    assert m.leds.scalar_ports is False
+
+
+def test_wide_bank_still_rejects_scalar_port() -> None:
+    # A width>=2 bank is not satisfiable by a scalar -- only a width-1 bank is.
+    conv: dict[str, Any] = {"amaranth": {"clk": "clk16", "leds": {"name": "led", "width": 4}}}
+    m = _match(
+        "bx", ["clk16 : in std_logic", "led : out std_logic"], _board(conv, digits=None, name="X")
+    )
+    assert m is None
 
 
 # ── check_vhdl_contract integration ──────────────────────────────────────────
@@ -358,8 +415,12 @@ def test_contract_near_miss_names_the_convention(tmp_path: Any) -> None:
     assert res.ok is False
     assert res.match is None  # not a full match
     assert "DE10-Standard" in res.message
+    assert "terasic" in res.message  # F4: names the specific convention (maker)
     assert "close to" in res.message
     assert "buttons" in res.message and "7-segment display" in res.message
+    # F4: no stale internal ticket ID / "until then" phrasing in user-facing text
+    assert "U21 B3" not in res.message
+    assert "until then" not in res.message
 
 
 def test_contract_unrelated_failure_keeps_generic_error(tmp_path: Any) -> None:
