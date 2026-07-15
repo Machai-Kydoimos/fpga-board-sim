@@ -34,6 +34,7 @@ from fpga_sim.sim_bridge import (
     NativeSeg,
     WaveConfig,
     _build_sim_env,
+    _GHDLBackend,
     _IfaceDecl,
     _NVCBackend,
     _render_native_wrapper,
@@ -161,20 +162,38 @@ def test_native_wrapper_de0_maps_segment_ports_leaves_dp_open() -> None:
 
 
 def test_native_wrapper_scalar_led_bank_maps_bit_by_bit() -> None:
-    # A bank of distinct scalar ports (no board uses this today, but the matcher
-    # can produce it) maps each scalar to one bit of the wrapper's vector.
+    # A bank of distinct scalar ports (Nandland Go's o_LED_1.., or any names[]
+    # convention) maps each scalar to one bit of the wrapper's vector.
     m = ConventionMatch(
         maker="acme",
         board_name="Go",
         clk="i_Clk",
-        leds=NativePort(("o_LED_1", "o_LED_2", "o_LED_3", "o_LED_4"), 4, False),
-        switches=NativePort(("i_SW_1", "i_SW_2"), 2, False),
-        buttons=NativePort(("i_BTN_1", "i_BTN_2"), 2, False),
+        leds=NativePort(("o_LED_1", "o_LED_2", "o_LED_3", "o_LED_4"), 4, False, scalar_ports=True),
+        switches=NativePort(("i_SW_1", "i_SW_2"), 2, False, scalar_ports=True),
+        buttons=NativePort(("i_BTN_1", "i_BTN_2"), 2, False, scalar_ports=True),
     )
     vhd = _render_native_wrapper("go", m)
     assert "o_LED_1 => led_uut(0)" in vhd
     assert "o_LED_4 => led_uut(3)" in vhd
+    assert "i_SW_1 => sw_uut(0)" in vhd
+    assert "i_BTN_2 => btn_uut(1)" in vhd
     assert "i_Clk => clk" in vhd
+
+
+def test_native_wrapper_width1_scalar_led_maps_element() -> None:
+    # F1: a one-LED board whose design declared `led : out std_logic`.  The
+    # scalar_ports bank associates the element (`led => led_uut(0)`) and the
+    # one-bit uut vector zero-extends onto the board's NUM_LEDS boundary.
+    m = ConventionMatch(
+        maker="amaranth",
+        board_name="Tiny FPGABX",
+        clk="clk16",
+        leds=NativePort(("led",), 1, False, scalar_ports=True),
+    )
+    vhd = _render_native_wrapper("led_blink", m)
+    assert "led => led_uut(0)" in vhd  # per element, not `led => led_uut`
+    assert "signal led_uut : std_logic_vector(1 - 1 downto 0);" in vhd
+    assert "led <= std_logic_vector(resize(unsigned(led_uut), NUM_LEDS));" in vhd
 
 
 # ── unit: .gtkw native preselection ──────────────────────────────────────────
@@ -204,6 +223,23 @@ def test_write_gtkw_generic_path_has_no_uut_paths(tmp_path: Any) -> None:
     text = gtkw.read_text()
     assert ".uut." not in text
     assert "sim_wrapper.sw[3:0]" in text
+
+
+def test_write_gtkw_native_scalar_led_is_unranged(tmp_path: Any) -> None:
+    # F1: a scalar_ports LED bank dumps as an unranged scalar (sim_wrapper.uut.led),
+    # unlike a std_logic_vector(0 downto 0) which would carry a [0:0] range.
+    m = ConventionMatch(
+        maker="amaranth",
+        board_name="Tiny FPGABX",
+        clk="clk16",
+        leds=NativePort(("led",), 1, False, scalar_ports=True),
+    )
+    gtkw = tmp_path / "bx.gtkw"
+    _write_gtkw(gtkw, tmp_path / "bx.vcd", {"NUM_LEDS": "1"}, match=m)
+    text = gtkw.read_text()
+    assert "sim_wrapper.uut.led" in text
+    assert "sim_wrapper.uut.led[" not in text  # scalar -> no [msb:0] range
+    assert "sim_wrapper.uut.clk16" in text
 
 
 # ── cross-board safety invariant (no wrong-board silent polarity flip) ───────
@@ -271,6 +307,23 @@ def _synth_iface(block: dict[str, Any]) -> list[_IfaceDecl]:
     return ports
 
 
+def _synth_iface_scalar_width1_leds(block: dict[str, Any]) -> list[_IfaceDecl] | None:
+    """``_synth_iface`` variant spelling a width-1 shared-vector LED bank as a
+    plain scalar (``led : out std_logic``) rather than std_logic_vector(0 downto 0).
+
+    Returns None when the primary LED bank is not a width-1 ``name``+``width``
+    vector (so the two spellings are not distinct).
+    """
+    leds = block.get("leds")
+    if not (isinstance(leds, dict) and "name" in leds and leds.get("width") == 1):
+        return None
+    name = str(leds["name"]).lower()
+    return [
+        _IfaceDecl(d.names, d.mode, d.has_default, None) if d.names == [name] else d
+        for d in _synth_iface(block)
+    ]
+
+
 def test_no_cross_board_native_match_flips_polarity() -> None:
     """A native file for board X loaded onto board Y never silently flips polarity.
 
@@ -328,6 +381,11 @@ def test_every_canonical_board_matches_its_own_synthesized_interface() -> None:
         checked += 1
         if match_convention(_synth_iface(block), [], bd) is None:
             failures.append(bd.name)
+        # F1: a width-1 LED bank must also match the natural scalar spelling
+        # (`led : out std_logic`), not only std_logic_vector(0 downto 0).
+        scalar = _synth_iface_scalar_width1_leds(block)
+        if scalar is not None and match_convention(scalar, [], bd) is None:
+            failures.append(f"{bd.name} (scalar-led spelling)")
     assert checked >= 20, f"expected many self-checkable boards, got {checked}"
     assert not failures, f"boards that fail to match their own native interface: {failures}"
 
@@ -430,6 +488,61 @@ begin
 end architecture;
 """
 
+# F1: a one-LED board's natural spelling -- `led : out std_logic`, not a
+# std_logic_vector(0 downto 0) -- for Tiny FPGABX (width-1 amaranth bank).
+_SCALAR_LED_SRC = """\
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity bx_blink is
+  port (
+    clk16 : in  std_logic;
+    led   : out std_logic
+  );
+end entity;
+
+architecture rtl of bx_blink is
+  signal cnt : unsigned(23 downto 0) := (others => '0');
+begin
+  process (clk16)
+  begin
+    if rising_edge(clk16) then
+      cnt <= cnt + 1;
+    end if;
+  end process;
+  led <= cnt(23);
+end architecture;
+"""
+
+# F3: a full native match whose design carries an extra input with a default;
+# the wrapper leaves UART_RX unassociated (its default drives it).
+_LED_DEFAULT_EXTRA_SRC = """\
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity led_dflt is
+  port (
+    CLOCK_50 : in  std_logic;
+    UART_RX  : in  std_logic := '1';
+    LEDR     : out std_logic_vector(9 downto 0)
+  );
+end entity;
+
+architecture rtl of led_dflt is
+  signal cnt : unsigned(23 downto 0) := (others => '0');
+begin
+  process (CLOCK_50)
+  begin
+    if rising_edge(CLOCK_50) then
+      cnt <= cnt + 1;
+    end if;
+  end process;
+  LEDR <= std_logic_vector(cnt(23 downto 14)) when UART_RX = '1' else (others => '0');
+end architecture;
+"""
+
 
 def test_partial_convention_led_only_matches() -> None:
     m = match_convention(_synth_iface(_LED_ONLY_BLOCK), [], _synth_board(_LED_ONLY_BLOCK))
@@ -477,10 +590,19 @@ def test_canonical_convention_wins_over_framework_derived() -> None:
 
 
 def test_partial_convention_extra_input_is_near_miss() -> None:
-    # The convention declares no switches; a design that adds an `sw` input would
-    # be left unbound in the wrapper's uut port map, so it must NOT full-match.
+    # The convention declares no switches; a design that adds a *default-less* `sw`
+    # input would be left unbound in the wrapper's uut port map, so it must NOT
+    # full-match.
     ports = [*_synth_iface(_LED_ONLY_BLOCK), _IfaceDecl(["sw"], "in", False, 4)]
     assert match_convention(ports, [], _synth_board(_LED_ONLY_BLOCK)) is None
+
+
+def test_partial_convention_extra_input_with_default_matches() -> None:
+    # F3: an extra input carrying a default expression is legal unassociated in
+    # both GHDL and NVC (as the generic path allows), so it does NOT block a
+    # native match -- consistent with `_check_parsed_contract`.
+    ports = [*_synth_iface(_LED_ONLY_BLOCK), _IfaceDecl(["uart_rx"], "in", True, None)]
+    assert match_convention(ports, [], _synth_board(_LED_ONLY_BLOCK)) is not None
 
 
 @pytest.mark.parametrize("mode", ["out", "inout", "buffer"])
@@ -538,6 +660,12 @@ def test_partial_extra_input_near_miss_message(tmp_path: Any) -> None:
     assert res.ok is False
     assert res.match is None
     assert "unmapped input port(s): sw" in res.message
+    # F4: names the convention (maker), points at hdl/blinky.vhd, and drops the
+    # stale internal ticket ID / "until then" phrasing.
+    assert "terasic" in res.message
+    assert "hdl/blinky.vhd" in res.message
+    assert "U21 B3" not in res.message
+    assert "until then" not in res.message
 
 
 def test_partial_match_gtkw_omits_absent_switch(tmp_path: Any) -> None:
@@ -580,6 +708,60 @@ def test_partial_native_wrapper_analyzes_under_nvc(nvc: str, tmp_path: Any) -> N
         vhd, toplevel="led_blink", simulator="nvc", board_def=bd, match=res.match
     )
     assert ok, f"NVC partial-native analysis failed: {detail}"
+
+
+# ── F1/F3 end-to-end: scalar-led + defaulted-extra designs elaborate ─────────
+
+
+def _tiny_fpgabx() -> BoardDef:
+    return BoardDef.from_json((PROJECT / "boards/amaranth-boards/tiny_fpgabx.json").read_text())
+
+
+def _write_and_check(
+    src: str, top: str, bd: BoardDef, tmp_path: Any
+) -> tuple[Path, ConventionMatch]:
+    vhd = tmp_path / f"{top}.vhd"
+    vhd.write_text(src)
+    res = check_vhdl_contract(vhd, board_def=bd)
+    assert res.ok and res.match is not None, f"{top} not recognized as native on {bd.name}"
+    return vhd, res.match
+
+
+@pytest.mark.slow
+def test_scalar_led_native_analyzes_under_ghdl(ghdl: str, tmp_path: Any) -> None:
+    # F1: `led : out std_logic` on a real width-1 board (Tiny FPGABX) elaborates.
+    bd = _tiny_fpgabx()
+    vhd, m = _write_and_check(_SCALAR_LED_SRC, "bx_blink", bd, tmp_path)
+    assert m.leds.scalar_ports is True
+    ok, detail = analyze_vhdl(vhd, toplevel="bx_blink", simulator="ghdl", board_def=bd, match=m)
+    assert ok, f"GHDL scalar-led native analysis failed: {detail}"
+
+
+@pytest.mark.slow
+def test_scalar_led_native_analyzes_under_nvc(nvc: str, tmp_path: Any) -> None:
+    bd = _tiny_fpgabx()
+    vhd, m = _write_and_check(_SCALAR_LED_SRC, "bx_blink", bd, tmp_path)
+    assert m.leds.scalar_ports is True
+    ok, detail = analyze_vhdl(vhd, toplevel="bx_blink", simulator="nvc", board_def=bd, match=m)
+    assert ok, f"NVC scalar-led native analysis failed: {detail}"
+
+
+@pytest.mark.slow
+def test_defaulted_extra_input_native_analyzes_under_ghdl(ghdl: str, tmp_path: Any) -> None:
+    # F3: a full match with an extra defaulted input elaborates -- the wrapper
+    # leaves UART_RX unassociated and its default drives it.
+    bd = _synth_board(_LED_ONLY_BLOCK)
+    vhd, m = _write_and_check(_LED_DEFAULT_EXTRA_SRC, "led_dflt", bd, tmp_path)
+    ok, detail = analyze_vhdl(vhd, toplevel="led_dflt", simulator="ghdl", board_def=bd, match=m)
+    assert ok, f"GHDL defaulted-extra native analysis failed: {detail}"
+
+
+@pytest.mark.slow
+def test_defaulted_extra_input_native_analyzes_under_nvc(nvc: str, tmp_path: Any) -> None:
+    bd = _synth_board(_LED_ONLY_BLOCK)
+    vhd, m = _write_and_check(_LED_DEFAULT_EXTRA_SRC, "led_dflt", bd, tmp_path)
+    ok, detail = analyze_vhdl(vhd, toplevel="led_dflt", simulator="nvc", board_def=bd, match=m)
+    assert ok, f"NVC defaulted-extra native analysis failed: {detail}"
 
 
 # ── end-to-end: GHDL + NVC analysis of the example designs ───────────────────
@@ -699,6 +881,78 @@ def test_native_de25_run_inverts_leds_under_nvc(nvc: str, tmp_path: Any) -> None
     ledr_bits = ledr_val.rjust(rw, "0")
     inverted = "".join("1" if c == "0" else "0" for c in ledr_bits)
     assert led_bits == inverted, f"led {led_bits} is not the inverse of ledr {ledr_bits}"
+
+
+@pytest.mark.slow
+def test_native_arty_cocotb_loop_zero_extend_and_switch_xor(ghdl: str, tmp_path: Any) -> None:
+    """F8: a real GHDL + cocotb run of arty_litex.vhd on the Digilent Arty.
+
+    Drives the wrapper's ``sw`` and reads back ``led`` through a minimal cocotb
+    module (not sim_testbench), exercising the native wrapper's zero-extend (the
+    4-bit user_led bank onto the 8-LED board boundary) and the design's
+    ``user_led <= count(...) xor user_sw`` adaptation.  Both were verified by
+    hand 2026-07-15; this makes the native cocotb loop a permanent regression
+    guard (the rest of the suite covers native *analysis*, not a driven run).
+    """
+    bd = BoardDef.from_json((PROJECT / "boards/litex-boards/digilent_arty.json").read_text())
+    vhd = NATIVE / "arty_litex.vhd"
+    res = check_vhdl_contract(vhd, board_def=bd)
+    assert res.ok and res.match is not None
+
+    work = tempfile.mkdtemp(prefix="arty_f8_")
+    ok, detail = analyze_vhdl(
+        vhd, work_dir=work, toplevel="arty_litex", simulator="ghdl", board_def=bd, match=res.match
+    )
+    assert ok, detail
+
+    # Minimal cocotb testbench: drive sw, sample led before/after, write JSON so
+    # the assertions live in pytest (clear diagnostics) rather than inside cocotb.
+    moddir = tmp_path / "cocotb_mod"
+    moddir.mkdir()
+    out = tmp_path / "f8.json"
+    (moddir / "f8_tb.py").write_text(
+        "import json, os\n"
+        "import cocotb\n"
+        "from cocotb.triggers import Timer\n"
+        "\n"
+        "\n"
+        "@cocotb.test()\n"
+        "async def sample(dut):\n"
+        "    dut.btn.value = 0\n"
+        "    dut.sw.value = 0\n"
+        "    await Timer(1, unit='us')\n"
+        "    led0 = int(dut.led.value)\n"
+        "    dut.sw.value = 0b0101\n"
+        "    await Timer(1, unit='us')\n"
+        "    led5 = int(dut.led.value)\n"
+        "    with open(os.environ['FPGA_SIM_F8_OUT'], 'w') as f:\n"
+        "        json.dump({'led0': led0, 'led5': led5}, f)\n"
+    )
+
+    env, plugin_lib = _build_sim_env(simulator="ghdl")
+    env["FPGA_SIM_F8_OUT"] = str(out)
+    env["COCOTB_TEST_MODULES"] = "f8_tb"
+    env["TOPLEVEL"] = "sim_wrapper"
+    env["PYTHONPATH"] = os.pathsep.join([str(moddir), env["PYTHONPATH"]])
+    generics = {
+        "NUM_SWITCHES": str(max(1, len(bd.switches))),
+        "NUM_BUTTONS": str(max(1, len(bd.buttons))),
+        "NUM_LEDS": str(max(1, len(bd.leds))),
+        "CLK_HALF_NS_INIT": "10",
+    }
+    cmd = _GHDLBackend.run_cmd("sim_wrapper", generics, plugin_lib, work)
+    proc = subprocess.run(cmd, env=env, cwd=work, capture_output=True, text=True, timeout=180)
+    assert out.is_file(), (
+        "cocotb module produced no output (did it run?).\n"
+        f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    )
+    data = json.loads(out.read_text())
+    # Zero-extend: the 4-bit user_led bank leaves the upper 4 board LEDs dark.
+    assert (data["led5"] >> 4) == 0, f"upper LED nibble not zero: {data['led5']:#010b}"
+    # user_sw XORs the low nibble: setting sw=0b0101 flips exactly those bits.
+    assert ((data["led0"] ^ data["led5"]) & 0xF) == 0b0101, (
+        f"switches did not XOR the low nibble: led0={data['led0']:#06b} led5={data['led5']:#06b}"
+    )
 
 
 # ── B3b: sim_testbench convention parsing (subprocess -- module imports cocotb) ──
