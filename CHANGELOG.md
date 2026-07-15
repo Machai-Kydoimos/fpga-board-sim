@@ -69,6 +69,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and 4 digits, common-anode active-low, matching the golden Nexys4-DDR model)
   rather than phantom LEDs. Buttons and switches are unaffected fleet-wide and no
   legitimate LED is dropped (#235).
+- **Vendor-canonical conventions for Litefury & Nitefury II (U33 Wave 4).** The two RHS
+  Research PCIe FPGA cards gain vendor-canonical `port_conventions` — `clk = pcie_clkin_p`,
+  `leds = LED_A1`..`LED_A4` — a clk+LED *partial* interface (no switches/buttons, which the
+  U31 native wrapper ties off) populated from their official sample-project XDC. Their LEDs
+  are **active-low**, cited to the vendor's own sample HDL (`CodeBlinker.v`'s
+  `localparam LED_ON = 1'b0`), which also revealed the amaranth-boards platform models these
+  LEDs active-high — incorrect per the vendor's own blinker. ICEBreaker Bitsy, the other
+  candidate considered, is intentionally left on its (correct) framework convention: its
+  canonical bank would classify to the RGB breakout rather than the red+green primary (#237).
 - **Port-convention source registry.** New maintainer-facing registry at
   `docs/port_convention_sources/` — one TOML per board family holding ranked,
   fetch-verified pointers to each board's canonical constraint/pin file (QSF,

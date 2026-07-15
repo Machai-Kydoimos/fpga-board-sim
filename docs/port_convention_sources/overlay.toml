@@ -142,3 +142,22 @@ name = "Sipeed Tang Nano 20k"
   [board.leds]
   active_low = true
   cite = "The Sipeed Tang Nano 20K's 6 user LEDs are active-low (driven low to light), consistent with its Tang Nano 9K sibling (U33 Wave 2): the litex-boards platform names the bank `led_n` -- litex's active-low naming convention. A Gowin CST binds names to pins only, so classify() cannot derive polarity."
+
+# --- U33 Wave 4 (RHS Research PCIe cards; see waves.toml, #237) ---
+# Litefury + Nitefury II drive their 4 user LEDs (LED_A1..LED_A4) active-low. An XDC binds
+# names to pins only, so classify() cannot derive polarity; the cited fact comes from the
+# vendor's own sample HDL, which also contradicts the amaranth platform's active-high model.
+
+[[board]]
+name = "Litefury"
+
+  [board.leds]
+  active_low = true
+  cite = "The Litefury's 4 user LEDs (LED_A1..LED_A4) are active-low -- driven low to light. RHS Research's official sample-project HDL declares `localparam LED_ON = 1'b0; localparam LED_OFF = 1'b1;` in Sample-Projects/Project-0/FPGA/common/HDL/CodeBlinker.v (the module that drives the LEDs); the board's constraint XDC corroborates with `PULLUP true` on each LED_A pin. (The amaranth-boards platform models these active-high, inverted=False -- incorrect per the vendor's own blinker.)"
+
+[[board]]
+name = "Nitefury II"
+
+  [board.leds]
+  active_low = true
+  cite = "The Nitefury II's 4 user LEDs (LED_A1..LED_A4) are active-low -- driven low to light, per RHS Research's official sample-project HDL (Sample-Projects/Project-0/FPGA/Nitefury-II/.../HDL/CodeBlinker.v: `localparam LED_ON = 1'b0`), identical to its Litefury sibling; the board's constraint XDC corroborates with `PULLUP true` on each LED_A pin. (The amaranth-boards platform models these active-high, inverted=False -- incorrect per the vendor's own blinker.)"
