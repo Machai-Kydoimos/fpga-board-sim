@@ -58,16 +58,28 @@ boards = [
                            # active-low (litex `led_n` naming, sibling of Wave-2 Tang Nano 9K) -> overlay.
 ]
 
-# --- Wave 4+ deferred map (from the 2026-07-14 force-check of the 61 gate-eligible boards) ---
+[[wave]]
+number = 4
+description = "RHS Research PCIe cards (U33, #237). Litefury + Nitefury II populate from their official sample-project XDC as a clk+LED *partial* convention (clk = pcie_clkin_p -- the board's 100 MHz PCIe reference clock; leds = LED_A1..LED_A4; no switches/buttons, so U31 ties off the absent input banks). Their LEDs are active-low -- cited to the vendor's own sample HDL CodeBlinker.v (`localparam LED_ON = 1'b0; localparam LED_OFF = 1'b1;`), which also reveals the amaranth-boards platform's active-high model (inverted=False) is wrong for these boards. This corrects the stale deferred-map note below (they do NOT classify to name=None -- classify() returns {names:[LED_A1..A4], width:4}). NB: the same-numbered Wave-4 parser fix (#235, oled/segled LED-misclassification) is separate code work under the shared 'Wave 4' label."
+boards = [
+  "Litefury",
+  "Nitefury II",
+]
+
+# --- Wave 5+ deferred map (from the 2026-07-14 force-check of the 61 gate-eligible boards; corrected 2026-07-15) ---
 # Clean but lower-priority (populate next, same mechanism): Sipeed Tang Nano 4k, iCESugar Nano,
 #   Machdyne Kolsch/Lakritz/Minze/Vanille (a coherent machdyne family; 4 more machdyne are clk-only).
 # Wrong clock (need a cited overlay clk before vouching): Mi ST / Mist (`CLOCK_50[0]`), Redpitaya
 #   (`adc_clk_i[1]` -- ADC clock, not fabric).
-# Width SUBSET (source < board -- now allowed by cross_check_widths, but these verified UNCLEAN and need
-#   a boards/ JSON quality fix, not just population): ICEBreaker Bitsy (source bank is the RGB, not the
-#   plain LEDs), Litefury / Nitefury II / Xilinx Zcu216 (LED bank classifies to name=None), ULX3S (litex
-#   JSON mislabels oled_spi as an LED + amaranth files over-count buttons 13 vs 7), Radiona ULX4M LD/LS
-#   V2 (only 4/8 LEDs), Ocp Tap Timecard (4/9).
+# Width SUBSET (source < board -- allowed by cross_check_widths; the native wrapper zero-extends):
+#   Xilinx Zcu216 (LED bank classifies to name=None), Radiona ULX4M LD/LS V2 (only 4/8 LEDs),
+#   Ocp Tap Timecard (4/9) -- each still needs a per-board look before populating.
+#   RESOLVED since: Litefury / Nitefury II populated in Wave 4 (they classify CLEAN to
+#   {names:[LED_A1..A4], width:4} -- the old "name=None" note was wrong); ULX3S fixed by the #235 parser
+#   fix (oled/segled no longer inflate its LED bank -> it is framework-native). ICEBreaker Bitsy is
+#   intentionally NOT populated: its canonical bank classifies to the RGB breakout (LED_RGB, width 3),
+#   not the red+green primary, and it is already correctly board-native via its U32 framework convention
+#   (led, width 2) -- a canonical block would regress it.
 # Width SUPERSET (source > board -- still blocked; source claims more than the board models, needs
 #   per-board board-JSON truth): ICEBreaker (btn 3>1), iCESugar (led 8>6), Saanlima Pipistrello (8>5),
 #   Tul Pynq Z2 (6>4), Scarabhardware Minispartan6 (sw 5>4), RZEasy (btn 5>4), Genesys ZU (btn 7>5),

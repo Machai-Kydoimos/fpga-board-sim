@@ -231,7 +231,11 @@ source). Recommended next: **U33** (canonical population waves) — **U31 ✅** 
   `segled_*` (7-seg lines); tightened to a token-boundary rule (keeps `m2led`/`led0`, drops
   `oled`/`segled`), fixing the phantom-LED counts on 7 boards and modeling Nexys4 (34→18 LEDs) + Numato
   Mimas A7 (20→8) `segled_*` as their real multiplexed 7-seg displays. This was the ULX3S "10-vs-8
-  LEDs" blocker (a data-quality wart, not a canonical-population gap). **Empirical scoping
+  LEDs" blocker (a data-quality wart, not a canonical-population gap). Wave 4 also **populated Litefury
+  - Nitefury II** (#237) — RHS Research PCIe cards, a clk+LED partial convention (`pcie_clkin_p` +
+  `LED_A1..A4`), active-low cited to the vendor's own `CodeBlinker.v` — and established that **ICEBreaker
+  Bitsy** stays on its framework convention (its canonical bank classifies to the RGB breakout, not the
+  red+green primary, so a canonical block would regress it). **Empirical scoping
   (2026-07-14):** force-checking all 61 gate-eligible boards showed only **13** produce a clean,
   complete convention today; the *marquee* hobbyist boards (ICEBreaker, iCESugar, Tang Nano 20K, ULX3S,
   ULX4M) are **width-blocked** (source-vs-board-JSON count mismatch — the RZEasy pattern, needs

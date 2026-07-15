@@ -87,6 +87,26 @@
         "width": 4
       },
       "naming": "framework-derived"
+    },
+    "rhs_research": {
+      "clk": "pcie_clkin_p",
+      "leds": {
+        "names": [
+          "LED_A1",
+          "LED_A2",
+          "LED_A3",
+          "LED_A4"
+        ],
+        "width": 4,
+        "active_low": true
+      },
+      "description": "Researched inline via GitHub API 2026-07-11. Official sample-project constraints.",
+      "naming": "canonical",
+      "source": {
+        "url": "https://raw.githubusercontent.com/RHSResearchLLC/NiteFury-and-LiteFury/6d1b8512f74c2faecec00a25a1cbf362eee2bf72/Sample-Projects/Project-0/FPGA/Nitefury-II/project/project.srcs/constrs_1/imports/constraints/normal.xdc",
+        "retrieved": "2026-07-15",
+        "registry_board": "Nitefury II"
+      }
     }
   },
   "$schema": "../schema/board.schema.json",
