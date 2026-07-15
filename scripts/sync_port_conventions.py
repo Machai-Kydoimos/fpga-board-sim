@@ -47,6 +47,7 @@ if sys.version_info >= (3, 11):
 else:  # pragma: no cover - exercised only on Python 3.10
     import tomli as tomllib
 
+from framework_conventions import reconcile_framework_polarity
 from port_convention_parsers import boardstore_xml, ccf, classify, cst, lpf, pcf, qsf, ucf, xdc
 from port_convention_parsers.types import PortTable
 from sync_common import fetch_url, resolve_commit_sha, validate_board_jsons
@@ -481,7 +482,9 @@ def merged_board_json(board_path: Path, new_sub_keys: dict[str, Any]) -> dict[st
     with board_path.open() as f:
         board_json: dict[str, Any] = json.load(f)
     existing = board_json.get("port_conventions") or {}
-    board_json["port_conventions"] = {**existing, **new_sub_keys}
+    # F2: a framework-derived bank inherits polarity from the canonical block being
+    # merged in (canonical is the physical truth); a no-op when there is none.
+    board_json["port_conventions"] = reconcile_framework_polarity({**existing, **new_sub_keys})
     return board_json
 
 
@@ -532,6 +535,13 @@ def write_results(
             existing = board_json.get("port_conventions") or {}
             board_json["port_conventions"] = {**existing, **new_sub_keys}
             per_file[rel_path] = board_json
+
+    # F2: once every canonical block is merged in, let each board's framework-
+    # derived banks inherit polarity from a same-role, same-width canonical bank.
+    for board_json in per_file.values():
+        pc = board_json.get("port_conventions")
+        if isinstance(pc, dict):
+            board_json["port_conventions"] = reconcile_framework_polarity(pc)
 
     if not per_file:
         return per_file

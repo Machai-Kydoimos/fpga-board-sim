@@ -375,8 +375,7 @@
       "clk": "clk50",
       "leds": {
         "name": "led",
-        "width": 10,
-        "active_low": true
+        "width": 10
       },
       "naming": "framework-derived",
       "switches": {

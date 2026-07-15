@@ -455,7 +455,15 @@ def _amaranth_role_entries(components: list[ComponentInfo]) -> list[RoleEntry]:
     comes straight from ``inverted`` (an amaranth ``PinsN`` pin).
     """
     return [
-        RoleEntry(normalized=c.name, raw=c.name, bit=c.number, inverted=c.inverted)
+        # An RGBLEDResource's r/g/b subsignals flatten to several pins on one bit;
+        # that bit has no single declarable port, so build_bank drops it.
+        RoleEntry(
+            normalized=c.name,
+            raw=c.name,
+            bit=c.number,
+            inverted=c.inverted,
+            pins_per_bit=len(c.pins),
+        )
         for c in components
     ]
 

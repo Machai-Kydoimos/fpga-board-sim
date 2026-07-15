@@ -129,7 +129,8 @@
       "clk": "clk27",
       "leds": {
         "name": "user_led",
-        "width": 6
+        "width": 6,
+        "active_low": true
       },
       "naming": "framework-derived",
       "buttons": {

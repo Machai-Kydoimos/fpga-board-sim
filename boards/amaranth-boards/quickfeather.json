@@ -49,25 +49,7 @@
     }
   ],
   "seven_seg": null,
-  "port_conventions": {
-    "amaranth": {
-      "description": "amaranth-boards platform port names (auto-derived from the board .py file)",
-      "clk": "sys_clk0",
-      "leds": {
-        "name": "rgb_led",
-        "width": 1
-      },
-      "naming": "framework-derived",
-      "switches": {
-        "name": "swd",
-        "width": 1
-      },
-      "buttons": {
-        "name": "button",
-        "width": 1
-      }
-    }
-  },
+  "port_conventions": {},
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "amaranth-boards",

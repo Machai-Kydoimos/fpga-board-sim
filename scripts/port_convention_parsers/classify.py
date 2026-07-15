@@ -51,8 +51,14 @@ _RE_BRACKET_INDEX = re.compile(r"^(.*?)[\[(<](\d+)[\])>]$")
 _RE_BARE_DIGIT = re.compile(r"^(.*?)(\d+)$")
 _RE_ACTIVE_LOW_SUFFIX = re.compile(r"_[nN]$")
 
-_LED_INTEREST = re.compile(r"led", re.IGNORECASE)
-_LEDS_GREEN_INTEREST = re.compile(r"ledg", re.IGNORECASE)
+# "led" only counts as a user LED at a token boundary: at the start, or after a
+# `_` / `-` / digit -- so `led0` and `m2led` (litefury/nitefury's M.2 status LED)
+# both count, while a *letter* before "led" does not, keeping `oled*` (OLED
+# display buses) and `segled` out of the primary LED bank. A bare-substring test
+# wrongly swept those in and inflated the bank; this mirrors the same fix already
+# in scripts/{litex,amaranth}_parser.py's `_LED_TOKEN` (U33 Wave 4).
+_LED_INTEREST = re.compile(r"(?:^|[_\-0-9])led", re.IGNORECASE)
+_LEDS_GREEN_INTEREST = re.compile(r"(?:^|[_\-0-9])ledg", re.IGNORECASE)
 _SWITCH_INTEREST = re.compile(r"switch", re.IGNORECASE)
 _BUTTON_INTEREST = re.compile(r"button|btn", re.IGNORECASE)
 _CLOCK_INTEREST = re.compile(r"clk|clock", re.IGNORECASE)

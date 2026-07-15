@@ -138,26 +138,6 @@
     }
   ],
   "seven_seg": null,
-  "port_conventions": {
-    "litex": {
-      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
-      "clk": "clk25",
-      "leds": {
-        "name": "user_led",
-        "width": 2
-      },
-      "naming": "framework-derived",
-      "switches": {
-        "name": "user_sw",
-        "width": 2
-      },
-      "buttons": {
-        "name": "user_btn_n",
-        "width": 4,
-        "active_low": true
-      }
-    }
-  },
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "litex-boards",

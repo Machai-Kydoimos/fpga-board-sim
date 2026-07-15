@@ -23,6 +23,7 @@ Self-contained: no ``fpga_sim`` / network dependency, so the litex parser keeps 
 
 from __future__ import annotations
 
+import copy
 import re
 from typing import Any, NamedTuple
 
@@ -44,12 +45,17 @@ class RoleEntry(NamedTuple):
         (litex ``user_led``; amaranth ``led``).
     ``bit`` -- resource index (bit position within the bank).
     ``inverted`` -- the source encodes active-low for this bit (amaranth ``PinsN``).
+    ``pins_per_bit`` -- physical pins backing this one bit.  >1 means a resource
+        with no single declarable ``std_logic`` port (an RGB LED's r/g/b, an
+        RGBW's r/g/b/w), so it is not emittable as a native port -- see
+        :func:`build_bank`.
     """
 
     normalized: str
     raw: str
     bit: int
     inverted: bool
+    pins_per_bit: int = 1
 
 
 def build_bank(entries: list[RoleEntry]) -> dict[str, Any] | None:
@@ -71,7 +77,14 @@ def build_bank(entries: list[RoleEntry]) -> dict[str, Any] | None:
     ``names[]`` cluster.  The bank is marked active-low when an emitted bit carries
     an ``inverted`` flag or an emitted raw name ends in ``_n``.  Returns ``None`` for
     an empty role so the caller can omit an absent bank (the U31 floor).
+
+    A bit backed by >1 physical pin (``pins_per_bit`` > 1) is an RGB/RGBW LED with
+    r/g/b(/w) subsignals -- there is no single declarable ``std_logic`` port for it,
+    so advertising one would be fiction.  Such bits are dropped up front; a bank
+    left empty (an RGB-only board with no plain LEDs) yields no convention, so the
+    board simply isn't board-native-able -- truth over coverage.
     """
+    entries = [e for e in entries if e.pins_per_bit <= 1]
     if not entries:
         return None
     # (A) Prefer a plain-normalized bank, so `rgb_led` yields to `led` and a stray
@@ -142,3 +155,74 @@ def build_convention(
     if buttons_bank:
         block["buttons"] = buttons_bank
     return {framework: block}
+
+
+# Roles a framework block and a canonical block can both map for the same physical
+# resources, and whose polarity therefore has a single physical truth.
+_RECONCILED_ROLES = ("leds", "leds_green", "switches", "buttons")
+
+
+def _bank_width(bank: dict[str, Any]) -> int | None:
+    """Width a bank covers, whether shaped ``{name, width}`` or ``{names[, width]}``."""
+    width = bank.get("width")
+    if isinstance(width, int):
+        return width
+    names = bank.get("names")
+    if isinstance(names, list):
+        return len(names)
+    return None
+
+
+def _canonical_polarity(canonical: list[dict[str, Any]], role: str, width: int) -> bool | None:
+    """Effective ``active_low`` of a canonical bank mapping *role* at *width*, else None."""
+    for block in canonical:
+        cbank = block.get(role)
+        if isinstance(cbank, dict) and _bank_width(cbank) == width:
+            return bool(cbank.get("active_low", False))
+    return None
+
+
+def reconcile_framework_polarity(port_conventions: dict[str, Any]) -> dict[str, Any]:
+    """Return *port_conventions* with framework-derived banks' polarity corrected.
+
+    Polarity is a physical fact.  A ``framework-derived`` block (U32) advertises
+    the framework's port *names* but guesses polarity from the source's textual
+    signals (a ``_n`` suffix, an amaranth ``PinsN``), which can disagree with a
+    curated, cited canonical block describing the *same physical resource* on the
+    same board.  When such a disagreement exists -- a canonical block (``naming``
+    absent or ``"canonical"``) maps the same role at the same width -- the
+    canonical value wins: the framework bank keeps its names but inherits the
+    canonical bank's effective ``active_low`` (absent, for a curated block, is a
+    deliberate active-high claim).  The join is on role + width only, so shape may
+    differ (a canonical ``names[]`` of width 4 reconciles a framework vector of
+    width 4).
+
+    Pure -- returns a new dict, input untouched.  Idempotent and independent of
+    convention order, so re-syncs converge whichever writer runs.
+    """
+    result = copy.deepcopy(port_conventions)
+    canonical = [
+        b
+        for b in result.values()
+        if isinstance(b, dict) and b.get("naming", "canonical") == "canonical"
+    ]
+    if not canonical:
+        return result
+    for block in result.values():
+        if not isinstance(block, dict) or block.get("naming") != "framework-derived":
+            continue
+        for role in _RECONCILED_ROLES:
+            fbank = block.get(role)
+            if not isinstance(fbank, dict):
+                continue
+            fwidth = _bank_width(fbank)
+            if fwidth is None:
+                continue
+            truth = _canonical_polarity(canonical, role, fwidth)
+            if truth is None:
+                continue  # no same-role, same-width canonical bank to defer to
+            if truth:
+                fbank["active_low"] = True
+            else:
+                fbank.pop("active_low", None)
+    return result

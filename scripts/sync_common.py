@@ -13,6 +13,7 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+from framework_conventions import reconcile_framework_polarity
 from jsonschema.validators import validator_for
 
 
@@ -170,7 +171,11 @@ def _fold_forward_unmanaged_keys(content: str, out_path: Path) -> str:
 
     merged_conventions = {**existing_conventions, **(data.get("port_conventions") or {})}
     if merged_conventions:
-        data["port_conventions"] = merged_conventions
+        # F2: after the per-sub-key merge, a freshly generated framework-derived
+        # bank inherits polarity from a same-role, same-width canonical bank folded
+        # forward from disk (canonical is the physical truth).  A no-op when the
+        # board carries no canonical block.
+        data["port_conventions"] = reconcile_framework_polarity(merged_conventions)
 
     if not data.get("peripherals") and existing_peripherals:
         data["peripherals"] = existing_peripherals

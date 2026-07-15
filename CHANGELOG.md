@@ -309,6 +309,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   board-native mode reach the bulk of the fleet once the litex/amaranth conventions land (U32).
   `ConventionMatch.switches`/`.buttons` are now optional (#223, #226)
 
+### Changed
+
+- **Boards whose only LEDs have no single declarable port no longer advertise a board-native
+  convention (U32).** An RGB/RGBW LED exposes separate red/green/blue(/white) pins — there is no one
+  `std_logic` port to drive — so a framework-derived `rgb_led` vector was fiction. Fifteen such boards
+  (e.g. OrangeCrab, upduino_v3, quickfeather, the ECPIX-5 boards, Cora Z7, and a couple whose `led`
+  resource is itself multi-pin) now ship no framework convention rather than a port that can't be
+  wired. A board still runs board-native on its plain LEDs when it has any alongside the RGB ones;
+  only boards with *nothing but* multi-pin LEDs are affected. Framework-derived board-native coverage
+  is now **258/278** boards (#241).
+
 ### Fixed
 
 - **Board-native mode accepts a one-LED board's natural scalar port (U21).** A design for a
@@ -328,6 +339,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dropping stale wording that implied the feature was unshipped. A `names[]` convention member
   declared as a vector (rather than a scalar) is now reported as a clean near-miss instead of failing
   later with a cryptic elaboration error (#240).
+- **Board-native LED/switch/button polarity is now consistent between a board's vendor and
+  framework conventions (U32).** For a board carrying both a cited vendor-canonical convention and
+  an auto-derived framework one, the framework block's active-low/active-high polarity now defers to
+  the canonical block when they describe the same bank — the physical truth wins, applied by the sync
+  tooling so it survives re-syncs. This corrects four boards where they disagreed: DE0-CV (LEDR are
+  active-high; the upstream amaranth `invert=True` is an apparent bug), Litefury and Nitefury II
+  (LEDs active-low, per the vendor blinky), and Sipeed Tang Nano 9K (LEDs active-low) (#241).
+- **OLED / 7-seg-backing pins are no longer miscounted as user LEDs in the constraint-file
+  convention parser (U33).** The `classify` step used a bare `led` substring test, so `oled*` and
+  `segled*` ports could inflate or hijack a board's LED bank; it now matches `led` only at a token
+  boundary (`m2led` and `led0` still count), mirroring the hardening already in the litex/amaranth
+  parsers. No shipped canonical block changes (#241).
 
 ## [0.13.0] - 2026-07-11
 

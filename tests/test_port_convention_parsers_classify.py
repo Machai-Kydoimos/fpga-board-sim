@@ -94,6 +94,30 @@ def test_two_unrelated_scalar_leds_are_declined() -> None:
     assert "leds" not in classify(table)
 
 
+def test_oled_bus_does_not_win_the_led_bank() -> None:
+    # F5: `oled_d[15:0]` (an OLED display data bus) contains "led" but the letter
+    # before it means the token-boundary test excludes it, so the real `ledr[9:0]`
+    # bank stays the primary `leds` (a bare substring test would have let the wider
+    # OLED bus win by count).
+    names = {f"ledr[{i}]": f"L{i}" for i in range(10)}
+    names |= {f"oled_d[{i}]": f"O{i}" for i in range(16)}
+    assert classify(_table(names))["leds"] == {"name": "ledr", "width": 10}
+
+
+def test_segled_is_not_a_user_led() -> None:
+    # F5: `segled[*]` (7-seg backing LEDs) has "led" after a letter, so the token
+    # boundary keeps it out of the user-LED bank.
+    names = {f"segled[{i}]": f"S{i}" for i in range(8)}
+    names |= {f"led[{i}]": f"L{i}" for i in range(4)}
+    assert classify(_table(names))["leds"] == {"name": "led", "width": 4}
+
+
+def test_m2led_status_led_is_kept() -> None:
+    # F5: litefury/nitefury's `m2led` (M.2 status LED) -- "led" after a digit is a
+    # real token boundary, so it stays a user LED.
+    assert classify(_table({"m2led": "P1"}))["leds"] == {"name": "m2led", "width": 1}
+
+
 def test_digilent_named_direction_buttons() -> None:
     table = _table({"btnC": "U18", "btnU": "T18", "btnD": "U17", "btnL": "W19", "btnR": "T17"})
     result = classify(table)
