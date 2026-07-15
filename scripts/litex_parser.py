@@ -415,6 +415,9 @@ def _litex_role_entries(components: list[dict[str, Any]]) -> list[RoleEntry]:
             raw=str(comp.get("raw_name", comp["name"])),
             bit=int(comp["number"]),
             inverted=bool(comp.get("inverted")),
+            # An RGB LED's r/g/b subsignals flatten to several pins on one bit --
+            # that bit has no single declarable port, so build_bank drops it.
+            pins_per_bit=len(comp.get("pins") or []),
         )
         for comp in components
     ]

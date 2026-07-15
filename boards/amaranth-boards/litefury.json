@@ -84,7 +84,8 @@
       "clk": "clk200",
       "leds": {
         "name": "led",
-        "width": 4
+        "width": 4,
+        "active_low": true
       },
       "naming": "framework-derived"
     },

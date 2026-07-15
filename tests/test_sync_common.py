@@ -184,6 +184,46 @@ def test_write_outputs_preserves_existing_port_conventions(tmp_path):
     assert written["port_conventions"] == {"custom": {"clk": "CLK"}}  # preserved
 
 
+def test_write_outputs_reconciles_framework_polarity_to_canonical(tmp_path):
+    """F2: on re-sync, a framework-derived bank inherits a same-width canonical
+    bank's polarity (the de0_cv shape: a cited active-high canonical wins over the
+    parser's active-low guess), and the result is idempotent."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["port_conventions"] = {
+        "terasic": {"clk": "CLOCK_50", "leds": {"name": "LEDR", "width": 10}},
+        "amaranth": {
+            "clk": "clk",
+            "leds": {"name": "led", "width": 10, "active_low": True},
+            "naming": "framework-derived",
+        },
+    }
+    (out / "board.json").write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+    # The parser regenerates the framework block with its active-low guess.
+    fresh = _valid_board()
+    fresh["port_conventions"] = {
+        "amaranth": {
+            "clk": "clk",
+            "leds": {"name": "led", "width": 10, "active_low": True},
+            "naming": "framework-derived",
+        }
+    }
+    write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
+
+    written = json.loads((out / "board.json").read_text())
+    # The framework bank inherited the canonical (active-high) truth; canonical intact.
+    assert "active_low" not in written["port_conventions"]["amaranth"]["leds"]
+    assert written["port_conventions"]["terasic"]["leds"] == {"name": "LEDR", "width": 10}
+
+    # Idempotent: a second identical re-sync produces byte-identical output.
+    first = (out / "board.json").read_text()
+    write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
+    assert (out / "board.json").read_text() == first
+
+
 def test_write_outputs_digilent_per_key_merge(tmp_path):
     """sync_digilent_xdc.py generates only the 'digilent' sub-key: that one
     updates, every other convention key (hand-authored or U21-populated)

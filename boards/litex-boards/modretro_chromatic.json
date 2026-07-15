@@ -44,17 +44,6 @@
   "buttons": [],
   "switches": [],
   "seven_seg": null,
-  "port_conventions": {
-    "litex": {
-      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
-      "clk": "clk_fpga",
-      "leds": {
-        "name": "rgb_led",
-        "width": 1
-      },
-      "naming": "framework-derived"
-    }
-  },
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "litex-boards",

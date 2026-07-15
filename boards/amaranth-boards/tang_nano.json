@@ -55,22 +55,7 @@
   ],
   "switches": [],
   "seven_seg": null,
-  "port_conventions": {
-    "amaranth": {
-      "description": "amaranth-boards platform port names (auto-derived from the board .py file)",
-      "clk": "OSC",
-      "leds": {
-        "name": "rgb_led",
-        "width": 1
-      },
-      "naming": "framework-derived",
-      "buttons": {
-        "name": "button",
-        "width": 2,
-        "active_low": true
-      }
-    }
-  },
+  "port_conventions": {},
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "amaranth-boards",
