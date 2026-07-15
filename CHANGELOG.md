@@ -321,7 +321,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   session-log `mode`/`convention` fields), with the session/waveform settings broken into
   real subsections; `docs/architecture.md` absorbs the README's "How It Works" and
   CONTRIBUTING's "Architecture overview" and adds a "How board-native works" internals
-  section. The README still carries its existing sections in this release (#242). An RGB/RGBW LED exposes separate red/green/blue(/white) pins — there is no one
+  section. The README still carries its existing sections in this release (#242).
+- **README rewritten around the new docs, plus a VHDL author's guide (`docs/writing_designs.md`).**
+  The README is now a focused newcomer path — install one-liners, a step-by-step demo, a compilable
+  entity snippet, a board-native example, and a features/docs index — that links the detailed guides
+  rather than inlining everything. `docs/writing_designs.md` is the full design reference: the generic
+  and 7-segment contracts, the `COUNTER_BITS` runtime override and clock semantics, the single-file
+  embedded-CPU systems, and board-native designs documented properly (vendor-canonical vs
+  framework-derived names, polarity, partial interfaces, and the near-miss message for a wrong-board
+  file) (#243).
+- **Boards whose only LEDs have no single declarable port no longer advertise a board-native
+  convention (U32).** An RGB/RGBW LED exposes separate red/green/blue(/white) pins — there is no one
   `std_logic` port to drive — so a framework-derived `rgb_led` vector was fiction. Fifteen such boards
   (e.g. OrangeCrab, upduino_v3, quickfeather, the ECPIX-5 boards, Cora Z7, and a couple whose `led`
   resource is itself multi-pin) now ship no framework convention rather than a port that can't be

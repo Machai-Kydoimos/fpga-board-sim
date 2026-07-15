@@ -4,7 +4,7 @@ How the simulator is put together: the two-phase process model, the project layo
 board loading, the pygame UI, the simulation pipeline, the simulator backends, and
 how board-native VHDL is recognized and adapted. This is the map for contributors
 and the curious. For using the app see [docs/user_guide.md](user_guide.md); for
-writing designs see the design guide (`docs/writing_designs.md`). Back to the
+writing designs see [docs/writing_designs.md](writing_designs.md). Back to the
 [README](../README.md).
 
 ## Two-phase process model
@@ -298,7 +298,7 @@ the generic contract:
   clearly visible at the simulator's throughput (always slower than real time, so a
   smaller counter than real hardware would use).
 
-See the design guide (`docs/writing_designs.md`) for the full contract and the
+See [docs/writing_designs.md](writing_designs.md) for the full contract and the
 example catalog.
 
 ## Contributor notes

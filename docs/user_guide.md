@@ -3,8 +3,8 @@
 Everything the simulator does once it is installed: the four launcher screens, the
 in-simulation controls and stats panel, board-native runs, and how your
 preferences, waveforms, and session logs are stored. For installation see
-[docs/install.md](install.md); for writing your own designs see the design guide
-(`docs/writing_designs.md`). Back to the [README](../README.md).
+[docs/install.md](install.md); for writing your own designs see
+[docs/writing_designs.md](writing_designs.md). Back to the [README](../README.md).
 
 ## Launcher screens
 
@@ -42,7 +42,7 @@ net name, pin, and direction.
 
 Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains ready-to-run
 designs as starting points — LED blinkers, 7-segment counters, and the generated
-6502/Z80 embedded-core systems. See the design guide (`docs/writing_designs.md`) for
+6502/Z80 embedded-core systems. See [docs/writing_designs.md](writing_designs.md) for
 the full catalog and the design contract.
 
 When you pick a file, the simulator analyzes and elaborates it (a few seconds on a
@@ -107,8 +107,8 @@ Most designs use the generic `clk/sw/btn/led` contract, but a design can instead
 written to a board's **own** port names (Terasic `CLOCK_50`/`SW`/`KEY`/`LEDR`/`HEX0…`,
 litex `clk100`/`user_led`/`user_sw`/`user_btn`, and so on). When the simulator
 recognizes such a file against the selected board, the run is board-native and the
-UI signals it in three places. (For how to write these designs, see the design guide,
-`docs/writing_designs.md`.)
+UI signals it in three places. (For how to write these designs, see
+[docs/writing_designs.md](writing_designs.md#board-native-designs).)
 
 - **Analysis spinner.** Picking a native file shows the title
   `Analyzing board-native <file>…` with the detail line
