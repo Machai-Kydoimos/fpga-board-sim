@@ -311,8 +311,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Boards whose only LEDs have no single declarable port no longer advertise a board-native
-  convention (U32).** An RGB/RGBW LED exposes separate red/green/blue(/white) pins — there is no one
+- **Documentation restructure: three new focused guides under `docs/`.** Installation,
+  day-to-day usage, and architecture now live in [`docs/install.md`](docs/install.md),
+  [`docs/user_guide.md`](docs/user_guide.md), and [`docs/architecture.md`](docs/architecture.md)
+  instead of one long README. `docs/install.md` collects the full GHDL/NVC install matrix
+  (including from-source builds and the Windows/MSYS2 troubleshooting); `docs/user_guide.md`
+  documents every screen and control plus the previously-undocumented board-native run cues
+  (the "Board-native (maker)" analysis label, the stats-panel active-low note, and the
+  session-log `mode`/`convention` fields), with the session/waveform settings broken into
+  real subsections; `docs/architecture.md` absorbs the README's "How It Works" and
+  CONTRIBUTING's "Architecture overview" and adds a "How board-native works" internals
+  section. The README still carries its existing sections in this release (#242). An RGB/RGBW LED exposes separate red/green/blue(/white) pins — there is no one
   `std_logic` port to drive — so a framework-derived `rgb_led` vector was fiction. Fifteen such boards
   (e.g. OrangeCrab, upduino_v3, quickfeather, the ECPIX-5 boards, Cora Z7, and a couple whose `led`
   resource is itself multi-pin) now ship no framework convention rather than a port that can't be

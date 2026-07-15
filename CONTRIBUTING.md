@@ -62,7 +62,7 @@ Two supported environments — pick one and use it consistently:
   Install from [aka.ms/powershell](https://aka.ms/powershell) if needed.
 - Install uv with `winget install --id=astral-sh.uv -e` if you haven't already.
 - GHDL must be on your `PATH` before running the test suite — see the
-  [Troubleshooting section in README.md](README.md#windows-ghdl-not-on-path-after-winget-install).
+  [Troubleshooting section in docs/install.md](docs/install.md#windows-ghdl-not-on-path-after-winget-install).
 - NVC is available via `winget install NickGasson.NVC`, but its cocotb VHPI
   integration has **not been verified** on Windows. If NVC is installed,
   NVC-related tests may run instead of skipping — confirm they pass or note
@@ -75,8 +75,8 @@ Two supported environments — pick one and use it consistently:
 #### Path 2: MSYS2 (UCRT64 shell) — best for NVC or a Linux-like dev experience
 
 MSYS2 gives an environment nearly identical to Linux. Follow the
-[Windows: MSYS2 alternative](README.md#windows-msys2-alternative) section in the
-README to install MSYS2, GHDL, NVC, uv, and Python inside the UCRT64 shell.
+[Windows: MSYS2 alternative](docs/install.md#windows-msys2-alternative) section in
+docs/install.md to install MSYS2, GHDL, NVC, uv, and Python inside the UCRT64 shell.
 
 Once set up, all contributor commands below work unchanged (run them in the UCRT64
 shell, not PowerShell). `&&` chaining works natively in bash.
@@ -463,6 +463,17 @@ This project follows [Semantic Versioning](https://semver.org):
 
 ### Release checklist
 
+**Pre-flight** — before cutting the branch, confirm the generated artifacts and
+board data are in sync with their sources. Both commands only report drift; neither
+writes:
+
+```bash
+uv run python scripts/sync_port_conventions.py --check  # port_conventions vs registry
+uv run python scripts/regen_embedded_cores.py           # embedded-core files vs specs (check only)
+```
+
+Investigate and resolve any reported drift before proceeding.
+
 1. **Create a release branch** from `main`:
 
    ```bash
@@ -504,95 +515,10 @@ This project follows [Semantic Versioning](https://semver.org):
 
 ## Architecture overview
 
-The README's **How It Works** section covers the architecture in depth.
-A few additional notes for contributors:
-
-**Two pygame processes.** The launcher (board selector → VHDL picker)
-calls `pygame.quit()` before spawning the simulator subprocess.
-`sim/sim_testbench.py` calls `pygame.init()` fresh inside that subprocess.
-Never assume pygame state persists across the boundary.
-
-**Sim → launcher signalling.** The subprocess reports *why* it ended through a
-`SimExit` value written to an exit-intent sidecar file, whose path arrives in
-`FPGA_SIM_EXIT_INTENT_FILE`. The in-sim toolbar's **[Back to Boards]** /
-**[Change VHDL]** / **[Reload VHDL]** buttons each write their `SimExit`; a plain
-stop (ESC / window close / **[Stop]**) writes nothing. `launch_simulation()`
-clears any stale file first, then reads it back **only on a clean (exit code 0)
-run** — so a GHDL/NVC crash is never mistaken for navigation — and returns the
-`SimExit`, which `ScreenController.on_simulate()` routes (RELOAD re-validates and
-relaunches in place without leaving the sim loop). To add a new sim-screen
-action, add a `SimExit` member, a button in `ui/sim_toolbar.py` (borrow a
-`ButtonStyle` role by *name* so themes apply automatically), and a routing arm
-in `on_simulate()` — never overload the process exit code, which the simulators
-own.
-
-**VHDL-side clock.** The clock is driven by the generated `sim_wrapper`
-entity (see `sim/sim_wrapper_template.vhd`), not by a Python coroutine. This eliminates per-half-period GPI callbacks — only two GPI
-calls happen per frame (the Timer endpoints). The wrapper exposes
-`clk_half_ns`; the testbench writes to it when the panel's **[-]/[+]**
-buttons change the virtual clock frequency.
-
-**SimPanel.** `src/fpga_sim/ui/sim_panel.py` owns the stats strip drawn at the bottom
-of the simulation window. Its `panel_height` is a property that re-evaluates
-`_ui_scale(w, h)` on every access — call `board.set_height_offset(panel.panel_height)`
-whenever the window resizes to keep the board and panel areas in sync.
-`sim_testbench.py` does this check at the top of every frame.
-
-**Board components & hover overlays.** `FPGABoard`'s LEDs, switches, and buttons
-share a `UIComponent` base (`ui/components.py`) and are registered in one
-`FPGABoard.components` `list[UIComponent]` used for hover hit-testing. The hover
-tooltip (`ui/tooltip.py`) is drawn at the *end* of `FPGABoard._draw()`; because
-both the preview loop and the sim subprocess drive that same `_draw`, any
-board-area overlay added there appears in both — no `sim_testbench.py` change.
-It draws *before* the sim's bottom `SimPanel` / `SimToolbar`, so keep such
-overlays biased away from the bottom strip (the tooltip flips upward near the
-bottom edge). New per-component metadata to surface goes in `tooltip_rows()`;
-the widget reads the shared info-panel `THEME` roles at draw time, so it
-restyles per theme for free.
-
-**Board sync scripts.** Three scripts in `scripts/` download upstream
-board definitions and convert them to our JSON schema:
-
-| Script | Source | Approach |
-|--------|--------|----------|
-| `sync_amaranth_boards.py` | [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) | Mock-exec (parser in `amaranth_parser.py`): strips imports, injects mock `Resource`/`Pins`/`Attrs` classes, `exec()`s each `.py` file |
-| `sync_litex_boards.py` | [litex-boards](https://github.com/litex-hub/litex-boards) | Mock-exec (parser in `litex_parser.py`): same pattern but with LiteX's `_io` tuple format and mock vendor platform classes |
-| `sync_digilent_xdc.py` | [Digilent XDC](https://github.com/Digilent/digilent-xdc) | Regex parsing (parser in `digilent_parser.py`) of `.xdc` constraint files; device/package from a hardcoded lookup table |
-
-All three download a tarball via `--ref` (default: `main`/`master`), support
-`--dry-run`, and write to their respective `boards/<source>/` subdirectory.
-The Digilent XDC script also auto-generates `port_conventions` from XDC port
-names. To add a new upstream source, follow the same pattern: download,
-parse, emit JSON conforming to `boards/schema/board.schema.json`.
-
-**Sync-script parsers.** Each upstream source has a dedicated parser module in
-`scripts/`, imported by its thin `sync_*.py` script: `amaranth_parser.py` and
-`litex_parser.py` use mock-exec (strip imports, inject mock classes into a
-namespace, `exec()` the board file); `digilent_parser.py` uses section-aware
-regex over XDC text. The mock classes are typed with `object` at variadic
-boundaries (`*ios: object`, `**kwargs: object`) because the upstream APIs accept
-heterogeneous arguments. Use `cast()` if you need a narrower type after
-extracting a value from a mock object.
-
-**Session state** is stored in `~/.fpga_simulator/session.json` and loaded
-at startup. Every write is a **merge** (`update_session()` does a
-read-modify-write; `save_session()` builds on it), and the keys have owners —
-never write a key another writer owns:
-
-- the **launcher** (`ScreenController`) writes the board / VHDL / simulator /
-  selector prefs / window size — on every board, simulator, or VHDL change,
-  at quit, and at launch — plus `recent[]` via `push_recent()`;
-- the **Settings dialog** writes `theme` and applies it live via
-  `ui.theme.set_theme()`; the launcher restores it at startup and forwards it
-  to the sim subprocess through `FPGA_SIM_THEME` (when U10/U19 land the dialog
-  also gains the `waveform_enabled` / `metrics_enabled` toggles);
-- the **sim subprocess** owns `speed_factor`: `launch_simulation()` seeds the
-  panel slider via the `FPGA_SIM_SPEED` env var and `sim/sim_testbench.py`
-  writes the final slider value back at exit — only when that env var is
-  present, so benchmark and test runs never touch the file. The launcher
-  re-reads the file before each launch rather than caching the value.
-
-It is intentionally best-effort — load and save failures are silently ignored
-so a corrupt or missing file never breaks the app. After each simulation run,
-a separate per-session performance summary is appended to
-`~/.fpga_simulator/sessions/` by `fpga_sim/sim_session_log.py`.
+The architecture reference now lives in
+[docs/architecture.md](docs/architecture.md) — the two-phase process model, project
+layout, board loading, the pygame UI, the simulation pipeline, the simulator
+backends, and how board-native VHDL is matched and adapted. It also carries the
+contributor notes that used to sit here: `SimExit` sim → launcher signalling,
+`SimPanel` scaling, hover overlays, the sync-script parsers, and session-state
+ownership.
