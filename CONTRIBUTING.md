@@ -49,8 +49,9 @@ uv sync --group dev
 uv run pre-commit install
 ```
 
-> The `uv sync` in the README installs runtime dependencies only.
-> `uv sync --group dev` is required for the quality tooling.
+> `uv` includes the `dev` dependency group by default, so plain `uv sync` (as in the
+> README) already installs the quality tooling (pytest, ruff, mypy, pre-commit); the
+> explicit `--group dev` above is equivalent.
 
 ### Windows notes for contributors
 
