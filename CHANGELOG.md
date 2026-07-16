@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **README / onboarding accuracy.** The "Try it" walkthrough now shows the correct
+  order — **Load VHDL File** (pick the design) *then* **Start Simulation**, which is
+  greyed until a file is loaded — instead of implying the reverse. Also names GTKWave /
+  Surfer as the waveform viewers, notes that `fpga-sim` needs a graphical display (with
+  the headless `pytest` / `--benchmark` alternatives), and corrects CONTRIBUTING's claim
+  that `uv sync` installs runtime dependencies only (`uv` includes the `dev` group by
+  default).
+
 ## [0.14.0] - 2026-07-16
 
 ### Added

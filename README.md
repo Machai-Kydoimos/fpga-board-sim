@@ -71,6 +71,10 @@ uv sync                        # create the venv, install dependencies
 uv run fpga-sim                # launch (use --sim ghdl|nvc to force one)
 ```
 
+> `fpga-sim` opens a desktop window, so it needs a graphical display — not a bare SSH
+> session. On a headless machine, use `uv run pytest` or the headless
+> `uv run fpga-sim --benchmark 10`.
+
 Confirm everything works — this needs no display and exercises the full
 analyze/simulate path:
 
@@ -88,11 +92,12 @@ uv run pytest
 2. **Filter** to the **DE10-Lite** (type to narrow the 278-board list) and select it.
 3. **Preview** the board — click switches, hold buttons, hover any component for its
    net name and pin.
-4. **Start Simulation**, then pick [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd).
+4. **Load VHDL File** and pick [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), then click
+   **Start Simulation** (it stays greyed until a file is loaded).
 5. **Interact:** **BTN0** reverses the snake, **BTN1** lights every segment, **SW0**
    speeds it up — exactly as in the demo above.
 
-For a design with no hand-written RTL at all, load
+For a design with no hand-written RTL at all, repeat with
 [`hdl/mx65_walking_counter_7seg.vhd`](hdl/mx65_walking_counter_7seg.vhd) — a **6502
 soft CPU** executing firmware from an embedded ROM, driving the same board through
 memory-mapped IO:
@@ -156,8 +161,8 @@ exist). Full guide: [docs/writing_designs.md](docs/writing_designs.md#board-nati
 
 ## Features at a glance
 
-- **Waveform capture** — record VCD/FST per run, each with a ready-to-open `.gtkw`
-  ([user guide](docs/user_guide.md#waveform-capture)).
+- **Waveform capture** — record VCD/FST per run, each with a ready-to-open `.gtkw` for
+  **GTKWave** (or **Surfer**) ([user guide](docs/user_guide.md#waveform-capture)).
 - **Themes** — PCB Green / Dark / High Contrast, applied live
   ([user guide](docs/user_guide.md#themes)).
 - **Hover tooltips** — every LED/switch/button shows its net name, pin, and direction
