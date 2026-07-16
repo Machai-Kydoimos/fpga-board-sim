@@ -977,3 +977,152 @@ def test_picker_error_dialog_gets_7seg_example(headless_pygame, monkeypatch):
     dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
     ctrl._run_vhdl_picker()
     assert dialog.example_paths == [controller_mod._HDL_DIR / "counter_7seg.vhd"]
+
+
+# ── on_simulate: single-window attached path (U34, FPGA_SIM_SINGLE_WINDOW=1) ──
+
+
+class _FakeSimScreen:
+    """Fake SimulationScreen: records construction and scripts run() results."""
+
+    instances: list[dict[str, Any]] = []
+    exits: list[SimExit] = []
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        type(self).instances.append(kwargs)
+        self.run_stats = None
+
+    def run(self) -> SimExit:
+        return type(self).exits.pop(0) if type(self).exits else SimExit.STOPPED
+
+
+def _attached_harness(
+    headless_pygame: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    *,
+    sim_exits: list[SimExit] | None = None,
+) -> tuple[ScreenController, list[dict[str, Any]], list[Any]]:
+    """Controller wired for the attached path, with fake start/screen/finish."""
+    monkeypatch.setenv("FPGA_SIM_SINGLE_WINDOW", "1")
+    vhdl = tmp_path / "blinky.vhd"
+    vhdl.write_text("-- design")
+    ctrl = _make_controller(headless_pygame)
+    ctrl.on_board_selected(_board())
+    ctrl.state.vhdl_path = str(vhdl)
+    ctrl.state.work_dir = "wd"
+    ctrl.state.work_dir_simulator = ctrl.state.simulator
+    monkeypatch.setattr(controller_mod, "check_vhdl_contract", _fail_if_called("contract check"))
+
+    starts: list[dict[str, Any]] = []
+    finishes: list[Any] = []
+    sentinel_child = object()
+
+    def fake_start(
+        board_json: Any, vhdl_path: Any, toplevel: Any, generics: Any, **kwargs: Any
+    ) -> Any:
+        starts.append(
+            {
+                "board_json": board_json,
+                "vhdl_path": vhdl_path,
+                "toplevel": toplevel,
+                "generics": generics,
+                **kwargs,
+            }
+        )
+        return sentinel_child
+
+    _FakeSimScreen.instances = []
+    _FakeSimScreen.exits = list(sim_exits or [])
+    monkeypatch.setattr(controller_mod, "start_simulation", fake_start)
+    monkeypatch.setattr(controller_mod, "SimulationScreen", _FakeSimScreen)
+    monkeypatch.setattr(controller_mod, "finish_waveform", lambda child: finishes.append(child))
+    monkeypatch.setattr(controller_mod, "save_session", lambda *a, **k: None)
+    monkeypatch.setattr(controller_mod, "push_recent", lambda *a: None)
+    return ctrl, starts, finishes
+
+
+def test_attached_stopped_routes_to_preview(headless_pygame, monkeypatch, tmp_path):
+    ctrl, starts, finishes = _attached_harness(
+        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.STOPPED]
+    )
+    old_screen = ctrl.screen
+    board = ctrl.board
+    assert board is not None
+
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+
+    # The launcher window is never torn down in single-window mode.
+    assert ctrl.screen is old_screen
+    (start,) = starts
+    assert start["vhdl_path"] == ctrl.state.vhdl_path
+    assert start["toplevel"] == "blinky"
+    assert start["generics"] == build_generics(board)
+    assert start["work_dir"] == "wd"
+    assert start["simulator"] == "ghdl"
+    assert start["board_def"] is board
+    # The dropped legacy env/window params must not be forwarded.
+    assert "sim_width" not in start and "sim_height" not in start
+    assert "theme" not in start
+    # SimulationScreen built once; waveform finalized after run().
+    (screen_kwargs,) = _FakeSimScreen.instances
+    assert screen_kwargs["simulator"] == "ghdl"
+    assert len(finishes) == 1
+
+
+def test_attached_quit_returns_quit(headless_pygame, monkeypatch, tmp_path):
+    ctrl, _starts, _finishes = _attached_harness(
+        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.QUIT]
+    )
+    assert ctrl.on_simulate() is NextScreen.QUIT
+
+
+def test_attached_back_to_boards_goes_to_selector(headless_pygame, monkeypatch, tmp_path):
+    ctrl, _starts, _finishes = _attached_harness(
+        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.BACK_TO_BOARDS]
+    )
+    assert ctrl.on_simulate() is NextScreen.SELECTOR
+
+
+def test_attached_change_vhdl_opens_picker(headless_pygame, monkeypatch, tmp_path):
+    ctrl, _starts, _finishes = _attached_harness(
+        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.CHANGE_VHDL]
+    )
+    picked: list[bool] = []
+
+    def _fake_picker() -> NextScreen:
+        picked.append(True)
+        return NextScreen.PREVIEW
+
+    monkeypatch.setattr(ctrl, "_run_vhdl_picker", _fake_picker)
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+    assert picked == [True]
+
+
+def test_attached_reload_revalidates_and_relaunches(headless_pygame, monkeypatch, tmp_path):
+    ctrl, starts, finishes = _attached_harness(
+        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.RELOAD_VHDL, SimExit.STOPPED]
+    )
+    revalidations: list[bool] = []
+
+    def _fake_revalidate() -> None:
+        revalidations.append(True)
+
+    monkeypatch.setattr(ctrl, "_revalidate_for_reload", _fake_revalidate)
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+    assert revalidations == [True]  # revalidated once between the two launches
+    assert len(starts) == 2 and len(finishes) == 2
+
+
+def test_attached_start_error_shows_dialog_and_reenters_preview(
+    headless_pygame, monkeypatch, tmp_path
+):
+    ctrl, _starts, _finishes = _attached_harness(headless_pygame, monkeypatch, tmp_path)
+
+    def boom(*a: Any, **k: Any) -> Any:
+        raise RuntimeError("elaboration failed")
+
+    monkeypatch.setattr(controller_mod, "start_simulation", boom)
+    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+    assert dialog.shown and "elaboration failed" in dialog.shown[0][1]

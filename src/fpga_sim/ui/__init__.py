@@ -15,6 +15,10 @@ from fpga_sim.ui.results import DialogResult, ScreenResult
 from fpga_sim.ui.settings_dialog import SettingsDialog
 from fpga_sim.ui.sim_panel import SimPanel
 from fpga_sim.ui.sim_toolbar import SimToolbar
+
+# simulation_screen imports several of the submodules above directly (not this
+# package), so it composes cleanly regardless of position here (U34).
+from fpga_sim.ui.simulation_screen import RunStats, SimulationScreen
 from fpga_sim.ui.spinner import SpinnerOverlay, run_with_spinner
 from fpga_sim.ui.tooltip import Tooltip
 from fpga_sim.ui.vhdl_picker import VHDLFilePicker
@@ -36,6 +40,8 @@ __all__ = [
     "DialogResult",
     "SimPanel",
     "SimToolbar",
+    "SimulationScreen",
+    "RunStats",
     "SpinnerOverlay",
     "run_with_spinner",
     "Tooltip",

@@ -91,10 +91,11 @@ class SimExit(Enum):
     (returncode 0) exit.
     """
 
-    STOPPED = "stopped"  # ESC / window close / [Stop] — no intent file written
+    STOPPED = "stopped"  # ESC / [Stop] (+ legacy window close) — no intent file
     BACK_TO_BOARDS = "back_to_boards"  # [Back to Boards] → board selector
     CHANGE_VHDL = "change_vhdl"  # [Change VHDL] → VHDL file picker
     RELOAD_VHDL = "reload_vhdl"  # [Reload VHDL] → re-analyze same file, relaunch
+    QUIT = "quit"  # window X in single-window mode (U34) → exit the whole app
 
 
 #: Filename of the exit-intent sidecar inside the simulation work dir.
@@ -111,9 +112,12 @@ def _read_exit_intent(intent_file: Path, returncode: int) -> SimExit:
     if returncode != 0:
         return SimExit.STOPPED
     try:
-        return SimExit(intent_file.read_text().strip())
+        intent = SimExit(intent_file.read_text().strip())
     except (OSError, ValueError):
         return SimExit.STOPPED
+    # QUIT is a single-window-only signal (window X, U34); the legacy testbench
+    # never writes it to the intent file, so treat a stray "quit" as a plain stop.
+    return SimExit.STOPPED if intent is SimExit.QUIT else intent
 
 
 # ── Simulator backend classes ─────────────────────────────────────────────────

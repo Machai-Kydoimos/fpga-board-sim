@@ -24,11 +24,21 @@ def test_missing_file_means_stopped(tmp_path):
     assert _read_exit_intent(tmp_path / "nope.txt", 0) is SimExit.STOPPED
 
 
-@pytest.mark.parametrize("intent", list(SimExit))
+# QUIT is a single-window-only signal (window X, U34); the legacy testbench
+# never writes it to the intent file, so it is excluded here and covered by
+# test_quit_value_coerces_to_stopped below.
+@pytest.mark.parametrize("intent", [e for e in SimExit if e is not SimExit.QUIT])
 def test_every_value_round_trips(tmp_path, intent):
     f = tmp_path / "exit_intent.txt"
     f.write_text(intent.value)
     assert _read_exit_intent(f, 0) is intent
+
+
+def test_quit_value_coerces_to_stopped(tmp_path):
+    """A stray "quit" in the intent file is treated as a plain stop, not app-quit."""
+    f = tmp_path / "exit_intent.txt"
+    f.write_text(SimExit.QUIT.value)
+    assert _read_exit_intent(f, 0) is SimExit.STOPPED
 
 
 def test_junk_value_means_stopped(tmp_path):
