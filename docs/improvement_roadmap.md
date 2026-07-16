@@ -298,9 +298,13 @@ carry a `port_conventions` block (framework-derived + vendor-canonical), up from
 
 `memory/project_sim_performance.md` documents PR #31's tuning (37.7 fps, 0.0036x real-time on Arty A7-35; GHDL dominates at 98.4 %). Remaining cheap wins:
 
-- **U23.** Dirty-flag redraw — skip `_draw()` when no LED / switch / button / 7-seg state changed since last frame. Touches `sim/sim_testbench.py` draw loop and `ui/board_display.py`. **Effort:** S. **Done when:** frame rate stays at 30 fps cap but CPU usage drops when no state changes.
-- **U24.** Batch multiple `Timer` calls per frame at high speed-slider settings (today >0.1x is CPU-capped). **Effort:** M. **Done when:** high speed-slider settings show measurably higher simulation throughput.
+- **U23.** Dirty-flag redraw — skip `_draw()` when no LED / switch / button / 7-seg state changed since last frame. Touches the SimulationScreen draw loop (`ui/simulation_screen.py`, once **U34** lands — was `sim/sim_testbench.py`) and `ui/board_display.py`. **Effort:** S. **Done when:** frame rate stays at 30 fps cap but CPU usage drops when no state changes.
+- **U24.** ~~Batch multiple `Timer` calls per frame at high speed-slider settings.~~ **Won't-do — resolved by measurement (U34 spike, 2026-07-16):** batching ×10 `Timer` calls per frame gained only **+3 %** on GHDL — the GPI round-trip is not the bottleneck (VHDL eval dominates), so the loop complexity is not worth it. The single-window child (U34) already free-runs the simulator to saturation on the benchmark path. **Effort:** M (not pursued).
 - **U25.** Profile GHDL GPI vs VHDL eval to find the next bottleneck. **Effort:** investigative. **Done when:** a written profile report identifies the top-3 bottlenecks with data.
+
+The larger active performance + UX initiative:
+
+- **U34.** Single-window simulation *(in progress)* — the launcher's pygame window persists for the whole session; the GHDL/NVC + cocotb child runs **headless** and streams signal state over an IPC link (`sim_link`), instead of today's close-window-and-reopen handoff. Measured throughput gain (GHDL **+16–26 %**, NVC **×4.3**) with a responsive 60 fps host UI. **Effort:** L. **Done when:** no window is created or destroyed between launcher start and app exit; benchmark parity per the experiment doc. See [`experiments/single_window_sim.md`](experiments/single_window_sim.md) and the [implementation plan](u34_single_window_plan.md).
 
 See also **P1** (NVC elaborate-once / run-many) in the [Icebox](#icebox).
 
@@ -496,7 +500,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **7** | Iteration & panel UX | U18 Recent files (+ keep dir on retry) · U14 Pause/resume · U15 Compact SimPanel · U19 Metrics checkbox |
 | **8** | Startup hardening + dev-DRY base | U16 Min window size · U17 Font pre-alloc · **D5 Path helper** → D13 Env-branch tests · D12 Arch diagram |
 | **9** | Untrusted-VHDL isolation | **D7 Decompose `launch_simulation`** → D16 Sandbox the sim subprocess |
-| **10** | Performance deep-dive | U25 Profile GHDL GPI vs eval → U24 Batch `Timer` calls |
+| **10** | Performance deep-dive | U25 Profile GHDL GPI vs eval · ~~U24 Batch `Timer` calls~~ (won't-do, resolved by measurement) · **U34 single-window** *(in progress — own release, ahead of this sprint)* |
 | **11** | Verilog / SystemVerilog | U20 Verilog support (Icarus) |
 | **12** | 7-seg physical mux | U22 7-seg physical mux (shares U21's wrapper-template 7-seg context) |
 

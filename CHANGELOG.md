@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that `uv sync` installs runtime dependencies only (`uv` includes the `dev` group by
   default).
 
+### Internal
+
+- **Single-window simulation groundwork (U34, part 1).** Added the process-split
+  IPC layer a later change will use to keep the launcher's window alive during
+  simulation: a `sim_link` transport (messages between the UI host and a headless
+  child over an authenticated localhost socket), a headless cocotb bridge
+  (`sim/sim_testbench_bridge.py`, no pygame), and a `SimChild` process handle with
+  `start_simulation()` / `finish_waveform()` in `sim_bridge.py` — sharing a new
+  `_prepare_simulation()` helper with the unchanged `launch_simulation()`. Inert:
+  nothing reaches it from the default launcher flow yet, so behavior is unchanged.
+  See [`docs/experiments/single_window_sim.md`](docs/experiments/single_window_sim.md).
+
 ## [0.14.0] - 2026-07-16
 
 ### Added
