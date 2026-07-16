@@ -60,6 +60,7 @@ class RunStats:
     avg_idle_pct: float = 0.0
     avg_sim_pct: float = 0.0
     sim_ns: int = 0
+    steps: int = 0
     duration_s: float = 0.0
 
 
@@ -521,15 +522,13 @@ class SimulationScreen:
         update_session(speed_factor=self.panel.speed_factor)
 
         duration = time.monotonic() - session_start
-        sim_ns = (
-            int((self._bye or self._last_state).get("sim_ns", 0))
-            if (self._bye or self._last_state)
-            else 0
-        )
+        last = self._bye or self._last_state
+        sim_ns = int(last.get("sim_ns", 0)) if last else 0
         n = len(self._fps_acc)
         stats = self.run_stats
         stats.frames = n
         stats.sim_ns = sim_ns
+        stats.steps = int(last.get("steps", 0)) if last else 0
         stats.duration_s = duration
         if n:
             stats.avg_fps = sum(self._fps_acc) / n

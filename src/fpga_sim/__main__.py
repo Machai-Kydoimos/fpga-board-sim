@@ -16,11 +16,14 @@ Usage:
   uv run python -m fpga_sim --benchmark 10 [--board ICEStick] [--vhdl hdl/blinky.vhd]
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import sys
+import time
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pygame
 
@@ -31,6 +34,10 @@ from fpga_sim.sim_bridge import Simulator, detect_simulators
 from fpga_sim.ui import FPGABoard
 from fpga_sim.ui.constants import get_font
 from fpga_sim.ui.theme import THEME_NAMES, set_theme
+
+if TYPE_CHECKING:
+    from fpga_sim.board_loader import BoardDef
+    from fpga_sim.sim_bridge import ConventionMatch
 
 
 def _parse_args() -> argparse.Namespace:
@@ -60,16 +67,24 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="VHDL file to simulate in benchmark mode (default: hdl/blinky.vhd)",
     )
+    p.add_argument(
+        "--no-ui",
+        action="store_true",
+        help="Benchmark the simulator only (headless child, no pygame UI); "
+        "requires --benchmark. Isolates simulator throughput from UI rendering.",
+    )
     return p.parse_args()
 
 
 def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) -> int:
     """Run a headless benchmark and return an exit code.
 
-    Discovers the board, analyzes the VHDL, then launches the simulation
-    with ``SDL_VIDEODRIVER=dummy`` and ``FPGA_SIM_BENCHMARK=<N>``.
-    The simulation runs for *args.benchmark* wall-clock seconds and then
-    prints a performance report via the session log.
+    Discovers the board and analyzes the VHDL, then dispatches to one of two
+    measurement modes: the default full-system benchmark (the real
+    ``SimulationScreen`` rendering headless — :func:`_benchmark_full_system`)
+    or, with ``--no-ui``, the simulator alone (:func:`_benchmark_no_ui`).  The
+    child free-runs for *args.benchmark* wall-clock seconds; each mode prints a
+    performance report and writes a session-log entry.
 
     Returns 0 on success, 1 on error.
     """
@@ -122,10 +137,11 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) ->
         print(f"[benchmark] VHDL contract error: {msg}", file=sys.stderr)
         return 1
 
+    mode = "simulator only" if args.no_ui else "full system"
     print(f"[benchmark] Board:    {chosen.name}")
     print(f"[benchmark] VHDL:     {vhdl_path.name}")
     print(f"[benchmark] Sim:      {simulator}")
-    print(f"[benchmark] Duration: {args.benchmark}s  (headless)")
+    print(f"[benchmark] Duration: {args.benchmark}s  (headless, {mode})")
 
     # Analyze VHDL
     generics = build_generics(chosen)
@@ -140,29 +156,230 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) ->
         print(f"[benchmark] VHDL analysis failed: {work_dir}", file=sys.stderr)
         return 1
 
-    # Launch headless simulation
-    from fpga_sim.sim_bridge import launch_simulation
-
-    board_json = chosen.to_json()
-    os.environ["FPGA_SIM_BENCHMARK"] = str(args.benchmark)
-    os.environ["SDL_VIDEODRIVER"] = "dummy"
-    try:
-        launch_simulation(
-            board_json,
+    # Launch the headless child and measure.  Default = the whole app rendering
+    # at 60 fps (SimulationScreen under a dummy video driver); --no-ui runs the
+    # child alone with no pygame, isolating simulator throughput from UI cost.
+    if args.no_ui:
+        return _benchmark_no_ui(
+            chosen,
             vhdl_path,
             toplevel_name,
             generics,
-            sim_width=1024,
-            sim_height=700,
+            simulator,
+            work_dir,
+            res.match,
+            args.benchmark,
+        )
+    return _benchmark_full_system(
+        chosen, vhdl_path, toplevel_name, generics, simulator, work_dir, res.match, args.benchmark
+    )
+
+
+def _benchmark_full_system(
+    board: BoardDef,
+    vhdl_path: Path,
+    toplevel: str,
+    generics: dict[str, str],
+    simulator: Simulator,
+    work_dir: str,
+    match: ConventionMatch | None,
+    secs: int,
+) -> int:
+    """Benchmark the whole app headless: the real SimulationScreen + a free-running child.
+
+    Uses ``SDL_VIDEODRIVER=dummy`` and drives the production render loop at
+    60 fps (toolbar hidden, matching the pre-U34 benchmark overlay rules), so
+    the numbers cover pygame rendering + the IPC link, not just the simulator.
+    The child free-runs via *secs* and self-stops, so the screen exits on its
+    own with no event injection.  Reads the screen's public ``run_stats``.
+    """
+    from fpga_sim.sim_bridge import finish_waveform, start_simulation
+    from fpga_sim.ui import SimulationScreen
+    from fpga_sim.ui.sim_panel import SPEED_DEFAULT
+
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
+    try:
+        pygame.init()
+        screen = pygame.display.set_mode((1024, 700))
+        clock = pygame.time.Clock()
+        session = load_session()
+        try:
+            speed = float(session.get("speed_factor", SPEED_DEFAULT))
+        except (TypeError, ValueError):
+            speed = SPEED_DEFAULT
+        child = start_simulation(
+            board.to_json(),
+            vhdl_path,
+            toplevel,
+            generics,
             work_dir=work_dir,
             simulator=simulator,
-            board_def=chosen,
-            match=res.match,
+            board_def=board,
+            speed_factor=speed,
+            match=match,
+            benchmark_secs=secs,
+        )
+        sim_screen = SimulationScreen(
+            screen,
+            clock,
+            board,
+            child,
+            speed_factor=speed,
+            match=match,
+            vhdl_path=vhdl_path,
+            simulator=simulator,
+            show_toolbar=False,
+        )
+        sim_screen.run()
+        finish_waveform(child)
+        stats = sim_screen.run_stats
+        _print_benchmark_report(
+            board,
+            simulator,
+            ui=True,
+            duration_s=stats.duration_s,
+            sim_ns=stats.sim_ns,
+            steps=stats.steps,
+            sim_pct=stats.avg_sim_pct,
+            frames=stats.frames,
+            avg_fps=stats.avg_fps,
+            draw_pct=stats.avg_draw_pct,
+            idle_pct=stats.avg_idle_pct,
         )
     finally:
-        os.environ.pop("FPGA_SIM_BENCHMARK", None)
+        get_font.cache_clear()
+        pygame.quit()
         os.environ.pop("SDL_VIDEODRIVER", None)
     return 0
+
+
+def _benchmark_no_ui(
+    board: BoardDef,
+    vhdl_path: Path,
+    toplevel: str,
+    generics: dict[str, str],
+    simulator: Simulator,
+    work_dir: str,
+    match: ConventionMatch | None,
+    secs: int,
+) -> int:
+    """Benchmark the simulator alone: a free-running headless child, no pygame.
+
+    Drains the link until the child reports ``bye``, then prints its steps /
+    sim rate / timer%.  Isolates simulator throughput from UI cost — a gap vs
+    the full-system sim rate points to host/child CPU contention.  Writes a
+    session-log entry with the UI (fps/draw/idle) fields zeroed.
+    """
+    from fpga_sim.sim_bridge import finish_waveform, start_simulation
+    from fpga_sim.sim_link import drain
+    from fpga_sim.sim_session_log import save_session_stats
+
+    child = start_simulation(
+        board.to_json(),
+        vhdl_path,
+        toplevel,
+        generics,
+        work_dir=work_dir,
+        simulator=simulator,
+        board_def=board,
+        match=match,
+        benchmark_secs=secs,
+    )
+    try:
+        connected = child.link.wait_connected(90.0)
+    except RuntimeError as e:
+        print(f"[benchmark] simulator link failed: {e}", file=sys.stderr)
+        child.stop()
+        return 1
+    if not connected:
+        print("[benchmark] simulator never connected", file=sys.stderr)
+        child.stop()
+        return 1
+
+    bye: dict[str, Any] | None = None
+    timer_pct = 0.0
+    deadline = time.monotonic() + secs + 120.0  # startup + run + drain headroom
+    while bye is None and time.monotonic() < deadline:
+        eof = False
+        for kind, payload in drain(child.link.conn):
+            if kind == "state":
+                timer_pct = float(payload.get("timer_pct", timer_pct))
+            elif kind == "bye":
+                bye = payload
+                break
+            elif kind == "eof":
+                eof = True
+        if bye is None and eof:
+            break
+        if bye is None:
+            time.sleep(0.02)
+
+    child.stop()
+    finish_waveform(child)
+    if bye is None:
+        print("[benchmark] child exited without reporting stats", file=sys.stderr)
+        return 1
+
+    _print_benchmark_report(
+        board,
+        simulator,
+        ui=False,
+        duration_s=float(bye.get("wall_s", 0.0)),
+        sim_ns=int(bye.get("sim_ns", 0)),
+        steps=int(bye.get("steps", 0)),
+        sim_pct=timer_pct,
+    )
+    save_session_stats(
+        board_name=board.name,
+        simulator=simulator,
+        duration_s=float(bye.get("wall_s", 0.0)),
+        avg_fps=0.0,
+        sim_time_ns=int(bye.get("sim_ns", 0)),
+        avg_ghdl_pct=timer_pct,
+        avg_draw_pct=0.0,
+        avg_idle_pct=0.0,
+        clock_hz=board.default_clock_hz,
+        mode="native" if match else "generic",
+        convention=match.maker if match else None,
+    )
+    return 0
+
+
+def _print_benchmark_report(
+    board: BoardDef,
+    simulator: Simulator,
+    *,
+    ui: bool,
+    duration_s: float,
+    sim_ns: int,
+    steps: int,
+    sim_pct: float,
+    frames: int = 0,
+    avg_fps: float = 0.0,
+    draw_pct: float = 0.0,
+    idle_pct: float = 0.0,
+) -> None:
+    """Print a benchmark report block (full-system when *ui*, else simulator-only)."""
+    scope = "full system" if ui else "simulator only, --no-ui"
+    sim_rate = (sim_ns / 1e9) / max(duration_s, 1e-9)
+    bar = "=" * 55
+    print(f"\n{bar}")
+    print(f"  Benchmark Report  ({duration_s:.1f}s wall-clock, {scope})")
+    print(bar)
+    print(f"  Board     : {board.name}")
+    print(f"  Simulator : {simulator.upper()}")
+    print(f"  Clock     : {board.default_clock_hz / 1e6:.4g} MHz")
+    if ui:
+        print(f"  Frames    : {frames}")
+        print(f"  Avg FPS   : {avg_fps:.1f}")
+    print(f"  Sim steps : {steps}")
+    print(f"  Sim time  : {sim_ns / 1e9:.4g} s simulated")
+    print(f"  Sim rate  : {sim_rate:.4g}x real-time")
+    print(f"  Sim step  : {sim_pct:.1f}%   (child loop share)")
+    if ui:
+        print(f"  Draw      : {draw_pct:.1f}%   (host frame share)")
+        print(f"  Idle      : {idle_pct:.1f}%   (host frame share)")
+    print(f"{bar}\n")
 
 
 # Floor for a restored window size: saved values below this are treated as junk.
