@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Experimental single-window simulation (U34).** Setting `FPGA_SIM_SINGLE_WINDOW=1`
+  keeps the launcher's window open during simulation instead of closing it and
+  opening a second one: the board comes alive in place while a headless GHDL/NVC
+  child streams signal state over an IPC link. Off by default this release; it
+  becomes the default in a later change. In this mode, closing the window (X)
+  quits the app while ESC / [■ Stop] returns to the launcher screens.
+
 ### Fixed
 
 - **README / onboarding accuracy.** The "Try it" walkthrough now shows the correct

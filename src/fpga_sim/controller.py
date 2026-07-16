@@ -22,6 +22,7 @@ window (see :meth:`ScreenController.on_simulate`).
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import partial
@@ -39,7 +40,9 @@ from fpga_sim.sim_bridge import (
     analyze_vhdl,
     check_vhdl_contract,
     check_vhdl_encoding,
+    finish_waveform,
     launch_simulation,
+    start_simulation,
 )
 from fpga_sim.ui import (
     BoardSelector,
@@ -47,6 +50,7 @@ from fpga_sim.ui import (
     ErrorDialog,
     FPGABoard,
     ScreenResult,
+    SimulationScreen,
     VHDLFilePicker,
     run_with_spinner,
 )
@@ -461,6 +465,9 @@ class ScreenController:
         BACK_TO_BOARDS returns to the selector, CHANGE_VHDL opens the picker,
         and STOPPED re-enters the preview as before.
         """
+        if os.environ.get("FPGA_SIM_SINGLE_WINDOW") == "1":
+            return self._on_simulate_attached()
+
         board = self.board
         s = self.state
         assert board is not None
@@ -564,6 +571,110 @@ class ScreenController:
                 return self.on_back()
             # DialogResult.RETRY → re-enter the board preview
             return NextScreen.PREVIEW
+        if sim_exit is SimExit.BACK_TO_BOARDS:
+            return self.on_back()
+        if sim_exit is SimExit.CHANGE_VHDL:
+            return self._run_vhdl_picker()
+        return NextScreen.PREVIEW
+
+    def _on_simulate_attached(self) -> NextScreen:
+        """Single-window simulation (U34): run in-window via :class:`SimulationScreen`.
+
+        Same re-analyze / session-save preamble as :meth:`on_simulate`, but the
+        launcher's pygame window persists — the GHDL/NVC child runs headless and
+        streams state to a :class:`SimulationScreen` rendered right here, so no
+        window is ever created or destroyed.  The exit intents route exactly as
+        the legacy tail does, plus QUIT (window X) which exits the whole app.
+        """
+        board = self.board
+        s = self.state
+        assert board is not None
+        assert s.vhdl_path is not None  # Start button only fires when VHDL is set
+
+        # Re-analyze if the work dir is missing / from a different simulator —
+        # the same guard (and mandatory contract re-check) as on_simulate.
+        if s.work_dir_simulator != s.simulator:
+            example = example_vhdl_for(board)
+            res = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
+            s.convention = res.match
+            if not res.ok:
+                ErrorDialog(self.screen, "VHDL Error", res.message, example_path=example).run(
+                    self.clock
+                )
+                s.clear_vhdl()
+                return NextScreen.PREVIEW
+            ok, detail = self._analyze_with_spinner(s.vhdl_path)
+            if not ok:
+                ErrorDialog(
+                    self.screen, f"{s.simulator.upper()} Error", detail, example_path=example
+                ).run(self.clock)
+                return NextScreen.PREVIEW
+            s.work_dir = detail
+            s.work_dir_simulator = s.simulator
+
+        s.board_class = board.class_name
+        s.board_source = board.source
+        s.last_vhdl_path = s.vhdl_path
+        self._save_session(window_size=self.screen.get_size())
+        push_recent(board.class_name, board.source, s.vhdl_path)
+
+        sim_error: str | None = None
+        sim_exit = SimExit.STOPPED
+        while True:
+            # Re-read the session each (re)launch so the slider resumes where the
+            # user left it (SimulationScreen writes it back at exit); the waveform
+            # settings ride along too.
+            sess = load_session()
+            try:
+                speed = float(sess.get("speed_factor", SPEED_DEFAULT))
+            except (TypeError, ValueError):
+                speed = SPEED_DEFAULT
+            try:
+                child = start_simulation(
+                    board.to_json(),
+                    s.vhdl_path,
+                    Path(s.vhdl_path).stem,
+                    build_generics(board),
+                    work_dir=s.work_dir,
+                    simulator=s.simulator,
+                    board_def=board,
+                    speed_factor=speed,
+                    waveform=sess.get("waveform"),
+                    waveform_open=sess.get("waveform_open"),
+                    waveform_memories=sess.get("waveform_memories"),
+                    match=s.convention,
+                )
+            except Exception as e:  # noqa: BLE001 - surface any launch failure in a dialog
+                sim_error = str(e)
+                break
+
+            sim_exit = SimulationScreen(
+                self.screen,
+                self.clock,
+                board,
+                child,
+                speed_factor=speed,
+                match=s.convention,
+                vhdl_path=s.vhdl_path,
+                simulator=s.simulator,
+            ).run()
+            finish_waveform(child)
+
+            if sim_exit is not SimExit.RELOAD_VHDL:
+                break
+            # [Reload VHDL]: revalidate in place (the window stays up), then loop
+            # straight into the next launch — never showing the preview.
+            bail = self._revalidate_for_reload()
+            if bail is not None:
+                return bail
+
+        if sim_error:
+            intent = ErrorDialog(self.screen, "Simulation Error", sim_error).run(self.clock)
+            if intent is DialogResult.BACK:
+                return self.on_back()
+            return NextScreen.PREVIEW
+        if sim_exit is SimExit.QUIT:
+            return NextScreen.QUIT  # SimulationScreen already saved the slider speed
         if sim_exit is SimExit.BACK_TO_BOARDS:
             return self.on_back()
         if sim_exit is SimExit.CHANGE_VHDL:

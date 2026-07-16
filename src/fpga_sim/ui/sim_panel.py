@@ -13,6 +13,13 @@ The ``clk_state`` dict is shared with sim_testbench.  When the virtual
 clock is changed via [-]/[+], sim_testbench detects the updated
 ``period_ns`` value and writes the new half-period to ``dut.clk_half_ns``
 on the VHDL sim_wrapper, taking effect within one clock half-period.
+
+Stats denominator (single-window mode, U34): the "G/D/I %" row's G is the
+GHDL/NVC step share.  In the legacy in-process path all three are shares of
+the same host frame (G + D + I = 100).  In single-window mode the Timer runs
+in the headless child, so G is the child-reported share of *its* loop while
+D/I remain host-frame shares — different denominators, so the three need not
+total 100.  See :meth:`SimPanel.set_remote` / :meth:`SimPanel.update_timing`.
 """
 
 from __future__ import annotations
@@ -209,6 +216,11 @@ class SimPanel:
         self._timer_us: float = 0.0
         self._draw_us: float = 0.0
         self._idle_us: float = 0.0
+        # Single-window mode (U34): the child reports its own GHDL/NVC step share
+        # (``timer_pct``) since the Timer runs in the child, not the host frame.
+        # ``None`` in the legacy in-process path, where the G zone is derived from
+        # the host's own ``_timer_us``.  See ``set_remote`` / ``update_timing``.
+        self._sim_pct: float | None = None
 
         # Slider drag state
         self._dragging: bool = False
@@ -249,11 +261,27 @@ class SimPanel:
     def update(self, sim_step_ns: int) -> None:
         """Record that *sim_step_ns* of simulation time just elapsed.
 
-        Call once per main-loop iteration, after await Timer(...).
+        Call once per main-loop iteration, after await Timer(...).  Legacy
+        in-process path only; single-window mode uses :meth:`set_remote`.
         """
         self._sim_elapsed_ns += sim_step_ns
         period = self.clk_state["period_ns"]
         self._clocks_per_frame = sim_step_ns / period if period > 0 else 0.0
+
+    def set_remote(self, sim_ns_total: int, at_max: bool) -> None:
+        """Feed child-reported totals in single-window mode (replaces :meth:`update`).
+
+        The headless child owns simulation time now, so it sends its running
+        total (``sim_ns_total``) and whether the step hit the cycle cap
+        (*at_max*).  Called once per host frame, so the delta since the last call
+        is exactly this frame's simulated cycles — keeping ``Clk/frame`` and the
+        ``effective_hz`` formula (clocks/frame x fps) correct without change.
+        """
+        period = self.clk_state["period_ns"]
+        delta_ns = max(0, sim_ns_total - self._sim_elapsed_ns)
+        self._clocks_per_frame = delta_ns / period if period > 0 else 0.0
+        self._sim_elapsed_ns = sim_ns_total
+        self.at_max_throughput = at_max
 
     def update_timing(
         self,
@@ -261,6 +289,7 @@ class SimPanel:
         timer_us: float,
         draw_us: float,
         idle_us: float,
+        sim_pct: float | None = None,
     ) -> None:
         """Record per-frame timing breakdown for display in the info zone.
 
@@ -269,11 +298,17 @@ class SimPanel:
         fps:
             Frames per second from ``pygame.time.Clock.get_fps()``.
         timer_us:
-            Microseconds spent inside ``await Timer(...)`` (GHDL/NVC step).
+            Microseconds spent inside ``await Timer(...)`` (GHDL/NVC step).  In
+            single-window mode the Timer runs in the child, so this is 0.0 on the
+            host and the G zone comes from *sim_pct* instead.
         draw_us:
             Microseconds for board draw + panel draw + ``pygame.display.flip``.
         idle_us:
             Microseconds spent in ``board.clock.tick`` (frame-cap sleep).
+        sim_pct:
+            Single-window mode only: the child-reported ``timer_pct`` (its
+            GHDL/NVC step share of *its* loop).  ``None`` keeps the legacy
+            behavior where the G zone is the host's ``_timer_us`` share.
 
         """
         self._fps_window.append(fps)
@@ -285,6 +320,7 @@ class SimPanel:
         self._timer_us = sum(self._timer_window) / n
         self._draw_us = sum(self._draw_window) / n
         self._idle_us = sum(self._idle_window) / n
+        self._sim_pct = sim_pct
 
     def handle_event(self, event: pygame.event.Event) -> None:
         """Process a single pygame event that may affect the panel."""
@@ -371,10 +407,19 @@ class SimPanel:
         self.screen.blit(hdr, (x + lpad, y0 + max(4, round(5 * s))))
         ty = y0 + hdr.get_height() + max(5, round(7 * s))
 
-        total_us = max(1.0, self._timer_us + self._draw_us + self._idle_us)
-        g_pct = int(self._timer_us / total_us * 100)
-        d_pct = int(self._draw_us / total_us * 100)
-        i_pct = 100 - g_pct - d_pct
+        if self._sim_pct is not None:
+            # Single-window mode (U34): G is the child's GHDL/NVC step share of
+            # *its* loop; D/I are host-frame shares (the host has no Timer).  The
+            # two denominators differ, so G + D + I need not total 100.
+            g_pct = int(self._sim_pct)
+            host_us = max(1.0, self._draw_us + self._idle_us)
+            d_pct = int(self._draw_us / host_us * 100)
+            i_pct = 100 - d_pct
+        else:
+            total_us = max(1.0, self._timer_us + self._draw_us + self._idle_us)
+            g_pct = int(self._timer_us / total_us * 100)
+            d_pct = int(self._draw_us / total_us * 100)
+            i_pct = 100 - g_pct - d_pct
         rows: list[tuple[str, str, tuple[int, int, int]]] = [
             ("Board clk:", _fmt_hz(self._board_clock_hz), THEME.val_clk),
             ("Sim time: ", _fmt_time(self._sim_elapsed_ns), WHITE),
