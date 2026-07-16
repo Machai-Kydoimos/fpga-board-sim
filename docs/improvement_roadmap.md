@@ -174,7 +174,7 @@ This document inventories all viable improvements and ranks them by impact.
 #### Board-native VHDL coverage (post-U21 ✅) — raised 23/278 → 258/278 ✅ (v0.14.0)
 
 U21 ✅ shipped the matcher + native wrapper, but a full-fleet sweep (2026-07-13, U21 closeout) shows
-only **23 of 278 boards** are genuinely native-usable today — the feature is **data-starved, not
+only **23 of 278 boards** were genuinely native-usable at U21 closeout — the feature was **data-starved, not
 broken**. **241 boards carry no `port_conventions` at all** (all 167 litex + 74 of 79 amaranth), and
 even where data existed the matcher's former **"all four roles required"** rule throttled it — of
 those 241 boards, 238 have clk + LED but only **52** have clk + LED + switch + button (most FPGA
