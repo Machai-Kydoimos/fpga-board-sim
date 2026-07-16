@@ -19,14 +19,18 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 from abc import ABC, abstractmethod
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import IO, TYPE_CHECKING, Any, Literal
 
 from fpga_sim.platform_open import open_with_default_app
+from fpga_sim.sim_link import SimLinkHost, send
 
 if TYPE_CHECKING:
     from fpga_sim.board_loader import BoardDef
@@ -1885,6 +1889,148 @@ def _open_waveform(dump: Path, gtkw: Path) -> None:
     open_with_default_app(dump)
 
 
+def _announce_waveform(
+    wave_cfg: WaveConfig | None,
+    generics: dict[str, str],
+    match: ConventionMatch | None,
+    waveform_open: bool | None,
+) -> None:
+    """Post-run waveform tail: gtkw sidecar + hint + optional auto-open.
+
+    A produced, non-empty dump is worth pointing at; a crashed/empty run is not.
+    Shared by :func:`launch_simulation` (legacy blocking path) and
+    :func:`finish_waveform` (single-window path), so both spell the U28 sidecar
+    and U29 auto-open identically.
+    """
+    if wave_cfg is None:
+        return
+    wpath = Path(wave_cfg.path)
+    if not (wpath.is_file() and wpath.stat().st_size > 0):
+        return
+    # U28: drop a matching GTKWave save file so the dump opens on the interesting
+    # ports (clk/sw/btn/led[/seg]) instead of an empty view.  U21 B3: for a
+    # board-native run, preselect the design's own native ports.
+    gtkw = _gtkw_path(wpath)
+    _write_gtkw(gtkw, wpath, generics, match=match)
+    print(f"Waveform written: {wpath}\n  Open it with preloaded signals:  gtkwave {gtkw}")
+    # U29: optionally launch the user's viewer on the produced dump.
+    env_open = _env_flag(WAVEFORM_OPEN_ENV)
+    do_open = env_open if env_open is not None else bool(waveform_open)
+    if do_open:
+        _open_waveform(wpath, gtkw)
+
+
+# ── Shared run preparation (launch_simulation + start_simulation) ─────────────
+
+
+@dataclass
+class _SimPrep:
+    """Analysis / elaboration / waveform prep shared by both run entry points.
+
+    Built by :func:`_prepare_simulation` and consumed by both
+    :func:`launch_simulation` (legacy, blocking) and :func:`start_simulation`
+    (single-window, headless).  ``env`` already carries the vars common to both
+    paths (board JSON + metrics metadata); each caller adds its path-specific
+    vars before launching.
+    """
+
+    env: dict[str, str]
+    cmd: list[str]
+    work_dir: str
+    generics: dict[str, str]
+    wave_cfg: WaveConfig | None
+    vhdl_path: Path
+
+
+def _prepare_simulation(
+    board_json: str,
+    vhdl_path: str | Path,
+    toplevel: str,
+    generics: dict[str, str] | None,
+    work_dir: str | None,
+    simulator: Simulator,
+    board_def: BoardDef | None,
+    match: ConventionMatch | None,
+    waveform: str | None,
+    waveform_memories: bool | None,
+) -> _SimPrep:
+    """Analyze (if needed), elaborate (NVC), resolve waveform, build the run cmd.
+
+    This is the body :func:`launch_simulation` used to run inline up to the point
+    of spawning the simulator, factored out so :func:`start_simulation` reuses it
+    verbatim.  The returned ``env`` holds the vars both the legacy pygame
+    testbench and the headless bridge read; the legacy/headless-specific vars are
+    added by the respective caller.  Behavior for the legacy path is unchanged.
+    """
+    from fpga_sim.board_loader import BoardDef  # noqa: PLC0415
+
+    vhdl_path = Path(vhdl_path).resolve()
+    be = _backend(simulator)
+    env, plugin_lib = _build_sim_env(simulator=simulator)
+    generics = dict(generics or {})
+
+    # Resolve board_def from JSON when not passed directly
+    if board_def is None and board_json:
+        try:
+            board_def = BoardDef.from_json(board_json)
+        except Exception:  # noqa: BLE001 - fall back to generic sizing
+            pass
+
+    # Detect seg port once; used for wrapper selection and NUM_SEGS injection.
+    _vhdl_text = vhdl_path.read_text(encoding="utf-8", errors="ignore")
+    _design_has_seg = _has_seg_port(_vhdl_text)
+
+    # Add NUM_SEGS generic only when both board and design use 7-seg
+    if board_def is not None and board_def.seven_seg is not None and _design_has_seg:
+        generics.setdefault("NUM_SEGS", str(board_def.seven_seg.num_digits))
+
+    if work_dir is None:
+        # Fresh run: analyze user file and wrapper from scratch.
+        work_dir = tempfile.mkdtemp(prefix="fpga_sim_run_")
+        subprocess.run(be.analyze_cmd(vhdl_path, work_dir), env=env, check=True, cwd=work_dir)
+        wrapper_path = _generate_wrapper(
+            toplevel, work_dir, board_def=board_def, design_has_seg=_design_has_seg, match=match
+        )
+        subprocess.run(be.analyze_cmd(wrapper_path, work_dir), env=env, check=True, cwd=work_dir)
+
+    if simulator == "nvc":
+        # NVC bakes generics into its elaboration artifact; re-elaborate with real values.
+        elab = subprocess.run(
+            be.elaborate_cmd("sim_wrapper", generics, work_dir),
+            env=env,
+            capture_output=True,
+            text=True,
+            cwd=work_dir,
+        )
+        if elab.returncode != 0:
+            raise RuntimeError(elab.stderr.strip() or "NVC elaboration failed.")
+
+    # Resolve the optional waveform request (off unless enabled).  The env var
+    # wins when set, so capture can be turned on headlessly / in CI (U29).
+    wave_fmt = _normalize_wave(os.environ.get(WAVEFORM_ENV, "").strip() or waveform)
+    wave_cfg: WaveConfig | None = None
+    if wave_fmt is not None:
+        wave_target = _waveform_path(toplevel, wave_fmt)
+        wave_target.parent.mkdir(parents=True, exist_ok=True)
+        # U30 "include memories": env wins over the session flag when set.
+        env_mem = _env_flag(WAVEFORM_MEMORIES_ENV)
+        dump_arrays = env_mem if env_mem is not None else bool(waveform_memories)
+        wave_cfg = WaveConfig(str(wave_target), wave_fmt, dump_arrays=dump_arrays)
+
+    # Both backends share the same run_cmd signature; NVC ignores generics (already baked in).
+    cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir, wave=wave_cfg)
+
+    # Env vars both the legacy pygame testbench and the headless bridge read.
+    env["TOPLEVEL"] = "sim_wrapper"
+    env["FPGA_SIM_TOPLEVEL"] = toplevel  # user's entity, for display/metadata
+    env["FPGA_SIM_BOARD_JSON"] = board_json
+    env["FPGA_SIM_SIMULATOR"] = simulator
+    env["FPGA_SIM_VHDL_PATH"] = str(vhdl_path)
+    env["FPGA_SIM_GENERICS"] = json.dumps(generics)
+
+    return _SimPrep(env, cmd, work_dir, generics, wave_cfg, vhdl_path)
+
+
 def launch_simulation(
     board_json: str,
     vhdl_path: str | Path,
@@ -1949,77 +2095,20 @@ def launch_simulation(
     :class:`SimExit` the user chose via the in-simulation toolbar
     (``SimExit.STOPPED`` for a plain ESC / window-close / [Stop] exit).
     """
-    from fpga_sim.board_loader import BoardDef  # noqa: PLC0415
-
-    vhdl_path = Path(vhdl_path).resolve()
-    be = _backend(simulator)
-    env, plugin_lib = _build_sim_env(simulator=simulator)
-    generics = dict(generics or {})
-
-    # Resolve board_def from JSON when not passed directly
-    if board_def is None and board_json:
-        try:
-            board_def = BoardDef.from_json(board_json)
-        except Exception:
-            pass
-
-    # Detect seg port once; used for wrapper selection and NUM_SEGS injection.
-    _vhdl_text = vhdl_path.read_text(encoding="utf-8", errors="ignore")
-    _design_has_seg = _has_seg_port(_vhdl_text)
-
-    # Add NUM_SEGS generic only when both board and design use 7-seg
-    if board_def is not None and board_def.seven_seg is not None and _design_has_seg:
-        generics.setdefault("NUM_SEGS", str(board_def.seven_seg.num_digits))
-
-    if work_dir is None:
-        # Fresh run: analyze user file and wrapper from scratch.
-        work_dir = tempfile.mkdtemp(prefix="fpga_sim_run_")
-        subprocess.run(
-            be.analyze_cmd(vhdl_path, work_dir),
-            env=env,
-            check=True,
-            cwd=work_dir,
-        )
-        wrapper_path = _generate_wrapper(
-            toplevel,
-            work_dir,
-            board_def=board_def,
-            design_has_seg=_design_has_seg,
-            match=match,
-        )
-        subprocess.run(
-            be.analyze_cmd(wrapper_path, work_dir),
-            env=env,
-            check=True,
-            cwd=work_dir,
-        )
-
-    if simulator == "nvc":
-        # NVC bakes generics into its elaboration artifact; re-elaborate with real values.
-        elab = subprocess.run(
-            be.elaborate_cmd("sim_wrapper", generics, work_dir),
-            env=env,
-            capture_output=True,
-            text=True,
-            cwd=work_dir,
-        )
-        if elab.returncode != 0:
-            raise RuntimeError(elab.stderr.strip() or "NVC elaboration failed.")
-
-    # Resolve the optional waveform request (off unless enabled).  The env var
-    # wins when set, so capture can be turned on headlessly / in CI (U29).
-    wave_fmt = _normalize_wave(os.environ.get(WAVEFORM_ENV, "").strip() or waveform)
-    wave_cfg: WaveConfig | None = None
-    if wave_fmt is not None:
-        wave_target = _waveform_path(toplevel, wave_fmt)
-        wave_target.parent.mkdir(parents=True, exist_ok=True)
-        # U30 "include memories": env wins over the session flag when set.
-        env_mem = _env_flag(WAVEFORM_MEMORIES_ENV)
-        dump_arrays = env_mem if env_mem is not None else bool(waveform_memories)
-        wave_cfg = WaveConfig(str(wave_target), wave_fmt, dump_arrays=dump_arrays)
-
-    # Both backends share the same run_cmd signature; NVC ignores generics (already baked in).
-    cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir, wave=wave_cfg)
+    prep = _prepare_simulation(
+        board_json,
+        vhdl_path,
+        toplevel,
+        generics,
+        work_dir,
+        simulator,
+        board_def,
+        match,
+        waveform,
+        waveform_memories,
+    )
+    env = prep.env
+    work_dir = prep.work_dir
 
     # Exit-intent side channel (see SimExit).  A reused work_dir — the reload
     # path re-analyzes in place — may hold a stale intent from the previous
@@ -2027,10 +2116,9 @@ def launch_simulation(
     intent_file = Path(work_dir) / _EXIT_INTENT_NAME
     intent_file.unlink(missing_ok=True)
 
+    # Legacy-window-only env: the pygame testbench module, window geometry, and
+    # the exit-intent path (the shared metadata vars are set in _prepare_simulation).
     env["COCOTB_TEST_MODULES"] = "sim_testbench"
-    env["TOPLEVEL"] = "sim_wrapper"
-    env["FPGA_SIM_TOPLEVEL"] = toplevel  # user's entity, for display/metadata
-    env["FPGA_SIM_BOARD_JSON"] = board_json
     env["FPGA_SIM_WIDTH"] = str(sim_width)
     env["FPGA_SIM_HEIGHT"] = str(sim_height)
     env["FPGA_SIM_EXIT_INTENT_FILE"] = str(intent_file)
@@ -2038,10 +2126,6 @@ def launch_simulation(
         env["FPGA_SIM_SPEED"] = str(speed_factor)
     if theme is not None:
         env["FPGA_SIM_THEME"] = theme
-    # Metadata consumed by sim_testbench when FPGA_SIM_METRICS is set
-    env["FPGA_SIM_SIMULATOR"] = simulator
-    env["FPGA_SIM_VHDL_PATH"] = str(vhdl_path)
-    env["FPGA_SIM_GENERICS"] = json.dumps(generics)
     # U21 B3: board-native run metadata (badge + session log, consumed by B3b).
     if match is not None:
         native_meta: dict[str, Any] = {
@@ -2060,24 +2144,178 @@ def launch_simulation(
             native_meta["buttons_active_low"] = match.buttons.active_low
         env["FPGA_SIM_NATIVE_CONVENTION"] = json.dumps(native_meta)
 
-    print(f"Starting simulation: {toplevel} from {vhdl_path.name} [{simulator.upper()}]")
-    result = subprocess.run(cmd, env=env, cwd=work_dir)
+    print(f"Starting simulation: {toplevel} from {prep.vhdl_path.name} [{simulator.upper()}]")
+    result = subprocess.run(prep.cmd, env=env, cwd=work_dir)
 
     # A produced, non-empty dump is worth pointing at; a crashed/empty run is not.
-    if wave_cfg is not None:
-        wpath = Path(wave_cfg.path)
-        if wpath.is_file() and wpath.stat().st_size > 0:
-            # U28: drop a matching GTKWave save file so the dump opens on the
-            # interesting ports (clk/sw/btn/led[/seg]) instead of an empty view.
-            # U21 B3: for a board-native run, preselect the design's own native
-            # ports (sim_wrapper.uut.<native>) rather than the contract names.
-            gtkw = _gtkw_path(wpath)
-            _write_gtkw(gtkw, wpath, generics, match=match)
-            print(f"Waveform written: {wpath}\n  Open it with preloaded signals:  gtkwave {gtkw}")
-            # U29: optionally launch the user's viewer on the produced dump.
-            env_open = _env_flag(WAVEFORM_OPEN_ENV)
-            do_open = env_open if env_open is not None else bool(waveform_open)
-            if do_open:
-                _open_waveform(wpath, gtkw)
+    _announce_waveform(prep.wave_cfg, prep.generics, match, waveform_open)
 
     return _read_exit_intent(intent_file, result.returncode)
+
+
+# ── Single-window headless run handle (U34) ───────────────────────────────────
+
+#: Lines of child stderr kept for the crash dialog.  The reader thread echoes
+#: every line to the terminal (today's behavior) and rings this tail for a
+#: post-mortem if the child dies before / during connect.
+_STDERR_TAIL_LINES = 50
+
+
+def _pump_stderr(pipe: IO[bytes] | None, tail: deque[str]) -> None:
+    """Echo the child's stderr to our stderr and keep a tail ring for crash dialogs.
+
+    Runs on a daemon thread for the child's lifetime; ends at EOF when the child
+    closes its stderr (normally, on exit).
+    """
+    if pipe is None:
+        return
+    for raw in iter(pipe.readline, b""):
+        line = raw.decode(errors="replace").rstrip("\n")
+        tail.append(line)
+        print(line, file=sys.stderr)
+    pipe.close()
+
+
+@dataclass
+class SimChild:
+    """Handle for a running headless simulation subprocess (single-window mode).
+
+    :func:`start_simulation` returns one of these instead of blocking: the
+    launcher keeps rendering its window and streams signal state over
+    :attr:`link` while the child runs headless.  :func:`finish_waveform` consumes
+    the capture fields after the run; the UI reads :attr:`link` for live state
+    and, on a crash, :attr:`stderr_tail`.
+    """
+
+    proc: subprocess.Popen[bytes]
+    link: SimLinkHost
+    wave_cfg: WaveConfig | None
+    generics: dict[str, str]  # finish_waveform needs these for the .gtkw sidecar
+    match: ConventionMatch | None
+    stderr_tail: deque[str]  # filled by the reader thread
+    #: Resolved session auto-open preference; the env var still wins in finish_waveform.
+    waveform_open: bool | None = None
+
+    def poll(self) -> int | None:
+        """Return the child's exit code, or None while it is still running."""
+        return self.proc.poll()
+
+    def stop(self, timeout: float = 5.0) -> int:
+        """Stop the child: ``stop`` message -> bounded wait -> terminate -> kill.
+
+        Returns the process exit code.  Safe to call whether or not the child
+        ever connected, and more than once.  GHDL/NVC exit codes are unreliable
+        on a clean stop, so callers must not infer failure from the return value
+        -- use a received ``bye`` / requested-stop instead (see the experiment doc).
+        """
+        rc = self.proc.poll()
+        if rc is not None:
+            self.link.close()
+            return rc
+        # Ask nicely over the link (skipped when the child never connected).
+        try:
+            if self.link.wait_connected(0.0):
+                send(self.link.conn, "stop", {})
+        except (RuntimeError, OSError):
+            pass
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            rc = self.proc.poll()
+            if rc is not None:
+                self.link.close()
+                return rc
+            time.sleep(0.02)
+        # Still alive after the grace period: escalate.
+        self.proc.terminate()
+        try:
+            rc = self.proc.wait(timeout=2.0)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+            rc = self.proc.wait()
+        self.link.close()
+        return rc
+
+
+def start_simulation(
+    board_json: str,
+    vhdl_path: str | Path,
+    toplevel: str = "blinky",
+    generics: dict[str, str] | None = None,
+    work_dir: str | None = None,
+    simulator: Simulator = "ghdl",
+    board_def: BoardDef | None = None,
+    speed_factor: float | None = None,
+    waveform: str | None = None,
+    waveform_open: bool | None = None,
+    waveform_memories: bool | None = None,
+    match: ConventionMatch | None = None,
+    benchmark_secs: float | None = None,
+) -> SimChild:
+    """Start a headless simulation child for single-window mode (U34).
+
+    Shares all analysis / elaboration / waveform preparation with
+    :func:`launch_simulation` (via :func:`_prepare_simulation`), but instead of
+    opening a window and blocking, it runs ``sim_testbench_bridge`` with no
+    display and streams signal state over a
+    :class:`~fpga_sim.sim_link.SimLinkHost`.  Returns a :class:`SimChild`
+    immediately; the caller (the SimulationScreen, or the benchmark) drives the
+    link and calls :meth:`SimChild.stop` + :func:`finish_waveform` when done.
+
+    *speed_factor* seeds the child's pacing via ``FPGA_SIM_SPEED`` (the host
+    still sends ``speed`` on any slider change).  *benchmark_secs*, when set,
+    makes the child free-run (no pacing) for that many wall seconds and then
+    self-stop -- used by ``--benchmark`` and the e2e tests.
+    """
+    prep = _prepare_simulation(
+        board_json,
+        vhdl_path,
+        toplevel,
+        generics,
+        work_dir,
+        simulator,
+        board_def,
+        match,
+        waveform,
+        waveform_memories,
+    )
+    env = prep.env
+
+    # The link the child connects back to (its listener accepts in the background).
+    host = SimLinkHost()
+    env.update(host.env_vars())
+    env["COCOTB_TEST_MODULES"] = "sim_testbench_bridge"
+    if speed_factor is not None:
+        env["FPGA_SIM_SPEED"] = str(speed_factor)  # pacing seed; avoids a wrong-speed blip
+    env.pop("FPGA_SIM_BENCHMARK", None)
+    if benchmark_secs is not None and benchmark_secs > 0:
+        env["FPGA_SIM_BENCHMARK"] = str(benchmark_secs)  # child free-runs then self-stops
+
+    print(
+        f"Starting headless simulation: {toplevel} from {prep.vhdl_path.name} [{simulator.upper()}]"
+    )
+    proc = subprocess.Popen(prep.cmd, env=env, cwd=prep.work_dir, stderr=subprocess.PIPE)
+    tail: deque[str] = deque(maxlen=_STDERR_TAIL_LINES)
+    threading.Thread(
+        target=_pump_stderr, args=(proc.stderr, tail), daemon=True, name="sim-stderr"
+    ).start()
+    return SimChild(
+        proc=proc,
+        link=host,
+        wave_cfg=prep.wave_cfg,
+        generics=prep.generics,
+        match=match,
+        stderr_tail=tail,
+        waveform_open=waveform_open,
+    )
+
+
+def finish_waveform(child: SimChild) -> None:
+    """Run the post-run waveform tail for a finished headless *child*.
+
+    Writes the U28 ``.gtkw`` sidecar, prints the "Waveform written" hint, and
+    optionally auto-opens the viewer -- exactly as :func:`launch_simulation` does
+    inline.  A no-op when capture was off or the dump is missing/empty.  Fed
+    entirely from :class:`SimChild` fields, so the caller runs it after
+    :meth:`SimChild.stop`.
+    """
+    _announce_waveform(child.wave_cfg, child.generics, child.match, child.waveform_open)
