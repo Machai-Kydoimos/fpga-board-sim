@@ -1,6 +1,6 @@
 # Board-native release (v0.14.0) — execution plan
 
-**Status:** READY FOR EXECUTION (plan approved 2026-07-15).
+**Status:** ✅ COMPLETE — **v0.14.0 released 2026-07-16** (all phases merged; see the Status ledger at the end).
 **Goal:** ship the board-native VHDL arc (U21 + U31 + U32 + U33, unreleased on `main`
 since v0.13.0, 25 commits) as **v0.14.0**, after (a) fixing every finding from the
 2026-07-15 full-arc review and (b) restructuring the documentation so the README serves
@@ -468,11 +468,11 @@ release habits.
 
 | Phase | Scope | PR | Status |
 |---|---|---|---|
-| 1 | Matcher/wrapper fixes (F1, F3, F4, F6) + native cocotb-loop test (F8) | — | not started |
-| 2 | Polarity reconciliation + fleet test (F2), classify hardening (F5), rgb survey, regens | — | not started |
-| 3a | `docs/install.md` + `docs/user_guide.md` + `docs/architecture.md` + CONTRIBUTING trim | — | not started |
-| 3b | `docs/writing_designs.md` + README rewrite (F7) | — | not started |
-| 4 | Release v0.14.0 | — | not started |
+| 1 | Matcher/wrapper fixes (F1, F3, F4, F6) + native cocotb-loop test (F8) | #245 | ✅ merged |
+| 2 | Polarity reconciliation + fleet test (F2), classify hardening (F5), rgb survey, regens | #246 | ✅ merged |
+| 3a | `docs/install.md` + `docs/user_guide.md` + `docs/architecture.md` + CONTRIBUTING trim | #247 | ✅ merged |
+| 3b | `docs/writing_designs.md` + README rewrite (F7) | #248 | ✅ merged |
+| 4 | Release v0.14.0 | #249 | ✅ released 2026-07-16 |
 
 ## Appendix A — README disposition map (from 672-line README @ db49065)
 

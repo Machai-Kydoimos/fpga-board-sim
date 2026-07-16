@@ -13,7 +13,7 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Context
 
-The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 43 test files (1445 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, three UI themes, performance heavily tuned (PR #31), v0.13.0 released (2026-07-11).
+The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 43 test files (1445 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, three UI themes, performance heavily tuned (PR #31), **v0.14.0 released (2026-07-16)** — the board-native release (board-native VHDL mode, U21 / U31 / U32 / U33).
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
@@ -152,7 +152,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### U21. Board-native VHDL mode (port conventions) ✅
 
-- Shipped 2026-07-13 (arc: groundwork #198/#199, Part A #209–#215 + follow-ups #213/#214/#218/#219, Part B #216/#217/#220/#221 + this closeout; issues #200–#208). A design written to a board's *own* port names and fixed widths (Terasic `CLOCK_50` / `KEY` / `LEDR` / `SW` / `HEX0`-`HEX5`, **no `NUM_*` generics**) now simulates unmodified. **Part A** populated `port_conventions` across the fleet — schema deltas (A0) → re-sync preservation guard (A1) → dialect parsers + `classify()` (A2) → generator + curated overlay (A3) → population waves (A4). **Part B** consumes it: `BoardDef.port_conventions` (B1); a `check_vhdl_contract()` matcher returning a typed `ContractResult` + `ConventionMatch` (B2); a native `sim_wrapper` (`_generate_wrapper`) that adapts native ports to the `clk/sw/btn/led/seg` boundary — active-low LED/button inversion, `individual` 7-seg per-digit packing — with the cocotb testbench untouched, plus `hdl/native/` examples and GHDL/NVC e2e (B3a); and the run affordances / mode badge / session-log fields (B3b). **Contract:** the simulator always models the *selected* board and the board's convention supplies polarity, so a file written for the wrong board near-misses (rejected, mismatch named) rather than silently coercing or flipping polarity. Registry + arc plan: [`docs/port_convention_sources/`](port_convention_sources/), [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
+- Shipped 2026-07-13, **released in v0.14.0** (arc: groundwork #198/#199, Part A #209–#215 + follow-ups #213/#214/#218/#219, Part B #216/#217/#220/#221 + this closeout; issues #200–#208). A design written to a board's *own* port names and fixed widths (Terasic `CLOCK_50` / `KEY` / `LEDR` / `SW` / `HEX0`-`HEX5`, **no `NUM_*` generics**) now simulates unmodified. **Part A** populated `port_conventions` across the fleet — schema deltas (A0) → re-sync preservation guard (A1) → dialect parsers + `classify()` (A2) → generator + curated overlay (A3) → population waves (A4). **Part B** consumes it: `BoardDef.port_conventions` (B1); a `check_vhdl_contract()` matcher returning a typed `ContractResult` + `ConventionMatch` (B2); a native `sim_wrapper` (`_generate_wrapper`) that adapts native ports to the `clk/sw/btn/led/seg` boundary — active-low LED/button inversion, `individual` 7-seg per-digit packing — with the cocotb testbench untouched, plus `hdl/native/` examples and GHDL/NVC e2e (B3a); and the run affordances / mode badge / session-log fields (B3b). **Contract:** the simulator always models the *selected* board and the board's convention supplies polarity, so a file written for the wrong board near-misses (rejected, mismatch named) rather than silently coercing or flipping polarity. Registry + arc plan: [`docs/port_convention_sources/`](port_convention_sources/), [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
 #### U22. 7-segment v2 — physical mux mode
 
@@ -171,10 +171,10 @@ This document inventories all viable improvements and ranks them by impact.
   emit `scan` for shared-segment names as part of (or ahead of) this card — touches
   `scripts/port_convention_parsers/classify.py` + the regenerated `boards/digilent-xdc/*.json`.
 
-#### Board-native VHDL coverage (post-U21 ✅) — raising the 23/278 usable count
+#### Board-native VHDL coverage (post-U21 ✅) — raised 23/278 → 258/278 ✅ (v0.14.0)
 
 U21 ✅ shipped the matcher + native wrapper, but a full-fleet sweep (2026-07-13, U21 closeout) shows
-only **23 of 278 boards** are genuinely native-usable today — the feature is **data-starved, not
+only **23 of 278 boards** were genuinely native-usable at U21 closeout — the feature was **data-starved, not
 broken**. **241 boards carry no `port_conventions` at all** (all 167 litex + 74 of 79 amaranth), and
 even where data existed the matcher's former **"all four roles required"** rule throttled it — of
 those 241 boards, 238 have clk + LED but only **52** have clk + LED + switch + button (most FPGA
@@ -183,13 +183,14 @@ whatever roles its board's convention declares (clk + LEDs minimum), so partial-
 no longer capped — the remaining throttle is purely missing data. The native names / counts / clock
 for those 238 boards were **already parsed** into the board JSON, just not emitted as a convention —
 **U32 ✅** (2026-07-14) did that, emitting framework-derived conventions for **241/246** litex+amaranth
-boards; **U33** adds vendor-*canonical* quality where it matters most. Realistic combined ceiling ≈
+boards; **U33 ✅** added vendor-*canonical* quality where it matters most. Realistic combined ceiling ≈
 150–200 (not 278: scan/serial displays need **U22**, and some boards have no machine-parseable
-source). Recommended next: **U33** (canonical population waves) — **U31 ✅** and **U32 ✅** done.
+source). **All shipped in v0.14.0:** **U31 ✅** + **U32 ✅** + **U33 ✅** — **258 of 278 boards** now
+carry a `port_conventions` block (framework-derived + vendor-canonical), up from 23.
 
 #### U31. Board-native partial-interface support ✅
 
-- Shipped 2026-07-13 (PR #226, issue #223). `_attempt_convention` no longer requires all four roles: it now
+- Shipped 2026-07-13, **released in v0.14.0** (PR #226, issue #223). `_attempt_convention` no longer requires all four roles: it now
   matches whatever roles the selected board's convention declares — clk + LEDs minimum, switches /
   buttons matched-if-the-convention-names-them — generalizing the existing "seg required only when
   the board has a display" rule, so a **switch-less or button-less** board-native design runs
@@ -203,7 +204,7 @@ source). Recommended next: **U33** (canonical population waves) — **U31 ✅** 
 
 #### U32. Auto-derive `port_conventions` from the litex & amaranth platform files ✅
 
-- Shipped 2026-07-14 (unreleased on main, bundled with U21 + U31). The litex and amaranth sync parsers
+- Shipped 2026-07-14, **released in v0.14.0** (bundled with U21 + U31). The litex and amaranth sync parsers
   now emit a framework-derived `port_conventions.{litex,amaranth}` block for **241/246** boards
   (164/167 litex + 77/79 amaranth; the rest lack a clock or LEDs) via the new shared
   `scripts/framework_conventions.py`. Each advertises the framework's *own* port names — litex
@@ -218,8 +219,12 @@ source). Recommended next: **U33** (canonical population waves) — **U31 ✅** 
   board counts so analyze == run. A litex Arty design (`hdl/native/arty_litex.vhd`) simulates unmodified
   on GHDL + NVC. Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
-#### U33. Board-native population waves 2+ (registry-driven canonical conventions)
+#### U33. Board-native population waves 2+ (registry-driven canonical conventions) ✅
 
+- **Shipped 2026-07-15, released in v0.14.0.** Waves 1–4 populated vendor-canonical conventions across
+  ~14 boards; combined board-native coverage reached **258/278**. Full detail →
+  [roadmap_delivered.md](roadmap_delivered.md). The wave history and the forward notes below are
+  retained as guidance for the ongoing canonical-population effort (**P2** / **P18**).
 - **Progress:** ✅ **Wave 1** (5 Terasic teaching boards, U21) + the ✅ digilent-parser coverage fix
   (#229, +2). ✅ **Wave 2** (#231): 4 clean official-repo boards — Alchitry Au, Tang Nano 9K
   (active-low, cited), Icepi Zero, Trellisboard — plus a `resolve_commit_sha` `GITHUB_TOKEN` auth fix
@@ -487,7 +492,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **3** | Visible polish | ~~U3 Tooltips~~ ✅ · ~~U4 Contextual errors~~ ✅ · ~~U6 Theme system~~ ✅ · ~~U7 In-sim toolbar~~ ✅ |
 | **4** | Feature breadth | U8 Splash · U9 PWM brightness · ~~U10 Waveform~~ ✅ · U23 Dirty-flag redraw · U27 User JSON themes |
 | **5** | Waveform polish | ~~U28 Auto-emit `.gtkw`~~ ✅ · ~~U29 `FPGA_SIM_WAVEFORM` env + auto-open~~ ✅ · ~~U30 "Include memories" (`--dump-arrays`)~~ ✅ |
-| **6** | Board-native VHDL (lab↔sim round-trip) | ~~U21~~ ✅ **shipped 2026-07-13** (A0–B4, PRs #209–#222) per [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md). **Coverage follow-on (raise the 23/278 genuine-usable count — see the "Board-native VHDL coverage" note under U22):** ~~U31~~ ✅ partial-interface → ~~U32~~ ✅ litex/amaranth auto-derive (241/246 boards) → **U33** canonical population waves (parallel). U33 is near-term |
+| **6** | Board-native VHDL (lab↔sim round-trip) | ~~U21~~ ✅ **shipped 2026-07-13** (A0–B4, PRs #209–#222) per [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md). **Coverage follow-on (raised the 23/278 genuine-usable count to 258/278 — see the "Board-native VHDL coverage" note under U22):** ~~U31~~ ✅ partial-interface → ~~U32~~ ✅ litex/amaranth auto-derive (241/246 boards) → ~~U33~~ ✅ canonical population waves. **All released in v0.14.0** |
 | **7** | Iteration & panel UX | U18 Recent files (+ keep dir on retry) · U14 Pause/resume · U15 Compact SimPanel · U19 Metrics checkbox |
 | **8** | Startup hardening + dev-DRY base | U16 Min window size · U17 Font pre-alloc · **D5 Path helper** → D13 Env-branch tests · D12 Arch diagram |
 | **9** | Untrusted-VHDL isolation | **D7 Decompose `launch_simulation`** → D16 Sandbox the sim subprocess |
