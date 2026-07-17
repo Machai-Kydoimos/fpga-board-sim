@@ -1542,6 +1542,7 @@ def analyze_vhdl(
             capture_output=True,
             text=True,
             timeout=30,
+            cwd=work_dir,  # GHDL's compiled backends emit an executable here
         )
         if elab.returncode != 0:
             combined = (result2.stderr + elab.stderr).strip()
@@ -1947,17 +1948,20 @@ def _prepare_simulation(
         )
         subprocess.run(be.analyze_cmd(wrapper_path, work_dir), env=env, check=True, cwd=work_dir)
 
-    if simulator == "nvc":
-        # NVC bakes generics into its elaboration artifact; re-elaborate with real values.
-        elab = subprocess.run(
-            be.elaborate_cmd("sim_wrapper", generics, work_dir),
-            env=env,
-            capture_output=True,
-            text=True,
-            cwd=work_dir,
-        )
-        if elab.returncode != 0:
-            raise RuntimeError(elab.stderr.strip() or "NVC elaboration failed.")
+    # NVC bakes generics into its elaboration artifact, so it re-elaborates with
+    # the real values.  GHDL applies generics at -r, but its compiled backends
+    # (llvm/gcc) need -e to emit the sim_wrapper executable that -r then runs —
+    # in work_dir, where run_cmd's cwd looks for it.  For mcode/llvm-jit (in-
+    # memory elaboration) this is a cheap structural re-check.
+    elab = subprocess.run(
+        be.elaborate_cmd("sim_wrapper", generics if simulator == "nvc" else {}, work_dir),
+        env=env,
+        capture_output=True,
+        text=True,
+        cwd=work_dir,
+    )
+    if elab.returncode != 0:
+        raise RuntimeError(elab.stderr.strip() or f"{simulator.upper()} elaboration failed.")
 
     # Resolve the optional waveform request (off unless enabled).  The env var
     # wins when set, so capture can be turned on headlessly / in CI (U29).

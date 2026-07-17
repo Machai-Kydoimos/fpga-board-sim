@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **GHDL's compiled backends (LLVM/GCC) now work as drop-in `ghdl` binaries.**
+  Simulation prep elaborates for GHDL too (previously NVC-only — mcode's `-r`
+  re-elaborates in memory, but a compiled backend's `-r` runs the executable
+  that `-e` emits), and both elaboration calls now run in the analysis workdir,
+  so that executable lands where `-r` looks for it instead of littering the
+  launcher's working directory. mcode / llvm-jit behavior is unchanged (their
+  in-memory elaboration makes the extra `-e` a cheap structural re-check).
+  Measured on GHDL 7.0.0-dev: the LLVM backend then runs blinky ~9× faster
+  than mcode (0.039x vs 0.0043x real-time in `--benchmark --no-ui`).
+
 ### Internal
 
 - Post-U34 audit cleanup: retired stale pre-single-window references — roadmap
