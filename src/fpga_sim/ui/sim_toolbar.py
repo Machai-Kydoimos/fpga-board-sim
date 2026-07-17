@@ -7,9 +7,9 @@ footer's color language (board navigation = teal, VHDL loading = blue,
 theme that styles the launcher styles this toolbar for free.
 
 The widget is deliberately dumb: it draws and hit-tests.  A click resolves to
-a :class:`~fpga_sim.sim_bridge.SimExit`, which ``sim/sim_testbench.py`` writes
-to the exit-intent file for the launcher to act on (see
-``launch_simulation``); the toolbar itself never touches processes or files,
+a :class:`~fpga_sim.ui.results.SimExit`, which
+:meth:`~fpga_sim.ui.simulation_screen.SimulationScreen.run` returns to the
+controller to act on; the toolbar itself never touches processes or files,
 which keeps it unit-testable under a headless display.
 """
 
@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pygame
 
-from fpga_sim.sim_bridge import SimExit
+from fpga_sim.ui.results import SimExit
 from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
 from fpga_sim.ui.widgets.button import ButtonStyle

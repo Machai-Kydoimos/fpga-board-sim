@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whole session: starting a simulation brings the previewed board alive in place while
   a headless GHDL/NVC child streams signal state over an IPC link — no second window is
   opened or closed. Closing the window (X) quits the app; **ESC** or **[■ Stop]**
-  returns to the launcher screens. Set `FPGA_SIM_LEGACY_WINDOW=1` to restore the old
-  separate-window behavior for this release (it is removed in a later change).
+  returns to the launcher screens. Measured throughput improves (GHDL +16–26%, NVC
+  ×4.3) at a steady ~62 fps host UI.
 - **`fpga-sim --benchmark --no-ui`.** A new benchmark mode that runs the simulator
   alone (headless child, no pygame) and reports its steps / sim rate / timer%,
   isolating simulator throughput from UI cost. The default `--benchmark` now measures
@@ -49,15 +49,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
-- **Single-window simulation groundwork (U34, part 1).** Added the process-split
-  IPC layer a later change will use to keep the launcher's window alive during
-  simulation: a `sim_link` transport (messages between the UI host and a headless
-  child over an authenticated localhost socket), a headless cocotb bridge
-  (`sim/sim_testbench_bridge.py`, no pygame), and a `SimChild` process handle with
-  `start_simulation()` / `finish_waveform()` in `sim_bridge.py` — sharing a new
-  `_prepare_simulation()` helper with the unchanged `launch_simulation()`. Inert:
-  nothing reaches it from the default launcher flow yet, so behavior is unchanged.
-  See [`docs/experiments/single_window_sim.md`](docs/experiments/single_window_sim.md).
+- **Single-window architecture (U34).** Simulation runs as a headless GHDL/NVC + cocotb
+  child (`sim/sim_testbench.py`, pygame-free) that streams state to the launcher over a
+  new `sim_link` IPC transport (authenticated localhost socket);
+  `sim_bridge.start_simulation()` returns a `SimChild` handle and `finish_waveform()`
+  runs the post-run waveform tail. The old pygame-in-child testbench, the blocking
+  `launch_simulation()`, and the `SimExit` exit-intent file channel are removed;
+  `SimExit` now lives in `fpga_sim/ui/results.py`.
+  See [`docs/architecture.md`](docs/architecture.md).
 
 ## [0.14.0] - 2026-07-16
 

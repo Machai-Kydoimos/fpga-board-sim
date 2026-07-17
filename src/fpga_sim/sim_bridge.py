@@ -25,7 +25,6 @@ from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any, Literal
 
@@ -46,7 +45,7 @@ Simulator = Literal["ghdl", "nvc"]
 # Waveform-capture formats the sim run subprocess can dump natively.  ``None``
 # (off) is the default throughout; the Settings dialog persists a tri-state
 # ``waveform`` session key — ``"off"`` / ``"vcd"`` / ``"fst"`` — which
-# ``launch_simulation`` normalizes via :func:`_normalize_wave`.
+# ``start_simulation`` normalizes via :func:`_normalize_wave`.
 WaveFormat = Literal["vcd", "fst"]
 
 
@@ -73,51 +72,6 @@ class WaveConfig:
     path: str
     fmt: WaveFormat
     dump_arrays: bool = False
-
-
-class SimExit(Enum):
-    """Why the interactive simulation ended — the U7 navigation contract.
-
-    The values are the exact strings ``sim_testbench`` writes to the
-    exit-intent file (the path in ``FPGA_SIM_EXIT_INTENT_FILE``) when one of
-    the in-simulation toolbar buttons ends the run; nothing is written for a
-    plain stop.  :func:`launch_simulation` reads the file back and returns the
-    member, so the launcher can route to the selector / picker / a relaunch
-    without the subprocess ever touching launcher state.
-
-    A sidecar file is used rather than the process return code: GHDL and NVC
-    own their exit codes, so overloading them would conflate "crashed with
-    code N" and "user chose action N".  The file is trusted only for a clean
-    (returncode 0) exit.
-    """
-
-    STOPPED = "stopped"  # ESC / [Stop] (+ legacy window close) — no intent file
-    BACK_TO_BOARDS = "back_to_boards"  # [Back to Boards] → board selector
-    CHANGE_VHDL = "change_vhdl"  # [Change VHDL] → VHDL file picker
-    RELOAD_VHDL = "reload_vhdl"  # [Reload VHDL] → re-analyze same file, relaunch
-    QUIT = "quit"  # window X in single-window mode (U34) → exit the whole app
-
-
-#: Filename of the exit-intent sidecar inside the simulation work dir.
-_EXIT_INTENT_NAME = "exit_intent.txt"
-
-
-def _read_exit_intent(intent_file: Path, returncode: int) -> SimExit:
-    """Map a finished sim subprocess to a :class:`SimExit`.
-
-    The intent file is honored only for a clean (*returncode* 0) exit; a
-    missing file, an unknown value, or a failed subprocess all mean STOPPED —
-    a crash must never be treated as navigation.
-    """
-    if returncode != 0:
-        return SimExit.STOPPED
-    try:
-        intent = SimExit(intent_file.read_text().strip())
-    except (OSError, ValueError):
-        return SimExit.STOPPED
-    # QUIT is a single-window-only signal (window X, U34); the legacy testbench
-    # never writes it to the intent file, so treat a stray "quit" as a plain stop.
-    return SimExit.STOPPED if intent is SimExit.QUIT else intent
 
 
 # ── Simulator backend classes ─────────────────────────────────────────────────
@@ -1340,7 +1294,7 @@ def _render_native_wrapper(
       active-high ``{dp, g..a}`` byte the display expects (dp forced off).
 
     The entity, generics, top ports and clock process are identical to the generic
-    wrapper (so ``launch_simulation``/``run_cmd``/``_write_gtkw``/the cocotb
+    wrapper (so ``start_simulation``/``run_cmd``/``_write_gtkw``/the cocotb
     testbench are unchanged); only the architecture body differs -- a
     generic-map-less uut with native names.  Generic *defaults* are baked to the
     board's widths so ``analyze_vhdl``'s default-generic early elaboration lines the
@@ -1533,7 +1487,7 @@ def analyze_vhdl(
       3. Elaborate ``sim_wrapper`` with VHDL-default generics as an early
          error check.  GHDL resolves generics at run time so the defaults
          used here are discarded.  NVC bakes generics into its elaboration
-         artifact, so ``launch_simulation()`` re-elaborates with the real
+         artifact, so ``start_simulation()`` re-elaborates with the real
          board generics before running — but this early check still catches
          structural errors (port-width mismatches, missing libraries, etc.)
          at validation time rather than at simulation launch.
@@ -1582,7 +1536,7 @@ def analyze_vhdl(
             return False, msg
 
         # Step 3: early elaboration check — VHDL defaults suffice for structural errors.
-        # NVC will re-elaborate with real board generics in launch_simulation().
+        # NVC will re-elaborate with real board generics in start_simulation().
         elab = subprocess.run(
             be.elaborate_cmd("sim_wrapper", {}, work_dir),
             capture_output=True,
@@ -1684,7 +1638,7 @@ WAVEFORM_DIR: Path = Path.home() / ".fpga_simulator" / "waveforms"
 WAVEFORM_DIR_ENV = "FPGA_SIM_WAVEFORM_DIR"
 
 #: Env var enabling capture headlessly / in CI, overriding the session ``waveform``
-#: mode when set (blank/unset → the session value).  See :func:`launch_simulation`.
+#: mode when set (blank/unset → the session value).  See :func:`start_simulation`.
 WAVEFORM_ENV = "FPGA_SIM_WAVEFORM"
 
 #: Env var forcing waveform auto-open on/off, overriding the session
@@ -1902,9 +1856,8 @@ def _announce_waveform(
     """Post-run waveform tail: gtkw sidecar + hint + optional auto-open.
 
     A produced, non-empty dump is worth pointing at; a crashed/empty run is not.
-    Shared by :func:`launch_simulation` (legacy blocking path) and
-    :func:`finish_waveform` (single-window path), so both spell the U28 sidecar
-    and U29 auto-open identically.
+    Called by :func:`finish_waveform` after a headless run to spell the U28
+    sidecar and U29 auto-open.
     """
     if wave_cfg is None:
         return
@@ -1924,18 +1877,16 @@ def _announce_waveform(
         _open_waveform(wpath, gtkw)
 
 
-# ── Shared run preparation (launch_simulation + start_simulation) ─────────────
+# ── Run preparation for start_simulation ──────────────────────────────────────
 
 
 @dataclass
 class _SimPrep:
-    """Analysis / elaboration / waveform prep shared by both run entry points.
+    """Analysis / elaboration / waveform prep for a headless run.
 
-    Built by :func:`_prepare_simulation` and consumed by both
-    :func:`launch_simulation` (legacy, blocking) and :func:`start_simulation`
-    (single-window, headless).  ``env`` already carries the vars common to both
-    paths (board JSON + metrics metadata); each caller adds its path-specific
-    vars before launching.
+    Built by :func:`_prepare_simulation` and consumed by :func:`start_simulation`.
+    ``env`` already carries the vars the child needs (board JSON + metrics
+    metadata); :func:`start_simulation` adds the link vars before launching.
     """
 
     env: dict[str, str]
@@ -1960,11 +1911,10 @@ def _prepare_simulation(
 ) -> _SimPrep:
     """Analyze (if needed), elaborate (NVC), resolve waveform, build the run cmd.
 
-    This is the body :func:`launch_simulation` used to run inline up to the point
-    of spawning the simulator, factored out so :func:`start_simulation` reuses it
-    verbatim.  The returned ``env`` holds the vars both the legacy pygame
-    testbench and the headless bridge read; the legacy/headless-specific vars are
-    added by the respective caller.  Behavior for the legacy path is unchanged.
+    The prep :func:`start_simulation` runs before spawning the simulator,
+    factored into its own helper.  The returned ``env`` holds the vars the
+    headless testbench reads (board JSON + metrics metadata); the link vars are
+    added by :func:`start_simulation`.
     """
     from fpga_sim.board_loader import BoardDef  # noqa: PLC0415
 
@@ -2033,128 +1983,6 @@ def _prepare_simulation(
     env["FPGA_SIM_GENERICS"] = json.dumps(generics)
 
     return _SimPrep(env, cmd, work_dir, generics, wave_cfg, vhdl_path)
-
-
-def launch_simulation(
-    board_json: str,
-    vhdl_path: str | Path,
-    toplevel: str = "blinky",
-    generics: dict[str, str] | None = None,
-    sim_width: int = 1024,
-    sim_height: int = 700,
-    work_dir: str | None = None,
-    simulator: Simulator = "ghdl",
-    board_def: BoardDef | None = None,
-    speed_factor: float | None = None,
-    theme: str | None = None,
-    waveform: str | None = None,
-    waveform_open: bool | None = None,
-    waveform_memories: bool | None = None,
-    match: ConventionMatch | None = None,
-) -> SimExit:
-    """Launch an interactive simulator + cocotb simulation.
-
-    The actual elaborated/run entity is always ``sim_wrapper`` (generated by
-    ``analyze_vhdl()``), which drives the clock from VHDL and instantiates
-    the user's entity (*toplevel*) internally.
-
-    GHDL: reuses analysis artifacts from analyze_vhdl(), passes generics
-          (including ``CLK_HALF_NS``) inline on the ``-r`` run command.
-    NVC:  elaborates ``sim_wrapper`` with generics, then runs.
-
-    If *work_dir* is supplied (from a prior ``analyze_vhdl()`` call) the
-    analysis step is skipped — existing artifacts are reused.
-
-    *speed_factor* (when not ``None``) seeds the sim panel's speed slider via
-    ``FPGA_SIM_SPEED``; its presence also tells sim_testbench to write the
-    slider's final value back to the session file at exit.  Callers that must
-    not touch the user's session (benchmark, tests) simply leave it ``None``.
-
-    *theme* (when not ``None``) carries the launcher's active theme name into
-    the subprocess via ``FPGA_SIM_THEME``; sim_testbench applies it before
-    drawing.  Passed as a plain string so this module stays UI-import-free.
-
-    *waveform* (``"vcd"`` / ``"fst"``; anything else, incl. ``None``, means off)
-    enables native simulator waveform capture to a timestamped file under
-    ``~/.fpga_simulator/waveforms/`` — or ``$FPGA_SIM_WAVEFORM_DIR`` — (see
-    :func:`_waveform_path`).  Capture is a run-command flag on GHDL/NVC and
-    independent of cocotb, so ``sim_testbench`` is unaffected; the path is
-    printed after a run that produced a non-empty file, for opening in GTKWave.
-
-    ``$FPGA_SIM_WAVEFORM`` (off/vcd/fst) overrides *waveform* when set, so capture
-    can be enabled headlessly / in CI.  *waveform_open* — or ``$FPGA_SIM_WAVEFORM_OPEN``,
-    which overrides it — then launches a viewer on the produced dump, using the
-    command in ``$FPGA_SIM_WAVEFORM_VIEWER`` (default ``gtkwave {gtkw}``); see
-    :func:`_open_waveform`.
-
-    *waveform_memories* — or ``$FPGA_SIM_WAVEFORM_MEMORIES``, which overrides it —
-    is the U30 "include memories" depth: when on, NVC captures nested arrays and
-    memories too (``--dump-arrays``), so the embedded-core designs' RAM/ROM/registers
-    appear in the trace.  Applies to NVC, which otherwise skips nested arrays in
-    every format (VCD and FST); GHDL's FST/GHW writers already include them (its
-    VCD writer omits them, with or without a flag).  Off by default because
-    arrays add significant dump size.
-
-    This call blocks until the simulation exits, then returns the
-    :class:`SimExit` the user chose via the in-simulation toolbar
-    (``SimExit.STOPPED`` for a plain ESC / window-close / [Stop] exit).
-    """
-    prep = _prepare_simulation(
-        board_json,
-        vhdl_path,
-        toplevel,
-        generics,
-        work_dir,
-        simulator,
-        board_def,
-        match,
-        waveform,
-        waveform_memories,
-    )
-    env = prep.env
-    work_dir = prep.work_dir
-
-    # Exit-intent side channel (see SimExit).  A reused work_dir — the reload
-    # path re-analyzes in place — may hold a stale intent from the previous
-    # run, so always start from a clean slate.
-    intent_file = Path(work_dir) / _EXIT_INTENT_NAME
-    intent_file.unlink(missing_ok=True)
-
-    # Legacy-window-only env: the pygame testbench module, window geometry, and
-    # the exit-intent path (the shared metadata vars are set in _prepare_simulation).
-    env["COCOTB_TEST_MODULES"] = "sim_testbench"
-    env["FPGA_SIM_WIDTH"] = str(sim_width)
-    env["FPGA_SIM_HEIGHT"] = str(sim_height)
-    env["FPGA_SIM_EXIT_INTENT_FILE"] = str(intent_file)
-    if speed_factor is not None:
-        env["FPGA_SIM_SPEED"] = str(speed_factor)
-    if theme is not None:
-        env["FPGA_SIM_THEME"] = theme
-    # U21 B3: board-native run metadata (badge + session log, consumed by B3b).
-    if match is not None:
-        native_meta: dict[str, Any] = {
-            "maker": match.maker,
-            "board_name": match.board_name,
-            "leds_active_low": match.leds.active_low,
-            "has_seg": match.seven_seg is not None,
-            "seg_active_low": match.seven_seg.active_low if match.seven_seg else False,
-        }
-        # Absent banks (U31) omit their *_active_low key -- sim_testbench's
-        # _active_low_roles reads via .get(), so an omitted role is simply not
-        # listed in the board-native active-low note.
-        if match.switches is not None:
-            native_meta["switches_active_low"] = match.switches.active_low
-        if match.buttons is not None:
-            native_meta["buttons_active_low"] = match.buttons.active_low
-        env["FPGA_SIM_NATIVE_CONVENTION"] = json.dumps(native_meta)
-
-    print(f"Starting simulation: {toplevel} from {prep.vhdl_path.name} [{simulator.upper()}]")
-    result = subprocess.run(prep.cmd, env=env, cwd=work_dir)
-
-    # A produced, non-empty dump is worth pointing at; a crashed/empty run is not.
-    _announce_waveform(prep.wave_cfg, prep.generics, match, waveform_open)
-
-    return _read_exit_intent(intent_file, result.returncode)
 
 
 # ── Single-window headless run handle (U34) ───────────────────────────────────
@@ -2257,13 +2085,12 @@ def start_simulation(
 ) -> SimChild:
     """Start a headless simulation child for single-window mode (U34).
 
-    Shares all analysis / elaboration / waveform preparation with
-    :func:`launch_simulation` (via :func:`_prepare_simulation`), but instead of
-    opening a window and blocking, it runs ``sim_testbench_bridge`` with no
-    display and streams signal state over a
-    :class:`~fpga_sim.sim_link.SimLinkHost`.  Returns a :class:`SimChild`
-    immediately; the caller (the SimulationScreen, or the benchmark) drives the
-    link and calls :meth:`SimChild.stop` + :func:`finish_waveform` when done.
+    Runs analysis / elaboration / waveform preparation (via
+    :func:`_prepare_simulation`), then runs ``sim_testbench`` with no display and
+    streams signal state over a :class:`~fpga_sim.sim_link.SimLinkHost` instead of
+    opening a window and blocking.  Returns a :class:`SimChild` immediately; the
+    caller (the SimulationScreen, or the benchmark) drives the link and calls
+    :meth:`SimChild.stop` + :func:`finish_waveform` when done.
 
     *speed_factor* seeds the child's pacing via ``FPGA_SIM_SPEED`` (the host
     still sends ``speed`` on any slider change).  *benchmark_secs*, when set,
@@ -2287,7 +2114,7 @@ def start_simulation(
     # The link the child connects back to (its listener accepts in the background).
     host = SimLinkHost()
     env.update(host.env_vars())
-    env["COCOTB_TEST_MODULES"] = "sim_testbench_bridge"
+    env["COCOTB_TEST_MODULES"] = "sim_testbench"
     if speed_factor is not None:
         env["FPGA_SIM_SPEED"] = str(speed_factor)  # pacing seed; avoids a wrong-speed blip
     env.pop("FPGA_SIM_BENCHMARK", None)
@@ -2317,9 +2144,8 @@ def finish_waveform(child: SimChild) -> None:
     """Run the post-run waveform tail for a finished headless *child*.
 
     Writes the U28 ``.gtkw`` sidecar, prints the "Waveform written" hint, and
-    optionally auto-opens the viewer -- exactly as :func:`launch_simulation` does
-    inline.  A no-op when capture was off or the dump is missing/empty.  Fed
-    entirely from :class:`SimChild` fields, so the caller runs it after
-    :meth:`SimChild.stop`.
+    optionally auto-opens the viewer.  A no-op when capture was off or the dump
+    is missing/empty.  Fed entirely from :class:`SimChild` fields, so the caller
+    runs it after :meth:`SimChild.stop`.
     """
     _announce_waveform(child.wave_cfg, child.generics, child.match, child.waveform_open)

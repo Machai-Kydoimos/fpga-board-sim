@@ -12,8 +12,8 @@ from types import ModuleType
 
 import pygame
 
-from fpga_sim.sim_bridge import SimExit
 from fpga_sim.ui.constants import get_font
+from fpga_sim.ui.results import SimExit
 from fpga_sim.ui.sim_toolbar import _BUTTONS, SimToolbar
 from fpga_sim.ui.theme import THEME_NAMES, Theme, set_theme
 from fpga_sim.ui.widgets.button import ButtonStyle

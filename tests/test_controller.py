@@ -5,12 +5,10 @@ methods (never ``.run()`` on real screens): the screen classes and sim_bridge
 functions the controller collaborates with are replaced by fakes, monkeypatched
 on the ``fpga_sim.controller`` module namespace.
 
-The legacy-window ``on_simulate`` tests (forced with ``FPGA_SIM_LEGACY_WINDOW=1``)
-exercise the real pygame quit → init → set_mode cycle that path performs; that is
-safe under the session-scoped ``headless_pygame`` fixture because the path clears
-the ``get_font`` cache *before* quitting (the invariant conftest.py documents) and
-leaves pygame re-initialized afterwards.  The default single-window (U34) attached
-path keeps the window and is covered by its own fakes (``_attached_harness``).
+The ``on_simulate`` tests drive the single-window (U34) attached path through
+fakes for ``start_simulation`` / ``SimulationScreen`` / ``finish_waveform``
+(``_attached_harness``); no window is ever created or destroyed, so they run
+entirely under the session-scoped ``headless_pygame`` fixture.
 """
 
 from __future__ import annotations
@@ -28,10 +26,9 @@ from fpga_sim.controller import (
     build_generics,
     example_vhdl_for,
 )
-from fpga_sim.sim_bridge import ContractResult, SimExit
-from fpga_sim.ui import DialogResult, ScreenResult
+from fpga_sim.sim_bridge import ContractResult
+from fpga_sim.ui import DialogResult, ScreenResult, SimExit
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
-from fpga_sim.ui.theme import set_theme
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -581,373 +578,6 @@ def test_picker_analysis_failure_shows_simulator_error(headless_pygame, monkeypa
     assert ctrl.state.vhdl_path is None
 
 
-# ── on_simulate: legacy window path (FPGA_SIM_LEGACY_WINDOW=1) ────────────────
-
-
-def _sim_harness(
-    headless_pygame: ModuleType,
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-    *,
-    analyzed: bool = True,
-    sim_exits: list[SimExit] | None = None,
-) -> tuple[ScreenController, list[dict[str, Any]], list[tuple[Any, ...]], list[tuple[Any, ...]]]:
-    """Build a controller ready to simulate, with launch/save/recent recorders.
-
-    With ``analyzed=True`` the state looks freshly analyzed by the current
-    simulator (no re-analysis path); the contract check is fenced off so any
-    unexpected call fails the test.  *sim_exits* scripts what each successive
-    fake launch reports (exhausted → ``SimExit.STOPPED``), driving the U7
-    intent handling.
-
-    The legacy window path is forced here (``FPGA_SIM_LEGACY_WINDOW=1``) so
-    ``on_simulate`` routes to ``_on_simulate_legacy`` regardless of the U34
-    default flip (single-window is the default now).
-    """
-    monkeypatch.setenv("FPGA_SIM_LEGACY_WINDOW", "1")
-    vhdl = tmp_path / "blinky.vhd"
-    vhdl.write_text("-- design")
-    ctrl = _make_controller(headless_pygame)
-    ctrl.on_board_selected(_board())
-    ctrl.state.vhdl_path = str(vhdl)
-    if analyzed:
-        ctrl.state.work_dir = "wd"
-        ctrl.state.work_dir_simulator = ctrl.state.simulator
-        monkeypatch.setattr(
-            controller_mod, "check_vhdl_contract", _fail_if_called("contract check")
-        )
-
-    launches: list[dict[str, Any]] = []
-    exits = list(sim_exits or [])
-
-    def fake_launch(
-        board_json: Any, vhdl_path: Any, toplevel: Any, generics: Any, **kwargs: Any
-    ) -> SimExit:
-        launches.append(
-            {
-                "board_json": board_json,
-                "vhdl_path": vhdl_path,
-                "toplevel": toplevel,
-                "generics": generics,
-                **kwargs,
-            }
-        )
-        return exits.pop(0) if exits else SimExit.STOPPED
-
-    saves: list[tuple[Any, ...]] = []
-    recents: list[tuple[Any, ...]] = []
-    monkeypatch.setattr(controller_mod, "launch_simulation", fake_launch)
-    monkeypatch.setattr(controller_mod, "save_session", lambda *a, **k: saves.append((a, k)))
-    monkeypatch.setattr(controller_mod, "push_recent", lambda *a: recents.append(a))
-    return ctrl, launches, saves, recents
-
-
-def test_simulate_launches_and_reinits_pygame(headless_pygame, monkeypatch, tmp_path):
-    ctrl, launches, saves, recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
-    board = ctrl.board
-    assert board is not None
-    old_screen = ctrl.screen
-
-    assert ctrl.on_simulate() is NextScreen.PREVIEW
-
-    (launch,) = launches
-    assert launch["vhdl_path"] == ctrl.state.vhdl_path
-    assert launch["toplevel"] == "blinky"
-    assert launch["generics"] == build_generics(board)
-    assert launch["work_dir"] == "wd"
-    assert launch["simulator"] == "ghdl"
-    assert launch["board_def"] is board
-    assert (launch["sim_width"], launch["sim_height"]) == (1024, 700)
-    assert launch["speed_factor"] == SPEED_DEFAULT  # nothing saved yet → default
-    assert launch["theme"] == "pcb-green"  # default theme forwarded (U6)
-
-    assert saves == [
-        (
-            (board.class_name, ctrl.state.vhdl_path, "ghdl", board.source, "", [], []),
-            {"window_size": (1024, 700)},
-        )
-    ]
-    assert recents == [(board.class_name, board.source, ctrl.state.vhdl_path)]
-    assert ctrl.state.board_class == board.class_name  # preselect updated on launch
-    assert ctrl.state.board_source == board.source
-    assert ctrl.screen is not old_screen  # pygame was quit and re-initialized
-
-
-def test_simulate_passes_saved_speed_to_launch(headless_pygame, monkeypatch, tmp_path):
-    """U5: the sim-written speed_factor is re-read at every launch."""
-    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
-    monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": 2.5})
-    ctrl.on_simulate()
-    assert launches[0]["speed_factor"] == 2.5
-
-
-def test_simulate_passes_active_theme_to_launch(
-    headless_pygame, monkeypatch, tmp_path, restore_theme
-):
-    """U6: the launcher's live theme name rides into the subprocess launch."""
-    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
-    set_theme("dark")
-    ctrl.on_simulate()
-    assert launches[0]["theme"] == "dark"
-
-
-def test_simulate_passes_waveform_setting_to_launch(headless_pygame, monkeypatch, tmp_path):
-    """U10: the persisted waveform mode is read at launch and forwarded."""
-    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
-    monkeypatch.setattr(controller_mod, "load_session", lambda: {"waveform": "fst"})
-    ctrl.on_simulate()
-    assert launches[0]["waveform"] == "fst"
-
-
-def test_simulate_waveform_absent_forwards_none(headless_pygame, monkeypatch, tmp_path):
-    """No saved waveform key → capture stays off (None) at launch."""
-    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
-    ctrl.on_simulate()
-    assert launches[0]["waveform"] is None
-
-
-def test_simulate_passes_waveform_open_to_launch(headless_pygame, monkeypatch, tmp_path):
-    """U29: the persisted auto-open flag is read at launch and forwarded."""
-    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
-    monkeypatch.setattr(controller_mod, "load_session", lambda: {"waveform_open": True})
-    ctrl.on_simulate()
-    assert launches[0]["waveform_open"] is True
-
-
-def test_simulate_waveform_open_absent_forwards_none(headless_pygame, monkeypatch, tmp_path):
-    """No saved waveform_open key → None at launch (launch_simulation defaults it off)."""
-    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
-    ctrl.on_simulate()
-    assert launches[0]["waveform_open"] is None
-
-
-def test_simulate_passes_waveform_memories_to_launch(headless_pygame, monkeypatch, tmp_path):
-    """U30: the persisted "include memories" flag is read at launch and forwarded."""
-    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
-    monkeypatch.setattr(controller_mod, "load_session", lambda: {"waveform_memories": True})
-    ctrl.on_simulate()
-    assert launches[0]["waveform_memories"] is True
-
-
-def test_simulate_waveform_memories_absent_forwards_none(headless_pygame, monkeypatch, tmp_path):
-    """No saved waveform_memories key → None at launch (launch_simulation defaults it off)."""
-    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
-    ctrl.on_simulate()
-    assert launches[0]["waveform_memories"] is None
-
-
-def test_simulate_junk_saved_speed_falls_back_to_default(headless_pygame, monkeypatch, tmp_path):
-    ctrl, launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
-    monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": "fast"})
-    ctrl.on_simulate()
-    assert launches[0]["speed_factor"] == SPEED_DEFAULT
-
-
-def test_simulate_stale_session_contract_failure_drops_vhdl(headless_pygame, monkeypatch, tmp_path):
-    ctrl, launches, _saves, _recents = _sim_harness(
-        headless_pygame, monkeypatch, tmp_path, analyzed=False
-    )
-    monkeypatch.setattr(
-        controller_mod,
-        "check_vhdl_contract",
-        lambda p, board_def: ContractResult(False, "port mismatch"),
-    )
-    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])  # intent is ignored here
-    assert ctrl.on_simulate() is NextScreen.PREVIEW
-    assert dialog.shown == [("VHDL Error", "port mismatch")]
-    assert ctrl.state.vhdl_path is None  # cleared: stale session may not bypass the check
-    assert launches == []
-
-
-def test_simulate_reanalyzes_when_simulator_changed(headless_pygame, monkeypatch, tmp_path):
-    ctrl, launches, _saves, _recents = _sim_harness(
-        headless_pygame, monkeypatch, tmp_path, analyzed=False
-    )
-    ctrl.state.work_dir = "old-wd"
-    ctrl.state.work_dir_simulator = "nvc"  # produced by the other simulator
-    monkeypatch.setattr(
-        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
-    )
-    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
-    monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "new-wd"))
-    assert ctrl.on_simulate() is NextScreen.PREVIEW
-    assert ctrl.state.work_dir == "new-wd"
-    refreshed: Simulator | None = ctrl.state.work_dir_simulator  # defeat stale mypy narrowing
-    assert refreshed == "ghdl"
-    (launch,) = launches
-    assert launch["work_dir"] == "new-wd"
-
-
-def test_simulate_reanalysis_failure_keeps_state_and_skips_launch(
-    headless_pygame, monkeypatch, tmp_path
-):
-    ctrl, launches, _saves, _recents = _sim_harness(
-        headless_pygame, monkeypatch, tmp_path, analyzed=False
-    )
-    ctrl.state.work_dir = "old-wd"
-    ctrl.state.work_dir_simulator = "nvc"
-    monkeypatch.setattr(
-        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
-    )
-    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
-    monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (False, "no such entity"))
-    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
-    assert ctrl.on_simulate() is NextScreen.PREVIEW
-    assert dialog.shown == [("GHDL Error", "no such entity")]
-    assert ctrl.state.vhdl_path is not None  # kept — user can retry or switch back
-    assert ctrl.state.work_dir == "old-wd"
-    assert launches == []
-
-
-def test_simulate_error_retry_reenters_preview(headless_pygame, monkeypatch, tmp_path):
-    ctrl, _launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
-
-    def boom(*args: Any, **kwargs: Any) -> None:
-        raise RuntimeError("cocotb exploded")
-
-    monkeypatch.setattr(controller_mod, "launch_simulation", boom)
-    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
-    assert ctrl.on_simulate() is NextScreen.PREVIEW
-    assert dialog.shown == [("Simulation Error", "cocotb exploded")]
-    assert ctrl.state.work_dir == "wd"  # retry keeps the analysis
-
-
-def test_simulate_error_back_returns_to_selector(headless_pygame, monkeypatch, tmp_path):
-    ctrl, _launches, _saves, _recents = _sim_harness(headless_pygame, monkeypatch, tmp_path)
-
-    def boom(*args: Any, **kwargs: Any) -> None:
-        raise RuntimeError("kaboom")
-
-    monkeypatch.setattr(controller_mod, "launch_simulation", boom)
-    _install_dialog(monkeypatch, [DialogResult.BACK])
-    assert ctrl.on_simulate() is NextScreen.SELECTOR
-    assert ctrl.state.work_dir is None  # back drops the analysis
-    assert ctrl.state.vhdl_path is not None  # …but keeps the file
-
-
-# ── on_simulate: U7 toolbar exit intents (legacy path) ───────────────────────
-
-
-def test_simulate_back_to_boards_intent_goes_to_selector(headless_pygame, monkeypatch, tmp_path):
-    ctrl, launches, _saves, _recents = _sim_harness(
-        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.BACK_TO_BOARDS]
-    )
-    assert ctrl.on_simulate() is NextScreen.SELECTOR
-    assert len(launches) == 1
-    assert ctrl.state.work_dir is None  # routed through on_back → analysis dropped
-    assert ctrl.state.vhdl_path is not None  # …but the file is kept for the next board
-
-
-def test_simulate_change_vhdl_intent_opens_picker(headless_pygame, monkeypatch, tmp_path):
-    ctrl, launches, _saves, _recents = _sim_harness(
-        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.CHANGE_VHDL]
-    )
-    picker_calls: list[int] = []
-
-    def fake_picker() -> NextScreen:
-        picker_calls.append(1)
-        return NextScreen.PREVIEW
-
-    monkeypatch.setattr(ctrl, "_run_vhdl_picker", fake_picker)
-    assert ctrl.on_simulate() is NextScreen.PREVIEW
-    assert picker_calls == [1]
-    assert len(launches) == 1
-
-
-def test_simulate_reload_intent_revalidates_and_relaunches(headless_pygame, monkeypatch, tmp_path):
-    """[Reload VHDL] re-runs the full pipeline and relaunches without a preview."""
-    ctrl, launches, _saves, _recents = _sim_harness(
-        headless_pygame,
-        monkeypatch,
-        tmp_path,
-        sim_exits=[SimExit.RELOAD_VHDL, SimExit.STOPPED],
-    )
-    # The harness fences the contract check for the *pre-launch* path; the
-    # reload path must run it again, so re-allow it here.
-    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
-    monkeypatch.setattr(
-        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
-    )
-    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
-    analyze_calls: list[dict[str, Any]] = []
-
-    def fake_analyze(vhdl_path: Any, **kwargs: Any) -> tuple[bool, str]:
-        analyze_calls.append({"vhdl_path": vhdl_path, **kwargs})
-        return True, "wd"
-
-    monkeypatch.setattr(controller_mod, "analyze_vhdl", fake_analyze)
-    assert ctrl.on_simulate() is NextScreen.PREVIEW
-    assert len(launches) == 2  # reload relaunched immediately
-    (call,) = analyze_calls
-    assert call["vhdl_path"] == ctrl.state.vhdl_path  # same file, re-analyzed
-    assert call["work_dir"] == "wd"  # existing work dir reused, not a fresh temp dir
-    assert launches[1]["work_dir"] == "wd"
-    refreshed: Any = ctrl.state.work_dir_simulator
-    assert refreshed == "ghdl"
-
-
-def test_simulate_reload_rereads_speed_each_launch(headless_pygame, monkeypatch, tmp_path):
-    """The sim writes its final slider value at exit; a reload must pick it up."""
-    ctrl, launches, _saves, _recents = _sim_harness(
-        headless_pygame,
-        monkeypatch,
-        tmp_path,
-        sim_exits=[SimExit.RELOAD_VHDL, SimExit.STOPPED],
-    )
-    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
-    monkeypatch.setattr(
-        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
-    )
-    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
-    monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "wd"))
-    speeds = iter([1.5, 3.0])
-    monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": next(speeds)})
-    ctrl.on_simulate()
-    assert [launch["speed_factor"] for launch in launches] == [1.5, 3.0]
-
-
-def test_simulate_reload_encoding_failure_shows_dialog(headless_pygame, monkeypatch, tmp_path):
-    ctrl, launches, _saves, _recents = _sim_harness(
-        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.RELOAD_VHDL]
-    )
-    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (False, "not ASCII"))
-    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
-    assert ctrl.on_simulate() is NextScreen.PREVIEW
-    assert len(launches) == 1  # no relaunch with a bad file
-    assert dialog.shown == [("VHDL Error", "not ASCII")]
-    assert dialog.example_paths == [controller_mod._HDL_DIR / "blinky.vhd"]
-    assert ctrl.state.vhdl_path is not None  # kept: the user is mid-edit
-    assert ctrl.state.work_dir is None  # old artifacts may not match the edited file
-
-
-def test_simulate_reload_analysis_failure_uses_simulator_title(
-    headless_pygame, monkeypatch, tmp_path
-):
-    ctrl, launches, _saves, _recents = _sim_harness(
-        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.RELOAD_VHDL]
-    )
-    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
-    monkeypatch.setattr(
-        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
-    )
-    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
-    monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (False, "elab failed"))
-    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
-    assert ctrl.on_simulate() is NextScreen.PREVIEW
-    assert len(launches) == 1
-    assert dialog.shown == [("GHDL Error", "elab failed")]
-    assert ctrl.state.work_dir is None  # the reused dir now holds a partial build
-
-
-def test_simulate_reload_failure_back_goes_to_selector(headless_pygame, monkeypatch, tmp_path):
-    ctrl, _launches, _saves, _recents = _sim_harness(
-        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.RELOAD_VHDL]
-    )
-    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (False, "bad"))
-    _install_dialog(monkeypatch, [DialogResult.BACK])
-    assert ctrl.on_simulate() is NextScreen.SELECTOR
-
-
 # ── example_vhdl_for / View-Example wiring (U4) ──────────────────────────────
 
 
@@ -988,46 +618,6 @@ def test_picker_error_dialog_gets_7seg_example(headless_pygame, monkeypatch):
 # ── on_simulate: single-window attached path (U34, the default) ──────────────
 
 
-def test_on_simulate_defaults_to_attached(headless_pygame, monkeypatch):
-    """The U34 flip: with no env flag, on_simulate uses the single-window path."""
-    ctrl = _make_controller(headless_pygame)
-    monkeypatch.delenv("FPGA_SIM_LEGACY_WINDOW", raising=False)
-    calls: list[str] = []
-
-    def _attached() -> NextScreen:
-        calls.append("attached")
-        return NextScreen.PREVIEW
-
-    def _legacy() -> NextScreen:
-        calls.append("legacy")
-        return NextScreen.PREVIEW
-
-    monkeypatch.setattr(ctrl, "_on_simulate_attached", _attached)
-    monkeypatch.setattr(ctrl, "_on_simulate_legacy", _legacy)
-    assert ctrl.on_simulate() is NextScreen.PREVIEW
-    assert calls == ["attached"]
-
-
-def test_on_simulate_legacy_flag_selects_legacy_path(headless_pygame, monkeypatch):
-    """FPGA_SIM_LEGACY_WINDOW=1 selects the pre-U34 own-window path (escape hatch)."""
-    ctrl = _make_controller(headless_pygame)
-    monkeypatch.setenv("FPGA_SIM_LEGACY_WINDOW", "1")
-    calls: list[str] = []
-
-    def _attached() -> NextScreen:
-        calls.append("attached")
-        return NextScreen.PREVIEW
-
-    def _legacy() -> NextScreen:
-        calls.append("legacy")
-        return NextScreen.PREVIEW
-
-    monkeypatch.setattr(ctrl, "_on_simulate_attached", _attached)
-    monkeypatch.setattr(ctrl, "_on_simulate_legacy", _legacy)
-    assert ctrl.on_simulate() is NextScreen.PREVIEW
-    assert calls == ["legacy"]
-
-
 class _FakeSimScreen:
     """Fake SimulationScreen: records construction and scripts run() results."""
 
@@ -1047,17 +637,28 @@ def _attached_harness(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     *,
+    analyzed: bool = True,
     sim_exits: list[SimExit] | None = None,
 ) -> tuple[ScreenController, list[dict[str, Any]], list[Any]]:
-    """Controller wired for the attached path (the U34 default), with fake start/screen/finish."""
+    """Controller wired for the attached path (the U34 default), with fake start/screen/finish.
+
+    With ``analyzed=True`` the state looks freshly analyzed by the current
+    simulator (the re-analysis branch is skipped and the contract check is fenced
+    off so any unexpected call fails the test); pass ``analyzed=False`` to exercise
+    the re-analyze / contract preamble.  *sim_exits* scripts what each successive
+    ``SimulationScreen.run()`` returns (exhausted → ``SimExit.STOPPED``).
+    """
     vhdl = tmp_path / "blinky.vhd"
     vhdl.write_text("-- design")
     ctrl = _make_controller(headless_pygame)
     ctrl.on_board_selected(_board())
     ctrl.state.vhdl_path = str(vhdl)
-    ctrl.state.work_dir = "wd"
-    ctrl.state.work_dir_simulator = ctrl.state.simulator
-    monkeypatch.setattr(controller_mod, "check_vhdl_contract", _fail_if_called("contract check"))
+    if analyzed:
+        ctrl.state.work_dir = "wd"
+        ctrl.state.work_dir_simulator = ctrl.state.simulator
+        monkeypatch.setattr(
+            controller_mod, "check_vhdl_contract", _fail_if_called("contract check")
+        )
 
     starts: list[dict[str, Any]] = []
     finishes: list[Any] = []
@@ -1171,3 +772,158 @@ def test_attached_start_error_shows_dialog_and_reenters_preview(
     dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
     assert ctrl.on_simulate() is NextScreen.PREVIEW
     assert dialog.shown and "elaboration failed" in dialog.shown[0][1]
+
+
+def test_attached_start_error_back_returns_to_selector(headless_pygame, monkeypatch, tmp_path):
+    ctrl, _starts, _finishes = _attached_harness(headless_pygame, monkeypatch, tmp_path)
+
+    def boom(*a: Any, **k: Any) -> Any:
+        raise RuntimeError("kaboom")
+
+    monkeypatch.setattr(controller_mod, "start_simulation", boom)
+    _install_dialog(monkeypatch, [DialogResult.BACK])
+    assert ctrl.on_simulate() is NextScreen.SELECTOR
+    assert ctrl.state.work_dir is None  # back drops the analysis
+    assert ctrl.state.vhdl_path is not None  # …but keeps the file
+
+
+# ── on_simulate (attached): session → start_simulation plumbing ──────────────
+
+
+def test_attached_passes_saved_speed(headless_pygame, monkeypatch, tmp_path):
+    """U5: the sim-written speed_factor is re-read from the session at each launch."""
+    ctrl, starts, _finishes = _attached_harness(headless_pygame, monkeypatch, tmp_path)
+    monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": 2.5})
+    ctrl.on_simulate()
+    assert starts[0]["speed_factor"] == 2.5
+
+
+def test_attached_junk_saved_speed_falls_back_to_default(headless_pygame, monkeypatch, tmp_path):
+    ctrl, starts, _finishes = _attached_harness(headless_pygame, monkeypatch, tmp_path)
+    monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": "fast"})
+    ctrl.on_simulate()
+    assert starts[0]["speed_factor"] == SPEED_DEFAULT
+
+
+def test_attached_passes_waveform_setting(headless_pygame, monkeypatch, tmp_path):
+    """U10: the persisted waveform mode is read at launch and forwarded to the child."""
+    ctrl, starts, _finishes = _attached_harness(headless_pygame, monkeypatch, tmp_path)
+    monkeypatch.setattr(controller_mod, "load_session", lambda: {"waveform": "fst"})
+    ctrl.on_simulate()
+    assert starts[0]["waveform"] == "fst"
+
+
+def test_attached_waveform_absent_forwards_none(headless_pygame, monkeypatch, tmp_path):
+    ctrl, starts, _finishes = _attached_harness(headless_pygame, monkeypatch, tmp_path)
+    ctrl.on_simulate()
+    assert starts[0]["waveform"] is None
+
+
+def test_attached_passes_waveform_open(headless_pygame, monkeypatch, tmp_path):
+    """U29: the persisted auto-open flag is read at launch and forwarded."""
+    ctrl, starts, _finishes = _attached_harness(headless_pygame, monkeypatch, tmp_path)
+    monkeypatch.setattr(controller_mod, "load_session", lambda: {"waveform_open": True})
+    ctrl.on_simulate()
+    assert starts[0]["waveform_open"] is True
+
+
+def test_attached_passes_waveform_memories(headless_pygame, monkeypatch, tmp_path):
+    """U30: the persisted "include memories" flag is read at launch and forwarded."""
+    ctrl, starts, _finishes = _attached_harness(headless_pygame, monkeypatch, tmp_path)
+    monkeypatch.setattr(controller_mod, "load_session", lambda: {"waveform_memories": True})
+    ctrl.on_simulate()
+    assert starts[0]["waveform_memories"] is True
+
+
+def test_attached_waveform_open_and_memories_absent_forward_none(
+    headless_pygame, monkeypatch, tmp_path
+):
+    ctrl, starts, _finishes = _attached_harness(headless_pygame, monkeypatch, tmp_path)
+    ctrl.on_simulate()
+    assert starts[0]["waveform_open"] is None
+    assert starts[0]["waveform_memories"] is None
+
+
+# ── on_simulate (attached): re-analyze preamble ──────────────────────────────
+
+
+def test_attached_reanalyzes_when_simulator_changed(headless_pygame, monkeypatch, tmp_path):
+    ctrl, starts, _finishes = _attached_harness(
+        headless_pygame, monkeypatch, tmp_path, analyzed=False
+    )
+    ctrl.state.work_dir = "old-wd"
+    ctrl.state.work_dir_simulator = "nvc"  # produced by the other simulator
+    monkeypatch.setattr(
+        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
+    )
+    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
+    monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "new-wd"))
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+    assert ctrl.state.work_dir == "new-wd"
+    refreshed: Simulator | None = ctrl.state.work_dir_simulator  # defeat stale mypy narrowing
+    assert refreshed == "ghdl"
+    assert starts[0]["work_dir"] == "new-wd"
+
+
+def test_attached_reanalysis_failure_keeps_state_and_skips_launch(
+    headless_pygame, monkeypatch, tmp_path
+):
+    ctrl, starts, _finishes = _attached_harness(
+        headless_pygame, monkeypatch, tmp_path, analyzed=False
+    )
+    ctrl.state.work_dir = "old-wd"
+    ctrl.state.work_dir_simulator = "nvc"
+    monkeypatch.setattr(
+        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
+    )
+    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
+    monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (False, "no such entity"))
+    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+    assert dialog.shown == [("GHDL Error", "no such entity")]
+    assert ctrl.state.vhdl_path is not None  # kept — user can retry or switch back
+    assert ctrl.state.work_dir == "old-wd"
+    assert starts == []
+
+
+def test_attached_stale_session_contract_failure_drops_vhdl(headless_pygame, monkeypatch, tmp_path):
+    ctrl, starts, _finishes = _attached_harness(
+        headless_pygame, monkeypatch, tmp_path, analyzed=False
+    )
+    monkeypatch.setattr(
+        controller_mod,
+        "check_vhdl_contract",
+        lambda p, board_def: ContractResult(False, "port mismatch"),
+    )
+    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])  # intent ignored here
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+    assert dialog.shown == [("VHDL Error", "port mismatch")]
+    assert ctrl.state.vhdl_path is None  # cleared: a stale session may not bypass the check
+    assert starts == []
+
+
+# ── on_simulate (attached): [Reload VHDL] loop ───────────────────────────────
+
+
+def test_attached_reload_rereads_speed_each_launch(headless_pygame, monkeypatch, tmp_path):
+    """U5: the sim writes its final slider value at exit; a reload must pick it up."""
+    ctrl, starts, _finishes = _attached_harness(
+        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.RELOAD_VHDL, SimExit.STOPPED]
+    )
+    monkeypatch.setattr(ctrl, "_revalidate_for_reload", lambda: None)
+    speeds = iter([1.5, 3.0])
+    monkeypatch.setattr(controller_mod, "load_session", lambda: {"speed_factor": next(speeds)})
+    ctrl.on_simulate()
+    assert [start["speed_factor"] for start in starts] == [1.5, 3.0]
+
+
+def test_attached_reload_revalidation_bail_returns_that_screen(
+    headless_pygame, monkeypatch, tmp_path
+):
+    """A reload whose revalidation bails routes to the returned screen, with no relaunch."""
+    ctrl, starts, _finishes = _attached_harness(
+        headless_pygame, monkeypatch, tmp_path, sim_exits=[SimExit.RELOAD_VHDL]
+    )
+    monkeypatch.setattr(ctrl, "_revalidate_for_reload", lambda: NextScreen.SELECTOR)
+    assert ctrl.on_simulate() is NextScreen.SELECTOR
+    assert len(starts) == 1  # the first launch happened; no relaunch after the bail

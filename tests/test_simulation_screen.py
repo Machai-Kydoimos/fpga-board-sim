@@ -20,8 +20,9 @@ import pytest
 
 from fpga_sim import sim_link
 from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
-from fpga_sim.sim_bridge import SimChild, SimExit
+from fpga_sim.sim_bridge import SimChild
 from fpga_sim.sim_link import connect_from_env, drain, send
+from fpga_sim.ui.results import SimExit
 from fpga_sim.ui.simulation_screen import SimulationScreen
 
 if TYPE_CHECKING:

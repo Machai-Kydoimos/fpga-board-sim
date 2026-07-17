@@ -27,3 +27,20 @@ class DialogResult(Enum):
 
     RETRY = auto()  # [Try Another File] / Enter — retry the failed operation
     BACK = auto()  # [Back to Boards] / ESC / window closed — abandon and return
+
+
+class SimExit(Enum):
+    """Why the interactive simulation ended — the U7 navigation contract.
+
+    Returned by :meth:`~fpga_sim.ui.simulation_screen.SimulationScreen.run`; the
+    controller routes on the member to the selector / picker / a relaunch / an
+    app-quit, so the simulator child never touches launcher state.  The string
+    values are human-readable labels (shown in the end-of-run console line); they
+    are not serialized or crossed over the process boundary.
+    """
+
+    STOPPED = "stopped"  # ESC / [■ Stop] — return to the board preview
+    BACK_TO_BOARDS = "back_to_boards"  # [Back to Boards] → board selector
+    CHANGE_VHDL = "change_vhdl"  # [Change VHDL] → VHDL file picker
+    RELOAD_VHDL = "reload_vhdl"  # [Reload VHDL] → re-analyze same file, relaunch
+    QUIT = "quit"  # window X (single-window, U34) → exit the whole app

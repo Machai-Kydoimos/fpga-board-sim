@@ -26,7 +26,7 @@ from fpga_sim.sim_bridge import _find_ghdl, _NVCBackend  # noqa: E402
 def _isolate_waveform_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep ``FPGA_SIM_WAVEFORM*`` vars from a developer's shell out of every test.
 
-    ``launch_simulation`` and the waveform helpers read these; a value exported
+    ``start_simulation`` and the waveform helpers read these; a value exported
     in the dev/CI shell would silently flip capture, auto-open, or the output
     dir under a test.  Tests that exercise a var set it explicitly via the same
     (function-scoped) monkeypatch, which runs after this and wins.
