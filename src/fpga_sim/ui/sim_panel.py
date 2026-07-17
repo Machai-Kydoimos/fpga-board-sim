@@ -268,18 +268,8 @@ class SimPanel:
             return 0.0
         return self._clocks_per_frame * self._fps
 
-    def update(self, sim_step_ns: int) -> None:
-        """Record that *sim_step_ns* of simulation time just elapsed.
-
-        Call once per main-loop iteration, after await Timer(...).  Legacy
-        in-process path only; single-window mode uses :meth:`set_remote`.
-        """
-        self._sim_elapsed_ns += sim_step_ns
-        period = self.clk_state["period_ns"]
-        self._clocks_per_frame = sim_step_ns / period if period > 0 else 0.0
-
     def set_remote(self, sim_ns_total: int, at_max: bool) -> None:
-        """Feed child-reported sim-time totals in single-window mode (replaces :meth:`update`).
+        """Feed the sim-time totals the headless child streams over the link.
 
         The headless child owns simulation time and streams its running total
         (*sim_ns_total*) plus whether the step hit the cycle cap (*at_max*) in

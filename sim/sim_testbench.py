@@ -54,7 +54,9 @@ from cocotb.triggers import Timer
 from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ, BoardDef
 from fpga_sim.sim_link import connect_from_env, drain, send
 
-# Mirrors sim_testbench.py (not imported from there: that module pulls in pygame).
+# Loop-pacing constants.  _SPEED_DEFAULT mirrors the host slider default
+# (ui.sim_panel.SPEED_DEFAULT), kept local: importing fpga_sim.ui would pull
+# pygame into the headless child.
 _TARGET_FPS: float = 60.0
 _REAL_STEP_NS: int = round(1e9 / _TARGET_FPS)
 _MAX_CYCLES_PER_STEP: int = 9_596
@@ -98,8 +100,8 @@ def _write_meta_sidecar(
 ) -> None:
     """Write a JSON metadata file alongside the metrics CSV for report context.
 
-    Mirrors the sidecar ``sim_testbench`` wrote, but pygame-free: the slider
-    default comes from this module's ``_SPEED_DEFAULT`` rather than
+    Same format the pre-U34 pygame testbench wrote, but pygame-free: the
+    slider default comes from this module's ``_SPEED_DEFAULT`` rather than
     ``ui.sim_panel.SPEED_DEFAULT`` (importing that would pull in pygame).
     """
     sim_name = os.environ.get("FPGA_SIM_SIMULATOR", "unknown")
