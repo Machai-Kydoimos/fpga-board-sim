@@ -33,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reserves the same bottom strip the preview's footer used (its own overlays live
   there), instead of letting the components spread into the freed space. The
   transition is pixel-stable at any window size, reduced or full screen.
+- **Steady stats panel readout during simulation (U34).** The **Clk/frame** and
+  **Eff. rate** figures no longer flicker between a real value and `0.0`. The headless
+  simulator streams its progress in throttled bursts, so most host frames had no fresh
+  sample and the per-frame delta read zero; throughput is now measured against
+  wall-clock time between the samples that actually advance and smoothed, so the
+  numbers are readable.
 - **README / onboarding accuracy.** The "Try it" walkthrough now shows the correct
   order — **Load VHDL File** (pick the design) *then* **Start Simulation**, which is
   greyed until a file is loaded — instead of implying the reverse. Also names GTKWave /
