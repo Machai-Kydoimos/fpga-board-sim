@@ -71,6 +71,14 @@ def start(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> Callable[..., _Star
     monkeypatch.setattr(sim_bridge, "_build_sim_env", lambda **kw: ({}, "plugin.so"))
     monkeypatch.setattr(sim_bridge, "WAVEFORM_DIR", tmp_path / "waveforms")
     captured: dict[str, Any] = {}
+    elab_calls: list[tuple[list[str], dict[str, Any]]] = []
+    captured["elab_calls"] = elab_calls
+
+    def fake_run(cmd: Any, **kw: Any) -> subprocess.CompletedProcess[str]:
+        elab_calls.append((cmd, kw))
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
 
     def _start(*, proc: _FakeProc | None = None, **kwargs: Any) -> _Started:
         fake = proc if proc is not None else _FakeProc(poll_seq=("run", "run", "dead"))
@@ -100,6 +108,22 @@ def test_env_has_link_vars_and_bridge_module(start: Callable[..., _Started]) -> 
     assert len(bytes.fromhex(env["FPGA_SIM_LINK_KEY"])) == 16
     assert env["COCOTB_TEST_MODULES"] == "sim_testbench"
     assert env["TOPLEVEL"] == "sim_wrapper"
+    child.link.close()
+
+
+def test_ghdl_elaborates_into_work_dir(start: Callable[..., _Started]) -> None:
+    """GHDL elaborates in ``_prepare_simulation`` too — with ``cwd=work_dir``.
+
+    The compiled GHDL backends (llvm/gcc) emit the ``sim_wrapper`` executable
+    into the elaboration cwd, and ``-r`` looks for it in *its* cwd; the two
+    must be the same directory.  Generics stay off ``-e`` (GHDL applies them
+    at ``-r``).
+    """
+    child, captured, _ = start()
+    (cmd, kw) = next(c for c in captured["elab_calls"] if "-e" in c[0])
+    assert cmd[-1] == "sim_wrapper"
+    assert not [a for a in cmd if a.startswith("-g")]
+    assert kw["cwd"] == captured["cwd"]  # same dir the -r child runs from
     child.link.close()
 
 
