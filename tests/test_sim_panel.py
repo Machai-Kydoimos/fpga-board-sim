@@ -159,6 +159,66 @@ def test_effective_hz_zero_when_paused(dummy_screen):
     assert panel.effective_hz == 0.0
 
 
+# ── set_remote: single-window remote throughput feed (U34) ────────────────────
+
+
+def _prime_fps(panel: SimPanel, fps: float = 60.0) -> None:
+    """Give the panel a live rolling fps — set_remote needs one to form a rate."""
+    for _ in range(30):
+        panel.update_timing(fps=fps, timer_us=0.0, draw_us=0.0, idle_us=0.0, sim_pct=99.0)
+
+
+def test_set_remote_holds_rate_across_stale_frames(dummy_screen, monkeypatch):
+    """Frames with no fresh sim_ns must hold the rate, not flash to 0 (the ping-pong bug).
+
+    The host renders faster than the child streams state, so most frames repeat the
+    last ``sim_ns_total``; Clk/frame and the effective rate must stay steady.
+    """
+    panel = _make_panel(dummy_screen, clock_hz=100e6)  # 10 ns period
+    _prime_fps(panel, 60.0)
+    clk = [1000.0]
+    monkeypatch.setattr("fpga_sim.ui.sim_panel.time.monotonic", lambda: clk[0])
+
+    panel.set_remote(100_000, False)  # first sample seeds the wall reference
+    clk[0] += 0.05
+    panel.set_remote(200_000, False)  # 50 ms later → first real rate
+    rate = panel._clocks_per_frame
+    eff = panel.effective_hz
+    assert rate > 0.0
+    assert eff > 0.0
+
+    for _ in range(10):  # ten host frames, no fresh sample
+        clk[0] += 1 / 60
+        panel.set_remote(200_000, False)
+        assert panel._clocks_per_frame == pytest.approx(rate)
+        assert panel.effective_hz == pytest.approx(eff)
+
+
+def test_set_remote_measures_throughput_by_wall_time(dummy_screen, monkeypatch):
+    """Steady stream of 10k cycles / 50 ms → ~200 kHz effective, independent of fps."""
+    panel = _make_panel(dummy_screen, clock_hz=100e6)  # 10 ns period
+    _prime_fps(panel, 60.0)
+    clk = [0.0]
+    monkeypatch.setattr("fpga_sim.ui.sim_panel.time.monotonic", lambda: clk[0])
+
+    total = 0
+    for _ in range(40):
+        clk[0] += 0.05
+        total += 100_000  # 100_000 ns = 10_000 cycles per 50 ms
+        panel.set_remote(total, False)
+    assert panel.effective_hz == pytest.approx(200_000, rel=0.05)
+
+
+def test_set_remote_tracks_sim_time_and_at_max_before_a_rate(dummy_screen, monkeypatch):
+    """Sim time + at_max update from the very first sample, before any rate exists."""
+    panel = _make_panel(dummy_screen, clock_hz=100e6)
+    _prime_fps(panel, 60.0)
+    monkeypatch.setattr("fpga_sim.ui.sim_panel.time.monotonic", lambda: 5.0)
+    panel.set_remote(123_456, True)
+    assert panel._sim_elapsed_ns == 123_456
+    assert panel.at_max_throughput is True
+
+
 def test_window_drops_oldest_sample(dummy_screen):
     """After the window fills, old samples are discarded (maxlen=30)."""
     panel = _make_panel(dummy_screen)

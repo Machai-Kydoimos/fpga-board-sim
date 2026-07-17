@@ -25,6 +25,7 @@ total 100.  See :meth:`SimPanel.set_remote` / :meth:`SimPanel.update_timing`.
 from __future__ import annotations
 
 import math
+import time
 from collections import deque
 
 import pygame
@@ -62,6 +63,11 @@ SPEED_DEFAULT: float = 0.1
 _LOG_MIN: float = math.log10(_SPEED_MIN)  # -3
 _LOG_MAX: float = math.log10(_SPEED_MAX)  #  1
 _LOG_RANGE: float = _LOG_MAX - _LOG_MIN  #  4
+
+# EMA weight for the single-window remote throughput readout: fraction of the
+# previous value kept per new sample.  Smooths the child's bursty sim-time
+# stream into a steady Clk/frame + effective-rate display (see set_remote).
+_REMOTE_EMA: float = 0.8
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -204,6 +210,10 @@ class SimPanel:
         # Running statistics updated by sim_testbench each frame
         self._sim_elapsed_ns: int = 0
         self._clocks_per_frame: float = 0.0
+        # Single-window (U34): wall-clock time of the last remote sample that
+        # advanced simulated time, used to measure throughput between the
+        # child's throttled bursts instead of per host frame (see set_remote).
+        self._remote_prev_wall: float | None = None
 
         # Per-frame timing breakdown — 30-frame rolling windows for smooth display
         _w = 30
@@ -269,19 +279,43 @@ class SimPanel:
         self._clocks_per_frame = sim_step_ns / period if period > 0 else 0.0
 
     def set_remote(self, sim_ns_total: int, at_max: bool) -> None:
-        """Feed child-reported totals in single-window mode (replaces :meth:`update`).
+        """Feed child-reported sim-time totals in single-window mode (replaces :meth:`update`).
 
-        The headless child owns simulation time now, so it sends its running
-        total (``sim_ns_total``) and whether the step hit the cycle cap
-        (*at_max*).  Called once per host frame, so the delta since the last call
-        is exactly this frame's simulated cycles — keeping ``Clk/frame`` and the
-        ``effective_hz`` formula (clocks/frame x fps) correct without change.
+        The headless child owns simulation time and streams its running total
+        (*sim_ns_total*) plus whether the step hit the cycle cap (*at_max*) in
+        throttled bursts — far fewer than one per host frame.  A naive per-frame
+        delta would therefore read one interval's cycles on the frames a fresh
+        sample landed and *zero* on all the others, so ``Clk/frame`` and the
+        effective rate flickered between a real value and 0.0.
+
+        Instead, throughput is measured against **wall-clock** time between the
+        samples that actually advanced simulated time and exponentially smoothed
+        (:data:`_REMOTE_EMA`); a stale repeat (``sim_ns_total`` unchanged) holds
+        the last reading.  The stored value stays clocks-per-frame (throughput /
+        fps), so every downstream readout — ``Clk/frame``, :attr:`effective_hz`,
+        the actual-Nx note — keeps working unchanged.
         """
-        period = self.clk_state["period_ns"]
-        delta_ns = max(0, sim_ns_total - self._sim_elapsed_ns)
-        self._clocks_per_frame = delta_ns / period if period > 0 else 0.0
-        self._sim_elapsed_ns = sim_ns_total
         self.at_max_throughput = at_max
+        if sim_ns_total <= self._sim_elapsed_ns:
+            return  # no fresh sample this frame — hold the readout steady
+        now = time.monotonic()
+        d_sim_ns = sim_ns_total - self._sim_elapsed_ns
+        self._sim_elapsed_ns = sim_ns_total
+        period = self.clk_state["period_ns"]
+        prev_wall = self._remote_prev_wall
+        self._remote_prev_wall = now
+        if prev_wall is None or period <= 0 or self._fps <= 0:
+            return  # need a prior sample + a live fps before a rate is meaningful
+        dt = now - prev_wall
+        if dt <= 0:
+            return
+        # cycles advanced this interval / frames rendered this interval.
+        inst_cpf = (d_sim_ns / period) / (dt * self._fps)
+        self._clocks_per_frame = (
+            inst_cpf
+            if self._clocks_per_frame <= 0.0
+            else _REMOTE_EMA * self._clocks_per_frame + (1.0 - _REMOTE_EMA) * inst_cpf
+        )
 
     def update_timing(
         self,

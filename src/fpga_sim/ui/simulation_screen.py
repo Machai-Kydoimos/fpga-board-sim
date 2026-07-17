@@ -128,6 +128,9 @@ class SimulationScreen:
             height=screen.get_height(),
             height_offset=0,
             show_footer=False,
+            # Reserve the footer strip the preview used, so the board stays put
+            # when the sim starts — the overlays live in that strip (U34).
+            reserve_footer_space=True,
         )
         self._toolbar: SimToolbar | None = SimToolbar() if show_toolbar else None
 
