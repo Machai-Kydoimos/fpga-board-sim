@@ -143,7 +143,7 @@ def test_effective_hz_reflects_actual_throughput(dummy_screen):
     """effective_hz must equal clocks_per_frame × fps, not clock × speed_factor."""
     panel = _make_panel(dummy_screen, clock_hz=100e6)
     # Inject measured data: 9596 clocks/frame at 35 fps = 335,860 Hz actual
-    panel.update(9596 * 10)  # sim_step_ns = 9596 cycles × 10 ns/cycle
+    panel._clocks_per_frame = 9596.0
     for _ in range(5):
         panel.update_timing(fps=35.0, timer_us=27_000.0, draw_us=500.0, idle_us=0.0)
     expected = panel._clocks_per_frame * panel._fps
@@ -152,7 +152,7 @@ def test_effective_hz_reflects_actual_throughput(dummy_screen):
 
 def test_effective_hz_zero_when_paused(dummy_screen):
     panel = _make_panel(dummy_screen, clock_hz=100e6)
-    panel.update(9596 * 10)
+    panel._clocks_per_frame = 9596.0
     for _ in range(5):
         panel.update_timing(fps=35.0, timer_us=27_000.0, draw_us=500.0, idle_us=0.0)
     panel.paused = True
@@ -319,11 +319,3 @@ def test_update_one_frame_gives_exact_values(dummy_screen):
     assert panel._timer_us == pytest.approx(300.0)
     assert panel._draw_us == pytest.approx(100.0)
     assert panel._idle_us == pytest.approx(50.0)
-
-
-def test_clocks_per_frame_computed_from_step_and_period(dummy_screen):
-    """update() must set _clocks_per_frame = sim_step_ns / period_ns."""
-    clocks = [10e6]  # period = 100 ns
-    panel = _make_panel(dummy_screen, clock_hz=10e6, clocks_hz=clocks)
-    panel.update(1000)  # 1000 ns at 100 ns/clock → 10 clocks/frame
-    assert panel._clocks_per_frame == pytest.approx(10.0)

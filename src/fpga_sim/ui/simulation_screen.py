@@ -7,8 +7,9 @@ path), :class:`SimulationScreen` keeps rendering the board here and drives a
 an IPC link: it streams switch/button/speed/clock control down and applies the
 LED/seg state the child streams back.
 
-The visuals are relocated from ``sim/sim_testbench.py``'s ``interactive_sim`` and
-kept pixel-identical; the run loop is the spike's host loop (see
+The visuals are relocated, pixel-identical, from the deleted pre-U34 pygame
+testbench's ``interactive_sim`` (today's ``sim/sim_testbench.py`` is the headless
+child); the run loop is the spike's host loop (see
 ``docs/experiments/single_window_sim.md``).  The controller constructs one of
 these per launch, calls :meth:`run`, then :func:`~fpga_sim.sim_bridge.finish_waveform`.
 """

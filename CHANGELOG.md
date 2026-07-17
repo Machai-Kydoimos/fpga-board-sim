@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Internal
+
+- Post-U34 audit cleanup: retired stale pre-single-window references — roadmap
+  cards and file index re-pointed (`launch_simulation` → `start_simulation`, UI
+  cards moved off the now-headless `sim_testbench` onto `ui/simulation_screen.py`,
+  D16's display-in-sandbox and session-log open issues marked resolved-by-U34,
+  benchmark baseline refreshed to the v0.15.0 series), removed the dead legacy
+  `SimPanel.update()` (single-window uses `set_remote`), and fixed leftover
+  "mirrors sim_testbench.py" comments from the U34 rename.
+
 ## [0.15.0] - 2026-07-17
 
 ### Added
