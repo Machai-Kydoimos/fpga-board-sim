@@ -5,11 +5,12 @@ methods (never ``.run()`` on real screens): the screen classes and sim_bridge
 functions the controller collaborates with are replaced by fakes, monkeypatched
 on the ``fpga_sim.controller`` module namespace.
 
-The ``on_simulate`` tests exercise the real pygame quit → init → set_mode
-cycle the method performs; that is safe under the session-scoped
-``headless_pygame`` fixture because ``on_simulate`` clears the ``get_font``
-cache *before* quitting (the invariant conftest.py documents) and leaves
-pygame re-initialized afterwards.
+The legacy-window ``on_simulate`` tests (forced with ``FPGA_SIM_LEGACY_WINDOW=1``)
+exercise the real pygame quit → init → set_mode cycle that path performs; that is
+safe under the session-scoped ``headless_pygame`` fixture because the path clears
+the ``get_font`` cache *before* quitting (the invariant conftest.py documents) and
+leaves pygame re-initialized afterwards.  The default single-window (U34) attached
+path keeps the window and is covered by its own fakes (``_attached_harness``).
 """
 
 from __future__ import annotations
@@ -580,7 +581,7 @@ def test_picker_analysis_failure_shows_simulator_error(headless_pygame, monkeypa
     assert ctrl.state.vhdl_path is None
 
 
-# ── on_simulate ──────────────────────────────────────────────────────────────
+# ── on_simulate: legacy window path (FPGA_SIM_LEGACY_WINDOW=1) ────────────────
 
 
 def _sim_harness(
@@ -598,7 +599,12 @@ def _sim_harness(
     unexpected call fails the test.  *sim_exits* scripts what each successive
     fake launch reports (exhausted → ``SimExit.STOPPED``), driving the U7
     intent handling.
+
+    The legacy window path is forced here (``FPGA_SIM_LEGACY_WINDOW=1``) so
+    ``on_simulate`` routes to ``_on_simulate_legacy`` regardless of the U34
+    default flip (single-window is the default now).
     """
+    monkeypatch.setenv("FPGA_SIM_LEGACY_WINDOW", "1")
     vhdl = tmp_path / "blinky.vhd"
     vhdl.write_text("-- design")
     ctrl = _make_controller(headless_pygame)
@@ -819,7 +825,7 @@ def test_simulate_error_back_returns_to_selector(headless_pygame, monkeypatch, t
     assert ctrl.state.vhdl_path is not None  # …but keeps the file
 
 
-# ── on_simulate: U7 toolbar exit intents ─────────────────────────────────────
+# ── on_simulate: U7 toolbar exit intents (legacy path) ───────────────────────
 
 
 def test_simulate_back_to_boards_intent_goes_to_selector(headless_pygame, monkeypatch, tmp_path):
@@ -979,7 +985,47 @@ def test_picker_error_dialog_gets_7seg_example(headless_pygame, monkeypatch):
     assert dialog.example_paths == [controller_mod._HDL_DIR / "counter_7seg.vhd"]
 
 
-# ── on_simulate: single-window attached path (U34, FPGA_SIM_SINGLE_WINDOW=1) ──
+# ── on_simulate: single-window attached path (U34, the default) ──────────────
+
+
+def test_on_simulate_defaults_to_attached(headless_pygame, monkeypatch):
+    """The U34 flip: with no env flag, on_simulate uses the single-window path."""
+    ctrl = _make_controller(headless_pygame)
+    monkeypatch.delenv("FPGA_SIM_LEGACY_WINDOW", raising=False)
+    calls: list[str] = []
+
+    def _attached() -> NextScreen:
+        calls.append("attached")
+        return NextScreen.PREVIEW
+
+    def _legacy() -> NextScreen:
+        calls.append("legacy")
+        return NextScreen.PREVIEW
+
+    monkeypatch.setattr(ctrl, "_on_simulate_attached", _attached)
+    monkeypatch.setattr(ctrl, "_on_simulate_legacy", _legacy)
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+    assert calls == ["attached"]
+
+
+def test_on_simulate_legacy_flag_selects_legacy_path(headless_pygame, monkeypatch):
+    """FPGA_SIM_LEGACY_WINDOW=1 selects the pre-U34 own-window path (escape hatch)."""
+    ctrl = _make_controller(headless_pygame)
+    monkeypatch.setenv("FPGA_SIM_LEGACY_WINDOW", "1")
+    calls: list[str] = []
+
+    def _attached() -> NextScreen:
+        calls.append("attached")
+        return NextScreen.PREVIEW
+
+    def _legacy() -> NextScreen:
+        calls.append("legacy")
+        return NextScreen.PREVIEW
+
+    monkeypatch.setattr(ctrl, "_on_simulate_attached", _attached)
+    monkeypatch.setattr(ctrl, "_on_simulate_legacy", _legacy)
+    assert ctrl.on_simulate() is NextScreen.PREVIEW
+    assert calls == ["legacy"]
 
 
 class _FakeSimScreen:
@@ -1003,8 +1049,7 @@ def _attached_harness(
     *,
     sim_exits: list[SimExit] | None = None,
 ) -> tuple[ScreenController, list[dict[str, Any]], list[Any]]:
-    """Controller wired for the attached path, with fake start/screen/finish."""
-    monkeypatch.setenv("FPGA_SIM_SINGLE_WINDOW", "1")
+    """Controller wired for the attached path (the U34 default), with fake start/screen/finish."""
     vhdl = tmp_path / "blinky.vhd"
     vhdl.write_text("-- design")
     ctrl = _make_controller(headless_pygame)

@@ -14,10 +14,14 @@ The flow is now an explicit state machine:
   next screen (:class:`NextScreen`), so every edge of the state machine is a
   plain, unit-testable call.
 
-The simulation itself still runs in a separate GHDL/NVC + cocotb subprocess
-(:func:`fpga_sim.sim_bridge.launch_simulation`); pygame is torn down before
-launch and re-initialized after, because the subprocess opens its own pygame
-window (see :meth:`ScreenController.on_simulate`).
+The simulation runs in the launcher's own window by default (single-window,
+U34): a headless GHDL/NVC + cocotb child streams signal state to a
+:class:`~fpga_sim.ui.SimulationScreen` rendered right here (see
+:meth:`ScreenController._on_simulate_attached`).  Setting
+``FPGA_SIM_LEGACY_WINDOW=1`` restores the pre-U34 path, where pygame is torn
+down before launch and the cocotb subprocess opens its own window
+(:meth:`ScreenController._on_simulate_legacy`) — kept for one release as an
+escape hatch.
 """
 
 from __future__ import annotations
@@ -452,12 +456,28 @@ class ScreenController:
         )
 
     def on_simulate(self) -> NextScreen:
+        """Launch the simulation for the current board + VHDL.
+
+        Single-window (U34) is the default: the launcher's pygame window
+        persists and the headless GHDL/NVC child streams state to a
+        :class:`~fpga_sim.ui.SimulationScreen` rendered in place
+        (:meth:`_on_simulate_attached`).  ``FPGA_SIM_LEGACY_WINDOW=1`` selects
+        the pre-U34 path (:meth:`_on_simulate_legacy`), where pygame is torn
+        down and the cocotb subprocess opens its own window — kept for one
+        release as an escape hatch.
+        """
+        if os.environ.get("FPGA_SIM_LEGACY_WINDOW") == "1":
+            return self._on_simulate_legacy()
+        return self._on_simulate_attached()
+
+    def _on_simulate_legacy(self) -> NextScreen:
         """Launch the simulation subprocess, then act on its exit intent (U7).
 
-        pygame is quit before the launch (the cocotb subprocess opens its own
-        window at the same size) and re-initialized afterwards; ``screen``
-        and ``clock`` are re-created, and the VHDL/work-dir state persists so
-        the user can restart immediately.
+        The pre-U34 path (``FPGA_SIM_LEGACY_WINDOW=1``): pygame is quit before
+        the launch (the cocotb subprocess opens its own window at the same
+        size) and re-initialized afterwards; ``screen`` and ``clock`` are
+        re-created, and the VHDL/work-dir state persists so the user can
+        restart immediately.
 
         The in-simulation toolbar routes through the :class:`SimExit` the
         subprocess reports: RELOAD_VHDL revalidates + re-analyzes the same
@@ -465,9 +485,6 @@ class ScreenController:
         BACK_TO_BOARDS returns to the selector, CHANGE_VHDL opens the picker,
         and STOPPED re-enters the preview as before.
         """
-        if os.environ.get("FPGA_SIM_SINGLE_WINDOW") == "1":
-            return self._on_simulate_attached()
-
         board = self.board
         s = self.state
         assert board is not None

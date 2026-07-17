@@ -8,12 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Experimental single-window simulation (U34).** Setting `FPGA_SIM_SINGLE_WINDOW=1`
-  keeps the launcher's window open during simulation instead of closing it and
-  opening a second one: the board comes alive in place while a headless GHDL/NVC
-  child streams signal state over an IPC link. Off by default this release; it
-  becomes the default in a later change. In this mode, closing the window (X)
-  quits the app while ESC / [■ Stop] returns to the launcher screens.
+- **Single-window simulation (U34).** The launcher now keeps its window open for the
+  whole session: starting a simulation brings the previewed board alive in place while
+  a headless GHDL/NVC child streams signal state over an IPC link — no second window is
+  opened or closed. Closing the window (X) quits the app; **ESC** or **[■ Stop]**
+  returns to the launcher screens. Set `FPGA_SIM_LEGACY_WINDOW=1` to restore the old
+  separate-window behavior for this release (it is removed in a later change).
+- **`fpga-sim --benchmark --no-ui`.** A new benchmark mode that runs the simulator
+  alone (headless child, no pygame) and reports its steps / sim rate / timer%,
+  isolating simulator throughput from UI cost. The default `--benchmark` now measures
+  the whole app — the real simulation screen rendering headless — so the number stays
+  comparable to the historical baseline series.
+
+### Changed
+
+- **Stats panel G/D/I split.** With the simulator now in its own process, **G**
+  (simulator step) is a share of the simulator's own loop while **D**raw / **I**dle are
+  host-frame shares — so the three no longer necessarily total 100%.
 
 ### Fixed
 

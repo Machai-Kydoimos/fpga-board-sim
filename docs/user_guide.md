@@ -52,7 +52,9 @@ reports any contract or compile error.
 ### 4. Run the simulation
 
 The selected simulator (GHDL or NVC) compiles and simulates the VHDL design via
-cocotb, clocked at the board's actual frequency. The pygame UI becomes interactive:
+cocotb, clocked at the board's actual frequency. The simulation runs **in the same
+window** — the board you previewed stays on screen and becomes interactive, while the
+simulator itself runs headless in the background:
 
 - **Switches/buttons** drive FPGA inputs in real time
 - **LEDs** reflect FPGA outputs from the simulation
@@ -65,7 +67,9 @@ cocotb, clocked at the board's actual frequency. The pygame UI becomes interacti
   state is unaffected)
 - **S** — toggle the [stats panel](#stats-panel)
 - **F1 / ?** — open the help overlay
-- **ESC** or close window → stops simulation, returns to board list
+- **ESC** or **[■ Stop]** (bottom-right) → stop the simulation, return to the board list
+- **Close the window (X)** → quit the app. The launcher is a single window for the
+  whole session, so closing it exits — the same as on every other screen
 
 ## Stats panel
 
@@ -81,7 +85,7 @@ zones. Toggle it with **S**.
 | Clk/frame | Clock cycles advanced in the last simulation step |
 | Eff. rate | Actual measured throughput (clocks/frame × GUI fps) |
 | GUI FPS | 30-frame rolling average of display frames per second |
-| G/D/I % | Frame time split: **G**HDL step / **D**raw / **I**dle (cap sleep) |
+| G/D/I % | **G** = simulator step (share of the headless simulator's own loop); **D**raw / **I**dle = host frame shares. The simulator runs in a separate process now, so these are measured against different clocks and need not total 100%. |
 
 On a [board-native run](#board-native-runs) this zone also carries the active-low
 note described below.
@@ -154,9 +158,9 @@ Open it with the **gear button** in the board preview. It can:
 
 ### Themes
 
-Three themes — **PCB Green**, **Dark**, and **High Contrast** — are applied live,
-restored at startup, and forwarded to the simulation window too (so the sim matches
-the launcher). The active theme is stored in `session.json`.
+Three themes — **PCB Green**, **Dark**, and **High Contrast** — are applied live and
+restored at startup; because the simulation now renders in the same window, it always
+matches the launcher. The active theme is stored in `session.json`.
 
 ### Waveform capture
 
