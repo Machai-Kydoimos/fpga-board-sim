@@ -14,19 +14,15 @@ The flow is now an explicit state machine:
   next screen (:class:`NextScreen`), so every edge of the state machine is a
   plain, unit-testable call.
 
-The simulation runs in the launcher's own window by default (single-window,
-U34): a headless GHDL/NVC + cocotb child streams signal state to a
-:class:`~fpga_sim.ui.SimulationScreen` rendered right here (see
-:meth:`ScreenController._on_simulate_attached`).  Setting
-``FPGA_SIM_LEGACY_WINDOW=1`` restores the pre-U34 path, where pygame is torn
-down before launch and the cocotb subprocess opens its own window
-(:meth:`ScreenController._on_simulate_legacy`) — kept for one release as an
-escape hatch.
+The simulation runs in the launcher's own window (single-window, U34): a
+headless GHDL/NVC + cocotb child streams signal state to a
+:class:`~fpga_sim.ui.SimulationScreen` rendered right here, so no window is
+ever created or destroyed between launcher start and app exit (see
+:meth:`ScreenController.on_simulate`).
 """
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import partial
@@ -39,13 +35,11 @@ from fpga_sim.board_loader import BoardDef
 from fpga_sim.session_config import load_session, push_recent, save_session
 from fpga_sim.sim_bridge import (
     ConventionMatch,
-    SimExit,
     Simulator,
     analyze_vhdl,
     check_vhdl_contract,
     check_vhdl_encoding,
     finish_waveform,
-    launch_simulation,
     start_simulation,
 )
 from fpga_sim.ui import (
@@ -54,13 +48,13 @@ from fpga_sim.ui import (
     ErrorDialog,
     FPGABoard,
     ScreenResult,
+    SimExit,
     SimulationScreen,
     VHDLFilePicker,
     run_with_spinner,
 )
 from fpga_sim.ui.constants import get_font
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
-from fpga_sim.ui.theme import current_theme_name
 
 _HDL_DIR = Path(__file__).parent.parent.parent / "hdl"
 
@@ -78,7 +72,7 @@ def example_vhdl_for(board: BoardDef | None) -> Path:
 def build_generics(board: BoardDef) -> dict[str, str]:
     """Build the generic map for sim_wrapper from a board definition.
 
-    NUM_SEGS is absent here: it is conditionally injected by launch_simulation()
+    NUM_SEGS is absent here: it is conditionally injected by start_simulation()
     only when both the board has a 7-seg display and the design declares a
     ``seg`` output port (which also selects the 7-seg wrapper template).
     Passing NUM_SEGS to the standard wrapper (which lacks that generic) would
@@ -456,152 +450,16 @@ class ScreenController:
         )
 
     def on_simulate(self) -> NextScreen:
-        """Launch the simulation for the current board + VHDL.
+        """Run the simulation in the launcher's window (single-window, U34).
 
-        Single-window (U34) is the default: the launcher's pygame window
-        persists and the headless GHDL/NVC child streams state to a
-        :class:`~fpga_sim.ui.SimulationScreen` rendered in place
-        (:meth:`_on_simulate_attached`).  ``FPGA_SIM_LEGACY_WINDOW=1`` selects
-        the pre-U34 path (:meth:`_on_simulate_legacy`), where pygame is torn
-        down and the cocotb subprocess opens its own window — kept for one
-        release as an escape hatch.
-        """
-        if os.environ.get("FPGA_SIM_LEGACY_WINDOW") == "1":
-            return self._on_simulate_legacy()
-        return self._on_simulate_attached()
-
-    def _on_simulate_legacy(self) -> NextScreen:
-        """Launch the simulation subprocess, then act on its exit intent (U7).
-
-        The pre-U34 path (``FPGA_SIM_LEGACY_WINDOW=1``): pygame is quit before
-        the launch (the cocotb subprocess opens its own window at the same
-        size) and re-initialized afterwards; ``screen`` and ``clock`` are
-        re-created, and the VHDL/work-dir state persists so the user can
-        restart immediately.
-
-        The in-simulation toolbar routes through the :class:`SimExit` the
-        subprocess reports: RELOAD_VHDL revalidates + re-analyzes the same
-        file and relaunches right here (never showing the preview),
-        BACK_TO_BOARDS returns to the selector, CHANGE_VHDL opens the picker,
-        and STOPPED re-enters the preview as before.
-        """
-        board = self.board
-        s = self.state
-        assert board is not None
-        assert s.vhdl_path is not None  # Start button only fires when VHDL is set
-
-        # Re-analyze if the work directory is missing or was produced by a
-        # different simulator.  This also covers the session-restore case
-        # (work_dir_simulator is None on first launch) where the saved
-        # board+VHDL pair may be mismatched (e.g. a 7-seg board with a
-        # standard design or vice-versa).  Always re-run the contract check
-        # here so a stale session cannot bypass it.
-        if s.work_dir_simulator != s.simulator:
-            example = example_vhdl_for(board)
-            res = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
-            ok, msg = res.ok, res.message
-            s.convention = res.match  # board-native (U21 B3) when set, else None
-            if not ok:
-                ErrorDialog(self.screen, "VHDL Error", msg, example_path=example).run(self.clock)
-                s.clear_vhdl()
-                return NextScreen.PREVIEW
-            ok, detail = self._analyze_with_spinner(s.vhdl_path)
-            if not ok:
-                ErrorDialog(
-                    self.screen, f"{s.simulator.upper()} Error", detail, example_path=example
-                ).run(self.clock)
-                return NextScreen.PREVIEW
-            s.work_dir = detail
-            s.work_dir_simulator = s.simulator
-
-        s.board_class = board.class_name
-        s.board_source = board.source
-        s.last_vhdl_path = s.vhdl_path
-
-        # Capture the final window size before quitting pygame so the
-        # simulation subprocess, the post-sim restart, and the next app
-        # launch (via the session file) all use it.
-        width, height = self.screen.get_size()
-        self._save_session(window_size=(width, height))
-        push_recent(board.class_name, board.source, s.vhdl_path)
-
-        get_font.cache_clear()
-        pygame.quit()  # the cocotb subprocess starts its own pygame
-
-        sim_error: str | None = None
-        sim_exit = SimExit.STOPPED
-        while True:
-            # The sim writes the slider's final value back to the session file at
-            # exit, so re-read the session each (re)launch: the slider resumes
-            # where the user left it — across runs, reloads, and restarts.  The
-            # waveform mode + memories + auto-open (launcher-owned; U10/U29/U30)
-            # ride along too.
-            sess = load_session()
-            try:
-                speed = float(sess.get("speed_factor", SPEED_DEFAULT))
-            except (TypeError, ValueError):
-                speed = SPEED_DEFAULT
-            waveform = sess.get("waveform")
-            waveform_open = sess.get("waveform_open")
-            waveform_memories = sess.get("waveform_memories")
-
-            try:
-                sim_exit = launch_simulation(
-                    board.to_json(),
-                    s.vhdl_path,
-                    Path(s.vhdl_path).stem,
-                    build_generics(board),
-                    sim_width=width,
-                    sim_height=height,
-                    work_dir=s.work_dir,
-                    simulator=s.simulator,
-                    board_def=board,
-                    speed_factor=speed,
-                    theme=current_theme_name(),
-                    waveform=waveform,
-                    waveform_open=waveform_open,
-                    waveform_memories=waveform_memories,
-                    match=s.convention,
-                )
-            except Exception as e:
-                sim_error = str(e)
-                break
-            if sim_exit is not SimExit.RELOAD_VHDL:
-                break
-
-            # [Reload VHDL]: the file on disk may have been edited, so run the
-            # full validation pipeline again behind a spinner window, then
-            # loop straight into the next launch — never showing the preview.
-            self._restore_window(width, height)
-            bail = self._revalidate_for_reload()
-            if bail is not None:
-                return bail
-            get_font.cache_clear()
-            pygame.quit()
-
-        # After the simulation ends, bring the launcher window back.
-        self._restore_window(width, height)
-
-        if sim_error:
-            intent = ErrorDialog(self.screen, "Simulation Error", sim_error).run(self.clock)
-            if intent is DialogResult.BACK:
-                return self.on_back()
-            # DialogResult.RETRY → re-enter the board preview
-            return NextScreen.PREVIEW
-        if sim_exit is SimExit.BACK_TO_BOARDS:
-            return self.on_back()
-        if sim_exit is SimExit.CHANGE_VHDL:
-            return self._run_vhdl_picker()
-        return NextScreen.PREVIEW
-
-    def _on_simulate_attached(self) -> NextScreen:
-        """Single-window simulation (U34): run in-window via :class:`SimulationScreen`.
-
-        Same re-analyze / session-save preamble as :meth:`on_simulate`, but the
-        launcher's pygame window persists — the GHDL/NVC child runs headless and
-        streams state to a :class:`SimulationScreen` rendered right here, so no
-        window is ever created or destroyed.  The exit intents route exactly as
-        the legacy tail does, plus QUIT (window X) which exits the whole app.
+        Re-analyzes when the work dir is missing or came from a different
+        simulator (with a mandatory contract re-check, so a stale session
+        cannot bypass it), saves the session, then loops: start the headless
+        GHDL/NVC child, render a :class:`SimulationScreen` in place, and route
+        its :class:`SimExit` — RELOAD_VHDL revalidates + relaunches without
+        showing the preview, BACK_TO_BOARDS returns to the selector, CHANGE_VHDL
+        opens the picker, QUIT (window X) exits the app, and STOPPED re-enters
+        the preview.  No window is ever created or destroyed.
         """
         board = self.board
         s = self.state
@@ -697,13 +555,6 @@ class ScreenController:
         if sim_exit is SimExit.CHANGE_VHDL:
             return self._run_vhdl_picker()
         return NextScreen.PREVIEW
-
-    def _restore_window(self, width: int, height: int) -> None:
-        """Bring the launcher window back after the sim subprocess owned the display."""
-        pygame.init()
-        self.screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
-        pygame.display.set_caption("FPGA Simulator")
-        self.clock = pygame.time.Clock()
 
     def _revalidate_for_reload(self) -> NextScreen | None:
         """Re-run the validation pipeline on the current VHDL for [Reload VHDL].

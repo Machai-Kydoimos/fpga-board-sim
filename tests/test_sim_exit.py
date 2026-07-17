@@ -1,227 +1,32 @@
-"""Tests for the U7 exit-intent channel (SimExit + the sidecar file protocol).
+"""Tests for the SimExit navigation enum (U7), now living in ``fpga_sim.ui.results``.
 
-The parse side (``_read_exit_intent``) is covered directly; the launch side is
-covered by calling the real ``launch_simulation()`` with the simulator
-subprocess and environment builder replaced by fakes, so the env-var handoff,
-the stale-file cleanup, and the read-back all run for real.
+The exit-intent *file* channel is gone with the legacy window path (U34): the
+single-window :class:`~fpga_sim.ui.simulation_screen.SimulationScreen` returns a
+``SimExit`` from ``run()`` directly, so nothing is serialized.  This pins the
+enum's shape and its new location; the routing on each member is covered in
+``test_controller.py``.
 """
 
 from __future__ import annotations
 
-import subprocess
-from pathlib import Path
-from typing import Any
-
-import pytest
-
-import fpga_sim.sim_bridge as sim_bridge
-from fpga_sim.sim_bridge import SimExit, _read_exit_intent, launch_simulation
-
-# ── _read_exit_intent ─────────────────────────────────────────────────────────
+from fpga_sim.ui import SimExit
+from fpga_sim.ui.results import SimExit as SimExitFromResults
 
 
-def test_missing_file_means_stopped(tmp_path):
-    assert _read_exit_intent(tmp_path / "nope.txt", 0) is SimExit.STOPPED
+def test_simexit_lives_in_results_and_is_reexported_from_ui():
+    assert SimExit is SimExitFromResults
 
 
-# QUIT is a single-window-only signal (window X, U34); the legacy testbench
-# never writes it to the intent file, so it is excluded here and covered by
-# test_quit_value_coerces_to_stopped below.
-@pytest.mark.parametrize("intent", [e for e in SimExit if e is not SimExit.QUIT])
-def test_every_value_round_trips(tmp_path, intent):
-    f = tmp_path / "exit_intent.txt"
-    f.write_text(intent.value)
-    assert _read_exit_intent(f, 0) is intent
+def test_simexit_has_the_navigation_members():
+    assert {e.name for e in SimExit} == {
+        "STOPPED",
+        "BACK_TO_BOARDS",
+        "CHANGE_VHDL",
+        "RELOAD_VHDL",
+        "QUIT",
+    }
 
 
-def test_quit_value_coerces_to_stopped(tmp_path):
-    """A stray "quit" in the intent file is treated as a plain stop, not app-quit."""
-    f = tmp_path / "exit_intent.txt"
-    f.write_text(SimExit.QUIT.value)
-    assert _read_exit_intent(f, 0) is SimExit.STOPPED
-
-
-def test_junk_value_means_stopped(tmp_path):
-    f = tmp_path / "exit_intent.txt"
-    f.write_text("reboot_universe")
-    assert _read_exit_intent(f, 0) is SimExit.STOPPED
-
-
-def test_surrounding_whitespace_is_tolerated(tmp_path):
-    f = tmp_path / "exit_intent.txt"
-    f.write_text("  reload_vhdl\n")
-    assert _read_exit_intent(f, 0) is SimExit.RELOAD_VHDL
-
-
-def test_nonzero_returncode_ignores_the_file(tmp_path):
-    """A crash must never be treated as navigation."""
-    f = tmp_path / "exit_intent.txt"
-    f.write_text(SimExit.BACK_TO_BOARDS.value)
-    assert _read_exit_intent(f, 1) is SimExit.STOPPED
-
-
-# ── launch_simulation round-trip (fake simulator subprocess) ──────────────────
-
-
-@pytest.fixture()
-def launch_env(tmp_path, monkeypatch):
-    """Wire launch_simulation() to a fake simulator process.
-
-    Returns ``(run, captured)``: call ``run(write=..., returncode=...)`` to
-    launch; the fake subprocess records the env it got in *captured* and
-    optionally writes *write* to the advertised intent file.
-    """
-    vhdl = tmp_path / "blinky.vhd"
-    vhdl.write_text("entity blinky is end;")
-    work_dir = tmp_path / "wd"
-    work_dir.mkdir()
-    captured: dict[str, Any] = {}
-
-    monkeypatch.setattr(sim_bridge, "_build_sim_env", lambda **kw: ({}, "plugin.so"))
-    # Redirect waveform output away from the real ~/.fpga_simulator (U10).
-    monkeypatch.setattr(sim_bridge, "WAVEFORM_DIR", tmp_path / "waveforms")
-    # Record viewer auto-open calls instead of launching a real viewer (U29).
-    opened: list[tuple[Path, Path]] = []
-    monkeypatch.setattr(
-        sim_bridge, "_open_waveform", lambda dump, gtkw: opened.append((dump, gtkw))
-    )
-    captured["opened"] = opened
-
-    def run(
-        *,
-        write: str | None = None,
-        returncode: int = 0,
-        waveform: str | None = None,
-        waveform_open: bool | None = None,
-    ) -> SimExit:
-        def fake_run(cmd: Any, env: Any = None, cwd: Any = None, **kw: Any) -> Any:
-            captured["cmd"] = cmd
-            captured["env"] = env
-            captured["cwd"] = cwd
-            if write is not None:
-                Path(env["FPGA_SIM_EXIT_INTENT_FILE"]).write_text(write)
-            # Mimic the simulator emitting a non-empty dump when capture is on, so
-            # the post-run hint + GTKWave-sidecar path (U10 / U28) runs for real.
-            for arg in cmd:
-                for prefix in ("--vcd=", "--fst=", "--wave="):
-                    if arg.startswith(prefix):
-                        Path(arg[len(prefix) :]).write_text("$version fake $end\n")
-            return subprocess.CompletedProcess(cmd, returncode)
-
-        # sim_bridge does a plain ``import subprocess``, so patching the global
-        # module's ``run`` is exactly what launch_simulation() will call.
-        monkeypatch.setattr(subprocess, "run", fake_run)
-        return launch_simulation(
-            "",  # no board JSON
-            vhdl,
-            "blinky",
-            {},
-            work_dir=str(work_dir),
-            simulator="ghdl",  # ghdl path: no elaborate subprocess before the run
-            waveform=waveform,
-            waveform_open=waveform_open,
-        )
-
-    return run, captured, work_dir
-
-
-def test_launch_advertises_intent_file_in_workdir(launch_env):
-    run, captured, work_dir = launch_env
-    assert run() is SimExit.STOPPED  # nothing written → plain stop
-    assert captured["env"]["FPGA_SIM_EXIT_INTENT_FILE"] == str(work_dir / "exit_intent.txt")
-
-
-def test_launch_returns_the_intent_the_sim_wrote(launch_env):
-    run, _captured, _work_dir = launch_env
-    assert run(write="change_vhdl") is SimExit.CHANGE_VHDL
-
-
-def test_launch_clears_a_stale_intent_from_a_reused_workdir(launch_env):
-    run, _captured, work_dir = launch_env
-    (work_dir / "exit_intent.txt").write_text("reload_vhdl")  # from a previous run
-    assert run() is SimExit.STOPPED
-
-
-def test_launch_ignores_intent_when_subprocess_failed(launch_env):
-    run, _captured, _work_dir = launch_env
-    assert run(write="back_to_boards", returncode=2) is SimExit.STOPPED
-
-
-# ── waveform capture plumbing (U10) ───────────────────────────────────────────
-
-
-def test_launch_without_waveform_adds_no_dump_flag(launch_env):
-    run, captured, _work_dir = launch_env
-    run()  # default: capture off
-    assert not any(a.startswith(("--vcd", "--fst")) for a in captured["cmd"])
-
-
-def test_launch_waveform_off_adds_no_dump_flag(launch_env):
-    run, captured, _work_dir = launch_env
-    run(waveform="off")
-    assert not any(a.startswith(("--vcd", "--fst")) for a in captured["cmd"])
-
-
-def test_launch_with_vcd_adds_flag_and_creates_dir(launch_env, tmp_path):
-    run, captured, _work_dir = launch_env
-    run(waveform="vcd")
-    vcd_flags = [a for a in captured["cmd"] if a.startswith("--vcd=")]
-    assert len(vcd_flags) == 1
-    # Named "<toplevel>_<timestamp>.vcd" under the redirected WAVEFORM_DIR.
-    assert "blinky_" in vcd_flags[0] and vcd_flags[0].endswith(".vcd")
-    assert str(tmp_path / "waveforms") in vcd_flags[0]
-    assert (tmp_path / "waveforms").is_dir()  # created before the run
-
-
-def test_launch_with_vcd_writes_gtkw_sidecar(launch_env):
-    """U28: a produced dump gets a matching .gtkw naming it + listing sim_wrapper.clk."""
-    run, captured, _work_dir = launch_env
-    run(waveform="vcd")
-    vcd = Path(next(a[len("--vcd=") :] for a in captured["cmd"] if a.startswith("--vcd=")))
-    gtkw = vcd.with_suffix(".gtkw")
-    assert gtkw.is_file()  # written beside the dump the fake produced
-    text = gtkw.read_text()
-    assert f'[dumpfile] "{vcd}"' in text
-    assert "sim_wrapper.clk" in text
-
-
-# ── auto-open + env enable (U29) ──────────────────────────────────────────────
-
-
-def test_launch_default_does_not_auto_open(launch_env):
-    """Capture on, auto-open off (default) → no viewer launched."""
-    run, captured, _work_dir = launch_env
-    run(waveform="vcd")
-    assert captured["opened"] == []
-
-
-def test_launch_waveform_open_launches_viewer(launch_env):
-    """waveform_open=True + a produced dump → _open_waveform(dump, its .gtkw)."""
-    run, captured, _work_dir = launch_env
-    run(waveform="vcd", waveform_open=True)
-    assert len(captured["opened"]) == 1
-    dump, gtkw = captured["opened"][0]
-    assert dump.suffix == ".vcd" and dump.with_suffix(".gtkw") == gtkw
-
-
-def test_launch_env_forces_auto_open(launch_env, monkeypatch):
-    """FPGA_SIM_WAVEFORM_OPEN=1 forces auto-open even with waveform_open unset."""
-    run, captured, _work_dir = launch_env
-    monkeypatch.setenv("FPGA_SIM_WAVEFORM_OPEN", "1")
-    run(waveform="vcd")
-    assert len(captured["opened"]) == 1
-
-
-def test_launch_no_auto_open_without_capture(launch_env):
-    """Auto-open never fires when nothing was captured."""
-    run, captured, _work_dir = launch_env
-    run(waveform="off", waveform_open=True)
-    assert captured["opened"] == []
-
-
-def test_launch_env_enables_capture(launch_env, monkeypatch):
-    """FPGA_SIM_WAVEFORM=vcd enables capture even when the waveform arg is None."""
-    run, captured, _work_dir = launch_env
-    monkeypatch.setenv("FPGA_SIM_WAVEFORM", "vcd")
-    run()  # no waveform argument
-    assert any(a.startswith("--vcd=") for a in captured["cmd"])
+def test_simexit_values_are_stable_labels():
+    assert SimExit.STOPPED.value == "stopped"
+    assert SimExit.QUIT.value == "quit"

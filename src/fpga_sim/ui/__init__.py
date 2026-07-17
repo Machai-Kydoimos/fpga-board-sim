@@ -11,7 +11,7 @@ from fpga_sim.ui.board_selector import BoardSelector
 from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch, UIComponent
 from fpga_sim.ui.error_dialog import ErrorDialog
 from fpga_sim.ui.help_dialog import HelpDialog
-from fpga_sim.ui.results import DialogResult, ScreenResult
+from fpga_sim.ui.results import DialogResult, ScreenResult, SimExit
 from fpga_sim.ui.settings_dialog import SettingsDialog
 from fpga_sim.ui.sim_panel import SimPanel
 from fpga_sim.ui.sim_toolbar import SimToolbar
@@ -38,6 +38,7 @@ __all__ = [
     "SettingsDialog",
     "ScreenResult",
     "DialogResult",
+    "SimExit",
     "SimPanel",
     "SimToolbar",
     "SimulationScreen",

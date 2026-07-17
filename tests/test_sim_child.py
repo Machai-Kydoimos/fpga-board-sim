@@ -98,7 +98,7 @@ def test_env_has_link_vars_and_bridge_module(start: Callable[..., _Started]) -> 
     env = captured["env"]
     assert env["FPGA_SIM_LINK_PORT"].isdigit()
     assert len(bytes.fromhex(env["FPGA_SIM_LINK_KEY"])) == 16
-    assert env["COCOTB_TEST_MODULES"] == "sim_testbench_bridge"
+    assert env["COCOTB_TEST_MODULES"] == "sim_testbench"
     assert env["TOPLEVEL"] == "sim_wrapper"
     child.link.close()
 

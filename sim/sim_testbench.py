@@ -1,37 +1,43 @@
-"""sim_testbench.py – cocotb testbench bridging simulator signals to the pygame FPGA board UI.
+"""sim_testbench.py - headless cocotb testbench (no pygame, no window).
 
-This module is loaded by cocotb inside the simulator process.
-It reads the board definition from an environment variable,
-creates the pygame UI, and runs a cooperative loop that
-alternates between advancing simulation time and processing
-pygame events.
+Single-window simulation (docs/architecture.md): the pygame UI stays in the
+launcher process, which owns the one and only window.  This module runs inside
+the GHDL/NVC process and shuttles signal state over the ``sim_link`` connection
+to the launcher's ``SimulationScreen``.  It never imports pygame, directly or
+transitively -- its only ``fpga_sim`` imports are ``board_loader``,
+``sim_link`` and (when metrics are enabled) ``sim_metrics``, all pygame-free.
+Each frame it:
 
-Clock model
------------
-The clock is generated entirely inside the VHDL ``sim_wrapper`` entity
-(see ``sim/sim_wrapper_template.vhd``), not by a Python coroutine.  This
-eliminates all per-half-period GPI callbacks, so the only GPI round-trips
-per frame are the two endpoints of the single ``await Timer(...)`` call.
+  1. computes the sim step from the current speed factor
+     (``_REAL_STEP_NS`` / ``_MAX_CYCLES_PER_STEP`` math)
+  2. ``await Timer(step)``
+  3. reads ``led`` / ``seg``, drains control messages, applies inputs/speed/clock
+  4. sends throttled state to the host
+  5. sleeps to pace sim time to the speed target (skipped when free-running)
 
-The wrapper exposes a ``clk_half_ns`` port (type ``natural``).  When the
-panel's [-]/[+] buttons change the virtual clock frequency, this testbench
-writes the new half-period to ``dut.clk_half_ns``; the VHDL process picks
-it up on the next half-cycle without restarting the simulator.
+Send throttling.  A changed-value flood at tiny sim steps must not turn into
+thousands of pipe writes per second, yet the host must still see a fresh value
+promptly and never sit staring at a stale one.  So a send is forced whenever an
+input was just applied; otherwise it is rate-limited to at most one every
+``_SEND_MIN_S`` (4 ms) on a value change, with a ``_SEND_MAX_S`` (50 ms)
+heartbeat while values are static.
 
-Timing model
-------------
-Each frame advances simulation by ``_BASE_STEP_NS × speed_factor / _BASE_SPEED`` ns,
-where ``_BASE_STEP_NS = 9_596`` ns and ``_BASE_SPEED = 0.1`` (the slider default).
-
-At the default 0.1× speed the target step equals exactly one ``_MAX_CYCLES_PER_STEP``
-worth of cycles at 1 ns/cycle, so the cap is only reached for boards whose clock
-period is less than 1 ns (i.e. > 1 GHz — none in practice).  This keeps the full
-slider range useful: dragging left slows the design below the default; dragging right
-requests more sim time per frame up to the cycle cap.
-
-The step is capped at ``_MAX_CYCLES_PER_STEP`` clock cycles regardless of
-the speed setting, to bound simulation work per frame.
+Environment:
+  FPGA_SIM_LINK_PORT / FPGA_SIM_LINK_KEY   host listener (required)
+  FPGA_SIM_BOARD_JSON                      board definition (resource counts)
+  FPGA_SIM_SPEED                           initial speed factor (default 0.1)
+  FPGA_SIM_BENCHMARK=<secs>                free-run (no pacing) for N wall
+                                           seconds, then exit with a report
+  FPGA_SIM_METRICS=<path>                  per-frame CSV + meta sidecar; the
+                                           draw/tick columns are 0.0 here (the
+                                           host owns rendering now)
+  FPGA_SIM_SIMULATOR / FPGA_SIM_VHDL_PATH / FPGA_SIM_TOPLEVEL / FPGA_SIM_GENERICS
+                                           metadata for the metrics meta sidecar
+  FPGA_SIM_SPIKE_STEP_MULT=<n>             multiply the per-Timer cycle cap
+                                           (GPI-overhead experiment; default 1)
 """
+
+from __future__ import annotations
 
 import json
 import os
@@ -41,105 +47,31 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 import cocotb
-import pygame
 from cocotb.triggers import Timer
 
-from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ, BoardDef, ComponentInfo
-from fpga_sim.session_config import update_session
-from fpga_sim.sim_bridge import SimExit
-from fpga_sim.sim_session_log import save_session_stats
-from fpga_sim.ui import FPGABoard, HelpDialog, SimPanel, SimToolbar
-from fpga_sim.ui.constants import get_font as _get_font
-from fpga_sim.ui.sim_panel import _PANEL_H_BASE, SPEED_DEFAULT
-from fpga_sim.ui.theme import THEME, THEME_NAMES, set_theme
-from fpga_sim.ui.widgets import draw_button
+from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ, BoardDef
+from fpga_sim.sim_link import connect_from_env, drain, send
 
-
-def _native_convention() -> dict[str, Any] | None:
-    """Parse ``FPGA_SIM_NATIVE_CONVENTION`` (set by launch_simulation for a native run).
-
-    Returns the decoded dict (``maker`` / ``board_name`` / per-role ``*_active_low``
-    / ``has_seg``) or ``None`` for an ordinary generic-contract run.
-    """
-    raw = os.environ.get("FPGA_SIM_NATIVE_CONVENTION", "").strip()
-    if not raw:
-        return None
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        return None
-    return data if isinstance(data, dict) else None
-
-
-def _active_low_roles(conv: dict[str, Any]) -> str:
-    """Comma-joined role labels the convention drives active-low (else ``"none"``)."""
-    roles = []
-    if conv.get("leds_active_low"):
-        roles.append("LED")
-    if conv.get("switches_active_low"):
-        roles.append("SW")
-    if conv.get("buttons_active_low"):
-        roles.append("BTN")
-    if conv.get("has_seg") and conv.get("seg_active_low"):
-        roles.append("HEX")
-    return ", ".join(roles) if roles else "none"
-
-
-# ── Optional metrics collection (set FPGA_SIM_METRICS=<path> to enable) ──────
-_METRICS_PATH: str = os.environ.get("FPGA_SIM_METRICS", "")
-
-# ── Exit-intent channel (the launcher sets FPGA_SIM_EXIT_INTENT_FILE, U7) ────
-# When present, the navigation toolbar is drawn and a toolbar click writes the
-# chosen SimExit value to this file just before exit; launch_simulation() reads
-# it back to route to the selector / picker / a relaunch.  Benchmark and test
-# runs never set it, so they get no toolbar and never write the file.
-_EXIT_INTENT_PATH: str = os.environ.get("FPGA_SIM_EXIT_INTENT_FILE", "")
-
-# ── Saved theme restore (the launcher sets FPGA_SIM_THEME from its live theme) ──
-# Applied at import, before any drawing; an unknown or absent name keeps the
-# default, so benchmark and test runs are unaffected.
-_THEME_ENV: str = os.environ.get("FPGA_SIM_THEME", "")
-if _THEME_ENV in THEME_NAMES:
-    set_theme(_THEME_ENV)
-
-# ── Saved speed restore (the launcher sets FPGA_SIM_SPEED from the session) ──
-# When present it seeds the panel's speed slider, and the final slider value is
-# written back to the session file at exit.  Benchmark and test runs never set
-# it, so they neither read nor touch the user's session.
-_SPEED_ENV: str = os.environ.get("FPGA_SIM_SPEED", "")
-try:
-    _SPEED_INIT: float = float(_SPEED_ENV) if _SPEED_ENV else SPEED_DEFAULT
-except ValueError:
-    _SPEED_INIT = SPEED_DEFAULT
-
-# ── Benchmark mode (set FPGA_SIM_BENCHMARK=<seconds> for headless run) ────────
-_BENCHMARK_SECS: float = float(os.environ.get("FPGA_SIM_BENCHMARK", "0"))
-_BENCHMARK_MODE: bool = _BENCHMARK_SECS > 0
-if _BENCHMARK_MODE:
-    # Suppress display before pygame is imported (may already be set by caller)
-    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
-
-# _PANEL_H_BASE is defined in ui.sim_panel; imported above.
-
-# ── Simulation step constants ─────────────────────────────────────────────────
-# Real-time calibration: at speed_factor = 1.0 the sim advances exactly one
-# frame's worth of real time (1/60 s) per display frame — making REAL genuinely
-# 1:1 real-time for any board clock.
-#   10 kHz board at 1.0×: step = 16,666,667 ns → 167 cycles/frame → 10,000 Hz ✓
-#   100 MHz board at 1.0×: step = 16,666,667 ns → exceeds cap → runs at max ~576 kHz
-# For boards faster than ~576 kHz the cycle cap is hit early on the slider and
-# "MAX SPEED" is shown; real-time is simply not achievable with the current GPI
-# overhead.  Slower boards (< 576 kHz) can be observed at true 1:1 real-time and
-# beyond; the "REAL" tick on the slider is accurate for them.
+# Mirrors sim_testbench.py (not imported from there: that module pulls in pygame).
 _TARGET_FPS: float = 60.0
-_REAL_STEP_NS: int = round(1e9 / _TARGET_FPS)  # ≈ 16,666,667 ns at 60 FPS
-# Maximum clock cycles per Timer call.  With VHDL-side clock generation
-# there are no per-cycle GPI callbacks; the limit is NVC/GHDL internal
-# simulation throughput.
+_REAL_STEP_NS: int = round(1e9 / _TARGET_FPS)
 _MAX_CYCLES_PER_STEP: int = 9_596
+_SPEED_DEFAULT: float = 0.1
+
+#: Minimum wall time between unforced state sends (a changed-value flood at
+#: tiny sim steps must not turn into thousands of pipe writes per second).
+_SEND_MIN_S: float = 0.004
+#: Maximum wall time between state sends (heartbeat while values are static).
+_SEND_MAX_S: float = 0.05
+
+
+def _env_float(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, "") or default)
+    except ValueError:
+        return default
 
 
 def _simulator_version(sim_name: str) -> str:
@@ -152,7 +84,7 @@ def _simulator_version(sim_name: str) -> str:
             timeout=5,
         )
         return (result.stdout or result.stderr).splitlines()[0].strip()
-    except Exception:
+    except Exception:  # noqa: BLE001 - best-effort metadata only
         return "unknown"
 
 
@@ -164,7 +96,12 @@ def _write_meta_sidecar(
     num_switches: int,
     num_buttons: int,
 ) -> None:
-    """Write a JSON metadata file alongside the CSV for report context."""
+    """Write a JSON metadata file alongside the metrics CSV for report context.
+
+    Mirrors the sidecar ``sim_testbench`` wrote, but pygame-free: the slider
+    default comes from this module's ``_SPEED_DEFAULT`` rather than
+    ``ui.sim_panel.SPEED_DEFAULT`` (importing that would pull in pygame).
+    """
     sim_name = os.environ.get("FPGA_SIM_SIMULATOR", "unknown")
     vhdl_path = os.environ.get("FPGA_SIM_VHDL_PATH", "unknown")
     # FPGA_SIM_TOPLEVEL carries the user's entity name; TOPLEVEL is sim_wrapper
@@ -191,493 +128,196 @@ def _write_meta_sidecar(
         "num_segs": board_def.seven_seg.num_digits if board_def and board_def.seven_seg else 0,
         "max_cycles_per_step": _MAX_CYCLES_PER_STEP,
         "real_step_ns": _REAL_STEP_NS,
-        "speed_factor_default": SPEED_DEFAULT,
+        "speed_factor_default": _SPEED_DEFAULT,
         "python_version": sys.version.split()[0],
         "platform": platform.platform(),
     }
 
-    import pathlib  # noqa: PLC0415
-
-    meta_path = str(pathlib.Path(csv_path).with_suffix("")) + ".meta.json"
+    meta_path = str(Path(csv_path).with_suffix("")) + ".meta.json"
     with open(meta_path, "w") as f:
         json.dump(meta, f, indent=2)
-    print(f"[metrics] Metadata written to: {meta_path}")
-
-
-def _load_board_from_env() -> BoardDef | None:
-    """Reconstruct a BoardDef from the JSON in the environment."""
-    raw = os.environ.get("FPGA_SIM_BOARD_JSON", "")
-    return BoardDef.from_json(raw) if raw else None
+    print(f"[bridge] metrics metadata written to: {meta_path}")
 
 
 @cocotb.test()
-async def interactive_sim(dut: object) -> None:
-    """Run the interactive simulation loop.
+async def bridge_sim(dut: object) -> None:
+    """Headless interactive loop: DUT <-> sim_link, no display."""
+    raw = os.environ.get("FPGA_SIM_BOARD_JSON", "")
+    board_def = BoardDef.from_json(raw) if raw else None
 
-    Reads switch/button state from pygame, writes it to the simulator,
-    reads LED outputs, and updates the display.  The clock is driven by
-    the VHDL sim_wrapper; this coroutine only writes dut.clk_half_ns when
-    the panel's [-]/[+] buttons change the virtual clock frequency.
-    """
-    board_def = _load_board_from_env()
-
-    sim_w = int(os.environ.get("FPGA_SIM_WIDTH", "1024"))
-    sim_h = int(os.environ.get("FPGA_SIM_HEIGHT", "700"))
-
-    pygame.init()
-
-    # Create the pygame window explicitly so the panel and board share it
-    screen = pygame.display.set_mode((sim_w, sim_h), pygame.RESIZABLE)
-
-    # Build the SimPanel with the base height; panel.panel_height is a property
-    # that re-scales automatically on every access as the window changes.
     clk_hz = board_def.default_clock_hz if board_def else _FALLBACK_CLOCK_HZ
-    # U21 B3b: board-native run metadata (None for an ordinary generic run).
-    _native = _native_convention()
-    panel = SimPanel(
-        screen,
-        height=_PANEL_H_BASE,
-        board_clock_hz=clk_hz,
-        board_clocks_hz=board_def.clocks if board_def else None,
-        speed_factor=_SPEED_INIT,
-        native_active_low=_active_low_roles(_native) if _native else None,
-    )
+    clk_period_ns = max(1.0, 1e9 / clk_hz)
+    num_leds = len(board_def.leds) if board_def else 4
+    num_switches = len(board_def.switches) if board_def else 4
+    num_buttons = len(board_def.buttons) if board_def else 4
+    seg_digits = board_def.seven_seg.num_digits if board_def and board_def.seven_seg else 0
 
-    # Initial scaled panel height for the board layout.
-    _panel_h = panel.panel_height
+    speed = _env_float("FPGA_SIM_SPEED", _SPEED_DEFAULT)
+    bench_secs = _env_float("FPGA_SIM_BENCHMARK", 0.0)
+    free_run = bench_secs > 0
+    step_mult = max(1, int(_env_float("FPGA_SIM_SPIKE_STEP_MULT", 1)))
 
-    # FPGABoard renders into the top portion of the window.
-    # show_footer=False suppresses the preview-only controls (Select Board,
-    # Load VHDL File, Start Simulation) that are meaningless during simulation.
-    # Panel starts hidden; board uses the full window height until S is pressed.
-    board = FPGABoard(
-        board_def=board_def,
-        screen=screen,
-        width=sim_w,
-        height=sim_h,
-        height_offset=0,
-        show_footer=False,
-    )
+    conn = connect_from_env()
+    send(conn, "hello", {"pid": os.getpid()})
 
-    # ── Window title: board, VHDL file, simulator ────────────────────────
-    _sim_name = os.environ.get("FPGA_SIM_SIMULATOR", "ghdl").upper()
-    _vhdl_basename = os.path.basename(os.environ.get("FPGA_SIM_VHDL_PATH", ""))
-    _board_name = board_def.name if board_def else "Generic"
-    # U21 B3b: mode tag right after the filename -- "(native: <maker>)" or "(generic)".
-    _mode_tag = f"(native: {_native.get('maker', '?')})" if _native else "(generic)"
-    pygame.display.set_caption(
-        f"FPGA Simulator \u2013 {_board_name} \u2013 {_vhdl_basename} {_mode_tag} ({_sim_name})"
-    )
-    # The info strip renders in segments so the native tag can carry an accent
-    # color.  _info_prefix ends with a space; the tag is blitted, then the suffix.
-    _info_prefix = "  |  ".join(p for p in (_board_name, _vhdl_basename) if p) + " "
-    _info_suffix = f"  |  {_sim_name}" if _sim_name else ""
+    # Initialize inputs (same guards as sim_testbench: ports may be absent).
+    for name, value in (("sw", 0), ("btn", 0)):
+        try:
+            getattr(dut, name).value = value
+        except AttributeError:
+            pass
 
-    # ── Sync initial clock half-period to the VHDL wrapper ───────────────────
-    # The wrapper's CLK_HALF_NS generic seeds the port default; writing it
-    # here ensures perfect agreement even if rounding differs.
-    _clk_half_ns: int = max(1, int(panel.clk_state["period_ns"] / 2))
-    try:
-        dut.clk_half_ns.value = _clk_half_ns  # type: ignore[attr-defined]
-    except AttributeError:
-        pass
-
-    # ── Initialize inputs ─────────────────────────────────────────────────────
-    num_sw = len(board.switches)
-    num_btn = len(board.buttons)
-    num_led = len(board.leds)
-
-    # ── Optional metrics collector ────────────────────────────────────────────
-    if _METRICS_PATH:
+    # -- Optional metrics collector (FPGA_SIM_METRICS=<path>) ------------------
+    metrics_path = os.environ.get("FPGA_SIM_METRICS", "")
+    if metrics_path:
         from fpga_sim.sim_metrics import SimMetrics  # noqa: PLC0415
 
-        _metrics_obj = SimMetrics(_METRICS_PATH)
-        _metrics_obj.start()
-        _write_meta_sidecar(
-            _METRICS_PATH,
-            board_def,
-            clk_hz,
-            num_led,
-            num_sw,
-            num_btn,
-        )
-        print(f"[metrics] Writing per-frame data to: {_METRICS_PATH}")
-        _metrics: SimMetrics | None = _metrics_obj
+        _m = SimMetrics(metrics_path)
+        _m.start()
+        _write_meta_sidecar(metrics_path, board_def, clk_hz, num_leds, num_switches, num_buttons)
+        print(f"[bridge] writing per-frame metrics to: {metrics_path}")
+        _m.mark_frame_start()
+        metrics: SimMetrics | None = _m
     else:
-        _metrics = None
+        metrics = None
 
-    try:
-        dut.sw.value = 0  # type: ignore[attr-defined]
-    except AttributeError:
-        pass
-    try:
-        dut.btn.value = 0  # type: ignore[attr-defined]
-    except AttributeError:
-        pass
+    led_mask = (1 << max(1, num_leds)) - 1
+    paused = False
+    running = True
+    input_seq = 0  # last applied host input, echoed in every state send
+    input_dirty = False  # force a prompt state send after applying an input
+    last_led: int | None = None
+    last_seg: int | None = None
+    last_send = 0.0
 
-    # ── Wire pygame callbacks → GHDL inputs ──────────────────────────────────
-    def _on_switch(idx: int, state: bool, info: ComponentInfo | None) -> None:
-        """Collect all switch states and push to DUT."""
-        sw_val = 0
-        for s in board.switches:
-            if s.state:
-                sw_val |= 1 << s.index
-        try:
-            dut.sw.value = sw_val  # type: ignore[attr-defined]
-        except AttributeError:
-            pass
-        label = info.display_name if info else f"SW{idx}"
-        conn = f"  [{info.connector_str}]" if info else ""
-        print(f"{label}: {'ON' if state else 'OFF'}{conn}")
+    sim_elapsed_ns = 0
+    steps = 0
+    timer_wall_ns = 0
+    loop_wall_ns = 0
+    t_start = time.monotonic()
 
-    def _on_button(idx: int, pressed: bool, info: ComponentInfo | None) -> None:
-        """Collect all button states and push to DUT."""
-        btn_val = 0
-        for b in board.buttons:
-            if b.pressed:
-                btn_val |= 1 << b.index
-        try:
-            dut.btn.value = btn_val  # type: ignore[attr-defined]
-        except AttributeError:
-            pass
-        label = info.display_name if info else f"BTN{idx}"
-        conn = f"  [{info.connector_str}]" if info else ""
-        print(f"{label}: {'PRESSED' if pressed else 'RELEASED'}{conn}")
-
-    board.set_switch_callback(_on_switch)
-    board.set_button_callback(_on_button)
-
-    # ── 7-segment display state ───────────────────────────────────────────────
-    _seven_seg_def = board_def.seven_seg if board_def else None
-
-    # ── Navigation toolbar (U7) ───────────────────────────────────────────────
-    # Only when the launcher is listening for exit intents; benchmark runs skip
-    # it so their overlay draw cost stays comparable across modes.
-    _toolbar: SimToolbar | None = (
-        SimToolbar() if _EXIT_INTENT_PATH and not _BENCHMARK_MODE else None
+    print(
+        f"[bridge] headless sim: {num_leds} LEDs, {seg_digits} seg digits, "
+        f"clock {clk_hz / 1e6:.4g} MHz, speed {speed:g}x"
+        + (f", FREE-RUN {bench_secs:g}s x{step_mult} step" if free_run else "")
     )
-    _exit_intent: SimExit | None = None
 
-    # ── Print banner ──────────────────────────────────────────────────────────
-    print(f"\n{'=' * 60}")
-    print(f"  Simulation running: {_board_name}")
-    print(f"  VHDL: {_vhdl_basename}  |  Simulator: {_sim_name}")
-    _seg_suffix = f", {_seven_seg_def.num_digits}-digit 7-seg" if _seven_seg_def else ""
-    print(f"  {num_led} LEDs, {num_btn} buttons, {num_sw} switches{_seg_suffix}")
-    print(f"  Clock: {clk_hz / 1e6:.4g} MHz  |  Speed: {panel.speed_factor:.4g}x")
-    print("  Use the panel sliders to adjust speed and virtual clock.")
-    print("  S: toggle stats panel  |  F1/?: help  |  Pause/Stop: bottom-right")
-    if _toolbar is not None:
-        print("  Toolbar (bottom-left): Back to Boards | Change VHDL | Reload VHDL")
-    print("  Press ESC or close window to stop")
-    print(f"{'=' * 60}\n")
+    while running and (not free_run or time.monotonic() - t_start < bench_secs):
+        t0 = time.monotonic_ns()
 
-    # ── Main loop ─────────────────────────────────────────────────────────────
-    board.running = True
-    if _metrics:
-        _metrics.mark_frame_start()
-
-    # Stats panel starts hidden; press S to show it.
-    # Board begins at full window height with no height offset.
-    _show_panel: bool = False
-    # Track the board's current height offset so we only call set_height_offset
-    # when it needs to change (avoids redundant _layout() calls every frame).
-    _board_offset: int = 0
-
-    # Persistent overlay button rects (bottom-right of board area) — updated each frame
-    _stop_btn_rect: pygame.Rect | None = None
-    _pause_btn_rect: pygame.Rect | None = None
-
-    # Session-level accumulators for the post-run JSON summary
-    _session_start = time.monotonic()
-    _fps_acc: list[float] = []
-    _ghdl_pct_acc: list[float] = []
-    _draw_pct_acc: list[float] = []
-    _idle_pct_acc: list[float] = []
-
-    while (
-        board.running
-        and not panel.stop_requested
-        and _exit_intent is None
-        and (not _BENCHMARK_MODE or time.monotonic() - _session_start < _BENCHMARK_SECS)
-    ):
-        # ── Sync board height offset when panel rescales after window resize ─────
-        if _show_panel:
-            _cur_offset = panel.panel_height
-            if _cur_offset != _board_offset:
-                board.set_height_offset(_cur_offset)
-                _board_offset = _cur_offset
-
-        # ── Compute sim step from speed slider ────────────────────────────────
-        clk_period_ns = panel.clk_state["period_ns"]
-
-        cap = max(1, int(clk_period_ns * _MAX_CYCLES_PER_STEP))
-        if panel.paused:
+        # -- Step size (sim_testbench math; free-run pins the cap) ------------
+        cap = max(1, int(clk_period_ns * _MAX_CYCLES_PER_STEP * step_mult))
+        if free_run:
+            sim_step_ns = cap
+        elif paused:
             sim_step_ns = 1
         else:
-            target = max(1, round(_REAL_STEP_NS * panel.speed_factor))
-            sim_step_ns = min(target, cap)
-        panel.at_max_throughput = (not panel.paused) and (sim_step_ns >= cap)
+            sim_step_ns = min(max(1, round(_REAL_STEP_NS * speed)), cap)
+        # CPU-limited indicator: the requested step hit the cycle cap unpaused.
+        at_max = (not paused) and sim_step_ns >= cap
 
-        # ── Advance simulation ────────────────────────────────────────────────
-        _t0 = time.monotonic_ns()
         await Timer(sim_step_ns, unit="ns")
-        _t_timer = time.monotonic_ns()
+        t_timer = time.monotonic_ns()
+        sim_elapsed_ns += sim_step_ns
+        steps += 1
 
-        # ── Update panel stats ────────────────────────────────────────────────
-        panel.update(sim_step_ns)
-
-        # ── Read LED outputs from GHDL ────────────────────────────────────────
+        # -- Read outputs ------------------------------------------------------
+        led_val = last_led
         try:
-            led_val = int(dut.led.value)  # type: ignore[attr-defined]
-            for i in range(num_led):
-                board.set_led(i, bool(led_val & (1 << i)))
-        except Exception:
+            led_val = int(dut.led.value) & led_mask  # type: ignore[attr-defined]
+        except Exception:  # noqa: BLE001 - X/Z at t=0
             pass
-
-        # ── Read 7-segment outputs ────────────────────────────────────────────
-        if _seven_seg_def is not None:
+        seg_val = last_seg
+        if seg_digits:
             try:
-                seg_raw = int(dut.seg.value)  # type: ignore[attr-defined]
-                for i in range(_seven_seg_def.num_digits):
-                    board.set_seg(i, (seg_raw >> (8 * i)) & 0xFF)
-            except Exception:
-                pass  # X/Z at simulation start; safely ignored
-
-        # ── Handle events (board + panel + stop overlay share the same list) ──
-        events = pygame.event.get()
-        board._handle_events(events)
-        for ev in events:
-            if ev.type == pygame.KEYDOWN and ev.key == pygame.K_s:
-                _show_panel = not _show_panel
-                _board_offset = panel.panel_height if _show_panel else 0
-                board.set_height_offset(_board_offset)
-            # Overlay button clicks (checked before panel so they're always active)
-            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                if _stop_btn_rect is not None and _stop_btn_rect.collidepoint(ev.pos):
-                    panel.stop_requested = True
-                elif _pause_btn_rect is not None and _pause_btn_rect.collidepoint(ev.pos):
-                    panel.paused = not panel.paused
-                elif _toolbar is not None:
-                    _nav = _toolbar.handle_click(ev.pos)
-                    if _nav is not None:
-                        _exit_intent = _nav
-            panel.handle_event(ev)
-
-        # ── F1 / ? help (the U1 stub, consumed here since U7) ────────────────
-        # The modal owns the event loop while open, so simulation time simply
-        # does not advance — the same pause the launcher screens get.
-        if board._help_requested:
-            board._help_requested = False
-            HelpDialog(screen).run(board.clock)
-            board._sync_to_surface()
-
-        # ── Propagate virtual clock changes to the VHDL wrapper ───────────────
-        new_half = max(1, int(panel.clk_state["period_ns"] / 2))
-        if new_half != _clk_half_ns:
-            try:
-                dut.clk_half_ns.value = new_half  # type: ignore[attr-defined]
-            except AttributeError:
+                seg_val = int(dut.seg.value)  # type: ignore[attr-defined]
+            except Exception:  # noqa: BLE001 - X/Z at t=0
                 pass
-            _clk_half_ns = new_half
 
-        # ── Render: board first (no flip), then panel (if visible), then flip ──
-        _t_draw_start = time.monotonic_ns()
-        board._draw(flip=False)
-        if _show_panel:
-            panel.draw()
+        # -- Apply control messages -------------------------------------------
+        for kind, payload in drain(conn):
+            if kind == "input":
+                for name in ("sw", "btn"):
+                    try:
+                        getattr(dut, name).value = int(payload.get(name, 0))
+                    except AttributeError:
+                        pass
+                input_seq = int(payload.get("seq", input_seq))
+                input_dirty = True
+            elif kind == "speed":
+                speed = max(1e-4, float(payload.get("factor", speed)))
+            elif kind == "clk":
+                half = max(1, int(payload.get("half_ns", 1)))
+                try:
+                    dut.clk_half_ns.value = half  # type: ignore[attr-defined]
+                except AttributeError:
+                    pass
+                clk_period_ns = 2.0 * half
+            elif kind == "pause":
+                paused = bool(payload.get("on", False))
+            elif kind in ("stop", "eof"):
+                running = False
 
-        # ── Overlays: info strip + bottom-right Pause/Stop buttons ───────────
-        # Drawn last so they are never obscured by board or panel.
-        _sw, _sh = screen.get_size()
-        _ov_s = min(_sw / 1024, _sh / 700)
-        _ov_fs = max(10, round(13 * _ov_s))
-        _ov_font = _get_font(_ov_fs, bold=True)
+        # -- Throttled state send ----------------------------------------------
+        now = time.monotonic()
+        elapsed = now - last_send
+        changed = led_val != last_led or seg_val != last_seg
+        if input_dirty or elapsed >= _SEND_MAX_S or (changed and elapsed >= _SEND_MIN_S):
+            total = max(1, loop_wall_ns)
+            if not send(
+                conn,
+                "state",
+                {
+                    "led": led_val or 0,
+                    "seg": seg_val if seg_digits else None,
+                    "sim_ns": sim_elapsed_ns,
+                    "steps": steps,
+                    "input_seq": input_seq,
+                    "step_ns": sim_step_ns,
+                    "timer_pct": 100.0 * timer_wall_ns / total,
+                    "at_max": at_max,
+                },
+            ):
+                running = False  # host went away
+            last_led, last_seg = led_val, seg_val
+            last_send = now
+            input_dirty = False
 
-        # ── Info strip (top-left): board | VHDL (mode) | simulator ───────────
-        # Rendered in segments so the mode tag gets an accent color for a native
-        # run (a restrained visual "pop"); the rest stays in the normal color.
-        _info_font = _get_font(max(9, round(11 * _ov_s)))
-        _tag_color = THEME.info_green if _native else THEME.sim_info
-        _info_segs = [
-            (_info_font.render(_info_prefix, True, THEME.sim_info)),
-            (_info_font.render(_mode_tag, True, _tag_color)),
-            (_info_font.render(_info_suffix, True, THEME.sim_info)),
-        ]
-        _info_w = sum(s.get_width() for s in _info_segs)
-        _info_h = max(s.get_height() for s in _info_segs)
-        _info_bg = pygame.Surface((_info_w + 12, _info_h + 6), pygame.SRCALPHA)
-        _info_bg.fill((0, 0, 0, 130))
-        screen.blit(_info_bg, (0, 0))
-        _info_x = 6
-        for _seg in _info_segs:
-            screen.blit(_seg, (_info_x, 3))
-            _info_x += _seg.get_width()
+        # -- Pace to the speed target (the child's replacement for tick(60)) --
+        t_loop = time.monotonic_ns()
+        timer_wall_ns += t_timer - t0
+        loop_wall_ns += t_loop - t0
+        if not free_run:
+            if paused:
+                time.sleep(1.0 / _TARGET_FPS)
+            else:
+                target_s = (sim_step_ns / 1e9) / speed
+                shortfall = target_s - (t_loop - t0) / 1e9
+                if shortfall > 0:
+                    time.sleep(min(shortfall, 0.1))
 
-        # ── Bottom-right Pause + Stop buttons ─────────────────────────────────
-        _ov_pad_x = max(8, round(10 * _ov_s))
-        _ov_pad_y = max(5, round(6 * _ov_s))
-        _ov_gap = max(6, round(8 * _ov_s))
-        _ov_margin = max(8, round(10 * _ov_s))
-
-        # Board area bottom: top of panel when visible, else screen bottom
-        _board_bottom = _sh - _board_offset
-
-        # Pause button label + style change when paused
-        _pause_label = "[RESUME]" if panel.paused else "[PAUSE]"
-        _pause_style = THEME.btn_sim_resume if panel.paused else THEME.btn_sim_pause
-        _pause_bw = _ov_font.size(_pause_label)[0] + _ov_pad_x * 2
-        _pause_bh = _ov_font.get_height() + _ov_pad_y * 2
-
-        _stop_label = "\u25a0 Stop"
-        _stop_bw = _ov_font.size(_stop_label)[0] + _ov_pad_x * 2
-        _stop_bh = _ov_font.get_height() + _ov_pad_y * 2
-
-        _btn_h = max(_pause_bh, _stop_bh)
-        _btn_py = _board_bottom - _btn_h - _ov_margin
-
-        # Stop button (rightmost)
-        _stop_bx = _sw - _stop_bw - _ov_margin
-        _stop_btn_rect = pygame.Rect(_stop_bx, _btn_py, _stop_bw, _btn_h)
-        draw_button(
-            screen,
-            _stop_btn_rect,
-            _stop_label,
-            _ov_font,
-            THEME.btn_sim_stop,
-            hovered=_stop_btn_rect.collidepoint(pygame.mouse.get_pos()),
-        )
-
-        # Pause button (left of Stop)
-        _pause_bx = _stop_bx - _ov_gap - _pause_bw
-        _pause_btn_rect = pygame.Rect(_pause_bx, _btn_py, _pause_bw, _btn_h)
-        draw_button(
-            screen,
-            _pause_btn_rect,
-            _pause_label,
-            _ov_font,
-            _pause_style,
-            hovered=_pause_btn_rect.collidepoint(pygame.mouse.get_pos()),
-        )
-
-        # ── Navigation toolbar (bottom-left, opposite Pause/Stop) — U7 ───────
-        _toolbar_rect: pygame.Rect | None = None
-        if _toolbar is not None:
-            _toolbar_rect = _toolbar.draw(
-                screen,
-                _ov_font,
-                left=_ov_margin,
-                bottom=_board_bottom - _ov_margin,
-                pad_x=_ov_pad_x,
-                pad_y=_ov_pad_y,
-                gap=_ov_gap,
-            )
-
-        # ── "S: stats · F1: help" hint (bottom-left) when panel is hidden ─────
-        # Sits above the toolbar when that is shown, else at the window bottom.
-        if not _show_panel:
-            _hint_font = _get_font(max(9, round(10 * _ov_s)))
-            _hint_surf = _hint_font.render("S: stats · F1: help", True, THEME.sim_hint)
-            _hint_pad = max(4, round(5 * _ov_s))
-            _hint_bottom = _toolbar_rect.top if _toolbar_rect is not None else _sh
-            screen.blit(
-                _hint_surf,
-                (
-                    max(6, round(8 * _ov_s)),
-                    _hint_bottom - _hint_surf.get_height() - _hint_pad,
-                ),
-            )
-
-        pygame.display.flip()
-        _t_draw_end = time.monotonic_ns()
-
-        board.clock.tick(60)
-        _t_tick_end = time.monotonic_ns()
-
-        # ── Update panel timing display + accumulate session stats ───────────
-        _frame_fps = board.clock.get_fps()
-        _frame_timer_us = (_t_timer - _t0) / 1_000
-        _frame_draw_us = (_t_draw_end - _t_draw_start) / 1_000
-        _frame_idle_us = (_t_tick_end - _t_draw_end) / 1_000
-        panel.update_timing(
-            fps=_frame_fps,
-            timer_us=_frame_timer_us,
-            draw_us=_frame_draw_us,
-            idle_us=_frame_idle_us,
-        )
-        if _frame_fps > 0:
-            _fps_acc.append(_frame_fps)
-            _total_frame = max(1.0, _frame_timer_us + _frame_draw_us + _frame_idle_us)
-            _ghdl_pct_acc.append(_frame_timer_us / _total_frame * 100)
-            _draw_pct_acc.append(_frame_draw_us / _total_frame * 100)
-            _idle_pct_acc.append(_frame_idle_us / _total_frame * 100)
-
-        # ── Post metrics (non-blocking; zero cost when metrics disabled) ──────
-        if _metrics:
-            _metrics.record(
-                timer_us=(_t_timer - _t0) / 1_000,
-                draw_us=(_t_draw_end - _t_draw_start) / 1_000,
-                tick_us=(_t_tick_end - _t_draw_end) / 1_000,
+        # -- Per-frame metrics (draw/tick are 0.0: the host renders now) -------
+        if metrics is not None:
+            metrics.record(
+                timer_us=(t_timer - t0) / 1_000,
+                draw_us=0.0,
+                tick_us=0.0,
                 sim_step_ns=sim_step_ns,
                 clk_period_ns=clk_period_ns,
-                speed_factor=panel.speed_factor,
+                speed_factor=speed,
             )
 
-    if _metrics:
-        _metrics.stop()
-        print(f"[metrics] Saved to: {_METRICS_PATH}")
+    if metrics is not None:
+        metrics.stop()
+        print(f"[bridge] metrics saved to: {metrics_path}")
 
-    # ── Persist the final slider speed for the next launch ────────────────────
-    # Only when the launcher provided FPGA_SIM_SPEED (see the module header).
-    if _SPEED_ENV:
-        update_session(speed_factor=panel.speed_factor)
+    wall_s = time.monotonic() - t_start
+    send(conn, "bye", {"sim_ns": sim_elapsed_ns, "steps": steps, "wall_s": wall_s})
+    conn.close()
 
-    # ── Write the exit intent for the launcher (U7 toolbar navigation) ────────
-    # A plain stop (ESC / window close / [Stop]) writes nothing: the launcher
-    # treats a missing file as SimExit.STOPPED.
-    if _EXIT_INTENT_PATH and _exit_intent is not None:
-        try:
-            Path(_EXIT_INTENT_PATH).write_text(_exit_intent.value)
-        except OSError as e:
-            print(f"[warn] could not write exit intent: {e}")  # launcher falls back to a stop
-
-    # ── Write per-session JSON summary ────────────────────────────────────────
-    _duration_s = time.monotonic() - _session_start
-    if _fps_acc:
-        _n = len(_fps_acc)
-        _avg_fps = sum(_fps_acc) / _n
-        _avg_ghdl_pct = sum(_ghdl_pct_acc) / _n
-        _avg_draw_pct = sum(_draw_pct_acc) / _n
-        _avg_idle_pct = sum(_idle_pct_acc) / _n
-        save_session_stats(
-            board_name=board_def.name if board_def else "Generic",
-            simulator=os.environ.get("FPGA_SIM_SIMULATOR", "ghdl"),
-            duration_s=_duration_s,
-            avg_fps=_avg_fps,
-            sim_time_ns=panel._sim_elapsed_ns,
-            avg_ghdl_pct=_avg_ghdl_pct,
-            avg_draw_pct=_avg_draw_pct,
-            avg_idle_pct=_avg_idle_pct,
-            clock_hz=panel.current_clock_hz,
-            mode="native" if _native else "generic",
-            convention=_native.get("maker") if _native else None,
-        )
-        if _BENCHMARK_MODE:
-            _sim_rate = (panel._sim_elapsed_ns / 1e9) / max(_duration_s, 1e-9)
-            print(f"\n{'=' * 55}")
-            print(f"  Benchmark Report  ({_duration_s:.1f}s wall-clock)")
-            print(f"{'=' * 55}")
-            print(f"  Board     : {board_def.name if board_def else 'Generic'}")
-            print(f"  Simulator : {os.environ.get('FPGA_SIM_SIMULATOR', 'ghdl').upper()}")
-            print(f"  Clock     : {panel.current_clock_hz / 1e6:.4g} MHz")
-            print(f"  Frames    : {len(_fps_acc)}")
-            print(f"  Avg FPS   : {_avg_fps:.1f}")
-            print(f"  Sim time  : {panel._sim_elapsed_ns / 1e9:.4g} s simulated")
-            print(f"  Sim rate  : {_sim_rate:.4g}x real-time")
-            print(f"  GHDL step : {_avg_ghdl_pct:.1f}%")
-            print(f"  Draw      : {_avg_draw_pct:.1f}%")
-            print(f"  Idle      : {_avg_idle_pct:.1f}%")
-            print(f"{'=' * 55}\n")
-
-    pygame.quit()
-    print("Simulation stopped.")
+    rate = (sim_elapsed_ns / 1e9) / max(wall_s, 1e-9)
+    print(
+        f"[bridge] done: {steps} steps, {sim_elapsed_ns / 1e9:.4g}s simulated in "
+        f"{wall_s:.1f}s wall ({rate:.4g}x real-time), "
+        f"timer {100.0 * timer_wall_ns / max(1, loop_wall_ns):.1f}% of loop"
+    )

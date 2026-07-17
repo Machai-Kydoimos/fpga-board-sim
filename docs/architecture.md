@@ -1,23 +1,29 @@
 # Architecture
 
-How the simulator is put together: the two-phase process model, the project layout,
+How the simulator is put together: the single-window process model, the project layout,
 board loading, the pygame UI, the simulation pipeline, the simulator backends, and
 how board-native VHDL is recognized and adapted. This is the map for contributors
 and the curious. For using the app see [docs/user_guide.md](user_guide.md); for
 writing designs see [docs/writing_designs.md](writing_designs.md). Back to the
 [README](../README.md).
 
-## Two-phase process model
+## Single-window process model
 
-The simulator runs in two distinct phases in **two separate OS processes**:
+The simulator uses **one window for the whole session**, split across **two OS
+processes** (U34):
 
-- a **launcher** process (pygame) that drives the board selector → preview → VHDL
-  picker flow, and
-- a **simulation** subprocess (GHDL or NVC + cocotb) that runs the chosen design.
+- a **UI host** process (pygame) that owns the one window and drives the board
+  selector → preview → VHDL picker → simulation-screen flow, and
+- a **headless simulation child** (GHDL or NVC + cocotb) that runs the chosen
+  design with no display of its own.
 
-The launcher calls `pygame.quit()` before spawning the subprocess; the subprocess
-calls `pygame.init()` fresh. Never assume pygame state persists across that
-boundary. The board definition crosses it as JSON in an environment variable.
+The window is never created or destroyed between launcher start and app exit: when
+a simulation starts, the launcher keeps rendering and the child streams signal
+state back over an IPC link (`sim_link`). The board definition crosses to the child
+as JSON in an environment variable; live signal state and input/control messages
+cross over the link (see [Simulation pipeline](#simulation-pipeline)). The child
+must never import pygame — its only `fpga_sim` imports are `board_loader`,
+`sim_link`, and `sim_metrics`.
 
 ## Project structure
 
@@ -48,7 +54,7 @@ src/fpga_sim/              Installable Python package (src layout)
     results.py             ScreenResult / DialogResult enums
     widgets/               Shared button rendering (ButtonStyle + draw_button)
 sim/                       Simulation infrastructure (not part of the installed package)
-  sim_testbench.py         cocotb test that bridges simulator signals ↔ pygame UI; main sim loop
+  sim_testbench.py         headless cocotb testbench; main sim loop, streams state over sim_link (no pygame)
   sim_wrapper_template.vhd VHDL wrapper template — seg port/generic spliced in when needed
   test_blinky.py           Headless cocotb tests for the blinky design
   test_7seg.py             Headless cocotb tests for the counter_7seg design
@@ -133,85 +139,76 @@ The UI has four screens, each a class with a `run()` method:
    preview. A `SIM: GHDL` / `SIM: NVC` toggle cycles between installed simulators.
 3. **`VHDLFilePicker`** — minimal file browser showing directories and `.vhd`/`.vhdl`
    files.
-4. **`FPGABoard`** (simulation mode, inside `sim/sim_testbench.py`) — same rendering
-   as preview, but driven by the simulator.
+4. **`FPGABoard`** (simulation mode, driven by `ui/simulation_screen.py`) — same
+   rendering as preview, but fed by the headless simulator over `sim_link`.
 
-In simulation mode, pygame is the sole interface between user and simulator. Mouse
-events on switches and buttons trigger callbacks that write directly to `dut.sw` /
-`dut.btn` via cocotb — no queue or IPC; the write is synchronous in the event
-handler. LED state flows the other way: once per frame, after `await Timer(...)` has
-advanced the simulation, `dut.led.value` is read and each LED's display updated.
+In simulation mode, the launcher window is the user's interface. Mouse events on
+switches and buttons trigger callbacks in `SimulationScreen` that send an `input`
+message over `sim_link`; the headless child applies it to `dut.sw` / `dut.btn`. LED
+state flows the other way: the child reads `dut.led` after each `await Timer(...)` and
+streams a `state` message, which the screen applies to each LED once per frame.
 
 **Board components and hover overlays.** LEDs, switches, and buttons share a
 `UIComponent` base (`ui/components.py`) and are registered in one
 `FPGABoard.components` list used for hover hit-testing. The hover tooltip
 (`ui/tooltip.py`) is drawn at the *end* of `FPGABoard._draw()`; because both the
-preview loop and the sim subprocess drive that same `_draw`, any board-area overlay
-added there appears in both — no `sim_testbench.py` change. Per-component metadata to
+preview loop and `SimulationScreen` drive that same `_draw`, any board-area overlay
+added there appears in both — no simulation-screen change. Per-component metadata to
 surface goes in `tooltip_rows()`.
 
 ## Simulation pipeline
 
-When the user clicks "Start Simulation" and picks a VHDL file:
+When the user clicks "Start Simulation" and picks a VHDL file, the launcher window
+stays open and the child runs headless:
 
 ```text
-fpga_sim/controller.py           fpga_sim/sim_bridge.py            Simulator + cocotb
-──────────────────────           ──────────────────────            ──────────────────
-1. Serialize BoardDef to JSON
-2. Call launch_simulation() ───→ 3. Analyze VHDL
-   pygame.quit()                    (GHDL: also elaborate here;
-                                     NVC: elaborate with generics
-                                     in the next step)
-                                 4. Build env (PATH, PYTHONHOME,
-                                    VPI/VHPI lib paths, cocotb vars,
-                                    PYTHONPATH includes src/ + sim/)
-                                 5. simulator -r --vpi/load=cocotb ─→ 6. Simulator loads VPI/VHPI lib
-                                                                      7. cocotb initializes
-                                                                      8. Imports sim/sim_testbench.py
+controller.py + ui/simulation_screen.py    sim_bridge.py           headless Simulator + cocotb
+────────────────────────────────────────   ─────────────           ───────────────────────────
+1. on_simulate()  (window stays open)
+2. start_simulation() ───────────────────→  3. Analyze VHDL (GHDL: elaborate;
+                                               NVC: elaborate with generics next)
+                                            4. Build env (PATH, PYTHONHOME, VPI/VHPI
+                                               paths, cocotb vars, PYTHONPATH src/+sim/,
+                                               FPGA_SIM_LINK_PORT / _KEY, board JSON)
+                                            5. Popen headless simulator -r ──→ 6. load VPI/VHPI, cocotb init
+                                               (returns a SimChild handle)     7. import sim/sim_testbench.py
 
-                                 sim/sim_testbench.py
-                                 ────────────────────
-                                 9.  Deserialize BoardDef from env
-                                 10. pygame.init(), create FPGABoard + SimPanel
-                                 11. Write initial clk_half_ns to dut
-                                     (VHDL sim_wrapper drives clock internally)
-                                 12. Wire switch/button callbacks:
-                                     on click → collect all states
-                                     into bit vector → dut.sw.value
-                                 13. Main loop:
-                                     await Timer(step_ns)  ← advances simulation
-                                     read dut.led.value    ← get LED outputs
-                                     set_led() for each    ← update pygame LEDs
-                                     read dut.seg.value    ← get seg outputs (7-seg boards)
-                                     set_seg() for each    ← update pygame digits
-                                     _handle_events()      ← process mouse/keyboard
-                                     board._draw()         ← render board
-                                     panel.draw()          ← render stats strip
-                                     clock.tick(60)        ← 60fps cap
+7. SimulationScreen.run():                  sim/sim_testbench.py (pygame-free)
+   ──────────────────────                   ─────────────────────────────────
+   render board + panel @ 60 fps            8.  Deserialize BoardDef; connect to host
+   drain link → set_led / set_seg           9.  Main loop:
+   clicks    → "input" messages ──────────────→  apply sw / btn / speed / clk / pause
+   slider/clk → "speed" / "clk" ─────────────→   await Timer(step_ns)  ← advance sim
+   ◄──────── "state" (led/seg/…) ──────────────  read dut.led / dut.seg
+   [Stop]/ESC/X → return a SimExit          10. send throttled "state" up; heartbeat
+8. finish_waveform(child)                   11. on stop/bye: close link, exit
 ```
 
-The key insight is that **pygame runs inside the cocotb test function**. Each frame,
-`await Timer(step_ns, unit="ns")` advances the simulation by a configurable number of
-nanoseconds (the speed slider), then the test reads outputs and processes events.
+The simulator loop runs **in a separate headless process**; the pygame UI runs in the
+launcher and never blocks on the child (all link reads are `poll(0)` drains, child
+startup is awaited with a spinner + watchdog, shutdown is stop-message → bounded wait
+→ terminate). Each child frame, `await Timer(step_ns, unit="ns")` advances the
+simulation by a configurable number of nanoseconds (the speed slider), then the child
+reads outputs and streams a throttled `state` message to the host, which applies it to
+the board. Input, speed, clock, and pause changes travel the other way as messages.
 
 **VHDL-side clock.** The clock is generated entirely inside the generated
-`sim_wrapper` entity (`sim/sim_wrapper_template.vhd`), not by a Python coroutine.
-This eliminates per-half-period GPI callbacks — the only GPI round-trips per frame
-are the two endpoints of the single `await Timer(...)` call. The wrapper exposes a
-`clk_half_ns` port; when the panel's **[-]/[+]** buttons change the virtual clock,
-`sim_testbench.py` writes the new half-period and the VHDL process picks it up within
-one half-cycle.
+`sim_wrapper` entity (`sim/sim_wrapper_template.vhd`), not by a Python coroutine. This
+eliminates per-half-period GPI callbacks — the only GPI round-trips per frame are the
+two endpoints of the single `await Timer(...)` call. The wrapper exposes a
+`clk_half_ns` port; when the panel's **[-]/[+]** buttons change the virtual clock, the
+host sends a `clk` message and the child writes the new half-period, which the VHDL
+process picks up within one half-cycle.
 
-**Sim → launcher signalling.** The subprocess reports *why* it ended through a
-`SimExit` value written to an exit-intent sidecar file (path in
-`FPGA_SIM_EXIT_INTENT_FILE`). The in-sim toolbar's **[Back to Boards]** /
-**[Change VHDL]** / **[Reload VHDL]** buttons each write their `SimExit`; a plain stop
-(ESC / close / **[Stop]**) writes nothing. `launch_simulation()` clears any stale file
-first, then reads it back **only on a clean (exit code 0) run** — so a crash is never
-mistaken for navigation — and `ScreenController.on_simulate()` routes it (RELOAD
-re-validates and relaunches in place). To add a sim-screen action, add a `SimExit`
-member, a toolbar button, and a routing arm — never overload the process exit code,
-which the simulators own.
+**Sim → launcher signalling.** The child streams `state` messages (led / seg / sim
+progress) and a final `bye` over the link; `SimulationScreen.run()` returns a `SimExit`
+describing *why the run ended* — **[Back to Boards]** / **[Change VHDL]** / **[Reload
+VHDL]** (toolbar), `STOPPED` (ESC / **[■ Stop]**), or `QUIT` (window X → quit the app).
+`ScreenController.on_simulate()` routes it (RELOAD re-validates and relaunches in
+place). A nonzero child exit *without* a received `bye` is treated as a crash — the
+simulators own their exit codes, which are unreliable on a clean stop, so failure is
+never inferred from the return code alone. To add a sim-screen action, add a `SimExit`
+member (in `ui/results.py`), a toolbar button, and a routing arm.
 
 ## Simulator backends (`fpga_sim/sim_bridge.py`)
 
@@ -234,7 +231,7 @@ which the simulators own.
 
 Because NVC requires generics at elaboration time, `analyze_vhdl()` performs `-a`
 followed by a structural `-e` (empty generics) to catch port-width mismatches early;
-`launch_simulation()` then re-elaborates with the real board generics before running.
+`start_simulation()` then re-elaborates with the real board generics before running.
 `detect_simulators()` returns the installed simulators. On **Linux**,
 `_build_sim_env()` sets `LD_LIBRARY_PATH`; on **Windows**, all DLL directories go on
 `PATH`, `PYTHONHOME` points at the base (non-venv) Python, and a standalone Python is
@@ -306,15 +303,16 @@ example catalog.
 **SimPanel scaling.** `ui/sim_panel.py` owns the bottom stats strip. Its
 `panel_height` is a property that re-evaluates `_ui_scale(w, h)` on every access —
 call `board.set_height_offset(panel.panel_height)` whenever the window resizes to
-keep the board and panel in sync (`sim_testbench.py` does this at the top of every
+keep the board and panel in sync (`SimulationScreen` does this at the top of every
 frame).
 
 **Session-state ownership.** `~/.fpga_simulator/session.json` is loaded at startup;
 every write is a **merge** (read-modify-write), and keys have owners — never write a
 key another writer owns. The **launcher** owns the board / VHDL / simulator / selector
 prefs / window size / `recent[]`; the **Settings dialog** owns `theme` and the
-waveform-capture settings; the **sim subprocess** owns `speed_factor` (seeded via
-`FPGA_SIM_SPEED`, written back at exit only when that env var is present, so
-benchmarks and tests never touch the file). It is best-effort — load/save failures are
+waveform-capture settings; **`SimulationScreen`** owns `speed_factor` — it seeds the
+headless child's pacing via `FPGA_SIM_SPEED` and writes the final slider value back to
+the session at screen exit (`update_session`); the child never touches the session
+file. It is best-effort — load/save failures are
 silently ignored. See [docs/user_guide.md](user_guide.md) for the user-facing view of
 what persists.

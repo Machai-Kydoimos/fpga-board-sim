@@ -20,7 +20,6 @@ import glob
 import json
 import os
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -955,62 +954,47 @@ def test_native_arty_cocotb_loop_zero_extend_and_switch_xor(ghdl: str, tmp_path:
     )
 
 
-# ── B3b: sim_testbench convention parsing (subprocess -- module imports cocotb) ──
+# ── B3b: SimulationScreen native-badge helper (in-process, U34) ──────────────
+#
+# The badge/active-low note is built by ``simulation_screen._native_active_low``
+# straight from the ``ConventionMatch`` -- no FPGA_SIM_NATIVE_CONVENTION env JSON
+# and no subprocess, since the launcher owns the match object now.
 
 
-def _testbench_native_helpers(env_value: str | None) -> dict[str, Any]:
-    """Run sim_testbench's _native_convention/_active_low_roles in a subprocess.
+def test_native_active_low_lists_active_low_roles() -> None:
+    """_native_active_low names exactly the roles the convention drives active-low."""
+    from fpga_sim.ui.simulation_screen import _native_active_low
 
-    sim_testbench imports cocotb and is never imported into the pytest process
-    (see test_sim_testbench_lint.py), so its env-driven helpers are exercised via
-    a subprocess import -- mirroring the FPGA_SIM_THEME handoff test.
-    """
-    env = os.environ.copy()
-    env.setdefault("SDL_VIDEODRIVER", "dummy")
-    env.setdefault("SDL_AUDIODRIVER", "dummy")
-    if env_value is None:
-        env.pop("FPGA_SIM_NATIVE_CONVENTION", None)
-    else:
-        env["FPGA_SIM_NATIVE_CONVENTION"] = env_value
-    env["PYTHONPATH"] = os.pathsep.join(
-        [str(PROJECT / "src"), str(PROJECT / "sim"), env.get("PYTHONPATH", "")]
+    assert _native_active_low(_de25_match()) == "LED, BTN, HEX"  # SW active-high → omitted
+    assert _native_active_low(_de10_match()) == "BTN, HEX"  # active-high LEDs → omitted
+
+
+def test_native_active_low_none_when_all_active_high() -> None:
+    from fpga_sim.ui.simulation_screen import _native_active_low
+
+    match = ConventionMatch(
+        maker="digilent",
+        board_name="Arty",
+        clk="clk100",
+        leds=NativePort(("led",), 4, False),
+        switches=NativePort(("sw",), 4, False),
+        buttons=NativePort(("btn",), 4, False),
+        seven_seg=None,
     )
-    code = (
-        "import json, sim_testbench as t; "
-        "c = t._native_convention(); "
-        "print(json.dumps({"
-        "'is_none': c is None, "
-        "'maker': (c or {}).get('maker'), "
-        "'roles': (t._active_low_roles(c) if c else None)}))"
+    assert _native_active_low(match) == "none"
+
+
+def test_native_active_low_skips_absent_banks() -> None:
+    """U31: an absent switch/button bank (None) contributes no role."""
+    from fpga_sim.ui.simulation_screen import _native_active_low
+
+    match = ConventionMatch(
+        maker="litex",
+        board_name="NeTV2",
+        clk="clk100",
+        leds=NativePort(("user_led",), 4, True),
+        switches=None,
+        buttons=None,
+        seven_seg=None,
     )
-    r = subprocess.run(
-        [sys.executable, "-c", code], capture_output=True, text=True, env=env, timeout=60
-    )
-    assert r.returncode == 0, r.stderr
-    out: dict[str, Any] = json.loads(r.stdout.strip().splitlines()[-1])
-    return out
-
-
-def test_testbench_parses_native_convention_and_active_low_roles() -> None:
-    out = _testbench_native_helpers(
-        json.dumps(
-            {
-                "maker": "terasic",
-                "board_name": "DE25-Standard",
-                "leds_active_low": True,
-                "switches_active_low": False,
-                "buttons_active_low": True,
-                "has_seg": True,
-                "seg_active_low": True,
-            }
-        )
-    )
-    assert out["is_none"] is False
-    assert out["maker"] == "terasic"
-    assert out["roles"] == "LED, BTN, HEX"  # SW omitted (active-high)
-
-
-def test_testbench_generic_run_has_no_convention() -> None:
-    out = _testbench_native_helpers(None)
-    assert out["is_none"] is True
-    assert out["maker"] is None
+    assert _native_active_low(match) == "LED"

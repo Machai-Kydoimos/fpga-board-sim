@@ -36,7 +36,7 @@ Tests cover board loading, JSON serialization, GHDL analysis, and cocotb simulat
 
 ## Architecture
 
-The simulator has two distinct phases: a **launcher phase** (pygame process) and a **simulation phase** (GHDL+cocotb subprocess).
+The simulator runs in a **single window** (U34): the launcher's pygame process owns the one window for the whole session, and simulation runs in a **headless GHDL/NVC + cocotb child process** that streams signal state back over an IPC link (`sim_link`). No window is created or destroyed between launcher start and app exit.
 
 ### Key Files
 
@@ -45,8 +45,10 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `src/fpga_sim/__main__.py` | Thin entry point: arg parsing, pygame/window setup, headless benchmark |
 | `src/fpga_sim/controller.py` | `ScreenController` + `SessionState`: drives the launcher screen flow (selector → preview → picker → simulate) |
 | `src/fpga_sim/board_loader.py` | Loads board definitions from JSON into `BoardDef` objects (runtime loader) |
-| `src/fpga_sim/sim_bridge.py` | GHDL analysis + simulation launcher; platform-specific VPI env setup |
-| `src/fpga_sim/ui/` | pygame UI package (board_selector, board_display, components, etc.) |
+| `src/fpga_sim/sim_bridge.py` | GHDL/NVC analysis + elaboration; `start_simulation()` spawns the headless child (`SimChild`) + `finish_waveform()`; platform-specific VPI env setup |
+| `src/fpga_sim/sim_link.py` | IPC transport between the UI host and the headless sim child (`multiprocessing.connection` over 127.0.0.1 + random HMAC authkey); pygame-free (U34) |
+| `src/fpga_sim/ui/` | pygame UI package (board_selector, board_display, simulation_screen, sim_panel, components, etc.) |
+| `src/fpga_sim/ui/simulation_screen.py` | `SimulationScreen`: renders the board in the launcher's window while the headless child streams signal state over `sim_link`; returns a `SimExit` (U34) |
 | `boards/` | JSON board definitions (multi-source: `amaranth-boards/`, `litex-boards/`, `digilent-xdc/`, `custom/`) |
 | `boards/schema/board.schema.json` | JSON Schema for board definition validation |
 | `scripts/sync_amaranth_boards.py` | Syncs board definitions from amaranth-boards GitHub repo |
@@ -57,7 +59,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `scripts/sync_digilent_xdc.py` | Syncs board definitions from Digilent master XDC files (with port_conventions) |
 | `scripts/digilent_parser.py` | XDC regex parser → board dicts + `port_conventions` (used by `sync_digilent_xdc.py`) |
 | `scripts/sync_common.py` | Shared sync scaffolding (download, ref-resolve, naming, schema-validated JSON/metadata output) for all three `sync_*.py`; merges `port_conventions` per sub-key so hand-authored / registry blocks survive a re-sync (A1) |
-| `sim/sim_testbench.py` | cocotb test that runs pygame inside the GHDL simulation |
+| `sim/sim_testbench.py` | Headless cocotb testbench (no pygame): drives the sim loop and streams led/seg state + receives sw/btn/speed/clk/pause/stop over `sim_link` (U34) |
 | `sim/sim_wrapper_template.vhd` | Unified VHDL wrapper template; seg port/generic spliced in by `_generate_wrapper()` when needed |
 | `src/fpga_sim/sim_session_log.py` | Writes per-session JSON summaries to ~/.fpga_simulator/sessions/ |
 | `hdl/blinky.vhd` | Example VHDL design (use as template for the expected port interface) |
@@ -79,7 +81,7 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 | `scripts/capture_waveform.py` | Simulates `mx65_hello_7seg` against an inline testbench and renders `docs/assets/mx65_hello_waveform.png` (+ `.gtkw`) — an annotated GTKWave-idiom waveform for the guide's debugging section, with all five callouts located programmatically from the parsed VCD |
 | `docs/install.md` | Full install reference: GHDL/NVC per-OS matrix (incl. from-source, AUR/Gentoo/FreeBSD), uv setup, Windows run notes + PATH/DLL/MSYS2 troubleshooting, pygame-ce note (absorbed from README) |
 | `docs/user_guide.md` | User-facing runtime reference: the four launcher screens, in-sim controls, stats panel, board-native runs (info tag / active-low note / session-log fields), and session/preferences (persistence, recent files, settings, themes, waveform capture + env vars, session logs) |
-| `docs/architecture.md` | Architecture reference: two-phase process model, project tree, board loading, pygame UI, simulation pipeline + backends, "How board-native works" internals, and contributor notes (absorbed from README's "How It Works" + CONTRIBUTING's "Architecture overview") |
+| `docs/architecture.md` | Architecture reference: single-window process model (U34), project tree, board loading, pygame UI, simulation pipeline + backends, "How board-native works" internals, and contributor notes (absorbed from README's "How It Works" + CONTRIBUTING's "Architecture overview") |
 
 ### Data Flow
 
@@ -87,11 +89,11 @@ The simulator has two distinct phases: a **launcher phase** (pygame process) and
 
 2. `src/fpga_sim/controller.py` (`ScreenController`, constructed by `__main__.main()`) drives four sequential screens: `BoardSelector` → `FPGABoard` (preview) → `VHDLFilePicker` → simulation start.
 
-3. When simulation starts, `ScreenController.on_simulate()` calls `pygame.quit()`, serializes the `BoardDef` to JSON, and calls `launch_simulation()` in `src/fpga_sim/sim_bridge.py`.
+3. When simulation starts, `ScreenController.on_simulate()` (the launcher window stays open) calls `start_simulation()` in `src/fpga_sim/sim_bridge.py`, which returns a `SimChild` handle, then renders a `SimulationScreen` in the same window and calls `finish_waveform()` when it returns.
 
-4. `sim_bridge.py` builds a platform-aware environment (PATH, LD_LIBRARY_PATH/PYTHONHOME, VPI paths) and runs `ghdl -r ... --vpi=cocotbvpi_ghdl.so`. The board JSON is passed via the `FPGA_SIM_BOARD_JSON` env var. Both `src/` and `sim/` are added to `PYTHONPATH` so the subprocess can import `fpga_sim` and find `sim_testbench`.
+4. `sim_bridge.py` builds a platform-aware environment (PATH, LD_LIBRARY_PATH/PYTHONHOME, VPI paths) and spawns a **headless** `ghdl -r ... --vpi=cocotbvpi_ghdl.so` child (no display). The board JSON rides in `FPGA_SIM_BOARD_JSON`; the IPC link port + authkey ride in `FPGA_SIM_LINK_PORT` / `FPGA_SIM_LINK_KEY`. Both `src/` and `sim/` are on `PYTHONPATH` so the child can import `fpga_sim` and find `sim_testbench`.
 
-5. `sim/sim_testbench.py` is loaded by cocotb inside GHDL. It deserializes the `BoardDef`, creates a new `FPGABoard` (pygame), and runs a cooperative loop: `await Timer(sim_step_ns, unit="ns")` advances simulation by a configurable step (controlled by the speed slider), then the test reads `dut.led.value` and `dut.seg.value`, updates the display, and processes pygame events.
+5. `sim/sim_testbench.py` is loaded by cocotb inside the child (pygame-free). It deserializes the `BoardDef`, connects back to the host over `sim_link`, and runs a cooperative loop: `await Timer(sim_step_ns, unit="ns")` advances simulation by a configurable step, then it reads `dut.led`/`dut.seg`, applies inbound `sw/btn/speed/clk/pause` messages, and streams throttled `state` messages up to the `SimulationScreen`, which updates the board and handles pygame events.
 
 ### VHDL Design Contract
 
