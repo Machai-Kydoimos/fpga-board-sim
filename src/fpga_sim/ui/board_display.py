@@ -87,6 +87,7 @@ class FPGABoard:
         height_offset: int = 0,
         vhdl_path: str | Path | None = None,
         show_footer: bool = True,
+        reserve_footer_space: bool | None = None,
     ) -> None:
         """Initialize the board display with components laid out from board_def.
 
@@ -123,15 +124,28 @@ class FPGABoard:
             enables [Start Simulation] when not ``None``.
         show_footer:
             When ``False`` the footer (buttons + VHDL status line) is not
-            drawn.  Set to ``False`` in the simulation subprocess where the
-            footer controls are irrelevant and the SimPanel provides all
-            the necessary controls.
+            drawn.  Set to ``False`` in the simulation screen where the footer
+            controls are irrelevant and the SimPanel provides all the
+            necessary controls.
+        reserve_footer_space:
+            Whether the layout reserves the bottom footer strip.  Defaults to
+            *show_footer*; pass ``True`` together with ``show_footer=False`` to
+            keep the board laid out exactly as it is with the footer shown, so
+            components do not jump when the preview's footer is swapped for the
+            simulation overlays (which occupy the same strip).  Size-independent:
+            the reserve scales with the window like every other metric.
 
         """
         self.board_def = board_def
         self._height_offset = height_offset
         self.vhdl_path: Path | None = Path(vhdl_path) if vhdl_path else None
         self._show_footer: bool = show_footer
+        # The footer strip is reserved whenever it is drawn; the simulation
+        # screen hides the footer but still fills that strip with its overlays,
+        # so it reserves the space too (keeps the board from jumping — U34).
+        self._reserve_footer_space: bool = (
+            show_footer if reserve_footer_space is None else reserve_footer_space
+        )
         if screen is not None:
             self.screen = screen
             scr_w, scr_h = screen.get_size()
@@ -343,8 +357,11 @@ class FPGABoard:
         title_h = max(14, round(22 * s))
         label_h = max(12, round(18 * s))
         section_pad = max(6, round(10 * s))
-        # Reserve space for footer buttons + VHDL status; none needed when footer hidden
-        bottom_reserve = max(65, round(90 * s)) if self._show_footer else max(8, round(10 * s))
+        # Reserve the bottom strip (footer buttons + VHDL status, or the sim
+        # overlays that replace them); minimal when neither is present.
+        bottom_reserve = (
+            max(65, round(90 * s)) if self._reserve_footer_space else max(8, round(10 * s))
+        )
 
         sections: list[tuple[str, Sequence[_Positionable], int]] = [("fpga", [self.fpga_chip], 3)]
         if self.leds:

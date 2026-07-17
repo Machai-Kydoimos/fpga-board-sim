@@ -28,6 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **No layout jump when a simulation starts (U34).** The board now stays exactly in
+  place as the preview transitions to the running simulation: the simulation screen
+  reserves the same bottom strip the preview's footer used (its own overlays live
+  there), instead of letting the components spread into the freed space. The
+  transition is pixel-stable at any window size, reduced or full screen.
 - **README / onboarding accuracy.** The "Try it" walkthrough now shows the correct
   order — **Load VHDL File** (pick the design) *then* **Start Simulation**, which is
   greyed until a file is loaded — instead of implying the reverse. Also names GTKWave /
