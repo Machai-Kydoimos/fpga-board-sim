@@ -178,13 +178,13 @@ exist). Full guide: [docs/writing_designs.md](docs/writing_designs.md#board-nati
 
 ## How it works
 
-The launcher (pygame) lets you pick a board and a `.vhd` file, then hands off to a
-GHDL/NVC + cocotb subprocess that compiles and simulates the design. pygame runs
-*inside* the cocotb test loop: each frame advances the simulation one step, reads the
-`led`/`seg` outputs onto the on-screen components, and writes your switch and button
-clicks straight to the design's inputs — no queue, no IPC. The clock is generated in a
-VHDL wrapper so only two simulator round-trips happen per frame. The full pipeline,
-the GHDL/NVC backends, and the board-native matcher are documented in
+The launcher (pygame) lets you pick a board and a `.vhd` file, then simulates it **in
+the same window** — one window for the whole session. A **headless** GHDL/NVC + cocotb
+child process compiles and runs the design and streams signal state back over an IPC
+link; the launcher keeps rendering the board, applying the `led`/`seg` outputs each
+frame and sending your switch and button clicks down to the design's inputs. The clock
+is generated in a VHDL wrapper so only two simulator round-trips happen per frame. The
+full pipeline, the GHDL/NVC backends, and the board-native matcher are documented in
 [docs/architecture.md](docs/architecture.md).
 
 ## Documentation
