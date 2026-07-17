@@ -245,7 +245,7 @@ signatures are fully unified:
   flags; NVC ignores generics (already applied during elaboration).
 
 `_backend()` returns `type[_SimBackend]`. Because every backend shares the ABC's
-method signatures, mypy resolves all call sites in `launch_simulation()` without
+method signatures, mypy resolves all call sites in `start_simulation()` without
 any `# type: ignore` suppressions.
 
 **Why GHDL uses VPI and NVC uses VHPI.** cocotb talks to each simulator through a
@@ -517,8 +517,8 @@ Investigate and resolve any reported drift before proceeding.
 ## Architecture overview
 
 The architecture reference now lives in
-[docs/architecture.md](docs/architecture.md) — the two-phase process model, project
-layout, board loading, the pygame UI, the simulation pipeline, the simulator
+[docs/architecture.md](docs/architecture.md) — the single-window process model (U34),
+project layout, board loading, the pygame UI, the simulation pipeline, the simulator
 backends, and how board-native VHDL is matched and adapted. It also carries the
 contributor notes that used to sit here: `SimExit` sim → launcher signalling,
 `SimPanel` scaling, hover overlays, the sync-script parsers, and session-state
