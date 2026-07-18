@@ -32,9 +32,8 @@ from fpga_sim.board_loader import discover_boards, get_default_boards_path
 from fpga_sim.controller import ScreenController, build_generics
 from fpga_sim.session_config import load_session, update_session
 from fpga_sim.sim_bridge import (
-    Simulator,
+    _fallback_ghdl,
     _probe_simulator,
-    detect_simulators,
     discover_simulators,
 )
 from fpga_sim.ui import FPGABoard
@@ -93,7 +92,7 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) -> int:
+def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) -> int:
     """Run a headless benchmark and return an exit code.
 
     Discovers the board and analyzes the VHDL, then dispatches to one of two
@@ -105,11 +104,21 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) ->
 
     Returns 0 on success, 1 on error.
     """
-    from fpga_sim.sim_bridge import analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
-
-    simulator: Simulator = (
-        args.sim if args.sim and args.sim in available_sims else available_sims[0]
+    from fpga_sim.sim_bridge import (
+        analyze_vhdl,
+        check_vhdl_contract,
+        check_vhdl_encoding,
+        resolve_simulator_arg,
     )
+
+    sim = resolve_simulator_arg(args.sim, discovered)
+    if sim is None:
+        avail = ", ".join(i.label for i in discovered) or "none"
+        print(
+            f"[benchmark] Simulator '{args.sim}' not found. Available: {avail}",
+            file=sys.stderr,
+        )
+        return 1
     boards_path = get_default_boards_path()
     boards = discover_boards(boards_path)
 
@@ -157,7 +166,7 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) ->
     mode = "simulator only" if args.no_ui else "full system"
     print(f"[benchmark] Board:    {chosen.name}")
     print(f"[benchmark] VHDL:     {vhdl_path.name}")
-    print(f"[benchmark] Sim:      {simulator}")
+    print(f"[benchmark] Sim:      {sim.label}  ({sim.backend})")
     print(f"[benchmark] Duration: {args.benchmark}s  (headless, {mode})")
 
     # Analyze VHDL
@@ -165,7 +174,8 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) ->
     ok, work_dir = analyze_vhdl(
         vhdl_path,
         toplevel=toplevel_name,
-        simulator=simulator,
+        simulator=sim.engine,
+        sim_path=sim.path,
         board_def=chosen,
         match=res.match,
     )
@@ -178,17 +188,10 @@ def _run_benchmark(args: argparse.Namespace, available_sims: list[Simulator]) ->
     # child alone with no pygame, isolating simulator throughput from UI cost.
     if args.no_ui:
         return _benchmark_no_ui(
-            chosen,
-            vhdl_path,
-            toplevel_name,
-            generics,
-            simulator,
-            work_dir,
-            res.match,
-            args.benchmark,
+            chosen, vhdl_path, toplevel_name, generics, sim, work_dir, res.match, args.benchmark
         )
     return _benchmark_full_system(
-        chosen, vhdl_path, toplevel_name, generics, simulator, work_dir, res.match, args.benchmark
+        chosen, vhdl_path, toplevel_name, generics, sim, work_dir, res.match, args.benchmark
     )
 
 
@@ -197,7 +200,7 @@ def _benchmark_full_system(
     vhdl_path: Path,
     toplevel: str,
     generics: dict[str, str],
-    simulator: Simulator,
+    sim: SimulatorInfo,
     work_dir: str,
     match: ConventionMatch | None,
     secs: int,
@@ -230,7 +233,8 @@ def _benchmark_full_system(
             toplevel,
             generics,
             work_dir=work_dir,
-            simulator=simulator,
+            simulator=sim.engine,
+            sim_path=sim.path,
             board_def=board,
             speed_factor=speed,
             match=match,
@@ -244,7 +248,7 @@ def _benchmark_full_system(
             speed_factor=speed,
             match=match,
             vhdl_path=vhdl_path,
-            simulator=simulator,
+            sim=sim,
             show_toolbar=False,
         )
         sim_screen.run()
@@ -252,7 +256,7 @@ def _benchmark_full_system(
         stats = sim_screen.run_stats
         _print_benchmark_report(
             board,
-            simulator,
+            sim,
             ui=True,
             duration_s=stats.duration_s,
             sim_ns=stats.sim_ns,
@@ -275,7 +279,7 @@ def _benchmark_no_ui(
     vhdl_path: Path,
     toplevel: str,
     generics: dict[str, str],
-    simulator: Simulator,
+    sim: SimulatorInfo,
     work_dir: str,
     match: ConventionMatch | None,
     secs: int,
@@ -297,7 +301,8 @@ def _benchmark_no_ui(
         toplevel,
         generics,
         work_dir=work_dir,
-        simulator=simulator,
+        simulator=sim.engine,
+        sim_path=sim.path,
         board_def=board,
         match=match,
         benchmark_secs=secs,
@@ -339,7 +344,7 @@ def _benchmark_no_ui(
 
     _print_benchmark_report(
         board,
-        simulator,
+        sim,
         ui=False,
         duration_s=float(bye.get("wall_s", 0.0)),
         sim_ns=int(bye.get("sim_ns", 0)),
@@ -348,7 +353,9 @@ def _benchmark_no_ui(
     )
     save_session_stats(
         board_name=board.name,
-        simulator=simulator,
+        simulator=sim.engine,
+        simulator_backend=sim.backend,
+        simulator_path=sim.path,
         duration_s=float(bye.get("wall_s", 0.0)),
         avg_fps=0.0,
         sim_time_ns=int(bye.get("sim_ns", 0)),
@@ -364,7 +371,7 @@ def _benchmark_no_ui(
 
 def _print_benchmark_report(
     board: BoardDef,
-    simulator: Simulator,
+    sim: SimulatorInfo,
     *,
     ui: bool,
     duration_s: float,
@@ -384,7 +391,7 @@ def _print_benchmark_report(
     print(f"  Benchmark Report  ({duration_s:.1f}s wall-clock, {scope})")
     print(bar)
     print(f"  Board     : {board.name}")
-    print(f"  Simulator : {simulator.upper()}")
+    print(f"  Simulator : {sim.label}  ({sim.backend})")
     print(f"  Clock     : {board.default_clock_hz / 1e6:.4g} MHz")
     if ui:
         print(f"  Frames    : {frames}")
@@ -504,10 +511,13 @@ def main() -> None:
     if args.add_sim is not None:
         sys.exit(_add_sim(args.add_sim))
 
-    available_sims = detect_simulators()
+    # Discover every installed simulator once per launch (U35).  A fallback entry
+    # keeps the launcher usable with nothing installed — the missing-simulator
+    # error then surfaces at analysis time, as before.
+    discovered = discover_simulators(_session_extra_sims()) or [_fallback_ghdl()]
 
     if args.benchmark is not None:
-        sys.exit(_run_benchmark(args, available_sims))
+        sys.exit(_run_benchmark(args, discovered))
 
     session = load_session()
     _restore_session_theme(session)
@@ -534,7 +544,7 @@ def main() -> None:
         boards,
         screen,
         clock,
-        available_sims,
+        discovered,
         session=session,
         cli_simulator=args.sim,
     ).run()

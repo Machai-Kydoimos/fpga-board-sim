@@ -106,3 +106,30 @@ def test_ghdl_vcd_capture_produces_populated_file(ghdl, sim_env, work_dir, tmp_p
     assert text.strip(), "VCD file is empty"
     assert "$var" in text  # standard VCD signal declarations
     assert "clk" in text and "led" in text  # top-level design signals captured
+
+
+def test_prepare_simulation_threads_sim_path_and_keeps_engine_slug(ghdl):
+    """U35: a resolved binary becomes argv[0], but the child env keeps the engine slug.
+
+    Drives the real analyze/elaborate path with an explicit ``sim_path`` (the
+    PATH ghdl), proving the selection is honored end-to-end while the headless
+    child still receives ``FPGA_SIM_SIMULATOR="ghdl"`` (the U34 invariant).
+    """
+    from fpga_sim.sim_bridge import _prepare_simulation
+
+    blinky = PROJECT / "hdl" / "blinky.vhd"
+    prep = _prepare_simulation(
+        board_json="",
+        vhdl_path=blinky,
+        toplevel="blinky",
+        generics=None,
+        work_dir=None,
+        simulator="ghdl",
+        board_def=None,
+        match=None,
+        waveform=None,
+        waveform_memories=None,
+        sim_path=ghdl,
+    )
+    assert prep.cmd[0] == ghdl  # the resolved binary drives the run (-r)
+    assert prep.env["FPGA_SIM_SIMULATOR"] == "ghdl"  # child still gets the engine slug

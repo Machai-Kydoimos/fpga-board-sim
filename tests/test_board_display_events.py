@@ -42,6 +42,56 @@ def _r_keydown(pygame: ModuleType) -> Event:
     return ev
 
 
+# ── [SIM:…] simulator toggle (U35) ───────────────────────────────────────────
+
+
+def test_sim_toggle_cycles_installed_sims(headless_pygame):
+    """Clicking [SIM:…] advances board.sim through the installed list and wraps."""
+    from fpga_sim.sim_bridge import SimulatorInfo
+    from fpga_sim.ui import FPGABoard
+
+    ghdl = SimulatorInfo("ghdl", "/u/ghdl", "mcode", "GHDL", "g")
+    nvc = SimulatorInfo("nvc", "/u/nvc", "nvc", "NVC", "n")
+    headless_pygame.display.set_mode((1024, 700))
+    board = FPGABoard(
+        board_def=_sample_board(), width=1024, height=700, sim=ghdl, available_sims=[ghdl, nvc]
+    )
+
+    def _click_toggle() -> None:
+        board._draw(flip=False)  # lays out the (right-anchored, label-sized) toggle rect
+        assert board._sim_toggle_rect is not None
+        ev = headless_pygame.event.Event(
+            headless_pygame.MOUSEBUTTONDOWN,
+            {"button": 1, "pos": board._sim_toggle_rect.center},
+        )
+        board._handle_events([ev])
+
+    assert board.sim is ghdl
+    _click_toggle()
+    assert board.sim is nvc  # advanced to the next installed sim
+    _click_toggle()
+    assert board.sim is ghdl  # wraps around
+
+
+def test_sim_toggle_absent_when_single_sim(headless_pygame):
+    """One installed simulator → the toggle is drawn but disabled (no cycle)."""
+    from fpga_sim.sim_bridge import SimulatorInfo
+    from fpga_sim.ui import FPGABoard
+
+    only = SimulatorInfo("ghdl", "/u/ghdl", "mcode", "GHDL", "g")
+    headless_pygame.display.set_mode((1024, 700))
+    board = FPGABoard(
+        board_def=_sample_board(), width=1024, height=700, sim=only, available_sims=[only]
+    )
+    board._draw(flip=False)
+    assert board._sim_toggle_rect is not None
+    ev = headless_pygame.event.Event(
+        headless_pygame.MOUSEBUTTONDOWN, {"button": 1, "pos": board._sim_toggle_rect.center}
+    )
+    board._handle_events([ev])
+    assert board.sim is only  # a single-entry list does not cycle
+
+
 # ── R key: switch reset ──────────────────────────────────────────────────────
 
 

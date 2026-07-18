@@ -9,7 +9,10 @@ Schema (every key is optional; readers fall back to defaults):
 
 - ``board_class`` / ``board_source`` — last board (selector preselection)
 - ``vhdl_path`` — last VHDL file (also seeds the picker start directory)
-- ``simulator`` — ``"ghdl"`` or ``"nvc"``
+- ``simulator`` — ``"ghdl"`` or ``"nvc"`` (the engine slug)
+- ``simulator_path`` — resolved binary of the selected install (U35); ``""``
+  = the PATH default for ``simulator``.  Restored (re-probed) at launch so a
+  specific GHDL code generator (mcode / llvm / llvm-jit) survives a restart
 - ``extra_simulators`` — list of absolute paths to simulator binaries in
   non-standard locations (default ``[]``), folded into U35 discovery so they
   appear as selectable choices; ``fpga-sim --add-sim PATH`` appends to it and
@@ -89,10 +92,14 @@ def save_session(
     component_filters: list[str] | None = None,
     vendor_filters: list[str] | None = None,
     *,
+    simulator_path: str = "",
     window_size: tuple[int, int] | None = None,
 ) -> None:
     """Persist the launcher state: board, VHDL file, simulator, and prefs.
 
+    *simulator_path* is the resolved binary of the selected install (U35); ``""``
+    means the PATH default for *simulator*.  It rides alongside the engine slug
+    so a restart re-selects the same GHDL code generator, not just the engine.
     *window_size* is stored as ``window_w`` / ``window_h`` when given and left
     untouched when ``None``.  Keys owned by other writers (``speed_factor``,
     ``theme``, ``recent``, …) always survive — this is a merge, not a rewrite.
@@ -102,6 +109,7 @@ def save_session(
         "board_source": board_source,
         "vhdl_path": vhdl_path,
         "simulator": simulator,
+        "simulator_path": simulator_path,
         "board_sort": board_sort,
         "component_filters": component_filters or [],
         "vendor_filters": vendor_filters or [],

@@ -9,13 +9,15 @@ Footer buttons
 * [Load VHDL File]   — always enabled; opens the VHDL file picker.
 * [Start Simulation] — greyed out until a VHDL file has been validated and
                        loaded via the [Load VHDL File] button.
-* [SIM: GHDL/NVC]   — simulator toggle (greyed when only one simulator is
-                       installed).
+* [SIM: …]          — simulator toggle: cycles the installed simulators
+                       (each shown by its short label, e.g. ``SIM: GHDL-JIT``);
+                       greyed when only one is installed.
 
 The VHDL filename is shown above the buttons once a file is loaded.
 
-The active simulator can be toggled via [SIM:…].  Read ``board.simulator``
-after run() returns to discover the user's choice.
+The active simulator can be toggled via [SIM:…].  Read ``board.sim`` (a
+:class:`~fpga_sim.sim_bridge.SimulatorInfo`) after run() returns to discover
+the user's choice.
 """
 
 from __future__ import annotations
@@ -38,7 +40,7 @@ from fpga_sim.ui.tooltip import Tooltip
 from fpga_sim.ui.widgets import draw_button
 
 if TYPE_CHECKING:
-    from fpga_sim.sim_bridge import Simulator
+    from fpga_sim.sim_bridge import SimulatorInfo
 
 # Cursor dwell (ms) over a component before its hover tooltip appears.
 HOVER_TOOLTIP_MS = 400
@@ -61,11 +63,11 @@ class FPGABoard:
         Fallback counts when no BoardDef is provided.
     width, height: int
         Initial window size (resizable).
-    simulator : Simulator
-        Currently selected simulator ('ghdl' or 'nvc').
-    available_simulators : list[Simulator]
-        Simulators that are installed.  If the list has more than one
-        entry the footer shows a toggle button.
+    sim : SimulatorInfo or None
+        Currently selected simulator install (engine + backend + label).
+    available_sims : list[SimulatorInfo] or None
+        Simulators that are installed.  If the list has more than one entry the
+        footer shows a toggle button that cycles them by label.
     vhdl_path : str or Path or None
         Currently loaded VHDL file.  When set the filename is shown in the
         footer and [Start Simulation] is enabled.
@@ -82,8 +84,8 @@ class FPGABoard:
         num_leds: int = 16,
         width: int = 0,
         height: int = 0,
-        simulator: Simulator = "ghdl",
-        available_simulators: list[Simulator] | None = None,
+        sim: SimulatorInfo | None = None,
+        available_sims: list[SimulatorInfo] | None = None,
         height_offset: int = 0,
         vhdl_path: str | Path | None = None,
         show_footer: bool = True,
@@ -110,11 +112,12 @@ class FPGABoard:
             Initial window size.  When ``0`` (the default) and *screen* is
             provided the surface dimensions are used; without a screen the
             fallback 1024 × 700 is used.
-        simulator:
-            Name of the active simulator backend (``"ghdl"`` or ``"nvc"``).
-        available_simulators:
-            Simulators that are installed.  If the list has more than one
-            entry the footer shows a toggle button.
+        sim:
+            The active simulator install (a ``SimulatorInfo``), or ``None`` when
+            the toggle is not surfaced.
+        available_sims:
+            Installed simulators.  If the list has more than one entry the footer
+            shows a toggle button that cycles them by label.
         height_offset:
             Pixels to subtract from the effective height when computing
             layout and handling resize events.  Reserve space for a panel
@@ -163,8 +166,11 @@ class FPGABoard:
         self._simulate = False
         self._load_vhdl = False
 
-        self.simulator = simulator
-        self.available_simulators: list[Simulator] = available_simulators or ["ghdl"]
+        # The selected simulator + the installed set the [SIM:…] toggle cycles
+        # (U35).  ``None`` when the caller does not surface the toggle (the
+        # simulation screen's embedded board, the no-boards fallback preview).
+        self.sim = sim
+        self.available_sims: list[SimulatorInfo] = available_sims or ([sim] if sim else [])
 
         if board_def:
             _vhdl_sfx = f" \u2013 {self.vhdl_path.name}" if self.vhdl_path else ""
@@ -525,20 +531,18 @@ class FPGABoard:
                     self._settings_requested = True
                     return
 
-                # Simulator toggle (cycle to next available simulator)
+                # Simulator toggle (cycle to next installed simulator)
                 if (
                     self._sim_toggle_rect
                     and self._sim_toggle_rect.collidepoint(event.pos)
-                    and len(self.available_simulators) > 1
+                    and len(self.available_sims) > 1
                 ):
                     idx = (
-                        self.available_simulators.index(self.simulator)
-                        if self.simulator in self.available_simulators
+                        self.available_sims.index(self.sim)
+                        if self.sim in self.available_sims
                         else 0
                     )
-                    self.simulator = self.available_simulators[
-                        (idx + 1) % len(self.available_simulators)
-                    ]
+                    self.sim = self.available_sims[(idx + 1) % len(self.available_sims)]
                     return
 
                 # [Select Board] button
@@ -747,23 +751,29 @@ class FPGABoard:
             enabled=can_simulate,
         )
 
-        toggle_label = f"SIM: {self.simulator.upper()}"
-        toggle_w = btn_font.size(toggle_label)[0] + 24
-        toggle_x = start_x - toggle_w - gap
-        self._sim_toggle_rect = pygame.Rect(toggle_x, btn_y, toggle_w, btn_h)
-        can_toggle = len(self.available_simulators) > 1
-        toggle_style = (
-            THEME.btn_sim_toggle_nvc if self.simulator == "nvc" else THEME.btn_sim_toggle_ghdl
-        )
-        draw_button(
-            self.screen,
-            self._sim_toggle_rect,
-            toggle_label,
-            btn_font,
-            toggle_style,
-            hovered=self._sim_toggle_rect.collidepoint(mouse_pos),
-            enabled=can_toggle,
-        )
+        # [SIM:…] toggle — drawn only when a simulator is surfaced (U35).  The
+        # embedded board of the simulation screen and the no-boards fallback
+        # pass no ``sim``, so they show no toggle.
+        if self.sim is not None:
+            toggle_label = f"SIM: {self.sim.label}"
+            toggle_w = btn_font.size(toggle_label)[0] + 24
+            toggle_x = start_x - toggle_w - gap
+            self._sim_toggle_rect = pygame.Rect(toggle_x, btn_y, toggle_w, btn_h)
+            can_toggle = len(self.available_sims) > 1
+            toggle_style = (
+                THEME.btn_sim_toggle_nvc if self.sim.engine == "nvc" else THEME.btn_sim_toggle_ghdl
+            )
+            draw_button(
+                self.screen,
+                self._sim_toggle_rect,
+                toggle_label,
+                btn_font,
+                toggle_style,
+                hovered=self._sim_toggle_rect.collidepoint(mouse_pos),
+                enabled=can_toggle,
+            )
+        else:
+            self._sim_toggle_rect = None
 
         # ── VHDL status line (above button row) ───────────────────────────────
         status_f = get_font(max(10, round(13 * s)))

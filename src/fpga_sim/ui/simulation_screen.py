@@ -38,7 +38,7 @@ from fpga_sim.ui.widgets import draw_button
 
 if TYPE_CHECKING:
     from fpga_sim.board_loader import BoardDef, ComponentInfo
-    from fpga_sim.sim_bridge import ConventionMatch, SimChild
+    from fpga_sim.sim_bridge import ConventionMatch, SimChild, SimulatorInfo
 
 #: Seconds to wait for the child's connection before giving up (NVC / Windows
 #: headroom); a spinner overlay is shown meanwhile.
@@ -96,7 +96,7 @@ class SimulationScreen:
         speed_factor: float,
         match: ConventionMatch | None,
         vhdl_path: str | Path,
-        simulator: str,
+        sim: SimulatorInfo,
         show_toolbar: bool = True,
     ) -> None:
         """Build the board/panel/toolbar and wire pygame input to link messages."""
@@ -105,7 +105,7 @@ class SimulationScreen:
         self.board_def = board_def
         self.child = child
         self.match = match
-        self.simulator = simulator
+        self.sim = sim
         self._vhdl_name = Path(vhdl_path).name
         self._show_toolbar = show_toolbar
 
@@ -138,7 +138,9 @@ class SimulationScreen:
         # Info-strip segments (board | vhdl (mode) | simulator), native tag accented.
         self._mode_tag = f"(native: {match.maker})" if match else "(generic)"
         self._info_prefix = "  |  ".join(p for p in (self._board_name, self._vhdl_name) if p) + " "
-        self._info_suffix = f"  |  {simulator.upper()}" if simulator else ""
+        # U35: the info strip shows the backend's short label (e.g. GHDL-JIT), so
+        # a chosen GHDL code generator is visible mid-run — not just the engine.
+        self._info_suffix = f"  |  {sim.label}" if sim.label else ""
 
         # ── Live loop state ──────────────────────────────────────────────────
         self._connected = False
@@ -271,13 +273,12 @@ class SimulationScreen:
             return None
         if self.child.poll() is not None:
             return self._crash(
-                f"The {self.simulator.upper()} simulation exited before it started "
+                f"The {self.sim.label} simulation exited before it started "
                 f"(code {self.child.poll()})."
             )
         if time.monotonic() - session_start > _STARTUP_TIMEOUT_S:
             return self._crash(
-                f"Timed out after {_STARTUP_TIMEOUT_S:.0f}s waiting for "
-                f"{self.simulator.upper()} to start."
+                f"Timed out after {_STARTUP_TIMEOUT_S:.0f}s waiting for {self.sim.label} to start."
             )
         return None
 
@@ -293,7 +294,7 @@ class SimulationScreen:
                 rc = self.child.poll()
                 if rc not in (0, None):
                     return self._crash(
-                        f"The {self.simulator.upper()} simulation stopped unexpectedly (code {rc})."
+                        f"The {self.sim.label} simulation stopped unexpectedly (code {rc})."
                     )
                 return SimExit.STOPPED
         self._apply_state()
@@ -403,7 +404,7 @@ class SimulationScreen:
         """Overlay a 'Starting <SIM>...' banner while the child connects."""
         sw, sh = self.screen.get_size()
         font = _get_font(max(12, round(18 * min(sw / 1024, sh / 700))), bold=True)
-        text = font.render(f"Starting {self.simulator.upper()}...", True, THEME.sim_info)
+        text = font.render(f"Starting {self.sim.label}...", True, THEME.sim_info)
         pad = 16
         bg = pygame.Surface((text.get_width() + pad * 2, text.get_height() + pad), pygame.SRCALPHA)
         bg.fill((0, 0, 0, 160))
@@ -511,7 +512,7 @@ class SimulationScreen:
         seg = f", {self._seg_digits}-digit 7-seg" if self._seg_digits else ""
         print(f"\n{'=' * 60}")
         print(f"  Simulation running: {self._board_name}")
-        print(f"  VHDL: {self._vhdl_name}  |  Simulator: {self.simulator.upper()}")
+        print(f"  VHDL: {self._vhdl_name}  |  Simulator: {self.sim.label}")
         print(f"  {num_led} LEDs, {num_btn} buttons, {num_sw} switches{seg}")
         print("  Use the panel sliders to adjust speed and virtual clock.")
         print("  S: toggle stats panel  |  F1/?: help  |  Pause/Stop: bottom-right")
@@ -551,7 +552,9 @@ class SimulationScreen:
         if n:
             save_session_stats(
                 board_name=self._board_name,
-                simulator=self.simulator,
+                simulator=self.sim.engine,
+                simulator_backend=self.sim.backend,
+                simulator_path=self.sim.path,
                 duration_s=duration,
                 avg_fps=stats.avg_fps,
                 sim_time_ns=sim_ns,

@@ -105,6 +105,21 @@ def test_simulator_roundtrip_nvc(session_file):
     assert result["simulator"] == "nvc"
 
 
+def test_simulator_path_roundtrip(session_file):
+    """U35: the resolved binary persists alongside the engine slug."""
+    save_session(
+        "BoardX", "/path/b.vhd", simulator="ghdl", simulator_path="/opt/ghdl-llvm/bin/ghdl"
+    )
+    result = load_session()
+    assert result["simulator"] == "ghdl"
+    assert result["simulator_path"] == "/opt/ghdl-llvm/bin/ghdl"
+
+
+def test_simulator_path_defaults_empty(session_file):
+    save_session("BoardX", "/path/b.vhd", simulator="ghdl")
+    assert load_session()["simulator_path"] == ""
+
+
 def test_load_missing_simulator_key(session_file):
     """Old session files without 'simulator' key load without error."""
     session_file.parent.mkdir(parents=True)

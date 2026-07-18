@@ -101,28 +101,39 @@ class _SimBackend(ABC):
         return bool(shutil.which(cls.NAME))
 
     @classmethod
-    def lib_dir(cls) -> str:
-        bin_path = Path(cls.find()).resolve().parent
+    def lib_dir(cls, binary: str | None = None) -> str:
+        bin_path = Path(binary or cls.find()).resolve().parent
         lib_dir = bin_path.parent / "lib"
         return str(lib_dir) if lib_dir.is_dir() else str(bin_path)
 
     @classmethod
-    def sim_bin_lib(cls) -> tuple[str, str]:
-        """Return (bin_dir, lib_dir) for environment setup."""
-        return str(Path(cls.find()).resolve().parent), cls.lib_dir()
+    def sim_bin_lib(cls, binary: str | None = None) -> tuple[str, str]:
+        """Return (bin_dir, lib_dir) for environment setup.
 
-    # Per-simulator specifics — subclasses must override.
+        *binary* is the selected install's resolved path (U35); when omitted it
+        falls back to ``cls.find()`` (the PATH default), so a caller that has not
+        chosen a specific install still works.
+        """
+        return str(Path(binary or cls.find()).resolve().parent), cls.lib_dir(binary)
+
+    # Per-simulator specifics — subclasses must override.  The command builders
+    # take *binary* (U35): the resolved argv[0] of the selected install, so a
+    # non-PATH backend (a specific GHDL code generator) runs from its own path
+    # instead of whatever ``find()`` resolves.  ``binary=None`` falls back to
+    # ``find()`` for callers that never pick a specific install.
     @staticmethod
     @abstractmethod
     def plugin_lib_name() -> str: ...
 
     @staticmethod
     @abstractmethod
-    def analyze_cmd(vhdl_path: Path, work_dir: str) -> list[str]: ...
+    def analyze_cmd(vhdl_path: Path, work_dir: str, binary: str | None = None) -> list[str]: ...
 
     @staticmethod
     @abstractmethod
-    def elaborate_cmd(toplevel: str, generics: dict[str, str], work_dir: str) -> list[str]: ...
+    def elaborate_cmd(
+        toplevel: str, generics: dict[str, str], work_dir: str, binary: str | None = None
+    ) -> list[str]: ...
 
     @staticmethod
     @abstractmethod
@@ -132,6 +143,7 @@ class _SimBackend(ABC):
         plugin_lib: str,
         work_dir: str,
         wave: WaveConfig | None = None,
+        binary: str | None = None,
     ) -> list[str]: ...
 
 
@@ -145,14 +157,18 @@ class _GHDLBackend(_SimBackend):
         return "cocotbvpi_ghdl.dll" if IS_WINDOWS else "libcocotbvpi_ghdl.so"
 
     @staticmethod
-    def analyze_cmd(vhdl_path: Path, work_dir: str) -> list[str]:
-        return [_GHDLBackend.find(), "-a", "--std=08", f"--workdir={work_dir}", str(vhdl_path)]
+    def analyze_cmd(vhdl_path: Path, work_dir: str, binary: str | None = None) -> list[str]:
+        ghdl = binary or _GHDLBackend.find()
+        return [ghdl, "-a", "--std=08", f"--workdir={work_dir}", str(vhdl_path)]
 
     @staticmethod
-    def elaborate_cmd(toplevel: str, generics: dict[str, str], work_dir: str) -> list[str]:
+    def elaborate_cmd(
+        toplevel: str, generics: dict[str, str], work_dir: str, binary: str | None = None
+    ) -> list[str]:
         # GHDL takes no generics at -e (the compiled backends reject -g here);
         # they are simulation options, passed after the unit at run (-r) time.
-        return [_GHDLBackend.find(), "-e", "--std=08", f"--workdir={work_dir}", toplevel]
+        ghdl = binary or _GHDLBackend.find()
+        return [ghdl, "-e", "--std=08", f"--workdir={work_dir}", toplevel]
 
     @staticmethod
     def run_cmd(
@@ -161,8 +177,9 @@ class _GHDLBackend(_SimBackend):
         plugin_lib: str,
         work_dir: str,
         wave: WaveConfig | None = None,
+        binary: str | None = None,
     ) -> list[str]:
-        cmd = [_GHDLBackend.find(), "-r", "--std=08", f"--workdir={work_dir}"]
+        cmd = [binary or _GHDLBackend.find(), "-r", "--std=08", f"--workdir={work_dir}"]
         cmd.append(toplevel)
         # -g is a *simulation* option: documented (and only reliable) AFTER the
         # unit name ("ghdl -r --std=08 my_unit -gDEPTH=12").  mcode/llvm-jit
@@ -212,13 +229,17 @@ class _NVCBackend(_SimBackend):
         return "cocotbvhpi_nvc.dll" if IS_WINDOWS else "libcocotbvhpi_nvc.so"
 
     @staticmethod
-    def analyze_cmd(vhdl_path: Path, work_dir: str) -> list[str]:
-        return [_NVCBackend.find(), f"--work=work:{work_dir}", "--std=2008", "-a", str(vhdl_path)]
+    def analyze_cmd(vhdl_path: Path, work_dir: str, binary: str | None = None) -> list[str]:
+        nvc = binary or _NVCBackend.find()
+        return [nvc, f"--work=work:{work_dir}", "--std=2008", "-a", str(vhdl_path)]
 
     @staticmethod
-    def elaborate_cmd(toplevel: str, generics: dict[str, str], work_dir: str) -> list[str]:
+    def elaborate_cmd(
+        toplevel: str, generics: dict[str, str], work_dir: str, binary: str | None = None
+    ) -> list[str]:
         """Elaborate with generics (NVC requires generics at elaboration time)."""
-        cmd = [_NVCBackend.find(), f"--work=work:{work_dir}", "--std=2008", "-H", _NVC_HEAP, "-e"]
+        nvc = binary or _NVCBackend.find()
+        cmd = [nvc, f"--work=work:{work_dir}", "--std=2008", "-H", _NVC_HEAP, "-e"]
         for k, v in (generics or {}).items():
             cmd.extend(["-g", f"{k}={v}"])
         cmd.append(toplevel)
@@ -231,10 +252,11 @@ class _NVCBackend(_SimBackend):
         plugin_lib: str,
         work_dir: str,
         wave: WaveConfig | None = None,
+        binary: str | None = None,
     ) -> list[str]:
         # generics were baked in at elaboration (-e); ignored here
         cmd = [
-            _NVCBackend.find(),
+            binary or _NVCBackend.find(),
             f"--work=work:{work_dir}",
             "--std=2008",
             "-H",
@@ -434,6 +456,58 @@ def discover_simulators(extra: list[str] | None = None) -> list[SimulatorInfo]:
         if info is not None:
             infos.append(info)
     return _disambiguate_labels(infos)
+
+
+#: CLI ``--sim`` slug → the GHDL code generator it selects (U35).  The bare
+#: engine slugs ``ghdl`` / ``nvc`` keep their old meaning ("that engine via
+#: PATH") and are handled separately.
+_SIM_SLUG_BACKEND: dict[str, str] = {
+    "ghdl-mcode": "mcode",
+    "ghdl-llvm": "llvm",
+    "ghdl-jit": "llvm-jit",
+    "ghdl-llvm-jit": "llvm-jit",  # accepted alias for ghdl-jit
+}
+
+
+def resolve_simulator_arg(arg: str | None, discovered: list[SimulatorInfo]) -> SimulatorInfo | None:
+    """Resolve a ``--sim`` value (or UI choice) against the *discovered* list.
+
+    Shared by the CLI (``--sim``) and the launcher so both accept the same
+    spellings:
+
+    * ``None`` → the default (first discovered = the PATH engine).
+    * ``"ghdl"`` / ``"nvc"`` → that engine via PATH (back-compat): the first
+      discovered install of the engine (discovery lists the PATH one first).
+    * ``"ghdl-mcode"`` / ``"ghdl-llvm"`` / ``"ghdl-jit"`` → the discovered GHDL
+      install with that code generator.
+    * an absolute path → probe it directly (need not be in *discovered*).
+
+    Returns the matching :class:`SimulatorInfo`, or ``None`` when nothing
+    matches (no such engine/variant installed, or the path is not a simulator) —
+    the caller formats the error, listing *discovered* as appropriate.
+    """
+    if not discovered:
+        return None
+    if not arg:
+        return discovered[0]
+    if arg in ("ghdl", "nvc"):
+        return next((i for i in discovered if i.engine == arg), None)
+    if arg in _SIM_SLUG_BACKEND:
+        want = _SIM_SLUG_BACKEND[arg]
+        return next((i for i in discovered if i.backend == want), None)
+    if os.sep in arg or (os.altsep and os.altsep in arg):
+        return _probe_simulator(arg)  # a path (absolute or relative)
+    return None  # an unknown bare token
+
+
+def _fallback_ghdl() -> SimulatorInfo:
+    """Return a placeholder GHDL entry for when discovery finds nothing installed.
+
+    Mirrors :func:`detect_simulators`'s ``["ghdl"]`` fallback: the launcher still
+    starts and the missing-simulator error surfaces at analysis time (argv[0]
+    ``"ghdl"`` fails with the install hint) rather than blocking startup.
+    """
+    return SimulatorInfo("ghdl", "ghdl", "ghdl", "GHDL", "GHDL (not found on PATH)")
 
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
@@ -1640,6 +1714,7 @@ def analyze_vhdl(
     simulator: Simulator = "ghdl",
     board_def: BoardDef | None = None,
     match: ConventionMatch | None = None,
+    sim_path: str | None = None,
 ) -> tuple[bool, str]:
     """Analyze the user's VHDL and the generated sim_wrapper.
 
@@ -1668,7 +1743,7 @@ def analyze_vhdl(
     try:
         # Step 1: analyze user's VHDL
         result = subprocess.run(
-            be.analyze_cmd(Path(vhdl_path), work_dir),
+            be.analyze_cmd(Path(vhdl_path), work_dir, binary=sim_path),
             capture_output=True,
             text=True,
             timeout=30,
@@ -1687,7 +1762,7 @@ def analyze_vhdl(
             match=match,
         )
         result2 = subprocess.run(
-            be.analyze_cmd(wrapper_path, work_dir),
+            be.analyze_cmd(wrapper_path, work_dir, binary=sim_path),
             capture_output=True,
             text=True,
             timeout=30,
@@ -1700,7 +1775,7 @@ def analyze_vhdl(
         # Step 3: early elaboration check — VHDL defaults suffice for structural errors.
         # NVC will re-elaborate with real board generics in start_simulation().
         elab = subprocess.run(
-            be.elaborate_cmd("sim_wrapper", {}, work_dir),
+            be.elaborate_cmd("sim_wrapper", {}, work_dir, binary=sim_path),
             capture_output=True,
             text=True,
             timeout=30,
@@ -1731,9 +1806,12 @@ def analyze_vhdl(
 def _build_sim_env(
     simulator: Simulator = "ghdl",
     venv_dir: str | Path | None = None,
+    sim_path: str | None = None,
 ) -> tuple[dict[str, str], str]:
     """Build the environment dict needed for the simulator + cocotb VPI/VHPI.
 
+    *sim_path* is the selected install's resolved binary (U35); the bin/lib dirs
+    are derived from it so a non-PATH backend loads its own shared libraries.
     Returns (env_dict, plugin_lib_path).
     """
     venv_dir = Path(venv_dir or (Path(__file__).parent.parent.parent / ".venv"))
@@ -1747,7 +1825,7 @@ def _build_sim_env(
     ).stdout.strip()
 
     be = _backend(simulator)
-    sim_bin, sim_lib = be.sim_bin_lib()
+    sim_bin, sim_lib = be.sim_bin_lib(sim_path)
     plugin_lib = str(cocotb_libs / be.plugin_lib_name())
 
     _root = Path(__file__).resolve().parent.parent.parent
@@ -2071,19 +2149,21 @@ def _prepare_simulation(
     match: ConventionMatch | None,
     waveform: str | None,
     waveform_memories: bool | None,
+    sim_path: str | None = None,
 ) -> _SimPrep:
     """Analyze (if needed), elaborate (NVC), resolve waveform, build the run cmd.
 
     The prep :func:`start_simulation` runs before spawning the simulator,
     factored into its own helper.  The returned ``env`` holds the vars the
     headless testbench reads (board JSON + metrics metadata); the link vars are
-    added by :func:`start_simulation`.
+    added by :func:`start_simulation`.  *sim_path* is the selected install's
+    resolved binary (U35), threaded into every simulator invocation.
     """
     from fpga_sim.board_loader import BoardDef  # noqa: PLC0415
 
     vhdl_path = Path(vhdl_path).resolve()
     be = _backend(simulator)
-    env, plugin_lib = _build_sim_env(simulator=simulator)
+    env, plugin_lib = _build_sim_env(simulator=simulator, sim_path=sim_path)
     generics = dict(generics or {})
 
     # Resolve board_def from JSON when not passed directly
@@ -2104,11 +2184,18 @@ def _prepare_simulation(
     if work_dir is None:
         # Fresh run: analyze user file and wrapper from scratch.
         work_dir = tempfile.mkdtemp(prefix="fpga_sim_run_")
-        subprocess.run(be.analyze_cmd(vhdl_path, work_dir), env=env, check=True, cwd=work_dir)
+        subprocess.run(
+            be.analyze_cmd(vhdl_path, work_dir, binary=sim_path), env=env, check=True, cwd=work_dir
+        )
         wrapper_path = _generate_wrapper(
             toplevel, work_dir, board_def=board_def, design_has_seg=_design_has_seg, match=match
         )
-        subprocess.run(be.analyze_cmd(wrapper_path, work_dir), env=env, check=True, cwd=work_dir)
+        subprocess.run(
+            be.analyze_cmd(wrapper_path, work_dir, binary=sim_path),
+            env=env,
+            check=True,
+            cwd=work_dir,
+        )
 
     # NVC bakes generics into its elaboration artifact, so it re-elaborates with
     # the real values.  GHDL applies generics at -r, but its compiled backends
@@ -2116,7 +2203,9 @@ def _prepare_simulation(
     # in work_dir, where run_cmd's cwd looks for it.  For mcode/llvm-jit (in-
     # memory elaboration) this is a cheap structural re-check.
     elab = subprocess.run(
-        be.elaborate_cmd("sim_wrapper", generics if simulator == "nvc" else {}, work_dir),
+        be.elaborate_cmd(
+            "sim_wrapper", generics if simulator == "nvc" else {}, work_dir, binary=sim_path
+        ),
         env=env,
         capture_output=True,
         text=True,
@@ -2138,7 +2227,7 @@ def _prepare_simulation(
         wave_cfg = WaveConfig(str(wave_target), wave_fmt, dump_arrays=dump_arrays)
 
     # Both backends share the same run_cmd signature; NVC ignores generics (already baked in).
-    cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir, wave=wave_cfg)
+    cmd = be.run_cmd("sim_wrapper", generics, plugin_lib, work_dir, wave=wave_cfg, binary=sim_path)
 
     # Env vars both the legacy pygame testbench and the headless bridge read.
     env["TOPLEVEL"] = "sim_wrapper"
@@ -2248,6 +2337,7 @@ def start_simulation(
     waveform_memories: bool | None = None,
     match: ConventionMatch | None = None,
     benchmark_secs: float | None = None,
+    sim_path: str | None = None,
 ) -> SimChild:
     """Start a headless simulation child for single-window mode (U34).
 
@@ -2274,6 +2364,7 @@ def start_simulation(
         match,
         waveform,
         waveform_memories,
+        sim_path=sim_path,
     )
     env = prep.env
 
