@@ -29,7 +29,12 @@ net name, pin, and direction.
 - **Click switches** to toggle them
 - **Click and hold buttons** to press them
 - **Hover a component** → tooltip with its net name, pin, and direction
-- **`SIM: GHDL` / `SIM: NVC`** toggle → cycle between installed simulators
+- **`SIM: …`** toggle → cycle between installed simulators, each shown by a
+  short label (`SIM: GHDL`, `SIM: NVC`, and the GHDL code generators
+  `SIM: GHDL-LLVM` / `SIM: GHDL-JIT`); the choice is remembered per session.
+  Run `fpga-sim --list-sims` to see them all, or `--add-sim PATH` to register
+  one in a non-standard location — see
+  [Choosing a simulator](install.md#choosing-a-simulator)
 - **"Start Simulation"** button → opens the VHDL file picker
 - **R** → reset all switches off and release any held buttons
 - **F1 / ? / (?)** → open the help overlay

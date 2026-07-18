@@ -110,6 +110,61 @@ sudo dnf install autoconf automake flex check llvm-devel \
 
 See the [NVC build guide](https://github.com/nickg/nvc#building-from-source) for full instructions.
 
+## Choosing a simulator
+
+Any installed simulator works, and the launcher's `SIM:` toggle (and `--sim`)
+picks between them per run. They differ mostly in raw speed and in how long a
+design takes to load:
+
+| Simulator | Relative speed | Startup / reload | Notes |
+|---|---|---|---|
+| NVC | fastest (~4–6x mcode) | fast | full VHPI; the speed pick, especially for embedded-CPU designs |
+| GHDL mcode | baseline (1x) | instant | the default; what most distros ship |
+| GHDL LLVM-JIT | ~1.2x mcode | instant | mcode's feel, a free speedup |
+| GHDL LLVM | ~2–3x mcode | slower (compiles + links each launch/reload) | width errors still surface at load time |
+
+Ratios, not absolute times (which are machine-dependent). Measured on a Ryzen
+AI 9 HX 370 (GHDL 7.0.0-dev / NVC 1.22, 2026-07-18); reproduce with
+`uv run fpga-sim --benchmark 10 --no-ui` (add `--sim <name>` / `--board` /
+`--vhdl` to compare).
+
+**Which to install.** For casual use, your distro's `ghdl` (mcode) is plenty.
+Want it faster with no fuss? Install **NVC** — it's the quickest across the
+board. If you specifically need GHDL *and* more speed, build its LLVM code
+generators (below).
+
+`fpga-sim --list-sims` prints every simulator it found — engine, code
+generator, version, and path. If one lives somewhere unusual, register it with
+`fpga-sim --add-sim /path/to/ghdl` (or list paths in `FPGA_SIM_EXTRA_SIMS`,
+`os.pathsep`-separated).
+
+### Building GHDL's LLVM code generators
+
+GHDL's `llvm` (ahead-of-time) and `llvm-jit` backends aren't packaged by most
+distros; build them from one source tree into **separate prefixes** so each
+`ghdl` binary stays self-contained and discovery can find them:
+
+```bash
+sudo apt install llvm-dev clang gnat   # or the Fedora/… equivalents
+
+git clone https://github.com/ghdl/ghdl && cd ghdl
+
+# One build dir + one --prefix per backend. Never share a prefix between
+# backends, and never reconfigure an existing build dir for a different one.
+mkdir build-llvm && cd build-llvm
+../configure --prefix=/usr/local/ghdl-llvm --with-llvm-config
+make -j"$(nproc)" && sudo make install
+cd ..
+
+mkdir build-llvm-jit && cd build-llvm-jit
+../configure --prefix=/usr/local/ghdl-llvm-jit --with-llvm-jit
+make -j"$(nproc)" && sudo make install
+```
+
+`fpga-sim --list-sims` discovers `/usr/local/ghdl-*` installs automatically.
+Keep your distro's `ghdl` (mcode) as the PATH default; select a variant per run
+with the `SIM:` toggle or `--sim ghdl-llvm` / `--sim ghdl-jit`.
+
 ## Set up the Python environment
 
 `uv` manages the venv and all dependencies automatically. It also installs a

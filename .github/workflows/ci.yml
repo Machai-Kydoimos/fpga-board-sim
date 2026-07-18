@@ -97,6 +97,56 @@ jobs:
           SDL_AUDIODRIVER: dummy
         run: uv run pytest
 
+  # U35: exercise the full + slow suites against GHDL's compiled code generators
+  # (llvm AOT + llvm-jit), which the picker now lets users select.  Not a
+  # branch-protection required check — Rick promotes it once it has settled.
+  test-linux-ghdl-llvm:
+    name: Test Linux + GHDL-${{ matrix.backend.name }} (Python 3.12)
+    runs-on: ubuntu-24.04  # pinned: matches the ubuntu24.04 GHDL release binary below
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        backend:
+          - flavor: llvm
+            name: LLVM
+            sha256: e0064cd3d1569e7fca27b186b0d71e80c087de90db4e466ed77dc669a574d8bc
+          - flavor: llvm-jit
+            name: LLVM-JIT
+            sha256: 2250f49e5334885fe9b50597b8f8607304ea3dc6c947489812f9e2a5afa35f23
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990  # v8.3.2
+        with:
+          python-version: "3.12"
+      - run: uv sync --group dev
+      - name: Install GNAT 13 runtime (ghdl1-llvm needs libgnat-13.so)
+        # The v6.0.0 release binaries were built with GNAT 13; ubuntu-24.04 ships
+        # GNAT 14, so the AOT code generator's ghdl1-llvm can't load libgnat-13.so
+        # without this.  Harmless for llvm-jit (in-memory; no ghdl1-llvm exec).
+        run: sudo apt-get update && sudo apt-get install -y libgnat-13
+      - name: Install GHDL v6.0.0 ${{ matrix.backend.name }} (pinned release)
+        run: |
+          ver="6.0.0"
+          url="https://github.com/ghdl/ghdl/releases/download/v$ver/ghdl-${{ matrix.backend.flavor }}-$ver-ubuntu24.04-x86_64.tar.gz"
+          curl -sSL -o ghdl.tar.gz "$url"
+          expected="${{ matrix.backend.sha256 }}"
+          actual="$(sha256sum ghdl.tar.gz | cut -d' ' -f1)"
+          if [ "$actual" != "$expected" ]; then
+            echo "GHDL checksum mismatch: expected $expected, got $actual" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/ghdl"
+          tar -xzf ghdl.tar.gz -C "$HOME/ghdl"
+          dirname "$(find "$HOME/ghdl" -name ghdl -type f | head -1)" >> "$GITHUB_PATH"
+      - name: Verify GHDL (expect ${{ matrix.backend.name }} code generator)
+        run: ghdl --version
+      - name: Run full + slow test suite
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: uv run pytest
+
   test-windows-ghdl:
     name: Test Windows + GHDL (Python 3.12)
     runs-on: windows-latest
