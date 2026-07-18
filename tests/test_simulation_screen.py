@@ -291,6 +291,38 @@ def test_sync_controls_sends_clk_speed_pause(headless_pygame, fake_child):
     assert "pause" in kinds
 
 
+def test_connect_skips_clk_deposit_when_wrapper_default_matches(headless_pygame, fake_child):
+    """No redundant clk write at connect — it costs ~4x on GHDL's llvm backend."""
+    child, client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    half = max(1, int(screen.panel.clk_state["period_ns"] / 2))
+    child.generics = {"CLK_HALF_NS_INIT": str(half)}
+    assert screen._pump_connect(time.monotonic()) is None
+    screen._sync_controls()
+    assert not client.poll(0.2)  # panel matches the wrapper default: nothing sent
+    assert screen._last_clk_half == half
+    # A real user change still syncs.
+    screen.panel.clk_state["period_ns"] *= 2
+    expected = max(1, int(screen.panel.clk_state["period_ns"] / 2))
+    screen._sync_controls()
+    kind, payload = _collect(client, 1)[0]
+    assert kind == "clk"
+    assert payload["half_ns"] == expected
+
+
+def test_connect_syncs_clk_when_wrapper_default_differs(headless_pygame, fake_child):
+    """A panel/wrapper mismatch (e.g. preset snap) is synced on the first frame."""
+    child, client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    half = max(1, int(screen.panel.clk_state["period_ns"] / 2))
+    child.generics = {"CLK_HALF_NS_INIT": str(half * 4)}
+    assert screen._pump_connect(time.monotonic()) is None
+    screen._sync_controls()
+    kind, payload = _collect(client, 1)[0]
+    assert kind == "clk"
+    assert payload["half_ns"] == half
+
+
 def test_no_toolbar_when_disabled(headless_pygame, fake_child):
     child, _client = fake_child
     screen = _make_screen(headless_pygame, child, show_toolbar=False)
