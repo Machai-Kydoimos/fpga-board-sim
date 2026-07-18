@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -29,15 +30,20 @@ import pygame
 
 from fpga_sim.board_loader import discover_boards, get_default_boards_path
 from fpga_sim.controller import ScreenController, build_generics
-from fpga_sim.session_config import load_session
-from fpga_sim.sim_bridge import Simulator, detect_simulators
+from fpga_sim.session_config import load_session, update_session
+from fpga_sim.sim_bridge import (
+    Simulator,
+    _probe_simulator,
+    detect_simulators,
+    discover_simulators,
+)
 from fpga_sim.ui import FPGABoard
 from fpga_sim.ui.constants import get_font
 from fpga_sim.ui.theme import THEME_NAMES, set_theme
 
 if TYPE_CHECKING:
     from fpga_sim.board_loader import BoardDef
-    from fpga_sim.sim_bridge import ConventionMatch
+    from fpga_sim.sim_bridge import ConventionMatch, SimulatorInfo
 
 
 def _parse_args() -> argparse.Namespace:
@@ -72,6 +78,17 @@ def _parse_args() -> argparse.Namespace:
         action="store_true",
         help="Benchmark the simulator only (headless child, no pygame UI); "
         "requires --benchmark. Isolates simulator throughput from UI rendering.",
+    )
+    p.add_argument(
+        "--list-sims",
+        action="store_true",
+        help="List all discovered/registered simulators (label, backend, version, path) and exit",
+    )
+    p.add_argument(
+        "--add-sim",
+        metavar="PATH",
+        default=None,
+        help="Register a simulator binary at PATH (probe it, save it to the session) and exit",
     )
     return p.parse_args()
 
@@ -417,9 +434,76 @@ def _initial_window_size(session: dict[str, Any], desktop: tuple[int, int]) -> t
     )
 
 
+# ── Simulator registry CLI (U35) ──────────────────────────────────────────────
+
+
+def _session_extra_sims() -> list[str]:
+    """Return the registered simulator paths from the session ``extra_simulators`` list."""
+    raw = load_session().get("extra_simulators", [])
+    return [str(p) for p in raw] if isinstance(raw, list) else []
+
+
+def _print_sims_table(infos: list[SimulatorInfo]) -> None:
+    """Print discovered simulators as a label / backend / version + path block."""
+    if not infos:
+        print("No simulators found. Install GHDL or NVC, or register one with --add-sim PATH.")
+        return
+    label_w = max(len(i.label) for i in infos)
+    backend_w = max(len(i.backend) for i in infos)
+    print(f"Discovered {len(infos)} simulator(s):")
+    for i in infos:
+        print(f"  {i.label:<{label_w}}  {i.backend:<{backend_w}}  {i.version}")
+        print(f"  {'':<{label_w}}  {'':<{backend_w}}  {i.path}")
+
+
+def _list_sims() -> int:
+    """``--list-sims``: print the discovered/registered simulators, then exit 0."""
+    _print_sims_table(discover_simulators(_session_extra_sims()))
+    return 0
+
+
+def _probe_diagnostic(path: str) -> str:
+    """Best-effort ``--version`` text of a rejected --add-sim path, for the error."""
+    try:
+        result = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=5)
+    except Exception:  # noqa: BLE001 - the diagnostic is best-effort
+        return ""
+    return (result.stdout or result.stderr).strip()
+
+
+def _add_sim(path: str) -> int:
+    """``--add-sim PATH``: probe, persist to ``extra_simulators``, print the table.
+
+    Returns 0 on success.  A path that is not a recognized GHDL/NVC simulator
+    exits nonzero, echoing the binary's own ``--version`` output so the user can
+    see why it was rejected.
+    """
+    info = _probe_simulator(path)
+    if info is None:
+        print(f"[add-sim] Not a recognized GHDL or NVC simulator: {path}", file=sys.stderr)
+        detail = _probe_diagnostic(path)
+        if detail:
+            print(detail, file=sys.stderr)
+        return 1
+    extras = _session_extra_sims()
+    target = os.path.realpath(info.path)
+    if not any(os.path.realpath(p) == target for p in extras):
+        update_session(extra_simulators=[*extras, info.path])
+    print(f"[add-sim] Registered {info.label} ({info.backend}): {info.path}")
+    _print_sims_table(discover_simulators(_session_extra_sims()))
+    return 0
+
+
 def main() -> None:
     """Run the FPGA Board Simulator: set up pygame, then hand off to ScreenController."""
     args = _parse_args()
+
+    # Headless registry utilities: probe/report installed simulators, then exit.
+    if args.list_sims:
+        sys.exit(_list_sims())
+    if args.add_sim is not None:
+        sys.exit(_add_sim(args.add_sim))
+
     available_sims = detect_simulators()
 
     if args.benchmark is not None:
