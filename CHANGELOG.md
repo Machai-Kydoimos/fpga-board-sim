@@ -77,6 +77,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **U35 closeout.** New non-required CI job runs the full + slow suites against a
+  matrix of GHDL's compiled code generators (`ghdl-llvm` AOT + `ghdl-llvm-jit`,
+  pinned `6.0.0-ubuntu24.04` release assets). `docs/install.md` gains a "Choosing
+  a simulator" section (relative-speed table, which-to-install guidance, and the
+  LLVM-backend build recipe); `docs/user_guide.md` echoes the `SIM:` toggle and
+  `--list-sims` / `--add-sim`.
 - Post-U34 audit cleanup: retired stale pre-single-window references — roadmap
   cards and file index re-pointed (`launch_simulation` → `start_simulation`, UI
   cards moved off the now-headless `sim_testbench` onto `ui/simulation_screen.py`,
