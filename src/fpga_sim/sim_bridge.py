@@ -149,7 +149,8 @@ class _GHDLBackend(_SimBackend):
 
     @staticmethod
     def elaborate_cmd(toplevel: str, generics: dict[str, str], work_dir: str) -> list[str]:
-        # GHDL ignores generics here — they are applied at run (-r) time.
+        # GHDL takes no generics at -e (the compiled backends reject -g here);
+        # they are simulation options, passed after the unit at run (-r) time.
         return [_GHDLBackend.find(), "-e", "--std=08", f"--workdir={work_dir}", toplevel]
 
     @staticmethod
@@ -161,9 +162,13 @@ class _GHDLBackend(_SimBackend):
         wave: WaveConfig | None = None,
     ) -> list[str]:
         cmd = [_GHDLBackend.find(), "-r", "--std=08", f"--workdir={work_dir}"]
+        cmd.append(toplevel)
+        # -g is a *simulation* option: documented (and only reliable) AFTER the
+        # unit name ("ghdl -r --std=08 my_unit -gDEPTH=12").  mcode/llvm-jit
+        # happen to honor a pre-unit -g too, but the compiled llvm/gcc driver
+        # silently drops it there — the design then runs with default generics.
         for k, v in (generics or {}).items():
             cmd.append(f"-g{k}={v}")
-        cmd.append(toplevel)
         cmd.append(f"--vpi={plugin_lib}")
         if wave is not None:
             # GHDL simulation options follow the toplevel (like --vpi); the dump

@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **GHDL top-level generics are now passed where GHDL documents them — after
+  the unit name.** `run_cmd` emitted `-gNAME=VALUE` before the toplevel;
+  mcode and llvm-jit tolerate that position, but the compiled llvm/gcc
+  driver **silently ignores it**, so every AOT run simulated with default
+  generics (25 MHz virtual clock instead of the board clock, default
+  `COUNTER_BITS`/`NUM_*`). This also corrects the earlier compiled-backend
+  benchmark readings, which the slow default clock had inflated ~2–4x.
 - **No redundant virtual-clock deposit at simulation start.** The simulation
   screen used to re-send the wrapper's own default `clk_half_ns` when the child
   connected. That write is how a measured ~4x slowdown reached GHDL's LLVM

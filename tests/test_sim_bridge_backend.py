@@ -105,6 +105,17 @@ def test_ghdl_run_cmd_includes_generics() -> None:
     assert "-gNUM_LEDS=4" in cmd
 
 
+def test_ghdl_run_cmd_generics_after_unit() -> None:
+    """-g must follow the unit name: it is a *simulation* option.
+
+    GHDL's compiled backends (llvm/gcc) silently drop a pre-unit -g at -r —
+    the design then runs with default generics (wrong clock, counts, widths).
+    mcode merely tolerates the pre-unit position, which hid this for years.
+    """
+    cmd = _GHDLBackend.run_cmd("top", {"NUM_LEDS": "4"}, "/lib/vpi.so", "/work")
+    assert cmd.index("-gNUM_LEDS=4") > cmd.index("top")
+
+
 def test_ghdl_run_cmd_empty_generics() -> None:
     """GHDL run_cmd with an empty generics dict must not add any -g flags."""
     cmd = _GHDLBackend.run_cmd("top", {}, "/lib/vpi.so", "/work")
