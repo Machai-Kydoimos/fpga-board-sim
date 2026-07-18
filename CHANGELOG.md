@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Simulator discovery + registration (U35a).** The app now recognizes every
+  installed simulator as a distinct, truthfully-labeled choice — not just the
+  `ghdl`/`nvc` engines but each GHDL code generator (mcode / LLVM / LLVM-JIT),
+  which differ several-fold in speed. Two new headless CLI flags surface and
+  manage them:
+  - `fpga-sim --list-sims` prints every discovered/registered simulator with
+    its label, backend, `--version` banner, and path.
+  - `fpga-sim --add-sim PATH` registers a simulator binary in a non-standard
+    location (probes it, then persists it to the session's new
+    `extra_simulators` list); the `FPGA_SIM_EXTRA_SIMS` env var
+    (`os.pathsep`-separated) adds paths for one-off runs.
+
+  Discovery scans PATH (`ghdl`, `nvc`, and the `ghdl-mcode` / `ghdl-llvm` /
+  `ghdl-llvm-jit` distro names), sibling-prefix installs under
+  `/usr/local/ghdl-*`, and the registered extras, de-duplicating by real path.
+  This layer is additive: the default launcher flow is unchanged until the
+  selection UI lands (U35b).
+
 ### Fixed
 
 - **GHDL top-level generics are now passed where GHDL documents them — after

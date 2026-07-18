@@ -10,6 +10,10 @@ Schema (every key is optional; readers fall back to defaults):
 - ``board_class`` / ``board_source`` — last board (selector preselection)
 - ``vhdl_path`` — last VHDL file (also seeds the picker start directory)
 - ``simulator`` — ``"ghdl"`` or ``"nvc"``
+- ``extra_simulators`` — list of absolute paths to simulator binaries in
+  non-standard locations (default ``[]``), folded into U35 discovery so they
+  appear as selectable choices; ``fpga-sim --add-sim PATH`` appends to it and
+  it is hand-editable
 - ``board_sort`` / ``component_filters`` / ``vendor_filters`` — selector prefs
 - ``window_w`` / ``window_h`` — launcher window size, restored at startup
 - ``speed_factor`` — sim speed multiplier (the sim subprocess writes the
