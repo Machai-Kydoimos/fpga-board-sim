@@ -51,11 +51,13 @@ def test_cocotb_simulation_passes(ghdl, sim_env, work_dir):
         "-r",
         "--std=08",
         f"--workdir={work_dir}",
+        "blinky",
+        # Simulation options go after the unit; GHDL's compiled backends
+        # silently ignore a pre-unit -g (mcode merely tolerates it).
         "-gNUM_SWITCHES=4",
         "-gNUM_BUTTONS=4",
         "-gNUM_LEDS=4",
         "-gCOUNTER_BITS=10",
-        "blinky",
         f"--vpi={vpi_dll}",
         "--stop-time=100000ns",
     ]
