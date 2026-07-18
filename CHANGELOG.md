@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **No redundant virtual-clock deposit at simulation start.** The simulation
+  screen used to re-send the wrapper's own default `clk_half_ns` when the child
+  connected. That write is how a measured ~4x slowdown reached GHDL's LLVM
+  backend: a VPI deposit on `clk_half_ns` — even with the value it already
+  holds — permanently drops the compiled backend off its fast path, and the
+  clock generator reads that signal every half-period. The screen now seeds its
+  change-tracker from the wrapper's `CLK_HALF_NS_INIT` generic and sends `clk`
+  only when the panel's value actually differs (first use of [-]/[+] still
+  syncs, at the documented cost on compiled backends).
 - **GHDL's compiled backends (LLVM/GCC) now work as drop-in `ghdl` binaries.**
   Simulation prep elaborates for GHDL too (previously NVC-only — mcode's `-r`
   re-elaborates in memory, but a compiled backend's `-r` runs the executable

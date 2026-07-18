@@ -258,9 +258,16 @@ class SimulationScreen:
         except RuntimeError as e:
             return self._crash(f"The simulator link failed: {e}")
         if self._connected:
-            # Mirror today's one-time dut.clk_half_ns sync (then on every change).
-            self._last_clk_half = max(1, int(self.panel.clk_state["period_ns"] / 2))
-            send(self.child.link.conn, "clk", {"half_ns": self._last_clk_half})
+            # Seed the clk change-tracker from the wrapper's own default instead
+            # of re-depositing it: a redundant VPI write to clk_half_ns
+            # permanently knocks GHDL's compiled backends off their fast path
+            # (~4x slower, measured on ghdl-llvm).  _sync_controls() sends the
+            # panel's value only when it actually differs (unknown default ->
+            # None, so the first sync still sends).
+            try:
+                self._last_clk_half = max(1, int(self.child.generics["CLK_HALF_NS_INIT"]))
+            except (KeyError, ValueError):
+                self._last_clk_half = None
             return None
         if self.child.poll() is not None:
             return self._crash(
