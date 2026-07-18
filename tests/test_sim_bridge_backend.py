@@ -1,6 +1,8 @@
 """Unit tests for _SimBackend ABC conformance and backend dispatch."""
 
 import inspect
+import stat
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import cast, get_args
@@ -13,9 +15,11 @@ from fpga_sim.sim_bridge import (
     Simulator,
     WaveConfig,
     _backend,
+    _bound_check_probe,
     _env_flag,
     _GHDLBackend,
     _gtkw_path,
+    _name_bound_check_port,
     _normalize_wave,
     _NVCBackend,
     _open_waveform,
@@ -23,6 +27,7 @@ from fpga_sim.sim_bridge import (
     _viewer_argv,
     _waveform_path,
     _write_gtkw,
+    add_error_hints,
 )
 
 # ── ABC conformance ───────────────────────────────────────────────────────────
@@ -451,3 +456,68 @@ def test_open_waveform_falls_back_when_viewer_missing(monkeypatch, tmp_path):
     dump, gtkw = tmp_path / "b.vcd", tmp_path / "b.gtkw"
     _open_waveform(dump, gtkw)
     assert opened == [dump]
+
+
+# ── Compiled-backend runtime-elaboration parity probe (U35) ───────────────────
+
+
+def _write_exe(path: Path, body: str) -> None:
+    """Write a POSIX shell stand-in for the compiled sim_wrapper executable."""
+    path.write_text(body)
+    path.chmod(path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+
+
+def test_name_bound_check_port_appends_association(tmp_path):
+    """The offending wrapper line (a 'port => port' association) is appended."""
+    (tmp_path / "sim_wrapper.vhd").write_text("a\nb\nseg => seg\n")  # seg on line 3
+    msg = _name_bound_check_port("bound check failure at sim_wrapper.vhd:3", str(tmp_path))
+    assert msg.endswith("seg => seg")
+
+
+def test_name_bound_check_port_no_lineno_passthrough(tmp_path):
+    """A message without a wrapper line reference is returned unchanged."""
+    assert _name_bound_check_port("some other error", str(tmp_path)) == "some other error"
+
+
+def test_bound_check_probe_skipped_without_executable(tmp_path):
+    """mcode / llvm-jit emit no sim_wrapper executable → the probe is a no-op."""
+    (tmp_path / "sim_wrapper.vhd").write_text("-- wrapper\n")
+    assert _bound_check_probe(str(tmp_path)) is None
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX shell fake; compiled GHDL is Unix-only")
+def test_bound_check_probe_clean_run_returns_none(tmp_path):
+    """A compiled wrapper that elaborates + runs cleanly for zero time → no error."""
+    _write_exe(tmp_path / "sim_wrapper", "#!/bin/sh\nexit 0\n")
+    (tmp_path / "sim_wrapper.vhd").write_text("-- wrapper\n")
+    assert _bound_check_probe(str(tmp_path)) is None
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX shell fake; compiled GHDL is Unix-only")
+def test_bound_check_probe_catches_failure_and_names_port(tmp_path):
+    """A load-time bound-check failure is caught and mapped onto the port hint."""
+    (tmp_path / "sim_wrapper.vhd").write_text("entity sim_wrapper is\nport map (\nled => led\n);\n")
+    _write_exe(
+        tmp_path / "sim_wrapper",
+        "#!/bin/sh\n"
+        'echo "sim_wrapper:error: bound check failure at sim_wrapper.vhd:3"\n'
+        'echo "sim_wrapper:error: error during elaboration"\n'
+        "exit 1\n",
+    )
+    err = _bound_check_probe(str(tmp_path))
+    assert err is not None
+    assert "bound check failure" in err
+    assert "led => led" in err  # the offending association was appended
+    hinted = add_error_hints(err)
+    assert "Hint:" in hinted and "NUM_LEDS" in hinted  # reuses the width-mismatch hint
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX shell fake; compiled GHDL is Unix-only")
+def test_bound_check_probe_flags_error_during_elaboration_on_rc0(tmp_path):
+    """'error during elaboration' in the output is a failure even at returncode 0."""
+    (tmp_path / "sim_wrapper.vhd").write_text("x\nled => led\n")
+    _write_exe(
+        tmp_path / "sim_wrapper",
+        '#!/bin/sh\necho "error during elaboration at sim_wrapper.vhd:2"\nexit 0\n',
+    )
+    assert _bound_check_probe(str(tmp_path)) is not None

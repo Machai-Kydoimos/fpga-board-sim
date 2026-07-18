@@ -1461,10 +1461,13 @@ def add_error_hints(message: str, board_def: BoardDef | None = None) -> str:
             f"— e.g.  {name} : in std_logic := '0'  — or remove it."
         )
 
-    # GHDL: mismatching vector length; got 4, expect 10
-    # NVC:  actual length 10 does not match formal length 4
+    # GHDL mcode: mismatching vector length; got 4, expect 10
+    # NVC:        actual length 10 does not match formal length 4
+    # GHDL llvm/gcc: bound check failure at sim_wrapper.vhd:NN (the U35 probe
+    #   appends the offending "port => port" association so the port is named)
     if re.search(
-        r"mismatching vector length|actual length \d+ does not match formal length",
+        r"mismatching vector length|actual length \d+ does not match formal length"
+        r"|bound check failure",
         message,
         re.IGNORECASE,
     ):
@@ -1707,6 +1710,65 @@ def _generate_wrapper(
     return out
 
 
+def _name_bound_check_port(message: str, work_dir: str) -> str:
+    """Augment a compiled-backend bound-check message so the port can be named.
+
+    GHDL's llvm/gcc backends report a width violation as
+    ``"bound check failure at <path>/sim_wrapper.vhd:NN"`` — only a line number,
+    unlike mcode's ``"mismatching vector length … led => led"``.  Read that
+    wrapper line (a ``port => port`` association) and append it, so
+    :func:`add_error_hints` finds the ``led``/``seg``/``sw``/``btn`` port and
+    emits the identical port-width hint every backend gets.
+    """
+    m = re.search(r"sim_wrapper\.vhd:(\d+)", message)
+    if m is None:
+        return message
+    try:
+        wrapper_lines = (Path(work_dir) / "sim_wrapper.vhd").read_text().splitlines()
+    except OSError:
+        return message
+    lineno = int(m.group(1))
+    if not 1 <= lineno <= len(wrapper_lines):
+        return message
+    return f"{message}\n{wrapper_lines[lineno - 1].strip()}"
+
+
+def _bound_check_probe(work_dir: str) -> str | None:
+    """Run the compiled ``sim_wrapper`` for zero time to surface a bound check.
+
+    GHDL's compiled backends (llvm/gcc) compile the wrapper at ``-e`` without
+    evaluating array bounds, so a width mismatch that mcode / llvm-jit reject
+    in-memory during the early ``-e`` check instead fails only when the emitted
+    executable runs.  When ``-e`` produced a ``sim_wrapper`` executable (the
+    compiled-backend signature — in-memory backends emit none), run it with
+    ``--stop-time=0fs`` so that rejection surfaces at *load* time too, giving
+    every backend the same load-time error + hint.
+
+    Returns the normalized error message on failure, or ``None`` when there is
+    no executable (mcode / llvm-jit: the ``-e`` check already covered bounds) or
+    the design elaborates cleanly.
+    """
+    exe_name = "sim_wrapper.exe" if IS_WINDOWS else "sim_wrapper"
+    exe = Path(work_dir) / exe_name
+    if not (exe.exists() and os.access(exe, os.X_OK)):
+        return None  # in-memory elaboration: the early -e check already ran the bounds
+    try:
+        probe = subprocess.run(
+            [f".{os.sep}{exe_name}", "--stop-time=0fs"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=work_dir,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None  # cannot run it: defer to the (passed) -e result
+    # GHDL writes the bound-check line to stdout; keep stderr too for robustness.
+    output = f"{probe.stdout}\n{probe.stderr}".strip()
+    if probe.returncode == 0 and "error during elaboration" not in output:
+        return None  # elaborates + runs cleanly for zero time
+    return _name_bound_check_port(output, work_dir)
+
+
 def analyze_vhdl(
     vhdl_path: str | Path,
     work_dir: str | None = None,
@@ -1786,6 +1848,13 @@ def analyze_vhdl(
             if not combined:
                 return False, "Elaboration of sim_wrapper failed."
             return False, add_error_hints(combined, board_def)
+
+        # Step 3b (U35): compiled GHDL backends (llvm/gcc) don't evaluate array
+        # bounds at -e, so run the emitted executable for zero time to catch a
+        # width violation at load time — parity with mcode's in-memory -e check.
+        probe_err = _bound_check_probe(work_dir)
+        if probe_err is not None:
+            return False, add_error_hints(probe_err, board_def)
 
         return True, work_dir
     except FileNotFoundError:
