@@ -125,7 +125,17 @@ jobs:
         # GNAT 14, so the AOT code generator's ghdl1-llvm can't load libgnat-13.so
         # without this.  Harmless for llvm-jit (in-memory; no ghdl1-llvm exec).
         run: sudo apt-get update && sudo apt-get install -y libgnat-13
+      - name: Cache GHDL ${{ matrix.backend.name }} install
+        id: cache-ghdl
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: ~/ghdl
+          # Keyed on the pinned version + sha256, so a re-pinned asset re-downloads;
+          # a warm cache survives a GitHub-releases CDN blip (so this job is safe to
+          # make a required check).
+          key: ghdl-${{ runner.os }}-${{ matrix.backend.flavor }}-6.0.0-${{ matrix.backend.sha256 }}
       - name: Install GHDL v6.0.0 ${{ matrix.backend.name }} (pinned release)
+        if: steps.cache-ghdl.outputs.cache-hit != 'true'
         run: |
           ver="6.0.0"
           url="https://github.com/ghdl/ghdl/releases/download/v$ver/ghdl-${{ matrix.backend.flavor }}-$ver-ubuntu24.04-x86_64.tar.gz"
@@ -138,7 +148,8 @@ jobs:
           fi
           mkdir -p "$HOME/ghdl"
           tar -xzf ghdl.tar.gz -C "$HOME/ghdl"
-          dirname "$(find "$HOME/ghdl" -name ghdl -type f | head -1)" >> "$GITHUB_PATH"
+      - name: Add GHDL to PATH
+        run: dirname "$(find "$HOME/ghdl" -name ghdl -type f | head -1)" >> "$GITHUB_PATH"
       - name: Verify GHDL (expect ${{ matrix.backend.name }} code generator)
         run: ghdl --version
       - name: Run full + slow test suite
