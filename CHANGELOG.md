@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-07-18
+
 ### Added
 
 - **Pick any installed simulator from the preview screen (U35b).** The
@@ -72,8 +74,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so that executable lands where `-r` looks for it instead of littering the
   launcher's working directory. mcode / llvm-jit behavior is unchanged (their
   in-memory elaboration makes the extra `-e` a cheap structural re-check).
-  Measured on GHDL 7.0.0-dev: the LLVM backend then runs blinky ~9× faster
-  than mcode (0.039x vs 0.0043x real-time in `--benchmark --no-ui`).
+  Measured on GHDL 7.0.0-dev after the generics fix below: the LLVM backend runs
+  blinky ~2.8× faster than mcode (0.012x vs 0.0043x real-time in
+  `--benchmark --no-ui`).
 
 ### Internal
 
