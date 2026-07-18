@@ -41,6 +41,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **GHDL's compiled backends (LLVM/GCC) now reject invalid designs at load
+  time, like mcode does.** Those backends compile the wrapper without evaluating
+  array bounds, so a width mismatch that mcode/llvm-jit catch during the
+  validation step slipped through and only failed once the design ran. Analysis
+  now runs the compiled `sim_wrapper` executable for zero simulated time to
+  surface the `bound check failure` at load time, mapping it back to the
+  offending port so the user gets the same actionable hint (e.g. "declare `led`
+  with `NUM_LEDS`") on every backend.
 - **GHDL top-level generics are now passed where GHDL documents them — after
   the unit name.** `run_cmd` emitted `-gNAME=VALUE` before the toplevel;
   mcode and llvm-jit tolerate that position, but the compiled llvm/gcc

@@ -27,12 +27,25 @@ def test_vpi_dll_exists(sim_env):
 
 @pytest.fixture(scope="module")
 def work_dir(ghdl, sim_env):
-    """Analyze blinky into a temp workdir; reused by simulation test."""
+    """Analyze + elaborate blinky into a temp workdir; reused by simulation tests.
+
+    The elaborate (``-e``) step is a cheap in-memory re-check on mcode / llvm-jit,
+    but the compiled backends (llvm/gcc) need it to emit the ``blinky`` executable
+    that ``-r`` then runs — without it their ``-r`` has nothing to run (U35).
+    """
     env, _ = sim_env
     blinky = PROJECT / "hdl" / "blinky.vhd"
     d = tempfile.mkdtemp(prefix="fpga_test_ci_")
     subprocess.run(
         [ghdl, "-a", "--std=08", f"--workdir={d}", str(blinky)],
+        env=env,
+        check=True,
+        cwd=d,
+    )
+    # GHDL takes no generics at -e (compiled backends reject them there); they are
+    # applied after the unit at -r time.
+    subprocess.run(
+        [ghdl, "-e", "--std=08", f"--workdir={d}", "blinky"],
         env=env,
         check=True,
         cwd=d,
