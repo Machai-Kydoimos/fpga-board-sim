@@ -120,6 +120,11 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --group dev
+      - name: Install GNAT 13 runtime (ghdl1-llvm needs libgnat-13.so)
+        # The v6.0.0 release binaries were built with GNAT 13; ubuntu-24.04 ships
+        # GNAT 14, so the AOT code generator's ghdl1-llvm can't load libgnat-13.so
+        # without this.  Harmless for llvm-jit (in-memory; no ghdl1-llvm exec).
+        run: sudo apt-get update && sudo apt-get install -y libgnat-13
       - name: Install GHDL v6.0.0 ${{ matrix.backend.name }} (pinned release)
         run: |
           ver="6.0.0"
