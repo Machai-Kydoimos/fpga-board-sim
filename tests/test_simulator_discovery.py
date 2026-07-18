@@ -16,7 +16,7 @@ import pytest
 
 import fpga_sim.__main__ as main_mod
 import fpga_sim.sim_bridge as sim_bridge
-from fpga_sim.sim_bridge import SimulatorInfo
+from fpga_sim.sim_bridge import SimulatorInfo, _fallback_ghdl, resolve_simulator_arg
 
 # ── Real --version banners (see docs/u35_simulator_picker_plan.md §2) ─────────
 
@@ -282,3 +282,69 @@ def test_add_sim_rejects_unrecognized(session_file, monkeypatch, capsys):
     err = capsys.readouterr().err
     assert "not a recognized" in err.lower()
     assert "not a sim v1" in err
+
+
+# ── resolve_simulator_arg: the shared --sim / UI resolver (U35b) ──────────────
+
+_DISCOVERED = [
+    SimulatorInfo("ghdl", "/usr/local/bin/ghdl", "mcode", "GHDL", "g"),
+    SimulatorInfo("nvc", "/usr/local/bin/nvc", "nvc", "NVC", "n"),
+    SimulatorInfo("ghdl", "/opt/ghdl-llvm/bin/ghdl", "llvm", "GHDL-LLVM", "g"),
+    SimulatorInfo("ghdl", "/opt/ghdl-jit/bin/ghdl", "llvm-jit", "GHDL-JIT", "g"),
+]
+
+
+def test_resolve_arg_none_is_default():
+    assert resolve_simulator_arg(None, _DISCOVERED) is _DISCOVERED[0]
+
+
+def test_resolve_arg_engine_slug_ghdl_is_path_default():
+    """A bare 'ghdl' selects the first (PATH) GHDL install, not a variant."""
+    assert resolve_simulator_arg("ghdl", _DISCOVERED) is _DISCOVERED[0]
+
+
+def test_resolve_arg_engine_slug_nvc():
+    assert resolve_simulator_arg("nvc", _DISCOVERED) is _DISCOVERED[1]
+
+
+@pytest.mark.parametrize(
+    ("slug", "backend"),
+    [
+        ("ghdl-mcode", "mcode"),
+        ("ghdl-llvm", "llvm"),
+        ("ghdl-jit", "llvm-jit"),
+        ("ghdl-llvm-jit", "llvm-jit"),  # accepted alias
+    ],
+)
+def test_resolve_arg_variant_slug(slug, backend):
+    got = resolve_simulator_arg(slug, _DISCOVERED)
+    assert got is not None and got.backend == backend
+
+
+def test_resolve_arg_variant_absent_returns_none():
+    assert resolve_simulator_arg("ghdl-llvm", [_DISCOVERED[0]]) is None
+
+
+def test_resolve_arg_unknown_bare_token_returns_none():
+    assert resolve_simulator_arg("iverilog", _DISCOVERED) is None
+
+
+def test_resolve_arg_empty_discovered_returns_none():
+    assert resolve_simulator_arg(None, []) is None
+
+
+def test_resolve_arg_path_probes(monkeypatch):
+    monkeypatch.setattr("fpga_sim.sim_bridge.subprocess.run", _fake_run({"/opt/x/ghdl": LLVM}))
+    got = resolve_simulator_arg("/opt/x/ghdl", _DISCOVERED)
+    assert got is not None
+    assert (got.engine, got.backend) == ("ghdl", "llvm")
+
+
+def test_resolve_arg_bad_path_returns_none(monkeypatch):
+    monkeypatch.setattr("fpga_sim.sim_bridge.subprocess.run", _fake_run({}))
+    assert resolve_simulator_arg("/no/such/ghdl", _DISCOVERED) is None
+
+
+def test_fallback_ghdl_is_usable_placeholder():
+    fb = _fallback_ghdl()
+    assert (fb.engine, fb.path) == ("ghdl", "ghdl")  # argv[0]='ghdl' → PATH / install hint

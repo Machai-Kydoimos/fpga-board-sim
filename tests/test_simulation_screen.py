@@ -20,7 +20,7 @@ import pytest
 
 from fpga_sim import sim_link
 from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
-from fpga_sim.sim_bridge import SimChild
+from fpga_sim.sim_bridge import SimChild, SimulatorInfo
 from fpga_sim.sim_link import connect_from_env, drain, send
 from fpga_sim.ui.results import SimExit
 from fpga_sim.ui.simulation_screen import SimulationScreen
@@ -29,6 +29,13 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
     from multiprocessing.connection import Connection
     from types import ModuleType
+
+
+def _sim(engine: str = "ghdl") -> SimulatorInfo:
+    """A SimulatorInfo for the screen under test (display/log only; the run uses PATH)."""
+    label = "NVC" if engine == "nvc" else "GHDL"
+    backend = "nvc" if engine == "nvc" else "mcode"
+    return SimulatorInfo(engine, f"/usr/bin/{engine}", backend, label, f"{engine} 1.0")  # type: ignore[arg-type]
 
 
 # ── Fakes / fixtures ──────────────────────────────────────────────────────────
@@ -117,7 +124,7 @@ def _make_screen(
         speed_factor=0.1,
         match=None,
         vhdl_path="blinky.vhd",
-        simulator="ghdl",
+        sim=_sim("ghdl"),
         show_toolbar=show_toolbar,
     )
 
@@ -367,7 +374,7 @@ def _run_screen_e2e(pygame: ModuleType, simulator: str) -> None:
         speed_factor=0.1,
         match=None,
         vhdl_path="blinky.vhd",
-        simulator=simulator,
+        sim=_sim(simulator),
     )
     leds_seen: set[int] = set()
     injected = False
@@ -433,7 +440,7 @@ def test_e2e_run_loop_exits_stopped(headless_pygame, ghdl):
         speed_factor=0.1,
         match=None,
         vhdl_path="blinky.vhd",
-        simulator="ghdl",
+        sim=_sim("ghdl"),
     )
     result = screen.run()
     finish_waveform(child)

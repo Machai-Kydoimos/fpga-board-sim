@@ -23,11 +23,12 @@ ever created or destroyed between launcher start and app exit (see
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import partial
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import pygame
 
@@ -35,11 +36,13 @@ from fpga_sim.board_loader import BoardDef
 from fpga_sim.session_config import load_session, push_recent, save_session
 from fpga_sim.sim_bridge import (
     ConventionMatch,
-    Simulator,
+    SimulatorInfo,
+    _probe_simulator,
     analyze_vhdl,
     check_vhdl_contract,
     check_vhdl_encoding,
     finish_waveform,
+    resolve_simulator_arg,
     start_simulation,
 )
 from fpga_sim.ui import (
@@ -108,9 +111,10 @@ class SessionState:
 
     ``vhdl_path`` / ``work_dir`` survive across preview re-entries and
     simulation runs so the user can restart immediately.
-    ``work_dir_simulator`` records which simulator produced ``work_dir``, so
-    switching simulators (or restoring a stale session) forces re-analysis
-    before the next launch.  ``last_vhdl_path`` is stickier than
+    ``work_dir_sim`` records which simulator install produced ``work_dir``, so
+    switching simulators — including between two GHDL code generators, whose
+    compiled artifacts differ (U35) — or restoring a stale session forces
+    re-analysis before the next launch.  ``last_vhdl_path`` is stickier than
     ``vhdl_path``: it survives invalidation (e.g. a restored file that fails
     the new board's contract) so the picker can still start in the user's
     directory.  The ``board_*`` / ``*_filters`` fields mirror the persisted
@@ -118,10 +122,10 @@ class SessionState:
     ``save_session()``.
     """
 
-    simulator: Simulator
+    sim: SimulatorInfo
     vhdl_path: str | None = None
     work_dir: str | None = None
-    work_dir_simulator: Simulator | None = None
+    work_dir_sim: SimulatorInfo | None = None
     # U21 B3: set when the loaded VHDL is board-native (its port names match the
     # selected board's convention); drives native wrapper generation + the badge.
     convention: ConventionMatch | None = None
@@ -132,10 +136,20 @@ class SessionState:
     component_filters: list[str] = field(default_factory=list)
     vendor_filters: list[str] = field(default_factory=list)
 
+    def needs_reanalysis(self) -> bool:
+        """Report whether ``work_dir`` is stale for the current simulator install.
+
+        Keys on both engine and resolved path: switching between two GHDL code
+        generators (same engine, different binary) must re-analyze because a
+        compiled backend's ``work_dir`` executable is backend-specific.
+        """
+        w = self.work_dir_sim
+        return w is None or (w.engine, w.path) != (self.sim.engine, self.sim.path)
+
     def clear_analysis(self) -> None:
         """Drop the analysis products so the next launch re-analyzes."""
         self.work_dir = None
-        self.work_dir_simulator = None
+        self.work_dir_sim = None
 
     def clear_vhdl(self) -> None:
         """Drop the loaded VHDL file and its analysis products."""
@@ -157,7 +171,7 @@ class ScreenController:
         boards: list[BoardDef],
         screen: pygame.Surface,
         clock: pygame.time.Clock,
-        available_sims: list[Simulator],
+        available_sims: list[SimulatorInfo],
         *,
         session: dict[str, Any],
         cli_simulator: str | None = None,
@@ -167,6 +181,8 @@ class ScreenController:
         *session* is the (possibly empty) dict from ``load_session()``;
         *cli_simulator* is the raw ``--sim`` argument, which overrides the
         session's saved simulator when it names an available one.
+        *available_sims* is the discovered install list (non-empty; the caller
+        supplies a fallback entry when nothing is installed).
         """
         self.boards = boards
         self.screen = screen
@@ -176,7 +192,7 @@ class ScreenController:
 
         last_vhdl: str = session.get("vhdl_path", "")
         self.state = SessionState(
-            simulator=self._resolve_simulator(cli_simulator, session, available_sims),
+            sim=self._resolve_sim(cli_simulator, session, available_sims),
             # Pre-populate from the session so the last-used file is ready on
             # launch; analysis runs on-demand at the first [Start Simulation].
             vhdl_path=last_vhdl if last_vhdl and Path(last_vhdl).exists() else None,
@@ -189,21 +205,42 @@ class ScreenController:
         )
 
     @staticmethod
-    def _resolve_simulator(
+    def _resolve_sim(
         cli_simulator: str | None,
         session: dict[str, Any],
-        available_sims: list[Simulator],
-    ) -> Simulator:
-        """Pick the simulator: CLI flag overrides session; session overrides default."""
+        available_sims: list[SimulatorInfo],
+    ) -> SimulatorInfo:
+        """Pick the simulator install: CLI overrides session; session overrides default.
+
+        Restore-with-fallback (U35): a saved ``simulator_path`` no longer
+        present (binary moved/removed) falls back to the PATH default with a
+        one-line console note — never crashing, never blocking the launcher.  A
+        legacy session with only the engine slug re-selects that engine's first
+        install silently (an unknown slug falls through to the default).
+        """
+        default = available_sims[0]
         if cli_simulator:
-            if cli_simulator in available_sims:
-                return cli_simulator  # mypy narrows str to Simulator via the `in` check
-            print(
-                f"[warn] Simulator '{cli_simulator}' not found; falling back to {available_sims[0]}"
-            )
-            return available_sims[0]
-        saved = session.get("simulator", "")
-        return cast("Simulator", saved) if saved in available_sims else available_sims[0]
+            info = resolve_simulator_arg(cli_simulator, available_sims)
+            if info is not None:
+                return info
+            print(f"[warn] Simulator '{cli_simulator}' not found; falling back to {default.label}")
+            return default
+        saved_path = str(session.get("simulator_path", "") or "")
+        if saved_path:
+            target = os.path.realpath(saved_path)
+            for info in available_sims:
+                if os.path.realpath(info.path) == target:
+                    return info
+            probed = _probe_simulator(saved_path)  # not discovered; re-probe directly
+            if probed is not None:
+                return probed
+            print(f"[warn] Saved simulator '{saved_path}' unavailable; using {default.label}")
+            return default
+        # Legacy session (pre-U35: engine slug only) or no saved path.
+        saved_engine = str(session.get("simulator", "") or "")
+        if saved_engine:
+            return next((i for i in available_sims if i.engine == saved_engine), default)
+        return default
 
     # ── Session persistence ───────────────────────────────────────────────
 
@@ -219,11 +256,12 @@ class ScreenController:
         save_session(
             s.board_class,
             s.vhdl_path or s.last_vhdl_path,
-            s.simulator,
+            s.sim.engine,
             s.board_source,
             s.board_sort,
             s.component_filters,
             s.vendor_filters,
+            simulator_path=s.sim.path,
             window_size=window_size,
         )
 
@@ -290,13 +328,13 @@ class ScreenController:
         preview = FPGABoard(
             board_def=self.board,
             screen=self.screen,
-            simulator=self.state.simulator,
-            available_simulators=self.available_sims,
+            sim=self.state.sim,
+            available_sims=self.available_sims,
             vhdl_path=self.state.vhdl_path,
         )
         result = preview.run()
-        if preview.simulator != self.state.simulator:  # pick up any toggle change
-            self.state.simulator = preview.simulator
+        if preview.sim is not None and preview.sim != self.state.sim:  # pick up any toggle change
+            self.state.sim = preview.sim
             self._save_session()
 
         match result:
@@ -313,7 +351,7 @@ class ScreenController:
         """Return to the selector, dropping the analysis products.
 
         The loaded VHDL path is kept (it may be reused on the next board),
-        but clearing ``work_dir_simulator`` guarantees the contract check and
+        but clearing ``work_dir_sim`` guarantees the contract check and
         analysis re-run before the next launch — a different board may have
         incompatible resources.
         """
@@ -376,7 +414,7 @@ class ScreenController:
                     if not ok:
                         intent = ErrorDialog(
                             self.screen,
-                            f"{s.simulator.upper()} Error",
+                            f"{s.sim.label} Error",
                             detail,
                             example_path=example,
                         ).run(self.clock)
@@ -392,7 +430,7 @@ class ScreenController:
     def on_vhdl_loaded(self, vhdl_path: str, work_dir: str) -> NextScreen:
         """Record a validated + analyzed VHDL file, then re-enter the preview.
 
-        ``work_dir_simulator`` records which simulator did the analysis so a
+        ``work_dir_sim`` records which simulator did the analysis so a
         later simulator toggle triggers re-analysis at launch.  The session is
         saved here — on *pick*, not only at launch — so a browsed-but-unrun
         file, its directory, and its ``recent[]`` entry survive a restart.
@@ -401,7 +439,7 @@ class ScreenController:
         s.vhdl_path = vhdl_path
         s.last_vhdl_path = vhdl_path
         s.work_dir = work_dir
-        s.work_dir_simulator = s.simulator
+        s.work_dir_sim = s.sim
         self._save_session()
         if self.board is not None:
             push_recent(self.board.class_name, self.board.source, vhdl_path)
@@ -427,11 +465,10 @@ class ScreenController:
             if _conv is not None
             else f"Analyzing {Path(vhdl_path).name}…"
         )
-        _detail = f"Running {self.state.simulator.upper()} analysis & elaboration…"
+        _detail = f"Running {self.state.sim.label} analysis & elaboration…"
         if _conv is not None:
             _detail = (
-                f"Board-native ({_conv.maker}) – {self.state.simulator.upper()} "
-                "analysis & elaboration…"
+                f"Board-native ({_conv.maker}) – {self.state.sim.label} analysis & elaboration…"
             )
         return run_with_spinner(
             self.screen,
@@ -442,7 +479,8 @@ class ScreenController:
                 vhdl_path,
                 work_dir=work_dir,
                 toplevel=Path(vhdl_path).stem,
-                simulator=self.state.simulator,
+                simulator=self.state.sim.engine,
+                sim_path=self.state.sim.path,
                 board_def=self.board,
                 match=_conv,
             ),
@@ -468,7 +506,7 @@ class ScreenController:
 
         # Re-analyze if the work dir is missing / from a different simulator —
         # the same guard (and mandatory contract re-check) as on_simulate.
-        if s.work_dir_simulator != s.simulator:
+        if s.needs_reanalysis():
             example = example_vhdl_for(board)
             res = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
             s.convention = res.match
@@ -480,12 +518,12 @@ class ScreenController:
                 return NextScreen.PREVIEW
             ok, detail = self._analyze_with_spinner(s.vhdl_path)
             if not ok:
-                ErrorDialog(
-                    self.screen, f"{s.simulator.upper()} Error", detail, example_path=example
-                ).run(self.clock)
+                ErrorDialog(self.screen, f"{s.sim.label} Error", detail, example_path=example).run(
+                    self.clock
+                )
                 return NextScreen.PREVIEW
             s.work_dir = detail
-            s.work_dir_simulator = s.simulator
+            s.work_dir_sim = s.sim
 
         s.board_class = board.class_name
         s.board_source = board.source
@@ -511,7 +549,8 @@ class ScreenController:
                     Path(s.vhdl_path).stem,
                     build_generics(board),
                     work_dir=s.work_dir,
-                    simulator=s.simulator,
+                    simulator=s.sim.engine,
+                    sim_path=s.sim.path,
                     board_def=board,
                     speed_factor=speed,
                     waveform=sess.get("waveform"),
@@ -531,7 +570,7 @@ class ScreenController:
                 speed_factor=speed,
                 match=s.convention,
                 vhdl_path=s.vhdl_path,
-                simulator=s.simulator,
+                sim=s.sim,
             ).run()
             finish_waveform(child)
 
@@ -583,11 +622,11 @@ class ScreenController:
             s.convention = res.match  # board-native (U21 B3) when set, else None
         title = "VHDL Error"
         if ok:
-            title = f"{s.simulator.upper()} Error"
+            title = f"{s.sim.label} Error"
             ok, detail = self._analyze_with_spinner(s.vhdl_path, work_dir=s.work_dir)
         if ok:
             s.work_dir = detail
-            s.work_dir_simulator = s.simulator
+            s.work_dir_sim = s.sim
             return None
 
         s.clear_analysis()

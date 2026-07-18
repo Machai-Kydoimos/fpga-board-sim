@@ -59,6 +59,8 @@ def save_session_stats(
     clock_hz: float,
     mode: str = "generic",
     convention: str | None = None,
+    simulator_backend: str = "",
+    simulator_path: str = "",
 ) -> Path:
     """Write a compact JSON performance summary for the just-completed session.
 
@@ -91,6 +93,11 @@ def save_session_stats(
     convention:
         The matched convention slug (e.g. ``"terasic"``) for a native run,
         else ``None``.
+    simulator_backend:
+        The simulator's code generator (U35): ``"mcode"`` / ``"llvm"`` /
+        ``"llvm-jit"`` / ``"nvc"``.  Empty when unknown (older callers).
+    simulator_path:
+        Resolved binary of the install that ran (U35).  Empty when unknown.
 
     Returns
     -------
@@ -110,6 +117,8 @@ def save_session_stats(
         "timestamp": ts,
         "board": board_name,
         "simulator": simulator,
+        "simulator_backend": simulator_backend,
+        "simulator_path": simulator_path,
         "duration_s": round(duration_s, 2),
         "avg_fps": round(avg_fps, 1),
         "sim_time_ns": sim_time_ns,

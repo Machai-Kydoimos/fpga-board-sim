@@ -115,3 +115,23 @@ def test_consecutive_calls_produce_separate_files(session_dir):
     p2 = _call(board_name="BoardB")
     assert p1 != p2
     assert len(list(session_dir.iterdir())) == 2
+
+
+# ── U35: additive simulator_backend / simulator_path fields ───────────────────
+
+
+def test_simulator_backend_and_path_recorded(session_dir):
+    path = _call(
+        simulator="ghdl", simulator_backend="llvm", simulator_path="/opt/ghdl-llvm/bin/ghdl"
+    )
+    data = json.loads(path.read_text())
+    assert data["simulator"] == "ghdl"  # engine slug unchanged
+    assert data["simulator_backend"] == "llvm"
+    assert data["simulator_path"] == "/opt/ghdl-llvm/bin/ghdl"
+
+
+def test_simulator_backend_and_path_default_empty(session_dir):
+    """Older callers that omit the U35 fields still write valid entries."""
+    data = json.loads(_call().read_text())
+    assert data["simulator_backend"] == ""
+    assert data["simulator_path"] == ""

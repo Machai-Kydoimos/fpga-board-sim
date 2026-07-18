@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Pick any installed simulator from the preview screen (U35b).** The
+  `[SIM:…]` toggle now cycles every discovered simulator by its short label
+  (`SIM: GHDL`, `SIM: GHDL-LLVM`, `SIM: GHDL-JIT`, `SIM: NVC`), and the choice
+  is honored end-to-end: analysis, elaboration, and the simulation run all use
+  the selected install's binary, and it persists across restarts (a new
+  `simulator_path` session key, re-probed on launch with a safe fall-back to the
+  PATH default if the binary has moved). Switching between two GHDL code
+  generators re-analyzes automatically, since their compiled artifacts differ.
+  `--sim` gains matching spellings — `ghdl-mcode` / `ghdl-llvm` / `ghdl-jit`
+  select a code generator, and an absolute path selects a specific binary — via
+  one resolver shared by the CLI and the launcher. The `--benchmark` header, the
+  in-sim info strip, and the session log all record the backend label and path.
+
 - **Simulator discovery + registration (U35a).** The app now recognizes every
   installed simulator as a distinct, truthfully-labeled choice — not just the
   `ghdl`/`nvc` engines but each GHDL code generator (mcode / LLVM / LLVM-JIT),

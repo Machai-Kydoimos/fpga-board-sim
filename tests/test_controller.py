@@ -26,7 +26,7 @@ from fpga_sim.controller import (
     build_generics,
     example_vhdl_for,
 )
-from fpga_sim.sim_bridge import ContractResult
+from fpga_sim.sim_bridge import ContractResult, SimulatorInfo
 from fpga_sim.ui import DialogResult, ScreenResult, SimExit
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 
@@ -34,7 +34,14 @@ if TYPE_CHECKING:
     from pathlib import Path
     from types import ModuleType
 
-    from fpga_sim.sim_bridge import Simulator
+
+def _sim(
+    engine: str = "ghdl", *, backend: str = "", label: str = "", path: str = ""
+) -> SimulatorInfo:
+    """Build a SimulatorInfo for tests (deterministic fields → value-equal by engine)."""
+    backend = backend or ("nvc" if engine == "nvc" else "mcode")
+    label = label or ("NVC" if engine == "nvc" else "GHDL")
+    return SimulatorInfo(engine, path or f"/usr/bin/{engine}", backend, label, f"{engine} 1.0")  # type: ignore[arg-type]
 
 
 @pytest.fixture(autouse=True)
@@ -55,11 +62,11 @@ def _make_controller(
     *,
     session: dict[str, Any] | None = None,
     cli_simulator: str | None = None,
-    available: list[Simulator] | None = None,
+    available: list[SimulatorInfo] | None = None,
 ) -> ScreenController:
     screen = headless_pygame.display.set_mode((1024, 700))
     clock = headless_pygame.time.Clock()
-    sims: list[Simulator] = available if available is not None else ["ghdl", "nvc"]
+    sims: list[SimulatorInfo] = available if available is not None else [_sim("ghdl"), _sim("nvc")]
     return ScreenController(
         [_board()],
         screen,
@@ -144,51 +151,80 @@ def test_build_generics_counts_components_and_widens_for_7seg():
 
 
 def test_clear_analysis_keeps_vhdl_path():
-    s = SessionState(simulator="ghdl", vhdl_path="a.vhd", work_dir="wd", work_dir_simulator="ghdl")
+    s = SessionState(sim=_sim("ghdl"), vhdl_path="a.vhd", work_dir="wd", work_dir_sim=_sim("ghdl"))
     s.clear_analysis()
     assert s.vhdl_path == "a.vhd"
     assert s.work_dir is None
-    assert s.work_dir_simulator is None
+    assert s.work_dir_sim is None
 
 
 def test_clear_vhdl_drops_everything():
     s = SessionState(
-        simulator="ghdl",
+        sim=_sim("ghdl"),
         vhdl_path="a.vhd",
         work_dir="wd",
-        work_dir_simulator="ghdl",
+        work_dir_sim=_sim("ghdl"),
         last_vhdl_path="a.vhd",
     )
     s.clear_vhdl()
     assert s.vhdl_path is None
     assert s.work_dir is None
-    assert s.work_dir_simulator is None
+    assert s.work_dir_sim is None
     assert s.last_vhdl_path == "a.vhd"  # sticky: still seeds the picker start dir
 
 
-# ── _resolve_simulator ───────────────────────────────────────────────────────
+def test_needs_reanalysis_on_engine_or_path_change():
+    s = SessionState(sim=_sim("ghdl"), work_dir="wd", work_dir_sim=_sim("ghdl"))
+    assert not s.needs_reanalysis()  # same install → work dir is valid
+    s.sim = _sim("nvc")  # engine change
+    assert s.needs_reanalysis()
+    # same engine, different backend/path (mcode → llvm) must also re-analyze
+    s.work_dir_sim = _sim("ghdl", backend="mcode", path="/a/ghdl")
+    s.sim = _sim("ghdl", backend="llvm", path="/b/ghdl")
+    assert s.needs_reanalysis()
 
 
-def test_resolve_simulator_cli_wins():
-    got = ScreenController._resolve_simulator("nvc", {"simulator": "ghdl"}, ["ghdl", "nvc"])
-    assert got == "nvc"
+# ── _resolve_sim ─────────────────────────────────────────────────────────────
+
+_GN = [_sim("ghdl"), _sim("nvc")]
 
 
-def test_resolve_simulator_bad_cli_warns_and_falls_back(capsys):
-    got = ScreenController._resolve_simulator("iverilog", {}, ["ghdl", "nvc"])
-    assert got == "ghdl"
+def test_resolve_sim_cli_wins():
+    got = ScreenController._resolve_sim("nvc", {"simulator": "ghdl"}, _GN)
+    assert got.engine == "nvc"
+
+
+def test_resolve_sim_bad_cli_warns_and_falls_back(capsys):
+    got = ScreenController._resolve_sim("iverilog", {}, _GN)
+    assert got.engine == "ghdl"
     assert "[warn]" in capsys.readouterr().out
 
 
-def test_resolve_simulator_session_used_when_no_cli():
-    got = ScreenController._resolve_simulator(None, {"simulator": "nvc"}, ["ghdl", "nvc"])
-    assert got == "nvc"
+def test_resolve_sim_session_used_when_no_cli():
+    got = ScreenController._resolve_sim(None, {"simulator": "nvc"}, _GN)
+    assert got.engine == "nvc"
 
 
-def test_resolve_simulator_bad_session_falls_back_silently(capsys):
-    got = ScreenController._resolve_simulator(None, {"simulator": "xsim"}, ["ghdl", "nvc"])
-    assert got == "ghdl"
+def test_resolve_sim_bad_session_falls_back_silently(capsys):
+    got = ScreenController._resolve_sim(None, {"simulator": "xsim"}, _GN)
+    assert got.engine == "ghdl"
     assert capsys.readouterr().out == ""
+
+
+def test_resolve_sim_session_path_selects_specific_install(capsys):
+    """A saved simulator_path re-selects that exact install (by real path)."""
+    llvm = _sim("ghdl", backend="llvm", label="GHDL-LLVM", path="/usr/bin/ghdl")
+    got = ScreenController._resolve_sim(
+        None, {"simulator_path": "/usr/bin/ghdl"}, [_sim("nvc"), llvm]
+    )
+    assert got is llvm
+
+
+def test_resolve_sim_missing_saved_path_falls_back_with_note(capsys):
+    """A saved path that is gone falls back to the default with a console note."""
+    got = ScreenController._resolve_sim(None, {"simulator_path": "/gone/ghdl"}, _GN)
+    assert got.engine == "ghdl"
+    assert "[warn]" in capsys.readouterr().out
 
 
 # ── Constructor: session restore ─────────────────────────────────────────────
@@ -212,7 +248,7 @@ def test_ctor_restores_existing_vhdl_and_prefs(headless_pygame, tmp_path):
     assert s.vhdl_path == str(vhdl)
     assert s.last_vhdl_path == str(vhdl)
     assert s.work_dir is None  # analysis is on-demand at first Start
-    assert s.work_dir_simulator is None
+    assert s.work_dir_sim is None
     assert (s.board_class, s.board_source, s.board_sort) == ("DE10Lite", "custom", "vendor")
     assert s.component_filters == ["7seg"]
     assert s.vendor_filters == ["Terasic"]
@@ -256,22 +292,22 @@ def test_on_back_clears_analysis_keeps_vhdl(headless_pygame):
     ctrl = _make_controller(headless_pygame)
     ctrl.state.vhdl_path = "a.vhd"
     ctrl.state.work_dir = "wd"
-    ctrl.state.work_dir_simulator = "ghdl"
+    ctrl.state.work_dir_sim = _sim("ghdl")
     assert ctrl.on_back() is NextScreen.SELECTOR
     assert ctrl.state.vhdl_path == "a.vhd"
     assert ctrl.state.work_dir is None
-    assert ctrl.state.work_dir_simulator is None
+    assert ctrl.state.work_dir_sim is None
 
 
 def test_on_vhdl_loaded_records_file_workdir_and_simulator(headless_pygame):
     ctrl = _make_controller(headless_pygame)
-    ctrl.state.simulator = "nvc"
+    ctrl.state.sim = _sim("nvc")
     assert ctrl.on_vhdl_loaded("/tmp/x.vhd", "/tmp/work") is NextScreen.PREVIEW
     s = ctrl.state
     assert s.vhdl_path == "/tmp/x.vhd"
     assert s.last_vhdl_path == "/tmp/x.vhd"
     assert s.work_dir == "/tmp/work"
-    assert s.work_dir_simulator == "nvc"
+    assert s.work_dir_sim is not None and s.work_dir_sim.engine == "nvc"
 
 
 def test_on_vhdl_loaded_saves_session_and_pushes_recent(headless_pygame, monkeypatch):
@@ -330,7 +366,7 @@ def test_run_quit_saves_prefs_and_window_size(headless_pygame, monkeypatch):
     monkeypatch.setattr(headless_pygame, "quit", lambda: None)
     ctrl.run()
     ((_args, kwargs),) = saves
-    assert kwargs == {"window_size": (1024, 700)}
+    assert kwargs == {"simulator_path": "/usr/bin/ghdl", "window_size": (1024, 700)}
 
 
 # ── _run_selector ────────────────────────────────────────────────────────────
@@ -382,22 +418,22 @@ class _FakePreview:
     """FPGABoard stand-in: records ctor kwargs, returns a scripted result."""
 
     result: ScreenResult = ScreenResult.QUIT
-    sim: Simulator = "ghdl"
+    sim_info: SimulatorInfo = _sim("ghdl")
     last_kwargs: dict[str, Any] = {}
 
     def __init__(self, **kwargs: Any) -> None:
         type(self).last_kwargs = kwargs
-        self.simulator: Simulator = type(self).sim
+        self.sim: SimulatorInfo = type(self).sim_info
 
     def run(self) -> ScreenResult:
         return type(self).result
 
 
 def _install_preview(
-    monkeypatch: pytest.MonkeyPatch, result: ScreenResult, simulator: Simulator = "ghdl"
+    monkeypatch: pytest.MonkeyPatch, result: ScreenResult, sim: SimulatorInfo | None = None
 ) -> type[_FakePreview]:
     _FakePreview.result = result
-    _FakePreview.sim = simulator
+    _FakePreview.sim_info = sim or _sim("ghdl")
     _FakePreview.last_kwargs = {}
     monkeypatch.setattr(controller_mod, "FPGABoard", _FakePreview)
     return _FakePreview
@@ -414,7 +450,7 @@ def test_preview_back_routes_through_on_back(headless_pygame, monkeypatch):
     ctrl = _make_controller(headless_pygame)
     ctrl.on_board_selected(_board())
     ctrl.state.work_dir = "wd"
-    ctrl.state.work_dir_simulator = "ghdl"
+    ctrl.state.work_dir_sim = _sim("ghdl")
     _install_preview(monkeypatch, ScreenResult.BACK)
     assert ctrl._run_preview() is NextScreen.SELECTOR
     assert ctrl.state.work_dir is None
@@ -441,12 +477,12 @@ def test_preview_picks_up_simulator_toggle_and_passes_state(headless_pygame, mon
     board = _board()
     ctrl.on_board_selected(board)
     ctrl.state.vhdl_path = "x.vhd"
-    fake = _install_preview(monkeypatch, ScreenResult.QUIT, simulator="nvc")
+    fake = _install_preview(monkeypatch, ScreenResult.QUIT, sim=_sim("nvc"))
     ctrl._run_preview()
-    assert ctrl.state.simulator == "nvc"  # toggle change picked up
+    assert ctrl.state.sim.engine == "nvc"  # toggle change picked up
     assert fake.last_kwargs["board_def"] is board
     assert fake.last_kwargs["vhdl_path"] == "x.vhd"
-    assert fake.last_kwargs["available_simulators"] == ["ghdl", "nvc"]
+    assert [i.engine for i in fake.last_kwargs["available_sims"]] == ["ghdl", "nvc"]
 
 
 def test_preview_simulator_toggle_saves_session(headless_pygame, monkeypatch):
@@ -455,10 +491,11 @@ def test_preview_simulator_toggle_saves_session(headless_pygame, monkeypatch):
     ctrl.on_board_selected(_board())
     saves: list[Any] = []
     monkeypatch.setattr(controller_mod, "save_session", lambda *a, **k: saves.append((a, k)))
-    _install_preview(monkeypatch, ScreenResult.QUIT, simulator="nvc")
+    _install_preview(monkeypatch, ScreenResult.QUIT, sim=_sim("nvc"))
     ctrl._run_preview()
-    ((args, _kwargs),) = saves
-    assert args[2] == "nvc"  # the new simulator is in the save
+    ((args, kwargs),) = saves
+    assert args[2] == "nvc"  # the new engine slug is in the save
+    assert kwargs["simulator_path"] == "/usr/bin/nvc"  # …and its resolved path
 
 
 def test_preview_unchanged_simulator_skips_save(headless_pygame, monkeypatch):
@@ -466,7 +503,7 @@ def test_preview_unchanged_simulator_skips_save(headless_pygame, monkeypatch):
     ctrl.on_board_selected(_board())
     saves: list[Any] = []
     monkeypatch.setattr(controller_mod, "save_session", lambda *a, **k: saves.append((a, k)))
-    _install_preview(monkeypatch, ScreenResult.QUIT, simulator="ghdl")  # no change
+    _install_preview(monkeypatch, ScreenResult.QUIT, sim=_sim("ghdl"))  # no change
     ctrl._run_preview()
     assert saves == []
 
@@ -531,14 +568,14 @@ def test_picker_success_records_state(headless_pygame, monkeypatch, tmp_path):
     assert s.vhdl_path == str(vhdl)
     assert s.last_vhdl_path == str(vhdl)
     assert s.work_dir == "/work/dir"
-    assert s.work_dir_simulator == s.simulator
+    assert s.work_dir_sim == s.sim
 
 
 def test_picker_validation_error_back_bails_to_selector(headless_pygame, monkeypatch):
     ctrl = _make_controller(headless_pygame)
     ctrl.on_board_selected(_board())
     ctrl.state.work_dir = "stale"
-    ctrl.state.work_dir_simulator = "ghdl"
+    ctrl.state.work_dir_sim = _sim("ghdl")
     _install_picker(monkeypatch, ["bad.vhd"])
     monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (False, "not ASCII"))
     dialog = _install_dialog(monkeypatch, [DialogResult.BACK])
@@ -655,7 +692,7 @@ def _attached_harness(
     ctrl.state.vhdl_path = str(vhdl)
     if analyzed:
         ctrl.state.work_dir = "wd"
-        ctrl.state.work_dir_simulator = ctrl.state.simulator
+        ctrl.state.work_dir_sim = ctrl.state.sim
         monkeypatch.setattr(
             controller_mod, "check_vhdl_contract", _fail_if_called("contract check")
         )
@@ -706,13 +743,14 @@ def test_attached_stopped_routes_to_preview(headless_pygame, monkeypatch, tmp_pa
     assert start["generics"] == build_generics(board)
     assert start["work_dir"] == "wd"
     assert start["simulator"] == "ghdl"
+    assert start["sim_path"] == "/usr/bin/ghdl"  # U35: resolved binary threaded through
     assert start["board_def"] is board
     # The dropped legacy env/window params must not be forwarded.
     assert "sim_width" not in start and "sim_height" not in start
     assert "theme" not in start
     # SimulationScreen built once; waveform finalized after run().
     (screen_kwargs,) = _FakeSimScreen.instances
-    assert screen_kwargs["simulator"] == "ghdl"
+    assert screen_kwargs["sim"].engine == "ghdl"
     assert len(finishes) == 1
 
 
@@ -852,7 +890,7 @@ def test_attached_reanalyzes_when_simulator_changed(headless_pygame, monkeypatch
         headless_pygame, monkeypatch, tmp_path, analyzed=False
     )
     ctrl.state.work_dir = "old-wd"
-    ctrl.state.work_dir_simulator = "nvc"  # produced by the other simulator
+    ctrl.state.work_dir_sim = _sim("nvc")  # produced by the other simulator
     monkeypatch.setattr(
         controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
     )
@@ -860,8 +898,8 @@ def test_attached_reanalyzes_when_simulator_changed(headless_pygame, monkeypatch
     monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "new-wd"))
     assert ctrl.on_simulate() is NextScreen.PREVIEW
     assert ctrl.state.work_dir == "new-wd"
-    refreshed: Simulator | None = ctrl.state.work_dir_simulator  # defeat stale mypy narrowing
-    assert refreshed == "ghdl"
+    refreshed = ctrl.state.work_dir_sim
+    assert refreshed is not None and refreshed.engine == "ghdl"
     assert starts[0]["work_dir"] == "new-wd"
 
 
@@ -872,7 +910,7 @@ def test_attached_reanalysis_failure_keeps_state_and_skips_launch(
         headless_pygame, monkeypatch, tmp_path, analyzed=False
     )
     ctrl.state.work_dir = "old-wd"
-    ctrl.state.work_dir_simulator = "nvc"
+    ctrl.state.work_dir_sim = _sim("nvc")
     monkeypatch.setattr(
         controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
     )
