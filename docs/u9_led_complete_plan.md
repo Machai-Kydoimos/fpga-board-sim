@@ -664,6 +664,20 @@ naming is ambiguous for flat VHDL ports; skip)
   mini-LEDs — length encodes far more accurately than luminance (that inaccuracy is
   the very thing being debugged).
 - Realistic mode stays default. Tooltips show duties in both modes.
+- **Pairs naturally with pause (rationale, added 2026-07-20).** U9b made pause *hold*
+  the last measured duty rather than re-measure across a ~ns paused window (which would
+  collapse every channel to 0%/100%), so a paused board shows a frozen, exact snapshot.
+  That makes paused-inspection the debug view's sharpest use: the bars encode duty as
+  *length*, readable to a percent where luminance is not, so "pause, flip to bars, read
+  `R 33% · G 0% · B 71%`" is the high-precision counterpart to the running colored puck.
+  Keep the toggle **global** (usable running or paused), *not* pause-gated — the bars are
+  useful on a live design too — but let this be the headline motivation in the UX copy.
+- **Scoping option (undecided — Rick's call at U38 scope time).** The **mono-LED duty
+  bar** is the only half that needs no RGB and is valuable the instant U9 ships, so it
+  *could* be pulled forward as a small U9 follow-up for earlier visual payoff; the RGB
+  `RGBLED` puck-vs-bars toggle inherently waits for U37. Default lean: keep the whole
+  debug view together in U38 as one coherent feature (the U9 tooltip duty readout already
+  covers precise per-LED inspection in the meantime).
 
 ### 5.3 Docs + closeout
 
