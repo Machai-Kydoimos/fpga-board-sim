@@ -211,3 +211,31 @@ def test_no_simulatable_resources_skipped():
 
 def test_broken_source_returns_empty():
     assert parse_litex_board("class Broken(: pass", "broken.py") == []
+
+
+_COLOR_LEDS = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io = [
+    ("clk100", 0, Pins("E3"), IOStandard("LVCMOS33")),
+    ("led_g_n", 0, Pins("A1"), IOStandard("LVCMOS33")),
+    ("led_r_n", 0, Pins("A2"), IOStandard("LVCMOS33")),
+    ("user_led", 0, Pins("A3"), IOStandard("LVCMOS33")),
+]
+
+class ColorPlatform(Xilinx7SeriesPlatform):
+    default_clk_name = "clk100"
+    default_clk_period = 1e9 / 100e6
+    def __init__(self):
+        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)
+"""
+
+
+def test_led_name_color_heuristic():
+    # U36: a color-suffixed LED name carries a color; the `_n` active-low marker is ignored.
+    b = parse_litex_board(_COLOR_LEDS, "color.py")[0]
+    by_name = {c["name"]: c for c in b["leds"]}
+    assert by_name["led_g_n"]["color"] == "green"
+    assert by_name["led_r_n"]["color"] == "red"
+    assert "color" not in by_name["led"]  # user_led -> led, no name-derived color

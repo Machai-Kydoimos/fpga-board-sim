@@ -49,36 +49,12 @@
       }
     },
     {
-      "name": "led_b",
+      "name": "rgb_led",
       "number": 0,
       "pins": [
+        "41",
+        "40",
         "39"
-      ],
-      "direction": "o",
-      "inverted": true,
-      "connector": null,
-      "attrs": {
-        "IO_STANDARD": "SB_LVCMOS"
-      }
-    },
-    {
-      "name": "led_g",
-      "number": 0,
-      "pins": [
-        "40"
-      ],
-      "direction": "o",
-      "inverted": true,
-      "connector": null,
-      "attrs": {
-        "IO_STANDARD": "SB_LVCMOS"
-      }
-    },
-    {
-      "name": "led_r",
-      "number": 0,
-      "pins": [
-        "41"
       ],
       "direction": "o",
       "inverted": true,

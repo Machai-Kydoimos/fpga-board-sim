@@ -134,3 +134,33 @@ def test_from_json_treats_null_port_conventions_as_empty():
     # An explicit "port_conventions": null on disk must not become None.
     raw = json.dumps({"name": "N", "class_name": "N", "port_conventions": None})
     assert BoardDef.from_json(raw).port_conventions == {}
+
+
+# ── LED color round-trip (U36) ────────────────────────────────────────────────
+
+
+def test_color_emitted_only_when_set():
+    # Set -> present; unset -> the key is absent (not "", which the schema rejects)
+    # so a colorless board's JSON stays byte-identical to pre-U36.
+    board = BoardDef(
+        name="C",
+        class_name="C",
+        leds=[
+            ComponentInfo("led", "led_r", 0, pins=["A1"], color="red"),
+            ComponentInfo("led", "led", 1, pins=["A2"]),
+        ],
+    )
+    data = json.loads(board.to_json())
+    assert data["leds"][0]["color"] == "red"
+    assert "color" not in data["leds"][1]
+
+
+def test_color_survives_roundtrip():
+    led = ComponentInfo("led", "led_g", 0, color="green")
+    board = BoardDef(name="C", class_name="C", leds=[led])
+    assert BoardDef.from_json(board.to_json()).leds[0].color == "green"
+
+
+def test_missing_color_defaults_to_empty_string():
+    raw = json.dumps({"name": "N", "class_name": "N", "leds": [{"name": "led", "number": 0}]})
+    assert BoardDef.from_json(raw).leds[0].color == ""

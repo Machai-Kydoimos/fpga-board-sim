@@ -5,6 +5,7 @@ from amaranth_parser import load_board_from_source
 
 from fpga_sim.board_loader import (
     BoardDef,
+    ComponentInfo,
     discover_boards,
     get_default_boards_path,
 )
@@ -403,3 +404,39 @@ def test_metadata_files_skipped(tmp_path):
     (src / "board.json").write_text(_SAMPLE_BOARD_JSON)
     boards = discover_boards(tmp_path)
     assert len(boards) == 1
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  led_banks -- consecutive same-name runs (U36)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _leds(*names: str) -> list[ComponentInfo]:
+    return [ComponentInfo("led", n, i) for i, n in enumerate(names)]
+
+
+def test_led_banks_groups_consecutive_same_name():
+    board = BoardDef(name="B", class_name="B", leds=_leds("led", "led", "led_g", "led_g"))
+    assert [(n, len(cs)) for n, cs in board.led_banks] == [("led", 2), ("led_g", 2)]
+
+
+def test_led_banks_de2_115_shape():
+    # 18 red LEDR + 9 green LEDG -> two banks (the U36 showcase board)
+    leds = _leds(*(["led"] * 18 + ["led_g"] * 9))
+    board = BoardDef(name="DE2", class_name="DE2", leds=leds)
+    assert [(n, len(cs)) for n, cs in board.led_banks] == [("led", 18), ("led_g", 9)]
+
+
+def test_led_banks_interleaved_names_split_into_runs():
+    board = BoardDef(name="B", class_name="B", leds=_leds("led", "led_g", "led"))
+    assert [n for n, _ in board.led_banks] == ["led", "led_g", "led"]
+
+
+def test_led_banks_empty_when_no_leds():
+    assert BoardDef(name="B", class_name="B").led_banks == []
+
+
+def test_led_banks_components_are_the_actual_leds():
+    leds = _leds("led", "led")
+    _, comps = BoardDef(name="B", class_name="B", leds=leds).led_banks[0]
+    assert comps[0] is leds[0] and comps[1] is leds[1]

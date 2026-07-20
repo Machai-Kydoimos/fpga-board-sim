@@ -23,6 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   byte-identical to the pre-U9 one, so not measuring stays genuinely free.
   `FPGA_SIM_DUTY_ALGO` selects the integrator (`fix_ns_1p`, the default, or
   `fix_ns_pc`); both export the same accumulator contract and measure identically.
+- **LED color and bank data model (U36, data half).** Board definitions can now
+  record each LED's color, and the loader groups a board's LEDs into named banks
+  (e.g. DE2-115's 18 red `LEDR` + 9 green `LEDG`). Colors are populated at sync
+  time from LED-name heuristics (`led_r` → red, `led_g` → green, `led_o` → orange,
+  the active-low `_n` marker ignored) via a new `color` field in the board schema;
+  a board whose color is known only from a datasheet stays unset (theme fallback)
+  until the cited color registry lands. A scalar `led_r`/`led_g`/`led_b` trio on a
+  few boards (UPduino v1, iCESugar, iCE40-UP5K-B-EVN) is now recognized as the one
+  RGB LED it is. Nothing renders differently yet — bank-clustered layout and
+  per-LED color are the U36 rendering half.
 
 ### Changed
 

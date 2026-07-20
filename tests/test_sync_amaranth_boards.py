@@ -140,3 +140,93 @@ def test_sync_metadata_structure():
     assert "files_written" in meta
     assert meta["board_count"] > 50
     assert isinstance(meta["files_written"], list)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  LED colors + RGB-trio reclassification (U36)
+# ═══════════════════════════════════════════════════════════════════════
+
+_RGB_TRIO_SOURCE = """
+from amaranth.build import *
+from amaranth.vendor import LatticeICE40Platform
+__all__ = ["TrioPlatform"]
+class TrioPlatform(LatticeICE40Platform):
+    resources = [
+        *LEDResources(pins="A B C", attrs=Attrs(IO="T")),
+        Resource("led_r", 0, PinsN("D", dir="o")),
+        Resource("led_g", 0, PinsN("E", dir="o")),
+        Resource("led_b", 0, PinsN("F", dir="o")),
+    ]
+"""
+
+_DISCRETE_4COLOR_SOURCE = """
+from amaranth.build import *
+from amaranth.vendor import LatticeICE40Platform
+__all__ = ["QuadPlatform"]
+class QuadPlatform(LatticeICE40Platform):
+    resources = [
+        *LEDResources(pins="P0 P1 P2 P3", attrs=Attrs(IO="T")),
+        Resource("led_r", 0, Pins("R0", dir="o")),
+        Resource("led_g", 0, Pins("G0", dir="o")),
+        Resource("led_b", 0, Pins("B0", dir="o")),
+        Resource("led_o", 0, Pins("O0", dir="o")),
+    ]
+"""
+
+_DISCRETE_PAIR_SOURCE = """
+from amaranth.build import *
+from amaranth.vendor import LatticeICE40Platform
+__all__ = ["PairPlatform"]
+class PairPlatform(LatticeICE40Platform):
+    resources = [
+        *LEDResources(pins="A B", attrs=Attrs(IO="T")),
+        Resource("led_r", 0, Pins("R0", dir="o")),
+        Resource("led_g", 0, Pins("G0", dir="o")),
+    ]
+"""
+
+
+def _leds_of(source: str) -> list[dict[str, object]]:
+    results = generate_board_json({"t.py": source}, "abc")
+    leds: list[dict[str, object]] = json.loads(next(iter(results.values())))["leds"]
+    return leds
+
+
+def test_rgb_trio_coalesced_to_one_rgb_led():
+    """U36: a scalar led_r/led_g/led_b trio folds into one 3-pin rgb_led (r,g,b order)."""
+    leds = _leds_of(_RGB_TRIO_SOURCE)
+    names = [c["name"] for c in leds]
+    assert names.count("led") == 3
+    assert names.count("rgb_led") == 1
+    assert not any(n in ("led_r", "led_g", "led_b") for n in names)
+    rgb = next(c for c in leds if c["name"] == "rgb_led")
+    assert rgb["pins"] == ["D", "E", "F"]  # red, green, blue
+    assert "color" not in rgb  # an rgb_led carries no single color
+
+
+def test_rgb_trio_with_fourth_color_stays_discrete():
+    """U36: a 4th color (orange) proves the bank is discrete -- no coalescing."""
+    by_name = {c["name"]: c for c in _leds_of(_DISCRETE_4COLOR_SOURCE)}
+    assert "rgb_led" not in by_name
+    assert by_name["led_r"]["color"] == "red"
+    assert by_name["led_g"]["color"] == "green"
+    assert by_name["led_b"]["color"] == "blue"
+    assert by_name["led_o"]["color"] == "orange"
+
+
+def test_red_green_pair_stays_discrete():
+    """U36: a red+green pair (no blue) is two discrete LEDs, not one RGB."""
+    by_name = {c["name"]: c for c in _leds_of(_DISCRETE_PAIR_SOURCE)}
+    assert "rgb_led" not in by_name
+    assert by_name["led_r"]["color"] == "red"
+    assert by_name["led_g"]["color"] == "green"
+
+
+def test_plain_led_bank_has_no_color():
+    """U36: a bare `led` gets no name-derived color (only registry/custom populate those)."""
+    assert all("color" not in c for c in _leds_of(_INLINE_BOARD_SOURCE))
+
+
+def test_led_generation_is_deterministic():
+    """U36: color + reclassification are pure -> identical LED output across runs."""
+    assert _leds_of(_RGB_TRIO_SOURCE) == _leds_of(_RGB_TRIO_SOURCE)

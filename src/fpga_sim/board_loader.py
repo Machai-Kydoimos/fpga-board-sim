@@ -68,6 +68,7 @@ class ComponentInfo:
     inverted: bool = False
     connector: tuple[str, int] | None = None
     attrs: dict[str, str] = field(default_factory=dict)
+    color: str = ""  # LED color when known ("red" / "#ff0000"); "" => theme fallback (U36)
 
     @property
     def display_name(self) -> str:
@@ -127,11 +128,29 @@ class BoardDef:
             parts.append(f"{self.seven_seg.num_digits}-digit 7-seg")
         return " · ".join(parts)
 
+    @property
+    def led_banks(self) -> list[tuple[str, list[ComponentInfo]]]:
+        """LEDs grouped into consecutive same-name runs (a view over ``leds``).
+
+        E.g. DE2-115's 18 ``led`` + 9 ``led_g`` ->
+        ``[("led", [...18]), ("led_g", [...9])]``.  ``leds`` stays the single
+        source of truth; banks are derived for per-bank labels and color
+        clustering in the renderer (U36).  Interleaved names yield one bank per
+        run, mirroring physical order.
+        """
+        banks: list[tuple[str, list[ComponentInfo]]] = []
+        for c in self.leds:
+            if banks and banks[-1][0] == c.name:
+                banks[-1][1].append(c)
+            else:
+                banks.append((c.name, [c]))
+        return banks
+
     def to_json(self) -> str:
         """Serialize to JSON for passing to the cocotb subprocess."""
 
         def _comp(c: ComponentInfo) -> dict[str, object]:
-            return {
+            d: dict[str, object] = {
                 "name": c.name,
                 "number": c.number,
                 "pins": c.pins,
@@ -140,6 +159,9 @@ class BoardDef:
                 "connector": list(c.connector) if c.connector else None,
                 "attrs": c.attrs,
             }
+            if c.color:  # emit only when set -- keep JSON diffs minimal (U36)
+                d["color"] = c.color
+            return d
 
         return json.dumps(
             {
@@ -178,6 +200,7 @@ class BoardDef:
                     inverted=c.get("inverted", False),
                     connector=tuple(c["connector"]) if c.get("connector") else None,
                     attrs=c.get("attrs", {}),
+                    color=c.get("color", ""),
                 )
                 for c in items
             ]

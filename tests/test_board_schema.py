@@ -225,3 +225,45 @@ def test_schema_validates_leds_green(schema):
     board = _minimal_valid_board()
     board["port_conventions"] = {"terasic": {"leds_green": {"name": "LEDG", "width": 9}}}
     jsonschema.validate(board, schema)  # must not raise
+
+
+# ── component.color (U36) ─────────────────────────────────────────────────────
+
+
+def test_schema_accepts_named_color(schema):
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["leds"] = [{"name": "led", "number": 0, "color": "red"}]
+    jsonschema.validate(board, schema)  # must not raise
+
+
+def test_schema_accepts_hex_color(schema):
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["leds"] = [{"name": "led", "number": 0, "color": "#00Ff88"}]
+    jsonschema.validate(board, schema)  # must not raise
+
+
+def test_schema_rejects_unknown_named_color(schema):
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["leds"] = [{"name": "led", "number": 0, "color": "chartreuse"}]
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(board, schema)
+
+
+def test_schema_rejects_empty_color(schema):
+    """Absent means unknown; an explicit "" is invalid, so parsers must omit it."""
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["leds"] = [{"name": "led", "number": 0, "color": ""}]
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(board, schema)
+
+
+def test_schema_rejects_malformed_hex_color(schema):
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    board["leds"] = [{"name": "led", "number": 0, "color": "#12ff0"}]  # 5 hex digits
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(board, schema)
