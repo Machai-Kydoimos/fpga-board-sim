@@ -200,6 +200,39 @@ two endpoints of the single `await Timer(...)` call. The wrapper exposes a
 host sends a `clk` message and the child writes the new half-period, which the VHDL
 process picks up within one half-cycle.
 
+**Duty-cycle measurement (U9).** A PWM-driven LED has no meaningful instantaneous
+value — sampling `dut.led` once per frame reports whichever side of the pulse the
+sample landed on, which is why PWM designs looked broken. Duty is therefore
+**measured, never inferred**: static analysis of the design is impossible in
+principle (the embedded-core designs compute their duty from firmware bytes at run
+time), and any Python-side sampling or edge callback either aliases or reintroduces
+the per-event GPI round-trips the VHDL-side clock exists to avoid.
+
+Instead the generated wrapper integrates on-time in VHDL. For every channel of
+`led` (and `seg` — segments are LEDs) it accumulates the nanoseconds spent high,
+exporting two vectors: `led_acc` (on-time over `[0, led_tch]`) and `led_tch`
+(when the channel last changed). The interval still in progress is deliberately
+*not* in `acc` — it is folded in only when it ends, which is what keeps the
+integrator free of cross-channel state. The child reads both at send cadence,
+adds the in-progress tail (`T_on = acc + (t - tch)` when the channel is high —
+exactly the on-time over `[0, t]` by construction), and differences two snapshots
+into the window's exact duty, which rides along as `led_duty` / `seg_duty`. See
+`fpga_sim/sim_duty.py` for the math.
+
+The integrator is a **swappable splice fragment** (`sim/duty/<algo>.*.vhd.frag`),
+because its cost is entirely a function of how often it is woken, and that is a
+property of the design. `fix_ns_1p` (the default) uses one process per monitored
+vector, waking once per *instant* at which anything changes; `fix_ns_pc` uses one
+process per channel, waking once per *channel transition*. The ratio between
+those two counts is exactly how correlated the channels are — a shared PWM
+compare drives every LED in lockstep, so one wake covers them all.
+`FPGA_SIM_DUTY_ALGO` selects between them. Measured overhead is ~0% on designs
+whose LEDs change slowly and ~2% on a design PWM-ing 8 LEDs at 390 kHz; a channel
+that toggles *every clock* (a fast display digit) is the pathological case and
+costs multiples, which is why measurement is also a per-run policy:
+`FPGA_SIM_DUTY` selects `full` (default — integrator spliced), `color` or `off`
+(no integrator at all; the generated wrapper is byte-identical to the pre-U9 one).
+
 **Sim → launcher signalling.** The child streams `state` messages (led / seg / sim
 progress) and a final `bye` over the link; `SimulationScreen.run()` returns a `SimExit`
 describing *why the run ended* — **[Back to Boards]** / **[Change VHDL]** / **[Reload

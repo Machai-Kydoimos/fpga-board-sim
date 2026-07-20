@@ -318,7 +318,7 @@ wrapper + child + demos + docs. It ships alone and already fixes "PWM designs lo
   with `led_duty` payloads, gtkw exclusion. Update the theme value-preservation tests
   and any test touching `LED.state`/`set_led` signatures.
 
-### 2.8 Benchmark gate (mandatory for U9 PR-1)
+### 2.8 Benchmark gate (mandatory for U9 PR-1) — SUPERSEDED by §2.9a's re-derived gate
 
 Measure **Full-mode** overhead (`uv run fpga-sim --benchmark 10 --no-ui`, before/after) on
 blinky/Arty, counter_7seg/DE10-Lite, mx65_walking/DE10-Lite × GHDL-mcode + NVC (llvm if
@@ -330,7 +330,64 @@ generated wrapper is byte-identical to today's when mode = Off. If FIX-NS-PC reg
 non-spin designs past 3%, stop and bring numbers to Rick. Record results in the PR and update
 `memory/project_sim_performance.md`.
 
-### 2.9 Phase-0 results (2026-07-19; four-variant offline harness, all four backends)
+### 2.9a CORRECTION (2026-07-20, U9 PR-1): §2.9's perf table was measuring idle workloads
+
+**Do not use the §2.9 perf table below.** Building the real thing and instrumenting the
+workload showed most of those rows measured an integrator that never woke, and the rest
+was run-to-run noise. Wake counts, from a counting testbench at the *real* board generics:
+
+| design @ board | LED wakes/20 ms (1P / per-channel) | seg wakes |
+|---|---|---|
+| blinky @ Arty, COUNTER_BITS=17 (the runtime value) | 247 / 465 | — |
+| blinky_pwm @ Arty, NUM_LEDS=8 | 15,116 / 60,472 (sw=0) · 15,116 / 120,928 (sw=1) | — |
+| blinky_pwm @ **NUM_LEDS=4** (wrapper default), sw=0 | **2 / 8** | — |
+| counter_7seg @ DE10-Lite (per 3 ms) | 11 / 36 | **150,002 / 500,093** |
+| mx65_walking @ DE10-Lite (per 3 ms) | 23 / 57 | 27 / 186 |
+| stopwatch_7seg @ DE10-Lite (per 3 ms) | 2 / 20 | 2 / 96 |
+
+- **`blinky_pwm` "free" was an idle integrator.** The design gates LED *i* by `sw(i)` only
+  for `i < NUM_SWITCHES`; at the wrapper's *default* `NUM_LEDS=4` (= NUM_SWITCHES) with
+  `sw=0`, every LED is disabled — 2 wakes per 20 ms. At the real Arty config
+  (`NUM_LEDS=8 > 4` switches) LEDs 4-7 breathe unconditionally.
+- **The `blinky` rows were noise.** 465 transitions per 20 ms is ≈0.04% of runtime; §2.9
+  reported +3% and +17% — spreads 100-400× larger than the effect can be.
+- **Only the `counter_7seg` row reproduced** (§2.9 +682/+263 vs. measured +554/+108 with the
+  fixed inner loop). Its seg blur is exactly **one wake per clock** (150,002 per 150,000).
+- **Both analyses missed per-wake *cost*,** reasoning only about wake *count*. The hot path
+  recomputed `to_unsigned(secs,31) * NS_PER_SEC` — a ~900-bit-op numeric_std software
+  multiply — on every wake, though it changes once per simulated second. Hoisting it behind
+  a TIME compare cut blinky_pwm +7.9%→+3.5% and counter_7seg +923%→+554% (GHDL-mcode).
+
+**Algorithm, re-picked from evidence (supersedes decision 3's FIX-NS-PC):** overhead vs.
+Off, paired/interleaved runs on a quiet machine, on workloads with verified wake rates:
+
+| workload | FIX-NS-PC | FIX-NS-1P |
+|---|---|---|
+| idle (blinky, mx65, stopwatch) | -0.2% .. 0.0% | +0.2% .. +1.0% |
+| active PWM, correlated (blinky_pwm, 7 reps) | +3.5% med (+1.3..+4.8) | **+1.8% med** (-0.3..+4.4) |
+| per-cycle blur, correlated (counter_7seg) | +554% mcode / +108% NVC | **+375% / +80%** |
+| per-cycle blur, sparse (synthetic 91 ch) | +340% | +357% |
+
+`FIX-NS-1P` (one process per vector) is **never meaningfully worse and up to 1.5× better**,
+so it is the default; `fix_ns_pc` stays selectable via `FPGA_SIM_DUTY_ALGO`. The O(N) rescan
+that was supposed to sink 1P does not materialize — comparing an unchanged channel is far
+cheaper than the per-wake fixed work — which is also why the PC/1P gap tracks channel
+*correlation* (8× for blinky_pwm's shared PWM compare, 1.9× for blinky's counter carries).
+
+**Gate, re-derived (supersedes §2.8's flat ≤3%).** Every cell must first be shown non-idle
+by wake count, then measured paired/interleaved, ≥5 reps, nothing else running:
+
+| workload class | budget | measured (1P) |
+|---|---|---|
+| sparse (<1k transitions / 20 ms) | ≤1% | -0.2% .. +1.0% |
+| event-dense PWM (~10⁵ transitions / 20 ms) | ≤5% mcode, ≤2% NVC | +1.8% / 0.0% |
+| per-cycle blur (≈1 transition per clock) | exempt (decision 9 → §2.10) | +375% / +80% |
+| Off / Color-only | 0% by construction | byte-identical wrapper (tested) |
+
+**Process lesson:** a "feature X is free" benchmark must instrument the workload to count the
+events X is supposed to cost, and reported deltas must exceed the paired run-to-run spread.
+
+### 2.9 Phase-0 results (2026-07-19; four-variant offline harness, all four backends) — SUPERSEDED, see §2.9a
 
 Phase 0 (§6) built `sim/duty_probe.vhd` + throwaway four-integrator wrappers + a pure-VHDL
 perf harness and ran them on GHDL-mcode/JIT/LLVM + NVC. Findings that shaped §2.2/§2.3:

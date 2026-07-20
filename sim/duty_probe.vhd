@@ -21,8 +21,12 @@
 --                                              >2.2 s static-gap overflow test
 --   led(5..): '0'                           -> spare stuck-OFF channels
 --
--- Requires NUM_LEDS >= 5 and NUM_SWITCHES >= 2 (always elaborated so by the
--- tests).  COUNTER_BITS is part of the generic contract but unused here.
+-- The tests elaborate it with NUM_LEDS >= 5 and NUM_SWITCHES >= 2, which is
+-- where every channel above exists.  Channels past the boundary width are
+-- generated away rather than indexed out of bounds, so the same file still
+-- elaborates under the wrapper's *default* generics (NUM_LEDS = 4) -- the
+-- early structural check analyze_vhdl runs before any board value is known.
+-- COUNTER_BITS is part of the generic contract but unused here.
 
 library ieee;
 use ieee.std_logic_1164.all;
@@ -66,7 +70,10 @@ begin
   led(1) <= '1';
   led(2) <= '1' when (sw(1) = '1' and cnt256 < 64) else '0';
   led(3) <= '1' when (cnt100 < 50) else '0';
-  led(4) <= sw(0);
+
+  gate : if NUM_LEDS > 4 generate
+    led(4) <= sw(0);
+  end generate gate;
 
   spare : for i in 5 to NUM_LEDS - 1 generate
     led(i) <= '0';

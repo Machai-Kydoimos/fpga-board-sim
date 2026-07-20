@@ -60,7 +60,11 @@ The simulator runs in a **single window** (U34): the launcher's pygame process o
 | `scripts/digilent_parser.py` | XDC regex parser → board dicts + `port_conventions` (used by `sync_digilent_xdc.py`) |
 | `scripts/sync_common.py` | Shared sync scaffolding (download, ref-resolve, naming, schema-validated JSON/metadata output) for all three `sync_*.py`; merges `port_conventions` per sub-key so hand-authored / registry blocks survive a re-sync (A1) |
 | `sim/sim_testbench.py` | Headless cocotb testbench (no pygame): drives the sim loop and streams led/seg state + receives sw/btn/speed/clk/pause/stop over `sim_link` (U34) |
-| `sim/sim_wrapper_template.vhd` | Unified VHDL wrapper template; seg port/generic spliced in by `_generate_wrapper()` when needed |
+| `sim/sim_wrapper_template.vhd` | Unified VHDL wrapper template; seg port/generic spliced in by `_generate_wrapper()` when needed, plus the U9 duty integrator in Full measurement mode |
+| `src/fpga_sim/sim_duty.py` | Duty-cycle math shared by the headless child and its tests: unpacks the wrapper's per-channel on-time accumulators and differences two snapshots into an exact window duty (`DutyTracker`); pygame- and cocotb-free (U9) |
+| `sim/duty/*.vhd.frag` | Swappable duty-integrator splice fragments, one file per splice point per algorithm (`fix_ns_1p` default, `fix_ns_pc`); selected by `FPGA_SIM_DUTY_ALGO` (U9) |
+| `sim/duty_probe.vhd` | Test fixture with exactly-known duty cycles (stuck-off/stuck-on/25%/50%/switch-driven) that `sim/test_duty.py` measures against; parked under `sim/` so the picker never lists it (U9) |
+| `sim/test_duty.py` | Headless cocotb duty-engine tests: measured duty vs. `duty_probe`'s ground truth, mid-run gate flips, and the >2.147 s INTEGER-overflow probe |
 | `src/fpga_sim/sim_session_log.py` | Writes per-session JSON summaries to ~/.fpga_simulator/sessions/ |
 | `hdl/blinky.vhd` | Example VHDL design (use as template for the expected port interface) |
 | `hdl/native/` | Board-native reference designs (a board's own port names + fixed widths, no `NUM_*`): Terasic `de10_standard.vhd`, `de0.vhd`, `de25_standard.vhd`; litex `arty_litex.vhd` (LiteX names `clk100`/`user_led`/`user_sw`/`user_btn`, U32). Each matches via a board's `port_conventions` and is not in the file picker (U21) |
