@@ -25,9 +25,8 @@ from typing import TypeVar
 
 import pygame
 
-from fpga_sim.ui.constants import _ui_scale, get_font
+from fpga_sim.ui.constants import _ui_scale, get_font, lerp_rgb
 from fpga_sim.ui.theme import THEME
-from fpga_sim.ui.widgets.button import RGB
 
 _T = TypeVar("_T")
 
@@ -36,16 +35,6 @@ _T = TypeVar("_T")
 # rotation even though the dots themselves are discrete.
 _DOTS = 12
 _SPIN_PERIOD_MS = 900  # one full revolution
-
-
-def _lerp(c0: RGB, c1: RGB, t: float) -> RGB:
-    """Linear-interpolate between two RGB colors (*t* clamped to [0, 1])."""
-    t = max(0.0, min(1.0, t))
-    return (
-        round(c0[0] + (c1[0] - c0[0]) * t),
-        round(c0[1] + (c1[1] - c0[1]) * t),
-        round(c0[2] + (c1[2] - c0[2]) * t),
-    )
 
 
 class SpinnerOverlay:
@@ -81,7 +70,7 @@ class SpinnerOverlay:
             ang = 2 * math.pi * frac - math.pi / 2  # start at 12 o'clock
             x = round(cx + ring_r * math.cos(ang))
             y = round(cy + ring_r * math.sin(ang))
-            color = _lerp(THEME.spinner_track, THEME.spinner_arc, t)
+            color = lerp_rgb(THEME.spinner_track, THEME.spinner_arc, t)
             pygame.draw.circle(self.screen, color, (x, y), dot_r)
 
     def draw(self) -> None:

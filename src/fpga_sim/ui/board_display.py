@@ -246,9 +246,13 @@ class FPGABoard:
     # ── public API ───────────────────────────────────────────────────
 
     def set_led(self, index: int, state: bool) -> None:
-        """Turn an LED on or off by index."""
+        """Turn an LED fully on or off by index (the binary view of set_led_level)."""
+        self.set_led_level(index, 1.0 if state else 0.0)
+
+    def set_led_level(self, index: int, level: float) -> None:
+        """Set an LED's brightness by index, as a duty cycle in [0, 1] (U9)."""
         if 0 <= index < len(self.leds):
-            self.leds[index].state = bool(state)
+            self.leds[index].level = max(0.0, min(1.0, level))
 
     def set_switch_callback(
         self, callback: Callable[[int, bool, ComponentInfo | None], None]
@@ -275,6 +279,17 @@ class FPGABoard:
         if 0 <= index < len(self._seven_segs) and self._prev_seg_bits[index] != bits8:
             self._prev_seg_bits[index] = bits8
             self._seven_segs[index].set_bits(bits8)
+
+    def set_seg_levels(self, index: int, levels: Sequence[float]) -> None:
+        """Set per-segment brightness for digit *index*, as duty cycles in [0, 1] (U9).
+
+        Bypasses ``set_seg``'s bit-pattern change gate: two different brightness
+        vectors can share the same on/off pattern, so the gate would swallow a
+        genuine change (a digit fading is exactly that case).
+        """
+        if 0 <= index < len(self._seven_segs):
+            self._seven_segs[index].set_levels(levels)
+            self._prev_seg_bits[index] = self._seven_segs[index].bits
 
     def set_height_offset(self, offset: int) -> None:
         """Change the panel height reservation and reflow the board layout.
@@ -612,7 +627,7 @@ class FPGABoard:
         pos = pygame.mouse.get_pos()
         hovered = self._update_hover(pos, pygame.time.get_ticks())
         if hovered is not None:
-            self._tooltip.draw(self.screen, pos, hovered.label, hovered.info)
+            self._tooltip.draw(self.screen, pos, hovered.label, hovered.info, hovered.tooltip_extra)
 
     # ── drawing ──────────────────────────────────────────────────────
 

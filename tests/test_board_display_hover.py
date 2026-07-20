@@ -91,7 +91,7 @@ def test_draw_renders_tooltip_only_after_dwell(headless_pygame, monkeypatch):
     sw = board.switches[0]
     calls: list[tuple[tuple[int, int], str, ComponentInfo | None]] = []
 
-    def _spy(surface, pos, label, info):
+    def _spy(surface, pos, label, info, extra=()):
         calls.append((pos, label, info))
         return pygame.Rect(0, 0, 1, 1)
 
@@ -115,7 +115,7 @@ def test_draw_renders_tooltip_in_sim_mode_without_footer(headless_pygame, monkey
     led = board.leds[0]
     calls: list[str] = []
 
-    def _spy(surface, pos, label, info):
+    def _spy(surface, pos, label, info, extra=()):
         calls.append(label)
         return pygame.Rect(0, 0, 1, 1)
 
