@@ -10,10 +10,16 @@
 -- [-]/[+] buttons are pressed; the VHDL process picks up the new value
 -- on the next half-cycle, identical to the prior Python _dynamic_clock
 -- behaviour.
+--
+-- The duty_* placeholders carry the U9 duty integrator, spliced in only when
+-- the run's measurement mode is Full (sim/duty/*.vhd.frag).  In the Off and
+-- Color-only modes they all expand to nothing and the monitored outputs are
+-- wired straight through, so the generated file is byte-identical to the
+-- pre-U9 wrapper and costs exactly nothing.
 
 library ieee;
 use ieee.std_logic_1164.all;
-
+{numeric_use}
 entity sim_wrapper is
   generic (
     NUM_SWITCHES     : positive := 4;
@@ -26,13 +32,13 @@ entity sim_wrapper is
     sw          : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);
     btn         : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0);
     led         : out std_logic_vector(NUM_LEDS     - 1 downto 0);
-{seg_port}    clk_half_ns : in  natural := CLK_HALF_NS_INIT
+{seg_port}{duty_ports}    clk_half_ns : in  natural := CLK_HALF_NS_INIT
   );
 end entity;
 
 architecture rtl of sim_wrapper is
   signal clk : std_logic := '0';
-begin
+{duty_decls}begin
 
   -- Free-running clock whose half-period (ns) equals clk_half_ns.
   -- The wait-for expression re-evaluates on each iteration, so writing
@@ -44,7 +50,7 @@ begin
     clk <= '1';
     wait for clk_half_ns * 1 ns;
   end process;
-
+{duty_body}
   uut : entity work.{toplevel}
     generic map (
       NUM_SWITCHES => NUM_SWITCHES,
@@ -56,7 +62,7 @@ begin
       clk => clk,
       sw  => sw,
       btn => btn,
-{seg_port_map}      led => led
+{seg_port_map}      led => {led_sig}
     );
 
 end architecture;

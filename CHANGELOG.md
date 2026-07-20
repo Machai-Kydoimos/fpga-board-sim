@@ -6,6 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Exact PWM duty-cycle measurement (U9, engine half).** A PWM-driven LED has no
+  meaningful instantaneous value, so sampling it once per frame reported whichever
+  side of the pulse the sample happened to land on — the reason PWM designs looked
+  broken. Duty is now *measured*: the generated `sim_wrapper` integrates every
+  LED and 7-segment channel's on-time in VHDL, and the headless child differences
+  two snapshots into the window's exact duty cycle, streamed as `led_duty` /
+  `seg_duty`. No sampling, no aliasing, and no Python callbacks on the hot path.
+  Verified against a fixture with known duty cycles under both GHDL and NVC, and
+  exact past the 2.147 s mark where a naive `now / 1 ns` would overflow VHDL's
+  32-bit INTEGER. Nothing renders differently yet — that is the U9b half.
+- Measurement is a per-run policy via `FPGA_SIM_DUTY`: `full` (default), or
+  `color` / `off`, which splice no integrator at all and emit a wrapper
+  byte-identical to the pre-U9 one, so not measuring stays genuinely free.
+  `FPGA_SIM_DUTY_ALGO` selects the integrator (`fix_ns_1p`, the default, or
+  `fix_ns_pc`); both export the same accumulator contract and measure identically.
+
 ## [0.16.0] - 2026-07-18
 
 ### Added

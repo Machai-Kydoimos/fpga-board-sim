@@ -24,11 +24,12 @@ from fpga_sim.sim_bridge import _find_ghdl, _NVCBackend  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _isolate_waveform_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep ``FPGA_SIM_WAVEFORM*`` vars from a developer's shell out of every test.
+    """Keep run-shaping ``FPGA_SIM_*`` vars from a developer's shell out of every test.
 
     ``start_simulation`` and the waveform helpers read these; a value exported
-    in the dev/CI shell would silently flip capture, auto-open, or the output
-    dir under a test.  Tests that exercise a var set it explicitly via the same
+    in the dev/CI shell would silently flip capture, auto-open, the output dir,
+    or (``FPGA_SIM_DUTY``) whether the generated wrapper measures duty cycles at
+    all.  Tests that exercise a var set it explicitly via the same
     (function-scoped) monkeypatch, which runs after this and wins.
     """
     for var in (
@@ -37,6 +38,7 @@ def _isolate_waveform_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "FPGA_SIM_WAVEFORM_MEMORIES",
         "FPGA_SIM_WAVEFORM_VIEWER",
         "FPGA_SIM_WAVEFORM_DIR",
+        "FPGA_SIM_DUTY",
     ):
         monkeypatch.delenv(var, raising=False)
 

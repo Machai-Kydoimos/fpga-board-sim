@@ -49,6 +49,61 @@ Simulator = Literal["ghdl", "nvc"]
 # ``start_simulation`` normalizes via :func:`_normalize_wave`.
 WaveFormat = Literal["vcd", "fst"]
 
+# Duty-cycle measurement modes (U9).  Measurement is a per-run policy, not a
+# fixed cost, because an exact integrator is only free when LED channels are
+# sparse (see :func:`_duty_splice`):
+#   "off"    no integrator -- the pre-U9 binary path, byte-identical wrapper
+#   "color"  no integrator either: LED colors (U36/U37) need no duty, so
+#            "colors but no dimming" stays a zero-measurement path
+#   "full"   integrator spliced -> brightness + PWM color mixing
+# ``FPGA_SIM_DUTY`` overrides the caller's choice, so a benchmark or a CI run
+# can pin a mode without touching the session (mirrors ``FPGA_SIM_WAVEFORM``).
+DutyMode = Literal["off", "color", "full"]
+DUTY_ENV = "FPGA_SIM_DUTY"
+DEFAULT_DUTY_MODE: DutyMode = "full"
+
+#: Splice fragments live one file per splice point (``<algo>.ports`` /
+#: ``<algo>.body``), so an algorithm is swapped by name rather than by
+#: re-plumbing.  Both shipped algorithms export the identical accumulator
+#: contract (48-bit ``acc``/``tch`` per channel), so the host math is unchanged
+#: either way; they differ only in how the integrator is woken:
+#:
+#:   ``fix_ns_pc``  one process per channel -- wakes once per channel transition
+#:   ``fix_ns_1p``  one process per vector  -- wakes once per instant, rescans N
+#:
+#: Which is cheaper is a property of the design (see the fragment headers), so
+#: ``FPGA_SIM_DUTY_ALGO`` selects it per run and the default below is set from
+#: the measured design set.
+DUTY_ALGOS = ("fix_ns_pc", "fix_ns_1p")
+DEFAULT_DUTY_ALGO = "fix_ns_1p"
+DUTY_ALGO_ENV = "FPGA_SIM_DUTY_ALGO"
+_DUTY_FRAGMENT_DIR: Path = Path(__file__).parent.parent.parent / "sim" / "duty"
+
+
+def resolve_duty_algo() -> str:
+    """Resolve which integrator to splice: ``FPGA_SIM_DUTY_ALGO``, else the default.
+
+    An unrecognized name falls back rather than failing the run, matching
+    :func:`resolve_duty_mode` -- a typo should not stop a simulation.
+    """
+    raw = os.environ.get(DUTY_ALGO_ENV, "").strip().lower()
+    return raw if raw in DUTY_ALGOS else DEFAULT_DUTY_ALGO
+
+
+def resolve_duty_mode(mode: DutyMode | None = None) -> DutyMode:
+    """Resolve the duty-measurement mode for a run: env var, else *mode*, else default.
+
+    Every wrapper-generating path funnels through here so the wrapper analyzed
+    by :func:`analyze_vhdl` and the one elaborated by :func:`_prepare_simulation`
+    can never disagree — a mismatch would leave the run reading duty ports that
+    the elaborated design does not have.  An unrecognized env value is ignored
+    rather than fatal (a typo should not stop a simulation from running).
+    """
+    raw = os.environ.get(DUTY_ENV, "").strip().lower()
+    if raw in ("off", "color", "full"):
+        return raw  # type: ignore[return-value]  # narrowed by the membership test
+    return mode or DEFAULT_DUTY_MODE
+
 
 @dataclass(frozen=True)
 class WaveConfig:
@@ -1502,6 +1557,61 @@ def add_error_hints(message: str, board_def: BoardDef | None = None) -> str:
 
 _WRAPPER_TEMPLATE: Path = Path(__file__).parent.parent.parent / "sim" / "sim_wrapper_template.vhd"
 
+#: Placeholder names the duty splice fills in; all empty outside Full mode.
+_DUTY_PLACEHOLDERS = ("numeric_use", "duty_ports", "duty_decls", "duty_body")
+
+
+def _duty_channels(mode: DutyMode, *, has_seg: bool) -> list[tuple[str, str]]:
+    """List the monitored output vectors for *mode*: ``(port, channel-count expression)``.
+
+    Segments are LEDs, so a 7-seg run measures ``seg`` on the same machinery
+    (8 channels per digit).  Off and Color-only monitor nothing.
+    """
+    if mode != "full":
+        return []
+    channels = [("led", "NUM_LEDS")]
+    if has_seg:
+        channels.append(("seg", "8 * NUM_SEGS"))
+    return channels
+
+
+def _duty_fragment(part: str, prefix: str, count: str) -> str:
+    """Render one splice fragment of the active algorithm for a monitored vector.
+
+    ``{p}`` is the port name (``led`` / ``seg``) and ``{n}`` its channel-count
+    expression, spliced verbatim into VHDL — ``48 * 8 * NUM_SEGS - 1`` parses as
+    intended, so no parenthesizing is needed.
+    """
+    text = (_DUTY_FRAGMENT_DIR / f"{resolve_duty_algo()}.{part}.vhd.frag").read_text()
+    return text.format(p=prefix, n=count)
+
+
+def _duty_splice(channels: list[tuple[str, str]]) -> dict[str, str]:
+    """Build the wrapper's duty placeholders for the monitored *channels*.
+
+    Both wrapper paths (generic template and :func:`_render_native_wrapper`)
+    consume this one dict, so the integrator is identical either way: the
+    measured output is routed through an internal ``<port>_int`` signal that the
+    per-channel processes watch, and the port itself becomes a pass-through.
+
+    An empty *channels* list yields empty strings for every placeholder, which
+    is what makes Off / Color-only a genuine zero-cost path: the generated
+    wrapper is byte-identical to the pre-U9 one, not merely equivalent.
+    """
+    if not channels:
+        return dict.fromkeys(_DUTY_PLACEHOLDERS, "")
+    bodies = [
+        f"  {p} <= {p}_int;\n" + _duty_fragment("body", p, n).rstrip("\n") for p, n in channels
+    ]
+    return {
+        "numeric_use": "use ieee.numeric_std.all;\n",  # unsigned/resize for the accumulators
+        "duty_ports": "".join(_duty_fragment("ports", p, n) for p, n in channels),
+        "duty_decls": "".join(
+            f"  signal {p}_int : std_logic_vector({n} - 1 downto 0);\n" for p, n in channels
+        ),
+        "duty_body": "\n" + "\n\n".join(bodies) + "\n",
+    }
+
 
 def _native_port_map(port: NativePort, sig: str) -> list[str]:
     """Association line(s) tying a native LED/switch/button bank to wrapper signal *sig*.
@@ -1517,7 +1627,10 @@ def _native_port_map(port: NativePort, sig: str) -> list[str]:
 
 
 def _render_native_wrapper(
-    toplevel: str, match: ConventionMatch, board_def: BoardDef | None = None
+    toplevel: str,
+    match: ConventionMatch,
+    board_def: BoardDef | None = None,
+    duty: DutyMode = "off",
 ) -> str:
     """Render a ``sim_wrapper`` that runs a board-native design (U21 B3).
 
@@ -1538,6 +1651,11 @@ def _render_native_wrapper(
     generic-map-less uut with native names.  Generic *defaults* are baked to the
     board's widths so ``analyze_vhdl``'s default-generic early elaboration lines the
     top ports up with the native uut's fixed widths (no "defaults dance").
+
+    In Full measurement mode (U9) the same duty integrator the generic template
+    splices is appended here, watching the boundary ``led``/``seg`` values —
+    i.e. *after* the active-low inversion and the 7-seg packing, so a native
+    design's measured duty is the brightness the board actually shows.
     """
     sw, btn, led, seg, green = (
         match.switches,
@@ -1549,6 +1667,16 @@ def _render_native_wrapper(
     decls: list[str] = []  # architecture declarative signals
     assigns: list[str] = []  # concurrent assignments (adapters)
     pmap: list[str] = [f"{match.clk} => clk"]  # uut port-map association lines
+
+    # U9 duty splice.  Measured outputs are produced into ``<port>_int`` and the
+    # port becomes a pass-through emitted by the splice body; unmeasured ones are
+    # assigned directly, exactly as before.  ``numeric_use`` is ignored here: the
+    # native wrapper already uses numeric_std for the LED zero-extend.
+    duty_channels = _duty_channels(duty, has_seg=seg is not None)
+    splice = _duty_splice(duty_channels)
+    measured = {port for port, _ in duty_channels}
+    led_out = "led_int" if "led" in measured else "led"
+    seg_out = "seg_int" if "seg" in measured else "seg"
 
     # Switches / buttons: buffer (invert if active-low) then feed the native
     # inputs.  An absent bank (U31 partial interface) leaves the wrapper's top
@@ -1573,7 +1701,9 @@ def _render_native_wrapper(
     # onto the board `led` boundary -- board LEDs the convention omits stay dark.
     led_inv = "not " if led.active_low else ""
     decls.append(f"  signal led_uut : std_logic_vector({led.width} - 1 downto 0);")
-    assigns.append(f"  led <= std_logic_vector(resize(unsigned({led_inv}led_uut), NUM_LEDS));")
+    assigns.append(
+        f"  {led_out} <= std_logic_vector(resize(unsigned({led_inv}led_uut), NUM_LEDS));"
+    )
     pmap += _native_port_map(led, "led_uut")
 
     # Secondary green bank (rare): captured so the output has a driver, not shown --
@@ -1589,9 +1719,9 @@ def _render_native_wrapper(
         for i, name in enumerate(seg.names):
             sig = f"hex{i}_uut"
             decls.append(f"  signal {sig} : std_logic_vector({wpd} - 1 downto 0);")
-            assigns.append(f"  seg({8 * i + wpd - 1} downto {8 * i}) <= {inv}{sig};")
+            assigns.append(f"  {seg_out}({8 * i + wpd - 1} downto {8 * i}) <= {inv}{sig};")
             if wpd < 8:  # remaining high bits of the digit byte (e.g. dp) -> off
-                assigns.append(f"  seg({8 * i + 7} downto {8 * i + wpd}) <= (others => '0');")
+                assigns.append(f"  {seg_out}({8 * i + 7} downto {8 * i + wpd}) <= (others => '0');")
             pmap.append(f"{name} => {sig}")
 
     # Generic *defaults* mirror ``build_generics`` (the board's resource counts,
@@ -1634,6 +1764,7 @@ def _render_native_wrapper(
         "    btn         : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0);",
         "    led         : out std_logic_vector(NUM_LEDS     - 1 downto 0);",
         *seg_port,
+        *splice["duty_ports"].splitlines(),
         "    clk_half_ns : in  natural := CLK_HALF_NS_INIT",
         "  );",
         "end entity;",
@@ -1641,6 +1772,7 @@ def _render_native_wrapper(
         "architecture rtl of sim_wrapper is",
         "  signal clk : std_logic := '0';",
         *decls,
+        *splice["duty_decls"].splitlines(),
         "begin",
         "",
         "  clk_proc : process",
@@ -1652,6 +1784,7 @@ def _render_native_wrapper(
         "  end process;",
         "",
         *assigns,
+        *splice["duty_body"].splitlines(),
         "",
         f"  uut : entity work.{toplevel}",
         "    port map (",
@@ -1670,6 +1803,7 @@ def _generate_wrapper(
     board_def: BoardDef | None = None,
     design_has_seg: bool = False,
     match: ConventionMatch | None = None,
+    duty: DutyMode | None = None,
 ) -> Path:
     """Write ``sim_wrapper.vhd`` to *work_dir* with placeholders substituted.
 
@@ -1679,20 +1813,26 @@ def _generate_wrapper(
 
     When *match* is given the design is board-native (U21 B3): the wrapper
     instantiates it by its native port names + fixed widths (see
-    :func:`_render_native_wrapper`).  The generic path (``match is None``) is
-    byte-for-byte unchanged.
+    :func:`_render_native_wrapper`).
+
+    *duty* selects the U9 measurement mode (default: :func:`resolve_duty_mode`).
+    In Off and Color-only mode both paths emit exactly what they emitted before
+    U9 — byte-for-byte — so measurement is a cost only when it is asked for.
     """
     out = Path(work_dir) / "sim_wrapper.vhd"
+    mode = resolve_duty_mode(duty)
     if match is not None:
-        out.write_text(_render_native_wrapper(toplevel, match, board_def))
+        out.write_text(_render_native_wrapper(toplevel, match, board_def, duty=mode))
         return out
 
     use_seg = board_def is not None and board_def.seven_seg is not None and design_has_seg
+    splice = _duty_splice(_duty_channels(mode, has_seg=use_seg))
+    led_sig = "led_int" if mode == "full" else "led"
     if use_seg:
         seg_generic = "    NUM_SEGS         : positive := 4;\n"
         seg_port = "    seg         : out std_logic_vector(8 * NUM_SEGS - 1 downto 0);\n"
         seg_generic_map = "      NUM_SEGS     => NUM_SEGS,\n"
-        seg_port_map = "      seg => seg,\n"
+        seg_port_map = f"      seg => {'seg_int' if mode == 'full' else 'seg'},\n"
     else:
         seg_generic = ""
         seg_port = ""
@@ -1705,6 +1845,8 @@ def _generate_wrapper(
         seg_port=seg_port,
         seg_generic_map=seg_generic_map,
         seg_port_map=seg_port_map,
+        led_sig=led_sig,
+        **splice,
     )
     out.write_text(content)
     return out
@@ -1777,6 +1919,7 @@ def analyze_vhdl(
     board_def: BoardDef | None = None,
     match: ConventionMatch | None = None,
     sim_path: str | None = None,
+    duty: DutyMode | None = None,
 ) -> tuple[bool, str]:
     """Analyze the user's VHDL and the generated sim_wrapper.
 
@@ -1795,6 +1938,11 @@ def analyze_vhdl(
     instantiates it by its native port names, and the step-3 default-generic
     elaboration works because the native wrapper bakes the board widths as its
     generic defaults.
+
+    *duty* pins the U9 measurement mode of the generated wrapper; left unset it
+    resolves exactly as the run path does (:func:`resolve_duty_mode`), so the
+    wrapper analyzed here is the one ``start_simulation`` goes on to elaborate
+    from this same work dir.
 
     Returns ``(ok: bool, detail: str)``.  On success *detail* is the work dir.
     """
@@ -1822,6 +1970,7 @@ def analyze_vhdl(
             board_def=board_def,
             design_has_seg=_design_has_seg,
             match=match,
+            duty=duty,
         )
         result2 = subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir, binary=sim_path),

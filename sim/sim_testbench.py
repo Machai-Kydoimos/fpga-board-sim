@@ -15,6 +15,16 @@ Each frame it:
   4. sends throttled state to the host
   5. sleeps to pace sim time to the speed target (skipped when free-running)
 
+Duty cycles (U9).  When the wrapper was generated in Full measurement mode it
+carries a VHDL integrator that accumulates each LED/segment channel's exact
+on-time; this module reads those accumulators at send time and differences two
+snapshots into a per-channel duty (``fpga_sim.sim_duty``).  Sampling ``led``
+alone could never do this -- a PWM channel strobes against any fixed sampling
+rate -- and reading at send cadence rather than per loop keeps the cost off the
+hot path.  The ports are *probed*, not assumed: the running wrapper is the
+authority on whether it measures, so an Off/Color-only run simply finds no
+accumulators and streams the binary state it always did.
+
 Send throttling.  A changed-value flood at tiny sim steps must not turn into
 thousands of pipe writes per second, yet the host must still see a fresh value
 promptly and never sit staring at a stale one.  So a send is forced whenever an
@@ -52,6 +62,7 @@ import cocotb
 from cocotb.triggers import Timer
 
 from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ, BoardDef
+from fpga_sim.sim_duty import DutyTracker
 from fpga_sim.sim_link import connect_from_env, drain, send
 
 # Loop-pacing constants.  _SPEED_DEFAULT mirrors the host slider default
@@ -88,6 +99,41 @@ def _simulator_version(sim_name: str) -> str:
         return (result.stdout or result.stderr).splitlines()[0].strip()
     except Exception:  # noqa: BLE001 - best-effort metadata only
         return "unknown"
+
+
+def _duty_ports(dut: object, prefix: str) -> tuple[object, object] | None:
+    """Return the wrapper's ``<prefix>_acc`` / ``<prefix>_tch`` accumulators, if any.
+
+    Only a Full-mode wrapper declares them (roadmap U9), so their absence is the
+    normal Off / Color-only case, not an error.
+    """
+    try:
+        return getattr(dut, f"{prefix}_acc"), getattr(dut, f"{prefix}_tch")
+    except AttributeError:
+        return None
+
+
+def _sample_duty(
+    tracker: DutyTracker,
+    ports: tuple[object, object],
+    levels: int,
+    sim_ns: int,
+    previous: list[float] | None,
+) -> list[float] | None:
+    """Per-channel duty over the window since the last sample.
+
+    Reads both accumulators with no ``await`` in between and with *levels* taken
+    from the same instant, so a channel's in-progress interval is measured
+    against the time its snapshot was taken at.  Falls back to *previous* while
+    the design is still settling (metavalues at t=0) or when no simulated time
+    has passed, rather than reporting a spurious 0%.
+    """
+    try:
+        acc = int(ports[0].value)  # type: ignore[attr-defined]
+        tch = int(ports[1].value)  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001 - X/Z before the design settles
+        return previous
+    return tracker.update(acc, tch, levels, sim_ns) or previous
 
 
 def _write_meta_sidecar(
@@ -184,6 +230,15 @@ async def bridge_sim(dut: object) -> None:
         metrics = None
 
     led_mask = (1 << max(1, num_leds)) - 1
+
+    # -- Duty measurement (U9): only a Full-mode wrapper carries accumulators --
+    led_acc_ports = _duty_ports(dut, "led")
+    seg_acc_ports = _duty_ports(dut, "seg") if seg_digits else None
+    led_tracker = DutyTracker(max(1, num_leds)) if led_acc_ports else None
+    seg_tracker = DutyTracker(8 * seg_digits) if seg_acc_ports else None
+    led_duty: list[float] | None = None
+    seg_duty: list[float] | None = None
+
     paused = False
     running = True
     input_seq = 0  # last applied host input, echoed in every state send
@@ -201,6 +256,7 @@ async def bridge_sim(dut: object) -> None:
     print(
         f"[bridge] headless sim: {num_leds} LEDs, {seg_digits} seg digits, "
         f"clock {clk_hz / 1e6:.4g} MHz, speed {speed:g}x"
+        + (", duty measured" if led_tracker is not None else "")
         + (f", FREE-RUN {bench_secs:g}s x{step_mult} step" if free_run else "")
     )
 
@@ -266,12 +322,28 @@ async def bridge_sim(dut: object) -> None:
         changed = led_val != last_led or seg_val != last_seg
         if input_dirty or elapsed >= _SEND_MAX_S or (changed and elapsed >= _SEND_MIN_S):
             total = max(1, loop_wall_ns)
+            # Accumulators are read here, not per loop: the values are still
+            # coherent with the led/seg reads above (nothing has awaited since,
+            # so no simulated time has passed) and measurement stays off the
+            # hot path -- at most one read per send, 4-50 ms apart.
+            if led_tracker is not None and led_acc_ports is not None:
+                led_duty = _sample_duty(
+                    led_tracker, led_acc_ports, led_val or 0, sim_elapsed_ns, led_duty
+                )
+            if seg_tracker is not None and seg_acc_ports is not None:
+                seg_duty = _sample_duty(
+                    seg_tracker, seg_acc_ports, seg_val or 0, sim_elapsed_ns, seg_duty
+                )
             if not send(
                 conn,
                 "state",
                 {
                     "led": led_val or 0,
                     "seg": seg_val if seg_digits else None,
+                    # 4 dp is well past the display's resolution; absent (None)
+                    # whenever the run is not measuring.
+                    "led_duty": [round(d, 4) for d in led_duty] if led_duty else None,
+                    "seg_duty": [round(d, 4) for d in seg_duty] if seg_duty else None,
                     "sim_ns": sim_elapsed_ns,
                     "steps": steps,
                     "input_seq": input_seq,
