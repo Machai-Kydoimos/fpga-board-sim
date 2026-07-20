@@ -4,12 +4,12 @@ These are the building blocks placed on the board canvas by FPGABoard.
 """
 
 import abc
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 import pygame
 
 from fpga_sim.board_loader import ComponentInfo
-from fpga_sim.ui.constants import GRAY, WHITE
+from fpga_sim.ui.constants import GRAY, WHITE, lerp_rgb
 from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.theme import THEME
 
@@ -121,40 +121,83 @@ class UIComponent(abc.ABC):
         """Human-readable label from ComponentInfo, else ``<PREFIX><index>``."""
         return self.info.display_name if self.info else f"{self._LABEL_PREFIX}{self.index}"
 
+    @property
+    def tooltip_extra(self) -> list[tuple[str, str]]:
+        """Extra ``(prefix, value)`` hover rows beyond the shared pin metadata.
+
+        Empty by default; a subclass with live state worth surfacing (an LED's
+        measured duty cycle) overrides it.
+        """
+        return []
+
     @abc.abstractmethod
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         """Render the component onto *surface*, using *font* for its label."""
 
 
+#: Perceptual gamma for duty -> brightness.  Luminance is linear in duty cycle,
+#: but perception is not: a 10%-duty LED looks clearly lit on real hardware,
+#: where a linear ramp would render it as nearly black.
+GAMMA: float = 2.2
+
+
+def _perceptual(level: float) -> float:
+    """Map a linear duty cycle in [0, 1] to a perceptual brightness fraction."""
+    return float(max(0.0, min(1.0, level)) ** (1.0 / GAMMA))
+
+
 class LED(UIComponent):
-    """A read-only indicator controlled via FPGABoard.set_led()."""
+    """A read-only indicator controlled via FPGABoard.set_led()/set_led_level().
+
+    Carries a *continuous* :attr:`level` (the measured duty cycle, U9) rather
+    than a bool, so a PWM-driven LED renders at its actual brightness.  The
+    ``state`` bool remains as a view over it, so binary callers are unaffected.
+    """
 
     _LABEL_PREFIX = "LED"
 
     def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
         """Initialize the LED with its board index and optional component metadata."""
         super().__init__(index, info)
-        self.state = False
+        self.level: float = 0.0
+
+    @property
+    def state(self) -> bool:
+        """Binary view of :attr:`level`: lit at all, or dark."""
+        return self.level > 0.0
+
+    @state.setter
+    def state(self, value: bool) -> None:
+        self.level = 1.0 if value else 0.0
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
-        """Draw the LED circle with glow effect when lit, plus its label."""
+        """Draw the LED at its current brightness, with a matching glow and label."""
         cx, cy = self.rect.center
         r = max(4, min(self.rect.width, self.rect.height) // 2 - 2)
 
-        if self.state:
+        # THEME is read here, at draw time, never captured at import (U6).
+        on_color = THEME.led_on
+        k = _perceptual(self.level)
+
+        if k > 0.0:
+            # Glow takes the LED's own color at an alpha that tracks brightness,
+            # so a dim LED gets a faint halo instead of the old fixed red one.
             glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
-            pygame.draw.circle(
-                glow, (255, 40, 40, 50), (r * 2, r * 2), r * 2
-            )  # glow halo (RGBA, one-off)
+            pygame.draw.circle(glow, (*on_color, round(50 * k)), (r * 2, r * 2), r * 2)
             surface.blit(glow, (cx - r * 2, cy - r * 2))
-            pygame.draw.circle(surface, THEME.led_on, (cx, cy), r)
-        else:
-            pygame.draw.circle(surface, THEME.led_off, (cx, cy), r)
+        pygame.draw.circle(surface, lerp_rgb(THEME.led_off, on_color, k), (cx, cy), r)
 
         pygame.draw.circle(surface, WHITE, (cx, cy), r, 1)
 
         lbl = font.render(self.label, True, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
+
+    @property
+    def tooltip_extra(self) -> list[tuple[str, str]]:
+        """Hover rows for the measured duty cycle (U9), once it is not binary."""
+        if self.level in (0.0, 1.0):
+            return []
+        return [("Duty", f"{self.level * 100:.1f}%")]
 
 
 class Switch(UIComponent):
@@ -257,15 +300,30 @@ class SevenSeg:
         self.index = index
         self.has_dp = has_dp
         self.bits: int = 0
+        #: Per-segment duty cycle, indexed by :data:`_BIT` (U9).  Segments are
+        #: LEDs, so a time-multiplexed or PWM-driven digit renders at its real
+        #: brightness rather than snapping to fully-on/fully-off.
+        self.levels: list[float] = [0.0] * 8
         self.rect = pygame.Rect(0, 0, 48, 76)
 
     def set_bits(self, value8: int) -> None:
-        """Set from an 8-bit value {dp,g,f,e,d,c,b,a}, active-high."""
+        """Set from an 8-bit value {dp,g,f,e,d,c,b,a}, active-high (fully on or off)."""
         self.bits = value8 & 0xFF
+        self.levels = [1.0 if self.bits & (1 << i) else 0.0 for i in range(8)]
+
+    def set_levels(self, levels: Sequence[float]) -> None:
+        """Set per-segment duty cycles, ordered like :data:`_BIT` (``a`` lowest).
+
+        ``bits`` follows along as the binary view (any lit segment reads as on),
+        so callers that only care whether a segment is active keep working.
+        """
+        self.levels = [max(0.0, min(1.0, v)) for v in levels[:8]]
+        self.levels += [0.0] * (8 - len(self.levels))
+        self.bits = sum(1 << i for i, v in enumerate(self.levels) if v > 0.0)
 
     def _seg(self, name: str) -> bool:
-        """Return True when the named segment is active in the current bit pattern."""
-        return bool(self.bits & (1 << self._BIT[name]))
+        """Return True when the named segment is lit at all."""
+        return self.levels[self._BIT[name]] > 0.0
 
     def draw(self, surface: pygame.Surface) -> None:
         """Draw the digit onto *surface* using the current bit pattern."""
@@ -280,7 +338,8 @@ class SevenSeg:
         pygame.draw.rect(surface, THEME.seg_bezel, self.rect, width=1, border_radius=3)
 
         def color(n: str) -> tuple[int, int, int]:
-            return THEME.seg_on if self._seg(n) else THEME.seg_off
+            # THEME read at draw time (U6); same perceptual ramp as the LEDs.
+            return lerp_rgb(THEME.seg_off, THEME.seg_on, _perceptual(self.levels[self._BIT[n]]))
 
         def hrect(x: int, y: int, w: int, h: int, n: str) -> None:
             c = color(n)

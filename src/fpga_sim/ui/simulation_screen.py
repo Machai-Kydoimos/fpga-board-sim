@@ -16,6 +16,7 @@ these per launch, calls :meth:`run`, then :func:`~fpga_sim.sim_bridge.finish_wav
 
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,6 +44,12 @@ if TYPE_CHECKING:
 #: Seconds to wait for the child's connection before giving up (NVC / Windows
 #: headroom); a spinner overlay is shown meanwhile.
 _STARTUP_TIMEOUT_S: float = 90.0
+
+#: Persistence-of-vision time constant for duty -> brightness (U9), in wall
+#: seconds.  Roughly the eye's own lag, so a PWM that is slow relative to the
+#: simulation rate reads as a smooth fade rather than a strobe.  The measured
+#: duty itself is exact; this only shapes how it is displayed.
+_POV_TAU_S: float = 0.1
 
 
 @dataclass
@@ -145,6 +152,9 @@ class SimulationScreen:
         # ── Live loop state ──────────────────────────────────────────────────
         self._connected = False
         self._last_state: dict[str, Any] = {}
+        # Persistence-of-vision smoothing state, keyed "led" / "seg" (U9).
+        self._ema: dict[str, list[float]] = {}
+        self._ema_t = time.monotonic()
         self._bye: dict[str, Any] | None = None
         self._input_seq = 0
         self._show_panel = False
@@ -300,13 +310,59 @@ class SimulationScreen:
         self._apply_state()
         return None
 
+    def _smooth(self, key: str, targets: list[float], dt_s: float) -> list[float]:
+        """Ease *targets* toward the display with a persistence-of-vision filter.
+
+        The duty cycles arriving from the child are already exact; this is the
+        eye's own lag, not a correction — without it a channel whose PWM is slow
+        relative to the simulation rate would strobe distractingly between
+        sends.  A wall-clock time constant (not a per-frame factor) keeps the
+        decay identical whatever the frame rate, and the first sample snaps so
+        the board never fades up from black at startup.
+        """
+        prev = self._ema.get(key)
+        if prev is None or len(prev) != len(targets):
+            self._ema[key] = list(targets)
+            return targets
+        alpha = 1.0 - math.exp(-max(0.0, dt_s) / _POV_TAU_S)
+        smoothed = [p + (t - p) * alpha for p, t in zip(prev, targets, strict=True)]
+        self._ema[key] = smoothed
+        return smoothed
+
     def _apply_state(self) -> None:
-        """Reflect the latest child state onto the board LEDs / 7-seg."""
+        """Reflect the latest child state onto the board LEDs / 7-seg.
+
+        Uses the measured per-channel duty cycles (U9) when the run is
+        measuring, and falls back to the binary bits when it is not — so an
+        Off/Color-only run renders exactly as it always did.
+        """
+        now = time.monotonic()
+        dt_s = now - self._ema_t
+        self._ema_t = now
+
         led = int(self._last_state.get("led", 0) or 0)
-        for i in range(len(self.board.leds)):
-            self.board.set_led(i, bool(led & (1 << i)))
+        led_duty = self._last_state.get("led_duty")
+        n_leds = len(self.board.leds)
+        if led_duty:
+            targets = [float(led_duty[i]) if i < len(led_duty) else 0.0 for i in range(n_leds)]
+        else:
+            targets = [float(bool(led & (1 << i))) for i in range(n_leds)]
+        for i, level in enumerate(self._smooth("led", targets, dt_s)):
+            self.board.set_led_level(i, level)
+
         seg = self._last_state.get("seg")
-        if seg is not None:
+        if seg is None:
+            return
+        seg_duty = self._last_state.get("seg_duty")
+        if seg_duty:
+            seg_targets = [
+                float(seg_duty[i]) if i < len(seg_duty) else 0.0
+                for i in range(8 * self._seg_digits)
+            ]
+            levels = self._smooth("seg", seg_targets, dt_s)
+            for i in range(self._seg_digits):
+                self.board.set_seg_levels(i, levels[8 * i : 8 * i + 8])
+        else:
             for i in range(self._seg_digits):
                 self.board.set_seg(i, (int(seg) >> (8 * i)) & 0xFF)
 

@@ -326,14 +326,23 @@ async def bridge_sim(dut: object) -> None:
             # coherent with the led/seg reads above (nothing has awaited since,
             # so no simulated time has passed) and measurement stays off the
             # hot path -- at most one read per send, 4-50 ms apart.
-            if led_tracker is not None and led_acc_ports is not None:
-                led_duty = _sample_duty(
-                    led_tracker, led_acc_ports, led_val or 0, sim_elapsed_ns, led_duty
-                )
-            if seg_tracker is not None and seg_acc_ports is not None:
-                seg_duty = _sample_duty(
-                    seg_tracker, seg_acc_ports, seg_val or 0, sim_elapsed_ns, seg_duty
-                )
+            #
+            # While paused the step shrinks to 1 ns, so a window between sends
+            # spans a few nanoseconds -- less than a clock period, over which
+            # every channel is unambiguously high or low and duty would collapse
+            # to 0% or 100%.  Pause is an *observation* control, so it must not
+            # change what the board looks like: hold the last measured duty
+            # instead.  The tracker is left un-advanced, so the first window
+            # after resuming simply spans the pause too and stays exact.
+            if not paused:
+                if led_tracker is not None and led_acc_ports is not None:
+                    led_duty = _sample_duty(
+                        led_tracker, led_acc_ports, led_val or 0, sim_elapsed_ns, led_duty
+                    )
+                if seg_tracker is not None and seg_acc_ports is not None:
+                    seg_duty = _sample_duty(
+                        seg_tracker, seg_acc_ports, seg_val or 0, sim_elapsed_ns, seg_duty
+                    )
             if not send(
                 conn,
                 "state",

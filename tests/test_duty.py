@@ -285,6 +285,74 @@ def _run_probe(simulator, backend, binary_fixture):
     )
 
 
+def _probe_board():
+    """A board wide enough for duty_probe's channels (8 LEDs, 4 switches)."""
+    from fpga_sim.board_loader import BoardDef, ComponentInfo
+
+    return BoardDef(
+        name="Duty Probe Board",
+        class_name="DutyProbeBoard",
+        leds=[ComponentInfo("led", "led", i, []) for i in range(8)],
+        switches=[ComponentInfo("switch", "switch", i, []) for i in range(4)],
+        buttons=[ComponentInfo("button", "button", i, []) for i in range(4)],
+    )
+
+
+@pytest.mark.slow
+def test_pause_holds_the_measured_duty(ghdl):
+    """Pausing must not change rendered brightness.
+
+    Pause is an *observation* control: it exists so the board can be inspected,
+    so it must not alter what the board looks like.  While paused the child's
+    step shrinks to 1 ns, so a naive implementation measures duty over a window
+    shorter than a clock period -- every channel reads unambiguously high or low
+    and a 50%-duty LED snaps to fully on or fully off, which is exactly the
+    sampling artifact this whole card exists to remove.
+    """
+    import time
+
+    from fpga_sim.controller import build_generics
+    from fpga_sim.sim_bridge import start_simulation
+    from fpga_sim.sim_link import drain, send
+
+    board = _probe_board()
+    child = start_simulation(
+        board.to_json(),
+        DUTY_PROBE,
+        "duty_probe",
+        build_generics(board),
+        simulator="ghdl",
+        board_def=board,
+        speed_factor=1.0,
+    )
+    try:
+        assert child.link.wait_connected(60), "sim child never connected"
+
+        def collect(secs: float) -> list[float]:
+            """LED 3's duty (a steady 50% at a 100-clock period) over *secs*."""
+            out: list[float] = []
+            end = time.monotonic() + secs
+            while time.monotonic() < end:
+                for kind, payload in drain(child.link.conn):
+                    if kind == "state" and payload.get("led_duty"):
+                        out.append(float(payload["led_duty"][3]))
+                time.sleep(0.02)
+            return out
+
+        running = collect(1.5)
+        assert running, "no duty samples while running"
+        assert 0.4 < running[-1] < 0.6, f"50% channel measured {running[-1]} while running"
+
+        send(child.link.conn, "pause", {"on": True})
+        time.sleep(0.3)  # let the pause take effect before sampling
+        paused = collect(1.5)
+        assert paused, "no state messages while paused"
+        assert set(paused) == {paused[0]}, f"duty moved while paused: {sorted(set(paused))}"
+        assert 0.4 < paused[0] < 0.6, f"duty collapsed to {paused[0]} while paused"
+    finally:
+        child.stop()
+
+
 @pytest.mark.slow
 def test_measured_duty_matches_ground_truth_ghdl(ghdl):
     """Measured duty matches duty_probe's known channels under GHDL."""
