@@ -631,7 +631,8 @@ naming is ambiguous for flat VHDL ports; skip)
    `last_t` scheme** (double-count) and drove the redesign (per-channel + `T_on`, the
    measurement-mode policy, FIX-NS-PC default). acc/tch exact, 2.303 s overflow-safe,
    metavalue-clean, ports readable everywhere — all confirmed.
-2. **Census re-run** (script in §7) + serial-impostor sweep; commit results to §7. ⏳ **pending.**
+2. **Census re-run** (script in §7) + serial-impostor sweep — ✅ **DONE 2026-07-20**; results
+   in §7 (found 3 `rgb_led` with pins ≠ 3 — the `is_rgb` len==3 gate is load-bearing).
 3. **Benchmark baseline capture** for §2.8 (before-numbers on today's `main`). ⏳ **partly done**
    — phase 0 measured baseline-vs-integrator *offline* (pure-VHDL, §2.9), but the real
    `--benchmark` path baseline is still to capture at U9 PR-1.
@@ -668,6 +669,21 @@ ECPIX-5 (4 RGB, RGB-only), Fomu (RGB), Cmod A7 (2 mono + 1 RGB), DE2-115
 proves it), UPduino v1 / iCESugar / iCE40-UP5K-B-EVN (`led_r/g/b` scalar-trio = RGB in
 disguise → reclassify), `versa_ecp5` (`alnum_led` — leave as labeled mono; future
 seg-family card), `mister` (`power_led`/`disk_led` — plain mono banks).
+
+**Phase-0 re-run + serial-impostor sweep (2026-07-19/20, 282 JSONs):** counts confirmed
+(67 RGB, 21 multi-name). The "all 3 pins" assumption was **wrong** — the exhaustive check
+found **3 `rgb_led` with pins ≠ 3** (the §3.3 serial-impostor case): `colorlight_i9plus`
+(1 pin `T3`) and `sipeed_tang_nano_20k` (1 pin `79`) are single-data-line addressable LEDs
+(WS2812-style) → route to `peripherals` (P5), **not** analog 3-channel RGB; and
+`modretro_chromatic` (4 pins `B5/A6/A7/B6`) is RGBW-or-odd → needs a registry decision, not
+the B3 3-channel expansion. This makes U36/U37's **`is_rgb` `len(pins) == 3` gate (§4.1)
+load-bearing, not defensive** — those 3 boards are exactly what it must exclude. No
+`ws2812`/`neopixel`/`apa102`/`sk6812`-*named* resources exist (the impostors hide as 1-pin
+`rgb_led`), so name-matching alone would misclassify them. Multi-name banks the planning
+notables missed (all plain labeled mono): `litefury`/`nitefury_ii` (`m2led`),
+`limesdr_mini_v2` (`led_g_n`/`led_r_n`, active-low), `alibaba_xcku3p` (`sfp_led`),
+`sipeed_tang_mega_138k_pro` (`led_done`/`led_ready`), `ocp_tap_timecard` (`som_led`),
+`trenz_c10lprefkit` (`gpio_leds`), `puzhi_pz_a7xxt_kfb` (`module_led`).
 
 ---
 
