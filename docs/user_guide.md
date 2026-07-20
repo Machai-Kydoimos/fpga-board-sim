@@ -94,6 +94,10 @@ width and no aliasing. Two consequences are worth knowing:
 - **Hovering an LED shows its exact duty** (`Duty 73.2%`) alongside the net and
   pin, whenever it is something other than plainly on or off.
 
+**[PAUSE] holds brightness.** Pausing freezes the board exactly as it looked,
+and resuming carries on as though you had not paused — pause is there so you can
+inspect the board, so it must not change what the board shows.
+
 Measurement costs almost nothing on designs whose LEDs change at human-visible
 rates. A channel that toggles on *every clock* is the expensive case — the
 6-digit hex odometer in `counter_7seg.vhd` is one — so if you want that run at

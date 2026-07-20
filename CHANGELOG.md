@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tracks brightness instead of a fixed red. A wall-clock persistence-of-vision
   filter (τ = 0.1 s) smooths the display only; the duty itself stays exact.
   Hovering an LED shows its duty (`Duty 73.2%`) when it is not plainly on or off.
+  **[PAUSE] holds brightness** rather than changing it: while paused the
+  simulation step shrinks to 1 ns, so measuring across it would average over less
+  than a clock period and snap every channel to 0% or 100% — pause is an
+  observation control and must not alter what the board shows.
 - **`hdl/blinky_pwm.vhd` re-tapped so its breathing is actually visible.** The
   envelope now comes from four bits lower in the counter, putting a full breath
   at ~8 wall-seconds on GHDL-mcode and ~1 on NVC, instead of the ~2 minutes the
