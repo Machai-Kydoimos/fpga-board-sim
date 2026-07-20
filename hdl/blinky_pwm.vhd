@@ -10,9 +10,15 @@
 --   The falling half is the bitwise complement of the ascending ramp, which
 --   equals (255 - ramp) for 8-bit values  -- a perfect mirror image.
 --
--- Breathing period = 2^(COUNTER_BITS + 8) clocks.
--- At 100 MHz, COUNTER_BITS = 24 -> one full breath every ~43 seconds.
--- Reduce COUNTER_BITS (e.g. 16) for a faster breath (~167 ms).
+-- Breathing period = 2^(COUNTER_BITS + 4) clocks.
+-- At 100 MHz, COUNTER_BITS = 24 -> one full breath every ~2.7 seconds.
+--
+-- The envelope is tapped four bits below the top of the counter rather than at
+-- the very top, because the simulator runs far below real time: the visible
+-- rate has to be derived from bits that turn over quickly enough to watch.  At
+-- the COUNTER_BITS = 17 the simulator passes, a breath is 2^21 clocks = 21 ms
+-- of simulated time, which lands at roughly 8 wall-seconds on GHDL-mcode and
+-- about 1 on NVC.  Real hardware would tap higher and use the full default.
 --
 -- sw(i)  : '1' enables LED i to breathe; '0' keeps it dark
 -- btn(*) : any button held snaps all LEDs to full brightness
@@ -42,7 +48,7 @@ end entity blinky_pwm;
 architecture rtl of blinky_pwm is
 
   -- Wide counter: bits [7:0] = PWM sawtooth; upper bits = envelope
-  signal counter : unsigned(COUNTER_BITS + 7 downto 0) := (others => '0');
+  signal counter : unsigned(COUNTER_BITS + 3 downto 0) := (others => '0');
 
   -- 8-bit brightness from triangle-wave envelope
   signal envelope : unsigned(7 downto 0);
@@ -58,12 +64,12 @@ begin
   end process count_proc;
 
   -- Triangle-wave envelope.
-  -- The 8 envelope bits are counter[COUNTER_BITS+6 : COUNTER_BITS-1].
-  -- The MSB of the full counter (bit COUNTER_BITS+7) selects ascending vs.
+  -- The 8 envelope bits are counter[COUNTER_BITS+2 : COUNTER_BITS-5].
+  -- The MSB of the full counter (bit COUNTER_BITS+3) selects ascending vs.
   -- descending: NOT of the ascending ramp gives the descending mirror.
-  envelope <= counter(COUNTER_BITS + 6 downto COUNTER_BITS - 1)
-              when counter(COUNTER_BITS + 7) = '0'
-              else not counter(COUNTER_BITS + 6 downto COUNTER_BITS - 1);
+  envelope <= counter(COUNTER_BITS + 2 downto COUNTER_BITS - 5)
+              when counter(COUNTER_BITS + 3) = '0'
+              else not counter(COUNTER_BITS + 2 downto COUNTER_BITS - 5);
 
   -- LED output: PWM comparison.
   -- LED(i) is on while the 8-bit PWM sawtooth (counter[7:0]) is less than
