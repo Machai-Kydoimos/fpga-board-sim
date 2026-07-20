@@ -1,6 +1,8 @@
 # LED-complete arc plan — U9 · U36 · U37 · U38
 
-**Status:** planned 2026-07-18 (planning session on `main` @ `98798fe`, v0.16.0); not started.
+**Status:** planned 2026-07-18 (planning session, v0.16.0); **phase-0 integrator spike done
+2026-07-19** — it de-risked *and revised* the §2.2/§2.3 design (see §2.9 Phase-0 results);
+census (§6.2) + real `--benchmark` baseline (§6.3) still pending; U9 PR-1 not yet started.
 **Executor:** a future Claude session ("you"). This document is written to be executed without
 the planning conversation. Every repo claim below was verified by reading the code at the
 commit above; re-verify anchors cheaply before building on them (files move).
@@ -35,21 +37,42 @@ generated `sim_wrapper`** as an event-driven VHDL time integrator — exact, nat
 zero Python callbacks, identical for the generic and native paths, and it covers `seg`
 for free.
 
-## 0a. Locked decisions (adopted by Rick, 2026-07-18)
+## 0a. Locked decisions (adopted by Rick, 2026-07-18; decisions 1-3 + 9 revised 2026-07-19 after phase 0)
 
-1. **Measurement = VHDL integrator in the wrapper** (not static analysis, not sampling,
-   not Python `Edge` callbacks — see §2 rationale).
-2. **RGB boundary model = "B3"**: RGB channels live in the existing `led` vector
+1. **Measurement = per-channel event-driven VHDL integrator in the wrapper**, spliced at
+   generation time. NOT static analysis, NOT sampling, NOT Python `Edge` callbacks, and NOT
+   the shared-`last_t` / clocked schemes phase 0 falsified (§2.1, §2.9). The integrator body
+   is one **swappable splice fragment** so the algorithm can change — or be omitted — without
+   re-plumbing.
+2. **Measurement is a per-run policy, not a fixed cost.** The wrapper is generated in one of
+   three modes: **Off** (no integrator; zero overhead; today's binary path), **Color-only**
+   (no integrator; U36/U37 colors on binary channels; still zero measurement cost), **Full**
+   (integrator spliced → dimming + PWM color mixing). Default = **Full** for the brightness
+   release, opt-out to Off/Color-only. Colors and brightness are separable — only dimming /
+   PWM-mixing needs the integrator, so "colors, no dimming" is a zero-cost path.
+3. **Default algorithm = FIX-NS-PC** (nanosecond on-time, one per-channel event process, host
+   `T_on` differencing). Phase 0 measured it **+0-3% mcode** on the common case (blinky/pwm/
+   mx65) — no per-cycle work. The cycle-unit alternative **CYC-EVT-PC** stays documented and
+   `--duty-algo`-selectable (it is exact under a mid-run clock-frequency change, where FIX-NS
+   shows a rare EMA-smoothed transient), but is **not** the default: its shared per-cycle
+   counter taxes every design +17-108%.
+4. **RGB boundary model = "B3"**: RGB channels live in the existing `led` vector
    (mono block low, `(r,g,b)` triples high), plus an *optional* `NUM_RGB_LEDS : natural := 0`
    generic. No new port. `NUM_LEDS` becomes **channel count** (Arty A7: 8 → 16).
    Rejected: a separate `rgb` port (goes dark for every existing design on RGB-only boards
    like Cora Z7 / ECPIX-5 / Fomu — a regression).
-3. **Two releases**: v0.17.0 = U9+U36, v0.18.0 = U37+U38. Each card independently shippable.
-4. **Unknown LED color ⇒ theme fallback** (`THEME.led_on`, exactly today's look). Colors
+5. **Two releases**: v0.17.0 = U9+U36, v0.18.0 = U37+U38. Each card independently shippable.
+6. **Unknown LED color ⇒ theme fallback** (`THEME.led_on`, exactly today's look). Colors
    change only where we have real, cited data. No guessed defaults across 278 boards.
-5. **7-seg brightness ships with U9** (same duty machinery; segments are LEDs).
-6. Rendering default = realistic (color + brightness); **global debug toggle** swaps RGB
+7. **7-seg brightness ships with U9** (same duty machinery; segments are LEDs).
+8. Rendering default = realistic (color + brightness); **global debug toggle** swaps RGB
    pucks for per-channel bars (U38). Tooltips always show exact duty %.
+9. **Fast-spin displays are a known, deferred cost.** A channel that toggles every clock
+   (e.g. `counter_7seg`'s digit 0 = `counter(3:0)`, an invisible 6 MHz blur) makes *any*
+   exact integrator pay a per-cycle wake (phase 0 measured +263-682%), so the §2.8 ≤3% gate
+   is unachievable there by construction. Accepted for now (it is opt-in and renders an honest
+   dim blur); the real fix — a launch-time probe that **excludes per-cycle channels from
+   measurement** — is deferred to a follow-up card (§2.10).
 
 ## 0b. Workflow guardrails (non-negotiable, from CLAUDE.md + project memory)
 
@@ -117,100 +140,121 @@ speed setting fuses it. No thresholds or design-dependent guesses anywhere.
   events/sim-s; at NVC's 0.027× that's ~21k Python wakeups/wall-s ≈ tens of % slowdown
   on the fastest backend, on the flagship demo. Disqualified.
 - **Clocked VHDL counters** (`if led(i)='1' then cnt := cnt+1` every clk edge): correct
-  but pays every cycle on every design, including the 90% whose LEDs are near-static.
-  The event-driven integrator below costs ~nothing when LEDs are static and ~ns per event
-  when they are not.
+  but pays O(channels) every cycle on every design. Phase 0 measured this ("CYC-CLK") at
+  **+100% to +1968%** overhead on real designs — untenable; falsified and dropped. The
+  **per-channel event-driven** integrator below costs ~nothing when LEDs are static and
+  O(1) per transition otherwise (measured +0-3% on the common case).
 
-### 2.2 The integrator (spliced into BOTH wrapper variants)
+Phase 0 built all of these (plus the ns/cycle × single/per-channel matrix) as real wrappers
+and A/B/C/D-tested them on all four backends — **and falsified the original §2.2/§2.3
+shared-`last_t` scheme itself** (it double-counts a currently-ON channel that toggled before
+a faster sibling → renders a 60%-duty LED as 100%). §2.2/§2.3 below are the corrected design;
+§2.9 records the evidence.
 
-Add to the generic template (`sim/sim_wrapper_template.vhd`) and the native renderer
-(`_render_native_wrapper`) an identical block. Prerequisites in the generic template:
-add `use ieee.numeric_std.all;`, and introduce an internal signal so the monitored value
-is a plain signal in both variants (2008 allows reading out-ports, but the internal
-signal keeps the two paths uniform and sidesteps simulator quirks):
+### 2.2 The integrator — FIX-NS-PC (the Full-mode splice)
+
+Spliced into the generic template (`sim/sim_wrapper_template.vhd`) and the native renderer
+(`_render_native_wrapper`) **only when mode = Full** (decision 2); Off/Color-only splice
+nothing → the generated wrapper is byte-identical to today's (zero overhead). Keep the
+integrator body as **one named fragment** so `--duty-algo` can swap it (the CYC-EVT-PC
+alternative below, future variants, the §2.10 blur-exclude) without touching the plumbing.
+
+Full-mode prerequisites: add `use ieee.numeric_std.all;`, and route the monitored output
+through an internal signal so both wrapper paths are uniform:
 
 - generic path: uut port-maps `led => led_int`; concurrent `led <= led_int;`
 - native path: the existing `led <= resize(...)` assignment becomes
   `led_int <= std_logic_vector(resize(...)); led <= led_int;`
 - same treatment for `seg` (`seg_int`) when the seg port is present.
 
-New **output ports** on `sim_wrapper` (ports, not internal signals — guaranteed visible
-to cocotb on every backend, no VPI-hierarchy risk):
+New **output ports** on `sim_wrapper` (ports, not internal signals — guaranteed visible to
+cocotb on every backend; phase 0 confirmed readability on all four):
 
 ```vhdl
-led_acc : out std_logic_vector(48 * NUM_LEDS - 1 downto 0);  -- per-channel on-time, ns
+led_acc : out std_logic_vector(48 * NUM_LEDS - 1 downto 0);  -- per-channel on-time [0, tch], ns
 led_tch : out std_logic_vector(48 * NUM_LEDS - 1 downto 0);  -- per-channel last-change time, ns
--- and, only when the seg port exists:
-seg_acc : out std_logic_vector(48 * (8 * NUM_SEGS) - 1 downto 0);
-seg_tch : out std_logic_vector(48 * (8 * NUM_SEGS) - 1 downto 0);
+-- and, only when the seg port exists, seg_acc / seg_tch over 8*NUM_SEGS channels.
 ```
 
-One process per monitored vector, sensitive to **the vector only** (not the clock).
-Normative sketch (validate in phase 0; adjust syntax, keep the semantics):
+**One event process PER channel** (a generate loop), each sensitive to *its own bit only*
+→ O(1) per transition, asleep when the channel is static (this is why it is free on the
+common case; a single vector-sensitive process would rescan every channel per event).
+Validated exact on all four backends in phase 0:
 
 ```vhdl
 type u48_array is array (natural range <>) of unsigned(47 downto 0);
-
-duty_led : process (led_int)
-  constant NS_PER_SEC : unsigned(29 downto 0) := to_unsigned(1_000_000_000, 30);
-  variable last_v : std_logic_vector(NUM_LEDS - 1 downto 0) := (others => '0');
-  variable last_t : time := 0 fs;
-  variable acc    : u48_array(0 to NUM_LEDS - 1) := (others => (others => '0'));
-  variable secs, rem_ns : natural;
-  variable d_ns, now_ns : unsigned(47 downto 0);
-begin
-  -- CRITICAL: VHDL INTEGER is 32-bit. `delta / 1 ns` overflows past 2.147 s of
-  -- sim time (a static LED across a long benchmark WILL hit this). Decompose:
-  secs   := (now - last_t) / 1 sec;                       -- safe (< 2**31)
-  rem_ns := ((now - last_t) - secs * 1 sec) / 1 ns;       -- < 1e9, safe
-  d_ns   := resize(to_unsigned(secs, 31) * NS_PER_SEC, 48) + to_unsigned(rem_ns, 48);
-  secs   := now / 1 sec;
-  rem_ns := (now - secs * 1 sec) / 1 ns;
-  now_ns := resize(to_unsigned(secs, 31) * NS_PER_SEC, 48) + to_unsigned(rem_ns, 48);
-  for i in 0 to NUM_LEDS - 1 loop
-    if to_x01(last_v(i)) = '1' then
-      acc(i) := acc(i) + d_ns;              -- wraps mod 2**48; host uses modular deltas
+...
+per_channel : for i in 0 to NUM_LEDS - 1 generate
+  acc_i : process(led_int(i))
+    constant NS_PER_SEC : unsigned(29 downto 0) := to_unsigned(1_000_000_000, 30);
+    variable last_v : std_logic := 'U';                          -- 'U' -> first value stamps tch cleanly
+    variable on_ns  : unsigned(47 downto 0) := (others => '0');  -- on-time over [0, t_chg]
+    variable t_chg  : unsigned(47 downto 0) := (others => '0');  -- ns of last change
+    variable secs, rem_ns : natural;
+    variable nns : unsigned(47 downto 0);
+  begin
+    -- now_ns via decomposition: VHDL INTEGER is 32-bit, so `now / 1 ns` overflows past
+    -- 2.147 s. Split into whole seconds + sub-second ns (both < 2**31). Phase 0 proved
+    -- this exact at now = 2.303 s.
+    secs   := now / 1 sec;
+    rem_ns := (now - secs * 1 sec) / 1 ns;
+    nns    := resize(to_unsigned(secs, 31) * NS_PER_SEC, 48) + to_unsigned(rem_ns, 48);
+    if led_int(i) /= last_v then                       -- this channel changed
+      if to_x01(last_v) = '1' then                     -- the interval that just ended was ON
+        on_ns := on_ns + (nns - t_chg);                -- 48-bit subtract; NO per-event /1 ns
+      end if;
+      t_chg := nns;
+      led_tch((i + 1) * 48 - 1 downto i * 48) <= std_logic_vector(nns);
     end if;
-    if led_int(i) /= last_v(i) then
-      led_tch((i + 1) * 48 - 1 downto i * 48) <= std_logic_vector(now_ns);
-    end if;
-    led_acc((i + 1) * 48 - 1 downto i * 48) <= std_logic_vector(acc(i));
-  end loop;
-  last_v := led_int;
-  last_t := now;
-end process;
+    led_acc((i + 1) * 48 - 1 downto i * 48) <= std_logic_vector(on_ns);
+    last_v := led_int(i);
+  end process;
+end generate;
 ```
 
-Semantics: `acc(i)` = completed on-time in ns (metavalues count as off via `to_x01`);
-`tch(i)` = sim-ns of the channel's last value change. Delta-cycle glitches integrate to
-zero width. Sub-ns truncation ≤1 ns/event (≤0.1% duty error at worst-case event rates
-— acceptable, documented). Processes execute once at t=0, initializing cleanly.
+Invariants (any settled instant, channel *i*): `t_chg` = ns of the channel's most recent
+change (0 if never); `on_ns` = total on-time over `[0, t_chg]` — the in-progress interval
+past `t_chg` is folded in only when it ends (at the next transition), and the host adds it
+back (§2.3). Metavalues count as off (`to_x01`); `last_v := 'U'` makes the first real value
+register as a change so `tch` is written cleanly (no `'U'` left for the host `int()` read).
+Delta-cycle glitches integrate to zero (`nns - t_chg = 0` at the same `now`). No shared
+`last_t`, so a fast sibling can never perturb this channel's accumulation — the double-count
+of the old scheme is structurally impossible.
 
-### 2.3 Child-side duty math (`sim/sim_testbench.py`)
+> **CYC-EVT-PC alternative** (selectable, not default — decision 3): the same per-channel
+> structure but in **clock-cycle** units — one shared free-running cycle counter (`cy_tot`,
+> incremented in a clocked process, exposed as a port and read by each channel to stamp
+> `t_chg` in cycles), with `on_ns`→`on_cyc` a cycle subtract. Cycle-exact under a mid-run
+> frequency change; costs a fixed per-cycle counter tax (+17-108%). Host math is the cycle
+> analogue of §2.3 (`Δon_cyc / Δcy_tot`).
 
-Read `led_acc`/`led_tch` (and seg twins) **only when about to send** (4–50 ms cadence,
-not every loop), in the same loop iteration as the existing `dut.led` read so bits and
+### 2.3 Child-side duty math (`sim/sim_testbench.py`) — `T_on` differencing
+
+Read `led_acc`/`led_tch` (and seg twins) **only when about to send** (4–50 ms cadence, not
+every loop), in the same loop iteration as the existing `dut.led` read so bits and
 accumulators are mutually coherent (no `await` between reads; an event exactly at the
-boundary instant lands wholly in the next window). Guard reads with the same
-`try/except` as the existing led read (X at t=0).
+boundary lands wholly in one window). Guard reads with the same `try/except` as the led
+read (X at t=0).
 
-Per send, with `t1 = sim_elapsed_ns`, `t0 = sim-ns of previous send`:
+Keep, per channel, `prev_ton_i` from the previous send. Per send, `t1 = sim_elapsed_ns`,
+`t0 = sim-ns of previous send`:
 
 ```text
-window = t1 - t0                       # 0 when paused → resend previous duties
-raw_i  = (acc_i - prev_acc_i) mod 2**48
-if bit_i == 1:                         # instantaneous bit from the existing read
-    raw_i += t1 - max(tch_i, t0)       # in-progress on-interval correction
-duty_i = min(1.0, raw_i / window)
+T_on_i = acc_i + (t1 - tch_i  if bit_i == 1  else 0)   # exact on-time [0, t1], per channel
+window = t1 - t0                                        # 0 when paused -> resend previous
+duty_i = clamp01( ((T_on_i - prev_ton_i) mod 2**48) / window )
+prev_ton_i = T_on_i
 ```
 
-The correction term is what makes free-running accumulators exact: a channel stuck ON
-across the whole window has `raw = 0 + (t1 - t0)` → duty 1.0; stuck OFF → 0.0; a channel
-currently ON mid-interval gets its partial interval added. Without it, stuck-ON channels
-would read 0 — **write a test for exactly this case.**
+`T_on_i(t)` is *by construction* the exact on-time over `[0,t]`: `acc_i` covers `[0,tch_i]`,
+the in-progress term covers `[tch_i,t]` when currently on. So differencing two snapshots
+gives the exact window on-time — no `max()`, no correction term to double-count (that was
+the falsified §2.3; see §2.9). Stuck-ON reads 1.0 (never transitions → `acc=0`, in-progress
+= `t1 - tch`), stuck-OFF 0.0, a currently-ON partial channel its exact tail. `mod 2**48`
+makes it wrap-proof (window ≪ 2**48 ns). Clamp only for rounding safety.
 
 State message gains (keep the existing `led`/`seg` ints untouched — tests and binary
-consumers rely on them):
+consumers rely on them; both `*_duty` keys are **absent/None in Off & Color-only modes**):
 
 ```text
 "led_duty": [round(f, 4), ...],        # len == NUM_LEDS, 0.0-1.0
@@ -257,32 +301,77 @@ wrapper + child + demos + docs. It ships alone and already fixes "PWM designs lo
   so a full breath lands ≤ ~10 s wall on mcode at default speed, ~1-2 s on NVC. Keep the
   8-bit sawtooth in `counter(7 downto 0)` (2.56 µs period — deliberately fast-vs-window).
   Update the header comment's math. Acceptance: visible smooth breathing on mcode + NVC.
-- **New `hdl/duty_probe.vhd`** (test fixture, generic contract): channels with exact
-  static duties — e.g. led(0) stuck '0', led(1) stuck '1', led(2) 25% @ 256-clk period,
-  led(3) 50% @ a *non-power-of-two* period (aliasing regression), plus sw-gating so a
-  test can flip a channel mid-run. Not surfaced in the picker? It's in `hdl/` so it will
-  appear — either name it clearly as a test fixture or park it under `sim/` next to the
-  testbench and reference by path in tests (preferred: `sim/duty_probe.vhd`, mirroring
-  `sim_wrapper_template.vhd` placement; the picker lists `hdl/`).
+- **`sim/duty_probe.vhd`** (test fixture, generic contract; **created in phase 0**, parked
+  under `sim/` so the picker — which lists `hdl/` — never shows it): led(0) stuck '0', led(1)
+  stuck '1', led(2) 25% @ 256-clk period (sw(1)-gated), led(3) 50% @ a non-power-of-two
+  100-clk period (aliasing regression), led(4) = sw(0) (combinational gate: mid-run flip,
+  partial-tail double-count, long-gap overflow), led(5+) '0'. Requires NUM_LEDS ≥ 5,
+  NUM_SWITCHES ≥ 2.
 - **New `sim/test_duty.py`** (cocotb, both backends in CI like the other slow tests):
-  elaborate the wrapper around `duty_probe`, read acc/tch ports directly, assert:
-  window duty within ±1% for the static-duty channels; **stuck-ON and stuck-OFF exact**
-  (the correction-term case); duty tracks a mid-run gate flip; accumulators survive a
-  >2.2 s sim-time static gap (the INTEGER-overflow trap — run one long window);
-  wrap-around arithmetic sanity (can be a host-side unit test with synthetic values).
+  elaborate the Full wrapper around `duty_probe`, read `led`/`led_acc`/`led_tch`, compute
+  `T_on` duty (§2.3), assert within ±1% for the static-duty channels; **stuck-ON and
+  stuck-OFF exact**; duty tracks a mid-run gate flip; `now_ns` decomposition exact across a
+  >2.2 s static gap (the INTEGER-overflow trap); metavalue-clean at t=0. Phase 0 already
+  proved all of these on all four backends via the throwaway four-variant harness — port the
+  assertions (add CYC-EVT-PC cycle-unit asserts if that algo is wired selectable).
 - **Host unit tests** (`tests/`): EMA math, γ-lerp, `set_led_level` compat, `_apply_state`
   with `led_duty` payloads, gtkw exclusion. Update the theme value-preservation tests
   and any test touching `LED.state`/`set_led` signatures.
 
 ### 2.8 Benchmark gate (mandatory for U9 PR-1)
 
-`uv run fpga-sim --benchmark 10 --no-ui` before/after on: blinky/Arty, counter_7seg/
-DE10-Lite, mx65_walking/DE10-Lite × GHDL-mcode + NVC (llvm if cheap). Acceptance:
-**≤3% regression on the three static-ish designs** (integrator idles between LED events).
-Also measure blinky_pwm (informational — expect ≲5% mcode / ≲10% NVC from ~780k native
-events/sim-s). If the gate fails, stop and bring numbers to Rick — do not ship a silent
-perf regression. Record results in the PR description and update
+Measure **Full-mode** overhead (`uv run fpga-sim --benchmark 10 --no-ui`, before/after) on
+blinky/Arty, counter_7seg/DE10-Lite, mx65_walking/DE10-Lite × GHDL-mcode + NVC (llvm if
+cheap). Acceptance for the default **FIX-NS-PC**: **≤3% on the non-fast-spin designs**
+(phase 0 offline measured +0-3% mcode on blinky/mx65). **counter_7seg is exempt**
+(decision 9: its per-cycle digit-0 blur costs +263-682% for *any* exact integrator; opt-in,
+deferred blur-exclude fix §2.10). **Off / Color-only must be a 0% path** — verify the
+generated wrapper is byte-identical to today's when mode = Off. If FIX-NS-PC regresses the
+non-spin designs past 3%, stop and bring numbers to Rick. Record results in the PR and update
 `memory/project_sim_performance.md`.
+
+### 2.9 Phase-0 results (2026-07-19; four-variant offline harness, all four backends)
+
+Phase 0 (§6) built `sim/duty_probe.vhd` + throwaway four-integrator wrappers + a pure-VHDL
+perf harness and ran them on GHDL-mcode/JIT/LLVM + NVC. Findings that shaped §2.2/§2.3:
+
+- **The original §2.2/§2.3 (shared `last_t` + `max(tch,t0)`) is WRONG** — it double-counts a
+  currently-ON channel that toggled before a faster sibling, rendering a 60%-duty LED as 100%
+  (identical on all four backends). Fixed by per-channel accumulation + `T_on` differencing.
+- **Unit, cycles vs ns:** identical for a fixed clock; they diverge only under a *mid-run
+  clock-frequency change* (`[-]/[+]`), where cycles give the hardware-faithful ratio (0.667)
+  and ns give the sim-timebase artifact (0.5) — rare, transient, EMA-smoothed → ns default.
+- `now_ns` decomposition exact at `now = 2.303 s` (no INTEGER overflow); metavalue-clean at
+  t=0; acc/tch ports readable from cocotb on all four backends.
+- **Perf — overhead % over baseline on real designs (mcode / NVC):**
+
+  | design | CYC-CLK | CYC-EVT-PC | FIX-NS-1P | FIX-NS-PC |
+  |---|---|---|---|---|
+  | blinky | +456/+104 | +108/+22 | +17/+11 | **+3/-5** |
+  | blinky_pwm | +127/+57 | +97/+23 | +0/+2 | **-0/+4** |
+  | counter_7seg | +1968/+461 | +263/+101 | +500/+253 | +682/+136 |
+  | mx65_walking | +551/+46 | +17/+2 | +0/-2 | **+1/+1** |
+
+  Fundamental tradeoff: **pay-per-cycle** (CYC-*: shared counter → fixed tax, best under dense
+  events) vs **pay-per-event** (FIX-NS: free when events sparse, worst under a per-cycle blur).
+  No single static structure wins both → hence the mode policy (decisions 2-3) + the deferred
+  blur-exclude (decision 9, §2.10). FIX-NS-PC wins the common case; the ns var-freq artifact is
+  the only give-up.
+
+### 2.10 Deferred follow-ups (a follow-up card, not U9)
+
+U9 ships the Off/Color-only/Full mode skeleton + the swappable splice fragment, leaving the
+seam; the adaptivity lands later:
+
+- **Launch-time probe → algorithm auto-pick**: a short host-side probe measures per-channel
+  event rate, then picks FIX-NS-PC vs CYC-EVT-PC (vs Off) from the §2.9 cost model. No
+  continuous switching — VHDL is statically elaborated, so a hot-swap = re-elaborate = restart;
+  do it at most once at startup (periodic re-eval churns restarts for a stationary signal).
+- **Per-cycle blur exclusion** (the real `counter_7seg` fix, decision 9): the probe flags
+  channels toggling ~every cycle and regenerates the wrapper to render them fixed-dim/binary
+  (excluded from measurement), removing the per-cycle wake. A per-channel *in-VHDL* mode input
+  can't help — a process still wakes on every edge of its bit; only exclusion removes the wake.
+- **`--duty-algo` user selection** (cheap — the swappable splice already exists).
 
 ---
 
@@ -536,16 +625,19 @@ naming is ambiguous for flat VHDL ports; skip)
 
 ## 6. Phase 0 (start of U9, ~1 session): spikes that de-risk everything
 
-1. **Integrator probe**: hand-write a throwaway wrapper around `duty_probe.vhd`; run
-   under GHDL-mcode, ghdl-llvm, ghdl-jit, NVC (all installed; `--sim` slugs / PATH).
-   Assert: acc/tch math exact; **>2.2 s static gap does not overflow** (the INTEGER
-   trap); metavalue handling; delta-glitch = zero width; ports readable from cocotb on
-   all backends. This validates §2.2 before any real wiring.
-2. **Census re-run** (script in §7) + serial-impostor sweep; commit results to §7.
-3. **Benchmark baseline capture** for §2.8 (before-numbers on today's main).
+1. **Integrator probe** — ✅ **DONE 2026-07-19** (results in §2.9). Expanded well past the
+   original brief: a four-integrator wrapper (ns/cycle × single/per-channel) A/B/C/D-tested
+   on all four backends + a real-design perf sweep. It **falsified the §2.2/§2.3 shared-
+   `last_t` scheme** (double-count) and drove the redesign (per-channel + `T_on`, the
+   measurement-mode policy, FIX-NS-PC default). acc/tch exact, 2.303 s overflow-safe,
+   metavalue-clean, ports readable everywhere — all confirmed.
+2. **Census re-run** (script in §7) + serial-impostor sweep; commit results to §7. ⏳ **pending.**
+3. **Benchmark baseline capture** for §2.8 (before-numbers on today's `main`). ⏳ **partly done**
+   — phase 0 measured baseline-vs-integrator *offline* (pure-VHDL, §2.9), but the real
+   `--benchmark` path baseline is still to capture at U9 PR-1.
 
-If any spike falsifies a §2 assumption, stop and revise this plan with Rick — the
-fallback design (clocked counters, §2.1 last bullet) changes the perf story.
+Guardrail held: item 1 falsified a §2 assumption, so per this rule we **stopped and revised
+the plan with Rick** (§2.2/§2.3/§0a rewrite) before any real wiring — done 2026-07-20.
 
 ---
 
