@@ -8,6 +8,8 @@ roles (``panel_bg`` / ``panel_border_info`` / ``header_text`` / ``body_text`` /
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import pygame
 
 from fpga_sim.board_loader import ComponentInfo
@@ -22,12 +24,16 @@ _HEADER_PT = 15
 _BODY_PT = 13
 
 
-def tooltip_rows(label: str, info: ComponentInfo | None) -> list[tuple[str, str]]:
+def tooltip_rows(
+    label: str, info: ComponentInfo | None, extra: Sequence[tuple[str, str]] = ()
+) -> list[tuple[str, str]]:
     """Return ``(prefix, value)`` rows for a component; the header has no prefix.
 
     The first row is always the component *label* (its header).  Net name, pin,
     and direction are appended from *info* when present; rows whose value is
     empty are omitted, so a component with no pin metadata yields just a header.
+    *extra* rows (a component's live state, such as an LED's measured duty
+    cycle) follow the static pin metadata.
     """
     rows: list[tuple[str, str]] = [("", label)]
     if info is not None:
@@ -37,6 +43,7 @@ def tooltip_rows(label: str, info: ComponentInfo | None) -> list[tuple[str, str]
             rows.append(("Pin" if len(info.pins) == 1 else "Pins", ", ".join(info.pins)))
         if info.direction:
             rows.append(("Dir", info.direction))
+    rows.extend(extra)
     return rows
 
 
@@ -49,6 +56,7 @@ class Tooltip:
         anchor: tuple[int, int],
         label: str,
         info: ComponentInfo | None,
+        extra: Sequence[tuple[str, str]] = (),
     ) -> pygame.Rect:
         """Draw the tooltip for *label* / *info* near *anchor*; return its rect."""
         header_f = get_font(_HEADER_PT, bold=True)
@@ -57,7 +65,7 @@ class Tooltip:
         # Render every row up front so the block can be measured before placement.
         # Each entry is (prefix_surface_or_None, value_surface).
         rendered: list[tuple[pygame.Surface | None, pygame.Surface]] = []
-        for prefix, value in tooltip_rows(label, info):
+        for prefix, value in tooltip_rows(label, info, extra):
             if prefix:
                 rendered.append(
                     (

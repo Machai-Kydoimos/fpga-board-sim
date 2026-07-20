@@ -20,6 +20,24 @@ GRAY = (180, 180, 180)
 DARK_GRAY = (80, 80, 80)
 YELLOW = (255, 230, 50)
 
+
+def lerp_rgb(c0: tuple[int, int, int], c1: tuple[int, int, int], t: float) -> tuple[int, int, int]:
+    """Linear-interpolate between two RGB colors (*t* clamped to [0, 1]).
+
+    Lives here rather than in theme.py so both the spinner's arc fade and the
+    duty-driven LED/segment brightness (U9) share one implementation; the
+    ``RGB`` alias itself lives in ``ui.widgets.button``, which imports *this*
+    module, so the parameters are spelled as plain tuples to keep the import
+    graph acyclic.
+    """
+    t = max(0.0, min(1.0, t))
+    return (
+        round(c0[0] + (c1[0] - c0[0]) * t),
+        round(c0[1] + (c1[1] - c0[1]) * t),
+        round(c0[2] + (c1[2] - c0[2]) * t),
+    )
+
+
 # ── UI scaling ────────────────────────────────────────────────────────
 _BASE_W, _BASE_H = 1024, 700
 

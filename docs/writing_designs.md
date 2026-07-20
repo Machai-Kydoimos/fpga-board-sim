@@ -85,6 +85,13 @@ driven. Use [`hdl/counter_7seg.vhd`](../hdl/counter_7seg.vhd) as a working examp
   default. Size any *visible* rate off a counter bit that is comfortably below the top
   of your declared width so it still moves. (This override applies to the generic
   contract only — board-native designs do not get it; see below.)
+- **PWM works — brightness is measured, not sampled.** LEDs (and 7-segment
+  segments) may be driven at any PWM frequency: the simulator integrates each
+  channel's duty cycle *exactly* and renders it as brightness, so there are no
+  sampling artifacts and no minimum pulse width. PWM that is slow relative to the
+  simulation rate renders as slow-motion blinking — the truthful sub-real-time
+  view — and a faster backend or a higher speed setting fuses it into steady
+  brightness. Hover an LED to read its exact duty. See `hdl/blinky_pwm.vhd`.
 - **Clock.** `clk` runs at the board's actual frequency, read from its `Clock`
   resource (falling back to **12 MHz** when a board declares none). Change it live in
   the sim with the virtual-clock **[-]/[+]** buttons.
@@ -233,7 +240,7 @@ Ready-to-run starting points, all on the generic contract:
 | `blinky_alt.vhd` | Independent per-LED counters |
 | `blinky_counter.vhd` | Binary counter on the LEDs |
 | `blinky_morse.vhd` | Morse-code blinker |
-| `blinky_pwm.vhd` | PWM LED brightness |
+| `blinky_pwm.vhd` | PWM LED brightness — all LEDs breathe (a full breath ≈ 8 s on GHDL-mcode, ≈ 1 s on NVC) |
 | `blinky_walking.vhd` | Walking-light / knight-rider pattern |
 | `counter_7seg.vhd` | Hex digit counter for 7-segment boards |
 | `snake_7seg.vhd` | A segment crawls figure-8 across the digits; bouncing LED |
