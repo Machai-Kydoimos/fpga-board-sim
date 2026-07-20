@@ -76,6 +76,29 @@ simulator itself runs headless in the background:
 - **Close the window (X)** → quit the app. The launcher is a single window for the
   whole session, so closing it exits — the same as on every other screen
 
+## LED brightness
+
+LEDs and 7-segment digits render at their **measured brightness**, not merely on
+or off. A design that PWMs an LED shows a real fade, and a display digit that
+switches too fast for the eye shows the honest dim blur it would produce on
+hardware — where a single sampled snapshot would show whichever side of the pulse
+it happened to land on.
+
+Duty is measured exactly, inside the simulation, so there is no minimum pulse
+width and no aliasing. Two consequences are worth knowing:
+
+- **PWM slower than the simulation rate looks like slow-motion blinking.** That is
+  the truthful sub-real-time view, not a bug — a faster simulator or a higher
+  speed setting fuses it into a steady glow. `hdl/blinky_pwm.vhd` is tuned so a
+  full breath takes about 8 seconds on GHDL-mcode and 1 on NVC.
+- **Hovering an LED shows its exact duty** (`Duty 73.2%`) alongside the net and
+  pin, whenever it is something other than plainly on or off.
+
+Measurement costs almost nothing on designs whose LEDs change at human-visible
+rates. A channel that toggles on *every clock* is the expensive case — the
+6-digit hex odometer in `counter_7seg.vhd` is one — so if you want that run at
+full speed, set `FPGA_SIM_DUTY=off` to fall back to plain on/off rendering.
+
 ## Stats panel
 
 A strip at the bottom of the window shows live simulation statistics across three

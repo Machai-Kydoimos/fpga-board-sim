@@ -10,9 +10,7 @@ the screen exits deterministically with no event injection required.
 
 from __future__ import annotations
 
-import subprocess
 import time
-from collections import deque
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -21,12 +19,11 @@ import pytest
 from fpga_sim import sim_link
 from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
 from fpga_sim.sim_bridge import SimChild, SimulatorInfo
-from fpga_sim.sim_link import connect_from_env, drain, send
+from fpga_sim.sim_link import drain, send
 from fpga_sim.ui.results import SimExit
 from fpga_sim.ui.simulation_screen import SimulationScreen
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
     from multiprocessing.connection import Connection
     from types import ModuleType
 
@@ -39,27 +36,8 @@ def _sim(engine: str = "ghdl") -> SimulatorInfo:
 
 
 # ── Fakes / fixtures ──────────────────────────────────────────────────────────
-
-
-class _FakeProc:
-    """Minimal stand-in for a running Popen: alive until told to stop."""
-
-    def __init__(self) -> None:
-        self.running = True
-        self.stderr = None
-
-    def poll(self) -> int | None:
-        return None if self.running else 0
-
-    def wait(self, timeout: float | None = None) -> int:
-        self.running = False
-        return 0
-
-    def terminate(self) -> None:
-        self.running = False
-
-    def kill(self) -> None:
-        self.running = False
+# ``fake_child`` (and its ``_FakeProc``) live in conftest, shared with the
+# brightness tests, which drive this same screen.
 
 
 def _sample_board(*, seg: bool = False) -> BoardDef:
@@ -81,31 +59,6 @@ def _isolate_session(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """Redirect session writes away from ~/.fpga_simulator for every test."""
     monkeypatch.setattr("fpga_sim.session_config.SESSION_FILE", tmp_path / "session.json")
     monkeypatch.setattr("fpga_sim.sim_session_log._SESSION_DIR", tmp_path / "sessions")
-
-
-@pytest.fixture
-def fake_child(
-    monkeypatch: pytest.MonkeyPatch,
-) -> Iterator[tuple[SimChild, Connection]]:
-    """A SimChild whose link is connected to an in-process client 'child'."""
-    host = sim_link.SimLinkHost()
-    for key, value in host.env_vars().items():
-        monkeypatch.setenv(key, value)
-    client = connect_from_env()
-    assert host.wait_connected(2.0)
-    child = SimChild(
-        proc=cast("subprocess.Popen[bytes]", _FakeProc()),
-        link=host,
-        wave_cfg=None,
-        generics={},
-        match=None,
-        stderr_tail=deque(),
-    )
-    try:
-        yield child, client
-    finally:
-        client.close()
-        host.close()
 
 
 def _make_screen(

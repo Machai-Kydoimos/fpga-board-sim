@@ -24,6 +24,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `FPGA_SIM_DUTY_ALGO` selects the integrator (`fix_ns_1p`, the default, or
   `fix_ns_pc`); both export the same accumulator contract and measure identically.
 
+### Changed
+
+- **LEDs and 7-segment digits now render at their measured brightness (U9).**
+  A PWM-driven LED shows a real fade instead of snapping between fully lit and
+  dark, and a display digit switching faster than the eye shows the honest dim
+  blur it would produce on hardware — where a single sampled snapshot used to
+  show whichever side of the pulse it landed on. Brightness follows a perceptual
+  (gamma 2.2) ramp, so a 10%-duty LED reads as clearly lit rather than
+  near-black, and the glow halo now takes the LED's own color at an alpha that
+  tracks brightness instead of a fixed red. A wall-clock persistence-of-vision
+  filter (τ = 0.1 s) smooths the display only; the duty itself stays exact.
+  Hovering an LED shows its duty (`Duty 73.2%`) when it is not plainly on or off.
+- **`hdl/blinky_pwm.vhd` re-tapped so its breathing is actually visible.** The
+  envelope now comes from four bits lower in the counter, putting a full breath
+  at ~8 wall-seconds on GHDL-mcode and ~1 on NVC, instead of the ~2 minutes the
+  old tap needed at the simulator's sub-real-time throughput.
+
 ## [0.16.0] - 2026-07-18
 
 ### Added

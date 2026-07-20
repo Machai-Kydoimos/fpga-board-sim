@@ -12,7 +12,8 @@ import time
 
 import pytest
 
-from fpga_sim.ui.spinner import SpinnerOverlay, _lerp, run_with_spinner
+from fpga_sim.ui.constants import lerp_rgb as _lerp
+from fpga_sim.ui.spinner import SpinnerOverlay, run_with_spinner
 
 
 @pytest.fixture(scope="module")
