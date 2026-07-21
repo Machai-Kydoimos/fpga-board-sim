@@ -391,7 +391,6 @@ class FPGABoard:
         s = _ui_scale(self.width, self.height)
         margin = max(10, round(20 * s))
         title_h = max(14, round(22 * s))
-        label_h = max(12, round(18 * s))
         section_pad = max(6, round(10 * s))
         # Reserve the bottom strip (footer buttons + VHDL status, or the sim
         # overlays that replace them); minimal when neither is present.
@@ -423,7 +422,7 @@ class FPGABoard:
         y: float = margin
         for name, items, weight in sections:
             sec_h = usable_h * weight / total_weight
-            content_h = sec_h - title_h - label_h
+            content_h = sec_h - title_h  # per-item labels are budgeted inside the placers
             avail_w = w - 2 * margin
 
             if name == "fpga" and self._seven_segs:
@@ -443,6 +442,8 @@ class FPGABoard:
                     scale=s,
                 )
             elif name == "leds":
+                # Clear the section top (where the chip's summary line can spill)
+                # but reclaim the redundant label strip via the wider content_h.
                 self._place_led_banks(margin, y + title_h, avail_w, content_h, scale=s)
             else:
                 self._place_items(items, margin, y + title_h, avail_w, content_h, name, scale=s)
@@ -581,19 +582,31 @@ class FPGABoard:
 
         # Largest LED size whose rows all fit vertically (falls back to the min).
         size = 10
-        for cand in range(round(42 * scale), 9, -1):
+        for cand in range(round(46 * scale), 9, -1):
             if flow(cand)[1] * (cand + label_h + led_label_h + gap) <= avail_h:
                 size = cand
                 break
         pitch = size + gap
         block_h = size + label_h + led_label_h + gap
         placed, _ = flow(size)
-        for label, widgets, bank_x, row, wrap in placed:
-            self._led_label_pos.append((label, int(x0 + bank_x), int(y0 + row * block_h)))
+
+        # Center each row horizontally so its LEDs are balanced left-to-right.
+        row_right: dict[int, float] = {}
+        for _lbl, widgets, bank_x, base_row, wrap in placed:
+            n = len(widgets)
+            for rr in range(math.ceil(n / wrap)):
+                in_row = min(wrap, n - rr * wrap)
+                key = base_row + rr
+                row_right[key] = max(row_right.get(key, 0.0), bank_x + in_row * pitch)
+        row_off = {r: max(0.0, (avail_w - ext) / 2) for r, ext in row_right.items()}
+
+        for label, widgets, bank_x, base_row, wrap in placed:
+            lx = int(x0 + row_off.get(base_row, 0.0) + bank_x)
+            self._led_label_pos.append((label, lx, int(y0 + base_row * block_h)))
             for i, led in enumerate(widgets):
                 r, c = divmod(i, wrap)
-                cx = x0 + bank_x + c * pitch + size / 2
-                cy = y0 + (row + r) * block_h + label_h + size / 2
+                cx = x0 + row_off.get(base_row + r, 0.0) + bank_x + c * pitch + size / 2
+                cy = y0 + (base_row + r) * block_h + label_h + size / 2
                 led.rect = pygame.Rect(int(cx - size / 2), int(cy - size / 2), int(size), int(size))
 
     # ── events ───────────────────────────────────────────────────────
