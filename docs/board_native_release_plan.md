@@ -202,8 +202,7 @@ the two framework parsers if the rgb survey requires, regenerated `boards/` data
   inherit truth.*
 - Call it from **both** writers so re-syncs converge from either direction:
   `sync_common._fold_forward_unmanaged_keys` (after the per-sub-key merge) and
-  `sync_port_conventions.write_results` / `merged_board_json` (after merging new
-  canonical blocks in).
+  `sync_port_conventions.write_results` (after merging new canonical blocks in).
 - **Fleet consistency test** (new, `tests/test_native_convention.py` or a new data-
   invariants file): sweep all committed board JSONs; assert no framework block
   disagrees with a same-board canonical block on same-width primary-bank polarity.

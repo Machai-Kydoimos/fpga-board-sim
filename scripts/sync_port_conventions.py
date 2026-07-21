@@ -473,19 +473,31 @@ def process_board(
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def merged_board_json(board_path: Path, new_sub_keys: dict[str, Any]) -> dict[str, Any]:
-    """Shallow-merge `new_sub_keys` into `board_path`'s existing `port_conventions`.
+def carry_forward_retrieved(new_block: dict[str, Any], existing_block: object) -> dict[str, Any]:
+    """Keep the on-disk ``source.retrieved`` date when a block is otherwise unchanged.
 
-    Every other top-level key -- and every other maker's convention already
-    under `port_conventions` -- is left exactly as it was.
+    ``process_board`` stamps ``source.retrieved`` with *today's* date on every run,
+    so without this a no-op re-sync rewrites that timestamp on every board it can
+    still regenerate -- churn that buries real drift and makes the release
+    pre-flight ``--check`` cry wolf (it did, on v0.17.0). When the freshly
+    generated block equals the existing one apart from that single field, the
+    existing date is carried forward so the merge is a true byte-for-byte no-op;
+    any real change -- including the pinned source URL moving to a new commit --
+    still updates ``retrieved`` as before.
     """
-    with board_path.open() as f:
-        board_json: dict[str, Any] = json.load(f)
-    existing = board_json.get("port_conventions") or {}
-    # F2: a framework-derived bank inherits polarity from the canonical block being
-    # merged in (canonical is the physical truth); a no-op when there is none.
-    board_json["port_conventions"] = reconcile_framework_polarity({**existing, **new_sub_keys})
-    return board_json
+    if not isinstance(existing_block, dict):
+        return new_block
+    new_src, old_src = new_block.get("source"), existing_block.get("source")
+    if not (isinstance(new_src, dict) and isinstance(old_src, dict) and "retrieved" in old_src):
+        return new_block
+
+    def _without_retrieved(block: dict[str, Any]) -> dict[str, Any]:
+        src = {k: v for k, v in block["source"].items() if k != "retrieved"}
+        return {**block, "source": src}
+
+    if _without_retrieved(new_block) == _without_retrieved(existing_block):
+        return {**new_block, "source": {**new_src, "retrieved": old_src["retrieved"]}}
+    return new_block
 
 
 def generate_boards(
@@ -523,7 +535,7 @@ def write_results(
 ) -> dict[str, dict[str, Any]]:
     """Merge every result's convention blocks into their target board JSONs.
 
-    Returns ``{relative_path: full_merged_board_json}`` for every touched
+    Returns ``{relative_path: full_merged_board_dict}`` for every touched
     file -- used both to write (schema-validated first) and by ``--check``
     to diff against what is already on disk without writing anything.
     """
@@ -533,6 +545,12 @@ def write_results(
             board_path = BOARDS_DIR / rel_path
             board_json = per_file.get(rel_path) or json.load(board_path.open())
             existing = board_json.get("port_conventions") or {}
+            # Preserve the on-disk retrieval date for any sub-key whose content is
+            # otherwise identical, so a no-op re-sync doesn't churn the timestamp.
+            new_sub_keys = {
+                slug: carry_forward_retrieved(block, existing.get(slug))
+                for slug, block in new_sub_keys.items()
+            }
             board_json["port_conventions"] = {**existing, **new_sub_keys}
             per_file[rel_path] = board_json
 
