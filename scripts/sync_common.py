@@ -15,6 +15,7 @@ from pathlib import Path
 
 from framework_conventions import reconcile_framework_polarity
 from jsonschema.validators import validator_for
+from led_metadata import ColorBank, colorize_content, load_color_registry
 
 
 def sanitize_filename(name: str) -> str:
@@ -190,24 +191,34 @@ def write_outputs(
     repo: str,
     dry_run: bool = False,
     schema_path: Path | None = None,
+    color_registry: dict[str, list[ColorBank]] | None = None,
 ) -> None:
-    """Fold forward unmanaged keys, validate, then write board files + metadata.
+    """Fold forward unmanaged keys, stamp cited LED colors, validate, then write.
 
     Every board is first merged against whatever is already on disk (see
     ``_fold_forward_unmanaged_keys``), so hand-authored or previously
-    populated ``port_conventions``/``peripherals`` survive a re-sync. The
-    *merged* result is what gets validated against the schema, so a corrupt
-    on-disk convention block is caught here rather than written silently.
-    Validation runs before anything is written, so a single invalid board
-    aborts the whole sync with no partial output (and ``--dry-run`` doubles as
-    a schema check). ``schema_path`` defaults to
-    ``<output_dir>/../schema/board.schema.json``.
+    populated ``port_conventions``/``peripherals`` survive a re-sync. Cited LED
+    colors (``docs/led_color_sources/``) are then re-applied per board, so a
+    board re-sync re-stamps them rather than dropping the ``leds[].color`` a
+    parser doesn't itself emit (``color_registry`` defaults to the on-disk
+    registry; pass one to isolate tests). The *merged, colored* result is what
+    gets validated against the schema, so a corrupt on-disk convention block is
+    caught here rather than written silently. Validation runs before anything is
+    written, so a single invalid board aborts the whole sync with no partial
+    output (and ``--dry-run`` doubles as a schema check). ``schema_path``
+    defaults to ``<output_dir>/../schema/board.schema.json``.
     """
     if schema_path is None:
         schema_path = output_dir.parent / "schema" / "board.schema.json"
+    if color_registry is None:
+        color_registry = load_color_registry()
 
     board_jsons = {
-        filename: _fold_forward_unmanaged_keys(content, output_dir / filename)
+        filename: colorize_content(
+            _fold_forward_unmanaged_keys(content, output_dir / filename),
+            f"{output_dir.name}/{filename}",
+            color_registry,
+        )
         for filename, content in board_jsons.items()
     }
     validate_board_jsons(board_jsons, schema_path)

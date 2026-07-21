@@ -13,16 +13,16 @@
   ],
   "default_clock_hz": 50000000,
   "leds": [
-    { "name": "led", "number": 0, "pins": ["AA24"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
-    { "name": "led", "number": 1, "pins": ["AB23"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
-    { "name": "led", "number": 2, "pins": ["AC23"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
-    { "name": "led", "number": 3, "pins": ["AD24"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
-    { "name": "led", "number": 4, "pins": ["AG25"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
-    { "name": "led", "number": 5, "pins": ["AF25"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
-    { "name": "led", "number": 6, "pins": ["AE24"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
-    { "name": "led", "number": 7, "pins": ["AF24"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
-    { "name": "led", "number": 8, "pins": ["AB22"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
-    { "name": "led", "number": 9, "pins": ["AC22"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } }
+    { "name": "led", "color": "red", "number": 0, "pins": ["AA24"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "led", "color": "red", "number": 1, "pins": ["AB23"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "led", "color": "red", "number": 2, "pins": ["AC23"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "led", "color": "red", "number": 3, "pins": ["AD24"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "led", "color": "red", "number": 4, "pins": ["AG25"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "led", "color": "red", "number": 5, "pins": ["AF25"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "led", "color": "red", "number": 6, "pins": ["AE24"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "led", "color": "red", "number": 7, "pins": ["AF24"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "led", "color": "red", "number": 8, "pins": ["AB22"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },
+    { "name": "led", "color": "red", "number": 9, "pins": ["AC22"], "direction": "o", "inverted": false, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } }
   ],
   "buttons": [
     { "name": "button", "number": 0, "pins": ["AJ4"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.3-V LVTTL" } },

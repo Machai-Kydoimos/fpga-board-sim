@@ -1,0 +1,122 @@
+# LED color source registry — Terasic
+#
+# One [[board]] per physical board; each [[board.bank]] cites the color of one
+# LED bank (a consecutive same-`name` run in the board JSON's `leds[]`).  See
+# README.md in this directory for the schema and the verify-or-omit rule.
+#
+# The color of a bare `led` bank is NOT encoded in its resource name, and the
+# LEDR/LEDG port-naming convention is a Terasic idiom, not a cross-vendor law
+# (DE0 is LEDG=green, most DE-series are LEDR=red) — so every color below is
+# quoted from the board's own Terasic User Manual (a fetched source), with the
+# canonical LEDR/LEDG port name (and, where available, the schematic) as
+# corroboration.  Curated 2026-07-21 from the boards' Terasic System CDs.
+
+[[board]]
+name = "DE0"
+files = ["amaranth-boards/de0.json"]
+maker = "Terasic"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "DE0 User Manual (Terasic DE0 CD-ROM v1.1), Using the LEDs: \"10 green user LEDs\"; \"10 Green color LEDs (Active high)\". Corroborated by the canonical port name LEDG and schematic DE0_V12_RELEASE.pdf."
+
+[[board]]
+name = "DE0-Nano"
+files = ["amaranth-boards/de0_nano.json"]
+maker = "Terasic"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "DE0-Nano User Manual (Terasic System CD v1.2.8): \"8 green LEDs\"; \"There are 8 green user-controllable LEDs on the DE0-Nano board\". Corroborated by schematic de0-nano-c4-rev-f."
+
+[[board]]
+name = "DE0-CV"
+files = ["amaranth-boards/de0_cv.json"]
+maker = "Terasic"
+
+  [[board.bank]]
+  match = "led"
+  color = "red"
+  source = "DE0-CV User Manual (Terasic System CD v1.2.1), Using the LEDs: \"the red LEDs are blinking\"; user-LED pin table LEDR[0..9]. Corroborated by the canonical port name LEDR and schematic DE0-CV.pdf (LEDR nets)."
+
+[[board]]
+name = "DE10-Lite"
+files = ["amaranth-boards/de10_lite.json"]
+maker = "Terasic"
+
+  [[board.bank]]
+  match = "led"
+  color = "red"
+  source = "DE10-Lite User Manual (Terasic System CD v2.2.0): \"the red LEDs are blinking\"; \"Press KEY0 to make red LEDs ... light up\"; user-LED pin table LEDR[0..9]. Corroborated by the canonical port name LEDR."
+
+[[board]]
+name = "DE1-SoC"
+files = ["amaranth-boards/de1_so_c.json"]
+maker = "Terasic"
+
+  [[board.bank]]
+  match = "led"
+  color = "red"
+  source = "DE1-SoC User Manual (Terasic System CD v6.0.0, HW rev H): \"10 red user LEDs\"; user-LED pin table LEDR[0..9]. Corroborated by the canonical port name LEDR."
+
+[[board]]
+name = "DE2-115"
+files = ["custom/de2_115.json"]
+maker = "Terasic"
+
+  [[board.bank]]
+  match = "led"
+  color = "red"
+  source = "DE2-115 User Manual (Terasic System CD v3.0.6), Using the LEDs: \"18 Red user LEDs\"; \"Eighteen red LEDs are situated above the 18 Slide switches\". Corroborated by the canonical port name LEDR and schematic de2-115_mb.pdf."
+
+  [[board.bank]]
+  match = "led_g"
+  color = "green"
+  source = "DE2-115 User Manual (Terasic System CD v3.0.6): \"9 Green user LEDs\"; \"18 red and 9 green LEDs\". Corroborated by the canonical port name LEDG."
+
+[[board]]
+name = "VEEK-MT2"
+files = ["custom/veek_mt2.json"]
+maker = "Terasic"
+
+  [[board.bank]]
+  match = "led"
+  color = "red"
+  source = "VEEK-MT2 User Manual (Terasic System CD v1.0.2): \"18 red and 9 green LEDs\" (the 18-LED bank). Corroborated by the canonical port name LEDR."
+
+  [[board.bank]]
+  match = "led_g"
+  color = "green"
+  source = "VEEK-MT2 User Manual (Terasic System CD v1.0.2): \"18 red and 9 green LEDs\" (the 9-LED bank). Corroborated by the canonical port name LEDG."
+
+[[board]]
+name = "DE10-Standard"
+files = ["custom/de10_standard.json"]
+maker = "Terasic"
+
+  [[board.bank]]
+  match = "led"
+  color = "red"
+  source = "DE10-Standard User Manual (Terasic System CD v1.4.0): \"10 red user LEDs\"; user-LED pin table LEDR[0..9]. Corroborated by the canonical port name LEDR."
+
+[[board]]
+name = "DE23-Lite"
+files = ["custom/de23_lite.json"]
+maker = "Terasic"
+
+  [[board.bank]]
+  match = "led"
+  color = "red"
+  source = "DE23-Lite User Manual rev B (Terasic Resource Package v1.1.0): user-LED pin table labels each pin \"Red LED [0]\"..\"Red LED [9]\". Corroborated by the canonical port name LEDR."
+
+[[board]]
+name = "DE25-Standard"
+files = ["custom/de25_standard.json"]
+maker = "Terasic"
+
+  [[board.bank]]
+  match = "led"
+  color = "red"
+  source = "DE25-Standard User Manual rev D (Terasic Resource Package v1.2.0): \"10 red user LEDs\"; user-LED pin table LEDR[0..9]. Corroborated by the canonical port name LEDR."

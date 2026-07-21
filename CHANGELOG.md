@@ -33,6 +33,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   few boards (UPduino v1, iCESugar, iCE40-UP5K-B-EVN) is now recognized as the one
   RGB LED it is. Nothing renders differently yet — bank-clustered layout and
   per-LED color are the U36 rendering half.
+- **Cited LED colors for the Terasic DE-series (U36, color registry).** Ten
+  boards whose LEDs are physically colored but not named for it now render in
+  color: DE0-CV, DE10-Lite, DE1-SoC, DE10-Standard, DE23-Lite and DE25-Standard
+  (red), DE0 and DE0-Nano (green), and the two-color DE2-115 and VEEK-MT2 (18 red
+  `LEDR` + 9 green `LEDG`). Each color is quoted from that board's own Terasic
+  User Manual and recorded in a new cited registry (`docs/led_color_sources/`,
+  mirroring the port-convention registry) — the `LEDR`/`LEDG` naming is a Terasic
+  idiom, not a cross-vendor rule (DE0 is green), so no color is inferred from the
+  port name. Colors are re-stamped on every board sync and by a standalone
+  `scripts/sync_led_colors.py`, so a re-sync can't drop them, and a cited color
+  outranks the LED-name heuristic. Boards with no verified source keep the theme
+  default.
 
 ### Changed
 
@@ -64,7 +76,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   LEDs), tinting its dark lens to match and falling back to the theme color where
   unknown; RGB LEDs cluster on their own. The one-line board summary reflects the
   banks too (`18+9 LEDs`, `4 LEDs + 4 RGB`). The cited color registry that fills
-  in the remaining boards' colors follows separately.
+  in colors the LED name doesn't encode is the separate Added entry above.
 
 ## [0.16.0] - 2026-07-18
 
