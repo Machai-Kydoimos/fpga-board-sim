@@ -12,16 +12,16 @@
   ],
   "default_clock_hz": 50000000,
   "leds": [
-    { "name": "led", "number": 0, "pins": ["CC71"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
-    { "name": "led", "number": 1, "pins": ["BH78"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
-    { "name": "led", "number": 2, "pins": ["CH69"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
-    { "name": "led", "number": 3, "pins": ["CF69"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
-    { "name": "led", "number": 4, "pins": ["CA62"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
-    { "name": "led", "number": 5, "pins": ["CC62"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
-    { "name": "led", "number": 6, "pins": ["CF62"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
-    { "name": "led", "number": 7, "pins": ["BM69"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
-    { "name": "led", "number": 8, "pins": ["CA71"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
-    { "name": "led", "number": 9, "pins": ["BR62"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } }
+    { "name": "led", "color": "red", "number": 0, "pins": ["CC71"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "color": "red", "number": 1, "pins": ["BH78"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "color": "red", "number": 2, "pins": ["CH69"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "color": "red", "number": 3, "pins": ["CF69"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "color": "red", "number": 4, "pins": ["CA62"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "color": "red", "number": 5, "pins": ["CC62"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "color": "red", "number": 6, "pins": ["CF62"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "color": "red", "number": 7, "pins": ["BM69"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "color": "red", "number": 8, "pins": ["CA71"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },
+    { "name": "led", "color": "red", "number": 9, "pins": ["BR62"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } }
   ],
   "buttons": [
     { "name": "button", "number": 0, "pins": ["BW59"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "1.2 V" } },

@@ -15,6 +15,7 @@ import pytest
 # Add scripts/ to path for importing (conftest also does this; kept for standalone runs).
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
+from led_metadata import ColorBank  # noqa: E402
 from sync_common import resolve_commit_sha, validate_board_jsons, write_outputs  # noqa: E402
 
 SCHEMA_PATH = Path(__file__).parent.parent / "boards" / "schema" / "board.schema.json"
@@ -96,6 +97,33 @@ def test_write_outputs_writes_valid_board(tmp_path):
     write_outputs(out, _jsons({"ok.json": _valid_board()}), "abc123", "owner/repo")
     assert (out / "ok.json").exists()
     assert (out / "_sync_metadata.json").exists()
+
+
+def _led(name: str, number: int) -> dict[str, Any]:
+    return {"name": name, "number": number, "pins": ["A1"], "direction": "o"}
+
+
+def test_write_outputs_stamps_cited_colors(tmp_path):
+    """A re-sync re-applies registry colors, keyed by ``<source>/<filename>`` (U36)."""
+    root = _boards_root(tmp_path)
+    out = root / "amaranth-boards"  # out.name is the source key prefix
+    board = _valid_board()
+    board["leds"] = [_led("led", 0)]
+    registry = {"amaranth-boards/led_board.json": [ColorBank("led", "red", "cited")]}
+    write_outputs(
+        out, _jsons({"led_board.json": board}), "sha", "owner/repo", color_registry=registry
+    )
+    written = json.loads((out / "led_board.json").read_text(encoding="utf-8"))
+    assert written["leds"][0]["color"] == "red"
+
+
+def test_write_outputs_leaves_unregistered_boards_byte_identical(tmp_path):
+    """A board absent from the color registry is written verbatim (silent diff)."""
+    root = _boards_root(tmp_path)
+    out = root / "amaranth-boards"
+    content = _jsons({"plain.json": _valid_board()})
+    write_outputs(out, content, "sha", "owner/repo", color_registry={})
+    assert (out / "plain.json").read_text(encoding="utf-8") == content["plain.json"]
 
 
 def test_write_outputs_aborts_on_invalid_with_no_partial_output(tmp_path):

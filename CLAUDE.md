@@ -58,7 +58,10 @@ The simulator runs in a **single window** (U34): the launcher's pygame process o
 | `scripts/framework_conventions.py` | Source-agnostic builder shared by the litex & amaranth parsers: groups led/switch/button resources into `port_conventions` banks (vector or `names[]`), picks the primary LED group, applies polarity, and stamps `naming: "framework-derived"` (U32) |
 | `scripts/sync_digilent_xdc.py` | Syncs board definitions from Digilent master XDC files (with port_conventions) |
 | `scripts/digilent_parser.py` | XDC regex parser → board dicts + `port_conventions` (used by `sync_digilent_xdc.py`) |
-| `scripts/sync_common.py` | Shared sync scaffolding (download, ref-resolve, naming, schema-validated JSON/metadata output) for all three `sync_*.py`; merges `port_conventions` per sub-key so hand-authored / registry blocks survive a re-sync (A1) |
+| `scripts/sync_common.py` | Shared sync scaffolding (download, ref-resolve, naming, schema-validated JSON/metadata output) for all three `sync_*.py`; merges `port_conventions` per sub-key so hand-authored / registry blocks survive a re-sync (A1); re-stamps cited LED colors from `docs/led_color_sources/` on every write so a re-sync can't drop them (U36) |
+| `scripts/led_metadata.py` | Shared LED-color helpers for the sync pipeline: `color_from_name` (LED-name heuristic, e.g. `led_r`→red, used by all three parsers) + the cited color registry loader/applier (`load_color_registry` / `apply_registry_colors` / `colorize_content`); registry (cited) outranks the name heuristic (U36) |
+| `scripts/sync_led_colors.py` | Stamps `leds[].color` from the cited color registry (`docs/led_color_sources/`) onto board JSONs in place, no network — offline companion to the color stamping `sync_common.write_outputs` does during a full re-sync; canonical boards re-serialize, hand-authored `custom/` boards keep their one-object-per-line layout; `--check` reports drift (U36) |
+| `docs/led_color_sources/*.toml` | Cited LED-color registry: per board, per LED bank, a schema color + a **fetched-source** citation (verify-or-omit); mirrors `docs/port_convention_sources/`. For colors not encoded in the LED name (e.g. Terasic `LEDR`=red / `LEDG`=green) (U36) |
 | `sim/sim_testbench.py` | Headless cocotb testbench (no pygame): drives the sim loop and streams led/seg state + receives sw/btn/speed/clk/pause/stop over `sim_link` (U34) |
 | `sim/sim_wrapper_template.vhd` | Unified VHDL wrapper template; seg port/generic spliced in by `_generate_wrapper()` when needed, plus the U9 duty integrator in Full measurement mode |
 | `src/fpga_sim/sim_duty.py` | Duty-cycle math shared by the headless child and its tests: unpacks the wrapper's per-channel on-time accumulators and differences two snapshots into an exact window duty (`DutyTracker`); pygame- and cocotb-free (U9) |
@@ -172,6 +175,8 @@ Board definitions live in `boards/` as JSON files, organized by source:
 - Additional source directories can be added freely; the loader discovers them automatically
 
 To add a new board, create a JSON file in `boards/custom/` following the schema at `boards/schema/board.schema.json`. The JSON format includes an optional `port_conventions` section — consumed by board-native VHDL mode (U21; see "Board-native designs" above) — and an optional `peripherals` section (not yet consumed; P5).
+
+**LED colors (U36).** Each LED (`leds[]`) carries an optional `color` (a named color or `#RRGGBB`; absent → the renderer's theme default). It is populated two ways, both source-agnostic and re-applied on every sync so a re-sync can't drop it: (1) a **name heuristic** (`scripts/led_metadata.color_from_name`, e.g. `led_r`→red) the parsers apply, and (2) a **cited color registry** (`docs/led_color_sources/*.toml`) for colors the name doesn't encode — every entry quotes a fetched vendor source (verify-or-omit), and a cited color outranks the name heuristic. Never hand-edit a color into a generated board JSON; add it to the registry and run `scripts/sync_led_colors.py` (which also stamps hand-authored `boards/custom/` boards). See the file table above.
 
 ### Amaranth Parser Mock Namespace (sync script only)
 

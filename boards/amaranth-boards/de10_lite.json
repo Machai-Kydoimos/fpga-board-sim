@@ -20,7 +20,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -33,7 +34,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -46,7 +48,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -59,7 +62,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -72,7 +76,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -85,7 +90,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -98,7 +104,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -111,7 +118,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -124,7 +132,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -137,7 +146,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "red"
     }
   ],
   "buttons": [
