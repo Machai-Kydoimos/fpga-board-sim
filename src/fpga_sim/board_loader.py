@@ -120,7 +120,7 @@ class BoardDef:
     def summary(self) -> str:
         """One-line summary of resource counts for display in the UI."""
         parts = [
-            f"{len(self.leds)} LEDs",
+            self._led_summary(),
             f"{len(self.buttons)} BTN",
             f"{len(self.switches)} SW",
         ]
@@ -145,6 +145,59 @@ class BoardDef:
             else:
                 banks.append((c.name, [c]))
         return banks
+
+    def _led_summary(self) -> str:
+        """LED portion of :attr:`summary`, broken out by bank (U36).
+
+        Two mono banks read as ``18+9 LEDs``; RGB banks are counted separately,
+        ``4 LEDs + 4 RGB``. A single mono bank stays ``N LEDs`` as before.
+        """
+        mono = [len(comps) for name, comps in self.led_banks if "rgb" not in name]
+        rgb = sum(len(comps) for name, comps in self.led_banks if "rgb" in name)
+        segs = []
+        if mono:
+            # Break out two banks (the common two-color-row case, e.g. 18+9);
+            # collapse more than two to a single total to stay readable.
+            mono_str = "+".join(str(m) for m in mono) if len(mono) <= 2 else str(sum(mono))
+            segs.append(f"{mono_str} LEDs")
+        if rgb:
+            segs.append(f"{rgb} RGB")
+        return " + ".join(segs) if segs else "0 LEDs"
+
+    def _primary_convention(self) -> dict[str, Any] | None:
+        """Return the canonical port_convention block to read bank labels from.
+
+        Framework-derived blocks are skipped: their generic ``led`` / ``user_led``
+        names are no better than the friendly default label, so only a
+        vendor-canonical block (or ``None``) supplies names like ``LEDR`` (U36).
+        """
+        canonical = [
+            v
+            for v in self.port_conventions.values()
+            if isinstance(v, dict) and v.get("naming") != "framework-derived"
+        ]
+        return canonical[0] if canonical else None
+
+    def led_bank_label(self, bank_name: str) -> str:
+        """Human label for an LED bank (U36).
+
+        A canonical convention port name (``LEDR`` / ``LEDG``) when the board
+        declares one, else a friendly default: a plain ``led`` bank -> ``LEDs``,
+        an ``rgb_led`` bank -> ``RGB``, otherwise the uppercased resource name.
+        """
+        if "rgb" in bank_name:
+            return "RGB"
+        conv = self._primary_convention()
+        if conv is not None:
+            if bank_name == "led":
+                leds = conv.get("leds")
+                if isinstance(leds, dict) and leds.get("name"):
+                    return str(leds["name"])
+            elif bank_name in ("led_g", "led_green", "ledg"):
+                green = conv.get("leds_green")
+                if isinstance(green, dict) and green.get("name"):
+                    return str(green["name"])
+        return "LEDs" if bank_name == "led" else bank_name.upper()
 
     def to_json(self) -> str:
         """Serialize to JSON for passing to the cocotb subprocess."""

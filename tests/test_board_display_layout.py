@@ -91,3 +91,75 @@ def test_hidden_footer_without_reserve_still_moves(headless_pygame: ModuleType) 
     preview = FPGABoard(board_def=board, screen=scr, width=1024, height=700, show_footer=True)
     sim = FPGABoard(board_def=board, screen=scr, width=1024, height=700, show_footer=False)
     assert _boxes(sim) != _boxes(preview)
+
+
+# ── LED bank clustering (U36) ─────────────────────────────────────────────────
+
+
+def _two_color_board() -> BoardDef:
+    """18 red LEDR + 9 green LEDG, with a canonical convention for the labels."""
+    return BoardDef(
+        name="TwoColor",
+        class_name="TwoColor",
+        leds=[ComponentInfo("led", "led", i, []) for i in range(18)]
+        + [ComponentInfo("led", "led_g", i, []) for i in range(9)],
+        port_conventions={
+            "terasic": {
+                "leds": {"name": "LEDR", "width": 18},
+                "leds_green": {"name": "LEDG", "width": 9},
+                "naming": "canonical",
+            }
+        },
+    )
+
+
+def _rgb_board() -> BoardDef:
+    return BoardDef(
+        name="RgbBoard",
+        class_name="RgbBoard",
+        leds=[ComponentInfo("led", "led", i, []) for i in range(4)]
+        + [ComponentInfo("led", "rgb_led", i, ["a", "b", "c"]) for i in range(2)],
+    )
+
+
+def _banks(fb: FPGABoard) -> list[tuple[str, int]]:
+    return [(label, len(widgets)) for label, widgets in fb._led_banks]
+
+
+def test_single_bank_labeled_leds(headless_pygame: ModuleType) -> None:
+    from fpga_sim.ui import FPGABoard
+
+    scr = headless_pygame.display.set_mode((1024, 700))
+    fb = FPGABoard(board_def=_plain_board(), screen=scr, width=1024, height=700)
+    assert _banks(fb) == [("LEDs", 4)]
+
+
+def test_two_color_rows_cluster_with_convention_labels(headless_pygame: ModuleType) -> None:
+    from fpga_sim.ui import FPGABoard
+
+    scr = headless_pygame.display.set_mode((1024, 700))
+    fb = FPGABoard(board_def=_two_color_board(), screen=scr, width=1024, height=700)
+    assert _banks(fb) == [("LEDR", 18), ("LEDG", 9)]
+    # widgets are the actual LED objects, sliced in order
+    assert fb._led_banks[0][1][0] is fb.leds[0]
+    assert fb._led_banks[1][1][0] is fb.leds[18]
+
+
+def test_rgb_clusters_separately(headless_pygame: ModuleType) -> None:
+    from fpga_sim.ui import FPGABoard
+
+    scr = headless_pygame.display.set_mode((1024, 700))
+    fb = FPGABoard(board_def=_rgb_board(), screen=scr, width=1024, height=700)
+    assert _banks(fb) == [("LEDs", 4), ("RGB", 2)]
+
+
+def test_bank_labels_anchored_and_banks_stack_vertically(headless_pygame: ModuleType) -> None:
+    from fpga_sim.ui import FPGABoard
+
+    scr = headless_pygame.display.set_mode((1280, 800))
+    fb = FPGABoard(board_def=_two_color_board(), screen=scr, width=1280, height=800)
+    assert [label for label, _x, _y in fb._led_label_pos] == ["LEDR", "LEDG"]
+    # LEDG sits on a row block below LEDR, and every LED is the same size
+    assert fb._led_banks[1][1][0].rect.top > fb._led_banks[0][1][0].rect.top
+    sizes = {led.rect.size for _lbl, ws in fb._led_banks for led in ws}
+    assert len(sizes) == 1
