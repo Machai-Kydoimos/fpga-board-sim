@@ -399,13 +399,20 @@ class FPGABoard:
             max(65, round(90 * s)) if self._reserve_footer_space else max(8, round(10 * s))
         )
 
+        # Buttons/switches claim height by their wrapped row count, so a board
+        # with many switches (DE2-115's 18 -> two rows) is not cramped (U36).
+        avail_w_full = w - 2 * margin
         sections: list[tuple[str, Sequence[_Positionable], int]] = [("fpga", [self.fpga_chip], 3)]
         if self.leds:
             sections.append(("leds", self.leds, 4))
         if self.buttons:
-            sections.append(("buttons", self.buttons, 1))
+            sections.append(
+                ("buttons", self.buttons, self._grid_rows(len(self.buttons), avail_w_full, s))
+            )
         if self.switches:
-            sections.append(("switches", self.switches, 1))
+            sections.append(
+                ("switches", self.switches, self._grid_rows(len(self.switches), avail_w_full, s))
+            )
 
         if not sections:
             return
@@ -442,6 +449,17 @@ class FPGABoard:
                 self._place_items(items, margin, y + title_h, avail_w, content_h, name, scale=s)
 
             y += sec_h + section_pad
+
+    @staticmethod
+    def _grid_rows(n: int, avail_w: float, scale: float) -> int:
+        """Rows a grid of ``n`` items needs at the current width (U36).
+
+        Shared by the layout (to size the section) and the placement (to balance
+        the columns), so a bank that wraps to two rows reserves the height for
+        two rows instead of cramping them.
+        """
+        cols_fit = min(n, max(1, int(avail_w / max(1, round(65 * scale)))))
+        return math.ceil(n / cols_fit)
 
     def _place_items(  # noqa: PLR0913
         self,
@@ -485,8 +503,8 @@ class FPGABoard:
                 item.rect = pygame.Rect(int(cx - dw / 2), int(cy - dh / 2), int(dw), int(dh))
             return
 
-        cols = min(n, max(1, int(avail_w / max(1, round(65 * scale)))))
-        rows = math.ceil(n / cols)
+        rows = self._grid_rows(n, avail_w, scale)
+        cols = math.ceil(n / rows)  # balance columns evenly across those rows
 
         cell_w = avail_w / cols
         cell_h = avail_h / max(1, rows)
@@ -508,35 +526,66 @@ class FPGABoard:
     def _place_led_banks(
         self, x0: float, y0: float, avail_w: float, avail_h: float, scale: float
     ) -> None:
-        """Lay out LEDs bank by bank (U36).
+        """Flow-pack LED banks at a uniform, space-filling size (U36).
 
-        Each bank is left-aligned on its own block of rows at one uniform LED
-        size, with a slim label strip above it (the label is blitted in
-        ``_draw`` at the recorded anchor). A single bank fills the area exactly
-        as before; DE2-115's LEDR/LEDG become two labeled row blocks.
+        Banks flow left-to-right; a bank joins the current row when it and room
+        for its label fit, else wraps to the next row. A bank wider than a full
+        row wraps its own LEDs internally. The LED size is the largest that keeps
+        every row on screen (capped), so an 8-LED board gets large LEDs while a
+        27-LED board stays medium, and the whole thing reflows with the window.
+        Each bank's label is anchored above its first LED.
         """
         self._led_label_pos = []
         banks = [(label, widgets) for label, widgets in self._led_banks if widgets]
         if not banks:
             return
-        min_cell = max(18, round(30 * scale))
-        cols = max(1, min(int(avail_w // min_cell), max(len(w) for _, w in banks)))
-        bank_rows = [math.ceil(len(w) / cols) for _, w in banks]
+        title_font = get_font(max(10, round(13 * scale)) + 5, bold=True)
+        label_px = {label: title_font.size(label)[0] for label, _ in banks}
+        gap = max(4, round(10 * scale))
         label_h = max(12, round(16 * scale))
-        grid_h = max(1.0, avail_h - label_h * len(banks))
-        cell_h = grid_h / sum(bank_rows)
-        cell_w = avail_w / cols
-        size = max(10.0, min(min(cell_w, cell_h) * 0.8, round(60 * scale)))
-        y = y0
-        for (label, widgets), rows in zip(banks, bank_rows, strict=True):
-            self._led_label_pos.append((label, int(x0), int(y)))
-            y += label_h
+
+        # Flow placement in cell units: (label, widgets, base_row, base_col, wrap).
+        def flow(pitch: float) -> tuple[list[tuple[str, list[LED], int, int, int]], int]:
+            cols = max(1, int(avail_w // pitch))
+            placed: list[tuple[str, list[LED], int, int, int]] = []
+            row = col = rows_used = 0
+            for label, widgets in banks:
+                n = len(widgets)
+                if n > cols:  # wider than a row -> own block, wraps internally
+                    if col > 0:
+                        row, col = row + 1, 0
+                    placed.append((label, widgets, row, 0, cols))
+                    row += math.ceil(n / cols)
+                    rows_used, col = row, 0
+                    continue
+                need = max(n, math.ceil(label_px[label] / pitch))
+                if col + need > cols:
+                    row, col = row + 1, 0
+                placed.append((label, widgets, row, col, n))
+                rows_used = max(rows_used, row + 1)
+                col += need + 1
+                if col >= cols:
+                    row, col = row + 1, 0
+            return placed, rows_used
+
+        # Largest LED size whose rows all fit vertically (falls back to the min).
+        size = 10
+        for cand in range(round(56 * scale), 9, -1):
+            if flow(cand + gap)[1] * (cand + label_h + gap) <= avail_h:
+                size = cand
+                break
+        pitch = size + gap
+        block_h = size + label_h + gap
+        placed, _ = flow(pitch)
+        for label, widgets, base_row, base_col, wrap in placed:
+            self._led_label_pos.append(
+                (label, int(x0 + base_col * pitch), int(y0 + base_row * block_h))
+            )
             for i, led in enumerate(widgets):
-                r, c = divmod(i, cols)
-                cx = x0 + c * cell_w + cell_w / 2
-                cy = y + r * cell_h + cell_h / 2
+                r, c = divmod(i, wrap)
+                cx = x0 + (base_col + c) * pitch + size / 2
+                cy = y0 + (base_row + r) * block_h + label_h + size / 2
                 led.rect = pygame.Rect(int(cx - size / 2), int(cy - size / 2), int(size), int(size))
-            y += rows * cell_h
 
     # ── events ───────────────────────────────────────────────────────
 

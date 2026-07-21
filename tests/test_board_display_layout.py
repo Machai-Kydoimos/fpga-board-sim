@@ -163,3 +163,43 @@ def test_bank_labels_anchored_and_banks_stack_vertically(headless_pygame: Module
     assert fb._led_banks[1][1][0].rect.top > fb._led_banks[0][1][0].rect.top
     sizes = {led.rect.size for _lbl, ws in fb._led_banks for led in ws}
     assert len(sizes) == 1
+
+
+def _small_banks_board() -> BoardDef:
+    """A mono pair plus three single-color banks (Black Ice-ish)."""
+    return BoardDef(
+        name="Small",
+        class_name="Small",
+        leds=[ComponentInfo("led", "led", i, []) for i in range(2)]
+        + [ComponentInfo("led", n, 0, []) for n in ("led_r", "led_g", "led_b")],
+    )
+
+
+def test_small_led_banks_share_a_row_when_wide(headless_pygame: ModuleType) -> None:
+    from fpga_sim.ui import FPGABoard
+
+    scr = headless_pygame.display.set_mode((1280, 800))
+    fb = FPGABoard(board_def=_small_banks_board(), screen=scr, width=1280, height=800)
+    row_ys = {y for _lbl, _x, y in fb._led_label_pos}
+    assert len(fb._led_banks) == 4  # led, led_r, led_g, led_b
+    assert len(row_ys) < 4  # they flow-pack onto fewer rows than banks
+
+
+def test_switches_wrap_into_balanced_non_overlapping_rows(headless_pygame: ModuleType) -> None:
+    from fpga_sim.ui import FPGABoard
+
+    board = BoardDef(
+        name="S",
+        class_name="S",
+        switches=[ComponentInfo("switch", "switch", i, []) for i in range(18)],
+    )
+    scr = headless_pygame.display.set_mode((760, 700))  # narrow enough to wrap
+    fb = FPGABoard(board_def=board, screen=scr, width=760, height=700)
+    rows: dict[int, list[object]] = {}
+    for sw in fb.switches:
+        rows.setdefault(sw.rect.top, []).append(sw)
+    counts = [len(v) for v in rows.values()]
+    assert len(rows) >= 2  # 18 switches wrapped to multiple rows
+    assert max(counts) - min(counts) <= 1  # columns balanced across the rows
+    tops = sorted(rows)
+    assert tops[1] - tops[0] >= fb.switches[0].rect.height  # rows do not overlap
