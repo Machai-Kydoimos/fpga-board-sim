@@ -391,7 +391,6 @@ class FPGABoard:
         s = _ui_scale(self.width, self.height)
         margin = max(10, round(20 * s))
         title_h = max(14, round(22 * s))
-        label_h = max(12, round(18 * s))
         section_pad = max(6, round(10 * s))
         # Reserve the bottom strip (footer buttons + VHDL status, or the sim
         # overlays that replace them); minimal when neither is present.
@@ -399,13 +398,19 @@ class FPGABoard:
             max(65, round(90 * s)) if self._reserve_footer_space else max(8, round(10 * s))
         )
 
+        # Buttons/switches claim height by their wrapped row count plus a little
+        # headroom, so a board with many switches (DE2-115's 18 -> two rows) is
+        # not cramped and the controls stay comfortable click targets (U36).
+        avail_w_full = w - 2 * margin
         sections: list[tuple[str, Sequence[_Positionable], int]] = [("fpga", [self.fpga_chip], 3)]
         if self.leds:
             sections.append(("leds", self.leds, 4))
         if self.buttons:
-            sections.append(("buttons", self.buttons, 1))
+            btn_w = 1 + self._grid_rows(len(self.buttons), avail_w_full, s)
+            sections.append(("buttons", self.buttons, btn_w))
         if self.switches:
-            sections.append(("switches", self.switches, 1))
+            sw_w = 1 + self._grid_rows(len(self.switches), avail_w_full, s)
+            sections.append(("switches", self.switches, sw_w))
 
         if not sections:
             return
@@ -417,7 +422,7 @@ class FPGABoard:
         y: float = margin
         for name, items, weight in sections:
             sec_h = usable_h * weight / total_weight
-            content_h = sec_h - title_h - label_h
+            content_h = sec_h - title_h  # per-item labels are budgeted inside the placers
             avail_w = w - 2 * margin
 
             if name == "fpga" and self._seven_segs:
@@ -437,11 +442,24 @@ class FPGABoard:
                     scale=s,
                 )
             elif name == "leds":
+                # Clear the section top (where the chip's summary line can spill)
+                # but reclaim the redundant label strip via the wider content_h.
                 self._place_led_banks(margin, y + title_h, avail_w, content_h, scale=s)
             else:
                 self._place_items(items, margin, y + title_h, avail_w, content_h, name, scale=s)
 
             y += sec_h + section_pad
+
+    @staticmethod
+    def _grid_rows(n: int, avail_w: float, scale: float) -> int:
+        """Rows a grid of ``n`` items needs at the current width (U36).
+
+        Shared by the layout (to size the section) and the placement (to balance
+        the columns), so a bank that wraps to two rows reserves the height for
+        two rows instead of cramping them.
+        """
+        cols_fit = min(n, max(1, int(avail_w / max(1, round(65 * scale)))))
+        return math.ceil(n / cols_fit)
 
     def _place_items(  # noqa: PLR0913
         self,
@@ -485,58 +503,111 @@ class FPGABoard:
                 item.rect = pygame.Rect(int(cx - dw / 2), int(cy - dh / 2), int(dw), int(dh))
             return
 
-        cols = min(n, max(1, int(avail_w / max(1, round(65 * scale)))))
-        rows = math.ceil(n / cols)
+        rows = self._grid_rows(n, avail_w, scale)
+        cols = math.ceil(n / rows)  # balance columns evenly across those rows
 
         cell_w = avail_w / cols
         cell_h = avail_h / max(1, rows)
-
+        # Reserve the item's label (drawn beneath it) so a row never overlaps the
+        # next, and let the control fill the rest so it stays an easy click target.
+        item_label_h = max(12, round(13 * scale)) + 3
+        item_h = max(round(16 * scale), cell_h - item_label_h - round(4 * scale))
         if kind == "buttons":
-            size_w = min(cell_w * 0.75, round(110 * scale))
-            size_h = min(cell_h * 0.65, round(60 * scale))
+            size_w = min(cell_w * 0.82, round(120 * scale))
+            size_h = min(item_h, round(64 * scale))
         else:
-            size_w = min(cell_w * 0.55, round(56 * scale))
-            size_h = min(cell_h * 0.70, round(80 * scale))
+            size_w = min(cell_w * 0.62, round(64 * scale))
+            size_h = min(item_h, round(72 * scale))
 
         for i, item in enumerate(items):
             r = i // cols
             c = i % cols
             cx = x0 + c * cell_w + cell_w / 2
-            cy = y0 + r * cell_h + cell_h / 2
+            # Center the control + its label block within the cell.
+            cy = y0 + r * cell_h + (cell_h - (size_h + item_label_h)) / 2 + size_h / 2
             item.rect = pygame.Rect(cx - size_w / 2, cy - size_h / 2, size_w, size_h)
 
     def _place_led_banks(
         self, x0: float, y0: float, avail_w: float, avail_h: float, scale: float
     ) -> None:
-        """Lay out LEDs bank by bank (U36).
+        """Flow-pack LED banks at a uniform, space-filling size (U36).
 
-        Each bank is left-aligned on its own block of rows at one uniform LED
-        size, with a slim label strip above it (the label is blitted in
-        ``_draw`` at the recorded anchor). A single bank fills the area exactly
-        as before; DE2-115's LEDR/LEDG become two labeled row blocks.
+        LEDs within a bank sit at one tight pitch; banks are separated by a small
+        consistent gap (widened only when a bank's label needs it, so labels
+        never collide) and flow onto the next row when they no longer fit. A bank
+        wider than a row wraps its LEDs internally. The LED size is the largest
+        that keeps every row -- the label strip above, the LEDs, and the per-LED
+        label below -- on screen (capped), and the whole thing reflows with the
+        window.
         """
         self._led_label_pos = []
         banks = [(label, widgets) for label, widgets in self._led_banks if widgets]
         if not banks:
             return
-        min_cell = max(18, round(30 * scale))
-        cols = max(1, min(int(avail_w // min_cell), max(len(w) for _, w in banks)))
-        bank_rows = [math.ceil(len(w) / cols) for _, w in banks]
-        label_h = max(12, round(16 * scale))
-        grid_h = max(1.0, avail_h - label_h * len(banks))
-        cell_h = grid_h / sum(bank_rows)
-        cell_w = avail_w / cols
-        size = max(10.0, min(min(cell_w, cell_h) * 0.8, round(60 * scale)))
-        y = y0
-        for (label, widgets), rows in zip(banks, bank_rows, strict=True):
-            self._led_label_pos.append((label, int(x0), int(y)))
-            y += label_h
+        title_font = get_font(max(10, round(13 * scale)) + 5, bold=True)
+        label_px = {label: float(title_font.size(label)[0]) for label, _ in banks}
+        gap = max(6, round(14 * scale))  # between LEDs within a bank
+        bank_gap = max(gap, round(28 * scale))  # a little extra between banks
+        label_h = max(14, round(18 * scale))  # bank-label strip above a row
+        led_label_h = max(12, round(13 * scale)) + 3  # the LEDn label under each LED
+
+        # Pixel-flow placement: (label, widgets, x_offset, row, wrap_cols).
+        def flow(size: int) -> tuple[list[tuple[str, list[LED], float, int, int]], int]:
+            pitch = size + gap
+            full = max(1, int(avail_w // pitch))
+            placed: list[tuple[str, list[LED], float, int, int]] = []
+            row, x, rows_used = 0, 0.0, 1
+            for label, widgets in banks:
+                n = len(widgets)
+                if n > full:  # wider than a row -> own block, wraps internally
+                    if x > 0:
+                        row, x = row + 1, 0.0
+                    placed.append((label, widgets, 0.0, row, full))
+                    row += math.ceil(n / full)
+                    rows_used, x = row, 0.0
+                    continue
+                bank_w = max(n * pitch, label_px[label])
+                # A big bank (a full LED row like DE2-115's LEDR) takes its own
+                # line so two-color rows stack; small banks pack together.
+                large = n * pitch > avail_w * 0.5
+                if (large or x + bank_w > avail_w) and x > 0:
+                    row, x = row + 1, 0.0
+                placed.append((label, widgets, x, row, n))
+                rows_used = max(rows_used, row + 1)
+                if large:
+                    row, x = row + 1, 0.0
+                else:
+                    x += bank_w + bank_gap
+            return placed, rows_used
+
+        # Largest LED size whose rows all fit vertically (falls back to the min).
+        size = 10
+        for cand in range(round(46 * scale), 9, -1):
+            if flow(cand)[1] * (cand + label_h + led_label_h + gap) <= avail_h:
+                size = cand
+                break
+        pitch = size + gap
+        block_h = size + label_h + led_label_h + gap
+        placed, _ = flow(size)
+
+        # Center each row horizontally so its LEDs are balanced left-to-right.
+        row_right: dict[int, float] = {}
+        for _lbl, widgets, bank_x, base_row, wrap in placed:
+            n = len(widgets)
+            for rr in range(math.ceil(n / wrap)):
+                in_row = min(wrap, n - rr * wrap)
+                key = base_row + rr
+                row_right[key] = max(row_right.get(key, 0.0), bank_x + in_row * pitch)
+        row_off = {r: max(0.0, (avail_w - ext) / 2) for r, ext in row_right.items()}
+
+        for label, widgets, bank_x, base_row, wrap in placed:
+            lx = int(x0 + row_off.get(base_row, 0.0) + bank_x)
+            self._led_label_pos.append((label, lx, int(y0 + base_row * block_h)))
             for i, led in enumerate(widgets):
-                r, c = divmod(i, cols)
-                cx = x0 + c * cell_w + cell_w / 2
-                cy = y + r * cell_h + cell_h / 2
+                r, c = divmod(i, wrap)
+                cx = x0 + row_off.get(base_row + r, 0.0) + bank_x + c * pitch + size / 2
+                cy = y0 + (base_row + r) * block_h + label_h + size / 2
                 led.rect = pygame.Rect(int(cx - size / 2), int(cy - size / 2), int(size), int(size))
-            y += rows * cell_h
 
     # ── events ───────────────────────────────────────────────────────
 
