@@ -19,6 +19,7 @@ import re
 from collections.abc import Sequence
 
 from framework_conventions import RoleEntry, build_convention
+from led_metadata import color_from_name
 
 from fpga_sim.board_loader import (
     _FALLBACK_CLOCK_HZ,
@@ -443,7 +444,54 @@ def _to_component(resource: _Resource, kind: str) -> ComponentInfo:
         inverted=inverted,
         connector=connector,  # type: ignore[arg-type]
         attrs={k: v for k, v in resource.attrs.items() if not callable(v)},
+        color=color_from_name(resource.name) if kind == "led" else "",
     )
+
+
+def _coalesce_rgb_trio(leds: list[ComponentInfo]) -> list[ComponentInfo]:
+    """Fold a scalar ``led_r``/``led_g``/``led_b`` trio into one 3-pin ``rgb_led`` (U36).
+
+    A few amaranth boards (UPduino v1, iCESugar, iCE40-UP5K-B-EVN) declare a
+    single RGB LED as three separate single-pin ``led_r`` / ``led_g`` / ``led_b``
+    resources rather than an ``RGBLEDResource``.  Downstream RGB handling (U37)
+    keys on a 3-pin ``rgb_led``, so merge the trio into one component in place of
+    its red channel (mono LEDs keep their spot ahead of it).
+
+    Fires only when the *only* color-named LEDs are exactly one each of red,
+    green, and blue, every one a single pin.  A fourth discrete color (Black
+    Ice's ``led_o``) or a missing blue (iCEBreaker's red+green pair) leaves the
+    bank untouched -- those are genuinely discrete single-color LEDs, colored
+    individually by the name heuristic instead.
+    """
+    by_color: dict[str, list[ComponentInfo]] = {}
+    for c in leds:
+        col = color_from_name(c.name)
+        if col:
+            by_color.setdefault(col, []).append(c)
+    if set(by_color) != {"red", "green", "blue"} or any(
+        len(v) != 1 or len(v[0].pins) != 1 for v in by_color.values()
+    ):
+        return leds
+
+    r, g, b = by_color["red"][0], by_color["green"][0], by_color["blue"][0]
+    rgb = ComponentInfo(
+        kind="led",
+        name="rgb_led",
+        number=0,
+        pins=[r.pins[0], g.pins[0], b.pins[0]],
+        direction="o",
+        inverted=r.inverted,  # one physical LED: the trio shares polarity
+        attrs=dict(r.attrs),
+    )
+    out: list[ComponentInfo] = []
+    for c in leds:
+        if c is r:
+            out.append(rgb)
+        elif c is g or c is b:
+            continue
+        else:
+            out.append(c)
+    return out
 
 
 def _amaranth_role_entries(components: list[ComponentInfo]) -> list[RoleEntry]:
@@ -595,6 +643,7 @@ def load_board_from_source(source: str, filename: str = "<string>") -> list[Boar
             elif kind == "switch":
                 switches.append(_to_component(res, "switch"))
 
+        leds = _coalesce_rgb_trio(leds)
         seven_seg = _extract_sevenseg(resources)
 
         if not (leds or buttons or switches):

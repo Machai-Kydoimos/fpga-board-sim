@@ -10,6 +10,8 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
+from led_metadata import color_from_name
+
 # ═══════════════════════════════════════════════════════════════════════
 #  Board metadata — XDC files lack device/package info
 # ═══════════════════════════════════════════════════════════════════════
@@ -325,17 +327,22 @@ def _build_led_components(pin_entries: list[dict[str, Any]]) -> list[dict[str, A
         base, idx = _parse_port_name(entry["port"])
         if idx is None:
             idx = len(components)
-        components.append(
-            {
-                "name": "led",
-                "number": idx,
-                "pins": [entry["pin"]],
-                "direction": "o",
-                "inverted": False,
-                "connector": None,
-                "attrs": {"IOSTANDARD": entry["iostandard"]} if entry["iostandard"] else {},
-            }
-        )
+        comp: dict[str, Any] = {
+            "name": "led",
+            "number": idx,
+            "pins": [entry["pin"]],
+            "direction": "o",
+            "inverted": False,
+            "connector": None,
+            "attrs": {"IOSTANDARD": entry["iostandard"]} if entry["iostandard"] else {},
+        }
+        # Digilent LED ports are bare `led[n]` (color comes from the registry, not
+        # the name), but honor the shared heuristic so a future color-named XDC
+        # port still populates `color` (U36). No-op on today's data.
+        color = color_from_name(base)
+        if color:
+            comp["color"] = color
+        components.append(comp)
     return sorted(components, key=lambda c: c["number"])
 
 

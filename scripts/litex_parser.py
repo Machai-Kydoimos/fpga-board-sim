@@ -11,6 +11,7 @@ import re
 from typing import Any
 
 from framework_conventions import RoleEntry, build_convention
+from led_metadata import color_from_name
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Mock LiteX build system classes
@@ -323,7 +324,7 @@ def _parse_io_as_component(
     elif kind == "switch":
         name = "switch"
 
-    return {
+    comp: dict[str, Any] = {
         "name": name,
         "raw_name": res_name,
         "number": res_num,
@@ -333,6 +334,10 @@ def _parse_io_as_component(
         "connector": conn_val,
         "attrs": {"IOSTANDARD": iostandard} if iostandard else {},
     }
+    color = color_from_name(name) if kind == "led" else ""
+    if color:  # emit only when the name encodes a color (schema forbids "") (U36)
+        comp["color"] = color
+    return comp
 
 
 def _parse_clock_info(res_name: str, ios: tuple[Any, ...]) -> dict[str, Any]:

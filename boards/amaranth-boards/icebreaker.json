@@ -46,7 +46,8 @@
       "connector": null,
       "attrs": {
         "IO_STANDARD": "SB_LVCMOS"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led_g",
@@ -59,7 +60,8 @@
       "connector": null,
       "attrs": {
         "IO_STANDARD": "SB_LVCMOS"
-      }
+      },
+      "color": "green"
     }
   ],
   "buttons": [

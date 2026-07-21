@@ -160,6 +160,13 @@
           },
           "default": {},
           "description": "IO standard and other attributes"
+        },
+        "color": {
+          "description": "LED color when known -- a named color or a #RRGGBB hex string. Absent means unknown, and the renderer falls back to the theme default. On generated boards it flows from sync-time LED-name heuristics or the cited color registry; custom boards may set it directly (U36).",
+          "oneOf": [
+            { "type": "string", "enum": ["red", "green", "blue", "yellow", "orange", "amber", "white"] },
+            { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+          ]
         }
       },
       "additionalProperties": false
