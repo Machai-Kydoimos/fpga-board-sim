@@ -199,6 +199,21 @@ class FPGABoard:
             self.buttons = [Button(i) for i in range(num_buttons)]
             self.switches = [Switch(i) for i in range(num_switches)]
 
+        # LED bank clusters (U36): (label, widgets) per consecutive same-name run,
+        # so the renderer groups and labels them (LEDR / LEDG / RGB / ...).
+        self._led_banks: list[tuple[str, list[LED]]] = []
+        if board_def and board_def.leds:
+            idx = 0
+            for name, comps in board_def.led_banks:
+                self._led_banks.append(
+                    (board_def.led_bank_label(name), self.leds[idx : idx + len(comps)])
+                )
+                idx += len(comps)
+        elif self.leds:
+            self._led_banks = [("LEDs", self.leds)]
+        # Bank label anchors (label, x, y), filled by _place_led_banks (U36).
+        self._led_label_pos: list[tuple[str, int, int]] = []
+
         if board_def and board_def.seven_seg:
             ssd = board_def.seven_seg
             self._seven_segs: list[SevenSeg] = [
@@ -421,6 +436,8 @@ class FPGABoard:
                     "seven_segs",
                     scale=s,
                 )
+            elif name == "leds":
+                self._place_led_banks(margin, y + title_h, avail_w, content_h, scale=s)
             else:
                 self._place_items(items, margin, y + title_h, avail_w, content_h, name, scale=s)
 
@@ -468,24 +485,13 @@ class FPGABoard:
                 item.rect = pygame.Rect(int(cx - dw / 2), int(cy - dh / 2), int(dw), int(dh))
             return
 
-        if kind == "leds":
-            if n <= 16:
-                cols = n
-            else:
-                aspect = avail_w / max(1, avail_h)
-                cols = max(1, round(math.sqrt(n * aspect)))
-                cols = min(cols, n)
-        else:
-            cols = min(n, max(1, int(avail_w / max(1, round(65 * scale)))))
+        cols = min(n, max(1, int(avail_w / max(1, round(65 * scale)))))
         rows = math.ceil(n / cols)
 
         cell_w = avail_w / cols
         cell_h = avail_h / max(1, rows)
 
-        if kind == "leds":
-            size = min(cell_w, cell_h) * 0.80
-            size = max(10, min(size, round(64 * scale)))
-        elif kind == "buttons":
+        if kind == "buttons":
             size_w = min(cell_w * 0.75, round(110 * scale))
             size_h = min(cell_h * 0.65, round(60 * scale))
         else:
@@ -497,10 +503,40 @@ class FPGABoard:
             c = i % cols
             cx = x0 + c * cell_w + cell_w / 2
             cy = y0 + r * cell_h + cell_h / 2
-            if kind == "leds":
-                item.rect = pygame.Rect(cx - size / 2, cy - size / 2, size, size)
-            else:
-                item.rect = pygame.Rect(cx - size_w / 2, cy - size_h / 2, size_w, size_h)
+            item.rect = pygame.Rect(cx - size_w / 2, cy - size_h / 2, size_w, size_h)
+
+    def _place_led_banks(
+        self, x0: float, y0: float, avail_w: float, avail_h: float, scale: float
+    ) -> None:
+        """Lay out LEDs bank by bank (U36).
+
+        Each bank is left-aligned on its own block of rows at one uniform LED
+        size, with a slim label strip above it (the label is blitted in
+        ``_draw`` at the recorded anchor). A single bank fills the area exactly
+        as before; DE2-115's LEDR/LEDG become two labeled row blocks.
+        """
+        self._led_label_pos = []
+        banks = [(label, widgets) for label, widgets in self._led_banks if widgets]
+        if not banks:
+            return
+        min_cell = max(18, round(30 * scale))
+        cols = max(1, min(int(avail_w // min_cell), max(len(w) for _, w in banks)))
+        bank_rows = [math.ceil(len(w) / cols) for _, w in banks]
+        label_h = max(12, round(16 * scale))
+        grid_h = max(1.0, avail_h - label_h * len(banks))
+        cell_h = grid_h / sum(bank_rows)
+        cell_w = avail_w / cols
+        size = max(10.0, min(min(cell_w, cell_h) * 0.8, round(60 * scale)))
+        y = y0
+        for (label, widgets), rows in zip(banks, bank_rows, strict=True):
+            self._led_label_pos.append((label, int(x0), int(y)))
+            y += label_h
+            for i, led in enumerate(widgets):
+                r, c = divmod(i, cols)
+                cx = x0 + c * cell_w + cell_w / 2
+                cy = y + r * cell_h + cell_h / 2
+                led.rect = pygame.Rect(int(cx - size / 2), int(cy - size / 2), int(size), int(size))
+            y += rows * cell_h
 
     # ── events ───────────────────────────────────────────────────────
 
@@ -673,9 +709,9 @@ class FPGABoard:
                 count_y = _chip_r.bottom + chip_font.get_linesize() + max(2, round(3 * s))
                 self.screen.blit(count_surf, (count_x, count_y))
 
-        if self.leds:
-            t = title_font.render("LEDs", True, WHITE)
-            self.screen.blit(t, (20, self.leds[0].rect.top - font_size - 10))
+        for _bank_label, _lx, _ly in self._led_label_pos:
+            t = title_font.render(_bank_label, True, WHITE)
+            self.screen.blit(t, (_lx, _ly))
         if self.buttons:
             t = title_font.render("Buttons", True, WHITE)
             self.screen.blit(t, (20, self.buttons[0].rect.top - font_size - 14))

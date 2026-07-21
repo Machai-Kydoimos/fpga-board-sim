@@ -146,6 +146,36 @@ def _perceptual(level: float) -> float:
     return float(max(0.0, min(1.0, level)) ** (1.0 / GAMMA))
 
 
+# LED emission colors (U36). Vivid "lit" RGBs for the schema's named colors; an
+# unknown/absent color falls back to THEME.led_on at draw time (never captured
+# here -- the U6 theme trap). #RRGGBB values from board data are parsed directly.
+_LED_COLOR_RGB: dict[str, tuple[int, int, int]] = {
+    "red": (255, 60, 55),
+    "green": (60, 225, 95),
+    "blue": (70, 130, 255),
+    "yellow": (250, 225, 70),
+    "orange": (255, 150, 45),
+    "amber": (255, 190, 50),
+    "white": (245, 245, 255),
+}
+
+
+def resolve_led_color(color: str) -> tuple[int, int, int] | None:
+    """Map a board ``color`` (a named color or ``#RRGGBB``) to an RGB triple.
+
+    Returns ``None`` when the color is empty or unrecognized, so the caller can
+    fall back to the theme's default LED color.
+    """
+    if not color:
+        return None
+    if color.startswith("#") and len(color) == 7:
+        try:
+            return (int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16))
+        except ValueError:
+            return None
+    return _LED_COLOR_RGB.get(color)
+
+
 class LED(UIComponent):
     """A read-only indicator controlled via FPGABoard.set_led()/set_led_level().
 
@@ -160,6 +190,8 @@ class LED(UIComponent):
         """Initialize the LED with its board index and optional component metadata."""
         super().__init__(index, info)
         self.level: float = 0.0
+        # Resolved emission color (U36); None -> theme default at draw time.
+        self._on_color: tuple[int, int, int] | None = resolve_led_color(info.color if info else "")
 
     @property
     def state(self) -> bool:
@@ -175,8 +207,12 @@ class LED(UIComponent):
         cx, cy = self.rect.center
         r = max(4, min(self.rect.width, self.rect.height) // 2 - 2)
 
-        # THEME is read here, at draw time, never captured at import (U6).
-        on_color = THEME.led_on
+        # Resolved LED color (U36) or the theme default; THEME is read here, at
+        # draw time, never captured at import (U6).
+        on_color = self._on_color or THEME.led_on
+        # A colored LED tints its dark epoxy faintly toward its own hue (the
+        # "colored lens" look); an uncolored one keeps the plain theme off-color.
+        off_color = lerp_rgb(THEME.led_off, on_color, 0.12) if self._on_color else THEME.led_off
         k = _perceptual(self.level)
 
         if k > 0.0:
@@ -185,7 +221,7 @@ class LED(UIComponent):
             glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
             pygame.draw.circle(glow, (*on_color, round(50 * k)), (r * 2, r * 2), r * 2)
             surface.blit(glow, (cx - r * 2, cy - r * 2))
-        pygame.draw.circle(surface, lerp_rgb(THEME.led_off, on_color, k), (cx, cy), r)
+        pygame.draw.circle(surface, lerp_rgb(off_color, on_color, k), (cx, cy), r)
 
         pygame.draw.circle(surface, WHITE, (cx, cy), r, 1)
 

@@ -440,3 +440,60 @@ def test_led_banks_components_are_the_actual_leds():
     leds = _leds("led", "led")
     _, comps = BoardDef(name="B", class_name="B", leds=leds).led_banks[0]
     assert comps[0] is leds[0] and comps[1] is leds[1]
+
+
+# ── summary + bank labels (U36) ───────────────────────────────────────────────
+
+
+def test_summary_single_bank_unchanged():
+    board = BoardDef(name="B", class_name="B", leds=_leds(*(["led"] * 4)))
+    assert board.summary.startswith("4 LEDs")
+
+
+def test_summary_breaks_out_two_mono_banks():
+    board = BoardDef(name="B", class_name="B", leds=_leds(*(["led"] * 18 + ["led_g"] * 9)))
+    assert board.summary.startswith("18+9 LEDs")
+
+
+def test_summary_counts_rgb_separately():
+    board = BoardDef(name="B", class_name="B", leds=_leds(*(["led"] * 4 + ["rgb_led"] * 4)))
+    assert board.summary.startswith("4 LEDs + 4 RGB")
+
+
+def test_summary_collapses_more_than_two_mono_banks():
+    # led(2) + led_r + led_g + led_b -> 4 mono banks -> collapse to the total
+    board = BoardDef(name="B", class_name="B", leds=_leds("led", "led", "led_r", "led_g", "led_b"))
+    assert board.summary.startswith("5 LEDs")
+
+
+def test_led_bank_label_uses_canonical_convention():
+    board = BoardDef(
+        name="B",
+        class_name="B",
+        leds=_leds("led", "led_g"),
+        port_conventions={
+            "terasic": {
+                "leds": {"name": "LEDR"},
+                "leds_green": {"name": "LEDG"},
+                "naming": "canonical",
+            }
+        },
+    )
+    assert board.led_bank_label("led") == "LEDR"
+    assert board.led_bank_label("led_g") == "LEDG"
+    assert board.led_bank_label("rgb_led") == "RGB"
+
+
+def test_led_bank_label_ignores_framework_convention():
+    board = BoardDef(
+        name="B",
+        class_name="B",
+        leds=_leds("led"),
+        port_conventions={"litex": {"leds": {"name": "user_led"}, "naming": "framework-derived"}},
+    )
+    assert board.led_bank_label("led") == "LEDs"  # generic framework name not used
+
+
+def test_led_bank_label_uppercases_unknown_name():
+    board = BoardDef(name="B", class_name="B", leds=_leds("power_led"))
+    assert board.led_bank_label("power_led") == "POWER_LED"

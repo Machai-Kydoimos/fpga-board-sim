@@ -57,6 +57,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   envelope now comes from four bits lower in the counter, putting a full breath
   at ~8 wall-seconds on GHDL-mcode and ~1 on NVC, instead of the ~2 minutes the
   old tap needed at the simulator's sub-real-time throughput.
+- **LED banks and per-LED colors now render (U36).** A board's LEDs group into
+  labeled banks — DE2-115 shows its `LEDR` and `LEDG` as two separate labeled
+  rows rather than one undifferentiated block — and each LED draws in its own
+  color wherever the board records one (Black Ice's discrete blue/green/orange/red
+  LEDs), tinting its dark lens to match and falling back to the theme color where
+  unknown; RGB LEDs cluster on their own. The one-line board summary reflects the
+  banks too (`18+9 LEDs`, `4 LEDs + 4 RGB`). The cited color registry that fills
+  in the remaining boards' colors follows separately.
 
 ## [0.16.0] - 2026-07-18
 

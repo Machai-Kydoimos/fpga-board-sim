@@ -280,6 +280,28 @@ def test_pause_follow_binary_applies_to_segments(headless_pygame, fake_child):
     assert d0[1] == pytest.approx(0.0)  # held-on, bit1=0 -> follows off
 
 
+# ── LED emission color (U36) ─────────────────────────────────────────────────
+
+
+def test_resolve_led_color_named_hex_and_unknown():
+    from fpga_sim.ui.components import resolve_led_color
+
+    assert resolve_led_color("red") == (255, 60, 55)
+    assert resolve_led_color("#00ff88") == (0, 255, 136)
+    assert resolve_led_color("") is None
+    assert resolve_led_color("mauve") is None
+    assert resolve_led_color("#12zz00") is None  # malformed hex
+
+
+def test_led_widget_resolves_its_info_color(headless_pygame):
+    from fpga_sim.board_loader import ComponentInfo
+    from fpga_sim.ui.components import LED
+
+    assert LED(0, info=ComponentInfo("led", "led_r", 0, [], color="red"))._on_color == (255, 60, 55)
+    assert LED(1, info=ComponentInfo("led", "led", 1, []))._on_color is None  # uncolored
+    assert LED(2)._on_color is None  # no info at all
+
+
 def test_fading_digit_is_not_swallowed_by_the_change_gate(headless_pygame, fake_child):
     """set_seg's bit-pattern gate must not hide a brightness-only change."""
     child, _client = fake_child
