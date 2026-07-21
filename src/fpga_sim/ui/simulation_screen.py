@@ -329,6 +329,21 @@ class SimulationScreen:
         self._ema[key] = smoothed
         return smoothed
 
+    @staticmethod
+    def _pause_follow_binary(targets: list[float], bits: int) -> None:
+        """Under pause, let each held-off/on channel follow the live binary bit.
+
+        While paused the duty is held (so a mid-PWM channel keeps its exact
+        measured level instead of collapsing over the ~1 ns paused window). A
+        channel whose held duty is exactly off or on has no PWM level to
+        preserve, so it follows the live ``bits`` instead -- that way a
+        combinational switch -> LED still responds to input under pause
+        (U9 pause behavior). Mutates ``targets`` in place.
+        """
+        for i, level in enumerate(targets):
+            if level in (0.0, 1.0):
+                targets[i] = float((bits >> i) & 1)
+
     def _apply_state(self) -> None:
         """Reflect the latest child state onto the board LEDs / 7-seg.
 
@@ -345,6 +360,8 @@ class SimulationScreen:
         n_leds = len(self.board.leds)
         if led_duty:
             targets = [float(led_duty[i]) if i < len(led_duty) else 0.0 for i in range(n_leds)]
+            if self.panel.paused:
+                self._pause_follow_binary(targets, led)
         else:
             targets = [float(bool(led & (1 << i))) for i in range(n_leds)]
         for i, level in enumerate(self._smooth("led", targets, dt_s)):
@@ -359,6 +376,8 @@ class SimulationScreen:
                 float(seg_duty[i]) if i < len(seg_duty) else 0.0
                 for i in range(8 * self._seg_digits)
             ]
+            if self.panel.paused:
+                self._pause_follow_binary(seg_targets, int(seg))
             levels = self._smooth("seg", seg_targets, dt_s)
             for i in range(self._seg_digits):
                 self.board.set_seg_levels(i, levels[8 * i : 8 * i + 8])

@@ -233,6 +233,53 @@ def test_seg_without_duty_still_uses_bits(headless_pygame, fake_child):
     assert scr.board._seven_segs[0].bits == 0b0000_0101
 
 
+# ── Pause: held-off/on channels follow live input (U9 decision C) ────────────
+
+
+def test_pause_lets_held_off_on_leds_follow_switch_input(headless_pygame, fake_child):
+    """A held-off/on LED follows the live binary bit under pause (a combinational
+    switch -> LED still responds), while a mid-PWM channel keeps its exact duty."""
+    child, _client = fake_child
+    scr = _screen(headless_pygame, child)
+    scr.panel.paused = True
+    # Duty held from before the pause; `led` reflects a switch flip that
+    # combinationally turned ch2 on and ch1 off.
+    scr._last_state = {"led": 0b0100, "seg": None, "led_duty": [0.3, 1.0, 0.0, 0.6]}
+    scr._apply_state()
+    levels = [scr.board.leds[i].level for i in range(4)]
+    assert levels[0] == pytest.approx(0.3)  # mid-PWM: held, ignores binary
+    assert levels[1] == pytest.approx(0.0)  # held 1.0, bit now 0 -> follows off
+    assert levels[2] == pytest.approx(1.0)  # held 0.0, bit now 1 -> follows on
+    assert levels[3] == pytest.approx(0.6)  # mid-PWM: held
+
+
+def test_running_uses_duty_even_for_off_on_leds(headless_pygame, fake_child):
+    """Not paused: duty always wins; the follow-binary hybrid is pause-only."""
+    child, _client = fake_child
+    scr = _screen(headless_pygame, child)
+    scr.panel.paused = False
+    scr._last_state = {"led": 0b1111, "seg": None, "led_duty": [0.0, 1.0, 0.0, 1.0]}
+    scr._apply_state()
+    levels = [scr.board.leds[i].level for i in range(4)]
+    assert levels == pytest.approx([0.0, 1.0, 0.0, 1.0])  # all-on binary ignored
+
+
+def test_pause_follow_binary_applies_to_segments(headless_pygame, fake_child):
+    """Segments are LEDs: the same pause rule holds a mid-PWM segment but lets a
+    held-off/on segment follow the live bits."""
+    child, _client = fake_child
+    scr = _screen(headless_pygame, child, seg=True)
+    scr.panel.paused = True
+    n = 8 * scr._seg_digits
+    duty = [0.0] * n
+    duty[0], duty[1] = 0.4, 1.0  # segment a mid-PWM (held), segment b held-on
+    scr._last_state = {"led": 0, "seg": 0b01, "led_duty": None, "seg_duty": duty}
+    scr._apply_state()
+    d0 = scr.board._seven_segs[0].levels
+    assert d0[0] == pytest.approx(0.4)  # mid-PWM held, ignores bit0=1
+    assert d0[1] == pytest.approx(0.0)  # held-on, bit1=0 -> follows off
+
+
 def test_fading_digit_is_not_swallowed_by_the_change_gate(headless_pygame, fake_child):
     """set_seg's bit-pattern gate must not hide a brightness-only change."""
     child, _client = fake_child

@@ -49,7 +49,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   **[PAUSE] holds brightness** rather than changing it: while paused the
   simulation step shrinks to 1 ns, so measuring across it would average over less
   than a clock period and snap every channel to 0% or 100% — pause is an
-  observation control and must not alter what the board shows.
+  observation control and must not alter what the board shows. A channel with
+  no PWM level to hold — held duty exactly off or on — instead follows the live
+  input, so a combinational switch → LED still responds under pause, while a
+  mid-PWM channel keeps its exact measured level.
 - **`hdl/blinky_pwm.vhd` re-tapped so its breathing is actually visible.** The
   envelope now comes from four bits lower in the counter, putting a full breath
   at ~8 wall-seconds on GHDL-mcode and ~1 on NVC, instead of the ~2 minutes the
