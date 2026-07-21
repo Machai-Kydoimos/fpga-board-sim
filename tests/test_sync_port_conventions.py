@@ -626,6 +626,82 @@ def test_write_results_no_results_is_a_noop(
 
 
 # ═══════════════════════════════════════════════════════════════════════
+#  carry_forward_retrieved: a no-op re-sync must not churn the retrieved date
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def _conv(retrieved: str, *, width: int = 4, url: str = "u") -> dict[str, Any]:
+    return {
+        "clk": "clk",
+        "leds": {"name": "led", "width": width},
+        "naming": "canonical",
+        "source": {"url": url, "retrieved": retrieved, "registry_board": "X"},
+    }
+
+
+def test_carry_forward_retrieved_preserves_date_when_block_unchanged() -> None:
+    existing = _conv("2026-01-01")
+    regenerated = _conv("2026-07-21")  # only the retrieved date differs
+    out = spc.carry_forward_retrieved(regenerated, existing)
+    assert out == existing  # a true byte-for-byte no-op
+    assert out["source"]["retrieved"] == "2026-01-01"
+
+
+def test_carry_forward_retrieved_updates_date_on_real_change() -> None:
+    existing = _conv("2026-01-01", width=8)
+    regenerated = _conv("2026-07-21", width=10)  # width changed -> real drift
+    out = spc.carry_forward_retrieved(regenerated, existing)
+    assert out["source"]["retrieved"] == "2026-07-21"
+    assert out["leds"]["width"] == 10
+
+
+def test_carry_forward_retrieved_updates_when_source_url_moved() -> None:
+    existing = _conv("2026-01-01", url="raw/aaaa/f.qsf")
+    regenerated = _conv("2026-07-21", url="raw/bbbb/f.qsf")  # pinned source moved commit
+    out = spc.carry_forward_retrieved(regenerated, existing)
+    assert out["source"]["retrieved"] == "2026-07-21"
+    assert out["source"]["url"] == "raw/bbbb/f.qsf"
+
+
+def test_carry_forward_retrieved_keeps_today_on_first_populate() -> None:
+    regenerated = _conv("2026-07-21")
+    assert spc.carry_forward_retrieved(regenerated, None) == regenerated  # nothing to carry
+
+
+def test_write_results_preserves_retrieved_for_unchanged_convention(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """A no-op re-sync keeps the on-disk retrieved date (no timestamp churn)."""
+    monkeypatch.setattr(spc, "BOARDS_DIR", tmp_path)
+    board_dir = tmp_path / "custom"
+    board_dir.mkdir()
+    board = {
+        "name": "Test Board",
+        "class_name": "TestBoardPlatform",
+        "vendor": "Test",
+        "device": "test-device",
+        "clocks": [{"name": "clk", "hz": 100e6, "pin": "A1", "is_default": True}],
+        "default_clock_hz": 100e6,
+        "leds": [
+            {"name": "led", "number": i, "pins": [f"P{i}"], "direction": "o"} for i in range(4)
+        ],
+        "switches": [],
+        "buttons": [],
+        "port_conventions": {"test": _conv("2026-01-01")},
+    }
+    (board_dir / "test_board.json").write_text(json.dumps(board))
+
+    # Regeneration produces the identical block but stamped with today's date.
+    result = spc.BoardResult(
+        "Test Board",
+        convention_by_file={"custom/test_board.json": {"test": _conv("2026-07-21")}},
+    )
+    merged = spc.write_results([result], dry_run=True)
+    src = merged["custom/test_board.json"]["port_conventions"]["test"]["source"]
+    assert src["retrieved"] == "2026-01-01"
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  Idempotency (structural: everything except the `retrieved` date)
 # ═══════════════════════════════════════════════════════════════════════
 
