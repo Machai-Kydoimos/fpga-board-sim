@@ -212,6 +212,62 @@ def test_write_outputs_preserves_existing_port_conventions(tmp_path):
     assert written["port_conventions"] == {"custom": {"clk": "CLK"}}  # preserved
 
 
+def test_write_outputs_drops_framework_derived_key_the_parser_stopped_emitting(tmp_path):
+    """A ``naming: "framework-derived"`` sub-key is parser-owned: when a
+    regeneration no longer emits it (gmm7550's mixed-polarity LED bank), the
+    stale block must drop instead of folding forward forever -- while a
+    hand-authored/canonical key on the same board still survives."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["port_conventions"] = {
+        "litex": {
+            "clk": "clk60",
+            "leds": {"name": "user_led", "width": 1},
+            "naming": "framework-derived",
+        },
+        "vendor": {"clk": "CLK"},  # no naming stamp: hand-authored tier
+    }
+    (out / "board.json").write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+    fresh = _valid_board()  # parser emits no port_conventions this run
+    write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo", color_registry={})
+
+    written = json.loads((out / "board.json").read_text())
+    assert written["port_conventions"] == {"vendor": {"clk": "CLK"}}
+
+
+def test_write_outputs_framework_derived_key_reemitted_is_updated_not_dropped(tmp_path):
+    """The drop rule only fires on absence: a framework-derived key the parser
+    re-emits is overwritten with the fresh shape as before."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _valid_board()
+    existing["port_conventions"] = {
+        "litex": {
+            "clk": "clk60",
+            "leds": {"name": "user_led", "width": 2},
+            "naming": "framework-derived",
+        },
+    }
+    (out / "board.json").write_text(json.dumps(existing, indent=2) + "\n", encoding="utf-8")
+
+    fresh = _valid_board()
+    fresh["port_conventions"] = {
+        "litex": {
+            "clk": "clk60",
+            "leds": {"name": "user_led", "width": 1},
+            "naming": "framework-derived",
+        },
+    }
+    write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo", color_registry={})
+
+    written = json.loads((out / "board.json").read_text())
+    assert written["port_conventions"]["litex"]["leds"]["width"] == 1
+
+
 def test_write_outputs_reconciles_framework_polarity_to_canonical(tmp_path):
     """F2: on re-sync, a framework-derived bank inherits a same-width canonical
     bank's polarity (the de0_cv shape: a cited active-high canonical wins over the

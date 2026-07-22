@@ -31,6 +31,31 @@ from typing import Any, NamedTuple
 # explicit polarity flag (e.g. litex ``led_n`` / ``rgb_led_n``).
 _ACTIVE_LOW_SUFFIX = re.compile(r"_n$", re.IGNORECASE)
 
+# Compass-point suffix letters (center/north/south/east/west). A directional
+# button cluster like KCU116/ZCU216's ``user_btn_c/_n/_s/_w/_e`` names its
+# North member ``_n`` -- a direction, not the active-low marker.
+_COMPASS_SUFFIX = re.compile(r"^(.*)_([cnsew])$", re.IGNORECASE)
+
+
+def _compass_norths(names: list[str]) -> set[str]:
+    """Names whose trailing ``_n`` means North, not active-low.
+
+    A name qualifies when >=2 distinct compass suffixes (``_c``/``_n``/``_s``/
+    ``_e``/``_w``) hang off its shared prefix -- a lone ``user_btn_n`` with no
+    compass siblings stays ambiguous and keeps the active-low reading.
+    """
+    by_prefix: dict[str, set[str]] = {}
+    for name in names:
+        m = _COMPASS_SUFFIX.match(name)
+        if m:
+            by_prefix.setdefault(m.group(1).lower(), set()).add(m.group(2).lower())
+    return {
+        name
+        for name in names
+        if name.lower().endswith("_n") and len(by_prefix.get(name[:-2].lower(), set())) >= 2
+    }
+
+
 # Normalized net-names that name a "primary" bank -- preferred over a decorated
 # sibling such as ``rgb_led`` when choosing the group a convention advertises.
 _PRIMARY_NETS = ("led", "switch", "button")
@@ -74,9 +99,12 @@ def build_bank(entries: list[RoleEntry]) -> dict[str, Any] | None:
     "primary LED group (led over rgb_led)" rule; (B) the survivors are shaped by
     their *raw* framework names -- one raw name (or a dominant >=2-bit bus among
     stray scalars) becomes a vector, several single-bit raw names become a
-    ``names[]`` cluster.  The bank is marked active-low when an emitted bit carries
-    an ``inverted`` flag or an emitted raw name ends in ``_n``.  Returns ``None`` for
-    an empty role so the caller can omit an absent bank (the U31 floor).
+    ``names[]`` cluster.  The bank is marked active-low when every emitted name is
+    active-low (an ``inverted`` flag on a backing bit, or a name ending in ``_n``
+    that isn't a compass North -- see :func:`_compass_norths`); a bank whose names
+    *disagree* on polarity is dropped, since the single ``active_low`` flag cannot
+    represent it.  Returns ``None`` for an empty role so the caller can omit an
+    absent bank (the U31 floor).
 
     A bit backed by >1 physical pin (``pins_per_bit`` > 1) is an RGB/RGBW LED with
     r/g/b(/w) subsignals -- there is no single declarable ``std_logic`` port for it,
@@ -109,17 +137,29 @@ def build_bank(entries: list[RoleEntry]) -> dict[str, Any] | None:
             indexed or list(raw_groups),
             key=lambda r: (-width_of(r), len(r), r),
         )
-        emitted = raw_groups[raw]
         emitted_names = [raw]
         bank = {"name": raw, "width": width_of(raw)}
     else:
         # Several distinct single-bit ports: a scalar cluster (schema `names[]`).
         emitted_names = sorted(raw_groups)
-        emitted = pool
         bank = {"names": emitted_names, "width": len(emitted_names)}
 
-    if any(e.inverted for e in emitted) or any(_ACTIVE_LOW_SUFFIX.search(n) for n in emitted_names):
+    # Per-name polarity: an explicit inverted flag on any backing bit, or an
+    # ``_n`` suffix that is not the North member of a compass cluster.
+    norths = _compass_norths(emitted_names)
+    low = [
+        any(e.inverted for e in raw_groups[name])
+        or (name not in norths and bool(_ACTIVE_LOW_SUFFIX.search(name)))
+        for name in emitted_names
+    ]
+    if all(low):
         bank["active_low"] = True
+    elif any(low):
+        # Mixed polarity (gmm7550: active-high ``led_green`` + active-low
+        # ``led_red_n``): the bank's single ``active_low`` flag cannot tell the
+        # truth for both names, so the bank is not advertised at all -- truth
+        # over coverage, exactly like the multi-pin rule above.
+        return None
     return bank
 
 

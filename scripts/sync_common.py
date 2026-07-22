@@ -130,13 +130,16 @@ def _fold_forward_unmanaged_keys(content: str, out_path: Path) -> str:
     A parser regenerates a board file from scratch each run, so anything it
     doesn't itself produce -- today, ``port_conventions`` / ``peripherals`` --
     would otherwise be silently wiped on the next sync. ``port_conventions`` is
-    merged per top-level sub-key (new overlays old): a parser that generates no
-    conventions at all (amaranth, litex) contributes an empty overlay and every
-    existing sub-key survives untouched; ``sync_digilent_xdc.py``, which
-    generates only the ``digilent`` sub-key, correctly overwrites just that key
-    while any other convention (hand-authored or populated by U21's later
-    generator) survives. ``peripherals`` has no sync-script generator yet, so
-    it is preserved wholesale when the fresh content doesn't supply one.
+    merged per top-level sub-key (new overlays old): each sync script generates
+    at most its own sub-key (``digilent`` / ``litex`` / ``amaranth``), correctly
+    overwriting just that key while any other convention (hand-authored or
+    registry-populated) survives. The exception is an existing sub-key stamped
+    ``naming: "framework-derived"`` that the fresh content does *not* re-emit:
+    the parser is that block's sole author, so its absence means the parser no
+    longer stands behind it (e.g. a bank whose polarity it can no longer
+    advertise truthfully) and the stale block is dropped rather than folded
+    forward forever. ``peripherals`` has no sync-script generator yet, so it is
+    preserved wholesale when the fresh content doesn't supply one.
 
     Returns ``content`` unchanged (same string, no re-parse/re-serialize) when
     there is nothing on disk to preserve, so files with no existing
@@ -171,7 +174,14 @@ def _fold_forward_unmanaged_keys(content: str, out_path: Path) -> str:
 
     data = json.loads(content)
 
-    merged_conventions = {**existing_conventions, **(data.get("port_conventions") or {})}
+    fresh_conventions = data.get("port_conventions") or {}
+    kept_existing = {
+        key: block
+        for key, block in existing_conventions.items()
+        if key in fresh_conventions
+        or not (isinstance(block, dict) and block.get("naming") == "framework-derived")
+    }
+    merged_conventions = {**kept_existing, **fresh_conventions}
     if merged_conventions:
         # F2: after the per-sub-key merge, a freshly generated framework-derived
         # bank inherits polarity from a same-role, same-width canonical bank folded
