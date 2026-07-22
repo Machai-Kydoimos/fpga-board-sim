@@ -336,9 +336,12 @@ def _build_led_components(pin_entries: list[dict[str, Any]]) -> list[dict[str, A
             "connector": None,
             "attrs": {"IOSTANDARD": entry["iostandard"]} if entry["iostandard"] else {},
         }
-        # Digilent LED ports are bare `led[n]` (color comes from the registry, not
-        # the name), but honor the shared heuristic so a future color-named XDC
-        # port still populates `color` (U36). No-op on today's data.
+        # Most Digilent mono LED ports are bare `led[n]` (color comes from the
+        # registry, not the name), but the heuristic is live here, not a no-op:
+        # Nexys 4 / Nexys 4 DDR route their `led16_r`-style RGB channel ports
+        # through this mono path (their XDCs don't split them into an `## RGB
+        # LEDs` section the RGB builder would catch), and those names do carry
+        # a color (U36).
         color = color_from_name(base)
         if color:
             comp["color"] = color

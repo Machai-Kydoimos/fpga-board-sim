@@ -385,6 +385,114 @@ def test_write_outputs_fresh_peripherals_wins_over_existing(tmp_path):
     assert written["peripherals"] == [{"type": "audio", "name": "NEW"}]
 
 
+# ── write_outputs (sync-stamp carry-forward, U37 PR-0) ───────────────────────
+
+
+def _stamped_board(sync_commit: str, sync_timestamp: str, **overrides: Any) -> dict[str, Any]:
+    """A valid board carrying the per-board ``source`` stamp the sync scripts emit."""
+    board = _valid_board()
+    board["source"] = {
+        "origin": "test-source",
+        "upstream_file": "board.py",
+        "sync_commit": sync_commit,
+        "sync_timestamp": sync_timestamp,
+    }
+    board.update(overrides)
+    return board
+
+
+def test_write_outputs_noop_resync_keeps_on_disk_stamp(tmp_path):
+    """A re-sync that changes nothing keeps the board byte-identical -- the
+    fresh run's sync_commit/sync_timestamp must NOT churn ~250 files."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    on_disk = json.dumps(_stamped_board("oldsha", "2026-01-01T00:00:00+00:00"), indent=2) + "\n"
+    (out / "board.json").write_text(on_disk, encoding="utf-8")
+
+    fresh = _stamped_board("newsha", "2026-07-22T00:00:00+00:00")
+    write_outputs(out, _jsons({"board.json": fresh}), "newsha", "owner/repo", color_registry={})
+
+    assert (out / "board.json").read_text() == on_disk
+
+
+def test_write_outputs_real_change_takes_fresh_stamp(tmp_path):
+    """Any real content change still lands with the fresh run's stamp."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    old = _stamped_board("oldsha", "2026-01-01T00:00:00+00:00")
+    (out / "board.json").write_text(json.dumps(old, indent=2) + "\n", encoding="utf-8")
+
+    fresh = _stamped_board("newsha", "2026-07-22T00:00:00+00:00", device="new-device")
+    write_outputs(out, _jsons({"board.json": fresh}), "newsha", "owner/repo", color_registry={})
+
+    written = json.loads((out / "board.json").read_text())
+    assert written["device"] == "new-device"
+    assert written["source"]["sync_commit"] == "newsha"
+    assert written["source"]["sync_timestamp"] == "2026-07-22T00:00:00+00:00"
+
+
+def test_write_outputs_first_sync_takes_fresh_stamp(tmp_path):
+    """A brand-new board (no file on disk) is stamped with the run's values."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    fresh = _stamped_board("newsha", "2026-07-22T00:00:00+00:00")
+    write_outputs(out, _jsons({"board.json": fresh}), "newsha", "owner/repo", color_registry={})
+
+    written = json.loads((out / "board.json").read_text())
+    assert written["source"]["sync_commit"] == "newsha"
+
+
+def test_write_outputs_noop_resync_with_folded_conventions_keeps_stamp(tmp_path):
+    """The #296 real-world shape: the parser regenerates a board without
+    port_conventions, fold-forward merges the on-disk block back in, and the
+    result differs from disk only by the stamp -- must round-trip byte-identical
+    (previously this exact case produced the 240-board stamp-only diff)."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    out.mkdir()
+    existing = _stamped_board("oldsha", "2026-01-01T00:00:00+00:00")
+    existing["port_conventions"] = {"custom": {"clk": "CLK"}}
+    on_disk = json.dumps(existing, indent=2) + "\n"
+    (out / "board.json").write_text(on_disk, encoding="utf-8")
+
+    fresh = _stamped_board("newsha", "2026-07-22T00:00:00+00:00")  # parser emits no conventions
+    write_outputs(out, _jsons({"board.json": fresh}), "newsha", "owner/repo", color_registry={})
+
+    assert (out / "board.json").read_text() == on_disk
+
+
+def test_write_outputs_metadata_noop_resync_keeps_timestamp(tmp_path):
+    """_sync_metadata.json follows the same rule: an unchanged source (same pin,
+    same file list) keeps the existing metadata verbatim."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    fresh = _stamped_board("sha1", "2026-07-22T00:00:00+00:00")
+    write_outputs(out, _jsons({"board.json": fresh}), "sha1", "owner/repo", color_registry={})
+    first_meta = (out / "_sync_metadata.json").read_text()
+
+    write_outputs(out, _jsons({"board.json": fresh}), "sha1", "owner/repo", color_registry={})
+    assert (out / "_sync_metadata.json").read_text() == first_meta
+
+
+def test_write_outputs_metadata_pin_bump_rewrites(tmp_path):
+    """A pin bump with unchanged boards is a data-only diff: every unchanged
+    board keeps its old stamp, and the new pin lands in _sync_metadata.json."""
+    root = _boards_root(tmp_path)
+    out = root / "test-source"
+    fresh = _stamped_board("sha1", "2026-07-22T00:00:00+00:00")
+    write_outputs(out, _jsons({"board.json": fresh}), "sha1", "owner/repo", color_registry={})
+    board_v1 = (out / "board.json").read_text()
+
+    bumped = _stamped_board("sha2", "2026-07-23T00:00:00+00:00")
+    write_outputs(out, _jsons({"board.json": bumped}), "sha2", "owner/repo", color_registry={})
+
+    assert (out / "board.json").read_text() == board_v1  # board: no churn
+    meta = json.loads((out / "_sync_metadata.json").read_text())
+    assert meta["source_commit"] == "sha2"  # metadata: records the new pin
+
+
 # ── resolve_commit_sha (GITHUB_TOKEN auth, U33) ──────────────────────────────
 
 
