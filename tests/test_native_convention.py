@@ -26,7 +26,7 @@ from typing import Any
 
 import pytest
 
-from fpga_sim.board_loader import BoardDef
+from fpga_sim.board_loader import BoardDef, ComponentInfo
 from fpga_sim.sim_bridge import (
     ConventionMatch,
     NativePort,
@@ -195,6 +195,100 @@ def test_native_wrapper_width1_scalar_led_maps_element() -> None:
     assert "led => led_uut(0)" in vhd  # per element, not `led => led_uut`
     assert "signal led_uut : std_logic_vector(1 - 1 downto 0);" in vhd
     assert "led <= std_logic_vector(resize(unsigned(led_uut), NUM_LEDS));" in vhd
+
+
+# ── unit: native RGB channel bank packing (U38) ──────────────────────────────
+
+
+def _rgb_names(sites: int) -> tuple[str, ...]:
+    return tuple(f"led{i}_{c}" for i in range(sites) for c in "rgb")
+
+
+def _arty_rgb_match(*, active_low: bool = False, sites: int = 4) -> ConventionMatch:
+    """Arty A7 shape: 4 mono leds + an RGB scalar channel bank."""
+    return ConventionMatch(
+        maker="digilent",
+        board_name="Arty A7-100",
+        clk="CLK100MHZ",
+        leds=NativePort(("led",), 4, False),
+        switches=NativePort(("sw",), 4, False),
+        buttons=NativePort(("btn",), 4, False),
+        leds_rgb=NativePort(_rgb_names(sites), 3 * sites, active_low, scalar_ports=True),
+    )
+
+
+def _arty_rgb_board() -> BoardDef:
+    return BoardDef(
+        name="Arty A7-100",
+        class_name="ArtyA7100",
+        leds=[ComponentInfo("led", "led", i) for i in range(4)]
+        + [ComponentInfo("led", "rgb_led", i, pins=["a", "b", "c"]) for i in range(4)],
+        switches=[ComponentInfo("switch", "switch", i) for i in range(4)],
+        buttons=[ComponentInfo("button", "button", i) for i in range(4)],
+    )
+
+
+def test_native_wrapper_packs_rgb_scalars_onto_the_channel_block() -> None:
+    vhd = _render_native_wrapper("arty_rgb", _arty_rgb_match(), _arty_rgb_board())
+    # The mono bank covers only the mono block; RGB scalars fill channels 4..15.
+    assert "led(4 - 1 downto 0) <= std_logic_vector(resize(unsigned(led_uut), 4));" in vhd
+    assert "led(4 + 12 - 1 downto 4) <= rgbch_uut;" in vhd
+    assert "led0_r => rgbch_uut(0)" in vhd
+    assert "led0_b => rgbch_uut(2)" in vhd  # (r,g,b) per site
+    assert "led3_b => rgbch_uut(11)" in vhd
+    assert "NUM_LEDS         : positive := 16;" in vhd  # channel count (U37)
+    # No whole-boundary resize: each bit gets exactly one driver.
+    assert "resize(unsigned(led_uut), NUM_LEDS)" not in vhd
+
+
+def test_native_wrapper_inverts_an_active_low_rgb_bank() -> None:
+    vhd = _render_native_wrapper("cmod_rgb", _arty_rgb_match(active_low=True), _arty_rgb_board())
+    assert "led(4 + 12 - 1 downto 4) <= not rgbch_uut;" in vhd
+
+
+def test_native_wrapper_rgb_only_board_has_no_mono_slice() -> None:
+    # Cora Z7 shape: no mono LEDs at all -- the RGB bank IS the whole boundary.
+    board = BoardDef(
+        name="Cora Z7-10",
+        class_name="CoraZ710",
+        leds=[ComponentInfo("led", "rgb_led", i, pins=["a", "b", "c"]) for i in range(2)],
+        buttons=[ComponentInfo("button", "button", i) for i in range(2)],
+    )
+    m = ConventionMatch(
+        maker="digilent",
+        board_name="Cora Z7-10",
+        clk="clk",
+        leds=None,
+        buttons=NativePort(("btn",), 2, False),
+        leds_rgb=NativePort(_rgb_names(2), 6, False, scalar_ports=True),
+    )
+    vhd = _render_native_wrapper("cora_glow", m, board)
+    assert "led(0 + 6 - 1 downto 0) <= rgbch_uut;" in vhd
+    assert "led_uut" not in vhd  # no mono bank anywhere
+    assert "NUM_LEDS         : positive := 6;" in vhd
+
+
+def test_native_wrapper_dark_fills_channels_past_both_banks() -> None:
+    # A convention covering fewer RGB sites than the board owns: the uncovered
+    # top channels get an explicit dark driver (each bit exactly one driver).
+    vhd = _render_native_wrapper("partial", _arty_rgb_match(sites=1), _arty_rgb_board())
+    assert "led(4 + 3 - 1 downto 4) <= rgbch_uut;" in vhd
+    assert "led(NUM_LEDS - 1 downto 7) <= (others => '0');" in vhd
+
+
+def test_native_wrapper_rgb_without_board_falls_back_to_bank_widths() -> None:
+    # Hermetic wrapper-gen (no BoardDef): NUM_LEDS defaults to the banks' sum.
+    vhd = _render_native_wrapper("arty_rgb", _arty_rgb_match())
+    assert "NUM_LEDS         : positive := 16;" in vhd
+    assert "led(4 + 12 - 1 downto 4) <= rgbch_uut;" in vhd
+
+
+def test_write_gtkw_native_rgb_scalars_are_preselected(tmp_path: Any) -> None:
+    gtkw = tmp_path / "arty.gtkw"
+    _write_gtkw(gtkw, tmp_path / "arty.vcd", {"NUM_LEDS": "16"}, match=_arty_rgb_match())
+    text = gtkw.read_text()
+    assert "sim_wrapper.uut.led0_r" in text  # unranged scalars, like names[] LEDs
+    assert "sim_wrapper.uut.led3_b" in text
 
 
 # ── unit: .gtkw native preselection ──────────────────────────────────────────
@@ -587,7 +681,9 @@ def test_canonical_convention_wins_over_framework_derived() -> None:
     m = match_convention(_synth_iface(canonical), [], bd)
     assert m is not None
     assert m.maker == "terasic"  # authoritative block chosen over the framework guess
-    assert m.leds.active_low is False  # canonical polarity, not the derived active-low
+    assert (
+        m.leds is not None and m.leds.active_low is False
+    )  # canonical polarity, not the derived active-low
 
 
 def test_partial_convention_extra_input_is_near_miss() -> None:
@@ -733,7 +829,7 @@ def test_scalar_led_native_analyzes_under_ghdl(ghdl: str, tmp_path: Any) -> None
     # F1: `led : out std_logic` on a real width-1 board (Tiny FPGABX) elaborates.
     bd = _tiny_fpgabx()
     vhd, m = _write_and_check(_SCALAR_LED_SRC, "bx_blink", bd, tmp_path)
-    assert m.leds.scalar_ports is True
+    assert m.leds is not None and m.leds.scalar_ports is True
     ok, detail = analyze_vhdl(vhd, toplevel="bx_blink", simulator="ghdl", board_def=bd, match=m)
     assert ok, f"GHDL scalar-led native analysis failed: {detail}"
 
@@ -742,7 +838,7 @@ def test_scalar_led_native_analyzes_under_ghdl(ghdl: str, tmp_path: Any) -> None
 def test_scalar_led_native_analyzes_under_nvc(nvc: str, tmp_path: Any) -> None:
     bd = _tiny_fpgabx()
     vhd, m = _write_and_check(_SCALAR_LED_SRC, "bx_blink", bd, tmp_path)
-    assert m.leds.scalar_ports is True
+    assert m.leds is not None and m.leds.scalar_ports is True
     ok, detail = analyze_vhdl(vhd, toplevel="bx_blink", simulator="nvc", board_def=bd, match=m)
     assert ok, f"NVC scalar-led native analysis failed: {detail}"
 
@@ -775,6 +871,9 @@ _E2E_CASES = [
     # exceeds its 4-bit user_led bank -- exercises the wrapper's zero-extend under
     # both simulators at the real board-count NUM_LEDS.
     ("arty_litex", "litex-boards/digilent_arty.json"),
+    # U38: the native-RGB example -- mono led[3:0] + twelve led0_r..led3_b
+    # scalars packed onto the 16-channel boundary via the leds_rgb bank.
+    ("arty_rgb", "digilent-xdc/arty_a7-100.json"),
 ]
 
 
@@ -953,6 +1052,78 @@ def test_native_arty_cocotb_loop_zero_extend_and_switch_xor(ghdl: str, tmp_path:
     # user_sw XORs the low nibble: setting sw=0b0101 flips exactly those bits.
     assert ((data["led0"] ^ data["led5"]) & 0xF) == 0b0101, (
         f"switches did not XOR the low nibble: led0={data['led0']:#06b} led5={data['led5']:#06b}"
+    )
+
+
+@pytest.mark.slow
+def test_native_arty_rgb_cocotb_run_packs_channels(ghdl: str, tmp_path: Any) -> None:
+    """U38: a real GHDL + cocotb run of arty_rgb.vhd on the Arty A7-100.
+
+    Proves the leds_rgb packing end-to-end at the product NUM_LEDS (the
+    16-channel boundary): the design's btn(0) lamp test forces all twelve
+    scalar channels on, which must arrive as led(15 downto 4) all-ones
+    (active-high bank, no inversion), while the mono nibble keeps the
+    arty_litex-style `count xor sw` behavior on led(3 downto 0).
+    """
+    bd = BoardDef.from_json((PROJECT / "boards/digilent-xdc/arty_a7-100.json").read_text())
+    vhd = NATIVE / "arty_rgb.vhd"
+    res = check_vhdl_contract(vhd, board_def=bd)
+    assert res.ok and res.match is not None and res.match.leds_rgb is not None
+
+    work = tempfile.mkdtemp(prefix="arty_rgb_")
+    ok, detail = analyze_vhdl(
+        vhd, work_dir=work, toplevel="arty_rgb", simulator="ghdl", board_def=bd, match=res.match
+    )
+    assert ok, detail
+
+    moddir = tmp_path / "cocotb_mod"
+    moddir.mkdir()
+    out = tmp_path / "rgb_run.json"
+    (moddir / "rgb_tb.py").write_text(
+        "import json, os\n"
+        "import cocotb\n"
+        "from cocotb.triggers import Timer\n"
+        "\n"
+        "\n"
+        "@cocotb.test()\n"
+        "async def sample(dut):\n"
+        "    dut.btn.value = 0\n"
+        "    dut.sw.value = 0\n"
+        "    await Timer(1, unit='us')\n"
+        "    led_free = int(dut.led.value)\n"
+        "    dut.sw.value = 0b0101\n"
+        "    await Timer(1, unit='us')\n"
+        "    led_sw = int(dut.led.value)\n"
+        "    dut.btn.value = 0b0001\n"  # lamp test: all 12 RGB channels on
+        "    await Timer(1, unit='us')\n"
+        "    led_lamp = int(dut.led.value)\n"
+        "    with open(os.environ['FPGA_SIM_RGB_OUT'], 'w') as f:\n"
+        "        json.dump({'free': led_free, 'sw': led_sw, 'lamp': led_lamp}, f)\n"
+    )
+
+    env, plugin_lib = _build_sim_env(simulator="ghdl")
+    env["FPGA_SIM_RGB_OUT"] = str(out)
+    env["COCOTB_TEST_MODULES"] = "rgb_tb"
+    env["TOPLEVEL"] = "sim_wrapper"
+    env["PYTHONPATH"] = os.pathsep.join([str(moddir), env["PYTHONPATH"]])
+    generics = {
+        "NUM_SWITCHES": str(max(1, len(bd.switches))),
+        "NUM_BUTTONS": str(max(1, len(bd.buttons))),
+        "NUM_LEDS": str(max(1, bd.num_led_channels)),  # channels: what the product passes
+        "CLK_HALF_NS_INIT": "10",
+    }
+    cmd = _GHDLBackend.run_cmd("sim_wrapper", generics, plugin_lib, work)
+    proc = subprocess.run(cmd, env=env, cwd=work, capture_output=True, text=True, timeout=180)
+    assert out.is_file(), (
+        "cocotb module produced no output (did it run?).\n"
+        f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    )
+    data = json.loads(out.read_text())
+    # Lamp test: the twelve RGB channels occupy led(15 downto 4), all on.
+    assert (data["lamp"] >> 4) == 0xFFF, f"RGB block not all-on: {data['lamp']:#018b}"
+    # Mono nibble: sw=0b0101 XORs exactly those bits (arty_litex-style check).
+    assert ((data["free"] ^ data["sw"]) & 0xF) == 0b0101, (
+        f"switches did not XOR the mono nibble: free={data['free']:#06b} sw={data['sw']:#06b}"
     )
 
 

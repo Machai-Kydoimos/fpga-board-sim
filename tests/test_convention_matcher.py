@@ -149,6 +149,7 @@ def test_matches_full_de10_native_interface() -> None:
     assert m.maker == "terasic"
     assert m.board_name == "DE10-Standard"
     assert m.clk == "CLOCK_50"
+    assert m.leds is not None
     assert (m.leds.names, m.leds.width) == (("LEDR",), 10)
     assert m.switches is not None and m.buttons is not None
     assert (m.switches.names, m.switches.width) == (("SW",), 10)
@@ -165,7 +166,7 @@ def test_native_fixed_widths_equal_to_convention_are_accepted() -> None:
     # The generic contract *rejects* a fixed-width led; native mode expects fixed
     # widths that equal the convention width (decision #5 inverts for native).
     m = _match("de10", _de10_decls(), _board(_terasic_conv()))
-    assert m is not None and m.leds.width == 10
+    assert m is not None and m.leds is not None and m.leds.width == 10
 
 
 def test_board_without_7seg_matches_without_seg() -> None:
@@ -177,7 +178,7 @@ def test_board_without_7seg_matches_without_seg() -> None:
         "KEY : in std_logic_vector(1 downto 0)",
     ]
     m = _match("nano", ports, board)
-    assert m is not None
+    assert m is not None and m.leds is not None
     assert (m.leds.names, m.leds.width) == (("LED",), 8)
     assert m.seven_seg is None  # board has no display, so no seg role is required
 
@@ -297,7 +298,7 @@ def test_scalar_led_bank_matches() -> None:
         "o_LED_4 : out std_logic",
     ]
     m = _match("go", ports, _board(conv, digits=None, name="Nandland Go"))
-    assert m is not None
+    assert m is not None and m.leds is not None
     assert m.leds.names == ("o_LED_1", "o_LED_2", "o_LED_3", "o_LED_4")
     assert m.leds.width == 4
     assert m.leds.scalar_ports is True  # each o_LED_n is an individual scalar port
@@ -336,7 +337,7 @@ def test_width1_led_bank_matches_scalar_port() -> None:
     # F1: `led : out std_logic` -- the natural one-LED spelling -- matches a
     # width-1 vector bank, yielding a scalar_ports bank the wrapper maps per bit.
     m = _match("bx", ["clk16 : in std_logic", "led : out std_logic"], _led1_board())
-    assert m is not None
+    assert m is not None and m.leds is not None
     assert (m.leds.names, m.leds.width) == (("led",), 1)
     assert m.leds.scalar_ports is True
 
@@ -347,7 +348,7 @@ def test_width1_led_bank_matches_vector_0_downto_0() -> None:
     m = _match(
         "bx", ["clk16 : in std_logic", "led : out std_logic_vector(0 downto 0)"], _led1_board()
     )
-    assert m is not None
+    assert m is not None and m.leds is not None
     assert (m.leds.names, m.leds.width) == (("led",), 1)
     assert m.leds.scalar_ports is False
 
@@ -441,3 +442,118 @@ def test_contract_result_is_frozen() -> None:
     assert (res.ok, res.message, res.match) == (True, "", None)
     with pytest.raises(dataclasses.FrozenInstanceError):
         res.ok = False  # type: ignore[misc]
+
+
+# ── U38: leds_rgb channel bank ───────────────────────────────────────────────
+
+
+def _arty_conv(*, with_mono: bool = True) -> dict[str, Any]:
+    """Arty-shaped digilent convention: mono led[3:0] + 4 RGB sites as scalars."""
+    conv: dict[str, Any] = {
+        "clk": "CLK100MHZ",
+        "switches": {"name": "sw", "width": 4},
+        "buttons": {"name": "btn", "width": 4},
+        "leds_rgb": {
+            "names": [f"led{i}_{c}" for i in range(4) for c in "rgb"],
+            "active_low": False,
+        },
+    }
+    if with_mono:
+        conv["leds"] = {"name": "led", "width": 4}
+    return {"digilent": conv}
+
+
+def _arty_board(conv: dict[str, Any]) -> BoardDef:
+    return BoardDef(
+        name="Arty A7-100",
+        class_name="X",
+        leds=_mk("led", 4)
+        + [ComponentInfo("led", "rgb_led", i, pins=["a", "b", "c"]) for i in range(4)],
+        switches=_mk("switch", 4),
+        buttons=_mk("button", 4),
+        port_conventions=conv,
+    )
+
+
+def _arty_ports(*, mono: bool = True, rgb_sites: int = 4) -> list[str]:
+    d = [
+        "CLK100MHZ : in std_logic",
+        "sw : in std_logic_vector(3 downto 0)",
+        "btn : in std_logic_vector(3 downto 0)",
+    ]
+    if mono:
+        d.append("led : out std_logic_vector(3 downto 0)")
+    d += [f"led{i}_{c} : out std_logic" for i in range(rgb_sites) for c in "rgb"]
+    return d
+
+
+def test_matches_rgb_scalar_bank_alongside_mono() -> None:
+    m = _match("arty", _arty_ports(), _arty_board(_arty_conv()))
+    assert m is not None
+    assert m.leds is not None and m.leds.width == 4
+    assert m.leds_rgb is not None
+    assert m.leds_rgb.names == tuple(f"led{i}_{c}" for i in range(4) for c in "rgb")
+    assert (m.leds_rgb.width, m.leds_rgb.active_low, m.leds_rgb.scalar_ports) == (12, False, True)
+
+
+def test_rgb_only_design_matches_via_the_or_floor() -> None:
+    # A design driving just the RGB channels (no mono `led` port) still matches:
+    # the floor is clk + (mono LEDs OR the RGB bank).
+    m = _match("glow", _arty_ports(mono=False), _arty_board(_arty_conv()))
+    assert m is not None
+    assert m.leds is None
+    assert m.leds_rgb is not None and m.leds_rgb.width == 12
+
+
+def test_partial_rgb_scalars_leave_the_bank_unmatched_but_mono_matches() -> None:
+    # Like leds_green: the bank is all-or-nothing, and an unmatched bank never
+    # blocks -- the lone led0_r/g/b fall under the unmapped-output rule (open).
+    m = _match("mostly_mono", _arty_ports(rgb_sites=1), _arty_board(_arty_conv()))
+    assert m is not None
+    assert m.leds is not None
+    assert m.leds_rgb is None
+
+
+def test_no_led_bank_at_all_fails_the_floor() -> None:
+    assert _match("dark", _arty_ports(mono=False, rgb_sites=0), _arty_board(_arty_conv())) is None
+
+
+def test_rgb_only_board_matches_via_its_rgb_bank() -> None:
+    # Cora Z7 shape: the convention has NO mono leds mapping at all; the RGB
+    # channel bank is the board's only LED role (pre-U38 such a board could
+    # never match natively).
+    conv: dict[str, Any] = {
+        "digilent": {
+            "clk": "clk",
+            "buttons": {"name": "btn", "width": 2},
+            "leds_rgb": {
+                "names": [f"led{i}_{c}" for i in range(2) for c in "rgb"],
+                "active_low": False,
+            },
+        }
+    }
+    board = BoardDef(
+        name="Cora Z7-10",
+        class_name="X",
+        leds=[ComponentInfo("led", "rgb_led", i, pins=["a", "b", "c"]) for i in range(2)],
+        buttons=_mk("button", 2),
+        port_conventions=conv,
+    )
+    ports = [
+        "clk : in std_logic",
+        "btn : in std_logic_vector(1 downto 0)",
+    ] + [f"led{i}_{c} : out std_logic" for i in range(2) for c in "rgb"]
+    m = _match("cora_glow", ports, board)
+    assert m is not None
+    assert m.leds is None
+    assert m.leds_rgb is not None and m.leds_rgb.width == 6
+    # Without the scalars the floor fails (clk + buttons alone is no demo).
+    assert _match("cora_dark", ports[:2], board) is None
+
+
+def test_rgb_scalar_with_wrong_direction_unmatches_the_bank() -> None:
+    ports = _arty_ports(mono=False)
+    ports[3] = "led0_r : in std_logic"  # direction typo: an input channel
+    # The bank is unmatched and no other LED role exists -> floor fails.  (The
+    # stray default-less input also makes this a near-miss, doubly rejected.)
+    assert _match("typo", ports, _arty_board(_arty_conv())) is None

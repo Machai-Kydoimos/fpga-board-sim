@@ -80,12 +80,23 @@
     "origin": "digilent-xdc",
     "upstream_file": "Eclypse-Z7-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-05-25T04:03:40.979232+00:00"
+    "sync_timestamp": "2026-07-22T14:00:30.003459+00:00"
   },
   "port_conventions": {
     "digilent": {
       "description": "Digilent Eclypse-Z7 Master XDC port names",
       "clk": "clk",
+      "leds_rgb": {
+        "names": [
+          "led0_r",
+          "led0_g",
+          "led0_b",
+          "led1_r",
+          "led1_g",
+          "led1_b"
+        ],
+        "active_low": false
+      },
       "buttons": {
         "name": "btn",
         "width": 2,

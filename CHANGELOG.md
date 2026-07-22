@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Board-native designs can drive RGB LEDs by their real names (U38,
+  Digilent).** Digilent conventions now carry a `leds_rgb` bank listing the
+  Master XDC's channel scalars in (r,g,b) order per site — Arty's
+  `led0_r`…`led3_b`, the original Nexys 4's `RGB1_Red`…`RGB2_Blue` — and a
+  board-native design declaring the whole bank gets each scalar packed onto
+  its boundary RGB channel. Polarity is cited per board from the reference
+  manual's tri-color prose (Wayback-fetched, verify-or-omit): every board is
+  transistor-inverted active-high except the common-anode Cmod A7/S7
+  (active-low); the third-party Sword has no RM and gets no bank. The LED
+  match floor is now clk + (mono LEDs **or** the RGB bank), which makes the
+  RGB-only Cora Z7 / Eclypse Z7 natively targetable for the first time. New
+  reference example `hdl/native/arty_rgb.vhd` (color wheel + `btn(0)` lamp
+  test, per-channel duty capped at 50% per the RM's brightness advice).
 - **RGB LEDs render as color-mixing pucks (U37, renderer half).** Each 3-pin
   RGB LED now draws as a single puck whose color is the per-channel γ-encoded
   mix of its three measured duty cycles — three phase-offset PWM compares
@@ -68,6 +81,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Digilent conventions no longer advertise ports the boards don't have
+  (U38).** The Nexys-family mono `leds` mapping claimed width 22 (16 real
+  LEDs plus the six leaked RGB channel scalars), so a correct native
+  `LED[15:0]` design was rejected as a near-miss; it is 16 now, with the
+  channels in the new `leds_rgb` bank. Named-button boards (Basys 3, Nexys
+  family, Nexys Video) advertised a `btn[n:0]` / `btnCpuReset[5:0]` vector
+  that exists on no board — they now map the five directionals as the real
+  `btnC`/`btnU`/`btnD`/`btnL`/`btnR` scalar ports. The CPU-reset pushbutton
+  is deliberately outside that bank (it is active-low where the directionals
+  are active-high; a native design declares it with a default) and its
+  component is now named `button_reset`, numbered after the directional
+  cluster, and marked inverted — matching amaranth's data for the same board.
 - **No more time-zero metavalue warnings.** Every simulation start printed a
   burst of `NUMERIC_STD` "metavalue detected" warnings while cocotb's first
   switch/button deposits landed (loudest on designs whose logic wakes every

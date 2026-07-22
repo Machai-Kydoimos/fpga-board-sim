@@ -93,7 +93,7 @@
     "origin": "digilent-xdc",
     "upstream_file": "Cmod-A7-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-05-25T04:03:40.978264+00:00"
+    "sync_timestamp": "2026-07-22T14:00:30.001704+00:00"
   },
   "port_conventions": {
     "digilent": {
@@ -102,6 +102,14 @@
       "leds": {
         "name": "led",
         "width": 2
+      },
+      "leds_rgb": {
+        "names": [
+          "led0_r",
+          "led0_g",
+          "led0_b"
+        ],
+        "active_low": true
       },
       "buttons": {
         "name": "btn",

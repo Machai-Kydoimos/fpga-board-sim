@@ -272,19 +272,6 @@
   ],
   "buttons": [
     {
-      "name": "button",
-      "number": 0,
-      "pins": [
-        "C12"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "button_center",
       "number": 0,
       "pins": [
@@ -344,6 +331,19 @@
       ],
       "direction": "i",
       "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button_reset",
+      "number": 5,
+      "pins": [
+        "C12"
+      ],
+      "direction": "i",
+      "inverted": true,
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
@@ -571,7 +571,7 @@
     "origin": "digilent-xdc",
     "upstream_file": "Nexys-4-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-07-22T08:01:05.528759+00:00"
+    "sync_timestamp": "2026-07-22T14:00:30.008920+00:00"
   },
   "port_conventions": {
     "digilent": {
@@ -579,15 +579,31 @@
       "clk": "clk",
       "leds": {
         "name": "led",
-        "width": 22
+        "width": 16
+      },
+      "leds_rgb": {
+        "names": [
+          "RGB1_Red",
+          "RGB1_Green",
+          "RGB1_Blue",
+          "RGB2_Red",
+          "RGB2_Green",
+          "RGB2_Blue"
+        ],
+        "active_low": false
       },
       "switches": {
         "name": "sw",
         "width": 16
       },
       "buttons": {
-        "name": "btnCpuReset",
-        "width": 6,
+        "names": [
+          "btnC",
+          "btnU",
+          "btnD",
+          "btnL",
+          "btnR"
+        ],
         "active_low": false
       },
       "seven_seg": {

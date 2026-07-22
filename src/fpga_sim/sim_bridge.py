@@ -1083,7 +1083,9 @@ class ConventionMatch:
     maker: str  # convention slug, e.g. "terasic"
     board_name: str  # BoardDef.name, for messages/badge
     clk: str  # native clock port name, e.g. "CLOCK_50"
-    leds: NativePort
+    # The mono LED bank.  None when the design drives the board through the RGB
+    # channel bank alone (U38) -- at least one of leds/leds_rgb is always set.
+    leds: NativePort | None
     # switches/buttons are optional (U31): a switch-less or button-less board's
     # convention simply omits the role, so the design need not declare it (clk +
     # LEDs are the minimum meaningful board-native demo).
@@ -1091,6 +1093,9 @@ class ConventionMatch:
     buttons: NativePort | None = None
     seven_seg: NativeSeg | None = None
     leds_green: NativePort | None = None  # optional secondary LED bank (e.g. LEDG)
+    # RGB channel scalar bank (U38): names in (r,g,b) order per site, packed
+    # onto the boundary's RGB channel block `led(MONO + 3i + c)`.
+    leds_rgb: NativePort | None = None
 
 
 @dataclass(frozen=True)
@@ -1211,8 +1216,23 @@ def _attempt_convention(
     if clk_port is None:
         problems.append(f"clock '{clk_name}'" if isinstance(clk_name, str) else "clock")
 
+    # Primary LED-ish banks (U38): the mono `leds` vector and/or the `leds_rgb`
+    # scalar channel bank.  Each is matched when the convention declares it, and
+    # the floor is that at least ONE matches -- on an RGB-only board (Cora Z7,
+    # Eclypse Z7) the channel bank IS the LEDs.  Like leds_green, an unmatched
+    # bank never blocks a match by itself: ports the design declares toward it
+    # fall under the ordinary unmapped-output rule (left open, dark).
     leds = _match_native_port(block.get("leds") or {}, port_by_name, "out")
-    (matched if leds is not None else problems).append("led" if leds is not None else "LEDs")
+    rgb_decl = block.get("leds_rgb")
+    leds_rgb = (
+        _match_native_port(rgb_decl, port_by_name, "out") if isinstance(rgb_decl, dict) else None
+    )
+    if leds is not None:
+        matched.append("led")
+    if leds_rgb is not None:
+        matched.append("rgb-led")
+    if leds is None and leds_rgb is None:
+        problems.append("LEDs")
 
     # Switches / buttons are matched only when the convention declares the role
     # (U31): most FPGA boards have no switches, so a switch-less convention
@@ -1265,7 +1285,7 @@ def _attempt_convention(
     # (dark), as the DE0 example leaves its split-DP HEXn_DP scalars open.
     # (Names in port_by_name are already lowercased.)
     consumed = {clk_port.lower()} if clk_port is not None else set()
-    for port in (leds, switches, buttons, leds_green):
+    for port in (leds, switches, buttons, leds_green, leds_rgb):
         if port is not None:
             consumed.update(n.lower() for n in port.names)
     if seven_seg is not None:
@@ -1283,7 +1303,7 @@ def _attempt_convention(
     match: ConventionMatch | None = None
     if (
         clk_port is not None
-        and leds is not None
+        and (leds is not None or leds_rgb is not None)
         and (not sw_declared or switches is not None)
         and (not btn_declared or buttons is not None)
         and (board_seg is None or seven_seg is not None)
@@ -1298,6 +1318,7 @@ def _attempt_convention(
             buttons=buttons,
             seven_seg=seven_seg,
             leds_green=leds_green,
+            leds_rgb=leds_rgb,
         )
     return _ConventionAttempt(maker, board_def.name, match, tuple(matched), tuple(problems))
 
@@ -1389,7 +1410,10 @@ def _native_convention_message(match: ConventionMatch, filename: str) -> str:
         parts.append(_role_span(match.switches))
     if match.buttons is not None:
         parts.append(_role_span(match.buttons))
-    parts.append(_role_span(match.leds))
+    if match.leds is not None:
+        parts.append(_role_span(match.leds))
+    if match.leds_rgb is not None:
+        parts.append(_role_span(match.leds_rgb))
     if match.seven_seg is not None:
         segs = match.seven_seg.names
         parts.append(segs[0] if len(segs) == 1 else f"{segs[0]}..{segs[-1]}")
@@ -1700,12 +1724,13 @@ def _render_native_wrapper(
     i.e. *after* the active-low inversion and the 7-seg packing, so a native
     design's measured duty is the brightness the board actually shows.
     """
-    sw, btn, led, seg, green = (
+    sw, btn, led, seg, green, rgb = (
         match.switches,
         match.buttons,
         match.leds,
         match.seven_seg,
         match.leds_green,
+        match.leds_rgb,
     )
     decls: list[str] = []  # architecture declarative signals
     assigns: list[str] = []  # concurrent assignments (adapters)
@@ -1740,14 +1765,49 @@ def _render_native_wrapper(
         assigns.append(f"  {sig} <= {inv}{wrapper_port}({port.width} - 1 downto 0);")
         pmap += _native_port_map(port, sig)
 
-    # LEDs: read the native bank back (invert when active-low) and zero-extend it
-    # onto the board `led` boundary -- board LEDs the convention omits stay dark.
-    led_inv = "not " if led.active_low else ""
-    decls.append(f"  signal led_uut : std_logic_vector({led.width} - 1 downto 0);")
-    assigns.append(
-        f"  {led_out} <= std_logic_vector(resize(unsigned({led_inv}led_uut), NUM_LEDS));"
+    # LEDs: read the native bank(s) back (invert when active-low) onto the board
+    # `led` boundary -- board LEDs the convention omits stay dark.  Boundary
+    # channel layout (U37): mono channels occupy the low bits, then (r,g,b) per
+    # RGB site; MONO is where the RGB block starts.
+    mono = (
+        board_def.num_led_channels - 3 * board_def.num_rgb_leds
+        if board_def is not None
+        else (led.width if led is not None else 0)
     )
-    pmap += _native_port_map(led, "led_uut")
+    if rgb is None:
+        # No RGB bank matched: the mono bank zero-extends over the whole
+        # boundary (RGB channel bits, if any, stay dark) -- the pre-U38 form.
+        assert led is not None  # the match floor: at least one of leds/leds_rgb
+        led_inv = "not " if led.active_low else ""
+        decls.append(f"  signal led_uut : std_logic_vector({led.width} - 1 downto 0);")
+        assigns.append(
+            f"  {led_out} <= std_logic_vector(resize(unsigned({led_inv}led_uut), NUM_LEDS));"
+        )
+        pmap += _native_port_map(led, "led_uut")
+    else:
+        # RGB bank matched (U38): assemble the boundary from slices -- each bit
+        # must have exactly one driver, so the mono resize covers only the mono
+        # block and any channels past both banks are explicitly dark.
+        if led is not None:
+            led_inv = "not " if led.active_low else ""
+            decls.append(f"  signal led_uut : std_logic_vector({led.width} - 1 downto 0);")
+            assigns.append(
+                f"  {led_out}({mono} - 1 downto 0) <= "
+                f"std_logic_vector(resize(unsigned({led_inv}led_uut), {mono}));"
+            )
+            pmap += _native_port_map(led, "led_uut")
+        elif mono > 0:
+            assigns.append(f"  {led_out}({mono} - 1 downto 0) <= (others => '0');")
+        rgb_inv = "not " if rgb.active_low else ""
+        decls.append(f"  signal rgbch_uut : std_logic_vector({rgb.width} - 1 downto 0);")
+        assigns.append(
+            f"  {led_out}({mono} + {rgb.width} - 1 downto {mono}) <= {rgb_inv}rgbch_uut;"
+        )
+        pmap += _native_port_map(rgb, "rgbch_uut")
+        if board_def is not None and mono + rgb.width < max(1, board_def.num_led_channels):
+            assigns.append(
+                f"  {led_out}(NUM_LEDS - 1 downto {mono + rgb.width}) <= (others => '0');"
+            )
 
     # Secondary green bank (rare): captured so the output has a driver, not shown --
     # like the generic wrapper leaving `seg` dark on a non-7-seg design.
@@ -1782,7 +1842,9 @@ def _render_native_wrapper(
     else:
         num_sw_def = sw.width if sw is not None else 1
         num_btn_def = btn.width if btn is not None else 1
-        num_led_def = led.width
+        num_led_def = max(
+            1, (led.width if led is not None else 0) + (rgb.width if rgb is not None else 0)
+        )
 
     seg_generic = [f"    NUM_SEGS         : positive := {len(seg.names)};"] if seg else []
     seg_port = ["    seg         : out std_logic_vector(8 * NUM_SEGS - 1 downto 0);"] if seg else []
@@ -2242,7 +2304,10 @@ def _native_gtkw_signals(match: ConventionMatch) -> list[str]:
         sigs += _port(match.switches)
     if match.buttons is not None:
         sigs += _port(match.buttons)
-    sigs += _port(match.leds)
+    if match.leds is not None:
+        sigs += _port(match.leds)
+    if match.leds_rgb is not None:
+        sigs += _port(match.leds_rgb)
     if match.leds_green is not None:
         sigs += _port(match.leds_green)
     if match.seven_seg is not None:

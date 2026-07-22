@@ -163,6 +163,14 @@ _NAMED_BUTTONS: dict[str, tuple[str, int]] = {
     "btnr": ("button_right", 4),
 }
 
+# A reset pushbutton listed in the XDC's button section (Nexys-family
+# `btnCpuReset` / `CPU_RESETN`).  It is a real momentary button, but unlike the
+# directionals it is active-LOW, so it can never share the convention bank's
+# single `active_low` flag (U38) -- it gets its own name and sorts after the
+# 5-slot directional cluster instead of stealing `button` number 0.
+_RE_RESET_BUTTON = re.compile(r"reset", re.IGNORECASE)
+_RESET_BUTTON_NUMBER = 5
+
 
 # ═══════════════════════════════════════════════════════════════════════
 #  XDC parsing
@@ -429,6 +437,9 @@ def _build_button_components(pin_entries: list[dict[str, Any]]) -> list[dict[str
             number = idx
         elif port_lower in _NAMED_BUTTONS:
             name, number = _NAMED_BUTTONS[port_lower]
+        elif _RE_RESET_BUTTON.search(port_lower):
+            name = "button_reset"
+            number = _RESET_BUTTON_NUMBER
         else:
             name = "button"
             number = len(components)
@@ -439,7 +450,9 @@ def _build_button_components(pin_entries: list[dict[str, Any]]) -> list[dict[str
                 "number": number,
                 "pins": [entry["pin"]],
                 "direction": "i",
-                "inverted": False,
+                # The reset pushbutton pulls its line LOW when pressed (the _N in
+                # CPU_RESETN); matches amaranth's PinsN on the same board.
+                "inverted": name == "button_reset",
                 "connector": None,
                 "attrs": {"IOSTANDARD": entry["iostandard"]} if entry["iostandard"] else {},
             }
@@ -499,8 +512,110 @@ def _build_seven_seg(pin_entries: list[dict[str, Any]]) -> dict[str, Any] | None
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def _build_port_conventions(parsed: dict[str, Any], board_key: str) -> dict[str, dict[str, Any]]:
-    """Build port_conventions from parsed XDC data."""
+# Cited per-board RGB polarity for the ``leds_rgb`` convention bank (U38).
+# The XDC never states polarity; every entry below is verified from the
+# board's Digilent Reference Manual "Tri-Color LED(s)" prose, fetched via the
+# Wayback Machine (digilent.com/reference/programmable-logic/<board>/
+# reference-manual; snapshot noted per family).  The two circuit families:
+#
+#  * transistor-driven (everything but the Cmods): "The input signals are
+#    driven by the FPGA through a transistor, which inverts the signals.
+#    Therefore, to light up the tri-color LED, the corresponding signals need
+#    to be driven high."  -> active-HIGH.  The U36d-cited GPIO schematics
+#    (docs/led_color_sources/digilent.toml) corroborate for Arty A7/S7.
+#  * common-anode direct drive (Cmod A7 + Cmod S7): "The anodes ... are
+#    connected to the 3.3V rail, and the cathodes are connected to FPGA
+#    signals.  Driving one of the RGB LED signals connected to FPGA low will
+#    cause current to flow through the corresponding LED, illuminating it."
+#    -> active-LOW.
+#
+# Verify-or-omit: a board absent here (e.g. the third-party Sword, which has
+# no Digilent RM) gets NO leds_rgb bank rather than a guessed polarity.
+_RGB_ACTIVE_LOW: dict[str, bool] = {
+    # Arty RM "Tri-Color LEDs" ("four tri-color LEDs", transistor prose;
+    # 2024 snapshot) + the Fig. 9.1 GPIO schematic from U36d.
+    "Arty": False,
+    "Arty-A7-35": False,
+    "Arty-A7-100": False,
+    # Arty S7 RM "Tri-Color LEDs" ("two tri-color LEDs", transistor prose;
+    # 2024 snapshot) + the GPIO schematic from U36d.
+    "Arty-S7-25": False,
+    "Arty-S7-50": False,
+    # Arty Z7 RM sec. 12.1 (transistor prose; snapshot 2025-01-13).
+    "Arty-Z7-10": False,
+    "Arty-Z7-20": False,
+    # Cmod A7 RM sec. 7.1 (common-anode prose; snapshot 2024-11-18).
+    "Cmod-A7": True,
+    # Cmod S7 RM basic-I/O figure (U36d): common-anode, FPGA sinks cathodes.
+    "Cmod-S7-25": True,
+    # Cora Z7 RM sec. 11.1 (transistor prose; snapshot 2024-10-28).
+    "Cora-Z7-07S": False,
+    "Cora-Z7-10": False,
+    # Eclypse Z7 RM sec. 12.2 ("the corresponding PL pins need to be driven
+    # high" -- the pre-transistor pin, which the design drives; 2024-09-15).
+    "Eclypse-Z7": False,
+    # Genesys ZU RM sec. 11.3 (transistor prose, "PL pins ... driven high";
+    # snapshot 2025-01-01, same capture as the U36d sec. 11.4 green cite).
+    "Genesys-ZU-3EG": False,
+    "Genesys-ZU-3EG-D": False,
+    "Genesys-ZU-5EV-D": False,
+    # Nexys 4 RM sec. 9.2 (transistor prose; snapshot 2024-07-14).
+    "Nexys-4": False,
+    # Nexys 4 DDR RM "Tri-Color LED" (transistor prose; snapshot 2025-01-23).
+    "Nexys-4-DDR": False,
+    # Nexys A7 RM sec. 9.2 (transistor prose; snapshot 2024-07-15).
+    "Nexys-A7-50T": False,
+    "Nexys-A7-100T": False,
+    # Zybo Z7 RM sec. 13.1 (transistor prose; snapshot 2024-12-12).
+    "Zybo-Z7": False,
+}
+
+
+def _build_rgb_convention(
+    rgb_entries: list[dict[str, Any]], board_key: str
+) -> dict[str, Any] | None:
+    """Build the ``leds_rgb`` scalar bank: (r,g,b) names per site, sites ascending.
+
+    Mirrors ``_build_rgb_led_components``' grouping so bank position ``3i + c``
+    lines up with boundary channel ``led(MONO + 3i + c)`` of the board's i-th
+    ``rgb_led`` component.  Only complete r/g/b triples are emitted (a partial
+    site is not a 3-pin ``rgb_led`` and owns no channel block), and only for
+    boards whose polarity is cited in ``_RGB_ACTIVE_LOW`` (verify-or-omit).
+    """
+    active_low = _RGB_ACTIVE_LOW.get(board_key)
+    if active_low is None:
+        return None
+    groups: dict[int, dict[str, str]] = {}
+    for entry in rgb_entries:
+        chan = _rgb_channel(entry["port"].strip())
+        if chan is not None:
+            led_idx, color = chan
+            groups.setdefault(led_idx, {})[color] = entry["port"].strip()
+    names = [
+        groups[idx][c]
+        for idx in sorted(groups)
+        if all(c in groups[idx] for c in "rgb")
+        for c in "rgb"
+    ]
+    if not names:
+        return None
+    return {"names": names, "active_low": active_low}
+
+
+def _build_port_conventions(
+    parsed: dict[str, Any],
+    board_key: str,
+    mono_led_entries: list[dict[str, Any]],
+    rgb_entries: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Build port_conventions from parsed XDC data.
+
+    *mono_led_entries* / *rgb_entries* are ``build_board_json``'s mono-vs-RGB
+    routing of the LED-shaped ports, so the mono ``leds`` width counts only the
+    real ``led[n]`` vector -- before U38 the Nexys-family conventions claimed
+    ``leds`` width 22 (16 real + 6 leaked RGB channel scalars), rejecting a
+    correct native ``LED[15:0]`` design as a near-miss.
+    """
     pins = parsed["pins"]
     convention: dict[str, object] = {
         "description": f"Digilent {board_key} Master XDC port names",
@@ -512,12 +627,16 @@ def _build_port_conventions(parsed: dict[str, Any], board_key: str) -> dict[str,
         port = clock_entries[0]["port"].strip()
         convention["clk"] = port
 
-    # LEDs
-    led_entries = pins.get("led", [])
-    if led_entries:
-        first_port = led_entries[0]["port"].strip()
+    # LEDs (mono vector only; RGB channel scalars form their own bank below)
+    if mono_led_entries:
+        first_port = mono_led_entries[0]["port"].strip()
         base, _ = _parse_port_name(first_port)
-        convention["leds"] = {"name": base, "width": len(led_entries)}
+        convention["leds"] = {"name": base, "width": len(mono_led_entries)}
+
+    # RGB LED channels (U38): distinct scalar ports, cited polarity
+    rgb_conv = _build_rgb_convention(rgb_entries, board_key)
+    if rgb_conv is not None:
+        convention["leds_rgb"] = rgb_conv
 
     # Switches
     sw_entries = pins.get("switch", [])
@@ -526,7 +645,13 @@ def _build_port_conventions(parsed: dict[str, Any], board_key: str) -> dict[str,
         base, _ = _parse_port_name(first_port)
         convention["switches"] = {"name": base, "width": len(sw_entries)}
 
-    # Buttons — only if indexed (not named)
+    # Buttons.  An indexed bank (btn[0..3]) maps as a shared vector.  A
+    # named-button board (Nexys family) maps the five directionals as distinct
+    # scalars in _NAMED_BUTTONS number order -- boundary bits btn(0..4) -- so a
+    # native design can declare BTNC/BTNU/... directly.  The reset pushbutton is
+    # deliberately NOT in the bank: it is active-LOW while the directionals are
+    # active-high, and one bank carries one polarity flag (truth over coverage;
+    # a native design declares CPU_RESETN with a default, per the U31 rule).
     btn_entries = pins.get("button", [])
     if btn_entries:
         first_port = btn_entries[0]["port"].strip()
@@ -538,11 +663,19 @@ def _build_port_conventions(parsed: dict[str, Any], board_key: str) -> dict[str,
                 "active_low": False,
             }
         else:
-            convention["buttons"] = {
-                "name": first_port.rstrip("CUDLRcudlr"),
-                "width": len(btn_entries),
-                "active_low": False,
-            }
+            directionals = sorted(
+                (
+                    e["port"].strip()
+                    for e in btn_entries
+                    if e["port"].strip().lower() in _NAMED_BUTTONS
+                ),
+                key=lambda p: _NAMED_BUTTONS[p.lower()][1],
+            )
+            if directionals:
+                convention["buttons"] = {
+                    "names": directionals,
+                    "active_low": False,
+                }
 
     # 7-segment
     seg_entries = pins.get("seven_seg", [])
@@ -659,7 +792,9 @@ def build_board_json(
         },
     }
 
-    port_conv = _build_port_conventions(parsed, board_key)
+    port_conv = _build_port_conventions(
+        parsed, board_key, mono_entries, rgb_shaped + pins.get("rgb_led", [])
+    )
     if port_conv:
         board["port_conventions"] = port_conv
 

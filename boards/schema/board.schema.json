@@ -264,6 +264,10 @@
           "$ref": "#/$defs/port_mapping",
           "description": "Secondary (e.g. green) LED bank on boards with two-color LED rows, such as Terasic DE2-115's LEDG"
         },
+        "leds_rgb": {
+          "$ref": "#/$defs/port_mapping",
+          "description": "3-pin RGB LED channels as a bank of distinct scalar ports ('names', in (r,g,b) order per LED site, sites ascending — matching the boundary channel layout led(MONO + 3i + c)), e.g. Arty's led0_r/led0_g/led0_b/led1_r/... . 'active_low' covers the whole bank; a board whose RGB polarity is unverified or mixed omits this mapping (verify-or-omit)."
+        },
         "source": {
           "$ref": "#/$defs/convention_source",
           "description": "Provenance for a convention populated from the port-convention registry (absent for hand-authored blocks)"

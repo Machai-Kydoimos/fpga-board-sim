@@ -22,10 +22,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "CLK100MHZ"
   leds = "led[3:0]"
+  leds_rgb = "led0_r..led3_b (12 scalars, r/g/b per site)"
   buttons = "btn[3:0]"
   switches = "sw[3:0]"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Arty A7-100"
@@ -45,10 +46,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "CLK100MHZ"
   leds = "led[3:0]"
+  leds_rgb = "led0_r..led3_b (12 scalars, r/g/b per site)"
   buttons = "btn[3:0]"
   switches = "sw[3:0]"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Arty A7-35"
@@ -68,10 +70,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "CLK100MHZ"
   leds = "led[3:0]"
+  leds_rgb = "led0_r..led3_b (12 scalars, r/g/b per site)"
   buttons = "btn[3:0]"
   switches = "sw[3:0]"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Arty S7-25"
@@ -91,10 +94,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "CLK12MHZ"
   leds = "led[3:0]"
+  leds_rgb = "led0_r..led1_b (6 scalars, r/g/b per site)"
   buttons = "btn[3:0]"
   switches = "sw[3:0]"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Arty S7-50"
@@ -114,10 +118,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "CLK12MHZ"
   leds = "led[3:0]"
+  leds_rgb = "led0_r..led1_b (6 scalars, r/g/b per site)"
   buttons = "btn[3:0]"
   switches = "sw[3:0]"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Arty Z7-10"
@@ -137,10 +142,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "clk"
   leds = "led[3:0]"
+  leds_rgb = "led4_r..led5_b (6 scalars, r/g/b per site)"
   buttons = "btn[3:0]"
   switches = "sw[1:0]"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Arty Z7-20"
@@ -160,10 +166,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "clk"
   leds = "led[3:0]"
+  leds_rgb = "led4_r..led5_b (6 scalars, r/g/b per site)"
   buttons = "btn[3:0]"
   switches = "sw[1:0]"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Basys 3"
@@ -183,7 +190,7 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "clk"
   leds = "led[15:0]"
-  buttons = "btn[4:0]"
+  buttons = "btnC/btnU/btnD/btnL/btnR scalars (active-low reset button excluded)"
   switches = "sw[15:0]"
   seven_seg = "packed_vector 'seg' (7 bits/digit, active-low)"
   active_low = "buttons active_low=False; seven_seg active-low"
@@ -206,10 +213,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "sysclk"
   leds = "led[1:0]"
+  leds_rgb = "led0_r..led0_b (3 scalars, r/g/b per site)"
   buttons = "btn[1:0]"
   switches = "not in this convention"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=True (RM tri-color prose, U38)"
 
 [[board]]
 name = "Cmod S7-25"
@@ -228,11 +236,12 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   license = "MIT"
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "see XDC"
-  leds = "not in this convention"
+  leds = "led[3:0]"
+  leds_rgb = "led0_r..led0_b (3 scalars, r/g/b per site)"
   buttons = "btn[1:0]"
   switches = "not in this convention"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=True (RM tri-color prose, U38)"
 
 [[board]]
 name = "Cora Z7-07S"
@@ -252,10 +261,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "see XDC"
   leds = "not in this convention"
+  leds_rgb = "led0_r..led1_b (6 scalars, r/g/b per site)"
   buttons = "btn[1:0]"
   switches = "not in this convention"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Cora Z7-10"
@@ -275,10 +285,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "see XDC"
   leds = "not in this convention"
+  leds_rgb = "led0_r..led1_b (6 scalars, r/g/b per site)"
   buttons = "btn[1:0]"
   switches = "not in this convention"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Eclypse Z7"
@@ -298,10 +309,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "see XDC"
   leds = "not in this convention"
+  leds_rgb = "led0_r..led1_b (6 scalars, r/g/b per site)"
   buttons = "btn[1:0]"
   switches = "not in this convention"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Genesys 2"
@@ -321,7 +333,7 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "sysclk_n"
   leds = "led[7:0]"
-  buttons = "btn[5:0]"
+  buttons = "btnc/btnu/btnd/btnl/btnr scalars (active-low reset button excluded)"
   switches = "sw[7:0]"
   seven_seg = "none"
   active_low = "buttons active_low=False"
@@ -344,10 +356,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "see XDC"
   leds = "ld[3:0]"
+  leds_rgb = "ld5_r..ld5_b (3 scalars, r/g/b per site)"
   buttons = "btn[4:0]"
   switches = "sw[3:0]"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Genesys ZU-3EG-D"
@@ -367,10 +380,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "see XDC"
   leds = "ld[3:0]"
+  leds_rgb = "ld5_r..ld5_b (3 scalars, r/g/b per site)"
   buttons = "btn[4:0]"
   switches = "sw[3:0]"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Genesys ZU-5EV-D"
@@ -390,10 +404,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "see XDC"
   leds = "ld[3:0]"
+  leds_rgb = "ld5_r..ld5_b (3 scalars, r/g/b per site)"
   buttons = "btn[4:0]"
   switches = "sw[3:0]"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 
 [[board]]
 name = "Nexys 4"
@@ -412,11 +427,12 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   license = "MIT"
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "clk"
-  leds = "led[21:0]"
-  buttons = "btnCpuReset[5:0]"
+  leds = "led[15:0]"
+  leds_rgb = "RGB1_Red..RGB2_Blue (6 scalars, r/g/b per site)"
+  buttons = "btnC/btnU/btnD/btnL/btnR scalars (active-low reset button excluded)"
   switches = "sw[15:0]"
   seven_seg = "packed_vector 'seg' (7 bits/digit, active-low)"
-  active_low = "buttons active_low=False; seven_seg active-low"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38); seven_seg active-low"
 
 [[board]]
 name = "Nexys 4 DDR"
@@ -435,11 +451,12 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   license = "MIT"
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "CLK100MHZ"
-  leds = "LED[21:0]"
-  buttons = "CPU_RESETN[5:0]"
+  leds = "LED[15:0]"
+  leds_rgb = "LED16_R..LED17_B (6 scalars, r/g/b per site)"
+  buttons = "BTNC/BTNU/BTND/BTNL/BTNR scalars (active-low reset button excluded)"
   switches = "SW[15:0]"
   seven_seg = "individual ports CA, CB, CC, CD, CE, CF, CG (7 bits each, active-low)"
-  active_low = "buttons active_low=False; seven_seg active-low"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38); seven_seg active-low"
 
 [[board]]
 name = "Nexys A7-100T"
@@ -459,10 +476,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "CLK100MHZ"
   leds = "LED[15:0]"
-  buttons = "CPU_RESETN[5:0]"
+  leds_rgb = "LED16_R..LED17_B (6 scalars, r/g/b per site)"
+  buttons = "BTNC/BTNU/BTND/BTNL/BTNR scalars (active-low reset button excluded)"
   switches = "SW[15:0]"
   seven_seg = "individual ports CA, CB, CC, CD, CE, CF, CG (7 bits each, active-low)"
-  active_low = "buttons active_low=False; seven_seg active-low"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38); seven_seg active-low"
 
 [[board]]
 name = "Nexys A7-50T"
@@ -482,10 +500,11 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "CLK100MHZ"
   leds = "LED[15:0]"
-  buttons = "CPU_RESETN[5:0]"
+  leds_rgb = "LED16_R..LED17_B (6 scalars, r/g/b per site)"
+  buttons = "BTNC/BTNU/BTND/BTNL/BTNR scalars (active-low reset button excluded)"
   switches = "SW[15:0]"
   seven_seg = "individual ports CA, CB, CC, CD, CE, CF, CG (7 bits each, active-low)"
-  active_low = "buttons active_low=False; seven_seg active-low"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38); seven_seg active-low"
 
 [[board]]
 name = "Nexys Video"
@@ -505,7 +524,7 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "clk"
   leds = "led[7:0]"
-  buttons = "btn[5:0]"
+  buttons = "btnc/btnu/btnd/btnl/btnr scalars (active-low reset button excluded)"
   switches = "sw[7:0]"
   seven_seg = "none"
   active_low = "buttons active_low=False"
@@ -528,10 +547,10 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "clk_p"
   leds = "led[15:0]"
-  buttons = "rst[10:0]"
+  buttons = "not in this convention"
   switches = "sw[15:0]"
   seven_seg = "individual ports sseg_clk, sseg_en, sseg_sdo (7 bits each, active-low)"
-  active_low = "buttons active_low=False; seven_seg active-low"
+  active_low = "n/a; seven_seg active-low"
 
 [[board]]
 name = "USB104 A7-100T"
@@ -597,8 +616,9 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   device_evidence = "Digilent official master-XDC repo at pinned commit 00a3404901f3"
   clk = "sysclk"
   leds = "led[3:0]"
+  leds_rgb = "led5_r..led6_b (6 scalars, r/g/b per site)"
   buttons = "btn[3:0]"
   switches = "sw[3:0]"
   seven_seg = "none"
-  active_low = "buttons active_low=False"
+  active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38)"
 

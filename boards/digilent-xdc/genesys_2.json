@@ -188,13 +188,13 @@
       }
     },
     {
-      "name": "button",
+      "name": "button_reset",
       "number": 5,
       "pins": [
         "R19"
       ],
       "direction": "i",
-      "inverted": false,
+      "inverted": true,
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
@@ -312,7 +312,7 @@
     "origin": "digilent-xdc",
     "upstream_file": "Genesys-2-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-05-25T04:03:40.979924+00:00"
+    "sync_timestamp": "2026-07-22T14:00:30.004418+00:00"
   },
   "port_conventions": {
     "digilent": {
@@ -327,8 +327,13 @@
         "width": 8
       },
       "buttons": {
-        "name": "btn",
-        "width": 6,
+        "names": [
+          "btnc",
+          "btnu",
+          "btnd",
+          "btnl",
+          "btnr"
+        ],
         "active_low": false
       }
     }
