@@ -50,6 +50,7 @@ SHORTCUTS: list[tuple[str, str]] = [
     ("Wheel", "Scroll the board & file lists"),
     ("R", "Reset switches & buttons (preview & sim)"),
     ("S", "Toggle the stats panel (simulation)"),
+    ("D", "Toggle duty bars — LED duty as bar length (simulation)"),
 ]
 
 CONTRACT: list[str] = [

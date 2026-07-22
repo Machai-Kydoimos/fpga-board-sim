@@ -42,6 +42,7 @@ class TestDraw:
             dlg._waveform_rect,
             dlg._memories_rect,
             dlg._autoopen_rect,
+            dlg._debug_rect,
             dlg._clear_rect,
         ):
             assert rect is not None
@@ -195,6 +196,29 @@ class TestActions:
         assert dlg._autoopen_rect is not None
         dlg._click(dlg._autoopen_rect.center)
         assert load_session()["waveform_open"] is False
+
+    def test_duty_bars_toggle_on(self, screen, session_file, restore_debug_view):
+        """U38: default (off) -> click turns the debug duty-bar view on, live."""
+        from fpga_sim.ui.components import debug_view_enabled
+
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._debug_rect is not None
+        assert dlg._click(dlg._debug_rect.center) is False
+        assert load_session()["debug_view"] is True
+        assert debug_view_enabled() is True  # applied live, like the theme row
+
+    def test_duty_bars_toggle_off(self, screen, session_file, restore_debug_view):
+        from fpga_sim.ui.components import debug_view_enabled, set_debug_view
+
+        update_session(debug_view=True)
+        set_debug_view(True)
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._debug_rect is not None
+        dlg._click(dlg._debug_rect.center)
+        assert load_session()["debug_view"] is False
+        assert debug_view_enabled() is False
 
     def test_memories_toggle_on(self, screen, session_file):
         """U30: default (off) → click turns "include memories" on; row stays open."""

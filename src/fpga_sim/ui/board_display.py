@@ -582,8 +582,11 @@ class FPGABoard:
                 if n > full:  # wider than a row -> own block, wraps internally
                     if x > 0:
                         row, x = row + 1, 0.0
-                    placed.append((label, widgets, 0.0, row, full))
-                    row += math.ceil(n / full)
+                    # Balance the wrap rows (18 LEDs at 16/row -> 9+9, not
+                    # 16+2), matching the _place_items grids' column balance.
+                    rows_needed = math.ceil(n / full)
+                    placed.append((label, widgets, 0.0, row, math.ceil(n / rows_needed)))
+                    row += rows_needed
                     rows_used, x = row, 0.0
                     continue
                 bank_w = max(n * pitch, label_px[label])

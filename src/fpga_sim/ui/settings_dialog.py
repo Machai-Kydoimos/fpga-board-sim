@@ -38,6 +38,7 @@ import math
 import pygame
 
 from fpga_sim.session_config import load_session, update_session
+from fpga_sim.ui.components import set_debug_view
 from fpga_sim.ui.constants import _ui_scale, get_font
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 from fpga_sim.ui.theme import THEME, THEME_LABELS, THEME_NAMES, current_theme_name, set_theme
@@ -147,6 +148,7 @@ class SettingsDialog:
         self._waveform_rect: pygame.Rect | None = None
         self._memories_rect: pygame.Rect | None = None
         self._autoopen_rect: pygame.Rect | None = None
+        self._debug_rect: pygame.Rect | None = None
         self._clear_rect: pygame.Rect | None = None
 
     # ── Session-derived row values ────────────────────────────────────────────
@@ -176,6 +178,10 @@ class SettingsDialog:
     def _waveform_memories(self) -> bool:
         """Whether U30 "include memories" is on (strict: only a real ``true`` counts)."""
         return self._session.get("waveform_memories") is True
+
+    def _debug_view(self) -> bool:
+        """Whether the U38 debug duty-bar view is on (strict: only a real ``true``)."""
+        return self._session.get("debug_view") is True
 
     def _can_cycle_theme(self) -> bool:
         return len(THEME_NAMES) > 1
@@ -242,6 +248,14 @@ class SettingsDialog:
             update_session(waveform_open=not self._waveform_open())
             self._session = load_session()
             return False
+        if self._debug_rect and self._debug_rect.collidepoint(pos):
+            # Apply live (like the theme row): the render mode is a global the
+            # LED widgets read at draw time.
+            enabled = not self._debug_view()
+            set_debug_view(enabled)
+            update_session(debug_view=enabled)
+            self._session = load_session()
+            return False
         return bool(self._panel_rect and not self._panel_rect.collidepoint(pos))
 
     # ── Drawing ───────────────────────────────────────────────────────────────
@@ -266,6 +280,7 @@ class SettingsDialog:
             ("Waveform", _WAVEFORM_LABELS[self._waveform_mode()], "Change", True),
             ("Memories", "On" if self._waveform_memories() else "Off", "Toggle", True),
             ("Auto-open", "On" if self._waveform_open() else "Off", "Toggle", True),
+            ("Duty bars", "On" if self._debug_view() else "Off", "Toggle", True),
             (
                 "Recent files",
                 f"{self._recent_count()} remembered",
@@ -329,6 +344,7 @@ class SettingsDialog:
             self._waveform_rect,
             self._memories_rect,
             self._autoopen_rect,
+            self._debug_rect,
             self._clear_rect,
         ) = action_rects
 

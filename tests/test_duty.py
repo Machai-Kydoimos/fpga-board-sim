@@ -344,7 +344,11 @@ def test_pause_holds_the_measured_duty(ghdl):
         assert 0.4 < running[-1] < 0.6, f"50% channel measured {running[-1]} while running"
 
         send(child.link.conn, "pause", {"on": True})
-        time.sleep(0.3)  # let the pause take effect before sampling
+        # Drain the transition: messages already in flight carry the last
+        # running window, and the child then emits one final sample AT the
+        # pause instant (U38) -- the value it holds.  Discard those boundary
+        # messages; afterwards the display must hold perfectly still.
+        collect(0.5)
         paused = collect(1.5)
         assert paused, "no state messages while paused"
         assert set(paused) == {paused[0]}, f"duty moved while paused: {sorted(set(paused))}"

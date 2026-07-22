@@ -13,7 +13,7 @@ from collections.abc import Sequence
 import pygame
 
 from fpga_sim.board_loader import ComponentInfo
-from fpga_sim.ui.constants import get_font
+from fpga_sim.ui.constants import _ui_scale, get_font
 from fpga_sim.ui.theme import THEME
 
 _PAD = 8  # inner padding around the text block
@@ -59,8 +59,12 @@ class Tooltip:
         extra: Sequence[tuple[str, str]] = (),
     ) -> pygame.Rect:
         """Draw the tooltip for *label* / *info* near *anchor*; return its rect."""
-        header_f = get_font(_HEADER_PT, bold=True)
-        body_f = get_font(_BODY_PT)
+        # Scale with the window like the rest of the UI -- fixed-point tooltips
+        # were unreadably small at full-screen (U38 review).
+        s = max(1.0, _ui_scale(*surface.get_size()))
+        header_f = get_font(round(_HEADER_PT * s), bold=True)
+        body_f = get_font(round(_BODY_PT * s))
+        pad, row_gap, col_gap = round(_PAD * s), round(_ROW_GAP * s), round(_COL_GAP * s)
 
         # Render every row up front so the block can be measured before placement.
         # Each entry is (prefix_surface_or_None, value_surface).
@@ -81,13 +85,13 @@ class Tooltip:
         block_w = 0
         block_h = 0
         for p, v in rendered:
-            row_w = v.get_width() if p is None else prefix_w + _COL_GAP + v.get_width()
+            row_w = v.get_width() if p is None else prefix_w + col_gap + v.get_width()
             block_w = max(block_w, row_w)
-            block_h += v.get_height() + _ROW_GAP
-        block_h -= _ROW_GAP  # no trailing gap after the last row
+            block_h += v.get_height() + row_gap
+        block_h -= row_gap  # no trailing gap after the last row
 
-        w = block_w + 2 * _PAD
-        h = block_h + 2 * _PAD
+        w = block_w + 2 * pad
+        h = block_h + 2 * pad
 
         # Prefer below-right of the cursor; flip at the right / bottom edges, then
         # clamp so the box is always fully on-screen.
@@ -106,12 +110,12 @@ class Tooltip:
         pygame.draw.rect(surface, THEME.panel_bg, rect, border_radius=6)
         pygame.draw.rect(surface, THEME.panel_border_info, rect, 1, border_radius=6)
 
-        ty = y + _PAD
+        ty = y + pad
         for p, v in rendered:
             if p is None:
-                surface.blit(v, (x + _PAD, ty))
+                surface.blit(v, (x + pad, ty))
             else:
-                surface.blit(p, (x + _PAD, ty))
-                surface.blit(v, (x + _PAD + prefix_w + _COL_GAP, ty))
-            ty += v.get_height() + _ROW_GAP
+                surface.blit(p, (x + pad, ty))
+                surface.blit(v, (x + pad + prefix_w + col_gap, ty))
+            ty += v.get_height() + row_gap
         return rect

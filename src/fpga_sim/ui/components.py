@@ -146,6 +146,144 @@ def _perceptual(level: float) -> float:
     return float(max(0.0, min(1.0, level)) ** (1.0 / GAMMA))
 
 
+# ── Debug duty-bar view (U38) ─────────────────────────────────────────────────
+#
+# A global render mode, mirroring the THEME pattern: mutated in place via
+# set_debug_view() and read at draw time, never captured.  In debug view an
+# RGBLED draws as three stacked R/G/B bars and a mono LED gains a thin bar
+# under its circle -- bar LENGTH is the *linear* measured duty (no gamma:
+# the bars exist to read the measurement precisely, the very thing perceptual
+# luminance cannot encode).  Realistic rendering stays the default.
+
+_DEBUG_VIEW = False
+
+
+def set_debug_view(enabled: bool) -> None:
+    """Switch the global LED render mode (True = duty bars, False = realistic)."""
+    global _DEBUG_VIEW
+    _DEBUG_VIEW = bool(enabled)
+
+
+def debug_view_enabled() -> bool:
+    """Whether the debug duty-bar render mode is currently on."""
+    return _DEBUG_VIEW
+
+
+def _bar_track_color() -> tuple[int, int, int]:
+    """Debug-bar track: the theme's LED-off color pulled hard toward black.
+
+    The unfilled span is *off time* -- it should read as empty gauge track,
+    not as a dark-red unlit LED.  Deriving from THEME.led_off (rather than a
+    fixed black) keeps a whisper of the theme's hue so it sits naturally on
+    any palette; read at draw time, never captured (U6).
+    """
+    return lerp_rgb(THEME.led_off, (0, 0, 0), 0.65)
+
+
+#: Fitted % font sizes keyed by (max_h, max_w, sample); 0 = nothing fits.
+#: Layout geometry is stable between frames, so this collapses the per-frame
+#: fit search to a dict hit.
+_PCT_FIT_CACHE: dict[tuple[int, int, str], int] = {}
+
+
+def _pct_font_size(max_h: int, max_w: int, sample: str = "100%") -> int | None:
+    """Largest font size whose tight-rendered *sample* fits max_h x max_w.
+
+    Sizing by the glyphs' actual bounding box (not ``get_height``, which
+    includes generous line spacing) lets the text use the real vertical room;
+    measuring the widest possible string ("100%", or "100" for the stacked
+    circle readout) keeps a row of mixed duties at one uniform size.
+    """
+    key = (max_h, max_w, sample)
+    if key not in _PCT_FIT_CACHE:
+        _PCT_FIT_CACHE[key] = next(
+            (
+                fs
+                for fs in range(max(9, max_h * 2), 8, -1)
+                if (t := _get_font(fs).render(sample, True, WHITE).get_bounding_rect()).height
+                <= max_h
+                and t.width <= max_w
+            ),
+            0,
+        )
+    return _PCT_FIT_CACHE[key] or None
+
+
+def _blit_circle_pct(surface: pygame.Surface, duty: float, cx: int, cy: int, r: int) -> None:
+    """Stacked readout for a mono LED's circle: digits, a smaller % sign below.
+
+    Splitting the % sign onto its own line lets the digits size against
+    "100" instead of "100%", buying visibly larger numbers in the same
+    circle (U38 review).
+    """
+    digits_fs = _pct_font_size(round(1.1 * r), round(1.5 * r), sample="100")
+    if digits_fs is None:
+        return
+    digits = _get_font(digits_fs).render(f"{duty * 100:.0f}", True, WHITE)
+    dt = digits.get_bounding_rect()
+    # The sign sits at ~3/4 of the digit size with a proportional gap; shrink
+    # it (never the digits) if the stack would overflow a small circle.
+    gap = max(2, round(digits_fs * 0.18))
+    sign_fs = max(9, round(digits_fs * 0.75))
+    while True:
+        sign = _get_font(sign_fs).render("%", True, WHITE)
+        st = sign.get_bounding_rect()
+        if dt.height + gap + st.height <= 2 * r - 4 or sign_fs <= 9:
+            break
+        sign_fs -= 1
+    top = cy - (dt.height + gap + st.height) // 2
+    d_dest = pygame.Rect(0, 0, dt.width, dt.height)
+    d_dest.midtop = (cx, top)
+    surface.blit(digits, d_dest, area=dt)
+    s_dest = pygame.Rect(0, 0, st.width, st.height)
+    s_dest.midtop = (cx, top + dt.height + gap)
+    surface.blit(sign, s_dest, area=st)
+
+
+def _blit_pct(
+    surface: pygame.Surface,
+    font_size: int,
+    duty: float,
+    *,
+    center: tuple[int, int] | None = None,
+    right: int | None = None,
+    centery: int | None = None,
+) -> None:
+    """Render a duty % and blit its *tight* glyph box at the given alignment."""
+    txt = _get_font(font_size).render(f"{duty * 100:.0f}%", True, WHITE)
+    tight = txt.get_bounding_rect()
+    dest = pygame.Rect(0, 0, tight.width, tight.height)
+    if center is not None:
+        dest.center = center
+    else:
+        assert right is not None and centery is not None
+        dest.right, dest.centery = right, centery
+    surface.blit(txt, dest, area=tight)
+
+
+def _draw_duty_bar(
+    surface: pygame.Surface,
+    track: pygame.Rect,
+    duty: float,
+    fill_color: tuple[int, int, int],
+    with_text: bool = False,
+) -> None:
+    """One duty bar: dark track, *linear*-length fill, optional right-aligned %.
+
+    The % text sizes itself to the track's real glyph room (see
+    :func:`_pct_font_size`) and renders only when it genuinely fits.
+    """
+    pygame.draw.rect(surface, _bar_track_color(), track)
+    fill_w = round(track.width * max(0.0, min(1.0, duty)))
+    if fill_w > 0:
+        pygame.draw.rect(surface, fill_color, pygame.Rect(track.x, track.y, fill_w, track.height))
+    pygame.draw.rect(surface, WHITE, track, 1)
+    if with_text:
+        fs = _pct_font_size(track.height - 4, track.width - 8)
+        if fs is not None:
+            _blit_pct(surface, fs, duty, right=track.right - 3, centery=track.centery)
+
+
 # LED emission colors (U36). Vivid "lit" RGBs for the schema's named colors; an
 # unknown/absent color falls back to THEME.led_on at draw time (never captured
 # here -- the U6 theme trap). #RRGGBB values from board data are parsed directly.
@@ -158,6 +296,10 @@ _LED_COLOR_RGB: dict[str, tuple[int, int, int]] = {
     "amber": (255, 190, 50),
     "white": (245, 245, 255),
 }
+
+
+#: RGBLED channel letter -> _LED_COLOR_RGB key, for the debug bars' fills.
+_CHANNEL_COLOR = {"r": "red", "g": "green", "b": "blue"}
 
 
 def resolve_led_color(color: str) -> tuple[int, int, int] | None:
@@ -205,7 +347,10 @@ class LED(UIComponent):
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         """Draw the LED at its current brightness, with a matching glow and label."""
         cx, cy = self.rect.center
-        r = max(4, min(self.rect.width, self.rect.height) // 2 - 2)
+        # In debug view a thin duty bar sits under the circle (U38); shrink the
+        # circle just enough to make room for it inside the same cell.
+        bar_h = max(3, self.rect.height // 8) if _DEBUG_VIEW else 0
+        r = max(4, min(self.rect.width, self.rect.height - 2 * bar_h) // 2 - 2)
 
         # Resolved LED color (U36) or the theme default; THEME is read here, at
         # draw time, never captured at import (U6).
@@ -215,15 +360,23 @@ class LED(UIComponent):
         off_color = lerp_rgb(THEME.led_off, on_color, 0.12) if self._on_color else THEME.led_off
         k = _perceptual(self.level)
 
-        if k > 0.0:
+        if k > 0.0 and not _DEBUG_VIEW:
             # Glow takes the LED's own color at an alpha that tracks brightness,
             # so a dim LED gets a faint halo instead of the old fixed red one.
+            # Debug view skips the halo: it is an analytic display.
             glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
             pygame.draw.circle(glow, (*on_color, round(50 * k)), (r * 2, r * 2), r * 2)
             surface.blit(glow, (cx - r * 2, cy - r * 2))
         pygame.draw.circle(surface, lerp_rgb(off_color, on_color, k), (cx, cy), r)
 
         pygame.draw.circle(surface, WHITE, (cx, cy), r, 1)
+
+        if _DEBUG_VIEW:
+            track = pygame.Rect(self.rect.left, self.rect.bottom - bar_h, self.rect.width, bar_h)
+            _draw_duty_bar(surface, track, self.level, on_color)
+            # The exact duty sits in the circle itself (the thin bar is too
+            # short to host it), stacked: digits with a smaller % sign below.
+            _blit_circle_pct(surface, self.level, cx, cy, r)
 
         lbl = font.render(self.label, True, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
@@ -274,6 +427,9 @@ class RGBLED(LED):
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         """Draw the puck at its mixed color, with a matching glow and label."""
+        if _DEBUG_VIEW:
+            self._draw_debug_bars(surface, font)
+            return
         cx, cy = self.rect.center
         r = max(4, min(self.rect.width, self.rect.height) // 2 - 2)
 
@@ -292,6 +448,24 @@ class RGBLED(LED):
 
         lbl = font.render(self.label, True, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
+
+    def _draw_debug_bars(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+        """Debug view (U38): three stacked R/G/B duty bars instead of the puck.
+
+        Bar length is the *linear* channel duty — length encodes far more
+        accurately than luminance, which is the very thing being debugged.
+        The % text appears when a bar is tall enough for the label font.
+        """
+        gap = 2
+        bar_h = (self.rect.height - 2 * gap) // 3
+        y = self.rect.top
+        for ch, lv in zip(self._CHANNELS, self.levels, strict=True):
+            track = pygame.Rect(self.rect.left, y, self.rect.width, bar_h)
+            _draw_duty_bar(surface, track, lv, _LED_COLOR_RGB[_CHANNEL_COLOR[ch]], with_text=True)
+            y += bar_h + gap
+
+        lbl = font.render(self.label, True, WHITE)
+        surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 1))
 
     @property
     def tooltip_extra(self) -> list[tuple[str, str]]:

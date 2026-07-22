@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from fpga_sim.__main__ import _initial_window_size, _restore_session_theme
+from fpga_sim.__main__ import (
+    _initial_window_size,
+    _restore_session_debug_view,
+    _restore_session_theme,
+)
 from fpga_sim.ui.theme import current_theme_name
 
 _DESKTOP = (1920, 1080)
@@ -52,3 +56,19 @@ def test_missing_or_unknown_theme_keeps_default(restore_theme):
     assert current_theme_name() == "pcb-green"
     _restore_session_theme({"theme": 42})
     assert current_theme_name() == "pcb-green"
+
+
+def test_saved_debug_view_is_applied(restore_debug_view):
+    from fpga_sim.ui.components import debug_view_enabled
+
+    _restore_session_debug_view({"debug_view": True})
+    assert debug_view_enabled() is True
+
+
+def test_missing_or_junk_debug_view_keeps_realistic(restore_debug_view):
+    from fpga_sim.ui.components import debug_view_enabled
+
+    _restore_session_debug_view({})
+    assert debug_view_enabled() is False
+    _restore_session_debug_view({"debug_view": "yes"})  # strict: only a real true
+    assert debug_view_enabled() is False
