@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Cited green LED colors for the Digilent family (U36, color registry).**
+  Twenty board definitions across thirteen Digilent boards — Arty A7/S7/Z7,
+  Basys 3, Cmod A7/S7, Genesys 2, Genesys ZU, Nexys A7, Nexys Video, USB104 A7,
+  and Zybo/Zybo Z7 — now render their user LEDs in green (the physical color)
+  instead of the theme default. Digilent does not encode the color in the LED
+  name and states it in prose for only some boards, so each color is cited from
+  that board's Reference Manual: a "Green LEDs" section or "four green LEDs" line
+  where the text states it, otherwise the RM's GPIO / Basic-I/O schematic figure,
+  which draws each user LED as a green diode symbol (all verified active-high).
+  Sources were fetched via the Wayback Machine, since `digilent.com` is behind a
+  Cloudflare challenge. `nexys_4` / `nexys_4_ddr` (whose two RGB LEDs are still
+  flattened into the mono LED bank) and the RGB-only Cora Z7 / Eclypse Z7 are
+  deferred to the RGB work; the non-Digilent "Sword" board has no citable source
+  and keeps the theme fallback.
+
 ## [0.17.0] - 2026-07-21
 
 ### Added
