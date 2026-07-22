@@ -1,0 +1,155 @@
+# LED color source registry — Digilent
+#
+# One [[board]] per physical board; each [[board.bank]] cites the color of one
+# LED bank (a consecutive same-`name` run in the board JSON's `leds[]`).  See
+# README.md in this directory for the schema and the verify-or-omit rule.
+#
+# Digilent does not encode the color in the LED resource name (the XDCs comment
+# `## LEDs` / `## RGB LEDs` but the mono LEDs are bare `led[n]`), and unlike the
+# Terasic manuals the color is not always stated in prose — some Reference
+# Manuals say only "N individual LEDs" (Arty A7, Zybo), while others do state it
+# ("four green LEDs", Genesys ZU).  So every color below is quoted from the
+# board's own Reference Manual: preferably a prose color statement, otherwise the
+# RM's GPIO / Basic-I/O partial-schematic figure, which draws each user LED in
+# its actual color (a green diode symbol) and shows its polarity (anode -> pin
+# via a series resistor => active-high).  digilent.com is Cloudflare-walled, so
+# each source was fetched via the Wayback Machine (web.archive.org); the cited
+# RM page + figure/section are reproducible there.  Every Digilent user (mono)
+# LED verified so far is GREEN and active-high.  Curated 2026-07-22.
+#
+# Deferred to U37 (RGB work), NOT colored here: nexys_4 / nexys_4_ddr flatten
+# their two RGB LEDs into six extra `led` entries sharing the mono bank name, so
+# a `match = "led"` would wrongly green those RGB channels; they are colored once
+# the RGB channels are reclassified.  Cora Z7 / Eclypse Z7 are RGB-only.  The
+# non-Digilent "Sword" board has no citable color source (its Digilent Vivado
+# board file defines LED pins but no color) and keeps the theme fallback.
+
+[[board]]
+name = "Arty A7"
+files = ["digilent-xdc/arty.json", "digilent-xdc/arty_a7-35.json", "digilent-xdc/arty_a7-100.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Arty A7 Reference Manual, Fig. 9.1 'Arty A7 GPIO' (digilent.com/reference/programmable-logic/arty-a7/reference-manual via web.archive.org, snapshot 2024-11-07): the four individual LEDs LD4-LD7 are drawn as green LED symbols, active-high (anode via a series resistor to the FPGA). Prose corroborates count and polarity: 'The four individual high-efficiency LEDs are anode-connected to the FPGA via 330-ohm resistors'."
+
+[[board]]
+name = "Arty S7"
+files = ["digilent-xdc/arty_s7-25.json", "digilent-xdc/arty_s7-50.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Arty S7 Reference Manual, 'Arty S7 GPIO' figure (digilent.com/reference/programmable-logic/arty-s7/reference-manual via web.archive.org, 2024 snapshot): the four individual LEDs LD2-LD5 are drawn as green LED symbols, active-high (anode via series resistor to the Spartan-7)."
+
+[[board]]
+name = "Arty Z7"
+files = ["digilent-xdc/arty_z7-10.json", "digilent-xdc/arty_z7-20.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Arty Z7 Reference Manual, 'Arty Z7 GPIO' figure (digilent.com/reference/programmable-logic/arty-z7/reference-manual via web.archive.org, 2024 snapshot): the four individual LEDs LD0-LD3 are drawn as green LED symbols, active-high."
+
+[[board]]
+name = "Basys 3"
+files = ["digilent-xdc/basys_3.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Basys 3 Reference Manual, Basic-I/O photo (digilent.com/reference/_media/basys3/leds_edited.jpg via web.archive.org): the sixteen user LEDs LD0-LD15 above the slide switches are lit green on the pictured board."
+
+[[board]]
+name = "Cmod A7"
+files = ["digilent-xdc/cmod_a7.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Cmod A7 Reference Manual, GPIO figure (digilent.com/reference/_media/cmod_a7/cmoda7_b_gpio.png via web.archive.org): the two individual LEDs LD1 (A17) and LD2 (C16) are drawn as green LED symbols, active-high (anode via series resistor to the Artix-7, cathode to GND)."
+
+[[board]]
+name = "Cmod S7"
+files = ["digilent-xdc/cmod_s7-25.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Cmod S7 Reference Manual, Basic-I/O figure (digilent.com/reference/_media/programmable-logic/cmod-s7/cmod-s7-basic-io-2.png via web.archive.org): the four individual LEDs LED1-LED4 (E2/K1/J1/E1) are drawn as green LED symbols, active-high."
+
+[[board]]
+name = "Genesys 2"
+files = ["digilent-xdc/genesys_2.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Genesys 2 Reference Manual, GPIO figure (digilent.com/reference/programmable-logic/genesys-2/reference-manual via web.archive.org): the eight individual LEDs LD0-LD7 are drawn as green LED symbols, active-high (Kintex-7)."
+
+[[board]]
+name = "Genesys ZU"
+files = ["digilent-xdc/genesys_zu-3eg.json", "digilent-xdc/genesys_zu-3eg-d.json", "digilent-xdc/genesys_zu-5ev-d.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Genesys ZU Reference Manual (digilent.com/reference/programmable-logic/genesys-zu/reference-manual via web.archive.org, snapshot 2025-01-01), section 11.4 titled 'Green LEDs': 'The Genesys ZU includes five push-buttons, four slide switches, one tri-color LED and four green LEDs connected to the Zynq PL'; the individual LEDs are anode-connected (active-high)."
+
+[[board]]
+name = "Nexys A7"
+files = ["digilent-xdc/nexys_a7-100t.json", "digilent-xdc/nexys_a7-50t.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Nexys A7 (formerly Nexys 4 DDR, the same board) Reference Manual, Basic-I/O figure (digilent.com/reference/_media/nexys/nexys4/io1.png via web.archive.org): the sixteen individual LEDs LD0-LD15 are drawn as green LED symbols, active-high."
+
+[[board]]
+name = "Nexys Video"
+files = ["digilent-xdc/nexys_video.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Nexys Video Reference Manual, GPIO/LED photo (digilent.com/reference/_media/nexys-video/nexysvideogpioled2.jpg via web.archive.org): the eight user LEDs LD0-LD7 above the slide switches are lit green on the pictured board."
+
+[[board]]
+name = "USB104 A7"
+files = ["digilent-xdc/usb104_a7-100t.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "USB104 A7 Reference Manual, GPIO figure (digilent.com/reference/programmable-logic/usb104a7/reference-manual via web.archive.org): the four individual LEDs LED0-LED3 (R17/P15/R15/T14) are drawn as green LED symbols, active-high (Artix-7)."
+
+[[board]]
+name = "Zybo"
+files = ["digilent-xdc/zybo.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Zybo Reference Manual, Fig. 14 'ZYBO GPIO' (digilent.com/reference/_media/zybo/io1.png via web.archive.org): the four individual LEDs LD0-LD3 (M14/M15/G14/D18) are drawn as green LED symbols, active-high. Prose corroborates polarity: 'The high-efficiency LEDs are anode-connected to the Zynq via 330-ohm resistors'."
+
+[[board]]
+name = "Zybo Z7"
+files = ["digilent-xdc/zybo_z7.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Zybo Z7 Reference Manual, GPIO figure (digilent.com/reference/programmable-logic/zybo-z7/reference-manual via web.archive.org): the four PL LEDs LD0-LD3 (plus the PS MIO LED) are drawn as green LED symbols, active-high."

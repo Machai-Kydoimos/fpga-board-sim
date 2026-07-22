@@ -26,7 +26,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -39,7 +40,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -52,7 +54,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -65,7 +68,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -78,7 +82,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -91,7 +96,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -104,7 +110,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -117,7 +124,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -130,7 +138,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -143,7 +152,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -156,7 +166,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -169,7 +180,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -182,7 +194,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -195,7 +208,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -208,7 +222,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -221,7 +236,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "color": "green"
     }
   ],
   "buttons": [
