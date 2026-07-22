@@ -17,12 +17,12 @@
 # RM page + figure/section are reproducible there.  Every Digilent user (mono)
 # LED verified so far is GREEN and active-high.  Curated 2026-07-22.
 #
-# Deferred to U37 (RGB work), NOT colored here: nexys_4 / nexys_4_ddr flatten
-# their two RGB LEDs into six extra `led` entries sharing the mono bank name, so
-# a `match = "led"` would wrongly green those RGB channels; they are colored once
-# the RGB channels are reclassified.  Cora Z7 / Eclypse Z7 are RGB-only.  The
-# non-Digilent "Sword" board has no citable color source (its Digilent Vivado
-# board file defines LED pins but no color) and keeps the theme fallback.
+# nexys_4 / nexys_4_ddr joined at U37: their two RGB LEDs are now proper
+# 3-pin `rgb_led` components, so `match = "led"` cleanly greens the sixteen
+# mono LEDs without touching the RGB channels (the U36d deferral is resolved).
+# Cora Z7 / Eclypse Z7 are RGB-only.  The non-Digilent "Sword" board has no
+# citable color source (its Digilent Vivado board file defines LED pins but no
+# color) and keeps the theme fallback.
 
 [[board]]
 name = "Arty A7"
@@ -113,6 +113,16 @@ maker = "Digilent"
   match = "led"
   color = "green"
   source = "Nexys A7 (formerly Nexys 4 DDR, the same board) Reference Manual, Basic-I/O figure (digilent.com/reference/_media/nexys/nexys4/io1.png via web.archive.org): the sixteen individual LEDs LD0-LD15 are drawn as green LED symbols, active-high."
+
+[[board]]
+name = "Nexys 4 / Nexys 4 DDR"
+files = ["digilent-xdc/nexys_4.json", "digilent-xdc/nexys_4_ddr.json"]
+maker = "Digilent"
+
+  [[board.bank]]
+  match = "led"
+  color = "green"
+  source = "Nexys 4 (DDR) Reference Manual, Basic-I/O figure (digilent.com/reference/_media/nexys/nexys4/io1.png via web.archive.org — the RM's own media path for the Nexys 4 lineage, shared with the renamed Nexys A7): the sixteen individual LEDs LD0-LD15 are drawn as green LED symbols, active-high.  The two tri-color LEDs LD16/LD17 are separate rgb_led components and deliberately unmatched here."
 
 [[board]]
 name = "Nexys Video"

@@ -196,6 +196,24 @@ _RE_CLOCK_NONFABRIC = re.compile(r"transceiver|mezzanine|refclk|\bmgt\b")
 # An LED section names "led"/"leds" as a whole word, so "OLED Display" and
 # schematic-name headers ("Sch name = LED16_G") don't masquerade as one.
 _RE_LED_WORD = re.compile(r"\bleds?\b")
+# An RGB channel port: one tri-color LED's single channel. Two Digilent naming
+# families exist — `led16_r`-style (Nexys 4 DDR, Arty) and `RGB1_Red`-style
+# (the original Nexys 4). Anchored so a plain `led16` or a `led1_ready`-style
+# name never matches. ``_rgb_channel`` is the single source of truth for both
+# the section router and ``_build_rgb_led_components``' grouping.
+_RGB_CHANNEL_PATTERNS = (
+    re.compile(r"^(?:led|ld)(\d+)_?([rgb])$", re.IGNORECASE),  # led16_r / LED0_B / ld0r
+    re.compile(r"^rgb(\d+)_?(red|green|blue)$", re.IGNORECASE),  # RGB1_Red
+)
+
+
+def _rgb_channel(port: str) -> tuple[int, str] | None:
+    """Return (site index, 'r'/'g'/'b') for an RGB channel port name, else None."""
+    for pat in _RGB_CHANNEL_PATTERNS:
+        m = pat.match(port)
+        if m:
+            return int(m.group(1)), m.group(2)[0].lower()
+    return None
 
 
 def _classify_section(header: str) -> str | None:
@@ -336,12 +354,11 @@ def _build_led_components(pin_entries: list[dict[str, Any]]) -> list[dict[str, A
             "connector": None,
             "attrs": {"IOSTANDARD": entry["iostandard"]} if entry["iostandard"] else {},
         }
-        # Most Digilent mono LED ports are bare `led[n]` (color comes from the
-        # registry, not the name), but the heuristic is live here, not a no-op:
-        # Nexys 4 / Nexys 4 DDR route their `led16_r`-style RGB channel ports
-        # through this mono path (their XDCs don't split them into an `## RGB
-        # LEDs` section the RGB builder would catch), and those names do carry
-        # a color (U36).
+        # Digilent mono LED ports are bare `led[n]` (color comes from the
+        # registry, not the name); `ledN_r/g/b` channel ports route to the RGB
+        # builder before this runs (U37), so today the heuristic colors
+        # nothing here — kept as the shared safety net for any future
+        # color-named mono XDC port (U36).
         color = color_from_name(base)
         if color:
             comp["color"] = color
@@ -354,13 +371,10 @@ def _build_rgb_led_components(pin_entries: list[dict[str, Any]]) -> list[dict[st
     groups: dict[int, dict[str, str]] = {}
     iostandard = ""
     for entry in pin_entries:
-        port = entry["port"].strip()
+        chan = _rgb_channel(entry["port"].strip())
         iostandard = entry.get("iostandard", iostandard)
-        # Patterns: led0_r / LED16_R / led0_b / ld0_r
-        m = re.match(r"(?:led|LED|ld|LD)(\d+)[_]?([rgb]|[RGB])", port, re.IGNORECASE)
-        if m:
-            led_idx = int(m.group(1))
-            color = m.group(2).lower()
+        if chan is not None:
+            led_idx, color = chan
             groups.setdefault(led_idx, {})[color] = entry["pin"]
 
     components: list[dict[str, Any]] = []
@@ -606,9 +620,18 @@ def build_board_json(
             }
         )
 
-    # Components
-    leds = _build_led_components(pins.get("led", []))
-    rgb_leds = _build_rgb_led_components(pins.get("rgb_led", []))
+    # Components.  A single "## LEDs" XDC section can mix mono LEDs with RGB
+    # channel ports — Nexys 4 / Nexys 4 DDR list LED0-15 and LED16_R..LED17_B
+    # under one header, unlike Arty's separate "## RGB LEDs" section — so
+    # ledN_r/g/b-shaped ports route to the RGB builder regardless of which
+    # section carried them (U37).
+    mono_entries: list[dict[str, Any]] = []
+    rgb_shaped: list[dict[str, Any]] = []
+    for entry in pins.get("led", []):
+        target = rgb_shaped if _rgb_channel(entry["port"].strip()) else mono_entries
+        target.append(entry)
+    leds = _build_led_components(mono_entries)
+    rgb_leds = _build_rgb_led_components(rgb_shaped + pins.get("rgb_led", []))
     switches = _build_switch_components(pins.get("switch", []))
     buttons = _build_button_components(pins.get("button", []))
     seven_seg = _build_seven_seg(pins.get("seven_seg", []))
