@@ -100,11 +100,22 @@ def test_rgb_cocotb_suite_nvc(nvc):
 
 
 def test_rgb_rainbow_elaborates_without_rgb_leds(ghdl):
-    """NUM_RGB_LEDS=0: the generate loops vanish; a plain 4-LED run is clean."""
+    """NUM_RGB_LEDS=0: the site loop runs zero times; a plain 4-LED run is clean.
+
+    The explicit ``-e`` matters: mcode elaborates in-memory at ``-r``, but the
+    compiled backends (llvm/gcc) need it to emit the executable ``-r`` runs.
+    """
     env, _ = _build_sim_env()
     d = tempfile.mkdtemp(prefix="rgb_plain_")
     subprocess.run(
         [ghdl, "-a", "--std=08", f"--workdir={d}", str(DESIGN)],
+        check=True,
+        env=env,
+        cwd=d,
+        capture_output=True,
+    )
+    subprocess.run(
+        [ghdl, "-e", "--std=08", f"--workdir={d}", "rgb_rainbow"],
         check=True,
         env=env,
         cwd=d,
