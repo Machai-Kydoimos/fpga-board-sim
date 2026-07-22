@@ -140,6 +140,13 @@ class SimulationScreen:
             # when the sim starts — the overlays live in that strip (U34).
             reserve_footer_space=True,
         )
+        # Boundary-channel -> widget map (U37): constant per board, cached.
+        # Without a board_def (generic run) the widgets map 1:1 as before.
+        self._led_chan_map = (
+            board_def.led_channel_targets
+            if board_def is not None
+            else list(range(len(self.board.leds)))
+        )
         self._toolbar: SimToolbar | None = SimToolbar() if show_toolbar else None
 
         # Info-strip segments (board | vhdl (mode) | simulator), native tag accented.
@@ -357,14 +364,25 @@ class SimulationScreen:
 
         led = int(self._last_state.get("led", 0) or 0)
         led_duty = self._last_state.get("led_duty")
-        n_leds = len(self.board.leds)
+        # Channel domain (U37): the child's led bits / led_duty index boundary
+        # channels — three per RGB LED — while the board draws one widget per
+        # component.
+        chan_map = self._led_chan_map
+        n_chan = len(chan_map)
         if led_duty:
-            targets = [float(led_duty[i]) if i < len(led_duty) else 0.0 for i in range(n_leds)]
+            targets = [float(led_duty[i]) if i < len(led_duty) else 0.0 for i in range(n_chan)]
             if self.panel.paused:
                 self._pause_follow_binary(targets, led)
         else:
-            targets = [float(bool(led & (1 << i))) for i in range(n_leds)]
-        for i, level in enumerate(self._smooth("led", targets, dt_s)):
+            targets = [float(bool(led & (1 << i))) for i in range(n_chan)]
+        # Fold channels onto component widgets: mono maps 1:1; an RGB widget
+        # shows its brightest channel until the RGBLED puck (U37 PR-2) mixes
+        # the three into one rendered color.
+        levels = [0.0] * len(self.board.leds)
+        for ch, comp in enumerate(chan_map):
+            if comp < len(levels):
+                levels[comp] = max(levels[comp], targets[ch])
+        for i, level in enumerate(self._smooth("led", levels, dt_s)):
             self.board.set_led_level(i, level)
 
         seg = self._last_state.get("seg")

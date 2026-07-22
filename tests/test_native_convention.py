@@ -125,17 +125,19 @@ def test_native_wrapper_bakes_board_widths_as_generic_defaults() -> None:
 
 
 def test_native_wrapper_bank_narrower_than_board_boundary() -> None:
-    # U32: a litex board whose 8 LED components (user_led + rgb_led) exceed the
+    # U32: a litex board whose LED components (4 user_led + 4 rgb_led) exceed the
     # 4-bit user_led bank.  The matcher advertises the bank (4), while the wrapper's
-    # NUM_LEDS default is the board count (8, matching build_generics / the run) and
-    # the bank zero-extends onto it -- board LEDs the convention omits stay dark.
+    # NUM_LEDS default is the board's boundary channel count (U37: 4 mono + 3 x 4
+    # RGB = 16, matching build_generics / the run) and the bank zero-extends onto
+    # it -- board channels the convention omits stay dark.
     arty = PROJECT / "boards" / "litex-boards" / "digilent_arty.json"
     bd = BoardDef.from_json(arty.read_text())
+    assert bd.num_led_channels == 16  # 4 mono + 3 * 4 RGB
     res = check_vhdl_contract(NATIVE / "arty_litex.vhd", board_def=bd)
     assert res.ok and res.match is not None
-    assert res.match.leds == NativePort(("user_led",), 4, False)  # the bank, not 8 board LEDs
+    assert res.match.leds == NativePort(("user_led",), 4, False)  # the bank, not the channels
     vhd = _render_native_wrapper("arty_litex", res.match, bd)
-    assert "NUM_LEDS         : positive := 8;" in vhd  # board count, not the bank width 4
+    assert "NUM_LEDS         : positive := 16;" in vhd  # channel count, not the bank width 4
     assert "led <= std_logic_vector(resize(unsigned(led_uut), NUM_LEDS));" in vhd
 
 

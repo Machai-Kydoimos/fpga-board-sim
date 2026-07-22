@@ -195,7 +195,9 @@ async def bridge_sim(dut: object) -> None:
 
     clk_hz = board_def.default_clock_hz if board_def else _FALLBACK_CLOCK_HZ
     clk_period_ns = max(1.0, 1e9 / clk_hz)
-    num_leds = len(board_def.leds) if board_def else 4
+    # Boundary channels, not components (U37): the dut.led vector carries
+    # three bits per RGB LED, so the mask/tracker/state all size to channels.
+    num_leds = board_def.num_led_channels if board_def else 4
     num_switches = len(board_def.switches) if board_def else 4
     num_buttons = len(board_def.buttons) if board_def else 4
     seg_digits = board_def.seven_seg.num_digits if board_def and board_def.seven_seg else 0

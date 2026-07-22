@@ -71,6 +71,17 @@ class ComponentInfo:
     color: str = ""  # LED color when known ("red" / "#ff0000"); "" => theme fallback (U36)
 
     @property
+    def is_rgb(self) -> bool:
+        """True for a 3-pin ``rgb_led`` (one boundary bit per r/g/b channel, U37).
+
+        The pin-count gate is load-bearing, not defensive: a 1-pin ``rgb_led``
+        is a serial addressable LED (WS2812-style, e.g. colorlight_i9plus) and
+        a 4-pin one is RGBW (modretro_chromatic) -- neither is three PWM
+        channels, so both stay ordinary mono boundary bits.
+        """
+        return self.name == "rgb_led" and len(self.pins) == 3
+
+    @property
     def display_name(self) -> str:
         """Short label for the UI, e.g. 'LED0', 'BTN2', 'UP0', 'RGB1'."""
         prefixes = {"led": "LED", "button": "BTN", "switch": "SW"}
@@ -145,6 +156,47 @@ class BoardDef:
             else:
                 banks.append((c.name, [c]))
         return banks
+
+    @property
+    def led_channels(self) -> list[tuple[ComponentInfo, str]]:
+        """Boundary ``led`` bit k -> (component, channel) (U37).
+
+        Mono LEDs first (JSON order), then ``("r", "g", "b")`` per RGB LED
+        (JSON order) -- this IS the layout convention the VHDL contract
+        documents: ``MONO = NUM_LEDS - 3*NUM_RGB_LEDS``, and
+        ``led(MONO + 3*i + 0/1/2)`` drives site i's red/green/blue. Display
+        order stays physical (``leds`` as-is); only the boundary mapping is
+        normalized mono-first, so no JSON reordering is ever needed.
+        """
+        mono = [c for c in self.leds if not c.is_rgb]
+        rgb = [c for c in self.leds if c.is_rgb]
+        return [(c, "mono") for c in mono] + [(c, ch) for c in rgb for ch in ("r", "g", "b")]
+
+    @property
+    def num_led_channels(self) -> int:
+        """Width of the boundary ``led`` vector: mono LEDs + 3 per RGB LED.
+
+        This is what ``NUM_LEDS`` must be set to -- ``len(leds)`` counts
+        *components* (an RGB LED is one component but three channels).
+        """
+        return len(self.leds) + 2 * self.num_rgb_leds
+
+    @property
+    def num_rgb_leds(self) -> int:
+        """Number of 3-channel RGB LED sites (what ``NUM_RGB_LEDS`` is set to)."""
+        return sum(1 for c in self.leds if c.is_rgb)
+
+    @property
+    def led_channel_targets(self) -> list[int]:
+        """Component index (into ``leds``) driven by each boundary channel.
+
+        Aligned with :attr:`led_channels` (mono first, then 3 per RGB site);
+        an RGB component's index appears three times. The renderer folds
+        channel-indexed state onto per-component widgets with this.
+        """
+        mono = [i for i, c in enumerate(self.leds) if not c.is_rgb]
+        rgb = [i for i, c in enumerate(self.leds) if c.is_rgb]
+        return mono + [i for i in rgb for _ in range(3)]
 
     def _led_summary(self) -> str:
         """LED portion of :attr:`summary`, broken out by bank (U36).

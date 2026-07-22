@@ -497,3 +497,60 @@ def test_led_bank_label_ignores_framework_convention():
 def test_led_bank_label_uppercases_unknown_name():
     board = BoardDef(name="B", class_name="B", leds=_leds("power_led"))
     assert board.led_bank_label("power_led") == "POWER_LED"
+
+
+# ── led channels (U37) ────────────────────────────────────────────────────────
+
+
+def _rgb(number: int, n_pins: int = 3) -> ComponentInfo:
+    return ComponentInfo("led", "rgb_led", number, pins=[f"P{number}{k}" for k in range(n_pins)])
+
+
+def _mono(number: int) -> ComponentInfo:
+    return ComponentInfo("led", "led", number, pins=[f"A{number}"])
+
+
+def test_is_rgb_requires_name_and_exactly_three_pins():
+    assert _rgb(0).is_rgb
+    assert not _rgb(0, n_pins=1).is_rgb  # WS2812-style serial impostor (1 data pin)
+    assert not _rgb(0, n_pins=4).is_rgb  # RGBW
+    three_pin_mono = ComponentInfo("led", "led", 0, pins=["A1", "A2", "A3"])
+    assert not three_pin_mono.is_rgb  # name gate: three pins alone don't qualify
+
+
+def test_led_channels_mono_first_then_rgb_triples():
+    # Physical order deliberately RGB-first: the boundary still packs mono low.
+    leds = [_rgb(0), _mono(0), _mono(1)]
+    board = BoardDef(name="B", class_name="B", leds=leds)
+    assert [(c.name, ch) for c, ch in board.led_channels] == [
+        ("led", "mono"),
+        ("led", "mono"),
+        ("rgb_led", "r"),
+        ("rgb_led", "g"),
+        ("rgb_led", "b"),
+    ]
+    assert board.led_channels[2][0] is leds[0]
+    assert board.num_led_channels == 5
+    assert board.num_rgb_leds == 1
+
+
+def test_led_channel_targets_align_with_channels():
+    # channels: mono (component 1), then r/g/b of component 0.
+    board = BoardDef(name="B", class_name="B", leds=[_rgb(0), _mono(0)])
+    assert board.led_channel_targets == [1, 0, 0, 0]
+    assert len(board.led_channel_targets) == board.num_led_channels
+
+
+def test_serial_impostors_stay_mono_channels():
+    board = BoardDef(name="B", class_name="B", leds=[_rgb(0, n_pins=1), _mono(0)])
+    assert board.num_rgb_leds == 0
+    assert board.num_led_channels == 2
+    assert board.led_channel_targets == [0, 1]  # plain physical order, no reorder
+
+
+def test_num_led_channels_arty_shape():
+    # Arty A7: 4 mono + 4 RGB -> 16 boundary channels.
+    board = BoardDef(
+        name="B", class_name="B", leds=[_mono(i) for i in range(4)] + [_rgb(i) for i in range(4)]
+    )
+    assert board.num_led_channels == 16
