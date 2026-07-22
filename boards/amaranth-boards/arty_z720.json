@@ -192,6 +192,39 @@
         "name": "button",
         "width": 4
       }
+    },
+    "digilent": {
+      "description": "Digilent Arty-Z7-20 Master XDC port names",
+      "clk": "clk",
+      "leds": {
+        "name": "led",
+        "width": 4
+      },
+      "leds_rgb": {
+        "names": [
+          "led4_r",
+          "led4_g",
+          "led4_b",
+          "led5_r",
+          "led5_g",
+          "led5_b"
+        ],
+        "active_low": false
+      },
+      "switches": {
+        "name": "sw",
+        "width": 2
+      },
+      "buttons": {
+        "name": "btn",
+        "width": 4,
+        "active_low": false
+      },
+      "source": {
+        "url": "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Arty-Z7-20-Master.xdc",
+        "retrieved": "2026-05-25",
+        "registry_board": "Arty Z7-20"
+      }
     }
   },
   "$schema": "../schema/board.schema.json",

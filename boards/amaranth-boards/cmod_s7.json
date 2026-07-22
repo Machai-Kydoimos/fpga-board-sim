@@ -120,6 +120,32 @@
         "name": "button",
         "width": 2
       }
+    },
+    "digilent": {
+      "description": "Digilent Cmod-S7-25 Master XDC port names",
+      "clk": "clk",
+      "leds": {
+        "name": "led",
+        "width": 4
+      },
+      "leds_rgb": {
+        "names": [
+          "led0_r",
+          "led0_g",
+          "led0_b"
+        ],
+        "active_low": true
+      },
+      "buttons": {
+        "name": "btn",
+        "width": 2,
+        "active_low": false
+      },
+      "source": {
+        "url": "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Cmod-S7-25-Master.xdc",
+        "retrieved": "2026-05-25",
+        "registry_board": "Cmod S7-25"
+      }
     }
   },
   "$schema": "../schema/board.schema.json",

@@ -34,6 +34,7 @@ board data instead of live fetches.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import re
 import sys
@@ -348,10 +349,20 @@ def cross_check_widths(convention: dict[str, Any], board: dict[str, Any]) -> str
             return f"switches width {want} exceeds board's {got} switches"
 
     if "buttons" in convention:
-        want = convention["buttons"]["width"]
+        want = convention["buttons"].get("width", len(convention["buttons"].get("names", [])))
         got = len(board.get("buttons", []))
         if want > got:
             return f"buttons width {want} exceeds board's {got} buttons"
+
+    if "leds_rgb" in convention:
+        sites = len(convention["leds_rgb"].get("names", [])) // 3
+        board_sites = sum(
+            1
+            for led in board.get("leds", [])
+            if led.get("name") == "rgb_led" and len(led.get("pins", [])) == 3
+        )
+        if sites > board_sites:
+            return f"leds_rgb sites {sites} exceeds board's {board_sites} 3-pin RGB LEDs"
 
     seg = convention.get("seven_seg")
     if seg and seg["style"] in ("individual", "per_segment_scalars"):
@@ -574,6 +585,79 @@ def write_results(
     return per_file
 
 
+def digilent_sibling_results(
+    registry: dict[str, dict[str, Any]], board_filter: str | None = None
+) -> list[BoardResult]:
+    """Transplant canonical digilent blocks onto same-board sibling files (U38).
+
+    A registry row's ``files`` can list the same physical board as captured by
+    several sync pipelines -- ``digilent-xdc/arty_a7-100.json`` next to
+    ``amaranth-boards/arty_a7-100.json``.  The digilent-xdc file carries the
+    parser-emitted canonical ``digilent`` convention (incl. the U38 ``leds_rgb``
+    bank and cited polarity); the siblings had only framework-derived blocks, so
+    a board-native Digilent design would near-miss on them even though the
+    selector shows the *same physical board* (found live in the U38 review).
+
+    The source of truth is the LOCAL digilent-xdc board JSON -- never a
+    re-parse: ``scripts/digilent_parser.py`` owns that block's content, and this
+    function merely propagates it, stamping registry provenance.  The A1
+    per-sub-key merge preserves the transplanted block across amaranth/litex
+    re-syncs, and ``write_results``' polarity reconcile keeps the siblings'
+    framework banks agreeing with the cited data.  Each target is still gated
+    by its own width cross-check, exactly like the fetch path.
+    """
+    results: list[BoardResult] = []
+    for name, row in sorted(registry.items()):
+        if board_filter is not None and name != board_filter:
+            continue
+        files = [str(f) for f in row.get("files", [])]
+        sources = [f for f in files if f.startswith("digilent-xdc/")]
+        siblings = [f for f in files if not f.startswith("digilent-xdc/")]
+        if not sources or not siblings:
+            continue
+        if row.get("status") != "verified":
+            results.append(BoardResult(name, skipped="registry status is not 'verified'"))
+            continue
+        src_path = BOARDS_DIR / sources[0]
+        if not src_path.is_file():
+            results.append(BoardResult(name, skipped=f"source {sources[0]} missing"))
+            continue
+        with src_path.open() as f:
+            block = (json.load(f).get("port_conventions") or {}).get("digilent")
+        if not isinstance(block, dict):
+            results.append(BoardResult(name, skipped="no digilent block on the source board"))
+            continue
+        block = copy.deepcopy(block)
+        rank1 = (row.get("source") or [{}])[0]
+        provenance = {
+            key: value
+            for key, value in (
+                ("url", rank1.get("url")),
+                ("retrieved", rank1.get("retrieved")),
+                ("registry_board", name),
+            )
+            if value
+        }
+        if provenance:
+            block["source"] = provenance
+        conv_by_file: dict[str, dict[str, Any]] = {}
+        skips: dict[str, str] = {}
+        for rel in siblings:
+            tgt_path = BOARDS_DIR / rel
+            if not tgt_path.is_file():
+                skips[rel] = "target file missing"
+                continue
+            with tgt_path.open() as f:
+                board = json.load(f)
+            mismatch = cross_check_widths(block, board)
+            if mismatch is not None:
+                skips[rel] = mismatch
+                continue
+            conv_by_file[rel] = {"digilent": block}
+        results.append(BoardResult(name, convention_by_file=conv_by_file, file_skips=skips))
+    return results
+
+
 # ═══════════════════════════════════════════════════════════════════════
 #  CLI
 # ═══════════════════════════════════════════════════════════════════════
@@ -593,6 +677,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     results = generate_boards(board_filter=args.board)
+    results += digilent_sibling_results(load_registry(), board_filter=args.board)
 
     for result in results:
         if result.skipped:

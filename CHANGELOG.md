@@ -90,6 +90,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A native Digilent design now loads on every selector entry of the same
+  physical board (U38).** The board list shows some boards more than once —
+  "Arty A7-100" from both the digilent-xdc and amaranth sources, litex's
+  "Digilent Arty" — but only the digilent-xdc entries carried the canonical
+  convention, so a board-native file near-missed on the siblings with a
+  confusing generic-contract error. The registry now transplants each
+  digilent-xdc board's canonical block (including `leds_rgb`) onto its
+  sibling files, commit-pinned provenance attached, with every target gated
+  by its own resource-width cross-check; framework-derived polarity on those
+  boards reconciles against the cited data.
 - **Digilent conventions no longer advertise ports the boards don't have
   (U38).** The Nexys-family mono `leds` mapping claimed width 22 (16 real
   LEDs plus the six leaked RGB channel scalars), so a correct native

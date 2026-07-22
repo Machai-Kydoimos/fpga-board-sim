@@ -874,6 +874,10 @@ _E2E_CASES = [
     # U38: the native-RGB example -- mono led[3:0] + twelve led0_r..led3_b
     # scalars packed onto the 16-channel boundary via the leds_rgb bank.
     ("arty_rgb", "digilent-xdc/arty_a7-100.json"),
+    # U38 sibling transplant (#308): the SAME physical board reached via the
+    # amaranth source carries the transplanted canonical digilent block, so
+    # the native design must match there too (the live near-miss Rick hit).
+    ("arty_rgb", "amaranth-boards/arty_a7-100.json"),
 ]
 
 

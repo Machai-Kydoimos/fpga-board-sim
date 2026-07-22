@@ -70,7 +70,33 @@
   ],
   "switches": [],
   "seven_seg": null,
-  "port_conventions": {},
+  "port_conventions": {
+    "digilent": {
+      "description": "Digilent Cora-Z7-10 Master XDC port names",
+      "clk": "clk",
+      "leds_rgb": {
+        "names": [
+          "led0_r",
+          "led0_g",
+          "led0_b",
+          "led1_r",
+          "led1_g",
+          "led1_b"
+        ],
+        "active_low": false
+      },
+      "buttons": {
+        "name": "btn",
+        "width": 2,
+        "active_low": false
+      },
+      "source": {
+        "url": "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Cora-Z7-10-Master.xdc",
+        "retrieved": "2026-05-25",
+        "registry_board": "Cora Z7-10"
+      }
+    }
+  },
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "amaranth-boards",

@@ -323,6 +323,33 @@
         "name": "user_btn",
         "width": 6
       }
+    },
+    "digilent": {
+      "description": "Digilent Nexys-Video Master XDC port names",
+      "clk": "clk",
+      "leds": {
+        "name": "led",
+        "width": 8
+      },
+      "switches": {
+        "name": "sw",
+        "width": 8
+      },
+      "buttons": {
+        "names": [
+          "btnc",
+          "btnu",
+          "btnd",
+          "btnl",
+          "btnr"
+        ],
+        "active_low": false
+      },
+      "source": {
+        "url": "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Nexys-Video-Master.xdc",
+        "retrieved": "2026-05-25",
+        "registry_board": "Nexys Video"
+      }
     }
   },
   "$schema": "../schema/board.schema.json",
