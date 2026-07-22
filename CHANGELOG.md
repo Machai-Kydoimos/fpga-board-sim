@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Settings row ("Duty bars") or the in-sim `D` hotkey; the choice persists
   across sessions. Realistic rendering stays the default, and tooltips show
   duties in both modes.
+- **Board-data drift CI tripwire (U38).** A new CI job re-syncs every
+  generated board source at its recorded upstream pin and requires the result
+  to be byte-identical to the committed files — a parser changed without a
+  re-sync, or a hand-edit to a generated file, now fails the build instead of
+  accumulating silently. The job chains the port-convention and LED-color
+  registry checks, so one step covers every board-data invariant
+  (`scripts/check_board_drift.py`).
 - **Board-native designs can drive RGB LEDs by their real names (U38,
   Digilent).** Digilent conventions now carry a `leds_rgb` bank listing the
   Master XDC's channel scalars in (r,g,b) order per site — Arty's

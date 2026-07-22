@@ -219,6 +219,29 @@ exactly the on-time over `[0, t]` by construction), and differences two snapshot
 into the window's exact duty, which rides along as `led_duty` / `seg_duty`. See
 `fpga_sim/sim_duty.py` for the math.
 
+**Duty → pixels (U9b/U37/U38).** On the launcher side `SimulationScreen` smooths
+the incoming duties with a wall-clock persistence-of-vision EMA (τ = 0.1 s; the
+first sample snaps) — display smoothing only, the measurements stay exact — then
+routes them in the **channel domain**: `BoardDef.led_channels` maps each boundary
+bit to its component, so a mono LED gets `set_led_level` while an RGB LED's three
+channels land in its `RGBLED` widget via `set_channel` (U37). Realistic rendering
+is perceptual — `brightness = duty^(1/2.2)`, mixed per channel for RGB pucks so
+`(1,1,1)` washes to white — and the U38 **debug duty-bar view** (a global render
+mode in `ui/components.py`, toggled by the in-sim `D` key / Settings, persisted
+as `debug_view`) swaps it for *linear-length* bars with % readouts, because
+length reads to a percent where luminance cannot.
+
+**Pause semantics.** While paused the child's step shrinks to ~1 ns, so a
+between-sends window would span less than a clock period and every duty would
+collapse to 0%/100%. Instead the child takes **one final measurement at the
+instant pause lands** and then holds it — the frozen numbers describe the moment
+of pause — while `state` messages keep flowing with the live (frozen) bits. On
+the launcher, a held channel that is exactly 0/1 follows those live bits
+(`_pause_follow_binary`), so a combinational switch→LED still responds under
+pause; a mid-PWM channel holds its exact duty. The tracker is not advanced
+further while paused, so the first post-resume window simply spans the pause and
+stays exact.
+
 The integrator is a **swappable splice fragment** (`sim/duty/<algo>.*.vhd.frag`),
 because its cost is entirely a function of how often it is woken, and that is a
 property of the design. `fix_ns_1p` (the default) uses one process per monitored

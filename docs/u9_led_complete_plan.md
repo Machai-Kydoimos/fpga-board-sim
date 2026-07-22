@@ -1,8 +1,16 @@
 # LED-complete arc plan — U9 · U36 · U37 · U38
 
-**Status:** planned 2026-07-18 (planning session, v0.16.0); **phase-0 integrator spike done
-2026-07-19** — it de-risked *and revised* the §2.2/§2.3 design (see §2.9 Phase-0 results);
-census (§6.2) + real `--benchmark` baseline (§6.3) still pending; U9 PR-1 not yet started.
+**Status: ✅ ARC COMPLETE (2026-07-22).** Shipped as planned, four cards across two releases:
+**U9** duty engine + brightness (PRs #280, #281, #288) and **U36** banks/layout/cited colors
+(PRs #287, #290, #292, #294, #296, #297) → **v0.17.0** (2026-07-21); **U37** RGB channels
+(PRs #299, #301, #303, milestone #10) and **U38** native RGB + debug view + closeout
+(PRs #305, #307, #310, PR-3, milestone #11) → **v0.18.0**. Deviations from plan are recorded
+inline where they happened (§2.9a falsified the phase-0 perf table; `fix_ns_1p` displaced the
+locked `fix_ns_pc` default on evidence; the U38 review added the pause-instant sample, the
+sibling-convention transplant, and the drift tripwire). Historical planning context below.
+
+*Originally:* planned 2026-07-18 (planning session, v0.16.0); phase-0 integrator spike done
+2026-07-19 — it de-risked *and revised* the §2.2/§2.3 design (see §2.9 Phase-0 results).
 **Executor:** a future Claude session ("you"). This document is written to be executed without
 the planning conversation. Every repo claim below was verified by reading the code at the
 commit above; re-verify anchors cheaply before building on them (files move).

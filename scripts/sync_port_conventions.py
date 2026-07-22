@@ -260,12 +260,22 @@ def pin_url_to_commit(url: str) -> tuple[str, str]:
     Returns ``(repo, pinned_url)``. Raises ``ValueError`` for a URL shape
     this can't resolve (e.g. not raw.githubusercontent.com) -- callers treat
     that the same as any other per-board fetch failure: warn and skip.
+
+    An *unresolved* branch ref also raises: ``resolve_commit_sha`` falls back
+    to the ref itself when the GitHub API fails (rate limit), and writing --
+    or ``--check``-comparing -- an unpinned branch URL against the committed
+    pinned provenance would look like board drift when it is only a transient
+    network failure (found by the U38 drift tripwire's first run).  Skipping
+    the row keeps the check meaningful: verify what can be pinned, report the
+    rest.  A ref that already IS a full SHA passes through untouched.
     """
     m = _RAW_GITHUB_RE.match(url)
     if not m:
         raise ValueError(f"not a raw.githubusercontent.com URL: {url}")
     repo, ref, path = m.groups()
     sha = resolve_commit_sha(repo, ref)
+    if sha == ref and not re.fullmatch(r"[0-9a-f]{40}", ref):
+        raise ValueError(f"could not pin ref {ref!r} of {repo} (GitHub API rate limit?)")
     return repo, f"https://raw.githubusercontent.com/{repo}/{sha}/{path}"
 
 

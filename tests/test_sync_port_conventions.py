@@ -1122,3 +1122,18 @@ def test_cross_check_widths_handles_names_button_banks() -> None:
     conv = {"buttons": {"names": ["btnC", "btnU", "btnD", "btnL", "btnR"]}}
     assert spc.cross_check_widths(conv, {"buttons": [{}] * 6}) is None
     assert "buttons width 5 exceeds" in (spc.cross_check_widths(conv, {"buttons": [{}] * 2}) or "")
+
+
+def test_pin_url_raises_on_unresolved_branch_ref(monkeypatch: pytest.MonkeyPatch) -> None:
+    # resolve_commit_sha falls back to the ref on API failure (rate limit);
+    # writing/checking an unpinned URL would read as false board drift.
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: ref)
+    with pytest.raises(ValueError, match="could not pin"):
+        spc.pin_url_to_commit("https://raw.githubusercontent.com/o/r/main/f.xdc")
+
+
+def test_pin_url_passes_through_an_already_pinned_sha(monkeypatch: pytest.MonkeyPatch) -> None:
+    sha = "a" * 40
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: ref)
+    _repo, pinned = spc.pin_url_to_commit(f"https://raw.githubusercontent.com/o/r/{sha}/f.xdc")
+    assert f"/{sha}/" in pinned
