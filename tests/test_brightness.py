@@ -415,6 +415,77 @@ def test_rgbled_draws_the_gamma_encoded_mix(headless_pygame):
     assert off == THEME.led_off  # dark neutral, no color cast
 
 
+def test_debug_view_rgbled_draws_linear_length_bars(headless_pygame, restore_debug_view):
+    """U38 debug view: three stacked R/G/B bars whose fill length is the
+    *linear* duty — a 50% channel fills exactly half the track (perceptual
+    encoding would fill ~73%), which is the whole point of the mode."""
+    from fpga_sim.ui.components import _LED_COLOR_RGB, RGBLED, set_debug_view
+
+    surface = headless_pygame.Surface((90, 60))
+    surface.fill((0, 0, 0))
+    # A font taller than the 8px bars: the % text never renders, so every
+    # probed pixel is pure bar geometry (font metrics vary per platform).
+    font = headless_pygame.font.Font(None, 40)
+    puck = RGBLED(0)
+    puck.rect = headless_pygame.Rect(10, 10, 60, 30)  # gap=2 -> three 8px bars
+    puck.set_channel("r", 1.0)
+    puck.set_channel("g", 0.5)
+    puck.set_channel("b", 0.0)
+    set_debug_view(True)
+    puck.draw(surface, font)
+
+    # Red bar (y 10..17): full-length fill.
+    assert surface.get_at((60, 14))[:3] == _LED_COLOR_RGB["red"]
+    # Green bar (y 20..27): linear 50% -> fill ends at x=40 exactly.
+    assert surface.get_at((25, 24))[:3] == _LED_COLOR_RGB["green"]
+    assert surface.get_at((50, 24))[:3] == THEME.led_off  # perceptual would still be filled here
+    # Blue bar (y 30..37): zero fill, bare track.
+    assert surface.get_at((40, 34))[:3] == THEME.led_off
+
+
+def test_debug_view_bar_percent_text_appears_when_it_fits(headless_pygame, restore_debug_view):
+    """A bar tall enough for the label font gets its % readout (white glyphs)."""
+    from fpga_sim.ui.components import RGBLED, set_debug_view
+
+    surface = headless_pygame.Surface((160, 120))
+    surface.fill((0, 0, 0))
+    font = headless_pygame.font.Font(None, 14)
+    puck = RGBLED(0)
+    puck.rect = headless_pygame.Rect(10, 10, 120, 90)  # three ~28px bars
+    puck.set_channel("r", 1.0)
+    set_debug_view(True)
+    puck.draw(surface, font)
+
+    # "100%" is right-aligned inside the red bar: some near-white glyph pixels
+    # must exist in its right half (loose: font rendering varies per platform).
+    red_bar_rows = range(12, 36)
+    hits = sum(
+        1
+        for y in red_bar_rows
+        for x in range(70, 128)
+        if surface.get_at((x, y))[1] > 200 and surface.get_at((x, y))[2] > 200
+    )
+    assert hits > 0
+
+
+def test_debug_view_mono_led_gains_a_duty_bar(headless_pygame, restore_debug_view):
+    """U38 debug view: a mono LED keeps its circle and adds a thin linear bar."""
+    from fpga_sim.ui.components import LED, set_debug_view
+
+    surface = headless_pygame.Surface((60, 70))
+    surface.fill((0, 0, 0))
+    font = headless_pygame.font.Font(None, 10)
+    led = LED(0)
+    led.rect = headless_pygame.Rect(10, 10, 40, 40)  # bar_h = 5 -> track y 45..49
+    led.level = 0.5
+    set_debug_view(True)
+    led.draw(surface, font)
+
+    assert surface.get_at((15, 47))[:3] == THEME.led_on  # inside the 20px fill
+    assert surface.get_at((45, 47))[:3] == THEME.led_off  # past it: bare track
+    assert surface.get_at((30, 28))[:3] != (0, 0, 0)  # the circle is still there
+
+
 def test_set_led_channel_on_a_plain_led_collapses_to_level(headless_pygame):
     """Safety: routing an RGB channel at a mono widget just sets its level."""
     from fpga_sim.board_loader import BoardDef, ComponentInfo

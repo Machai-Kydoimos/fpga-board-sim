@@ -37,6 +37,7 @@ from fpga_sim.sim_bridge import (
     discover_simulators,
 )
 from fpga_sim.ui import FPGABoard
+from fpga_sim.ui.components import set_debug_view
 from fpga_sim.ui.constants import get_font
 from fpga_sim.ui.theme import THEME_NAMES, set_theme
 
@@ -421,6 +422,11 @@ def _restore_session_theme(session: dict[str, Any]) -> None:
         set_theme(saved)
 
 
+def _restore_session_debug_view(session: dict[str, Any]) -> None:
+    """Apply the saved U38 debug duty-bar mode (strict: only a real ``true``)."""
+    set_debug_view(session.get("debug_view") is True)
+
+
 def _initial_window_size(session: dict[str, Any], desktop: tuple[int, int]) -> tuple[int, int]:
     """Pick the launcher window size: the saved one, else ~80% of the desktop.
 
@@ -521,6 +527,7 @@ def main() -> None:
 
     session = load_session()
     _restore_session_theme(session)
+    _restore_session_debug_view(session)
     pygame.init()
     # get_desktop_sizes() is reliable in pygame 2.x before any set_mode() call
     sizes = pygame.display.get_desktop_sizes()

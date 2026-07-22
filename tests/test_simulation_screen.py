@@ -162,6 +162,30 @@ def test_escape_event_returns_stopped(headless_pygame, fake_child):
     assert screen._pump_events() is SimExit.STOPPED
 
 
+def test_d_key_toggles_debug_view_and_persists(
+    headless_pygame, fake_child, tmp_path, monkeypatch, restore_debug_view
+):
+    """U38: the in-sim D hotkey flips the duty-bar view live and saves it."""
+    from fpga_sim.session_config import load_session
+    from fpga_sim.ui.components import debug_view_enabled
+
+    monkeypatch.setattr("fpga_sim.session_config.SESSION_FILE", tmp_path / "session.json")
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+
+    key_d = headless_pygame.event.Event(headless_pygame.KEYDOWN, {"key": headless_pygame.K_d})
+    headless_pygame.event.post(key_d)
+    assert screen._pump_events() is None  # not a navigation key
+    assert debug_view_enabled() is True
+    assert load_session()["debug_view"] is True
+
+    headless_pygame.event.post(key_d)
+    screen._pump_events()
+    assert debug_view_enabled() is False
+    assert load_session()["debug_view"] is False
+
+
 def test_bye_message_returns_stopped(headless_pygame, fake_child):
     child, client = fake_child
     screen = _make_screen(headless_pygame, child)

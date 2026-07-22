@@ -28,6 +28,7 @@ from fpga_sim.session_config import update_session
 from fpga_sim.sim_link import drain, send
 from fpga_sim.sim_session_log import save_session_stats
 from fpga_sim.ui.board_display import FPGABoard
+from fpga_sim.ui.components import debug_view_enabled, set_debug_view
 from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.error_dialog import ErrorDialog
 from fpga_sim.ui.help_dialog import HelpDialog
@@ -426,6 +427,13 @@ class SimulationScreen:
                 self._show_panel = not self._show_panel
                 self._board_offset = self.panel.panel_height if self._show_panel else 0
                 self.board.set_height_offset(self._board_offset)
+            if ev.type == pygame.KEYDOWN and ev.key == pygame.K_d:
+                # U38 debug duty-bar view: duty as bar LENGTH, readable to a
+                # percent.  Sharpest paired with pause, which holds the exact
+                # measured duty (U9b) -- pause, hit D, read the numbers.
+                enabled = not debug_view_enabled()
+                set_debug_view(enabled)
+                update_session(debug_view=enabled)
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 if self._stop_btn_rect is not None and self._stop_btn_rect.collidepoint(ev.pos):
                     nav = SimExit.STOPPED

@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Debug duty-bar view (U38).** A global render mode that shows every LED's
+  measured duty as **bar length** instead of luminance: an RGB LED becomes
+  three stacked R/G/B bars (with a % readout when the bar is tall enough) and
+  a mono LED gains a thin bar under its circle. Length reads to a percent
+  where brightness cannot — sharpest paired with pause, which holds the exact
+  measured duty: pause, hit **D**, read the numbers. Toggle via the new
+  Settings row ("Duty bars") or the in-sim `D` hotkey; the choice persists
+  across sessions. Realistic rendering stays the default, and tooltips show
+  duties in both modes.
 - **Board-native designs can drive RGB LEDs by their real names (U38,
   Digilent).** Digilent conventions now carry a `leds_rgb` bank listing the
   Master XDC's channel scalars in (r,g,b) order per site — Arty's

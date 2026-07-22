@@ -143,6 +143,21 @@ def restore_theme() -> Iterator[None]:
     set_theme("pcb-green")
 
 
+@pytest.fixture
+def restore_debug_view() -> Iterator[None]:
+    """Reset the U38 debug duty-bar mode after a test that toggles it.
+
+    Same leak rule as ``restore_theme``: the mode is a module global the LED
+    widgets read at draw time, so any test that calls ``set_debug_view`` (or
+    triggers it via the Settings dialog / the in-sim ``D`` hotkey) must
+    request this fixture.
+    """
+    from fpga_sim.ui.components import set_debug_view
+
+    yield
+    set_debug_view(False)
+
+
 def _7seg_board() -> BoardDef:
     from fpga_sim.board_loader import BoardDef, SevenSegDef
 
