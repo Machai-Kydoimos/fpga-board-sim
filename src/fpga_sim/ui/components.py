@@ -180,33 +180,55 @@ def _bar_track_color() -> tuple[int, int, int]:
     return lerp_rgb(THEME.led_off, (0, 0, 0), 0.65)
 
 
-#: Fitted % font sizes keyed by (max_h, max_w); 0 = nothing fits.  Layout
-#: geometry is stable between frames, so this collapses the per-frame fit
-#: search to a dict hit.
-_PCT_FIT_CACHE: dict[tuple[int, int], int] = {}
+#: Fitted % font sizes keyed by (max_h, max_w, sample); 0 = nothing fits.
+#: Layout geometry is stable between frames, so this collapses the per-frame
+#: fit search to a dict hit.
+_PCT_FIT_CACHE: dict[tuple[int, int, str], int] = {}
 
 
-def _pct_font_size(max_h: int, max_w: int) -> int | None:
-    """Largest font size whose tight-rendered ``"100%"`` fits max_h x max_w.
+def _pct_font_size(max_h: int, max_w: int, sample: str = "100%") -> int | None:
+    """Largest font size whose tight-rendered *sample* fits max_h x max_w.
 
     Sizing by the glyphs' actual bounding box (not ``get_height``, which
     includes generous line spacing) lets the text use the real vertical room;
-    measuring the widest possible string keeps a row of mixed duties at one
-    uniform size.
+    measuring the widest possible string ("100%", or "100" for the stacked
+    circle readout) keeps a row of mixed duties at one uniform size.
     """
-    key = (max_h, max_w)
+    key = (max_h, max_w, sample)
     if key not in _PCT_FIT_CACHE:
         _PCT_FIT_CACHE[key] = next(
             (
                 fs
                 for fs in range(max(9, max_h * 2), 8, -1)
-                if (t := _get_font(fs).render("100%", True, WHITE).get_bounding_rect()).height
+                if (t := _get_font(fs).render(sample, True, WHITE).get_bounding_rect()).height
                 <= max_h
                 and t.width <= max_w
             ),
             0,
         )
     return _PCT_FIT_CACHE[key] or None
+
+
+def _blit_circle_pct(surface: pygame.Surface, duty: float, cx: int, cy: int, r: int) -> None:
+    """Stacked readout for a mono LED's circle: digits, a smaller % sign below.
+
+    Splitting the % sign onto its own line lets the digits size against
+    "100" instead of "100%", buying visibly larger numbers in the same
+    circle (U38 review).
+    """
+    digits_fs = _pct_font_size(round(1.1 * r), round(1.5 * r), sample="100")
+    if digits_fs is None:
+        return
+    digits = _get_font(digits_fs).render(f"{duty * 100:.0f}", True, WHITE)
+    sign = _get_font(max(8, round(digits_fs * 0.55))).render("%", True, WHITE)
+    dt, st = digits.get_bounding_rect(), sign.get_bounding_rect()
+    top = cy - (dt.height + 1 + st.height) // 2
+    d_dest = pygame.Rect(0, 0, dt.width, dt.height)
+    d_dest.midtop = (cx, top)
+    surface.blit(digits, d_dest, area=dt)
+    s_dest = pygame.Rect(0, 0, st.width, st.height)
+    s_dest.midtop = (cx, top + dt.height + 1)
+    surface.blit(sign, s_dest, area=st)
 
 
 def _blit_pct(
@@ -343,14 +365,9 @@ class LED(UIComponent):
         if _DEBUG_VIEW:
             track = pygame.Rect(self.rect.left, self.rect.bottom - bar_h, self.rect.width, bar_h)
             _draw_duty_bar(surface, track, self.level, on_color)
-            # The exact % sits in the circle itself (the thin bar is too short
-            # to host it), sized to the circle's real room: a text box of
-            # height r fits a chord ~1.7r wide, and measuring "100%" keeps a
-            # row of mixed duties at one uniform size (so the full-on LED is
-            # never the one whose number goes missing).
-            fs = _pct_font_size(r, round(1.7 * r))
-            if fs is not None:
-                _blit_pct(surface, fs, self.level, center=(cx, cy))
+            # The exact duty sits in the circle itself (the thin bar is too
+            # short to host it), stacked: digits with a smaller % sign below.
+            _blit_circle_pct(surface, self.level, cx, cy, r)
 
         lbl = font.render(self.label, True, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
