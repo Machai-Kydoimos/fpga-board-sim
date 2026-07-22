@@ -272,19 +272,6 @@
   ],
   "buttons": [
     {
-      "name": "button",
-      "number": 0,
-      "pins": [
-        "C12"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "button_center",
       "number": 0,
       "pins": [
@@ -344,6 +331,19 @@
       ],
       "direction": "i",
       "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button_reset",
+      "number": 5,
+      "pins": [
+        "C12"
+      ],
+      "direction": "i",
+      "inverted": true,
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
@@ -571,7 +571,7 @@
     "origin": "digilent-xdc",
     "upstream_file": "Nexys-4-DDR-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-07-22T07:59:28.059203+00:00"
+    "sync_timestamp": "2026-07-22T14:00:30.006852+00:00"
   },
   "port_conventions": {
     "digilent": {
@@ -579,15 +579,31 @@
       "clk": "CLK100MHZ",
       "leds": {
         "name": "LED",
-        "width": 22
+        "width": 16
+      },
+      "leds_rgb": {
+        "names": [
+          "LED16_R",
+          "LED16_G",
+          "LED16_B",
+          "LED17_R",
+          "LED17_G",
+          "LED17_B"
+        ],
+        "active_low": false
       },
       "switches": {
         "name": "SW",
         "width": 16
       },
       "buttons": {
-        "name": "CPU_RESETN",
-        "width": 6,
+        "names": [
+          "BTNC",
+          "BTNU",
+          "BTND",
+          "BTNL",
+          "BTNR"
+        ],
         "active_low": false
       },
       "seven_seg": {

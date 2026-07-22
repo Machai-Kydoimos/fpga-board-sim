@@ -513,23 +513,61 @@ def _build_seven_seg(pin_entries: list[dict[str, Any]]) -> dict[str, Any] | None
 
 
 # Cited per-board RGB polarity for the ``leds_rgb`` convention bank (U38).
-# The XDC never states polarity; each entry is read off the board's
-# reference-manual circuit figure -- the same figures the LED color registry
-# cites (docs/led_color_sources/digilent.toml) -- or RM prose.  Verify-or-omit:
-# a board absent here (e.g. the third-party Sword, which has no Digilent RM)
-# gets NO leds_rgb bank rather than a guessed polarity.
+# The XDC never states polarity; every entry below is verified from the
+# board's Digilent Reference Manual "Tri-Color LED(s)" prose, fetched via the
+# Wayback Machine (digilent.com/reference/programmable-logic/<board>/
+# reference-manual; snapshot noted per family).  The two circuit families:
+#
+#  * transistor-driven (everything but the Cmods): "The input signals are
+#    driven by the FPGA through a transistor, which inverts the signals.
+#    Therefore, to light up the tri-color LED, the corresponding signals need
+#    to be driven high."  -> active-HIGH.  The U36d-cited GPIO schematics
+#    (docs/led_color_sources/digilent.toml) corroborate for Arty A7/S7.
+#  * common-anode direct drive (Cmod A7 + Cmod S7): "The anodes ... are
+#    connected to the 3.3V rail, and the cathodes are connected to FPGA
+#    signals.  Driving one of the RGB LED signals connected to FPGA low will
+#    cause current to flow through the corresponding LED, illuminating it."
+#    -> active-LOW.
+#
+# Verify-or-omit: a board absent here (e.g. the third-party Sword, which has
+# no Digilent RM) gets NO leds_rgb bank rather than a guessed polarity.
 _RGB_ACTIVE_LOW: dict[str, bool] = {
-    # Arty A7 RM Fig. 9.1 "Arty A7 GPIO": each RGB channel drives a transistor
-    # from +5V via the FPGA pin -- pin high lights the channel (active-high).
+    # Arty RM "Tri-Color LEDs" ("four tri-color LEDs", transistor prose;
+    # 2024 snapshot) + the Fig. 9.1 GPIO schematic from U36d.
     "Arty": False,
     "Arty-A7-35": False,
     "Arty-A7-100": False,
-    # Arty S7 RM "Arty S7 GPIO" figure: same transistor arrangement as the A7.
+    # Arty S7 RM "Tri-Color LEDs" ("two tri-color LEDs", transistor prose;
+    # 2024 snapshot) + the GPIO schematic from U36d.
     "Arty-S7-25": False,
     "Arty-S7-50": False,
-    # Cmod S7 RM basic-I/O figure: common-anode tri-color LED, the FPGA sinks
-    # each cathode -- pin low lights the channel (active-low).
+    # Arty Z7 RM sec. 12.1 (transistor prose; snapshot 2025-01-13).
+    "Arty-Z7-10": False,
+    "Arty-Z7-20": False,
+    # Cmod A7 RM sec. 7.1 (common-anode prose; snapshot 2024-11-18).
+    "Cmod-A7": True,
+    # Cmod S7 RM basic-I/O figure (U36d): common-anode, FPGA sinks cathodes.
     "Cmod-S7-25": True,
+    # Cora Z7 RM sec. 11.1 (transistor prose; snapshot 2024-10-28).
+    "Cora-Z7-07S": False,
+    "Cora-Z7-10": False,
+    # Eclypse Z7 RM sec. 12.2 ("the corresponding PL pins need to be driven
+    # high" -- the pre-transistor pin, which the design drives; 2024-09-15).
+    "Eclypse-Z7": False,
+    # Genesys ZU RM sec. 11.3 (transistor prose, "PL pins ... driven high";
+    # snapshot 2025-01-01, same capture as the U36d sec. 11.4 green cite).
+    "Genesys-ZU-3EG": False,
+    "Genesys-ZU-3EG-D": False,
+    "Genesys-ZU-5EV-D": False,
+    # Nexys 4 RM sec. 9.2 (transistor prose; snapshot 2024-07-14).
+    "Nexys-4": False,
+    # Nexys 4 DDR RM "Tri-Color LED" (transistor prose; snapshot 2025-01-23).
+    "Nexys-4-DDR": False,
+    # Nexys A7 RM sec. 9.2 (transistor prose; snapshot 2024-07-15).
+    "Nexys-A7-50T": False,
+    "Nexys-A7-100T": False,
+    # Zybo Z7 RM sec. 13.1 (transistor prose; snapshot 2024-12-12).
+    "Zybo-Z7": False,
 }
 
 

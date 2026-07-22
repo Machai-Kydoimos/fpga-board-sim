@@ -214,13 +214,19 @@ def test_reproduces_stored_clk_leds_switches_buttons() -> None:
     assert result["clk"] == stored["clk"]
     assert result["leds"] == stored["leds"]
     assert result["switches"] == stored["switches"]
-    # buttons: compare name/width only. The stored block's "active_low": false
-    # was hardcoded by scripts/digilent_parser.py, not derived from the XDC
-    # text (no dialect states polarity as syntax -- see classify.py's module
-    # docstring), so this classifier correctly leaves it unset rather than
-    # asserting a polarity it has no textual evidence for.
+    # buttons: the two pipelines now diverge deliberately.  This classifier
+    # still synthesizes a shared `btn` vector from the btnC/U/L/R/D scalars
+    # (and, per classify.py's module docstring, leaves polarity unset -- no
+    # dialect states it as syntax).  The stored block is the U38 corrected
+    # form: the five directionals as a `names[]` scalar bank (the real XDC
+    # ports -- a `btn[4:0]` vector never existed on this board), with the
+    # active_low the digilent parser cites from the RM.  As with seven_seg
+    # below, the on-disk JSON leads and the classifier may catch up later.
     assert result["buttons"] == {"name": "btn", "width": 5}
-    assert stored["buttons"] == {"name": "btn", "width": 5, "active_low": False}
+    assert stored["buttons"] == {
+        "names": ["btnC", "btnU", "btnD", "btnL", "btnR"],
+        "active_low": False,
+    }
 
 
 def test_clock_frequency_matches_boards_default_clock_hz() -> None:

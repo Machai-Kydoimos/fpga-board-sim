@@ -189,7 +189,7 @@
     "origin": "digilent-xdc",
     "upstream_file": "Arty-Z7-20-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-05-25T04:03:40.977621+00:00"
+    "sync_timestamp": "2026-07-22T14:00:30.000592+00:00"
   },
   "port_conventions": {
     "digilent": {
@@ -198,6 +198,17 @@
       "leds": {
         "name": "led",
         "width": 4
+      },
+      "leds_rgb": {
+        "names": [
+          "led4_r",
+          "led4_g",
+          "led4_b",
+          "led5_r",
+          "led5_g",
+          "led5_b"
+        ],
+        "active_low": false
       },
       "switches": {
         "name": "sw",

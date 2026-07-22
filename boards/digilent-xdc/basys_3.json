@@ -528,7 +528,7 @@
     "origin": "digilent-xdc",
     "upstream_file": "Basys-3-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-05-25T04:03:40.977950+00:00"
+    "sync_timestamp": "2026-07-22T14:00:30.001213+00:00"
   },
   "port_conventions": {
     "digilent": {
@@ -543,8 +543,13 @@
         "width": 16
       },
       "buttons": {
-        "name": "btn",
-        "width": 5,
+        "names": [
+          "btnC",
+          "btnU",
+          "btnD",
+          "btnL",
+          "btnR"
+        ],
         "active_low": false
       },
       "seven_seg": {

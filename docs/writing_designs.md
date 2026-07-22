@@ -215,16 +215,51 @@ is inverting (`board-native · active-low: …`; see the
 ### Partial interfaces
 
 A board-native design need only declare the roles the board's convention names, with
-**clk + LEDs the minimum**:
+**clk + LEDs the minimum** (either the mono LED bank *or* a native RGB bank — see the
+next section — satisfies the LED floor):
 
 - **Switches and buttons** are matched only when the convention declares them, so a
   switch-less or button-less board runs a design that omits those banks.
 - **Extra outputs** the convention doesn't map are left `open` (e.g. a DE0 example's
   `HEXn_DP` decimal-point pins).
 - **Extra inputs** must carry a default value, exactly as in the generic contract; a
-  default-less unmapped input is a near-miss.
+  default-less unmapped input is a near-miss. This includes the Nexys-family
+  **reset pushbutton**: it is active-low while the directional buttons are
+  active-high, so the convention maps only `btnC`/`btnU`/`btnD`/`btnL`/`btnR` — a
+  native design that also declares the reset gives it a default
+  (`btnCpuReset : in std_logic := '1'`).
 - A **one-LED board** accepts the natural scalar spelling `led : out std_logic` — you
   are not forced to write `std_logic_vector(0 downto 0)`.
+
+### RGB LEDs by their real names (Digilent)
+
+On Digilent boards with 3-pin RGB LEDs, the convention also carries the real XDC
+channel scalars — Arty's `led0_r`/`led0_g`/`led0_b` … `led3_b`, the original
+Nexys 4's `RGB1_Red` … `RGB2_Blue` — so a board-native design can drive the RGB
+LEDs directly:
+
+```vhdl
+entity my_arty_glow is
+  port (
+    CLK100MHZ : in  std_logic;
+    sw        : in  std_logic_vector(3 downto 0);
+    btn       : in  std_logic_vector(3 downto 0);
+    led       : out std_logic_vector(3 downto 0);
+    led0_r, led0_g, led0_b : out std_logic;   -- one scalar per channel
+    -- ... led1_* .. led3_* likewise (declare the whole bank)
+  );
+end entity;
+```
+
+The bank is all-or-nothing: declare **every** channel scalar the convention names,
+or none of them (a partial set is simply left dark, like any unmapped output). As
+everywhere in native mode, **polarity is the board's**: each bank's `active_low`
+is cited from the board's reference manual, so you drive the pins exactly as the
+real hardware expects — most Digilent boards buffer the channels through inverting
+transistors (drive **high** to light, e.g. Arty, Nexys, Zybo Z7, Cora Z7), while
+the Cmod A7/S7 tri-color LED is common-anode (drive **low** to light). On
+RGB-only boards (Cora Z7, Eclypse Z7) the RGB bank *is* the LED floor, so those
+boards are natively targetable even though they have no mono LEDs.
 
 ### Loading a file written for a different board
 
@@ -253,6 +288,7 @@ own board (they are deliberately not offered in the file picker):
 | `de0.vhd` | Terasic DE0 | leaves the `HEXn_DP` decimal points open |
 | `de25_standard.vhd` | Terasic DE25-Standard | active-low LEDs (inverted for you) |
 | `arty_litex.vhd` | Digilent Arty (litex names) | framework-derived `clk100`/`user_led`/… |
+| `arty_rgb.vhd` | Digilent Arty A7-100 | native RGB channels `led0_r`…`led3_b`, color wheel + lamp test |
 
 Board-native designs get **no `COUNTER_BITS` override** (that generic belongs to the
 generic contract). A design that derives its visible rate from the top bits of a full

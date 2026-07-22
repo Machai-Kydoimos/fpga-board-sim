@@ -871,6 +871,9 @@ _E2E_CASES = [
     # exceeds its 4-bit user_led bank -- exercises the wrapper's zero-extend under
     # both simulators at the real board-count NUM_LEDS.
     ("arty_litex", "litex-boards/digilent_arty.json"),
+    # U38: the native-RGB example -- mono led[3:0] + twelve led0_r..led3_b
+    # scalars packed onto the 16-channel boundary via the leds_rgb bank.
+    ("arty_rgb", "digilent-xdc/arty_a7-100.json"),
 ]
 
 
@@ -1049,6 +1052,78 @@ def test_native_arty_cocotb_loop_zero_extend_and_switch_xor(ghdl: str, tmp_path:
     # user_sw XORs the low nibble: setting sw=0b0101 flips exactly those bits.
     assert ((data["led0"] ^ data["led5"]) & 0xF) == 0b0101, (
         f"switches did not XOR the low nibble: led0={data['led0']:#06b} led5={data['led5']:#06b}"
+    )
+
+
+@pytest.mark.slow
+def test_native_arty_rgb_cocotb_run_packs_channels(ghdl: str, tmp_path: Any) -> None:
+    """U38: a real GHDL + cocotb run of arty_rgb.vhd on the Arty A7-100.
+
+    Proves the leds_rgb packing end-to-end at the product NUM_LEDS (the
+    16-channel boundary): the design's btn(0) lamp test forces all twelve
+    scalar channels on, which must arrive as led(15 downto 4) all-ones
+    (active-high bank, no inversion), while the mono nibble keeps the
+    arty_litex-style `count xor sw` behavior on led(3 downto 0).
+    """
+    bd = BoardDef.from_json((PROJECT / "boards/digilent-xdc/arty_a7-100.json").read_text())
+    vhd = NATIVE / "arty_rgb.vhd"
+    res = check_vhdl_contract(vhd, board_def=bd)
+    assert res.ok and res.match is not None and res.match.leds_rgb is not None
+
+    work = tempfile.mkdtemp(prefix="arty_rgb_")
+    ok, detail = analyze_vhdl(
+        vhd, work_dir=work, toplevel="arty_rgb", simulator="ghdl", board_def=bd, match=res.match
+    )
+    assert ok, detail
+
+    moddir = tmp_path / "cocotb_mod"
+    moddir.mkdir()
+    out = tmp_path / "rgb_run.json"
+    (moddir / "rgb_tb.py").write_text(
+        "import json, os\n"
+        "import cocotb\n"
+        "from cocotb.triggers import Timer\n"
+        "\n"
+        "\n"
+        "@cocotb.test()\n"
+        "async def sample(dut):\n"
+        "    dut.btn.value = 0\n"
+        "    dut.sw.value = 0\n"
+        "    await Timer(1, unit='us')\n"
+        "    led_free = int(dut.led.value)\n"
+        "    dut.sw.value = 0b0101\n"
+        "    await Timer(1, unit='us')\n"
+        "    led_sw = int(dut.led.value)\n"
+        "    dut.btn.value = 0b0001\n"  # lamp test: all 12 RGB channels on
+        "    await Timer(1, unit='us')\n"
+        "    led_lamp = int(dut.led.value)\n"
+        "    with open(os.environ['FPGA_SIM_RGB_OUT'], 'w') as f:\n"
+        "        json.dump({'free': led_free, 'sw': led_sw, 'lamp': led_lamp}, f)\n"
+    )
+
+    env, plugin_lib = _build_sim_env(simulator="ghdl")
+    env["FPGA_SIM_RGB_OUT"] = str(out)
+    env["COCOTB_TEST_MODULES"] = "rgb_tb"
+    env["TOPLEVEL"] = "sim_wrapper"
+    env["PYTHONPATH"] = os.pathsep.join([str(moddir), env["PYTHONPATH"]])
+    generics = {
+        "NUM_SWITCHES": str(max(1, len(bd.switches))),
+        "NUM_BUTTONS": str(max(1, len(bd.buttons))),
+        "NUM_LEDS": str(max(1, bd.num_led_channels)),  # channels: what the product passes
+        "CLK_HALF_NS_INIT": "10",
+    }
+    cmd = _GHDLBackend.run_cmd("sim_wrapper", generics, plugin_lib, work)
+    proc = subprocess.run(cmd, env=env, cwd=work, capture_output=True, text=True, timeout=180)
+    assert out.is_file(), (
+        "cocotb module produced no output (did it run?).\n"
+        f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    )
+    data = json.loads(out.read_text())
+    # Lamp test: the twelve RGB channels occupy led(15 downto 4), all on.
+    assert (data["lamp"] >> 4) == 0xFFF, f"RGB block not all-on: {data['lamp']:#018b}"
+    # Mono nibble: sw=0b0101 XORs exactly those bits (arty_litex-style check).
+    assert ((data["free"] ^ data["sw"]) & 0xF) == 0b0101, (
+        f"switches did not XOR the mono nibble: free={data['free']:#06b} sw={data['sw']:#06b}"
     )
 
 
