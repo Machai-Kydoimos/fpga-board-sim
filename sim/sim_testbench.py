@@ -314,7 +314,25 @@ async def bridge_sim(dut: object) -> None:
                     pass
                 clk_period_ns = 2.0 * half
             elif kind == "pause":
-                paused = bool(payload.get("on", False))
+                pausing = bool(payload.get("on", False))
+                if pausing and not paused:
+                    # Final sample at the pause instant, so the held duties
+                    # describe the window ENDING here.  Without it the frozen
+                    # numbers date from the last throttled send -- possibly
+                    # several design steps earlier -- and the display mixes a
+                    # stale window with the live paused bits (U38 review: a
+                    # one-hot walker frozen as 24/76 on two LEDs plus 100 on a
+                    # third).  input_dirty pushes the snapshot out promptly.
+                    if led_tracker is not None and led_acc_ports is not None:
+                        led_duty = _sample_duty(
+                            led_tracker, led_acc_ports, led_val or 0, sim_elapsed_ns, led_duty
+                        )
+                    if seg_tracker is not None and seg_acc_ports is not None:
+                        seg_duty = _sample_duty(
+                            seg_tracker, seg_acc_ports, seg_val or 0, sim_elapsed_ns, seg_duty
+                        )
+                    input_dirty = True
+                paused = pausing
             elif kind in ("stop", "eof"):
                 running = False
 
@@ -334,8 +352,10 @@ async def bridge_sim(dut: object) -> None:
             # every channel is unambiguously high or low and duty would collapse
             # to 0% or 100%.  Pause is an *observation* control, so it must not
             # change what the board looks like: hold the last measured duty
-            # instead.  The tracker is left un-advanced, so the first window
-            # after resuming simply spans the pause too and stays exact.
+            # instead -- the final sample taken at the pause instant (see the
+            # pause branch above).  The tracker is not advanced further while
+            # paused, so the first window after resuming simply spans the pause
+            # too and stays exact.
             if not paused:
                 if led_tracker is not None and led_acc_ports is not None:
                     led_duty = _sample_duty(
