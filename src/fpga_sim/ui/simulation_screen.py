@@ -79,8 +79,10 @@ def _native_active_low(match: ConventionMatch) -> str:
     directly instead of a JSON env round-trip (U34 drops that env var).
     """
     roles: list[str] = []
-    if match.leds.active_low:
+    if match.leds is not None and match.leds.active_low:
         roles.append("LED")
+    if match.leds_rgb is not None and match.leds_rgb.active_low:
+        roles.append("RGB")
     if match.switches is not None and match.switches.active_low:
         roles.append("SW")
     if match.buttons is not None and match.buttons.active_low:
