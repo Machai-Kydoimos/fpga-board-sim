@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Embedded-core walker no longer goes dark on >16-LED boards** (#309). The
+  generated `cpu_io`'s LED output is a 16-bit register pair, but the config
+  register reported the full board LED count — on a board like the DE2-115
+  (27 LED channels) the walking firmware bounced across positions the
+  register cannot light, vanishing for 11 steps of every sweep. The config
+  register now reports the reachable count (`minimum(NUM_LEDS, 16)`), so the
+  walker sweeps exactly the LEDs it can drive on every board. All eight
+  generated designs regenerated; firmware unchanged.
+
 ## [0.18.0] - 2026-07-22
 
 ### Added

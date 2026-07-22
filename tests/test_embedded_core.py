@@ -81,10 +81,17 @@ _CPU_GENERICS = {
     "COUNTER_BITS": "24",
 }
 
+# Issue #309 regression: a board wider than the 16-bit LED register pair
+# (27 = the DE2-115's LED channel count).
+_WIDE_LED_GENERICS = {**_CPU_GENERICS, "NUM_LEDS": "27"}
+
 # The run tests below require exactly this many cocotb PASSes (with FAIL=0) so a
 # zero-test run can't false-pass.  Keep in sync with the number of @cocotb.test()
 # functions in sim/test_cpu_walking.py.
 _WALKING_TEST_COUNT = 4
+
+# Keep in sync with the number of @cocotb.test() functions in sim/test_cpu_wide_led.py.
+_WIDE_LED_TEST_COUNT = 1
 
 # Keep in sync with the number of @cocotb.test() functions in sim/test_cpu_hello.py.
 _HELLO_TEST_COUNT = 1
@@ -768,6 +775,39 @@ def test_mx65_walking_runs_ghdl(ghdl):
     )
 
 
+# ── Issue #309: >16-LED boards — walker bounces within the LED register ───────
+
+
+@pytest.mark.slow
+def test_mx65_walking_wide_board_runs_ghdl(ghdl):
+    """On a 27-LED board the walker stays visible and sweeps exactly LED0-15."""
+    work_dir = tempfile.mkdtemp(prefix="wide_ghdl_")
+    ok, detail = analyze_vhdl(
+        MX65_SYS,
+        work_dir=work_dir,
+        toplevel="mx65_walking_counter_7seg",
+        simulator="ghdl",
+        board_def=_7seg_board(),
+    )
+    assert ok, f"GHDL analyze failed: {detail}"
+
+    env, plugin_lib = _build_sim_env(simulator="ghdl")
+    run_cmd = _GHDLBackend.run_cmd("sim_wrapper", _WIDE_LED_GENERICS, plugin_lib, work_dir)
+    run_cmd.append("--stop-time=3000000ns")  # boot + ~1.6 bounce cycles over 16 positions
+
+    run_env = env.copy()
+    run_env["COCOTB_TEST_MODULES"] = "test_cpu_wide_led"
+    run_env["TOPLEVEL"] = "sim_wrapper"
+    run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
+
+    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    output = result.stdout + result.stderr
+    assert "FAIL=0" in output and f"PASS={_WIDE_LED_TEST_COUNT}" in output, (
+        "cocotb wide-LED regression did not pass under GHDL.\n"
+        + "\n".join(output.splitlines()[-30:])
+    )
+
+
 # ── The "hello" on-ramp design: static, so a short --stop-time keeps CI cheap ──
 
 
@@ -1120,6 +1160,20 @@ def test_generated_design_passes_contract_and_lists_all_entities():
         assert ok, msg
         res = check_vhdl_contract(probe)
         assert res.ok, res.message
+
+
+def test_config_led_count_clamped_to_register_width():
+    """$E004 reports min(NUM_LEDS, 16) — issue #309's walker-goes-dark guard."""
+    from embedded_core import system_spec
+    from embedded_core.cpu_plugin import get_plugin
+    from embedded_core.emitter import emit
+
+    spec = system_spec.load(MX65_TOML)
+    plugin = get_plugin(spec.cpu)
+    generated = emit(spec, plugin, MX65_BIN.read_bytes(), _firmware_source(spec, plugin))
+    assert "minimum(NUM_LEDS, LED_REG_WIDTH)" in generated, (
+        "cpu_io's config read must clamp the reported LED count to the LED register width"
+    )
 
 
 def test_memory_map_drives_widths_and_decode():

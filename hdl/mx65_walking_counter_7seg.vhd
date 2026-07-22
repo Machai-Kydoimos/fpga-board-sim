@@ -1491,7 +1491,11 @@ end entity;
 architecture rtl of cpu_io is
   type seg_array_t is array (0 to NUM_SEGS - 1) of std_logic_vector(7 downto 0);
   signal seg_regs  : seg_array_t := (others => (others => '0'));
-  signal led_reg   : std_logic_vector(15 downto 0) := (others => '0');
+  -- led_reg spans the two LED write registers ($E020/$E021); on boards with
+  -- more LEDs than that the config register reports only this reachable count,
+  -- so firmware walks within the range it can actually light.
+  constant LED_REG_WIDTH : positive := 16;
+  signal led_reg   : std_logic_vector(LED_REG_WIDTH - 1 downto 0) := (others => '0');
   signal prescaler : unsigned(PRESCALER_BITS - 1 downto 0) := (others => '0');
   signal tick      : std_logic := '0';
   signal sw_ext    : std_logic_vector(15 downto 0);
@@ -1507,7 +1511,7 @@ begin
       when x"01"  => rdata <= sw_ext(15 downto 8);
       when x"02"  => rdata <= btn_ext(7 downto 0);
       when x"03"  => rdata <= btn_ext(15 downto 8);
-      when x"04"  => rdata <= std_logic_vector(to_unsigned(NUM_LEDS, 8));
+      when x"04"  => rdata <= std_logic_vector(to_unsigned(minimum(NUM_LEDS, LED_REG_WIDTH), 8));
       when x"05"  => rdata <= std_logic_vector(to_unsigned(NUM_SEGS, 8));
       when x"06"  => rdata <= std_logic_vector(to_unsigned(NUM_SWITCHES, 8));
       when x"07"  => rdata <= std_logic_vector(to_unsigned(NUM_BUTTONS, 8));
