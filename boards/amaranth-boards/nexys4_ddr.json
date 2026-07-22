@@ -557,18 +557,6 @@
       "switches": {
         "name": "switch",
         "width": 16
-      },
-      "buttons": {
-        "names": [
-          "button_center",
-          "button_down",
-          "button_left",
-          "button_reset",
-          "button_right",
-          "button_up"
-        ],
-        "width": 6,
-        "active_low": true
       }
     }
   },
@@ -576,7 +564,7 @@
   "source": {
     "origin": "amaranth-boards",
     "upstream_file": "nexys4ddr.py",
-    "sync_commit": "fd2f0df811a8dbcf6aa0b94ac0788dc71ac79e1e",
-    "sync_timestamp": "2026-07-14T05:53:55.055741+00:00"
+    "sync_commit": "be069dfd490b31df215337afac35711994a52418",
+    "sync_timestamp": "2026-07-22T05:51:46.673296+00:00"
   }
 }

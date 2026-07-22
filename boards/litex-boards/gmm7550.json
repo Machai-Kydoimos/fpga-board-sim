@@ -1,0 +1,52 @@
+{
+  "name": "Gmm7550",
+  "class_name": "Gmm7550Platform",
+  "vendor": "CologneChip",
+  "device": "CCGM1A1",
+  "package": "",
+  "clocks": [
+    {
+      "name": "ser_clk",
+      "hz": 100000000.0,
+      "pin": "",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 100000000.0,
+  "leds": [
+    {
+      "name": "led_red_n",
+      "number": 0,
+      "pins": [
+        "IO_WA_A2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {},
+      "color": "red"
+    },
+    {
+      "name": "led_green",
+      "number": 0,
+      "pins": [
+        "IO_WA_B2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {},
+      "color": "green"
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "gmm7550.py",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-07-22T05:53:50.913539+00:00"
+  }
+}

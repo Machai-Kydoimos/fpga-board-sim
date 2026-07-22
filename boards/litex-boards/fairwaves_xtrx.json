@@ -67,24 +67,17 @@
       "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
       "clk": "clk60",
       "leds": {
-        "names": [
-          "user_led",
-          "user_led2"
-        ],
-        "width": 2
-      },
-      "naming": "framework-derived",
-      "switches": {
-        "name": "rf_switches",
+        "name": "user_led",
         "width": 1
-      }
+      },
+      "naming": "framework-derived"
     }
   },
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "litex-boards",
     "upstream_file": "fairwaves_xtrx.py",
-    "sync_commit": "08e6a063e365a8baebc0cd92ebee6d9e97ce0a50",
-    "sync_timestamp": "2026-07-14T05:56:36.171404+00:00"
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-07-22T05:46:18.369523+00:00"
   }
 }
