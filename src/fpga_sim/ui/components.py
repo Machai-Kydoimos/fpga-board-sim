@@ -180,6 +180,56 @@ def _bar_track_color() -> tuple[int, int, int]:
     return lerp_rgb(THEME.led_off, (0, 0, 0), 0.65)
 
 
+#: Fitted % font sizes keyed by (max_h, max_w); 0 = nothing fits.  Layout
+#: geometry is stable between frames, so this collapses the per-frame fit
+#: search to a dict hit.
+_PCT_FIT_CACHE: dict[tuple[int, int], int] = {}
+
+
+def _pct_font_size(max_h: int, max_w: int) -> int | None:
+    """Largest font size whose tight-rendered ``"100%"`` fits max_h x max_w.
+
+    Sizing by the glyphs' actual bounding box (not ``get_height``, which
+    includes generous line spacing) lets the text use the real vertical room;
+    measuring the widest possible string keeps a row of mixed duties at one
+    uniform size.
+    """
+    key = (max_h, max_w)
+    if key not in _PCT_FIT_CACHE:
+        _PCT_FIT_CACHE[key] = next(
+            (
+                fs
+                for fs in range(max(9, max_h * 2), 8, -1)
+                if (t := _get_font(fs).render("100%", True, WHITE).get_bounding_rect()).height
+                <= max_h
+                and t.width <= max_w
+            ),
+            0,
+        )
+    return _PCT_FIT_CACHE[key] or None
+
+
+def _blit_pct(
+    surface: pygame.Surface,
+    font_size: int,
+    duty: float,
+    *,
+    center: tuple[int, int] | None = None,
+    right: int | None = None,
+    centery: int | None = None,
+) -> None:
+    """Render a duty % and blit its *tight* glyph box at the given alignment."""
+    txt = _get_font(font_size).render(f"{duty * 100:.0f}%", True, WHITE)
+    tight = txt.get_bounding_rect()
+    dest = pygame.Rect(0, 0, tight.width, tight.height)
+    if center is not None:
+        dest.center = center
+    else:
+        assert right is not None and centery is not None
+        dest.right, dest.centery = right, centery
+    surface.blit(txt, dest, area=tight)
+
+
 def _draw_duty_bar(
     surface: pygame.Surface,
     track: pygame.Rect,
@@ -189,20 +239,18 @@ def _draw_duty_bar(
 ) -> None:
     """One duty bar: dark track, *linear*-length fill, optional right-aligned %.
 
-    The % text sizes itself to the track (not the label font, which is taller
-    than most bars) and renders only when it genuinely fits.
+    The % text sizes itself to the track's real glyph room (see
+    :func:`_pct_font_size`) and renders only when it genuinely fits.
     """
     pygame.draw.rect(surface, _bar_track_color(), track)
     fill_w = round(track.width * max(0.0, min(1.0, duty)))
     if fill_w > 0:
         pygame.draw.rect(surface, fill_color, pygame.Rect(track.x, track.y, fill_w, track.height))
     pygame.draw.rect(surface, WHITE, track, 1)
-    if with_text and track.height >= 11:
-        font = _get_font(max(9, min(14, track.height - 4)))
-        if font.get_height() <= track.height:
-            txt = font.render(f"{duty * 100:.0f}%", True, WHITE)
-            if txt.get_width() + 4 <= track.width:
-                surface.blit(txt, txt.get_rect(right=track.right - 2, centery=track.centery))
+    if with_text:
+        fs = _pct_font_size(track.height - 4, track.width - 8)
+        if fs is not None:
+            _blit_pct(surface, fs, duty, right=track.right - 3, centery=track.centery)
 
 
 # LED emission colors (U36). Vivid "lit" RGBs for the schema's named colors; an
@@ -296,15 +344,13 @@ class LED(UIComponent):
             track = pygame.Rect(self.rect.left, self.rect.bottom - bar_h, self.rect.width, bar_h)
             _draw_duty_bar(surface, track, self.level, on_color)
             # The exact % sits in the circle itself (the thin bar is too short
-            # to host it).  The font is sized against the widest possible text
-            # ("100%"), so a row of mixed duties renders at one uniform size
-            # and the full-on LED is never the one whose number goes missing.
-            for fs in range(max(9, min(14, r)), 8, -1):
-                pct_font = _get_font(fs)
-                if pct_font.size("100%")[0] <= 2 * r - 2 and pct_font.get_height() <= 2 * r - 2:
-                    txt = pct_font.render(f"{self.level * 100:.0f}%", True, WHITE)
-                    surface.blit(txt, txt.get_rect(center=(cx, cy)))
-                    break
+            # to host it), sized to the circle's real room: a text box of
+            # height r fits a chord ~1.7r wide, and measuring "100%" keeps a
+            # row of mixed duties at one uniform size (so the full-on LED is
+            # never the one whose number goes missing).
+            fs = _pct_font_size(r, round(1.7 * r))
+            if fs is not None:
+                _blit_pct(surface, fs, self.level, center=(cx, cy))
 
         lbl = font.render(self.label, True, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
