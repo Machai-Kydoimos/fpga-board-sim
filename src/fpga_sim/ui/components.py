@@ -220,14 +220,23 @@ def _blit_circle_pct(surface: pygame.Surface, duty: float, cx: int, cy: int, r: 
     if digits_fs is None:
         return
     digits = _get_font(digits_fs).render(f"{duty * 100:.0f}", True, WHITE)
-    sign = _get_font(max(8, round(digits_fs * 0.55))).render("%", True, WHITE)
-    dt, st = digits.get_bounding_rect(), sign.get_bounding_rect()
-    top = cy - (dt.height + 1 + st.height) // 2
+    dt = digits.get_bounding_rect()
+    # The sign sits at ~3/4 of the digit size with a proportional gap; shrink
+    # it (never the digits) if the stack would overflow a small circle.
+    gap = max(2, round(digits_fs * 0.18))
+    sign_fs = max(9, round(digits_fs * 0.75))
+    while True:
+        sign = _get_font(sign_fs).render("%", True, WHITE)
+        st = sign.get_bounding_rect()
+        if dt.height + gap + st.height <= 2 * r - 4 or sign_fs <= 9:
+            break
+        sign_fs -= 1
+    top = cy - (dt.height + gap + st.height) // 2
     d_dest = pygame.Rect(0, 0, dt.width, dt.height)
     d_dest.midtop = (cx, top)
     surface.blit(digits, d_dest, area=dt)
     s_dest = pygame.Rect(0, 0, st.width, st.height)
-    s_dest.midtop = (cx, top + dt.height + 1)
+    s_dest.midtop = (cx, top + dt.height + gap)
     surface.blit(sign, s_dest, area=st)
 
 
