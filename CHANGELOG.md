@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **RGB LEDs as boundary channels (U37, data + contract half).** Each 3-pin
+  `rgb_led` component now contributes three bits to the `led` vector — mono
+  LEDs first (JSON order), then `(r, g, b)` per RGB site — so a design can
+  drive every physical LED channel. A new optional generic aims at them: declare
+  `NUM_RGB_LEDS : natural := 0` and the simulator sets it to the board's RGB
+  LED count at launch (`MONO = NUM_LEDS - 3*NUM_RGB_LEDS`;
+  `led(MONO + 3*i + 0/1/2)` is site i's red/green/blue). The contract checker
+  explains the channel math on width mismatches and rejects a `positive`
+  declaration (boards without RGB LEDs pass 0). Until the RGB puck renderer
+  lands, an RGB LED's widget lights at its brightest channel.
+- **Nexys 4 / Nexys 4 DDR reclassified + cited green.** Their six flattened RGB
+  channel entries (`LED16_R`-style, and the original Nexys 4's `RGB1_Red`
+  naming family) are now two proper 3-pin `rgb_led` components, and the sixteen
+  mono LEDs join the cited-green Digilent registry (Basic-I/O figure via the
+  Wayback Machine) — resolving the deferral noted in the 0.17.0 cycle. The
+  boundary stays 22 bits wide throughout.
 - **Five new boards from the upstream re-sync (U37 groundwork).** All three
   board sources re-synced at upstream HEAD: Icepi Zero (amaranth), three
   Antmicro DDR5 test/tester boards and the CologneChip GMM-7550 module (litex),
@@ -28,6 +44,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   flattened into the mono LED bank) and the RGB-only Cora Z7 / Eclypse Z7 are
   deferred to the RGB work; the non-Digilent "Sword" board has no citable source
   and keeps the theme fallback.
+
+### Changed
+
+- **`NUM_LEDS` grows on the 67 boards with RGB LEDs** (e.g. Arty A7 8 → 16),
+  since it now counts boundary channels rather than components. An existing
+  generic-contract design keeps working everywhere — RGB channels are ordinary
+  anonymous `led` bits to it, so e.g. a walking counter now marches through the
+  RGB channels too. This also restores the visible LED count on the three
+  amaranth trio boards (UPduino v1, iCESugar, iCE40-UP5K-B-EVN) that dropped
+  when their scalar trios were reclassified in the 0.17.0 cycle.
 
 ### Fixed
 

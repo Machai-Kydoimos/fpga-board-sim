@@ -738,3 +738,68 @@ def test_extra_seg_stage3_hint_names_seg_ghdl(ghdl):
     assert not ok
     assert "Hint:" in detail
     assert "8 * NUM_SEGS" in detail
+
+
+# ── NUM_RGB_LEDS (U37) ────────────────────────────────────────────────────────
+
+
+def _rgb_board() -> BoardDef:
+    """An Arty-shape board: 4 mono LEDs + 4 three-pin RGB LEDs (16 channels)."""
+    mono = [ComponentInfo("led", "led", i) for i in range(4)]
+    rgb = [ComponentInfo("led", "rgb_led", i, pins=["a", "b", "c"]) for i in range(4)]
+    return BoardDef("Arty-ish", "ArtyIsh", leds=mono + rgb)
+
+
+_RGB_GENERICS = (
+    "    NUM_SWITCHES : positive := 4;\n"
+    "    NUM_BUTTONS  : positive := 4;\n"
+    "    NUM_LEDS     : positive := 4;\n"
+    "    NUM_RGB_LEDS : natural  := 0;\n"
+    "    COUNTER_BITS : positive := 24"
+)
+
+
+def test_num_rgb_leds_is_a_known_generic(tmp_path):
+    """Declaring NUM_RGB_LEDS as natural passes the contract check."""
+    f = _write(tmp_path, "rgb_ok", _design("rgb_ok", generics=_RGB_GENERICS))
+    ok, msg = _contract(f, board_def=_rgb_board())
+    assert ok, f"Unexpected rejection: {msg}"
+
+
+def test_num_rgb_leds_positive_rejected_with_fix(tmp_path):
+    """positive would reject the 0 that boards without RGB LEDs pass."""
+    generics = _RGB_GENERICS.replace("NUM_RGB_LEDS : natural  := 0", "NUM_RGB_LEDS : positive := 1")
+    f = _write(tmp_path, "rgb_pos", _design("rgb_pos", generics=generics))
+    ok, msg = _contract(f, board_def=_plain_board())
+    assert not ok
+    assert "NUM_RGB_LEDS" in msg
+    assert "natural" in msg
+    assert "NUM_RGB_LEDS=0" in msg or "pass NUM_RGB_LEDS=0" in msg
+
+
+def test_fixed_led_width_message_spells_out_channel_math(tmp_path):
+    """led fixed at 8 bits on a 16-channel board: the message shows mono + 3 x RGB."""
+    ports = (
+        "    clk : in  std_logic;\n"
+        "    sw  : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);\n"
+        "    btn : in  std_logic_vector(NUM_BUTTONS - 1 downto 0);\n"
+        "    led : out std_logic_vector(7 downto 0)"
+    )
+    f = _write(tmp_path, "led8", _design("led8", ports=ports))
+    ok, msg = _contract(f, board_def=_rgb_board())
+    assert not ok
+    assert "16 LED channels" in msg
+    assert "3 x 4 RGB" in msg
+    assert "NUM_LEDS=16" in msg
+
+
+def test_wrapper_includes_rgb_generic_when_design_declares_it(tmp_path):
+    out = _generate_wrapper("blinky", str(tmp_path), board_def=_rgb_board(), design_has_rgb=True)
+    text = out.read_text()
+    assert "NUM_RGB_LEDS     : natural  := 0;" in text
+    assert "NUM_RGB_LEDS => NUM_RGB_LEDS," in text
+
+
+def test_wrapper_omits_rgb_generic_by_default(tmp_path):
+    out = _generate_wrapper("blinky", str(tmp_path), board_def=_rgb_board())
+    assert "NUM_RGB_LEDS" not in out.read_text()

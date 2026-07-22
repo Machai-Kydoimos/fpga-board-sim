@@ -67,10 +67,22 @@ def _env_int(name: str, default: int) -> int:
 
 
 def _mirror_outputs(dut: object, board: FPGABoard, num_leds: int, num_segs: int) -> int:
-    """Copy ``dut.led`` / ``dut.seg`` onto the board widgets; return the LED bits."""
+    """Copy ``dut.led`` / ``dut.seg`` onto the board widgets; return the LED bits.
+
+    *num_leds* is the boundary channel count (U37): three bits per RGB LED.
+    Channels fold onto per-component widgets (an RGB widget lights when any of
+    its channels is high); on the mono-only demo boards the fold is 1:1.
+    """
     led_val = int(dut.led.value)  # type: ignore[attr-defined]
-    for i in range(num_leds):
-        board.set_led(i, bool(led_val & (1 << i)))
+    targets = (
+        board.board_def.led_channel_targets if board.board_def is not None else range(num_leds)
+    )
+    lit = [False] * len(board.leds)
+    for ch, comp in enumerate(targets):
+        if comp < len(lit):
+            lit[comp] = lit[comp] or bool(led_val & (1 << ch))
+    for i, on in enumerate(lit):
+        board.set_led(i, on)
     if num_segs:
         seg_val = int(dut.seg.value)  # type: ignore[attr-defined]
         for digit in range(num_segs):
@@ -414,7 +426,7 @@ async def capture(dut: object) -> None:
 
     pygame.init()
     board = FPGABoard(board_def=board_def, width=width, height=height, show_footer=False)
-    num_leds = len(board_def.leds)
+    num_leds = board_def.num_led_channels  # boundary channels (U37)
     num_segs = (
         board_def.seven_seg.num_digits if (board_def.seven_seg and hasattr(dut, "seg")) else 0
     )

@@ -25,7 +25,7 @@ entity sim_wrapper is
     NUM_SWITCHES     : positive := 4;
     NUM_BUTTONS      : positive := 4;
     NUM_LEDS         : positive := 4;
-{seg_generic}    COUNTER_BITS     : positive := 24;
+{seg_generic}{rgb_generic}    COUNTER_BITS     : positive := 24;
     CLK_HALF_NS_INIT : positive := 20
   );
   port (
@@ -56,7 +56,7 @@ architecture rtl of sim_wrapper is
       NUM_SWITCHES => NUM_SWITCHES,
       NUM_BUTTONS  => NUM_BUTTONS,
       NUM_LEDS     => NUM_LEDS,
-{seg_generic_map}      COUNTER_BITS => COUNTER_BITS
+{seg_generic_map}{rgb_generic_map}      COUNTER_BITS => COUNTER_BITS
     )
     port map (
       clk => clk,

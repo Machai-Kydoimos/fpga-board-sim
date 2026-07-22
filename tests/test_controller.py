@@ -147,6 +147,16 @@ def test_build_generics_counts_components_and_widens_for_7seg():
     assert g["CLK_HALF_NS_INIT"] == "10"  # 5e8 / 50 MHz
 
 
+def test_build_generics_counts_led_channels_not_components():
+    """U37: NUM_LEDS is mono + 3 per RGB LED (an Arty-shape 4+4 board -> 16)."""
+    board = _board(
+        default_clock_hz=100e6,
+        leds=[ComponentInfo("led", "led", i) for i in range(4)]
+        + [ComponentInfo("led", "rgb_led", i, pins=["a", "b", "c"]) for i in range(4)],
+    )
+    assert build_generics(board)["NUM_LEDS"] == "16"
+
+
 # ── SessionState ─────────────────────────────────────────────────────────────
 
 

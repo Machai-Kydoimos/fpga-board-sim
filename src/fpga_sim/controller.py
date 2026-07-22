@@ -79,14 +79,19 @@ def build_generics(board: BoardDef) -> dict[str, str]:
     only when both the board has a 7-seg display and the design declares a
     ``seg`` output port (which also selects the 7-seg wrapper template).
     Passing NUM_SEGS to the standard wrapper (which lacks that generic) would
-    cause NVC to error during elaboration.
+    cause NVC to error during elaboration.  NUM_RGB_LEDS follows the same
+    pattern (U37), injected only when the design declares the generic — but
+    gated on the *design* alone, since boards without RGB LEDs simply pass 0.
+
+    NUM_LEDS counts boundary *channels*, not components: each 3-pin RGB LED
+    contributes three ``led`` bits (mono LEDs first, then r/g/b per site).
     """
     clk_half_ns = max(1, round(5e8 / board.default_clock_hz))
     num_segs = board.seven_seg.num_digits if board.seven_seg else 0
     return {
         "NUM_SWITCHES": str(max(1, len(board.switches))),
         "NUM_BUTTONS": str(max(1, len(board.buttons))),
-        "NUM_LEDS": str(max(1, len(board.leds))),
+        "NUM_LEDS": str(max(1, board.num_led_channels)),
         # Deliberately below the VHDL default (24/32): at the simulator's
         # sub-real-time throughput a 24-bit counter's MSB toggles too slowly to
         # see, so floor COUNTER_BITS at 17 (MSB ~every 1.3 ms of simulated time

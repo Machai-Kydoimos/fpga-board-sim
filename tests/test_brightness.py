@@ -309,3 +309,59 @@ def test_fading_digit_is_not_swallowed_by_the_change_gate(headless_pygame, fake_
     scr.board.set_seg_levels(0, [1.0] + [0.0] * 7)
     scr.board.set_seg_levels(0, [0.3] + [0.0] * 7)  # same bits, different brightness
     assert scr.board._seven_segs[0].levels[0] == pytest.approx(0.3)
+
+
+# ── RGB channel fold (U37 interim, pre-RGBLED-puck) ──────────────────────────
+
+
+def _rgb_screen(pygame_mod, child):
+    """A screen on a 2-mono + 1-rgb_led board: 5 boundary channels, 3 widgets."""
+    from fpga_sim.board_loader import BoardDef, ComponentInfo
+    from fpga_sim.ui.simulation_screen import SimulationScreen
+    from tests.test_simulation_screen import _sim
+
+    board_def = BoardDef(
+        name="RGBish",
+        class_name="RGBish",
+        leds=[
+            ComponentInfo("led", "led", 0, ["A1"]),
+            ComponentInfo("led", "led", 1, ["A2"]),
+            ComponentInfo("led", "rgb_led", 0, ["a", "b", "c"]),
+        ],
+    )
+    surface = pygame_mod.display.set_mode((1024, 700))
+    scr = SimulationScreen(
+        surface,
+        pygame_mod.time.Clock(),
+        board_def,
+        child,
+        speed_factor=0.1,
+        match=None,
+        vhdl_path="x.vhd",
+        sim=_sim("ghdl"),
+    )
+    scr._connected = True
+    return scr
+
+
+def test_rgb_duty_channels_fold_to_the_component_widget(headless_pygame, fake_child):
+    """Channel duties [m0, m1, r, g, b]: monos map 1:1; the RGB widget shows
+    its brightest channel until the RGBLED puck (U37 PR-2) mixes a color."""
+    child, _client = fake_child
+    scr = _rgb_screen(headless_pygame, child)
+    scr._last_state = {"led": 0, "seg": None, "led_duty": [0.25, 0.0, 0.1, 0.6, 0.2]}
+    scr._apply_state()
+    assert scr.board.leds[0].level == pytest.approx(0.25)
+    assert scr.board.leds[1].level == pytest.approx(0.0)
+    assert scr.board.leds[2].level == pytest.approx(0.6)  # max(r, g, b)
+
+
+def test_rgb_binary_bits_fold_to_the_component_widget(headless_pygame, fake_child):
+    """Binary fallback: the RGB widget lights when any of its channels is set."""
+    child, _client = fake_child
+    scr = _rgb_screen(headless_pygame, child)
+    scr._last_state = {"led": 0b01000, "seg": None}  # only the g channel (bit 3)
+    scr._apply_state()
+    assert scr.board.leds[0].level == 0.0
+    assert scr.board.leds[1].level == 0.0
+    assert scr.board.leds[2].level == 1.0

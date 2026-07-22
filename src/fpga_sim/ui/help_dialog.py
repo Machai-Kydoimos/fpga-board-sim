@@ -55,8 +55,8 @@ SHORTCUTS: list[tuple[str, str]] = [
 CONTRACT: list[str] = [
     "The entity name must match the filename (blinky.vhd → entity blinky).",
     "Ports: clk, sw, btn, led — plus seg on 7-segment boards.",
-    "Generics NUM_SWITCHES / NUM_BUTTONS / NUM_LEDS / COUNTER_BITS (and NUM_SEGS on "
-    "7-seg boards) are set to match the selected board.",
+    "Generics NUM_SWITCHES / NUM_BUTTONS / NUM_LEDS / COUNTER_BITS (plus optional "
+    "NUM_RGB_LEDS, and NUM_SEGS on 7-seg boards) are set to match the selected board.",
     "Working examples: hdl/blinky.vhd  ·  7-seg: hdl/counter_7seg.vhd",
 ]
 

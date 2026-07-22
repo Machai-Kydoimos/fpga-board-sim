@@ -646,6 +646,16 @@ def _has_seg_port(vhdl_text: str) -> bool:
     return bool(re.search(r"\bseg\s*:\s*out\b", vhdl_text, re.IGNORECASE))
 
 
+def _has_rgb_generic(vhdl_text: str) -> bool:
+    """Return True if the VHDL text mentions the ``NUM_RGB_LEDS`` generic (U37).
+
+    Mirrors :func:`_has_seg_port`'s role: the wrapper declares + maps the
+    generic, and ``_prepare_simulation`` passes the board's RGB count, only
+    when the design opts in by declaring it.
+    """
+    return bool(re.search(r"\bNUM_RGB_LEDS\b", vhdl_text, re.IGNORECASE))
+
+
 def check_vhdl_encoding(path: str | Path) -> tuple[bool, str]:
     """Stage 1: encoding check (no simulator needed).
 
@@ -702,6 +712,7 @@ class _IfaceDecl:
     mode: str  # "in"/"out"/"inout"/"buffer"/"linkage"; "" for generics
     has_default: bool
     literal_width: int | None  # std_logic_vector with pure-literal bounds, else None
+    type_text: str = ""  # lowercased declared type ("positive", "natural", ...)
 
 
 def _strip_vhdl_comments(text: str) -> str:
@@ -785,7 +796,7 @@ def _parse_decls(body: str, *, ports: bool) -> list[_IfaceDecl] | None:
             span = a - b if kw == "downto" else b - a
             if span >= 0:
                 literal_width = span + 1
-        decls.append(_IfaceDecl(names, mode, ":=" in rest, literal_width))
+        decls.append(_IfaceDecl(names, mode, ":=" in rest, literal_width, type_text.lower()))
     return decls
 
 
@@ -822,7 +833,9 @@ def _board_port_widths(board_def: BoardDef | None) -> dict[str, int]:
     widths = {
         "sw": max(1, len(board_def.switches)),
         "btn": max(1, len(board_def.buttons)),
-        "led": max(1, len(board_def.leds)),
+        # Channels, not components: an RGB LED is one component but three
+        # boundary bits (U37), so the led vector is num_led_channels wide.
+        "led": max(1, board_def.num_led_channels),
     }
     if board_def.seven_seg is not None:
         widths["seg"] = 8 * board_def.seven_seg.num_digits
@@ -879,6 +892,19 @@ def _check_parsed_contract(
             "Add:  seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)"
         )
 
+    # NUM_RGB_LEDS must be natural: most boards have no RGB LEDs, so the
+    # simulator passes 0 — a `positive` declaration would fail elaboration
+    # everywhere except the RGB boards it was presumably written on (U37).
+    for decl in generics:
+        if "num_rgb_leds" in decl.names and decl.type_text == "positive":
+            return False, (
+                f"Generic NUM_RGB_LEDS must be declared 'natural', not 'positive', in "
+                f"'{filename}'.\n"
+                "Boards without RGB LEDs pass NUM_RGB_LEDS=0, which a positive rejects. "
+                "Declare it as:\n"
+                "  NUM_RGB_LEDS : natural := 0"
+            )
+
     # seg port without NUM_SEGS: fatal on 7-seg boards (the 7-seg wrapper maps it)
     if has_seg and board_7seg and "num_segs" not in generic_names:
         assert board_def is not None and board_def.seven_seg is not None
@@ -922,14 +948,14 @@ def _check_parsed_contract(
                 f"Give it a default value — e.g.  {name} : in std_logic := '0'  — "
                 "or remove it."
             )
-    known_generics = {g.lower() for g in _REQUIRED_GENERICS} | {"num_segs"}
+    known_generics = {g.lower() for g in _REQUIRED_GENERICS} | {"num_segs", "num_rgb_leds"}
     for decl in generics:
         for name in decl.names:
             if name not in known_generics and not decl.has_default:
                 return False, (
                     f"Generic '{name}' in '{filename}' is not set by the simulator "
-                    "(it sets only NUM_SWITCHES, NUM_BUTTONS, NUM_LEDS, NUM_SEGS and "
-                    "COUNTER_BITS).\n"
+                    "(it sets only NUM_SWITCHES, NUM_BUTTONS, NUM_LEDS, NUM_SEGS, "
+                    "NUM_RGB_LEDS and COUNTER_BITS).\n"
                     f"Give it a default value, e.g.  {name} : positive := 1"
                 )
 
@@ -947,6 +973,14 @@ def _check_parsed_contract(
             digits = board_def.seven_seg.num_digits
             have = f"a {digits}-digit 7-segment display (8 * {digits} = {expected} bits)"
             generic_ref = f"NUM_SEGS={digits}"
+        elif name == "led" and board_def.num_rgb_leds:
+            # Spell out the channel math: an RGB LED is three boundary bits.
+            mono = len(board_def.leds) - board_def.num_rgb_leds
+            have = (
+                f"{expected} LED channels ({_plural(mono, 'mono LED')} + 3 x "
+                f"{board_def.num_rgb_leds} RGB)"
+            )
+            generic_ref = f"NUM_LEDS={expected}"
         else:
             noun = {"sw": "switch", "btn": "button", "led": "LED"}[name]
             have = _plural(expected, noun)
@@ -1076,7 +1110,7 @@ class _ConventionAttempt:
     problems: tuple[str, ...]  # human-readable missing/mismatched roles
 
 
-_SIZING_GENERICS = {"num_switches", "num_buttons", "num_leds", "num_segs"}
+_SIZING_GENERICS = {"num_switches", "num_buttons", "num_leds", "num_segs", "num_rgb_leds"}
 
 
 def _match_native_port(
@@ -1497,7 +1531,8 @@ def add_error_hints(message: str, board_def: BoardDef | None = None) -> str:
             f"The simulator sets the generic {name} at launch, so the top-level entity "
             "must declare it (with a default value). The standard generics are "
             "NUM_SWITCHES, NUM_BUTTONS, NUM_LEDS and COUNTER_BITS, plus NUM_SEGS for "
-            "designs that drive a 7-segment display."
+            "designs that drive a 7-segment display and NUM_RGB_LEDS for designs that "
+            "aim at RGB LED channels."
         )
 
     # GHDL: port "rst" of mode IN must be connected
@@ -1732,7 +1767,10 @@ def _render_native_wrapper(
     if board_def is not None:
         num_sw_def = max(1, len(board_def.switches))
         num_btn_def = max(1, len(board_def.buttons))
-        num_led_def = max(1, len(board_def.leds))
+        # Channels, not components (U37): mirrors build_generics so analyze_vhdl
+        # validates the same led width the run passes. A native design only
+        # drives the banks its convention names; RGB channel bits stay dark.
+        num_led_def = max(1, board_def.num_led_channels)
     else:
         num_sw_def = sw.width if sw is not None else 1
         num_btn_def = btn.width if btn is not None else 1
@@ -1804,12 +1842,17 @@ def _generate_wrapper(
     design_has_seg: bool = False,
     match: ConventionMatch | None = None,
     duty: DutyMode | None = None,
+    design_has_rgb: bool = False,
 ) -> Path:
     """Write ``sim_wrapper.vhd`` to *work_dir* with placeholders substituted.
 
     When both *board_def* has a seven_seg display and the design declares a
     ``seg`` output port, the generated wrapper includes the ``NUM_SEGS``
     generic and ``seg`` port.  Otherwise those lines are omitted.
+
+    When the design declares the ``NUM_RGB_LEDS`` generic (*design_has_rgb*,
+    U37) the wrapper declares and maps it the same way — no new port; RGB
+    channels are ordinary ``led`` bits, mono-first per the contract layout.
 
     When *match* is given the design is board-native (U21 B3): the wrapper
     instantiates it by its native port names + fixed widths (see
@@ -1838,6 +1881,12 @@ def _generate_wrapper(
         seg_port = ""
         seg_generic_map = ""
         seg_port_map = ""
+    if design_has_rgb:
+        rgb_generic = "    NUM_RGB_LEDS     : natural  := 0;\n"
+        rgb_generic_map = "      NUM_RGB_LEDS => NUM_RGB_LEDS,\n"
+    else:
+        rgb_generic = ""
+        rgb_generic_map = ""
 
     content = _WRAPPER_TEMPLATE.read_text().format(
         toplevel=toplevel,
@@ -1845,6 +1894,8 @@ def _generate_wrapper(
         seg_port=seg_port,
         seg_generic_map=seg_generic_map,
         seg_port_map=seg_port_map,
+        rgb_generic=rgb_generic,
+        rgb_generic_map=rgb_generic_map,
         led_sig=led_sig,
         **splice,
     )
@@ -1971,6 +2022,7 @@ def analyze_vhdl(
             design_has_seg=_design_has_seg,
             match=match,
             duty=duty,
+            design_has_rgb=_has_rgb_generic(_vhdl_text),
         )
         result2 = subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir, binary=sim_path),
@@ -2391,13 +2443,21 @@ def _prepare_simulation(
         except Exception:  # noqa: BLE001 - fall back to generic sizing
             pass
 
-    # Detect seg port once; used for wrapper selection and NUM_SEGS injection.
+    # Detect seg port / RGB generic once; used for wrapper selection and
+    # NUM_SEGS / NUM_RGB_LEDS injection.
     _vhdl_text = vhdl_path.read_text(encoding="utf-8", errors="ignore")
     _design_has_seg = _has_seg_port(_vhdl_text)
+    _design_has_rgb = _has_rgb_generic(_vhdl_text)
 
     # Add NUM_SEGS generic only when both board and design use 7-seg
     if board_def is not None and board_def.seven_seg is not None and _design_has_seg:
         generics.setdefault("NUM_SEGS", str(board_def.seven_seg.num_digits))
+
+    # NUM_RGB_LEDS is design-gated, not board-gated (U37): whenever the design
+    # declares it the wrapper maps it, so it must always be set — 0 on a board
+    # without RGB LEDs (which is why the contract requires `natural`).
+    if _design_has_rgb:
+        generics.setdefault("NUM_RGB_LEDS", str(board_def.num_rgb_leds if board_def else 0))
 
     if work_dir is None:
         # Fresh run: analyze user file and wrapper from scratch.
@@ -2406,7 +2466,12 @@ def _prepare_simulation(
             be.analyze_cmd(vhdl_path, work_dir, binary=sim_path), env=env, check=True, cwd=work_dir
         )
         wrapper_path = _generate_wrapper(
-            toplevel, work_dir, board_def=board_def, design_has_seg=_design_has_seg, match=match
+            toplevel,
+            work_dir,
+            board_def=board_def,
+            design_has_seg=_design_has_seg,
+            match=match,
+            design_has_rgb=_design_has_rgb,
         )
         subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir, binary=sim_path),
