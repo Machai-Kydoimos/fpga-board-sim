@@ -628,8 +628,8 @@ def test_native_wrapper_ties_off_absent_input_banks() -> None:
     assert "NUM_SWITCHES     : positive := 1;" in w
     assert "NUM_BUTTONS      : positive := 1;" in w
     # the top sw/btn ports still exist (cocotb reads dut.sw/dut.btn) ...
-    assert "sw          : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);" in w
-    assert "btn         : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0);" in w
+    assert "sw          : in  std_logic_vector(NUM_SWITCHES - 1 downto 0) := (others => '0');" in w
+    assert "btn         : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0) := (others => '0');" in w
     # ... but nothing adapts them and the uut gets no sw/btn association
     assert "sw_uut" not in w
     assert "btn_uut" not in w

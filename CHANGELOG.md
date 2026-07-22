@@ -68,6 +68,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **No more time-zero metavalue warnings.** Every simulation start printed a
+  burst of `NUMERIC_STD` "metavalue detected" warnings while cocotb's first
+  switch/button deposits landed (loudest on designs whose logic wakes every
+  clock, like `rgb_rainbow`). The wrapper's input ports now carry all-zero
+  defaults, and both simulators suppress IEEE assertion noise **at time zero
+  only** (GHDL `--asserts=disable-at-0`, NVC `--ieee-warnings=off-at-0`) — a
+  design that produces metavalues after t=0 still warns normally.
 - **Board-native polarity hints now tell the truth.** Three
   framework-convention fixes: the KCU116/ZCU216 button banks are no longer
   marked active-low (their `user_btn_n` is the *North* member of a directional
