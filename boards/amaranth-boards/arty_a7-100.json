@@ -250,6 +250,45 @@
         "name": "button",
         "width": 4
       }
+    },
+    "digilent": {
+      "description": "Digilent Arty-A7-100 Master XDC port names",
+      "clk": "CLK100MHZ",
+      "leds": {
+        "name": "led",
+        "width": 4
+      },
+      "leds_rgb": {
+        "names": [
+          "led0_r",
+          "led0_g",
+          "led0_b",
+          "led1_r",
+          "led1_g",
+          "led1_b",
+          "led2_r",
+          "led2_g",
+          "led2_b",
+          "led3_r",
+          "led3_g",
+          "led3_b"
+        ],
+        "active_low": false
+      },
+      "switches": {
+        "name": "sw",
+        "width": 4
+      },
+      "buttons": {
+        "name": "btn",
+        "width": 4,
+        "active_low": false
+      },
+      "source": {
+        "url": "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Arty-A7-100-Master.xdc",
+        "retrieved": "2026-05-25",
+        "registry_board": "Arty A7-100"
+      }
     }
   },
   "$schema": "../schema/board.schema.json",

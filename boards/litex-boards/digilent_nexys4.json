@@ -554,6 +554,50 @@
         "name": "user_btn",
         "width": 5
       }
+    },
+    "digilent": {
+      "description": "Digilent Nexys-4 Master XDC port names",
+      "clk": "clk",
+      "leds": {
+        "name": "led",
+        "width": 16
+      },
+      "leds_rgb": {
+        "names": [
+          "RGB1_Red",
+          "RGB1_Green",
+          "RGB1_Blue",
+          "RGB2_Red",
+          "RGB2_Green",
+          "RGB2_Blue"
+        ],
+        "active_low": false
+      },
+      "switches": {
+        "name": "sw",
+        "width": 16
+      },
+      "buttons": {
+        "names": [
+          "btnC",
+          "btnU",
+          "btnD",
+          "btnL",
+          "btnR"
+        ],
+        "active_low": false
+      },
+      "seven_seg": {
+        "style": "packed_vector",
+        "name": "seg",
+        "width_per_digit": 7,
+        "active_low": true
+      },
+      "source": {
+        "url": "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Nexys-4-Master.xdc",
+        "retrieved": "2026-05-25",
+        "registry_board": "Nexys 4"
+      }
     }
   },
   "$schema": "../schema/board.schema.json",

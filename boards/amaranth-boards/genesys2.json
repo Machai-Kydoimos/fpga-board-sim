@@ -283,6 +283,33 @@
         "name": "button",
         "width": 5
       }
+    },
+    "digilent": {
+      "description": "Digilent Genesys-2 Master XDC port names",
+      "clk": "sysclk_n",
+      "leds": {
+        "name": "led",
+        "width": 8
+      },
+      "switches": {
+        "name": "sw",
+        "width": 8
+      },
+      "buttons": {
+        "names": [
+          "btnc",
+          "btnu",
+          "btnd",
+          "btnl",
+          "btnr"
+        ],
+        "active_low": false
+      },
+      "source": {
+        "url": "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Genesys-2-Master.xdc",
+        "retrieved": "2026-05-25",
+        "registry_board": "Genesys 2"
+      }
     }
   },
   "$schema": "../schema/board.schema.json",

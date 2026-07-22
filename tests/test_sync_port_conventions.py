@@ -999,3 +999,126 @@ def test_registry_canonical_naming_sources_always_carry_a_cite() -> None:
         if src.get("naming") == "canonical" and not src.get("naming_cite")
     ]
     assert offenders == [], f"canonical-naming sources missing naming_cite: {offenders}"
+
+
+# ── U38: digilent sibling transplant ─────────────────────────────────────────
+
+
+def _sibling_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A digilent-xdc source board (canonical block) + an amaranth sibling."""
+    monkeypatch.setattr(spc, "BOARDS_DIR", tmp_path)
+    (tmp_path / "digilent-xdc").mkdir()
+    (tmp_path / "amaranth-boards").mkdir()
+    src = {
+        "name": "Arty A7-100",
+        "leds": [{"name": "led", "pins": ["a"]}] * 4
+        + [{"name": "rgb_led", "pins": ["a", "b", "c"]}] * 4,
+        "switches": [{}] * 4,
+        "buttons": [{}] * 4,
+        "port_conventions": {
+            "digilent": {
+                "description": "Digilent Arty Master XDC port names",
+                "clk": "CLK100MHZ",
+                "leds": {"name": "led", "width": 4},
+                "leds_rgb": {
+                    "names": [f"led{i}_{c}" for i in range(4) for c in "rgb"],
+                    "active_low": False,
+                },
+                "switches": {"name": "sw", "width": 4},
+                "buttons": {"name": "btn", "width": 4, "active_low": False},
+            }
+        },
+    }
+    (tmp_path / "digilent-xdc" / "arty_a7-100.json").write_text(json.dumps(src))
+    sibling = {
+        "name": "Arty A7-100",
+        "leds": [{"name": "led", "pins": ["a"]}] * 4
+        + [{"name": "rgb_led", "pins": ["a", "b", "c"]}] * 4,
+        "switches": [{}] * 4,
+        "buttons": [{}] * 4,
+        "port_conventions": {"amaranth": {"clk": "clk100", "naming": "framework-derived"}},
+    }
+    (tmp_path / "amaranth-boards" / "arty_a7-100.json").write_text(json.dumps(sibling))
+
+
+def _sibling_row(**overrides: Any) -> dict[str, Any]:
+    row = {
+        "name": "Arty A7-100",
+        "files": ["digilent-xdc/arty_a7-100.json", "amaranth-boards/arty_a7-100.json"],
+        "status": "verified",
+        "source": [
+            {
+                "rank": 1,
+                "kind": "vendor-official",
+                "url": "https://example.com/Arty-A7-100-Master.xdc",
+                "retrieved": "2026-05-25",
+                "fetched": True,
+            }
+        ],
+    }
+    row.update(overrides)
+    return row
+
+
+def test_sibling_transplant_copies_the_canonical_block_with_provenance(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _sibling_setup(tmp_path, monkeypatch)
+    results = spc.digilent_sibling_results({"Arty A7-100": _sibling_row()})
+    assert len(results) == 1
+    r = results[0]
+    assert r.skipped is None and not r.file_skips
+    block = r.convention_by_file["amaranth-boards/arty_a7-100.json"]["digilent"]
+    assert block["clk"] == "CLK100MHZ"
+    assert len(block["leds_rgb"]["names"]) == 12
+    assert block["source"] == {
+        "url": "https://example.com/Arty-A7-100-Master.xdc",
+        "retrieved": "2026-05-25",
+        "registry_board": "Arty A7-100",
+    }
+
+
+def test_sibling_transplant_gates_each_target_on_widths(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _sibling_setup(tmp_path, monkeypatch)
+    # A sibling modeling zero buttons must be skipped, not silently overclaimed
+    # (the live litex digilent_zybo_z7 case).
+    sib = tmp_path / "amaranth-boards" / "arty_a7-100.json"
+    board = json.loads(sib.read_text())
+    board["buttons"] = []
+    sib.write_text(json.dumps(board))
+    r = spc.digilent_sibling_results({"Arty A7-100": _sibling_row()})[0]
+    assert not r.convention_by_file
+    assert "buttons width 4 exceeds" in r.file_skips["amaranth-boards/arty_a7-100.json"]
+
+
+def test_sibling_transplant_requires_verified_status(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _sibling_setup(tmp_path, monkeypatch)
+    r = spc.digilent_sibling_results({"Arty A7-100": _sibling_row(status="candidate")})[0]
+    assert r.skipped == "registry status is not 'verified'"
+
+
+def test_sibling_transplant_ignores_rows_without_siblings(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    _sibling_setup(tmp_path, monkeypatch)
+    only_src = _sibling_row(files=["digilent-xdc/arty_a7-100.json"])
+    assert spc.digilent_sibling_results({"Arty A7-100": only_src}) == []
+
+
+def test_cross_check_widths_gates_leds_rgb_sites() -> None:
+    conv = {"leds_rgb": {"names": [f"led{i}_{c}" for i in range(2) for c in "rgb"]}}
+    board_ok = {"leds": [{"name": "rgb_led", "pins": ["a", "b", "c"]}] * 2}
+    board_short = {"leds": [{"name": "rgb_led", "pins": ["a", "b", "c"]}]}
+    assert spc.cross_check_widths(conv, board_ok) is None
+    assert "leds_rgb sites 2 exceeds" in (spc.cross_check_widths(conv, board_short) or "")
+
+
+def test_cross_check_widths_handles_names_button_banks() -> None:
+    # The U38 named-button banks carry names[], not width.
+    conv = {"buttons": {"names": ["btnC", "btnU", "btnD", "btnL", "btnR"]}}
+    assert spc.cross_check_widths(conv, {"buttons": [{}] * 6}) is None
+    assert "buttons width 5 exceeds" in (spc.cross_check_widths(conv, {"buttons": [{}] * 2}) or "")
