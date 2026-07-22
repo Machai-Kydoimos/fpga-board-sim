@@ -76,6 +76,41 @@ dark. A 7-seg design loaded on a board *without* a display also passes analysis:
 wrapper leaves `seg` unconnected, so it compiles and runs but the digits are never
 driven. Use [`hdl/counter_7seg.vhd`](../hdl/counter_7seg.vhd) as a working example.
 
+### RGB LED boards
+
+Boards with RGB LEDs (Arty A7/S7/Z7, Cmod A7/S7, Cora Z7, ECPIX-5, Fomu, …) expose
+each RGB LED as **three channels** of the `led` vector. Mono LEDs occupy the low bits
+exactly as on standard boards; RGB channels fill the top, three bits per LED in
+`(r, g, b)` order. To aim at them, declare one extra generic — the simulator sets it
+to the board's RGB LED count at launch:
+
+```vhdl
+generic (
+  ...
+  NUM_LEDS     : positive := 4;   -- total channels: mono + 3 per RGB LED
+  NUM_RGB_LEDS : natural  := 0    -- RGB sites; keep the := 0 default
+);
+```
+
+```text
+MONO = NUM_LEDS - 3*NUM_RGB_LEDS          -- led[MONO-1:0] = mono LEDs
+led(MONO + 3*i + 0/1/2)                   -- RGB LED i: red / green / blue
+```
+
+Drive a channel high for a primary, or PWM it for shades — the simulator measures
+duty per channel and mixes the rendered color, so three phase-offset PWM compares
+sweep the full palette (see `hdl/rgb_rainbow.vhd`). Iterate sites with
+`for i in 0 to NUM_RGB_LEDS - 1 loop`: on a board without RGB LEDs the loop
+runs zero times and your design behaves like a plain standard-contract design, so
+one file still fits every board. Never assume `NUM_RGB_LEDS > 0` in bare index
+arithmetic. A design that omits the generic keeps working everywhere — RGB channels
+are then just anonymous `led` bits, which light white-ish when driven together.
+
+Declare the generic as `natural`, not `positive` — most boards have no RGB LEDs and
+the simulator passes `0` there (the contract checker rejects a `positive`
+declaration with exactly this explanation). Hovering an RGB LED shows all three
+channel duties.
+
 ### Contract details
 
 - **`COUNTER_BITS` is overridden at runtime.** Although the entity declares
@@ -242,6 +277,7 @@ Ready-to-run starting points, all on the generic contract:
 | `blinky_morse.vhd` | Morse-code blinker |
 | `blinky_pwm.vhd` | PWM LED brightness — all LEDs breathe (a full breath ≈ 8 s on GHDL-mcode, ≈ 1 s on NVC) |
 | `blinky_walking.vhd` | Walking-light / knight-rider pattern |
+| `rgb_rainbow.vhd` | RGB LEDs sweep the color wheel; switch-selected modes (rotate / static hue / cube scan / white breathe) |
 | `counter_7seg.vhd` | Hex digit counter for 7-segment boards |
 | `snake_7seg.vhd` | A segment crawls figure-8 across the digits; bouncing LED |
 | `walking_counter_7seg.vhd` | Bouncing LED + decimal BCD counter; switch speed, button direction |

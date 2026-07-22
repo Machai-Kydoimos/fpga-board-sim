@@ -73,6 +73,8 @@ The simulator runs in a **single window** (U34): the launcher's pygame process o
 | `hdl/native/` | Board-native reference designs (a board's own port names + fixed widths, no `NUM_*`): Terasic `de10_standard.vhd`, `de0.vhd`, `de25_standard.vhd`; litex `arty_litex.vhd` (LiteX names `clk100`/`user_led`/`user_sw`/`user_btn`, U32). Each matches via a board's `port_conventions` and is not in the file picker (U21) |
 | `tests/` | pytest integration test suite |
 | `sim/test_blinky.py` | Headless cocotb tests for the blinky design |
+| `hdl/rgb_rainbow.vhd` | RGB LED demo (U37): per-channel PWM color mixing on the `NUM_RGB_LEDS` contract; switch-selected modes (rotate / static hue / cube scan / white breathe); all site math loops inside one process — GHDL-mcode does not re-elaborate generic-dependent *generate* structure for `-r`-time overrides |
+| `sim/test_rgb.py` | Headless cocotb duty tests for `rgb_rainbow`, run against the generated `sim_wrapper` (never a bare toplevel — the mcode generate/override trap above) via `tests/test_rgb_design.py` |
 | `sim/test_7seg.py` | Headless cocotb tests for the counter_7seg design |
 | `sim/test_cpu_walking.py` | Shared headless cocotb behavioral suite run by the six walking-style embedded-core designs (6502 + Z80) |
 | `sim/test_cpu_hello.py` | Headless cocotb test for the `mx65_hello_7seg` on-ramp design (static: one LED + one digit, never changes) |
