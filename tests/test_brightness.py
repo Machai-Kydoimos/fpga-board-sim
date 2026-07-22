@@ -419,7 +419,7 @@ def test_debug_view_rgbled_draws_linear_length_bars(headless_pygame, restore_deb
     """U38 debug view: three stacked R/G/B bars whose fill length is the
     *linear* duty — a 50% channel fills exactly half the track (perceptual
     encoding would fill ~73%), which is the whole point of the mode."""
-    from fpga_sim.ui.components import _LED_COLOR_RGB, RGBLED, set_debug_view
+    from fpga_sim.ui.components import _LED_COLOR_RGB, RGBLED, _bar_track_color, set_debug_view
 
     surface = headless_pygame.Surface((90, 60))
     surface.fill((0, 0, 0))
@@ -438,9 +438,9 @@ def test_debug_view_rgbled_draws_linear_length_bars(headless_pygame, restore_deb
     assert surface.get_at((60, 14))[:3] == _LED_COLOR_RGB["red"]
     # Green bar (y 20..27): linear 50% -> fill ends at x=40 exactly.
     assert surface.get_at((25, 24))[:3] == _LED_COLOR_RGB["green"]
-    assert surface.get_at((50, 24))[:3] == THEME.led_off  # perceptual would still be filled here
-    # Blue bar (y 30..37): zero fill, bare track.
-    assert surface.get_at((40, 34))[:3] == THEME.led_off
+    assert surface.get_at((50, 24))[:3] == _bar_track_color()  # perceptual would still be filled
+    # Blue bar (y 30..37): zero fill, bare track (near-black: off time reads as empty).
+    assert surface.get_at((40, 34))[:3] == _bar_track_color()
 
 
 def test_debug_view_bar_percent_text_appears_when_it_fits(headless_pygame, restore_debug_view):
@@ -468,9 +468,10 @@ def test_debug_view_bar_percent_text_appears_when_it_fits(headless_pygame, resto
     assert hits > 0
 
 
-def test_debug_view_mono_led_gains_a_duty_bar(headless_pygame, restore_debug_view):
-    """U38 debug view: a mono LED keeps its circle and adds a thin linear bar."""
-    from fpga_sim.ui.components import LED, set_debug_view
+def test_debug_view_mono_led_gains_a_duty_bar_and_percent(headless_pygame, restore_debug_view):
+    """U38 debug view: a mono LED keeps its circle, adds a thin linear bar, and
+    shows the exact % centered in the circle (the bar is too short to host it)."""
+    from fpga_sim.ui.components import LED, _bar_track_color, set_debug_view
 
     surface = headless_pygame.Surface((60, 70))
     surface.fill((0, 0, 0))
@@ -482,8 +483,16 @@ def test_debug_view_mono_led_gains_a_duty_bar(headless_pygame, restore_debug_vie
     led.draw(surface, font)
 
     assert surface.get_at((15, 47))[:3] == THEME.led_on  # inside the 20px fill
-    assert surface.get_at((45, 47))[:3] == THEME.led_off  # past it: bare track
-    assert surface.get_at((30, 28))[:3] != (0, 0, 0)  # the circle is still there
+    assert surface.get_at((45, 47))[:3] == _bar_track_color()  # past it: bare track
+    assert surface.get_at((30, 20))[:3] != (0, 0, 0)  # the circle is still there (r=13 @ 30,30)
+    # "50%" glyph pixels (near-white) exist around the circle center.
+    hits = sum(
+        1
+        for y in range(24, 37)
+        for x in range(18, 43)
+        if all(c > 200 for c in surface.get_at((x, y))[:3])
+    )
+    assert hits > 0
 
 
 def test_set_led_channel_on_a_plain_led_collapses_to_level(headless_pygame):

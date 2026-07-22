@@ -169,6 +169,17 @@ def debug_view_enabled() -> bool:
     return _DEBUG_VIEW
 
 
+def _bar_track_color() -> tuple[int, int, int]:
+    """Debug-bar track: the theme's LED-off color pulled hard toward black.
+
+    The unfilled span is *off time* -- it should read as empty gauge track,
+    not as a dark-red unlit LED.  Deriving from THEME.led_off (rather than a
+    fixed black) keeps a whisper of the theme's hue so it sits naturally on
+    any palette; read at draw time, never captured (U6).
+    """
+    return lerp_rgb(THEME.led_off, (0, 0, 0), 0.65)
+
+
 def _draw_duty_bar(
     surface: pygame.Surface,
     track: pygame.Rect,
@@ -181,7 +192,7 @@ def _draw_duty_bar(
     The % text sizes itself to the track (not the label font, which is taller
     than most bars) and renders only when it genuinely fits.
     """
-    pygame.draw.rect(surface, THEME.led_off, track)
+    pygame.draw.rect(surface, _bar_track_color(), track)
     fill_w = round(track.width * max(0.0, min(1.0, duty)))
     if fill_w > 0:
         pygame.draw.rect(surface, fill_color, pygame.Rect(track.x, track.y, fill_w, track.height))
@@ -284,6 +295,16 @@ class LED(UIComponent):
         if _DEBUG_VIEW:
             track = pygame.Rect(self.rect.left, self.rect.bottom - bar_h, self.rect.width, bar_h)
             _draw_duty_bar(surface, track, self.level, on_color)
+            # The exact % sits in the circle itself (the thin bar is too short
+            # to host it).  The font is sized against the widest possible text
+            # ("100%"), so a row of mixed duties renders at one uniform size
+            # and the full-on LED is never the one whose number goes missing.
+            for fs in range(max(9, min(14, r)), 8, -1):
+                pct_font = _get_font(fs)
+                if pct_font.size("100%")[0] <= 2 * r - 2 and pct_font.get_height() <= 2 * r - 2:
+                    txt = pct_font.render(f"{self.level * 100:.0f}%", True, WHITE)
+                    surface.blit(txt, txt.get_rect(center=(cx, cy)))
+                    break
 
         lbl = font.render(self.label, True, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
