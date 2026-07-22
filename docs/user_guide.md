@@ -26,6 +26,13 @@ The board renders with LEDs, buttons, switches, and — on supported boards — 
 its resource name; **hover** any LED, switch, or button for a moment to reveal its
 net name, pin, and direction.
 
+LEDs lay out **bank by bank**, labeled with the board's own bank names where the
+data provides them (a DE2-115 shows an 18-LED `LEDR` row above a 9-LED `LEDG`
+row), and render in their **documented colors** — every non-default color in the
+board data cites a vendor source (reference-manual figure or prose). A 3-pin
+**RGB LED** draws as a single puck (`RGB0`, `RGB1`, …) that mixes its three
+channels into one color.
+
 - **Click switches** to toggle them
 - **Click and hold buttons** to press them
 - **Hover a component** → tooltip with its net name, pin, and direction
@@ -71,6 +78,7 @@ simulator itself runs headless in the background:
 - **R** — reset all switches off and release any held buttons (inputs only; design
   state is unaffected)
 - **S** — toggle the [stats panel](#stats-panel)
+- **D** — toggle the [debug duty-bar view](#debug-duty-bar-view)
 - **F1 / ?** — open the help overlay
 - **ESC** or **[■ Stop]** (bottom-right) → stop the simulation, return to the board list
 - **Close the window (X)** → quit the app. The launcher is a single window for the
@@ -91,12 +99,42 @@ width and no aliasing. Two consequences are worth knowing:
   the truthful sub-real-time view, not a bug — a faster simulator or a higher
   speed setting fuses it into a steady glow. `hdl/blinky_pwm.vhd` is tuned so a
   full breath takes about 8 seconds on GHDL-mcode and 1 on NVC.
+- **A design that multiplexes LEDs in time renders the honest average.** A
+  one-hot walker scanning 27 LEDs faster than the eye shows each LED at its real
+  fractional brightness — the same dim moving trail the physical board would
+  show — because within every measurement window the lit time is measured
+  exactly (the walker's per-window duties sum to 100%).
 - **Hovering an LED shows its exact duty** (`Duty 73.2%`) alongside the net and
-  pin, whenever it is something other than plainly on or off.
+  pin, whenever it is something other than plainly on or off. An **RGB LED's
+  tooltip always shows all three channels** (`R 73% · G 0% · B 100%`) — the mix
+  is the whole story. The puck itself renders the per-channel γ-encoded mix, so
+  equal duties on all three channels wash to white exactly like the real part.
 
 **[PAUSE] holds brightness.** Pausing freezes the board exactly as it looked,
 and resuming carries on as though you had not paused — pause is there so you can
-inspect the board, so it must not change what the board shows.
+inspect the board, so it must not change what the board shows. The duty engine
+takes one final measurement at the instant pause lands, so the frozen numbers
+describe the moment you paused; a channel that was plainly off or on still
+follows live switch input while paused, so a combinational switch→LED design
+stays responsive under inspection.
+
+### Debug duty-bar view
+
+Realistic brightness encodes duty as luminance — exactly the thing that is hard
+to *read* precisely. The debug view encodes it as **length** instead: toggle it
+with **D** in the simulation (or the **Duty bars** row in the
+[Settings dialog](#settings-dialog); the choice persists across sessions).
+
+- An **RGB LED** becomes three stacked R/G/B bars — fill length is the *linear*
+  channel duty (no gamma), with a % readout whenever the bar is tall enough.
+- A **mono LED** keeps its circle, showing the exact duty as digits inside it,
+  and gains a thin duty bar underneath.
+- The unfilled span renders near-black: it is *off time*, not a dark LED.
+
+Bar length reads to a percent where luminance cannot, and it pairs naturally
+with pause: **pause, hit D, and read the frozen numbers** — the high-precision
+counterpart to the running realistic view. Realistic rendering stays the
+default, and tooltips show duties in both modes.
 
 Measurement costs almost nothing on designs whose LEDs change at human-visible
 rates. A channel that toggles on *every clock* is the expensive case — the
@@ -186,6 +224,8 @@ Open it with the **gear button** in the board preview. It can:
 - **reset** the remembered sim speed;
 - toggle **waveform capture** (off / VCD / FST);
 - toggle **Auto-open** of the waveform viewer after a run;
+- toggle **Duty bars** — the [debug duty-bar view](#debug-duty-bar-view), same
+  as the in-sim **D** key;
 - **clear** the recent-files list.
 
 ### Themes

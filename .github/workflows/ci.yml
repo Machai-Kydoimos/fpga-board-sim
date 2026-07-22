@@ -26,6 +26,25 @@ jobs:
       - run: uv run mypy .
       - run: uv run rumdl check .
 
+  board-drift:
+    # U38 drift tripwire: re-sync every generated boards/ source at its
+    # recorded pin and require zero diff (carry-forward makes a true no-op
+    # re-sync byte-identical), then the registry --checks.  Catches a parser
+    # changed without a re-sync, or hand-edits to generated files.
+    name: Board-data drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Pin resolution goes through the GitHub API; the unauthenticated
+      # 60/hour limit is too low for the registry wave, and an unpinned
+      # fallback would read as false drift.
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990  # v8.3.2
+      - run: uv sync --group dev
+      - run: uv run python scripts/check_board_drift.py
+
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
     runs-on: ${{ matrix.os }}
