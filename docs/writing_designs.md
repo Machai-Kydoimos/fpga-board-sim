@@ -163,7 +163,7 @@ names. They come in two tiers:
   those names runs board-native on that board (see
   [`hdl/native/arty_litex.vhd`](../hdl/native/arty_litex.vhd)).
 
-**258 of the 278 boards** carry a convention today. When a board has both tiers, the
+**262 of the 283 boards** carry a convention today. When a board has both tiers, the
 **canonical names win** — the matcher tries authoritative conventions first, so
 distinctive vendor names take precedence over the generic framework ones.
 

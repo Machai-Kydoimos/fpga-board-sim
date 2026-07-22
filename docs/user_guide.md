@@ -17,7 +17,7 @@ help overlay covering the workflow, keyboard shortcuts, and the VHDL design cont
 
 ### 1. Select a board
 
-A list of 278 FPGA boards appears. Type to filter, click to select.
+A list of 283 FPGA boards appears. Type to filter, click to select.
 
 ### 2. Preview the board
 

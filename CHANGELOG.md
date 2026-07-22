@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Five new boards from the upstream re-sync (U37 groundwork).** All three
+  board sources re-synced at upstream HEAD: Icepi Zero (amaranth), three
+  Antmicro DDR5 test/tester boards and the CologneChip GMM-7550 module (litex),
+  bringing the catalog to 283 boards. Nexys 4 / Nexys 4 DDR's six flattened RGB
+  channel entries now carry their red/green/blue heuristic colors (their data
+  predated the color pipeline).
 - **Cited green LED colors for the Digilent family (U36, color registry).**
   Twenty board definitions across thirteen Digilent boards — Arty A7/S7/Z7,
   Basys 3, Cmod A7/S7, Genesys 2, Genesys ZU, Nexys A7, Nexys Video, USB104 A7,
@@ -22,6 +28,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   flattened into the mono LED bank) and the RGB-only Cora Z7 / Eclypse Z7 are
   deferred to the RGB work; the non-Digilent "Sword" board has no citable source
   and keeps the theme fallback.
+
+### Fixed
+
+- **Board-native polarity hints now tell the truth.** Three
+  framework-convention fixes: the KCU116/ZCU216 button banks are no longer
+  marked active-low (their `user_btn_n` is the *North* member of a directional
+  c/n/s/w/e cluster, misread by the `_n` suffix rule); a bank whose ports
+  disagree on polarity (GMM-7550's active-high `led_green` + active-low
+  `led_red_n`, Nexys4-DDR's active-low reset button amid five active-high
+  directionals) is no longer advertised at all, since the single `active_low`
+  flag cannot represent it; and stale hint banks that the hardened litex
+  classifier no longer stands behind (`rf_switches` RF path controls, the
+  Siglent scope's `btn_frontpanel` SPI link, a scalar claim on the 3-wide
+  `user_led2`) are dropped from the affected boards.
+- **Re-syncs no longer churn sync stamps.** A board unchanged apart from its
+  `source.sync_commit`/`sync_timestamp` keeps its on-disk bytes (and
+  `_sync_metadata.json` follows the same rule), so a no-op re-sync is a zero
+  diff and an upstream pin bump is a data-only diff — the same fix the
+  port-convention registry got in 0.17.0, applied to the board files
+  themselves.
 
 ## [0.17.0] - 2026-07-21
 
