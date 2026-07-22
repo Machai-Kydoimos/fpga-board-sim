@@ -272,8 +272,7 @@
           "user_btn_s",
           "user_btn_w"
         ],
-        "width": 5,
-        "active_low": true
+        "width": 5
       }
     }
   },
@@ -281,7 +280,7 @@
   "source": {
     "origin": "litex-boards",
     "upstream_file": "xilinx_kcu116.py",
-    "sync_commit": "08e6a063e365a8baebc0cd92ebee6d9e97ce0a50",
-    "sync_timestamp": "2026-07-14T05:56:36.171404+00:00"
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-07-22T05:51:45.387809+00:00"
   }
 }

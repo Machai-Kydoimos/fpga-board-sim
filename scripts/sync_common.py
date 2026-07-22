@@ -12,6 +12,7 @@ import os
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from framework_conventions import reconcile_framework_polarity
 from jsonschema.validators import validator_for
@@ -129,13 +130,16 @@ def _fold_forward_unmanaged_keys(content: str, out_path: Path) -> str:
     A parser regenerates a board file from scratch each run, so anything it
     doesn't itself produce -- today, ``port_conventions`` / ``peripherals`` --
     would otherwise be silently wiped on the next sync. ``port_conventions`` is
-    merged per top-level sub-key (new overlays old): a parser that generates no
-    conventions at all (amaranth, litex) contributes an empty overlay and every
-    existing sub-key survives untouched; ``sync_digilent_xdc.py``, which
-    generates only the ``digilent`` sub-key, correctly overwrites just that key
-    while any other convention (hand-authored or populated by U21's later
-    generator) survives. ``peripherals`` has no sync-script generator yet, so
-    it is preserved wholesale when the fresh content doesn't supply one.
+    merged per top-level sub-key (new overlays old): each sync script generates
+    at most its own sub-key (``digilent`` / ``litex`` / ``amaranth``), correctly
+    overwriting just that key while any other convention (hand-authored or
+    registry-populated) survives. The exception is an existing sub-key stamped
+    ``naming: "framework-derived"`` that the fresh content does *not* re-emit:
+    the parser is that block's sole author, so its absence means the parser no
+    longer stands behind it (e.g. a bank whose polarity it can no longer
+    advertise truthfully) and the stale block is dropped rather than folded
+    forward forever. ``peripherals`` has no sync-script generator yet, so it is
+    preserved wholesale when the fresh content doesn't supply one.
 
     Returns ``content`` unchanged (same string, no re-parse/re-serialize) when
     there is nothing on disk to preserve, so files with no existing
@@ -170,7 +174,14 @@ def _fold_forward_unmanaged_keys(content: str, out_path: Path) -> str:
 
     data = json.loads(content)
 
-    merged_conventions = {**existing_conventions, **(data.get("port_conventions") or {})}
+    fresh_conventions = data.get("port_conventions") or {}
+    kept_existing = {
+        key: block
+        for key, block in existing_conventions.items()
+        if key in fresh_conventions
+        or not (isinstance(block, dict) and block.get("naming") == "framework-derived")
+    }
+    merged_conventions = {**kept_existing, **fresh_conventions}
     if merged_conventions:
         # F2: after the per-sub-key merge, a freshly generated framework-derived
         # bank inherits polarity from a same-role, same-width canonical bank folded
@@ -182,6 +193,43 @@ def _fold_forward_unmanaged_keys(content: str, out_path: Path) -> str:
         data["peripherals"] = existing_peripherals
 
     return json.dumps(data, indent=2) + "\n"
+
+
+def _without_sync_stamp(board: dict[str, Any]) -> dict[str, Any]:
+    """Return ``board`` with ``source.sync_commit``/``sync_timestamp`` removed."""
+    src = board.get("source")
+    if not isinstance(src, dict):
+        return board
+    keep = {k: v for k, v in src.items() if k not in ("sync_commit", "sync_timestamp")}
+    return {**board, "source": keep}
+
+
+def _carry_forward_sync_stamp(content: str, out_path: Path) -> str:
+    """Keep the on-disk file when a board is unchanged apart from its sync stamp.
+
+    Every sync script stamps ``source.sync_commit`` + ``source.sync_timestamp``
+    with the run's values, so without this a re-sync rewrites both fields on all
+    ~250 boards of a source even when nothing real changed -- churn that buries
+    the handful of boards that *did* drift (and, on a pin bump, turns a data-only
+    diff into a whole-source rewrite). Neither field is read by the runtime
+    loader, and ``sync_commit`` duplicates the source's ``_sync_metadata.json``
+    ``source_commit``, so when the freshly generated board equals the existing
+    one apart from those two fields the on-disk bytes are returned verbatim --
+    a true byte-for-byte no-op. Any real change still lands with the fresh
+    stamp, exactly like ``sync_port_conventions.carry_forward_retrieved``.
+
+    Runs after ``_fold_forward_unmanaged_keys``, which has already raised on an
+    unreadable/corrupt existing file, so ``out_path`` is known-good JSON here.
+    """
+    if not out_path.exists():
+        return content
+    existing_text = out_path.read_text(encoding="utf-8")
+    existing = json.loads(existing_text)
+    if not isinstance(existing, dict):
+        return content
+    if _without_sync_stamp(json.loads(content)) == _without_sync_stamp(existing):
+        return existing_text
+    return content
 
 
 def write_outputs(
@@ -201,12 +249,15 @@ def write_outputs(
     colors (``docs/led_color_sources/``) are then re-applied per board, so a
     board re-sync re-stamps them rather than dropping the ``leds[].color`` a
     parser doesn't itself emit (``color_registry`` defaults to the on-disk
-    registry; pass one to isolate tests). The *merged, colored* result is what
-    gets validated against the schema, so a corrupt on-disk convention block is
-    caught here rather than written silently. Validation runs before anything is
-    written, so a single invalid board aborts the whole sync with no partial
-    output (and ``--dry-run`` doubles as a schema check). ``schema_path``
-    defaults to ``<output_dir>/../schema/board.schema.json``.
+    registry; pass one to isolate tests). A board that is then unchanged apart
+    from ``source.sync_commit``/``sync_timestamp`` keeps its on-disk bytes (see
+    ``_carry_forward_sync_stamp``), so a re-sync's diff is only the boards that
+    really drifted. The *merged, colored* result is what gets validated against
+    the schema, so a corrupt on-disk convention block is caught here rather than
+    written silently. Validation runs before anything is written, so a single
+    invalid board aborts the whole sync with no partial output (and
+    ``--dry-run`` doubles as a schema check). ``schema_path`` defaults to
+    ``<output_dir>/../schema/board.schema.json``.
     """
     if schema_path is None:
         schema_path = output_dir.parent / "schema" / "board.schema.json"
@@ -214,10 +265,13 @@ def write_outputs(
         color_registry = load_color_registry()
 
     board_jsons = {
-        filename: colorize_content(
-            _fold_forward_unmanaged_keys(content, output_dir / filename),
-            f"{output_dir.name}/{filename}",
-            color_registry,
+        filename: _carry_forward_sync_stamp(
+            colorize_content(
+                _fold_forward_unmanaged_keys(content, output_dir / filename),
+                f"{output_dir.name}/{filename}",
+                color_registry,
+            ),
+            output_dir / filename,
         )
         for filename, content in board_jsons.items()
     }
@@ -241,7 +295,22 @@ def write_outputs(
         "files_written": sorted(board_jsons.keys()),
     }
     meta_path = output_dir / "_sync_metadata.json"
+    meta_content = json.dumps(metadata, indent=2) + "\n"
+    # Same no-op rule as the boards: a re-sync that changed nothing (same pin,
+    # same file list) keeps the existing metadata verbatim instead of churning
+    # its ``sync_timestamp``. A corrupt existing file just gets rewritten.
+    if meta_path.exists():
+        try:
+            existing_meta_text = meta_path.read_text(encoding="utf-8")
+            existing_meta = json.loads(existing_meta_text)
+        except (OSError, json.JSONDecodeError):
+            existing_meta = None
+        if isinstance(existing_meta, dict):
+            fresh = {k: v for k, v in metadata.items() if k != "sync_timestamp"}
+            disk = {k: v for k, v in existing_meta.items() if k != "sync_timestamp"}
+            if fresh == disk:
+                meta_content = existing_meta_text
     if dry_run:
         print(f"  [dry-run] Would write {meta_path} ({len(board_jsons)} boards)")
     else:
-        meta_path.write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+        meta_path.write_text(meta_content, encoding="utf-8")

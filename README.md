@@ -11,7 +11,7 @@
 *CI matrix: Ubuntu + Windows × Python 3.10 / 3.12 / 3.13, plus GHDL 6.0 and NVC simulator
 jobs on Linux and GHDL 6.0 on Windows. macOS is supported but not CI-tested.*
 
-Interactive FPGA board simulator for VHDL. Pick from **278 real FPGA board
+Interactive FPGA board simulator for VHDL. Pick from **283 real FPGA board
 definitions** (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards),
 [litex-boards](https://github.com/litex-hub/litex-boards),
 [Digilent XDC](https://github.com/Digilent/digilent-xdc), and custom JSON), then run a
@@ -21,9 +21,9 @@ displays — compiled and simulated live by [GHDL](https://github.com/ghdl/ghdl)
 
 ![Live VHDL simulation on a virtual DE10-Lite: a snake of light crawls across the six 7-segment displays while buttons are pressed — reversing it, then lighting every segment, and a switch speeds it up — and finally the inputs are restored so the loop plays seamlessly](docs/assets/demo.gif)
 
-*Above — one of **278 boards** (the DE10-Lite) running one example design, [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), live on GHDL / NVC + cocotb — not a pre-rendered animation. Every switch and button is a **real input to the running VHDL**; the design reads them and computes the LED and 7-segment **outputs** you see. So **BTN0** makes the design reverse the snake, **BTN1** makes it light every segment, and **SW0** makes it run faster — cause and effect, exactly as on real hardware — and finally the inputs are restored so the loop plays seamlessly. Captured headlessly via [`scripts/capture_demo.py`](scripts/capture_demo.py). ▶ [Watch the full talk](https://youtu.be/v4Fc6HctK1E).*
+*Above — one of **283 boards** (the DE10-Lite) running one example design, [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), live on GHDL / NVC + cocotb — not a pre-rendered animation. Every switch and button is a **real input to the running VHDL**; the design reads them and computes the LED and 7-segment **outputs** you see. So **BTN0** makes the design reverse the snake, **BTN1** makes it light every segment, and **SW0** makes it run faster — cause and effect, exactly as on real hardware — and finally the inputs are restored so the loop plays seamlessly. Captured headlessly via [`scripts/capture_demo.py`](scripts/capture_demo.py). ▶ [Watch the full talk](https://youtu.be/v4Fc6HctK1E).*
 
-Choose from **278 real FPGA boards** (Xilinx, Intel, Lattice, Gowin, Efinix, and more). Filter live by component and vendor — here the catalog narrows from all 278 down to the 9 Intel boards that have LEDs, switches, buttons, *and* a 7-segment display:
+Choose from **283 real FPGA boards** (Xilinx, Intel, Lattice, Gowin, Efinix, and more). Filter live by component and vendor — here the catalog narrows from the full list down to the 9 Intel boards that have LEDs, switches, buttons, *and* a 7-segment display:
 
 ![The board selector filtering live: clicking the Has LEDs / Switches / Buttons / 7-seg and Intel chips narrows the 278-board list to 9, the count updating on each click](docs/assets/board_selector.gif)
 
@@ -89,7 +89,7 @@ uv run pytest
 ## Try it
 
 1. **Launch** `uv run fpga-sim`. The board selector opens.
-2. **Filter** to the **DE10-Lite** (type to narrow the 278-board list) and select it.
+2. **Filter** to the **DE10-Lite** (type to narrow the 283-board list) and select it.
 3. **Preview** the board — click switches, hold buttons, hover any component for its
    net name and pin.
 4. **Load VHDL File** and pick [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), then click
@@ -155,7 +155,7 @@ LEDR <= std_logic_vector(count(27 downto 18));
 
 The simulator matches the file against the **selected** board's port convention and,
 on a match, runs it unmodified — inverting active-low pins and packing the 7-segment
-digits for you. **258 of the 278 boards** carry a convention (vendor-canonical names
+digits for you. **262 of the 283 boards** carry a convention (vendor-canonical names
 where cited, litex/amaranth framework names elsewhere; canonical wins when both
 exist). Full guide: [docs/writing_designs.md](docs/writing_designs.md#board-native-designs).
 

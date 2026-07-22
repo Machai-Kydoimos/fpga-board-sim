@@ -1,8 +1,8 @@
 {
   "source_repo": "https://github.com/amaranth-lang/amaranth-boards",
-  "source_commit": "fd2f0df811a8dbcf6aa0b94ac0788dc71ac79e1e",
-  "sync_timestamp": "2026-07-14T05:53:55.176394+00:00",
-  "board_count": 79,
+  "source_commit": "be069dfd490b31df215337afac35711994a52418",
+  "sync_timestamp": "2026-07-22T05:45:45.396472+00:00",
+  "board_count": 80,
   "files_written": [
     "alchitry_au.json",
     "alchitry_pt_v2.json",
@@ -42,6 +42,7 @@
     "ice40_up5_kbevn.json",
     "icebreaker.json",
     "icebreaker_bitsy.json",
+    "icepi_zero1-3.json",
     "icestick.json",
     "icesugar.json",
     "icesugar_nano.json",

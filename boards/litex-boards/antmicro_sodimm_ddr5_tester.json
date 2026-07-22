@@ -1,0 +1,146 @@
+{
+  "name": "Antmicro Sodimm Ddr5 Tester",
+  "class_name": "AntmicroSodimmDdr5TesterPlatform",
+  "vendor": "Xilinx",
+  "device": "",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk100",
+      "hz": 100000000.0,
+      "pin": "C12",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 100000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "D21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "LED_yellow",
+      "number": 0,
+      "pins": [
+        "A20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      },
+      "color": "yellow"
+    },
+    {
+      "name": "LED_red",
+      "number": 0,
+      "pins": [
+        "E21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      },
+      "color": "red"
+    },
+    {
+      "name": "LED_green",
+      "number": 0,
+      "pins": [
+        "D23"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      },
+      "color": "green"
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "B20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "B21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "C22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "E22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk100",
+      "leds": {
+        "name": "user_led",
+        "width": 5
+      },
+      "naming": "framework-derived"
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "antmicro_sodimm_ddr5_tester.py",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-07-22T05:46:18.369523+00:00"
+  }
+}

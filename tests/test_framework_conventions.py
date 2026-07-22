@@ -140,6 +140,46 @@ def test_names_cluster_polarity_from_suffix():
     assert bank["active_low"] is True
 
 
+def test_compass_cluster_north_is_not_active_low():
+    """KCU116/ZCU216: ``user_btn_n`` amid a c/n/s/w/e compass cluster is the
+    North button -- the ``_n`` must not mark the (active-high) bank active-low."""
+    bank = build_bank(
+        _entries(
+            ("button_c", "user_btn_c", 0, False),
+            ("button_n", "user_btn_n", 0, False),
+            ("button_s", "user_btn_s", 0, False),
+            ("button_w", "user_btn_w", 0, False),
+            ("button_e", "user_btn_e", 0, False),
+        )
+    )
+    assert bank == {
+        "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"],
+        "width": 5,
+    }
+
+
+def test_lone_btn_n_without_compass_siblings_stays_active_low():
+    """No compass siblings -> ``_n`` keeps its active-low reading."""
+    bank = build_bank(_entries(("button", "user_btn_n", 0, False)))
+    assert bank == {"name": "user_btn_n", "width": 1, "active_low": True}
+
+
+def test_mixed_polarity_cluster_is_not_advertised():
+    """gmm7550: active-high ``led_green`` + active-low ``led_red_n`` -- the single
+    bank flag cannot represent both, so no bank is emitted (truth over coverage)."""
+    bank = build_bank(
+        _entries(("led_green", "led_green", 0, False), ("led_red_n", "led_red_n", 0, False))
+    )
+    assert bank is None
+
+
+def test_mixed_polarity_drops_leds_and_the_whole_convention():
+    """A mixed-polarity LED role fails the clk+LEDs floor, so the board simply
+    isn't advertised as board-native-able."""
+    mixed = _entries(("led_green", "led_green", 0, False), ("led_red_n", "led_red_n", 0, False))
+    assert build_convention("litex", "clk100", mixed, [], [], description="d") is None
+
+
 # ── build_convention: assembly + partial-interface floor ─────────────────
 
 _CLK = "clk100"
