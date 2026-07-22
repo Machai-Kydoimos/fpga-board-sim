@@ -353,7 +353,8 @@ def test_rgb_duty_channels_fold_to_the_component_widget(headless_pygame, fake_ch
     scr._apply_state()
     assert scr.board.leds[0].level == pytest.approx(0.25)
     assert scr.board.leds[1].level == pytest.approx(0.0)
-    assert scr.board.leds[2].level == pytest.approx(0.6)  # max(r, g, b)
+    assert scr.board.leds[2].level == pytest.approx(0.6)  # brightest-channel view
+    assert scr.board.leds[2].levels == pytest.approx([0.1, 0.6, 0.2])  # the real mix
 
 
 def test_rgb_binary_bits_fold_to_the_component_widget(headless_pygame, fake_child):
@@ -365,3 +366,61 @@ def test_rgb_binary_bits_fold_to_the_component_widget(headless_pygame, fake_chil
     assert scr.board.leds[0].level == 0.0
     assert scr.board.leds[1].level == 0.0
     assert scr.board.leds[2].level == 1.0
+    assert scr.board.leds[2].levels == [0.0, 1.0, 0.0]  # only the g channel
+
+
+# ── RGBLED widget (U37 PR-2) ─────────────────────────────────────────────────
+
+
+def test_rgbled_level_is_a_view_and_setter_drives_all_channels():
+    from fpga_sim.ui.components import RGBLED
+
+    puck = RGBLED(0)
+    assert puck.levels == [0.0, 0.0, 0.0]
+    puck.set_channel("g", 0.4)
+    assert puck.level == pytest.approx(0.4)
+    assert puck.state is True  # LED's binary view still works
+    puck.level = 1.0  # binary "on" = white mix
+    assert puck.levels == [1.0, 1.0, 1.0]
+
+
+def test_rgbled_tooltip_always_lists_the_three_channels():
+    from fpga_sim.ui.components import RGBLED
+
+    puck = RGBLED(0)
+    puck.set_channel("r", 0.73)
+    puck.set_channel("b", 1.0)
+    assert puck.tooltip_extra == [("R", "73%"), ("G", "0%"), ("B", "100%")]
+
+
+def test_rgbled_draws_the_gamma_encoded_mix(headless_pygame):
+    """Full-red puck: red pixel at center; all-off puck: theme neutral."""
+    from fpga_sim.ui.components import RGBLED
+
+    surface = headless_pygame.Surface((60, 60))
+    surface.fill((0, 0, 0))
+    font = headless_pygame.font.Font(None, 10)
+    puck = RGBLED(0)
+    puck.rect = headless_pygame.Rect(10, 10, 30, 30)
+    puck.set_channel("r", 1.0)
+    puck.draw(surface, font)
+    r, g, b, _ = surface.get_at(puck.rect.center)
+    assert r == 255
+    assert g < 80 and b < 80  # dark-lens floor only
+
+    surface.fill((0, 0, 0))
+    puck.level = 0.0
+    puck.draw(surface, font)
+    off = surface.get_at(puck.rect.center)[:3]
+    assert off == THEME.led_off  # dark neutral, no color cast
+
+
+def test_set_led_channel_on_a_plain_led_collapses_to_level(headless_pygame):
+    """Safety: routing an RGB channel at a mono widget just sets its level."""
+    from fpga_sim.board_loader import BoardDef, ComponentInfo
+    from fpga_sim.ui.board_display import FPGABoard
+
+    bd = BoardDef(name="B", class_name="B", leds=[ComponentInfo("led", "led", 0, ["A1"])])
+    board = FPGABoard(board_def=bd, width=400, height=300)
+    board.set_led_channel(0, "g", 0.5)
+    assert board.leds[0].level == 0.5
