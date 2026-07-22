@@ -242,6 +242,10 @@ class _GHDLBackend(_SimBackend):
         # silently drops it there — the design then runs with default generics.
         for k, v in (generics or {}).items():
             cmd.append(f"-g{k}={v}")
+        # Silence IEEE assertion noise from the t=0 deltas only (metavalue
+        # warnings while cocotb's first input deposits land); anything a
+        # design does after time zero still warns normally.
+        cmd.append("--asserts=disable-at-0")
         cmd.append(f"--vpi={plugin_lib}")
         if wave is not None:
             # GHDL simulation options follow the toplevel (like --vpi); the dump
@@ -317,6 +321,10 @@ class _NVCBackend(_SimBackend):
             "-H",
             _NVC_HEAP,
             "-r",
+            # Silence IEEE assertion noise from the t=0 deltas only (metavalue
+            # warnings while cocotb's first input deposits land); anything a
+            # design does after time zero still warns normally.
+            "--ieee-warnings=off-at-0",
             f"--load={plugin_lib}",
         ]
         if wave is not None:
@@ -1798,8 +1806,10 @@ def _render_native_wrapper(
         "    CLK_HALF_NS_INIT : positive := 20",
         "  );",
         "  port (",
-        "    sw          : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);",
-        "    btn         : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0);",
+        # All-zero defaults keep the pre-deposit t=0 deltas metavalue-free,
+        # mirroring the generic template (and the U9 accumulator ports).
+        "    sw          : in  std_logic_vector(NUM_SWITCHES - 1 downto 0) := (others => '0');",
+        "    btn         : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0) := (others => '0');",
         "    led         : out std_logic_vector(NUM_LEDS     - 1 downto 0);",
         *seg_port,
         *splice["duty_ports"].splitlines(),

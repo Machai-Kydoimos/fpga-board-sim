@@ -236,6 +236,72 @@ class LED(UIComponent):
         return [("Duty", f"{self.level * 100:.1f}%")]
 
 
+class RGBLED(LED):
+    """A tri-color LED puck: three measured channel duties mixed into one color.
+
+    Subclasses :class:`LED` so it slots into ``FPGABoard.leds`` and every
+    binary/level caller keeps working: :attr:`level` becomes a view over the
+    brightest channel, and *setting* it drives all three channels equally (the
+    honest white-mix reading of a binary "on").  The real interface is
+    :meth:`set_channel` — per-channel linear duty in [0, 1] — which the
+    simulation screen feeds through ``BoardDef.led_channels`` (U37).
+
+    Rendering mixes per-channel γ-encoded duties (``px_c = 255 · duty_c^(1/γ)``,
+    so (1, 1, 1) washes to white exactly like a real RGB LED), shown over the
+    dark epoxy via a channelwise max — an off puck stays the theme's neutral.
+    """
+
+    #: Channel order matches ``BoardDef.led_channels``' ("r", "g", "b").
+    _CHANNELS = ("r", "g", "b")
+
+    def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
+        """Initialize the puck with its board index and optional metadata."""
+        self.levels: list[float] = [0.0, 0.0, 0.0]
+        super().__init__(index, info)  # sets .level -> routed through the setter
+
+    @property
+    def level(self) -> float:
+        """Brightest channel, so LED's ``state``/tooltip gates keep working."""
+        return max(self.levels)
+
+    @level.setter
+    def level(self, value: float) -> None:
+        self.levels = [float(value)] * 3
+
+    def set_channel(self, channel: str, level: float) -> None:
+        """Set one channel's linear duty (``channel`` in ``"r" / "g" / "b"``)."""
+        self.levels[self._CHANNELS.index(channel)] = float(level)
+
+    def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+        """Draw the puck at its mixed color, with a matching glow and label."""
+        cx, cy = self.rect.center
+        r = max(4, min(self.rect.width, self.rect.height) // 2 - 2)
+
+        px = tuple(round(255 * _perceptual(lv)) for lv in self.levels)
+        off = THEME.led_off  # THEME read at draw time, never captured (U6)
+        shown = (max(off[0], px[0]), max(off[1], px[1]), max(off[2], px[2]))
+        k = _perceptual(self.level)
+
+        if k > 0.0:
+            glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
+            pygame.draw.circle(glow, (*px, round(50 * k)), (r * 2, r * 2), r * 2)
+            surface.blit(glow, (cx - r * 2, cy - r * 2))
+        pygame.draw.circle(surface, shown, (cx, cy), r)
+
+        pygame.draw.circle(surface, WHITE, (cx, cy), r, 1)
+
+        lbl = font.render(self.label, True, WHITE)
+        surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
+
+    @property
+    def tooltip_extra(self) -> list[tuple[str, str]]:
+        """Per-channel duty rows — always shown; the mix is the whole story."""
+        return [
+            (ch.upper(), f"{lv * 100:.0f}%")
+            for ch, lv in zip(("r", "g", "b"), self.levels, strict=True)
+        ]
+
+
 class Switch(UIComponent):
     """A toggle switch – clicks flip the state."""
 

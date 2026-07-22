@@ -140,13 +140,14 @@ class SimulationScreen:
             # when the sim starts — the overlays live in that strip (U34).
             reserve_footer_space=True,
         )
-        # Boundary-channel -> widget map (U37): constant per board, cached.
-        # Without a board_def (generic run) the widgets map 1:1 as before.
-        self._led_chan_map = (
-            board_def.led_channel_targets
-            if board_def is not None
-            else list(range(len(self.board.leds)))
-        )
+        # Boundary-channel -> widget map + per-channel role (U37): constant per
+        # board, cached. Without a board_def (generic run) the widgets map 1:1.
+        if board_def is not None:
+            self._led_chan_map = board_def.led_channel_targets
+            self._led_chan_roles = [role for _, role in board_def.led_channels]
+        else:
+            self._led_chan_map = list(range(len(self.board.leds)))
+            self._led_chan_roles = ["mono"] * len(self.board.leds)
         self._toolbar: SimToolbar | None = SimToolbar() if show_toolbar else None
 
         # Info-strip segments (board | vhdl (mode) | simulator), native tag accented.
@@ -375,15 +376,16 @@ class SimulationScreen:
                 self._pause_follow_binary(targets, led)
         else:
             targets = [float(bool(led & (1 << i))) for i in range(n_chan)]
-        # Fold channels onto component widgets: mono maps 1:1; an RGB widget
-        # shows its brightest channel until the RGBLED puck (U37 PR-2) mixes
-        # the three into one rendered color.
-        levels = [0.0] * len(self.board.leds)
-        for ch, comp in enumerate(chan_map):
-            if comp < len(levels):
-                levels[comp] = max(levels[comp], targets[ch])
-        for i, level in enumerate(self._smooth("led", levels, dt_s)):
-            self.board.set_led_level(i, level)
+        # Smooth in the channel domain (each channel is an independent measured
+        # duty), then route: mono channels drive their widget's level, RGB
+        # channels drive one color channel of their site's RGBLED puck (U37).
+        for ch, level in enumerate(self._smooth("led", targets, dt_s)):
+            comp = chan_map[ch]
+            role = self._led_chan_roles[ch]
+            if role == "mono":
+                self.board.set_led_level(comp, level)
+            else:
+                self.board.set_led_channel(comp, role, level)
 
         seg = self._last_state.get("seg")
         if seg is None:

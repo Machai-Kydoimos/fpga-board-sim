@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **RGB LEDs render as color-mixing pucks (U37, renderer half).** Each 3-pin
+  RGB LED now draws as a single puck whose color is the per-channel γ-encoded
+  mix of its three measured duty cycles — three phase-offset PWM compares
+  sweep the full palette, (1,1,1) washes to white like the real part, and an
+  off puck stays the theme's dark neutral. Hovering shows all three channel
+  duties. The new `hdl/rgb_rainbow.vhd` example drives every site through
+  switch-selected modes (rainbow rotate / static hue / RGB-cube scan / white
+  breathe; any button forces full white), with a headless cocotb duty suite
+  (`sim/test_rgb.py`) proving the channel relationships under GHDL and NVC.
+  The preview status line now counts banks ("16 LEDs + 2 RGB"), and RGB item
+  labels are compact (`RGB0`), fixing the label crowding.
 - **RGB LEDs as boundary channels (U37, data + contract half).** Each 3-pin
   `rgb_led` component now contributes three bits to the `led` vector — mono
   LEDs first (JSON order), then `(r, g, b)` per RGB site — so a design can
@@ -57,6 +68,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **No more time-zero metavalue warnings.** Every simulation start printed a
+  burst of `NUMERIC_STD` "metavalue detected" warnings while cocotb's first
+  switch/button deposits landed (loudest on designs whose logic wakes every
+  clock, like `rgb_rainbow`). The wrapper's input ports now carry all-zero
+  defaults, and both simulators suppress IEEE assertion noise **at time zero
+  only** (GHDL `--asserts=disable-at-0`, NVC `--ieee-warnings=off-at-0`) — a
+  design that produces metavalues after t=0 still warns normally.
 - **Board-native polarity hints now tell the truth.** Three
   framework-convention fixes: the KCU116/ZCU216 button banks are no longer
   marked active-low (their `user_btn_n` is the *North* member of a directional

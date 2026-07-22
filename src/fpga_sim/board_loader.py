@@ -85,6 +85,10 @@ class ComponentInfo:
     def display_name(self) -> str:
         """Short label for the UI, e.g. 'LED0', 'BTN2', 'UP0', 'RGB1'."""
         prefixes = {"led": "LED", "button": "BTN", "switch": "SW"}
+        if self.name == "rgb_led":
+            # "RGB_LED0" crowds the puck row; the bank label already says RGB,
+            # so the item label stays compact (U37).
+            return f"RGB{self.number}"
         if self.name == self.kind:
             return f"{prefixes.get(self.kind, self.kind.upper())}{self.number}"
         suffix = self.name
@@ -131,7 +135,7 @@ class BoardDef:
     def summary(self) -> str:
         """One-line summary of resource counts for display in the UI."""
         parts = [
-            self._led_summary(),
+            self.led_summary(),
             f"{len(self.buttons)} BTN",
             f"{len(self.switches)} SW",
         ]
@@ -198,7 +202,7 @@ class BoardDef:
         rgb = [i for i, c in enumerate(self.leds) if c.is_rgb]
         return mono + [i for i in rgb for _ in range(3)]
 
-    def _led_summary(self) -> str:
+    def led_summary(self) -> str:
         """LED portion of :attr:`summary`, broken out by bank (U36).
 
         Two mono banks read as ``18+9 LEDs``; RGB banks are counted separately,

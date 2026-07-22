@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING, Protocol
 import pygame
 
 from fpga_sim.board_loader import BoardDef, ComponentInfo
-from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch, UIComponent
+from fpga_sim.ui.components import LED, RGBLED, Button, FPGAChip, SevenSeg, Switch, UIComponent
 from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
 from fpga_sim.ui.results import ScreenResult
@@ -186,7 +186,12 @@ class FPGABoard:
                 package=board_def.package,
                 clock_hz=board_def.default_clock_hz,
             )
-            self.leds: list[LED] = [LED(i, info=c) for i, c in enumerate(board_def.leds)]
+            # A 3-pin rgb_led renders as a tri-color puck (U37); everything else
+            # is a plain LED (incl. the 1-pin serial impostors is_rgb rejects).
+            self.leds: list[LED] = [
+                RGBLED(i, info=c) if c.is_rgb else LED(i, info=c)
+                for i, c in enumerate(board_def.leds)
+            ]
             self.buttons: list[Button] = [
                 Button(i, info=c) for i, c in enumerate(board_def.buttons)
             ]
@@ -268,6 +273,21 @@ class FPGABoard:
         """Set an LED's brightness by index, as a duty cycle in [0, 1] (U9)."""
         if 0 <= index < len(self.leds):
             self.leds[index].level = max(0.0, min(1.0, level))
+
+    def set_led_channel(self, index: int, channel: str, level: float) -> None:
+        """Set one channel of an RGB LED by index (``channel`` = "r"/"g"/"b", U37).
+
+        On a plain LED the channel collapses to :meth:`set_led_level` — callers
+        route via ``BoardDef.led_channels``, so that only happens when a board's
+        data and widgets disagree, and dropping the distinction is the safe read.
+        """
+        if 0 <= index < len(self.leds):
+            widget = self.leds[index]
+            clamped = max(0.0, min(1.0, level))
+            if isinstance(widget, RGBLED):
+                widget.set_channel(channel, clamped)
+            else:
+                widget.level = clamped
 
     def set_switch_callback(
         self, callback: Callable[[int, bool, ComponentInfo | None], None]
@@ -762,7 +782,9 @@ class FPGABoard:
         if self.board_def and self.fpga_chip.rect.width >= 20:
             _parts = []
             if self.leds:
-                _parts.append(f"{len(self.leds)} LED{'s' if len(self.leds) != 1 else ''}")
+                # Bank-aware LED counts (U37): "16 LEDs + 2 RGB" / "18+9 LEDs",
+                # matching the selector's summary, instead of a flat widget count.
+                _parts.append(self.board_def.led_summary())
             if self.buttons:
                 _parts.append(f"{len(self.buttons)} Button{'s' if len(self.buttons) != 1 else ''}")
             if self.switches:

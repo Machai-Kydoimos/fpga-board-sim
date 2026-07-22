@@ -29,8 +29,12 @@ entity sim_wrapper is
     CLK_HALF_NS_INIT : positive := 20
   );
   port (
-    sw          : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);
-    btn         : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0);
+    -- Inputs default to all-zero so the design reads defined values in the
+    -- deltas before the testbench's first sw/btn deposits land -- without
+    -- this, arithmetic on them prints t=0 metavalue warnings (same guard
+    -- the U9 accumulator ports carry).
+    sw          : in  std_logic_vector(NUM_SWITCHES - 1 downto 0) := (others => '0');
+    btn         : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0) := (others => '0');
     led         : out std_logic_vector(NUM_LEDS     - 1 downto 0);
 {seg_port}{duty_ports}    clk_half_ns : in  natural := CLK_HALF_NS_INIT
   );
