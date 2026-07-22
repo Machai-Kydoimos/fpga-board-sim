@@ -80,6 +80,7 @@ The simulator runs in a **single window** (U34): the launcher's pygame process o
 | `sim/test_cpu_walking.py` | Shared headless cocotb behavioral suite run by the six walking-style embedded-core designs (6502 + Z80) |
 | `sim/test_cpu_hello.py` | Headless cocotb test for the `mx65_hello_7seg` on-ramp design (static: one LED + one digit, never changes) |
 | `sim/test_cpu_dice.py` | Headless cocotb test for the `mx65_dice_7seg` peripheral-extension design (LFSR-driven die roll on `btn(0)`) |
+| `sim/test_cpu_wide_led.py` | Headless cocotb regression for #309: on a >16-LED board (27 = DE2-115) the walker bounces within the 16-bit LED register instead of going dark — config `$E004` reports `minimum(NUM_LEDS, 16)` |
 | `hdl/stopwatch_7seg.vhd` | Hand-written interactive stopwatch: `btn(0)` start/stop, `btn(1)` reset, switch speed; the RTL half of the "same behavior, hardware vs software" teaching pair with the embedded-core designs |
 | `sim/test_stopwatch.py` | Headless cocotb test for `stopwatch_7seg.vhd` (start/stop/reset behavior) |
 | `hdl/mx65_walking_counter_7seg.vhd` | **Generated** single-file 6502 embedded-core demo (vendored mx65 + ROM/RAM/IO/top); Z80 (T80) siblings are `hdl/t80_*.vhd`; `hdl/mx65_hello_7seg.vhd` is the ~20-line newcomer on-ramp; `hdl/mx65_dice_7seg.vhd` extends `cpu_io` with an LFSR peripheral and has an independently-sized ROM/RAM map; see `docs/embedded_core_system_guide.md` |

@@ -340,7 +340,7 @@ map is just different base addresses. Example 6502 map:
 |---|---|---|
 | `$E000`/`$E001` | R | switches (low/high byte) |
 | `$E002`/`$E003` | R | buttons (low/high byte) |
-| `$E004..$E007` | R | **config**: NUM_LEDS, NUM_SEGS, NUM_SWITCHES, NUM_BUTTONS |
+| `$E004..$E007` | R | **config**: NUM_LEDS (clamped to 16, the LED-register width), NUM_SEGS, NUM_SWITCHES, NUM_BUTTONS |
 | `$E008` | R | LFSR random byte -- only when the spec lists the `"lfsr"` peripheral ([§13](#13-extending)) |
 | `$E010` | R/W | tick pending in bit0; **write any value to clear** ([§4.5](#45-bus-read-timing--the-deepest-pothole)) |
 | `$E020`/`$E021` | W | LED bits (low/high byte), masked to NUM_LEDS |
@@ -348,6 +348,10 @@ map is just different base addresses. Example 6502 map:
 
 **Config registers** make one generated file work on any board: firmware reads NUM_LEDS/NUM_SEGS
 at boot and adapts (essential for the walking LED, which must know how many LEDs to traverse).
+The LED count is clamped to the 16-bit LED register's width — on a board with more LED channels
+than that (e.g. the DE2-115's 27), `$E004` reports 16 so the walker bounces within the range it
+can actually light instead of going dark past LED15 (the register *is* the hardware's capability;
+the extra board LEDs simply stay unlit).
 **Generic sizing:** `cpu_io` carries `NUM_*`; it zero-extends narrow `sw`/`btn` inputs to a byte,
 masks `led` to `NUM_LEDS`, and exposes `seg_regs(0..NUM_SEGS-1)` packed to `seg` (digit 0 =
 rightmost, no reversal). **Vector placement:** the assembler must emit the reset/IRQ/NMI addresses
@@ -621,6 +625,9 @@ add a fragment rather than growing another Python string literal.
   Z80 polled, IM 2, port-IO, and the IM 2 + port capstone) run it (`PASS=4`) under both simulators.
   [`tests/test_embedded_core.py`](../tests/test_embedded_core.py) also byte-for-byte golden-tests each generated `.vhd` and checks the
   vendored cores' integrity + standardization.
+  [`sim/test_cpu_wide_led.py`](../sim/test_cpu_wide_led.py) regression-tests the >16-LED config clamp (#309): at 27 LEDs
+  (the DE2-115's channel count) the walker must bounce within the 16-bit LED register instead
+  of going dark past LED15.
 
 ## 12. End-to-end worked example (the 6502 walking counter)
 

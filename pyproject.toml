@@ -82,6 +82,7 @@ ignore = [
 "sim/test_cpu_walking.py" = ["ANN"]  # cocotb headless tests: dut signals are dynamic
 "sim/test_cpu_hello.py" = ["ANN"]    # cocotb headless tests: dut signals are dynamic
 "sim/test_cpu_dice.py" = ["ANN"]     # cocotb headless tests: dut signals are dynamic
+"sim/test_cpu_wide_led.py" = ["ANN"] # cocotb headless tests: dut signals are dynamic
 "sim/test_stopwatch.py" = ["ANN"]    # cocotb headless tests: dut signals are dynamic
 "sim/test_duty.py" = ["ANN"]         # cocotb headless tests: dut signals are dynamic
 "sim/test_rgb.py" = ["ANN"]          # cocotb headless tests: dut signals are dynamic
@@ -111,6 +112,7 @@ module = [
     "test_cpu_walking",
     "test_cpu_hello",
     "test_cpu_dice",
+    "test_cpu_wide_led",
     "test_stopwatch",
     "test_duty",
     "test_rgb",
