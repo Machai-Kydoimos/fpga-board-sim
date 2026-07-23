@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **macOS and Linux-arm64 CI.** The test matrix now runs on macOS (Apple
+  Silicon) and `ubuntu-24.04-arm` alongside Ubuntu + Windows, and three new
+  macOS simulator jobs exercise the full cocotb pipeline: pinned GHDL 6.0.0
+  `macos15-aarch64` release binaries (LLVM + LLVM-JIT — GHDL ships no mcode
+  for Apple Silicon) and NVC via Homebrew. No source changes were needed —
+  cocotb's mac wheels use the same `libcocotbvpi_ghdl.so` / `libcocotbvhpi_nvc.so`
+  plugin names the code already loads, and `find_libpython` resolves the
+  `.dylib`. The Linux-arm64 entries also prove the cocotb sdist build (no
+  aarch64 wheel upstream). Retires the README's "macOS is supported but not
+  CI-tested" caveat.
+
 ## [0.19.0] - 2026-07-23
 
 ### Added
