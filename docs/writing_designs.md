@@ -261,6 +261,38 @@ the Cmod A7/S7 tri-color LED is common-anode (drive **low** to light). On
 RGB-only boards (Cora Z7, Eclypse Z7) the RGB bank *is* the LED floor, so those
 boards are natively targetable even though they have no mono LEDs.
 
+### Scan displays by their real names (Digilent)
+
+On boards whose 7-segment display is physically multiplexed, the convention carries
+the real scan interface (`style: "scan"`), so a board-native design drives exactly
+what the hardware exposes — shared segment lines, a shared decimal point, and the
+digit-enable anodes, **all active-low** per the reference manuals ("both the AN0..N
+and the CA..G/DP signals are driven low when active"):
+
+```vhdl
+-- Nexys 4 DDR / A7 idiom: per-segment scalars       -- Basys 3 idiom: shared vector
+CA, CB, CC, CD, CE, CF, CG : out std_logic;          seg : out std_logic_vector(6 downto 0);
+DP : out std_logic;                                  dp  : out std_logic;
+AN : out std_logic_vector(7 downto 0);               an  : out std_logic_vector(3 downto 0);
+```
+
+Your design time-multiplexes exactly as on hardware: drive one digit's anode low
+while placing that digit's segment pattern on the shared lines. The simulator
+demultiplexes the scan and renders each digit at its honest 1/N scan brightness
+(see the [user guide](user_guide.md#scan-displays-basys-3-nexys-4--4-ddr--a7)).
+Notes:
+
+- **Scan fast.** Pick a digit slot of ~1–10 µs simulated time (e.g. 128 clocks at
+  100 MHz), not the ~1 kHz a hardware-first design would use: at the simulator's
+  sub-real-time speed a 1 kHz scan parades one digit at a time across the
+  brightness window instead of averaging into steady digits. This is the scan-rate
+  cousin of the mid-counter-bits rule above; `hdl/native/nexys4ddr_scan.vhd` and
+  `hdl/native/basys3_scan.vhd` show both.
+- **`dp` is optional** — omit the port and the decimal points stay dark.
+- The display role is matched **when declared**: leave the whole scan interface out
+  and the design still runs (digits dark); declare only part of it and the run is
+  rejected naming the missing ports.
+
 ### Loading a file written for a different board
 
 The simulator always models the *selected* board and never silently coerces a
@@ -289,6 +321,8 @@ own board (they are deliberately not offered in the file picker):
 | `de25_standard.vhd` | Terasic DE25-Standard | active-low LEDs (inverted for you) |
 | `arty_litex.vhd` | Digilent Arty (litex names) | framework-derived `clk100`/`user_led`/… |
 | `arty_rgb.vhd` | Digilent Arty A7-100 | native RGB channels `led0_r`…`led3_b`, color wheel + lamp test |
+| `nexys4ddr_scan.vhd` | Digilent Nexys 4 DDR | physical scan display (`CA..CG`/`DP`/`AN`), hex counter + lamp test |
+| `basys3_scan.vhd` | Digilent Basys 3 | scan display, shared-vector idiom (`seg`/`dp`/`an`) |
 
 Board-native designs get **no `COUNTER_BITS` override** (that generic belongs to the
 generic contract). A design that derives its visible rate from the top bits of a full
@@ -297,9 +331,10 @@ generic contract). A design that derives its visible rate from the top bits of a
 
 ### 7-segment scope
 
-Only the **per-digit (`individual`)** 7-seg style is adapted to native mode — a board
-whose convention exposes one port per digit (`HEX0`…`HEXn`). Multiplexed scan, serial,
-and per-segment-scalar displays stay on the generic contract for now.
+Two 7-seg styles are adapted to native mode: **per-digit (`individual`)** — one port
+per digit (`HEX0`…`HEXn`) — and the **multiplexed `scan`** interface described above
+(U22). Serial (shift-register) and per-segment-scalar displays stay on the generic
+contract.
 
 ## Example designs (`hdl/`)
 

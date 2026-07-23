@@ -902,6 +902,12 @@ _E2E_CASES = [
     # amaranth source carries the transplanted canonical digilent block, so
     # the native design must match there too (the live near-miss Rick hit).
     ("arty_rgb", "amaranth-boards/arty_a7-100.json"),
+    # U22: the scan-display examples -- scalar segment lines (Nexys 4 DDR
+    # CA..CG+DP+AN) and the shared-vector idiom (Basys 3 seg+dp+an); the
+    # Nexys also matches via the U22-unblocked sibling transplant.
+    ("nexys4ddr_scan", "digilent-xdc/nexys_4_ddr.json"),
+    ("nexys4ddr_scan", "amaranth-boards/nexys4_ddr.json"),
+    ("basys3_scan", "digilent-xdc/basys_3.json"),
 ]
 
 

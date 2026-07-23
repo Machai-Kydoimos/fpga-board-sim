@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Board-native scan displays (U22).** Designs written to a multiplexed
+  display's *physical* interface — Basys 3's shared `seg[6:0]`/`dp`/`an[3:0]`,
+  the Nexys 4 / 4 DDR / A7 family's `CA..CG`/`DP`/`AN[7:0]` scalars — now run
+  board-native: the native wrapper demultiplexes the scan combinationally
+  (unlatched), so Full duty mode renders each digit at its honest 1/N scan
+  brightness and a stopped scan shows its one lit digit. The display role is
+  matched-when-declared (a display-less native design runs with dark digits,
+  unlocking clk+LED native demos on every scan-display board), and a partially
+  declared scan interface is a near-miss naming the missing ports. Reference
+  examples `hdl/native/nexys4ddr_scan.vhd` + `basys3_scan.vhd` (fast scan +
+  mid-bit content); cocotb duty suites measure the 1/8 / 1/4 brightness, dp
+  gating, and lamp test under GHDL and NVC.
+
 - **GHDL performance profile report (U25)** at `docs/u25_ghdl_perf_profile.md`.
   Headline finding: GHDL's `configure` **default is a debug build**
   (`enable_checks=true` — asserting unoptimized runtime, `-O0` AOT ieee
@@ -37,6 +50,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Digilent 7-seg convention classification (U22 Phase D).** The Nexys 4 DDR
+  family's shared `CA..CG` segment scalars were mislabeled `individual` (7
+  shared lines as 7 "digit ports" — falsely full-matching nonsense designs and
+  blocking the U38 sibling transplant with a 7-vs-8 digit-count refusal),
+  Basys 3 / Nexys 4's shared segment bus was `packed_vector`, and Sword's
+  serial `sseg_*` shift interface was `individual`. All are now honest:
+  `scan` (with `digit_enable` + the new schema `dp` field, RM-cited active-low
+  polarity) and `serial`; the sibling transplant now propagates the Nexys/Basys
+  blocks to their amaranth/litex JSONs.
 - **Embedded-core walker no longer goes dark on >16-LED boards** (#309). The
   generated `cpu_io`'s LED output is a 16-bit register pair, but the config
   register reported the full board LED count — on a board like the DE2-115
