@@ -51,6 +51,11 @@ sudo dnf install ghdl
 brew install ghdl
 ```
 
+> On Apple Silicon there is **no GHDL mcode** (its in-memory code generator is
+> x86-only) — Homebrew's GHDL uses the LLVM backend, and the official GHDL
+> release tarballs for macOS are LLVM / LLVM-JIT builds. Both flavors (and NVC)
+> are CI-tested on macOS arm64.
+
 ### NVC
 
 **Windows (native — PowerShell):**

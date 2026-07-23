@@ -422,11 +422,13 @@ Every push and pull request runs the following jobs:
 | Job | Runner | Simulators installed | Pytest filter |
 |-----|--------|----------------------|---------------|
 | Lint & type-check | ubuntu-latest | none | n/a |
-| Test (matrix) | ubuntu + windows × py3.10 + py3.12 + py3.13 | none | `-m "not slow"` |
+| Test (matrix) | ubuntu + windows + macos (Apple Silicon) + ubuntu-24.04-arm × py3.10 + py3.12 + py3.13 | none | `-m "not slow"` |
 | Test Linux + GHDL | ubuntu-24.04 | GHDL mcode tarball from GitHub Releases (pinned v6.0.0) | full suite |
 | Test Linux + GHDL-LLVM / GHDL-LLVM-JIT | ubuntu-24.04 | the official `ghdl-llvm` / `ghdl-llvm-jit` release assets (sha256-pinned) | full + slow suites |
 | Test Linux + NVC | ubuntu-latest | `nickg/setup-nvc` action | full suite |
 | Test Windows + GHDL | windows-latest | GHDL zip from GitHub Releases | full suite |
+| Test macOS + GHDL-LLVM / GHDL-LLVM-JIT | macos-15 (Apple Silicon) | the official `macos15-aarch64` release assets (sha256-pinned; GHDL ships no mcode for arm64) | full suite |
+| Test macOS + NVC | macos-latest | `nickg/setup-nvc` action (Homebrew) | full suite |
 | Board-data drift | ubuntu-latest | none (network + `GITHUB_TOKEN`) | n/a — re-syncs every generated `boards/` source at its recorded pin and requires zero diff, then chains `sync_port_conventions --check` + `sync_led_colors --check` |
 
 ### The `slow` marker
@@ -454,8 +456,10 @@ A PR cannot be merged until these seven checks all pass:
 - `Test (windows-latest, Python 3.13)`
 
 The simulator-specific jobs (Linux + GHDL / GHDL-LLVM / GHDL-LLVM-JIT / NVC,
-Windows + GHDL) and the Board-data drift job are not required checks — they
-surface regressions but do not block merge on their own. If you touch
+Windows + GHDL, macOS + GHDL-LLVM / GHDL-LLVM-JIT / NVC), the macOS and
+ubuntu-24.04-arm test-matrix entries, and the Board-data drift job are not
+required checks — they surface regressions but do not block merge on their
+own. If you touch
 `sim_bridge.py` or the simulator backends, confirm the simulator jobs are green
 before merging; if you touch anything under `boards/`, `scripts/*parser*`, the
 sync scripts, or the convention/color registries, confirm Board-data drift is
