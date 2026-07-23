@@ -34,6 +34,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Brightness curve raised: perceptual gamma 2.2 → 3.0** (LEDs, RGB pucks,
+  and 7-segment digits alike; measured duties in tooltips/stats/logs stay
+  exact). Picked from a visual A/B during the U22 scan review: at γ=3.0 —
+  approximating Stevens' cube-root brightness law — an 8-way-scanned
+  display's 1/8-duty digits render at half blend, clearly legible while
+  still visibly dimmer than full drive, matching the real-hardware
+  impression. Low-duty PWM LEDs get the same modest lift.
 - **GHDL analysis/elaboration now passes `-O2`.** Measured +8–12% simulation
   speed on the GHDL LLVM (AOT) backend for design-bound workloads (mx65 CPU
   +12%, counter_7seg +11%, blinky +8%; library-bound designs unchanged), a

@@ -37,6 +37,16 @@ def test_perceptual_ramp_lifts_dim_levels():
     assert _perceptual(0.1) > 0.3
 
 
+def test_scan_duty_renders_at_half_blend_or_better():
+    """The U22 review floor: an 8-way scan's 1/8-duty digits render at >= 0.5 blend.
+
+    GAMMA = 3.0 was picked (2026-07-23) exactly so a physically honest scanned
+    display stays clearly legible -- dimmer than full drive, never murky.
+    """
+    assert _perceptual(0.125) >= 0.5 - 1e-9
+    assert _perceptual(0.25) >= 0.62
+
+
 def test_perceptual_ramp_is_monotonic_and_clamped():
     levels = [_perceptual(v / 20) for v in range(21)]
     assert levels == sorted(levels)
