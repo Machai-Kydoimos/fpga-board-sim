@@ -72,7 +72,18 @@ def example_vhdl_for(board: BoardDef | None) -> Path:
     return _HDL_DIR / ("counter_7seg.vhd" if has_7seg else "blinky.vhd")
 
 
-def build_generics(board: BoardDef) -> dict[str, str]:
+# COUNTER_BITS floor for plain-LED generic designs, per simulator engine.  The
+# visible LED rate is (simulator throughput) / 2**COUNTER_BITS, so a faster
+# backend blinks a plain ``blinky`` faster at the same width.  Post-U34, NVC's
+# ~8x throughput lands blinky at a blurry ~42 Hz on the default 17-bit floor
+# (issue #256), so NVC gets +3 bits (~divide by 8) to reach GHDL's watchable
+# ~5 Hz.  Keyed on the engine, not the backend: every GHDL code generator keeps
+# 17.  Many-digit 7-seg displays widen past either floor via 4*num_segs.
+_COUNTER_BITS_FLOOR_DEFAULT = 17
+_COUNTER_BITS_FLOOR: dict[str, int] = {"nvc": 20}
+
+
+def build_generics(board: BoardDef, *, simulator: str | None = None) -> dict[str, str]:
     """Build the generic map for sim_wrapper from a board definition.
 
     NUM_SEGS is absent here: it is conditionally injected by start_simulation()
@@ -85,19 +96,24 @@ def build_generics(board: BoardDef) -> dict[str, str]:
 
     NUM_LEDS counts boundary *channels*, not components: each 3-pin RGB LED
     contributes three ``led`` bits (mono LEDs first, then r/g/b per site).
+
+    ``simulator`` is the engine (``"ghdl"`` / ``"nvc"``) whose throughput sets
+    the COUNTER_BITS floor (issue #256); ``None`` keeps the conservative 17-bit
+    default used by analysis and tests, which never run a blink to watch.
     """
     clk_half_ns = max(1, round(5e8 / board.default_clock_hz))
     num_segs = board.seven_seg.num_digits if board.seven_seg else 0
+    counter_floor = _COUNTER_BITS_FLOOR.get(simulator or "", _COUNTER_BITS_FLOOR_DEFAULT)
     return {
         "NUM_SWITCHES": str(max(1, len(board.switches))),
         "NUM_BUTTONS": str(max(1, len(board.buttons))),
         "NUM_LEDS": str(max(1, board.num_led_channels)),
         # Deliberately below the VHDL default (24/32): at the simulator's
         # sub-real-time throughput a 24-bit counter's MSB toggles too slowly to
-        # see, so floor COUNTER_BITS at 17 (MSB ~every 1.3 ms of simulated time
-        # at 100 MHz) and widen it only for many-digit 7-seg displays. Real
-        # hardware would use the full 24/32.
-        "COUNTER_BITS": str(max(17, 4 * num_segs)),
+        # see, so floor COUNTER_BITS (17, or 20 on NVC — see above; MSB ~every
+        # 1.3 ms of simulated time at 100 MHz on GHDL) and widen it only for
+        # many-digit 7-seg displays. Real hardware would use the full 24/32.
+        "COUNTER_BITS": str(max(counter_floor, 4 * num_segs)),
         "CLK_HALF_NS_INIT": str(clk_half_ns),
     }
 
@@ -552,7 +568,7 @@ class ScreenController:
                     board.to_json(),
                     s.vhdl_path,
                     Path(s.vhdl_path).stem,
-                    build_generics(board),
+                    build_generics(board, simulator=s.sim.engine),
                     work_dir=s.work_dir,
                     simulator=s.sim.engine,
                     sim_path=s.sim.path,
