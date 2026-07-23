@@ -60,10 +60,13 @@ class RunStats:
     Populated by :meth:`SimulationScreen.run`; feeds ``save_session_stats`` here
     and the ``--benchmark`` report (PR3).  ``avg_sim_pct`` is the mean of the
     child-reported ``timer_pct`` samples (its GHDL/NVC step share); ``draw`` and
-    ``idle`` percentages are host-frame shares.
+    ``idle`` percentages are host-frame shares.  ``frames`` counts every loop
+    tick (~fps cap); ``frames_drawn`` counts only the ticks that actually
+    redrew — the gap is the U23 redraw-skip win.
     """
 
     frames: int = 0
+    frames_drawn: int = 0
     avg_fps: float = 0.0
     avg_draw_pct: float = 0.0
     avg_idle_pct: float = 0.0
@@ -162,6 +165,13 @@ class SimulationScreen:
 
         # ── Live loop state ──────────────────────────────────────────────────
         self._connected = False
+        # Redraw gating (U23): the last drawn frame's visual signature, and
+        # whether pygame reported any events this frame (mouse/keys/resize/
+        # expose/focus — all of which can change what's on screen).  A frame is
+        # skipped (no board/panel/overlay draw, no flip) only when the signature
+        # is unchanged AND nothing happened AND no tooltip is dwelling.
+        self._last_frame_sig: tuple[object, ...] | None = None
+        self._events_this_frame = False
         self._last_state: dict[str, Any] = {}
         # Persistence-of-vision smoothing state, keyed "led" / "seg" (U9).
         self._ema: dict[str, list[float]] = {}
@@ -411,6 +421,10 @@ class SimulationScreen:
     def _pump_events(self) -> SimExit | None:
         """Handle one frame of pygame events; return an exit intent if requested."""
         events = pygame.event.get()
+        # Any event this frame forces a redraw (U23): mouse motion updates hover
+        # highlights + tooltips, clicks toggle switches, resize/expose/focus
+        # damage the window.  When nothing happened, the redraw can be skipped.
+        self._events_this_frame = bool(events)
         # Classify window-close vs ESC before the board collapses both to
         # ``running = False`` (window X quits the whole app; ESC stops the sim).
         nav: SimExit | None = None
@@ -468,7 +482,16 @@ class SimulationScreen:
     # ── Rendering ──────────────────────────────────────────────────────────────
 
     def _render_frame(self) -> None:
-        """Draw board + panel + overlays, flip, and accumulate host-frame timing."""
+        """Draw board + panel + overlays and flip — unless nothing changed (U23).
+
+        The whole board/panel/overlay draw + ``flip`` is skipped when the frame
+        would be pixel-identical to the last one drawn: the board signature,
+        connection/pause state, and pygame events are all unchanged, no tooltip
+        is dwelling over a component, and the (always-live) stats panel is
+        hidden.  The front buffer already shows the right pixels, so a skipped
+        frame just keeps pacing at the fps cap and lets the CPU idle.  Timing is
+        accumulated every frame (a skip records zero draw time).
+        """
         # Keep the board's panel-height reservation synced after a window resize.
         if self._show_panel:
             cur_offset = self.panel.panel_height
@@ -476,23 +499,36 @@ class SimulationScreen:
                 self.board.set_height_offset(cur_offset)
                 self._board_offset = cur_offset
 
-        t_draw_start = time.monotonic_ns()
-        self.board._draw(flip=False)
-        if self._show_panel:
-            self.panel.draw()
-        if self._connected:
-            self._draw_overlays()
-        else:
-            self._draw_waiting()
-        pygame.display.flip()
-        t_draw_end = time.monotonic_ns()
+        sig = (self._connected, self.panel.paused, self.board.visual_signature())
+        dirty = (
+            self._events_this_frame  # mouse/keys/resize/expose/focus this frame
+            or self._last_frame_sig is None  # nothing drawn yet
+            or self._show_panel  # stats panel updates its live counters every frame
+            or sig != self._last_frame_sig  # LED/seg/switch/button/size/pause change
+            or self.board.hover_active()  # a dwell-timed tooltip may be in play
+        )
 
+        draw_us = 0.0
+        if dirty:
+            t_draw_start = time.monotonic_ns()
+            self.board._draw(flip=False)
+            if self._show_panel:
+                self.panel.draw()
+            if self._connected:
+                self._draw_overlays()
+            else:
+                self._draw_waiting()
+            pygame.display.flip()
+            draw_us = (time.monotonic_ns() - t_draw_start) / 1_000
+            self._last_frame_sig = sig
+            self.run_stats.frames_drawn += 1
+
+        t_idle_start = time.monotonic_ns()
         self.clock.tick(60)
-        t_tick_end = time.monotonic_ns()
+        idle_us = (time.monotonic_ns() - t_idle_start) / 1_000
 
+        self.run_stats.frames += 1
         fps = self.clock.get_fps()
-        draw_us = (t_draw_end - t_draw_start) / 1_000
-        idle_us = (t_tick_end - t_draw_end) / 1_000
         sim_pct = float(self._last_state.get("timer_pct", 0.0)) if self._connected else 0.0
         self.panel.update_timing(
             fps=fps, timer_us=0.0, draw_us=draw_us, idle_us=idle_us, sim_pct=sim_pct
@@ -641,9 +677,11 @@ class SimulationScreen:
         duration = time.monotonic() - session_start
         last = self._bye or self._last_state
         sim_ns = int(last.get("sim_ns", 0)) if last else 0
+        # ``frames`` is incremented live per loop tick (so it stays >= the
+        # draw count for the U23 skip accounting); ``n`` is the fps-sample count
+        # (frames with a settled clock), the divisor for the frame-share means.
         n = len(self._fps_acc)
         stats = self.run_stats
-        stats.frames = n
         stats.sim_ns = sim_ns
         stats.steps = int(last.get("steps", 0)) if last else 0
         stats.duration_s = duration
