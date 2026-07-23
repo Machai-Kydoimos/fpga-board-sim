@@ -140,10 +140,34 @@ requires — a header-comment-only stub next to the copied `lang.opt` satisfies 
 re-running `copy-sources` deletes the copied dir, stub included); and without `makeinfo`
 installed, pass `MAKEINFO=true` to **both** `make` and `make install`.
 
+## Addendum: design-level optimization, measured — and wired in (2026-07-23)
+
+The remaining cell of the matrix — layer (c), optimizing *what the simulators build per design* —
+measured via flag-injecting shims (product path untouched during measurement):
+
+| design | GHDL-LLVM base → `-O2` | NVC `-O2` (default) → `-O3` |
+|---|---|---|
+| `blinky` | 0.01769x → 0.01906x (**+7.7%**) | +1.2% |
+| `counter_7seg` | 0.00428x → 0.00477x (**+11.3%**) | 0% |
+| `mx65` CPU | 0.00314x → 0.00353x (**+12.4%**) | −0.8% |
+| `t80` CPU | 0.00139x → 0.00144x (+4.1%) | −6.7% (single run; ≤ noise band) |
+| `rgb_rainbow` | 0.00133x → 0.00132x (−0.5%) | 0% |
+
+- **GHDL `-O2` at `-a`/`-e` pays +8–12% on design-bound workloads** under the LLVM AOT backend,
+  is flat on the library-bound `rgb_rainbow` (consistent with §2), and costs ≤0.6 s of
+  analyze/elaborate on the largest design in the fleet. On mcode and LLVM-JIT it is a measured
+  no-op (both accept the flag; deltas within their ±3–4% run noise).
+- **Product change:** `sim_bridge`'s `_GHDLBackend.analyze_cmd`/`elaborate_cmd` now pass `-O2`
+  unconditionally (guard tests pin it to `-a`/`-e` and off `-r`).
+- **NVC stays at its default `-O2`**: `-O3` measured zero-to-slightly-negative across all five
+  workloads.
+- New T80 baselines ride along: NVC 0.00355x / GHDL-LLVM 0.00139x (NVC 2.6×, conventional class).
+
 ## Follow-ups (assessed, not planned)
 
 - `-O2`/`-O3` library codegen (beyond `--disable-checks`' `-O1`): possible via `LIB_CFLAGS`;
   expected minor — §2 shows the cost is call/temp *structure*, not codegen quality. Revisit only
   if a library-bound design becomes a real user pain point.
 - ~~`ghdl-gcc` backend~~: measured — see the addendum above; llvm-class confirmed, closed.
+- ~~Design-level `-O2`~~: measured and shipped — see the addendum above.
 - U23 (dirty-flag redraw) and P1 (NVC elaborate-once) remain the open roadmap perf items.
