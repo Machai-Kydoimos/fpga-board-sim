@@ -1062,11 +1062,19 @@ class NativePort:
 
 @dataclass(frozen=True)
 class NativeSeg:
-    """A matched native 7-segment interface (B2 in-scope: ``individual`` style).
+    """A matched native 7-segment interface (``individual`` or ``scan`` style, U22).
 
-    ``names`` are the per-digit port names (e.g. ``("HEX0", ..., "HEX5")``), each
-    a ``width_per_digit``-bit vector.  ``digit_enable`` is unused by the in-scope
-    styles (it belongs to the ``scan`` style, which B2 declines).
+    ``individual``: ``names`` are the per-digit port names (e.g. ``("HEX0", ...,
+    "HEX5")``), each a ``width_per_digit``-bit vector; ``digit_enable``/``dp``
+    are unused.
+
+    ``scan``: ``names`` describe the *shared segment lines* -- either one
+    ``width_per_digit``-bit vector (``("seg",)``, ``scalar_segments=False``) or
+    per-segment scalars (``("CA", ..., "CG")``, ``scalar_segments=True``) --
+    ``digit_enable`` is the digit-select bank (its width is the digit count),
+    and ``dp`` is the shared decimal-point scalar when both the convention and
+    the design declare one.  ``active_low`` covers the segment (and dp) drive;
+    the enable's polarity rides on ``digit_enable.active_low``.
     """
 
     style: str
@@ -1074,6 +1082,15 @@ class NativeSeg:
     width_per_digit: int
     active_low: bool = False
     digit_enable: NativePort | None = None
+    dp: str | None = None
+    scalar_segments: bool = False
+
+    @property
+    def num_digits(self) -> int:
+        """Digit count: the enable width for ``scan``, else one digit per name."""
+        if self.style == "scan" and self.digit_enable is not None:
+            return self.digit_enable.width
+        return len(self.names)
 
 
 @dataclass(frozen=True)
@@ -1176,28 +1193,112 @@ def _match_native_port(
     return None  # width mismatch
 
 
+def _seg_role_port_names(seg: dict[str, Any]) -> set[str]:
+    """Every port name (lowercased) a convention's 7-seg block lays claim to.
+
+    Drives the U22 partial-declaration guard in :func:`_attempt_convention`: a
+    design declaring *any* of these is trying to drive the display, so a failed
+    seg match must surface as a near-miss rather than the ports silently going
+    dark as unmapped outputs.  Covers every style — including the unmatchable
+    ones (``per_segment_scalars``/``serial``), whose declared ports also mean
+    "this design drives the display" and deserve the same honest rejection.
+    """
+    names: set[str] = set()
+    raw_names = seg.get("names")
+    if isinstance(raw_names, list):
+        names.update(str(n).lower() for n in raw_names)
+    if isinstance(seg.get("name"), str):
+        names.add(str(seg["name"]).lower())
+    if isinstance(seg.get("dp"), str):
+        names.add(str(seg["dp"]).lower())
+    enable = seg.get("digit_enable")
+    if isinstance(enable, dict):
+        if isinstance(enable.get("name"), str):
+            names.add(str(enable["name"]).lower())
+        if isinstance(enable.get("names"), list):
+            names.update(str(n).lower() for n in enable["names"])
+    return names
+
+
 def _match_native_seg(
     seg: dict[str, Any],
     port_by_name: dict[str, _IfaceDecl],
 ) -> NativeSeg | None:
-    """Match an ``individual``-style 7-seg convention to native per-digit ports.
+    """Match an ``individual``- or ``scan``-style 7-seg convention (U22).
 
-    B2 supports only the ``individual`` style (one fixed-width vector per digit,
-    e.g. HEX0..n) — the only style present in canonical board data.  Other styles
-    (``packed_vector``/``per_segment_scalars``/``scan``/``serial``) decline here
-    and are left to the generic path / U22 / a later B3 extension.
+    ``individual``: one fixed-width vector per digit, e.g. HEX0..n.
+
+    ``scan``: the physical multiplexed interface — the shared segment lines
+    (one ``width_per_digit``-bit vector, or per-segment scalars via ``names``)
+    plus the ``digit_enable`` bank, both design *outputs*; the shared ``dp``
+    scalar is matched when both sides declare it and stays optional otherwise
+    (a dp-less design's dp bits are simply dark, mirroring ``leds_green``'s
+    leniency).
+
+    Other styles (``packed_vector``/``per_segment_scalars``/``serial``) decline
+    here and are left to the generic path (Icebox territory).
     """
-    if seg.get("style") != "individual":
-        return None
-    names = seg.get("names")
+    style = seg.get("style")
     wpd = seg.get("width_per_digit")
-    if not isinstance(names, list) or not names or not isinstance(wpd, int):
+    if style == "individual":
+        names = seg.get("names")
+        if not isinstance(names, list) or not names or not isinstance(wpd, int):
+            return None
+        for nm in names:
+            decl = port_by_name.get(str(nm).lower())
+            if decl is None or decl.mode != "out" or decl.literal_width != wpd:
+                return None
+        return NativeSeg(
+            "individual", tuple(str(n) for n in names), wpd, bool(seg.get("active_low"))
+        )
+
+    if style != "scan" or not isinstance(wpd, int):
         return None
-    for nm in names:
-        decl = port_by_name.get(str(nm).lower())
+    enable_decl = seg.get("digit_enable")
+    if not isinstance(enable_decl, dict):
+        return None
+    enable = _match_native_port(enable_decl, port_by_name, "out")
+    if enable is None:
+        return None
+
+    # Segment side: per-segment scalars (names[]) or one shared vector (name).
+    raw_names = seg.get("names")
+    if isinstance(raw_names, list) and raw_names:
+        if len(raw_names) != wpd:
+            return None  # inconsistent data; cross_check_widths refuses this too
+        for nm in raw_names:
+            decl = port_by_name.get(str(nm).lower())
+            if decl is None or decl.mode != "out" or decl.literal_width is not None:
+                return None
+        seg_names = tuple(str(n) for n in raw_names)
+        scalar_segments = True
+    else:
+        name = seg.get("name")
+        if not isinstance(name, str):
+            return None
+        decl = port_by_name.get(name.lower())
         if decl is None or decl.mode != "out" or decl.literal_width != wpd:
             return None
-    return NativeSeg("individual", tuple(str(n) for n in names), wpd, bool(seg.get("active_low")))
+        seg_names = (name,)
+        scalar_segments = False
+
+    # dp: matched only when both sides declare a scalar out of that name.
+    dp: str | None = None
+    dp_name = seg.get("dp")
+    if isinstance(dp_name, str):
+        decl = port_by_name.get(dp_name.lower())
+        if decl is not None and decl.mode == "out" and decl.literal_width is None:
+            dp = dp_name
+
+    return NativeSeg(
+        "scan",
+        seg_names,
+        wpd,
+        bool(seg.get("active_low")),
+        digit_enable=enable,
+        dp=dp,
+        scalar_segments=scalar_segments,
+    )
 
 
 def _attempt_convention(
@@ -1263,14 +1364,31 @@ def _attempt_convention(
             "btn" if buttons is not None else "buttons"
         )
 
-    # 7-seg is required only when the board physically has a display.
+    # 7-seg (U22 relax + guard): matched when the design *declares* any of the
+    # convention's seg-role ports, like switches/buttons post-U31 -- a design
+    # that leaves the display alone runs with dark digits (exactly how an
+    # unused leds_green/leds_rgb bank behaves).  The guard: declaring a strict
+    # subset (a typo'd or partial seg interface) is a near-miss naming the
+    # missing ports -- seg ports are *outputs*, so without this they would
+    # silently fall to the unmapped-open rule and the display would stay dark.
+    # Only considered when the board physically has a display (a convention's
+    # seg block without one -- Sword's serial lines -- stays ordinary outputs).
     seven_seg: NativeSeg | None = None
+    seg_ok = True
     board_seg = board_def.seven_seg
     if board_seg is not None:
-        seven_seg = _match_native_seg(block.get("seven_seg") or {}, port_by_name)
-        (matched if seven_seg is not None else problems).append(
-            "seg" if seven_seg is not None else "7-segment display"
-        )
+        seg_block = block.get("seven_seg") or {}
+        seg_role = _seg_role_port_names(seg_block)
+        seg_declared = {n for n in seg_role if n in port_by_name}
+        if seg_declared:
+            seven_seg = _match_native_seg(seg_block, port_by_name)
+            seg_ok = seven_seg is not None
+            if seven_seg is not None:
+                matched.append("seg")
+            else:
+                missing = sorted(seg_role - seg_declared)
+                detail = f" (missing/mismatched: {', '.join(missing)})" if missing else ""
+                problems.append(f"7-segment display{detail}")
 
     # Secondary LED bank (e.g. LEDG): captured when the design declares it, but
     # never required -- like the generic wrapper leaving `seg` dark, an unused
@@ -1296,6 +1414,8 @@ def _attempt_convention(
         consumed.update(n.lower() for n in seven_seg.names)
         if seven_seg.digit_enable is not None:
             consumed.update(n.lower() for n in seven_seg.digit_enable.names)
+        if seven_seg.dp is not None:
+            consumed.add(seven_seg.dp.lower())
     extra = sorted(
         n
         for n, d in port_by_name.items()
@@ -1310,7 +1430,7 @@ def _attempt_convention(
         and (leds is not None or leds_rgb is not None)
         and (not sw_declared or switches is not None)
         and (not btn_declared or buttons is not None)
-        and (board_seg is None or seven_seg is not None)
+        and seg_ok
         and not extra
     ):
         match = ConventionMatch(
@@ -1420,7 +1540,10 @@ def _native_convention_message(match: ConventionMatch, filename: str) -> str:
         parts.append(_role_span(match.leds_rgb))
     if match.seven_seg is not None:
         segs = match.seven_seg.names
-        parts.append(segs[0] if len(segs) == 1 else f"{segs[0]}..{segs[-1]}")
+        span = segs[0] if len(segs) == 1 else f"{segs[0]}..{segs[-1]}"
+        if match.seven_seg.style == "scan" and match.seven_seg.digit_enable is not None:
+            span += f"+{match.seven_seg.digit_enable.names[0]}"  # e.g. CA..CG+AN
+        parts.append(span)
     seg = "/seg" if match.seven_seg is not None else ""
     return (
         f"'{filename}' matches {match.board_name}'s board-native '{match.maker}' port "
@@ -1714,7 +1837,11 @@ def _render_native_wrapper(
       and fed to the native inputs;
     * LED outputs are read back and inverted onto ``led`` when active-low;
     * an ``individual``-style 7-seg is packed per digit into ``seg`` as the
-      active-high ``{dp, g..a}`` byte the display expects (dp forced off).
+      active-high ``{dp, g..a}`` byte the display expects (dp forced off);
+    * a ``scan``-style 7-seg (U22) is combinationally demultiplexed: digit i's
+      byte shows the shared segment lines (+ dp) only while its digit enable
+      is active -- unlatched, so the duty engine integrates the honest 1/N
+      scan brightness and a stopped scan shows its one lit digit.
 
     The entity, generics, top ports and clock process are identical to the generic
     wrapper (so ``start_simulation``/``run_cmd``/``_write_gtkw``/the cocotb
@@ -1820,7 +1947,7 @@ def _render_native_wrapper(
         pmap += _native_port_map(green, "ledg_uut")
 
     # 7-seg (individual style): each digit is a wpd-bit vector packed into seg's byte.
-    if seg is not None:
+    if seg is not None and seg.style == "individual":
         wpd = seg.width_per_digit
         inv = "not " if seg.active_low else ""
         for i, name in enumerate(seg.names):
@@ -1830,6 +1957,49 @@ def _render_native_wrapper(
             if wpd < 8:  # remaining high bits of the digit byte (e.g. dp) -> off
                 assigns.append(f"  {seg_out}({8 * i + 7} downto {8 * i + wpd}) <= (others => '0');")
             pmap.append(f"{name} => {sig}")
+
+    # 7-seg (scan style, U22): the design drives the physical multiplexed
+    # interface -- shared segment lines + digit enables (+ shared dp).  The
+    # demux is deliberately combinational and UNLATCHED: digit i's boundary
+    # byte shows the (polarity-corrected) segment lines only while its enable
+    # is active, so the duty engine integrates the honest 1/N scan brightness
+    # and a stopped scan shows the one lit digit -- exactly the real hardware.
+    if seg is not None and seg.style == "scan":
+        assert seg.digit_enable is not None  # scan matches always carry the enable
+        wpd = seg.width_per_digit
+        digits = seg.num_digits
+        seg_inv = "not " if seg.active_low else ""
+        en_inv = "not " if seg.digit_enable.active_low else ""
+        decls.append(f"  signal scanseg_uut : std_logic_vector({wpd} - 1 downto 0);")
+        decls.append(f"  signal scanseg_on  : std_logic_vector({wpd} - 1 downto 0);")
+        decls.append(f"  signal scanen_uut  : std_logic_vector({digits} - 1 downto 0);")
+        decls.append(f"  signal scanen_on   : std_logic_vector({digits} - 1 downto 0);")
+        if seg.scalar_segments:
+            pmap += [f"{name} => scanseg_uut({k})" for k, name in enumerate(seg.names)]
+        else:
+            pmap.append(f"{seg.names[0]} => scanseg_uut")
+        pmap += _native_port_map(seg.digit_enable, "scanen_uut")
+        assigns.append(f"  scanseg_on <= {seg_inv}scanseg_uut;")
+        assigns.append(f"  scanen_on  <= {en_inv}scanen_uut;")
+        if seg.dp is not None:
+            decls.append("  signal scandp_uut : std_logic;")
+            decls.append("  signal scandp_on  : std_logic;")
+            pmap.append(f"{seg.dp} => scandp_uut")
+            # dp shares the segment drive polarity (one active_low per side).
+            assigns.append(f"  scandp_on  <= {seg_inv}scandp_uut;")
+        for i in range(digits):
+            assigns.append(
+                f"  {seg_out}({8 * i + wpd - 1} downto {8 * i}) <= "
+                f"scanseg_on when scanen_on({i}) = '1' else (others => '0');"
+            )
+            if wpd < 7:  # unused segment bits below dp (no current board)
+                assigns.append(f"  {seg_out}({8 * i + 6} downto {8 * i + wpd}) <= (others => '0');")
+            if seg.dp is not None:
+                assigns.append(
+                    f"  {seg_out}({8 * i + 7}) <= scandp_on when scanen_on({i}) = '1' else '0';"
+                )
+            else:
+                assigns.append(f"  {seg_out}({8 * i + 7}) <= '0';")
 
     # Generic *defaults* mirror ``build_generics`` (the board's resource counts,
     # floored at 1) so ``analyze_vhdl``'s default-generic elaboration validates the
@@ -1850,7 +2020,9 @@ def _render_native_wrapper(
             1, (led.width if led is not None else 0) + (rgb.width if rgb is not None else 0)
         )
 
-    seg_generic = [f"    NUM_SEGS         : positive := {len(seg.names)};"] if seg else []
+    # num_digits, NOT len(names): a scan match's names are the shared segment
+    # lines (7), while the boundary packs one byte per *digit* (enable width).
+    seg_generic = [f"    NUM_SEGS         : positive := {seg.num_digits};"] if seg else []
     seg_port = ["    seg         : out std_logic_vector(8 * NUM_SEGS - 1 downto 0);"] if seg else []
     lines = [
         "-- sim_wrapper.vhd (board-native, generated by sim_bridge.py -- U21 B3)",
@@ -2315,8 +2487,21 @@ def _native_gtkw_signals(match: ConventionMatch) -> list[str]:
     if match.leds_green is not None:
         sigs += _port(match.leds_green)
     if match.seven_seg is not None:
-        wpd = match.seven_seg.width_per_digit
-        sigs += [f"{scope}.{name.lower()}[{wpd - 1}:0]" for name in match.seven_seg.names]
+        seg = match.seven_seg
+        if seg.style == "scan":
+            # Shared segment lines: unranged scalars (CA..CG) or one vector,
+            # then the dp scalar and the digit-enable bank.
+            if seg.scalar_segments:
+                sigs += [f"{scope}.{name.lower()}" for name in seg.names]
+            else:
+                sigs.append(f"{scope}.{seg.names[0].lower()}[{seg.width_per_digit - 1}:0]")
+            if seg.dp is not None:
+                sigs.append(f"{scope}.{seg.dp.lower()}")
+            if seg.digit_enable is not None:
+                sigs += _port(seg.digit_enable)
+        else:
+            wpd = seg.width_per_digit
+            sigs += [f"{scope}.{name.lower()}[{wpd - 1}:0]" for name in seg.names]
     return sigs
 
 
