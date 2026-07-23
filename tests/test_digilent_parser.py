@@ -301,3 +301,152 @@ def test_named_buttons_components_and_convention():
         "names": ["btnC", "btnU", "btnD", "btnL", "btnR"],
         "active_low": False,
     }
+
+
+# ── 7-segment scan classification (U22) ──────────────────────────────────
+
+_XDC_SEG_SCALAR_SCAN = """
+## Clock signal
+set_property -dict { PACKAGE_PIN E3 IOSTANDARD LVCMOS33 } [get_ports { CLK100MHZ }];
+create_clock -add -name sys_clk_pin -period 10.00 [get_ports { CLK100MHZ }];
+
+## LEDs
+set_property -dict { PACKAGE_PIN H17 IOSTANDARD LVCMOS33 } [get_ports { LED[0] }];
+
+##7 segment display
+set_property -dict { PACKAGE_PIN T10 IOSTANDARD LVCMOS33 } [get_ports { CA }];
+set_property -dict { PACKAGE_PIN R10 IOSTANDARD LVCMOS33 } [get_ports { CB }];
+set_property -dict { PACKAGE_PIN K16 IOSTANDARD LVCMOS33 } [get_ports { CC }];
+set_property -dict { PACKAGE_PIN K13 IOSTANDARD LVCMOS33 } [get_ports { CD }];
+set_property -dict { PACKAGE_PIN P15 IOSTANDARD LVCMOS33 } [get_ports { CE }];
+set_property -dict { PACKAGE_PIN T11 IOSTANDARD LVCMOS33 } [get_ports { CF }];
+set_property -dict { PACKAGE_PIN L18 IOSTANDARD LVCMOS33 } [get_ports { CG }];
+set_property -dict { PACKAGE_PIN H15 IOSTANDARD LVCMOS33 } [get_ports { DP }];
+set_property -dict { PACKAGE_PIN J17 IOSTANDARD LVCMOS33 } [get_ports { AN[0] }];
+set_property -dict { PACKAGE_PIN J18 IOSTANDARD LVCMOS33 } [get_ports { AN[1] }];
+set_property -dict { PACKAGE_PIN T9 IOSTANDARD LVCMOS33 } [get_ports { AN[2] }];
+set_property -dict { PACKAGE_PIN J14 IOSTANDARD LVCMOS33 } [get_ports { AN[3] }];
+set_property -dict { PACKAGE_PIN P14 IOSTANDARD LVCMOS33 } [get_ports { AN[4] }];
+set_property -dict { PACKAGE_PIN T14 IOSTANDARD LVCMOS33 } [get_ports { AN[5] }];
+set_property -dict { PACKAGE_PIN K2 IOSTANDARD LVCMOS33 } [get_ports { AN[6] }];
+set_property -dict { PACKAGE_PIN U13 IOSTANDARD LVCMOS33 } [get_ports { AN[7] }];
+"""
+
+_XDC_SEG_VECTOR_SCAN = """
+## Clock signal
+set_property -dict { PACKAGE_PIN W5 IOSTANDARD LVCMOS33 } [get_ports clk];
+create_clock -add -name sys_clk_pin -period 10.00 [get_ports clk];
+
+## LEDs
+set_property -dict { PACKAGE_PIN U16 IOSTANDARD LVCMOS33 } [get_ports {led[0]}];
+
+##7 segment display
+set_property -dict { PACKAGE_PIN W7 IOSTANDARD LVCMOS33 } [get_ports {seg[0]}];
+set_property -dict { PACKAGE_PIN W6 IOSTANDARD LVCMOS33 } [get_ports {seg[1]}];
+set_property -dict { PACKAGE_PIN U8 IOSTANDARD LVCMOS33 } [get_ports {seg[2]}];
+set_property -dict { PACKAGE_PIN V8 IOSTANDARD LVCMOS33 } [get_ports {seg[3]}];
+set_property -dict { PACKAGE_PIN U5 IOSTANDARD LVCMOS33 } [get_ports {seg[4]}];
+set_property -dict { PACKAGE_PIN V5 IOSTANDARD LVCMOS33 } [get_ports {seg[5]}];
+set_property -dict { PACKAGE_PIN U7 IOSTANDARD LVCMOS33 } [get_ports {seg[6]}];
+set_property -dict { PACKAGE_PIN V7 IOSTANDARD LVCMOS33 } [get_ports dp];
+set_property -dict { PACKAGE_PIN U2 IOSTANDARD LVCMOS33 } [get_ports {an[0]}];
+set_property -dict { PACKAGE_PIN U4 IOSTANDARD LVCMOS33 } [get_ports {an[1]}];
+set_property -dict { PACKAGE_PIN V4 IOSTANDARD LVCMOS33 } [get_ports {an[2]}];
+set_property -dict { PACKAGE_PIN W4 IOSTANDARD LVCMOS33 } [get_ports {an[3]}];
+"""
+
+_XDC_SEG_SERIAL = """
+## Clock signal
+set_property -dict { PACKAGE_PIN AC18 IOSTANDARD LVCMOS33 } [get_ports { clk }];
+create_clock -add -name sys_clk_pin -period 10.00 [get_ports { clk }];
+
+## LEDs
+set_property -dict { PACKAGE_PIN J13 IOSTANDARD LVCMOS33 } [get_ports { led[0] }];
+
+## 7 segment display
+set_property -dict { PACKAGE_PIN M24 IOSTANDARD LVCMOS33 } [get_ports { sseg_clk }];
+set_property -dict { PACKAGE_PIN L24 IOSTANDARD LVCMOS33 } [get_ports { sseg_en }];
+set_property -dict { PACKAGE_PIN N23 IOSTANDARD LVCMOS33 } [get_ports { sseg_sdo }];
+"""
+
+_XDC_SEG_NO_ANODES = """
+## Clock signal
+set_property -dict { PACKAGE_PIN W5 IOSTANDARD LVCMOS33 } [get_ports clk];
+create_clock -add -name sys_clk_pin -period 10.00 [get_ports clk];
+
+## LEDs
+set_property -dict { PACKAGE_PIN U16 IOSTANDARD LVCMOS33 } [get_ports {led[0]}];
+
+##7 segment display
+set_property -dict { PACKAGE_PIN W7 IOSTANDARD LVCMOS33 } [get_ports {seg[0]}];
+set_property -dict { PACKAGE_PIN W6 IOSTANDARD LVCMOS33 } [get_ports {seg[1]}];
+set_property -dict { PACKAGE_PIN U8 IOSTANDARD LVCMOS33 } [get_ports {seg[2]}];
+set_property -dict { PACKAGE_PIN V8 IOSTANDARD LVCMOS33 } [get_ports {seg[3]}];
+set_property -dict { PACKAGE_PIN U5 IOSTANDARD LVCMOS33 } [get_ports {seg[4]}];
+set_property -dict { PACKAGE_PIN V5 IOSTANDARD LVCMOS33 } [get_ports {seg[5]}];
+set_property -dict { PACKAGE_PIN U7 IOSTANDARD LVCMOS33 } [get_ports {seg[6]}];
+"""
+
+
+def test_seg_scalar_scan_convention():
+    """Nexys 4 DDR idiom: CA..CG scalars + DP + AN[7:0] -> scan, not the
+    pre-U22 'individual' mislabel (7 shared segments are not 7 digit ports)."""
+    board = build_board_json(_XDC_SEG_SCALAR_SCAN, "Nexys-4-DDR-Master.xdc", "sha")
+    assert board is not None
+    assert board["seven_seg"] == {
+        "num_digits": 8,
+        "has_dp": True,
+        "is_multiplexed": True,
+        "inverted": True,
+        "select_inverted": True,
+    }
+    assert board["port_conventions"]["digilent"]["seven_seg"] == {
+        "style": "scan",
+        "names": ["CA", "CB", "CC", "CD", "CE", "CF", "CG"],
+        "width_per_digit": 7,
+        "active_low": True,
+        "dp": "DP",
+        "digit_enable": {"name": "AN", "width": 8, "active_low": True},
+    }
+
+
+def test_seg_vector_scan_convention():
+    """Basys 3 idiom: shared seg[6:0] vector + dp + an[3:0] -> scan, not the
+    pre-U22 'packed_vector' (the vector spans segments, not all digits)."""
+    board = build_board_json(_XDC_SEG_VECTOR_SCAN, "Basys-3-Master.xdc", "sha")
+    assert board is not None
+    assert board["seven_seg"]["num_digits"] == 4
+    assert board["seven_seg"]["is_multiplexed"] is True
+    assert board["port_conventions"]["digilent"]["seven_seg"] == {
+        "style": "scan",
+        "name": "seg",
+        "width_per_digit": 7,
+        "active_low": True,
+        "dp": "dp",
+        "digit_enable": {"name": "an", "width": 4, "active_low": True},
+    }
+
+
+def test_seg_serial_convention_and_no_board_seven_seg():
+    """Sword idiom: sseg_clk/sseg_en/sseg_sdo shift interface -> 'serial'
+    (documenting; the native matcher declines it), with no polarity claim
+    (verify-or-omit) -- and no board-level seven_seg def (no shared segment
+    lines the simulator could drive)."""
+    board = build_board_json(_XDC_SEG_SERIAL, "Sword-Master.xdc", "sha")
+    assert board is not None
+    assert board["seven_seg"] is None
+    assert board["port_conventions"]["digilent"]["seven_seg"] == {
+        "style": "serial",
+        "names": ["sseg_clk", "sseg_en", "sseg_sdo"],
+    }
+
+
+def test_seg_vector_without_anodes_stays_packed_vector():
+    """A segment vector with no digit-enable lines is not scan (no current
+    board; guards the upgrade rule's precondition)."""
+    board = build_board_json(_XDC_SEG_NO_ANODES, "Hypo-Master.xdc", "sha")
+    assert board is not None
+    conv = board["port_conventions"]["digilent"]["seven_seg"]
+    assert conv["style"] == "packed_vector"
+    assert "digit_enable" not in conv
+    assert "dp" not in conv

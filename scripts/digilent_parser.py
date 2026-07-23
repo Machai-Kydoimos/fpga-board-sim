@@ -460,39 +460,52 @@ def _build_button_components(pin_entries: list[dict[str, Any]]) -> list[dict[str
     return sorted(components, key=lambda c: c["number"])
 
 
+def _categorize_seg_ports(
+    pin_entries: list[dict[str, Any]],
+) -> tuple[list[str], list[str], str | None, list[str]]:
+    """Split a 7-segment XDC section's ports into (segments, anodes, dp, other).
+
+    ``segments`` are the shared segment lines in either Digilent idiom — an
+    indexed ``seg[0..6]`` vector (Basys 3, Nexys 4) or the ``CA..CG`` scalars
+    (Nexys 4 DDR / A7 family); ``anodes`` are the ``an[n]`` digit-enable lines;
+    ``dp`` is the shared decimal-point scalar.  Anything else lands in
+    ``other`` — e.g. Sword's serial shift interface (``sseg_clk``/``sseg_en``/
+    ``sseg_sdo``), which is neither a segment nor a digit enable (U22).
+    """
+    segments: list[str] = []
+    anodes: list[str] = []
+    dp: str | None = None
+    other: list[str] = []
+
+    for entry in pin_entries:
+        port = entry["port"].strip()
+        port_lower = port.lower()
+        base, idx = _parse_port_name(port)
+
+        # Anode/digit-select pins: an[0]..an[n] (Basys 3) / AN[7:0] (Nexys)
+        if base.lower() in ("an",):
+            anodes.append(port)
+        # Shared decimal-point scalar: dp / DP
+        elif port_lower in ("dp",):
+            dp = port
+        # Indexed segments: seg[0]..seg[6]
+        elif base.lower() in ("seg",) and idx is not None:
+            segments.append(port)
+        # Individual segment scalars: CA, CB, CC, CD, CE, CF, CG
+        elif port_lower in ("ca", "cb", "cc", "cd", "ce", "cf", "cg"):
+            segments.append(port)
+        else:
+            other.append(port)
+
+    return segments, anodes, dp, other
+
+
 def _build_seven_seg(pin_entries: list[dict[str, Any]]) -> dict[str, Any] | None:
     """Build seven_seg definition from parsed 7-segment XDC section."""
     if not pin_entries:
         return None
 
-    segments: list[str] = []
-    anodes: list[str] = []
-    has_dp = False
-
-    for entry in pin_entries:
-        port = entry["port"].strip()
-        port_lower = port.lower()
-
-        # Detect anode/digit-select pins
-        base, idx = _parse_port_name(port)
-        if base.lower() in ("an",):
-            anodes.append(port)
-            continue
-
-        # Detect decimal point
-        if port_lower in ("dp",):
-            has_dp = True
-            continue
-
-        # Detect indexed segments: seg[0]..seg[6]
-        if base.lower() in ("seg",) and idx is not None:
-            segments.append(port)
-            continue
-
-        # Detect individual segments: CA, CB, CC, CD, CE, CF, CG
-        if port_lower in ("ca", "cb", "cc", "cd", "ce", "cf", "cg"):
-            segments.append(port)
-            continue
+    segments, anodes, dp, _other = _categorize_seg_ports(pin_entries)
 
     if not segments:
         return None
@@ -500,7 +513,7 @@ def _build_seven_seg(pin_entries: list[dict[str, Any]]) -> dict[str, Any] | None
     num_digits = max(len(anodes), 1)
     return {
         "num_digits": num_digits,
-        "has_dp": has_dp,
+        "has_dp": dp is not None,
         "is_multiplexed": len(anodes) > 0,
         "inverted": True,
         "select_inverted": True,
@@ -677,35 +690,61 @@ def _build_port_conventions(
                     "active_low": False,
                 }
 
-    # 7-segment
+    # 7-segment (U22).  Digilent's multiplexed displays share one set of
+    # segment lines across all digits, selected by the an[] anodes -- that is
+    # the schema's `scan` style, where the segment side (`name`/`names`) lists
+    # the *shared segment lines* and the digit count is `digit_enable.width`
+    # (unlike `individual`, whose names are per-digit ports).  Polarity is
+    # cited from the boards' Digilent RM 7-seg sections (common-anode digits:
+    # "a low voltage applied to a cathode illuminates the segment"; anodes
+    # driven through inverting transistors, so AN is active-low too) -- see
+    # docs/port_convention_sources/digilent.toml.
     seg_entries = pins.get("seven_seg", [])
     if seg_entries:
-        segments: list[str] = []
-        for entry in seg_entries:
-            port = entry["port"].strip()
-            port_lower = port.lower()
-            if port_lower not in ("dp",) and not port.lower().startswith("an"):
-                base, idx = _parse_port_name(port)
-                if base.lower() not in ("an",):
-                    segments.append(port)
+        segments, anodes, dp, other = _categorize_seg_ports(seg_entries)
 
+        seg_conv: dict[str, Any] | None = None
         if segments:
-            first_seg = segments[0]
-            base, idx = _parse_port_name(first_seg)
-            if idx is not None:
-                convention["seven_seg"] = {
+            first_base, first_idx = _parse_port_name(segments[0])
+            if first_idx is not None:
+                # Shared segment vector: seg[0..6] (Basys 3, Nexys 4)
+                seg_conv = {
                     "style": "packed_vector",
-                    "name": base,
-                    "width_per_digit": 7,
+                    "name": first_base,
+                    "width_per_digit": len(segments),
                     "active_low": True,
                 }
             else:
-                convention["seven_seg"] = {
-                    "style": "individual",
-                    "names": segments[:7],
-                    "width_per_digit": 7,
+                # Segment scalars: CA..CG (Nexys 4 DDR / A7 family).  Without
+                # a digit select these would be one directly driven digit's
+                # per-digit-per-segment scalars (no current board).
+                seg_conv = {
+                    "style": "per_segment_scalars",
+                    "names": segments,
+                    "width_per_digit": len(segments),
                     "active_low": True,
                 }
+            if anodes:
+                # Digit enables present -> the shared lines are multiplexed:
+                # upgrade to `scan` (mirrors classify.py's packed+enable rule).
+                an_base, _ = _parse_port_name(anodes[0])
+                seg_conv["style"] = "scan"
+                if dp is not None:
+                    seg_conv["dp"] = dp
+                seg_conv["digit_enable"] = {
+                    "name": an_base,
+                    "width": len(anodes),
+                    "active_low": True,
+                }
+        elif other and not anodes:
+            # No shared segment lines at all: a serial shift-register
+            # interface (Sword's sseg_clk/sseg_en/sseg_sdo).  Documented as
+            # `serial` -- the native matcher declines it -- with no polarity
+            # claim (verify-or-omit: no RM states the shift-line polarity).
+            seg_conv = {"style": "serial", "names": other}
+
+        if seg_conv is not None:
+            convention["seven_seg"] = seg_conv
 
     if len(convention) <= 1:
         return {}

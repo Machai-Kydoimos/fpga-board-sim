@@ -164,7 +164,8 @@ This document inventories all viable improvements and ranks them by impact.
 #### U22. 7-segment v2 — physical mux mode
 
 - **Why:** Queued in memory (#8); current v1 is logical-only. v2 enables the hardware-accurate scan interface on Nexys4-DDR, RZ-EasyFPGA, StepMXO2.
-- **What:** New conditional placeholders in the unified wrapper template, updated testbench readback, new `physical_mux: bool` toggle per board.
+- **What:** New conditional placeholders in the unified wrapper template, updated testbench readback, new `physical_mux: bool` toggle per board. *(Superseded 2026-07-23 — the arc plan retires all three mechanisms in favor of the board-native `scan` convention path; see the plan.)*
+- **Plan:** [`u22_7seg_scan_plan.md`](u22_7seg_scan_plan.md) (2026-07-23; Phases D/MW/E → issues #320/#321/#322, milestone v0.19.0).
 - **Effort:** L.
 - **Dependencies:** D1 ✅ (unified wrapper template is in place). U21 ✅ Part A landed the scan-style schema fields (`style: scan` + `digit_enable`) and registry-verified scan data (Basys3 packed `seg`+`an`, Nexys4-DDR `CA..CG`, Mimas A7 `SevenSegment`+`Enable` — see `docs/port_convention_sources/`) — consume that, don't re-research.
 - **Done when:** a muxed 7-seg board (e.g. Nexys4-DDR) shows correct digits via the physical scan interface.

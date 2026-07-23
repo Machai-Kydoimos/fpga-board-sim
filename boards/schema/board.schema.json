@@ -298,7 +298,7 @@
         "style": {
           "type": "string",
           "enum": ["packed_vector", "individual", "per_segment_scalars", "scan", "serial"],
-          "description": "'packed_vector': one vector spanning all digits; 'individual': one port per digit, e.g. HEX0..n; 'per_segment_scalars': one scalar port per segment per digit, e.g. o_Segment1_A; 'scan': shared segment lines multiplexed via digit_enable; 'serial': shift-register driven"
+          "description": "'packed_vector': one vector spanning all digits; 'individual': one port per digit, e.g. HEX0..n; 'per_segment_scalars': one scalar port per segment per digit, e.g. o_Segment1_A; 'scan': shared segment lines multiplexed via digit_enable — for this style 'name'/'names' describe the SEGMENT side (one shared vector, e.g. Basys 3's seg[6:0], or per-segment scalars, e.g. Nexys 4 DDR's CA..CG) and the digit count is digit_enable.width, unlike 'individual' where names are per-digit ports (U22); 'serial': shift-register driven"
         },
         "name": { "type": "string" },
         "names": {
@@ -307,9 +307,13 @@
         },
         "width_per_digit": { "type": "integer" },
         "active_low": { "type": "boolean", "default": false },
+        "dp": {
+          "type": "string",
+          "description": "Shared decimal-point scalar port for the 'scan' style (e.g. Basys 3's 'dp', Nexys 4 DDR's 'DP'); same drive polarity as the segments (active_low). Absent when the source lists no shared dp line."
+        },
         "digit_enable": {
           "$ref": "#/$defs/port_mapping",
-          "description": "Digit-select/enable strobe used by the 'scan' style"
+          "description": "Digit-select/enable strobe used by the 'scan' style; its width is the display's digit count"
         }
       }
     }
