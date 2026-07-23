@@ -396,9 +396,30 @@ def _synth_iface(block: dict[str, Any]) -> list[_IfaceDecl]:
     add("buttons", "in")
     add("leds_green", "out")
     ss = block.get("seven_seg")
-    if isinstance(ss, dict) and ss.get("names"):
-        wpd = int(ss["width_per_digit"])
-        ports.extend(_IfaceDecl([str(n).lower()], "out", False, wpd) for n in ss["names"])
+    if isinstance(ss, dict):
+        style = ss.get("style")
+        if style == "individual" and ss.get("names"):
+            # One width_per_digit-bit vector port per digit (HEX0..n).
+            wpd = int(ss["width_per_digit"])
+            ports.extend(_IfaceDecl([str(n).lower()], "out", False, wpd) for n in ss["names"])
+        elif style == "scan":
+            # U22 physical scan interface: shared segment lines (one vector or
+            # per-segment scalars) + digit_enable vector + optional dp scalar.
+            if ss.get("names"):
+                ports.extend(_IfaceDecl([str(n).lower()], "out", False, None) for n in ss["names"])
+            elif "name" in ss:
+                ports.append(
+                    _IfaceDecl([str(ss["name"]).lower()], "out", False, int(ss["width_per_digit"]))
+                )
+            if isinstance(ss.get("dp"), str):
+                ports.append(_IfaceDecl([ss["dp"].lower()], "out", False, None))
+            en = ss.get("digit_enable")
+            if isinstance(en, dict) and "name" in en and "width" in en:
+                ports.append(_IfaceDecl([str(en["name"]).lower()], "out", False, int(en["width"])))
+        elif style == "serial" and ss.get("names"):
+            # Shift-register lines (Sword's sseg_clk/sseg_en/sseg_sdo): scalar
+            # outputs; the style carries no width_per_digit.
+            ports.extend(_IfaceDecl([str(n).lower()], "out", False, None) for n in ss["names"])
     return ports
 
 
@@ -472,7 +493,10 @@ def test_every_canonical_board_matches_its_own_synthesized_interface() -> None:
             continue
         seg = block.get("seven_seg") or {}
         if bd.seven_seg is not None and seg.get("style") != "individual":
-            continue  # non-individual seg not adaptable yet -> U22
+            # Non-individual seg not adaptable yet.  U22 Phase MW (#321) adds
+            # scan matching -- when it lands, scan-style boards (Basys 3, the
+            # Nexys 4/A7 family) move from skipped to checked here.
+            continue
         checked += 1
         if match_convention(_synth_iface(block), [], bd) is None:
             failures.append(bd.name)

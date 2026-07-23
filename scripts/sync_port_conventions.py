@@ -385,6 +385,25 @@ def cross_check_widths(convention: dict[str, Any], board: dict[str, Any]) -> str
             if got_digits != num_digits:
                 return f"seven_seg digit count {got_digits} != board's {num_digits}"
 
+    if seg and seg["style"] == "scan":
+        # Scan style (U22): the segment side is the shared lines, so the digit
+        # count lives in digit_enable.width -- comparing len(names) would
+        # repeat the 7-segments-vs-8-digits confusion this style fixes.  The
+        # segment side is self-checked instead (names[] must agree with
+        # width_per_digit).  `serial` has no per-digit ports at all and is
+        # deliberately not digit-checked.
+        board_seg = board.get("seven_seg") or {}
+        num_digits = board_seg.get("num_digits")
+        enable_width = seg.get("digit_enable", {}).get("width")
+        if num_digits is not None and enable_width is not None and enable_width != num_digits:
+            return f"seven_seg digit_enable width {enable_width} != board's {num_digits} digits"
+        names = seg.get("names")
+        if names is not None and len(names) != seg["width_per_digit"]:
+            return (
+                f"seven_seg scan segment names count {len(names)} != "
+                f"width_per_digit {seg['width_per_digit']}"
+            )
+
     return None
 
 

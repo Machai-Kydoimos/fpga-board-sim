@@ -192,7 +192,7 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   leds = "led[15:0]"
   buttons = "btnC/btnU/btnD/btnL/btnR scalars (active-low reset button excluded)"
   switches = "sw[15:0]"
-  seven_seg = "packed_vector 'seg' (7 bits/digit, active-low)"
+  seven_seg = "scan: shared vector 'seg' (7 segment lines) + 'dp' + digit_enable 'an' (4 digits), all active-low (Basys 3 RM Seven-Segment Display: 'both the AN0..N and the CA..G/DP signals are driven low when active'; snapshot 2025-01-26)"
   active_low = "buttons active_low=False; seven_seg active-low"
 
 [[board]]
@@ -431,7 +431,7 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   leds_rgb = "RGB1_Red..RGB2_Blue (6 scalars, r/g/b per site)"
   buttons = "btnC/btnU/btnD/btnL/btnR scalars (active-low reset button excluded)"
   switches = "sw[15:0]"
-  seven_seg = "packed_vector 'seg' (7 bits/digit, active-low)"
+  seven_seg = "scan: shared vector 'seg' (7 segment lines) + 'dp' + digit_enable 'an' (8 digits), all active-low (Nexys 4 RM Seven-Segment Display: 'both the AN0..N and the CA..G/DP signals are driven low when active'; snapshot 2024-07-14)"
   active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38); seven_seg active-low"
 
 [[board]]
@@ -455,7 +455,7 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   leds_rgb = "LED16_R..LED17_B (6 scalars, r/g/b per site)"
   buttons = "BTNC/BTNU/BTND/BTNL/BTNR scalars (active-low reset button excluded)"
   switches = "SW[15:0]"
-  seven_seg = "individual ports CA, CB, CC, CD, CE, CF, CG (7 bits each, active-low)"
+  seven_seg = "scan: shared segment scalars CA..CG + 'DP' + digit_enable 'AN' (8 digits), all active-low (Nexys 4 DDR RM Seven-Segment Display: 'both the AN0..N and the CA..G/DP signals are driven low when active'; snapshot 2025-01-23)"
   active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38); seven_seg active-low"
 
 [[board]]
@@ -479,7 +479,7 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   leds_rgb = "LED16_R..LED17_B (6 scalars, r/g/b per site)"
   buttons = "BTNC/BTNU/BTND/BTNL/BTNR scalars (active-low reset button excluded)"
   switches = "SW[15:0]"
-  seven_seg = "individual ports CA, CB, CC, CD, CE, CF, CG (7 bits each, active-low)"
+  seven_seg = "scan: shared segment scalars CA..CG + 'DP' + digit_enable 'AN' (8 digits), all active-low (Nexys A7 RM Seven-Segment Display: 'both the AN0..N and the CA..G/DP signals are driven low when active'; snapshot 2024-07-15)"
   active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38); seven_seg active-low"
 
 [[board]]
@@ -503,7 +503,7 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   leds_rgb = "LED16_R..LED17_B (6 scalars, r/g/b per site)"
   buttons = "BTNC/BTNU/BTND/BTNL/BTNR scalars (active-low reset button excluded)"
   switches = "SW[15:0]"
-  seven_seg = "individual ports CA, CB, CC, CD, CE, CF, CG (7 bits each, active-low)"
+  seven_seg = "scan: shared segment scalars CA..CG + 'DP' + digit_enable 'AN' (8 digits), all active-low (Nexys A7 RM Seven-Segment Display: 'both the AN0..N and the CA..G/DP signals are driven low when active'; snapshot 2024-07-15)"
   active_low = "buttons active_low=False; rgb active_low=False (RM tri-color prose, U38); seven_seg active-low"
 
 [[board]]
@@ -549,7 +549,7 @@ notes = "Auto-generated row: this board's port_conventions block is mechanically
   leds = "led[15:0]"
   buttons = "not in this convention"
   switches = "sw[15:0]"
-  seven_seg = "individual ports sseg_clk, sseg_en, sseg_sdo (7 bits each, active-low)"
+  seven_seg = "serial: sseg_clk/sseg_en/sseg_sdo shift interface (no shared segment lines; polarity uncited -- no RM, verify-or-omit)"
   active_low = "n/a; seven_seg active-low"
 
 [[board]]

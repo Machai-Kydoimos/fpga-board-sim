@@ -334,11 +334,60 @@ def test_cross_check_seven_seg_per_segment_scalars_digit_count() -> None:
     assert spc.cross_check_widths(convention, {"seven_seg": {"num_digits": 2}}) is None
 
 
-def test_cross_check_scan_style_has_no_digit_count_to_check() -> None:
-    # scan/packed_vector styles don't state a names list, and the board JSON
-    # has no corresponding "bits per digit" field either -- nothing to compare.
-    convention = {"seven_seg": {"style": "scan", "name": "seg", "width_per_digit": 7}}
+def test_cross_check_scan_digit_enable_width_vs_board_digits() -> None:
+    # U22: for scan, the digit count lives in digit_enable.width (the segment
+    # side is the shared lines) -- exact match required, like `individual`.
+    convention = {
+        "seven_seg": {
+            "style": "scan",
+            "name": "seg",
+            "width_per_digit": 7,
+            "digit_enable": {"name": "an", "width": 4, "active_low": True},
+        }
+    }
     assert spc.cross_check_widths(convention, {"seven_seg": {"num_digits": 4}}) is None
+    mismatch = spc.cross_check_widths(convention, {"seven_seg": {"num_digits": 8}})
+    assert mismatch is not None and "digit_enable" in mismatch
+
+
+def test_cross_check_scan_segment_names_must_match_width_per_digit() -> None:
+    # The scalar-segment idiom (CA..CG) self-checks: names[] IS the segment
+    # side, so its length must equal width_per_digit -- the 7-names-vs-8-digits
+    # confusion the scan style exists to prevent.
+    convention = {
+        "seven_seg": {
+            "style": "scan",
+            "names": ["CA", "CB", "CC", "CD", "CE", "CF", "CG"],
+            "width_per_digit": 7,
+            "digit_enable": {"name": "AN", "width": 8, "active_low": True},
+        }
+    }
+    assert spc.cross_check_widths(convention, {"seven_seg": {"num_digits": 8}}) is None
+    convention["seven_seg"]["width_per_digit"] = 8
+    mismatch = spc.cross_check_widths(convention, {"seven_seg": {"num_digits": 8}})
+    assert mismatch is not None and "segment names" in mismatch
+
+
+def test_cross_check_scan_without_digit_enable_or_board_digits_passes() -> None:
+    # Degenerate shapes stay permissive: no digit_enable (nothing to compare)
+    # or a board without a seven_seg def.
+    bare = {"seven_seg": {"style": "scan", "name": "seg", "width_per_digit": 7}}
+    assert spc.cross_check_widths(bare, {"seven_seg": {"num_digits": 4}}) is None
+    full = {
+        "seven_seg": {
+            "style": "scan",
+            "name": "seg",
+            "width_per_digit": 7,
+            "digit_enable": {"name": "an", "width": 4},
+        }
+    }
+    assert spc.cross_check_widths(full, {}) is None
+
+
+def test_cross_check_serial_style_is_never_digit_checked() -> None:
+    # Sword's shift interface has no per-digit ports; its names are bus lines.
+    convention = {"seven_seg": {"style": "serial", "names": ["sseg_clk", "sseg_en", "sseg_sdo"]}}
+    assert spc.cross_check_widths(convention, {"seven_seg": {"num_digits": 8}}) is None
 
 
 def test_cross_check_empty_convention_always_passes() -> None:

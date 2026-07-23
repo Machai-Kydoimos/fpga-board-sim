@@ -12,15 +12,14 @@ including all the Pmod/VGA/USB/QSPI sections a hand-picked excerpt would have
 left out -- this also doubles as the largest real-world exercise of the
 exclude filter in this test suite.
 
-One field is *not* asserted equal to the stored JSON: ``seven_seg.style``.
-The existing block says ``"packed_vector"``, produced by
-``scripts/digilent_parser.py`` before A0 added the ``"scan"`` style to the
-schema. Basys3's real hardware is scan-style (a shared 7-bit ``seg`` vector
-multiplexed by a 4-bit ``an`` digit-enable, both present in the source below)
--- Locked Decision 3 in ``docs/u21_board_native_vhdl_plan.md`` names Basys3 as
-a scan-style board by this same reasoning. This test asserts the new,
-corrected classification instead; the on-disk JSON is expected to catch up
-when A3/A4 regenerate it, not the other way around.
+The stored JSON caught up with the corrected ``seven_seg`` reading in U22
+Phase D: both this pipeline and ``scripts/digilent_parser.py`` now classify
+Basys3's display as ``"scan"`` (a shared 7-bit ``seg`` vector multiplexed by
+a 4-bit ``an`` digit-enable, both present in the source below -- Locked
+Decision 3 in ``docs/u21_board_native_vhdl_plan.md``).  The stored block is
+additionally *enriched* beyond what ``classify`` derives: ``dp`` (the shared
+decimal-point scalar, name-excluded from classify's seg interest) and the
+cited ``active_low`` polarity (overlay/RM territory, never name-derived).
 """
 
 import json
@@ -235,19 +234,27 @@ def test_clock_frequency_matches_boards_default_clock_hz() -> None:
 
 
 def test_seven_seg_is_correctly_reclassified_as_scan() -> None:
-    # See the module docstring: the stored JSON predates the "scan" style
-    # (A0) and says "packed_vector"; this asserts the corrected reading.
+    # See the module docstring: since U22 Phase D the stored JSON agrees with
+    # the corrected reading; classify's structural fields must match it, and
+    # the stored block carries the dp + cited-polarity enrichment on top.
     table = parse(_BASYS3_MASTER_XDC)
     result = classify(table)
     stored = _stored_convention()
 
-    assert stored["seven_seg"]["style"] == "packed_vector"  # the stale value, documented above
+    assert stored["seven_seg"]["style"] == "scan"
     assert result["seven_seg"] == {
         "style": "scan",
         "name": stored["seven_seg"]["name"],
         "width_per_digit": stored["seven_seg"]["width_per_digit"],
-        "digit_enable": {"name": "an", "width": 4},
+        "digit_enable": {
+            "name": stored["seven_seg"]["digit_enable"]["name"],
+            "width": stored["seven_seg"]["digit_enable"]["width"],
+        },
     }
+    # The enrichment classify deliberately does not produce:
+    assert stored["seven_seg"]["dp"] == "dp"
+    assert stored["seven_seg"]["active_low"] is True
+    assert stored["seven_seg"]["digit_enable"]["active_low"] is True
 
 
 def test_decimal_point_and_pmod_headers_are_excluded() -> None:

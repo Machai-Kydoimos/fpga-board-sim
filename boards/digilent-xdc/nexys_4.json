@@ -571,7 +571,7 @@
     "origin": "digilent-xdc",
     "upstream_file": "Nexys-4-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-07-22T14:00:30.008920+00:00"
+    "sync_timestamp": "2026-07-23T13:29:42.649827+00:00"
   },
   "port_conventions": {
     "digilent": {
@@ -607,10 +607,16 @@
         "active_low": false
       },
       "seven_seg": {
-        "style": "packed_vector",
+        "style": "scan",
         "name": "seg",
         "width_per_digit": 7,
-        "active_low": true
+        "active_low": true,
+        "dp": "dp",
+        "digit_enable": {
+          "name": "an",
+          "width": 8,
+          "active_low": true
+        }
       }
     }
   }

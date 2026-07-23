@@ -614,7 +614,7 @@
     "origin": "digilent-xdc",
     "upstream_file": "Sword-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-07-22T14:00:30.010869+00:00"
+    "sync_timestamp": "2026-07-23T13:29:42.651798+00:00"
   },
   "port_conventions": {
     "digilent": {
@@ -629,14 +629,12 @@
         "width": 16
       },
       "seven_seg": {
-        "style": "individual",
+        "style": "serial",
         "names": [
           "sseg_clk",
           "sseg_en",
           "sseg_sdo"
-        ],
-        "width_per_digit": 7,
-        "active_low": true
+        ]
       }
     }
   }

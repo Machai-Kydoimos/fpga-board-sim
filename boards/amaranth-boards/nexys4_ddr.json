@@ -558,6 +558,64 @@
         "name": "switch",
         "width": 16
       }
+    },
+    "digilent": {
+      "description": "Digilent Nexys-4-DDR Master XDC port names",
+      "clk": "CLK100MHZ",
+      "leds": {
+        "name": "LED",
+        "width": 16
+      },
+      "leds_rgb": {
+        "names": [
+          "LED16_R",
+          "LED16_G",
+          "LED16_B",
+          "LED17_R",
+          "LED17_G",
+          "LED17_B"
+        ],
+        "active_low": false
+      },
+      "switches": {
+        "name": "SW",
+        "width": 16
+      },
+      "buttons": {
+        "names": [
+          "BTNC",
+          "BTNU",
+          "BTND",
+          "BTNL",
+          "BTNR"
+        ],
+        "active_low": false
+      },
+      "seven_seg": {
+        "style": "scan",
+        "names": [
+          "CA",
+          "CB",
+          "CC",
+          "CD",
+          "CE",
+          "CF",
+          "CG"
+        ],
+        "width_per_digit": 7,
+        "active_low": true,
+        "dp": "DP",
+        "digit_enable": {
+          "name": "AN",
+          "width": 8,
+          "active_low": true
+        }
+      },
+      "source": {
+        "url": "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Nexys-4-DDR-Master.xdc",
+        "retrieved": "2026-05-25",
+        "registry_board": "Nexys 4 DDR"
+      }
     }
   },
   "$schema": "../schema/board.schema.json",
