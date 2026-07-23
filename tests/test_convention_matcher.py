@@ -207,9 +207,21 @@ def test_missing_button_role_no_match() -> None:
     assert _match("de10", _de10_decls(key=False), _board(_terasic_conv())) is None
 
 
-def test_missing_seg_on_7seg_board_no_match() -> None:
-    # Board physically has a display, so its seg role is required for a full match.
-    assert _match("de10", _de10_decls(hexs=False), _board(_terasic_conv())) is None
+def test_display_less_design_matches_with_dark_digits() -> None:
+    # U22 relax: a design declaring NONE of the convention's display ports runs
+    # with dark digits, like an unused leds_green bank -- seg joined the
+    # matched-when-declared rule (was: required whenever the board has one).
+    m = _match("de10", _de10_decls(hexs=False), _board(_terasic_conv()))
+    assert m is not None
+    assert m.seven_seg is None
+
+
+def test_partial_seg_interface_is_guarded_not_silent() -> None:
+    # U22 guard: declaring a strict SUBSET of the display ports (a typo'd or
+    # partial interface) must NOT match -- seg ports are outputs, so without
+    # the guard they would silently fall to the unmapped-open rule (dark).
+    ports = _de10_decls(hexs=False) + ["HEX0 : out std_logic_vector(6 downto 0)"]
+    assert _match("de10", ports, _board(_terasic_conv())) is None
 
 
 def test_wrong_seg_width_no_match() -> None:
@@ -226,11 +238,19 @@ def test_led_wrong_direction_no_match() -> None:
 # ── match_convention: scope + trust rules ────────────────────────────────────
 
 
-@pytest.mark.parametrize("style", ["packed_vector", "scan", "serial", "per_segment_scalars"])
-def test_declines_non_individual_seg_styles(style: str) -> None:
-    # Only `individual` is in B2 scope; other styles decline the seg role, so a
-    # 7-seg board never fully matches through them.
+@pytest.mark.parametrize("style", ["packed_vector", "serial", "per_segment_scalars"])
+def test_declines_unadaptable_seg_styles(style: str) -> None:
+    # `individual` and `scan` (U22) are in scope; the other styles decline the
+    # seg role -- and since the design declares the block's HEX names, the U22
+    # subset guard keeps this a non-match rather than a silent dark display.
     m = _match("de10", _de10_decls(), _board(_terasic_conv(seg_style=style)))
+    assert m is None
+
+
+def test_scan_without_digit_enable_declines() -> None:
+    # A scan block missing its digit_enable is malformed (the sync cross-check
+    # refuses it too); the matcher declines rather than guessing a digit count.
+    m = _match("de10", _de10_decls(), _board(_terasic_conv(seg_style="scan")))
     assert m is None
 
 
@@ -405,7 +425,9 @@ def test_contract_generic_design_unchanged(tmp_path: Any) -> None:
 
 
 def test_contract_near_miss_names_the_convention(tmp_path: Any) -> None:
-    # CLOCK_50 + SW + LEDR match (3 roles) but KEY and the HEX digits are absent.
+    # CLOCK_50 + SW + LEDR match (3 roles) but KEY is absent.  The absent HEX
+    # digits are NOT a problem since U22's relax (seg is matched-when-declared),
+    # so the near-miss names only the declared-but-missing buttons role.
     ports = [
         "CLOCK_50 : in std_logic",
         "SW : in std_logic_vector(9 downto 0)",
@@ -418,7 +440,8 @@ def test_contract_near_miss_names_the_convention(tmp_path: Any) -> None:
     assert "DE10-Standard" in res.message
     assert "terasic" in res.message  # F4: names the specific convention (maker)
     assert "close to" in res.message
-    assert "buttons" in res.message and "7-segment display" in res.message
+    assert "buttons" in res.message
+    assert "7-segment display" not in res.message  # U22: undeclared seg is no problem
     # F4: no stale internal ticket ID / "until then" phrasing in user-facing text
     assert "U21 B3" not in res.message
     assert "until then" not in res.message
@@ -557,3 +580,172 @@ def test_rgb_scalar_with_wrong_direction_unmatches_the_bank() -> None:
     # The bank is unmatched and no other LED role exists -> floor fails.  (The
     # stray default-less input also makes this a near-miss, doubly rejected.)
     assert _match("typo", ports, _arty_board(_arty_conv())) is None
+
+
+# ── U22: scan-style native matching (physical multiplexed 7-seg) ─────────────
+
+
+def _nexys_conv() -> dict[str, Any]:
+    """Nexys 4 DDR-shaped convention: scalar segment lines CA..CG + DP + AN[7:0]."""
+    return {
+        "digilent": {
+            "clk": "CLK100MHZ",
+            "leds": {"name": "LED", "width": 16},
+            "switches": {"name": "SW", "width": 16},
+            "buttons": {"names": ["btnC", "btnU", "btnD", "btnL", "btnR"], "active_low": False},
+            "seven_seg": {
+                "style": "scan",
+                "names": ["CA", "CB", "CC", "CD", "CE", "CF", "CG"],
+                "width_per_digit": 7,
+                "active_low": True,
+                "dp": "DP",
+                "digit_enable": {"name": "AN", "width": 8, "active_low": True},
+            },
+        }
+    }
+
+
+def _basys_conv() -> dict[str, Any]:
+    """Basys 3-shaped convention: shared seg[6:0] vector + dp + an[3:0]."""
+    return {
+        "digilent": {
+            "clk": "clk",
+            "leds": {"name": "led", "width": 16},
+            "switches": {"name": "sw", "width": 16},
+            "buttons": {"names": ["btnC", "btnU", "btnD", "btnL", "btnR"], "active_low": False},
+            "seven_seg": {
+                "style": "scan",
+                "name": "seg",
+                "width_per_digit": 7,
+                "active_low": True,
+                "dp": "dp",
+                "digit_enable": {"name": "an", "width": 4, "active_low": True},
+            },
+        }
+    }
+
+
+def _nexys_board(*, digits: int | None = 8) -> BoardDef:
+    return _board(_nexys_conv(), digits=digits, name="Nexys 4 DDR")
+
+
+def _basys_board() -> BoardDef:
+    return _board(_basys_conv(), digits=4, name="Basys 3")
+
+
+def _nexys_decls(*, dp: bool = True, an: bool = True, segs: bool = True) -> list[str]:
+    d = [
+        "CLK100MHZ : in std_logic",
+        "SW : in std_logic_vector(15 downto 0)",
+        "btnC : in std_logic",
+        "btnU : in std_logic",
+        "btnD : in std_logic",
+        "btnL : in std_logic",
+        "btnR : in std_logic",
+        "LED : out std_logic_vector(15 downto 0)",
+    ]
+    if segs:
+        d += [f"C{c} : out std_logic" for c in "ABCDEFG"]
+    if dp:
+        d.append("DP : out std_logic")
+    if an:
+        d.append("AN : out std_logic_vector(7 downto 0)")
+    return d
+
+
+def _basys_decls(*, dp: bool = True, seg_w: int = 7) -> list[str]:
+    return [
+        "clk : in std_logic",
+        "sw : in std_logic_vector(15 downto 0)",
+        "btnC : in std_logic",
+        "btnU : in std_logic",
+        "btnD : in std_logic",
+        "btnL : in std_logic",
+        "btnR : in std_logic",
+        "led : out std_logic_vector(15 downto 0)",
+        f"seg : out std_logic_vector({seg_w - 1} downto 0)",
+        "an : out std_logic_vector(3 downto 0)",
+    ] + (["dp : out std_logic"] if dp else [])
+
+
+def test_scan_scalar_idiom_full_match() -> None:
+    m = _match("nexys", _nexys_decls(), _nexys_board())
+    assert m is not None
+    seg = m.seven_seg
+    assert seg is not None
+    assert seg.style == "scan"
+    assert seg.names == ("CA", "CB", "CC", "CD", "CE", "CF", "CG")
+    assert seg.scalar_segments is True
+    assert seg.width_per_digit == 7
+    assert seg.active_low is True
+    assert seg.dp == "DP"
+    assert seg.digit_enable is not None
+    assert seg.digit_enable.names == ("AN",)
+    assert seg.digit_enable.width == 8
+    assert seg.digit_enable.active_low is True
+    assert seg.num_digits == 8  # enable width, NOT len(names)
+
+
+def test_scan_vector_idiom_full_match() -> None:
+    m = _match("basys3", _basys_decls(), _basys_board())
+    assert m is not None
+    seg = m.seven_seg
+    assert seg is not None
+    assert seg.style == "scan"
+    assert seg.names == ("seg",)
+    assert seg.scalar_segments is False
+    assert seg.dp == "dp"
+    assert seg.num_digits == 4
+
+
+def test_scan_dp_less_design_still_matches() -> None:
+    # dp is matched only when both sides declare it; a design without it runs
+    # with dark dp bits (leds_green-style leniency).
+    m = _match("nexys", _nexys_decls(dp=False), _nexys_board())
+    assert m is not None
+    assert m.seven_seg is not None
+    assert m.seven_seg.dp is None
+
+
+def test_scan_missing_enable_is_a_near_miss_not_dark() -> None:
+    # Segments declared but no AN: the subset guard forces a near-miss naming
+    # the missing port instead of a silent dark display.
+    assert _match("nexys", _nexys_decls(an=False), _nexys_board()) is None
+
+
+def test_scan_segment_vector_wrong_width_no_match() -> None:
+    assert _match("basys3", _basys_decls(seg_w=8), _basys_board()) is None
+
+
+def test_scan_segment_scalar_declared_as_vector_no_match() -> None:
+    ports = (
+        _nexys_decls(segs=False)
+        + ["CA : out std_logic_vector(6 downto 0)"]
+        + [f"C{c} : out std_logic" for c in "BCDEFG"]
+    )
+    assert _match("nexys", ports, _nexys_board()) is None
+
+
+def test_scan_names_width_mismatch_in_block_declines() -> None:
+    conv = _nexys_conv()
+    conv["digilent"]["seven_seg"]["width_per_digit"] = 8  # 7 names, claims 8
+    assert _match("nexys", _nexys_decls(), _board(conv, digits=8, name="Nexys 4 DDR")) is None
+
+
+def test_scan_contract_message_names_the_interface(tmp_path: Any) -> None:
+    f = _write(tmp_path, "nexys_scan", _nexys_decls())
+    res = check_vhdl_contract(f, board_def=_nexys_board())
+    assert res.ok is True
+    assert res.match is not None
+    assert "CA..CG+AN" in res.message
+    assert "board-native" in res.message
+
+
+def test_scan_subset_near_miss_names_missing_ports(tmp_path: Any) -> None:
+    # CA..CG + DP declared, AN forgotten: the near-miss must name it.
+    f = _write(tmp_path, "nexys_partial", _nexys_decls(an=False))
+    res = check_vhdl_contract(f, board_def=_nexys_board())
+    assert res.ok is False
+    assert res.match is None
+    assert "7-segment display" in res.message
+    assert "an" in res.message.lower()

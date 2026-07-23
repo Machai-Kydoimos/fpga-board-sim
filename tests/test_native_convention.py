@@ -492,10 +492,10 @@ def test_every_canonical_board_matches_its_own_synthesized_interface() -> None:
         if block is None or not (block.get("clk") and block.get("leds")):
             continue
         seg = block.get("seven_seg") or {}
-        if bd.seven_seg is not None and seg.get("style") != "individual":
-            # Non-individual seg not adaptable yet.  U22 Phase MW (#321) adds
-            # scan matching -- when it lands, scan-style boards (Basys 3, the
-            # Nexys 4/A7 family) move from skipped to checked here.
+        if bd.seven_seg is not None and seg.get("style") not in ("individual", "scan"):
+            # per_segment_scalars stays unadaptable (Nandland Go); individual
+            # and -- since U22 Phase MW -- scan (Basys 3, the Nexys 4/A7
+            # family) must self-match, physical display interface included.
             continue
         checked += 1
         if match_convention(_synth_iface(block), [], bd) is None:
@@ -1199,3 +1199,259 @@ def test_native_active_low_skips_absent_banks() -> None:
         seven_seg=None,
     )
     assert _native_active_low(match) == "LED"
+
+
+# ── U22: scan-style native wrapper (physical multiplexed 7-seg) ──────────────
+
+
+def _nexys_scan_match(*, dp: bool = True) -> ConventionMatch:
+    """Nexys 4 DDR-shaped scan match: CA..CG scalars + DP + AN[7:0], all active-low."""
+    return ConventionMatch(
+        maker="digilent",
+        board_name="Nexys 4 DDR",
+        clk="CLK100MHZ",
+        leds=NativePort(("LED",), 16, False),
+        switches=NativePort(("SW",), 16, False),
+        buttons=NativePort(("BTNC", "BTNU", "BTND", "BTNL", "BTNR"), 5, False, scalar_ports=True),
+        seven_seg=NativeSeg(
+            "scan",
+            ("CA", "CB", "CC", "CD", "CE", "CF", "CG"),
+            7,
+            True,
+            digit_enable=NativePort(("AN",), 8, True),
+            dp="DP" if dp else None,
+            scalar_segments=True,
+        ),
+    )
+
+
+def _basys_scan_match() -> ConventionMatch:
+    """Basys 3-shaped scan match: shared seg[6:0] vector + dp + an[3:0]."""
+    return ConventionMatch(
+        maker="digilent",
+        board_name="Basys 3",
+        clk="clk",
+        leds=NativePort(("led",), 16, False),
+        switches=NativePort(("sw",), 16, False),
+        buttons=NativePort(("btnC", "btnU", "btnD", "btnL", "btnR"), 5, False, scalar_ports=True),
+        seven_seg=NativeSeg(
+            "scan",
+            ("seg",),
+            7,
+            True,
+            digit_enable=NativePort(("an",), 4, True),
+            dp="dp",
+            scalar_segments=False,
+        ),
+    )
+
+
+def test_scan_wrapper_scalar_segments_demux() -> None:
+    vhd = _render_native_wrapper("nexys_scan", _nexys_scan_match())
+    # Segment scalars associate per line; the enable bank maps whole.
+    assert "CA => scanseg_uut(0)" in vhd
+    assert "CG => scanseg_uut(6)" in vhd
+    assert "DP => scandp_uut" in vhd
+    assert "AN => scanen_uut" in vhd
+    # All-active-low: both sides normalized to active-high before gating.
+    assert "scanseg_on <= not scanseg_uut;" in vhd
+    assert "scanen_on  <= not scanen_uut;" in vhd
+    assert "scandp_on  <= not scandp_uut;" in vhd
+    # Unlatched combinational demux, digit 0 and digit 7 (8 digits).
+    assert "seg(6 downto 0) <= scanseg_on when scanen_on(0) = '1' else (others => '0');" in vhd
+    assert "seg(62 downto 56) <= scanseg_on when scanen_on(7) = '1' else (others => '0');" in vhd
+    assert "seg(7) <= scandp_on when scanen_on(0) = '1' else '0';" in vhd
+    assert "seg(63) <= scandp_on when scanen_on(7) = '1' else '0';" in vhd
+    # NUM_SEGS default is the DIGIT count (enable width), not the 7 segment names.
+    assert "NUM_SEGS         : positive := 8;" in vhd
+    assert "generic map" not in vhd
+
+
+def test_scan_wrapper_vector_segments_demux() -> None:
+    vhd = _render_native_wrapper("basys3_scan", _basys_scan_match())
+    assert "seg => scanseg_uut" in vhd  # the uut's own `seg` vector, mapped whole
+    assert "an => scanen_uut" in vhd
+    assert "dp => scandp_uut" in vhd
+    assert "NUM_SEGS         : positive := 4;" in vhd
+    assert "seg(30 downto 24) <= scanseg_on when scanen_on(3) = '1' else (others => '0');" in vhd
+    assert "seg(31) <= scandp_on when scanen_on(3) = '1' else '0';" in vhd
+
+
+def test_scan_wrapper_dp_less_forces_dp_bits_off() -> None:
+    vhd = _render_native_wrapper("nexys_scan", _nexys_scan_match(dp=False))
+    assert "scandp" not in vhd
+    assert "seg(7) <= '0';" in vhd
+    assert "seg(63) <= '0';" in vhd
+
+
+def test_scan_wrapper_full_duty_measures_boundary_seg() -> None:
+    # In Full mode the demux drives seg_int (the measured channel); the U9
+    # integrator then renders the honest 1/N scan brightness.
+    vhd = _render_native_wrapper("nexys_scan", _nexys_scan_match(), duty="full")
+    assert "seg_int(6 downto 0) <= scanseg_on when scanen_on(0) = '1' else (others => '0');" in vhd
+    assert "seg <= seg_int;" in vhd
+
+
+def test_scan_gtkw_preselects_physical_ports(tmp_path: Any) -> None:
+    gtkw = tmp_path / "scan.gtkw"
+    _write_gtkw(
+        gtkw,
+        tmp_path / "scan.vcd",
+        {"NUM_SWITCHES": "16", "NUM_BUTTONS": "5", "NUM_LEDS": "22", "NUM_SEGS": "8"},
+        match=_nexys_scan_match(),
+    )
+    text = gtkw.read_text()
+    assert "sim_wrapper.uut.ca" in text
+    assert "sim_wrapper.uut.cg" in text
+    assert "sim_wrapper.uut.dp" in text
+    assert "sim_wrapper.uut.an[7:0]" in text
+    assert "sim_wrapper.seg[63:0]" in text  # the adapted board view alongside
+
+
+_NEXYS_SCAN_SRC = """
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity nexys_scan is
+  port (
+    CLK100MHZ : in  std_logic;
+    SW   : in  std_logic_vector(15 downto 0);
+    BTNC : in  std_logic;
+    BTNU : in  std_logic;
+    BTND : in  std_logic;
+    BTNL : in  std_logic;
+    BTNR : in  std_logic;
+    LED  : out std_logic_vector(15 downto 0);
+    CA : out std_logic;
+    CB : out std_logic;
+    CC : out std_logic;
+    CD : out std_logic;
+    CE : out std_logic;
+    CF : out std_logic;
+    CG : out std_logic;
+    DP : out std_logic;
+    AN : out std_logic_vector(7 downto 0)
+  );
+end entity;
+
+architecture rtl of nexys_scan is
+  signal cnt  : unsigned(23 downto 0) := (others => '0');
+  signal segs : std_logic_vector(6 downto 0);
+begin
+  process (CLK100MHZ) is
+  begin
+    if rising_edge(CLK100MHZ) then
+      cnt <= cnt + 1;
+    end if;
+  end process;
+  segs <= "0111111";  -- "0" glyph (active-high internal)
+  CA <= not segs(0);
+  CB <= not segs(1);
+  CC <= not segs(2);
+  CD <= not segs(3);
+  CE <= not segs(4);
+  CF <= not segs(5);
+  CG <= not segs(6);
+  DP <= '1';          -- decimal point off (active-low line)
+  -- fast one-hot scan (low counter bits: simulator-friendly digit period)
+  AN <= not std_logic_vector(
+    shift_left(to_unsigned(1, 8), to_integer(cnt(9 downto 7))));
+  LED <= SW;
+end architecture;
+"""
+
+_BASYS_SCAN_SRC = """
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity basys3_scan is
+  port (
+    clk  : in  std_logic;
+    sw   : in  std_logic_vector(15 downto 0);
+    btnC : in  std_logic;
+    btnU : in  std_logic;
+    btnD : in  std_logic;
+    btnL : in  std_logic;
+    btnR : in  std_logic;
+    led  : out std_logic_vector(15 downto 0);
+    seg  : out std_logic_vector(6 downto 0);
+    dp   : out std_logic;
+    an   : out std_logic_vector(3 downto 0)
+  );
+end entity;
+
+architecture rtl of basys3_scan is
+  signal cnt : unsigned(23 downto 0) := (others => '0');
+begin
+  process (clk) is
+  begin
+    if rising_edge(clk) then
+      cnt <= cnt + 1;
+    end if;
+  end process;
+  seg <= not "0000110";  -- "1" glyph, active-low drive
+  dp  <= '1';
+  an  <= not std_logic_vector(
+    shift_left(to_unsigned(1, 4), to_integer(cnt(8 downto 7))));
+  led <= sw;
+end architecture;
+"""
+
+
+def _real_board(rel: str) -> BoardDef:
+    return BoardDef.from_json((PROJECT / "boards" / rel).read_text())
+
+
+def test_scan_design_matches_real_nexys4ddr_board() -> None:
+    # End-to-end against the Phase D data: the real regenerated board JSON.
+    bd = _real_board("digilent-xdc/nexys_4_ddr.json")
+    with tempfile.TemporaryDirectory() as td:
+        vhd = Path(td) / "nexys_scan.vhd"
+        vhd.write_text(_NEXYS_SCAN_SRC)
+        res = check_vhdl_contract(vhd, board_def=bd)
+    assert res.ok, res.message
+    assert res.match is not None
+    seg = res.match.seven_seg
+    assert seg is not None and seg.style == "scan" and seg.num_digits == 8
+    assert "CA..CG+AN" in res.message
+
+
+def test_scan_design_matches_real_basys3_board() -> None:
+    bd = _real_board("digilent-xdc/basys_3.json")
+    with tempfile.TemporaryDirectory() as td:
+        vhd = Path(td) / "basys3_scan.vhd"
+        vhd.write_text(_BASYS_SCAN_SRC)
+        res = check_vhdl_contract(vhd, board_def=bd)
+    assert res.ok, res.message
+    assert res.match is not None
+    seg = res.match.seven_seg
+    assert seg is not None and seg.style == "scan" and seg.num_digits == 4
+    assert seg.scalar_segments is False
+
+
+@pytest.mark.slow
+def test_scan_native_wrapper_analyzes_under_ghdl(ghdl: str, tmp_path: Any) -> None:
+    bd = _real_board("digilent-xdc/nexys_4_ddr.json")
+    vhd = tmp_path / "nexys_scan.vhd"
+    vhd.write_text(_NEXYS_SCAN_SRC)
+    res = check_vhdl_contract(vhd, board_def=bd)
+    assert res.ok and res.match is not None
+    ok, detail = analyze_vhdl(
+        vhd, toplevel="nexys_scan", simulator="ghdl", board_def=bd, match=res.match
+    )
+    assert ok, f"GHDL scan-native analysis failed: {detail}"
+
+
+@pytest.mark.slow
+def test_scan_native_wrapper_analyzes_under_nvc(nvc: str, tmp_path: Any) -> None:
+    bd = _real_board("digilent-xdc/basys_3.json")
+    vhd = tmp_path / "basys3_scan.vhd"
+    vhd.write_text(_BASYS_SCAN_SRC)
+    res = check_vhdl_contract(vhd, board_def=bd)
+    assert res.ok and res.match is not None
+    ok, detail = analyze_vhdl(
+        vhd, toplevel="basys3_scan", simulator="nvc", board_def=bd, match=res.match
+    )
+    assert ok, f"NVC scan-native analysis failed: {detail}"
