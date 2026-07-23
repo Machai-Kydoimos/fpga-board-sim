@@ -161,26 +161,20 @@ This document inventories all viable improvements and ranks them by impact.
 
 - Shipped 2026-07-13, **released in v0.14.0** (arc: groundwork #198/#199, Part A #209–#215 + follow-ups #213/#214/#218/#219, Part B #216/#217/#220/#221 + this closeout; issues #200–#208). A design written to a board's *own* port names and fixed widths (Terasic `CLOCK_50` / `KEY` / `LEDR` / `SW` / `HEX0`-`HEX5`, **no `NUM_*` generics**) now simulates unmodified. **Part A** populated `port_conventions` across the fleet — schema deltas (A0) → re-sync preservation guard (A1) → dialect parsers + `classify()` (A2) → generator + curated overlay (A3) → population waves (A4). **Part B** consumes it: `BoardDef.port_conventions` (B1); a `check_vhdl_contract()` matcher returning a typed `ContractResult` + `ConventionMatch` (B2); a native `sim_wrapper` (`_generate_wrapper`) that adapts native ports to the `clk/sw/btn/led/seg` boundary — active-low LED/button inversion, `individual` 7-seg per-digit packing — with the cocotb testbench untouched, plus `hdl/native/` examples and GHDL/NVC e2e (B3a); and the run affordances / mode badge / session-log fields (B3b). **Contract:** the simulator always models the *selected* board and the board's convention supplies polarity, so a file written for the wrong board near-misses (rejected, mismatch named) rather than silently coercing or flipping polarity. Registry + arc plan: [`docs/port_convention_sources/`](port_convention_sources/), [`u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
-#### U22. 7-segment v2 — physical mux mode
+#### U22. 7-segment v2 — physical scan interface ✅
 
-- **Why:** Queued in memory (#8); current v1 is logical-only. v2 enables the hardware-accurate scan interface on Nexys4-DDR, RZ-EasyFPGA, StepMXO2.
-- **What:** New conditional placeholders in the unified wrapper template, updated testbench readback, new `physical_mux: bool` toggle per board. *(Superseded 2026-07-23 — the arc plan retires all three mechanisms in favor of the board-native `scan` convention path; see the plan.)*
-- **Plan:** [`u22_7seg_scan_plan.md`](u22_7seg_scan_plan.md) (2026-07-23; Phases D/MW/E → issues #320/#321/#322, milestone v0.19.0).
-- **Effort:** L.
+- **Shipped 2026-07-23** (milestone v0.19.0; Phase D = PR #323, Phase MW = PR #324, Phase E = the closing PR, for issues #320/#321/#322) per [`u22_7seg_scan_plan.md`](u22_7seg_scan_plan.md). The 2026-07-02 card's mechanisms (template placeholders / testbench readback / `physical_mux` toggle) were all retired by the plan — the physical interface landed on the **board-native path** as the `scan` convention style: Phase D fixed the Digilent classification (Nexys `CA..CG` was `individual`, Basys 3 `packed_vector`, Sword's serial `sseg_*` mislabeled; schema gained `dp`; the scan-aware cross-check unblocked the U38 sibling transplant), Phase MW added the matcher arm + the unlatched combinational wrapper demux (Full duty mode renders honest 1/N scan brightness — the U9 head start held: wiring, not measurement) plus the **relax + guard** rule (display matched-when-declared; strict subset = near-miss), and Phase E shipped the `hdl/native/{nexys4ddr,basys3}_scan.vhd` examples + cocotb duty suites (measured 1/8 and 1/4 duties, dp gating, lamp test, GHDL + NVC) + docs. Serial / per-segment-scalars stay generic; RZ-EasyFPGA / StepMXO2 via framework conventions parked as Phase F.
+- **Effort:** L (actual: one day, 3 PRs).
 - **Dependencies:** D1 ✅ (unified wrapper template is in place). U21 ✅ Part A landed the scan-style schema fields (`style: scan` + `digit_enable`) and registry-verified scan data (Basys3 packed `seg`+`an`, Nexys4-DDR `CA..CG`, Mimas A7 `SevenSegment`+`Enable` — see `docs/port_convention_sources/`) — consume that, don't re-research.
 - **Done when:** a muxed 7-seg board (e.g. Nexys4-DDR) shows correct digits via the physical scan interface.
 - **Carried forward (2026-07-02):** physical-mux mode must keep the logical packed-`seg` contract as
   the design-side **default** — every 7-seg example, including the generated embedded-core designs
   (`hdl/mx65_*.vhd`, `hdl/t80_*.vhd`), assumes it.
-- **Data-quality prerequisite (found 2026-07-13):** the Digilent classifier currently emits
-  `style: individual` for Nexys 4 DDR / Nexys A7-100T / A7-50T even though their `CA..CG` are
-  *shared* scan segments (7 segment names for an 8-digit display), so those three boards **falsely**
-  full-match board-native today (a physically faithful scan design would not). Fix the classifier to
-  emit `scan` for shared-segment names as part of (or ahead of) this card — touches
-  `scripts/port_convention_parsers/classify.py` + the regenerated `boards/digilent-xdc/*.json`.
-  Independently reconfirmed 2026-07-22: the U38 sibling-convention transplant's width
-  cross-check *refuses* those blocks (7 "digits" vs the boards' 8), so the misclassification
-  now blocks data propagation too.
+- **Data-quality prerequisite ✅ (found 2026-07-13, fixed 2026-07-23 in Phase D, PR #323):** the
+  misclassifier was `scripts/digilent_parser.py` (not `classify.py`, whose scan rule was already
+  correct and which never runs for digilent boards); `CA..CG`-as-`individual` falsely full-matched
+  and the U38 transplant's 7-vs-8 width refusal blocked propagation — both resolved by the `scan`
+  emission + scan-aware `cross_check_widths`.
 - **Head start from U9 ✅ (2026-07-22):** the duty engine already renders time-multiplexed
   LEDs honestly — a 1/N-duty scan shows 1/N brightness (verified: a one-hot walker's
   per-window duties sum to exactly 100%) — which is precisely the display physics a
@@ -199,8 +193,8 @@ no longer capped — the remaining throttle is purely missing data. The native n
 for those 238 boards were **already parsed** into the board JSON, just not emitted as a convention —
 **U32 ✅** (2026-07-14) did that, emitting framework-derived conventions for **241/246** litex+amaranth
 boards; **U33 ✅** added vendor-*canonical* quality where it matters most. Realistic combined ceiling ≈
-150–200 (not 278: scan/serial displays need **U22**, and some boards have no machine-parseable
-source). **All shipped in v0.14.0:** **U31 ✅** + **U32 ✅** + **U33 ✅** — **258 of 278 boards** now
+150–200 (not 278: scan displays now adapt via **U22 ✅**; serial displays and boards with no
+machine-parseable source remain out). **All shipped in v0.14.0:** **U31 ✅** + **U32 ✅** + **U33 ✅** — **258 of 278 boards** now
 carry a `port_conventions` block (framework-derived + vendor-canonical), up from 23.
 
 #### U31. Board-native partial-interface support ✅
@@ -456,7 +450,7 @@ Hard dependencies ("requires") must be completed before the blocked item can sta
 | **U19** (Metrics checkbox) | ~~**U5** (Settings dialog)~~ ✅ | Settings dialog shipped; `metrics_enabled` session key reserved |
 | **U20** (Verilog support) | ~~**D2** (Backend ABC)~~ ✅ | Third backend now overrides only `NAME` + command builders |
 | ~~**U21** (Board-native VHDL)~~ | ~~**D1** (Wrapper merge)~~ ✅ | Adapter logic in unified template |
-| ~~**U22** (7-seg physical mux)~~ | ~~**D1** (Wrapper merge)~~ ✅ | Placeholders in unified template |
+| ~~**U22** (7-seg physical mux)~~ ✅ | ~~**D1** (Wrapper merge)~~ ✅ | Shipped 2026-07-23 as the board-native `scan` style (no template placeholders) |
 | ~~**D6b** (ScreenController)~~ ✅ | ~~**D6a** (Screen-result enum)~~ ✅ | Enum-typed transitions in the controller — both shipped |
 
 ### Soft dependencies
@@ -517,7 +511,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **9** | Untrusted-VHDL isolation | **D7 Decompose `start_simulation`** → D16 Sandbox the sim subprocess |
 | **10** | Performance deep-dive | ~~U25 Profile GHDL GPI vs eval~~ ✅ (2026-07-23 — report: [u25_ghdl_perf_profile.md](u25_ghdl_perf_profile.md)) · ~~U24 Batch `Timer` calls~~ (won't-do, resolved by measurement) · ~~**U34 single-window**~~ ✅ (shipped ahead of this sprint — own release, v0.15.0) |
 | **11** | Verilog / SystemVerilog | U20 Verilog support (Icarus) |
-| **12** | 7-seg physical mux | U22 7-seg physical mux (shares U21's wrapper-template 7-seg context) |
+| **12** | 7-seg physical mux | ~~U22 7-seg physical scan interface~~ ✅ **shipped 2026-07-23** (v0.19.0 milestone, PRs #323/#324 + Phase E) — pulled ahead of sprints 7–11 off the U9 duty-engine head start |
 
 **Status (2026-07-09).** Sprints 1a, 1b, **2, and 3 are fully shipped**, and **milestone v0.13.0 is now a waveform-themed release** (re-cut 2026-07-09): **U10 ✅** (capture, PR #187, issue #186) plus the folded-in **Sprint 5 waveform-polish** cards **U28 ✅** (`.gtkw`, PR #192) / **U29 ✅** (env + auto-open, PR #193) / **U30 ✅** (include memories, PR #196 / issue #191 — completing **Sprint 5** and the **v0.13.0** waveform release, 2026-07-11); the other Sprint-4 UX cards **U8 / U9 / U23 / U27** moved to **v0.14.0**. Sprint 3 (milestone v0.12.0) delivered **U6 ✅** (Theme system, PR #178), **U4 ✅** (Contextual errors, PR #181), **U7 ✅** (In-sim toolbar, PR #182), and **U3 ✅** (Tooltips, PR #184) — with the **D3 ✅** UIComponent-base refactor (PR #183) landed first as prep for U3. The phases otherwise remain correctly ordered. **Sprints 5–12 are now mapped** (2026-07-09) from the previously-unscheduled backlog — waveform polish (5) → board-native VHDL (6, its own sprint per the lab↔sim round-trip priority) → iteration / panel UX (7) → startup + dev-DRY base (8) → untrusted-VHDL isolation (9) → performance (10) → Verilog (11) → 7-seg physical mux (12). The only cross-item constraints are the soft chains **D5 → D13** and **D5 + D7 → D16**, both honored (D5 in 8; D7 + D16 in 9); every other 5–12 sprint is order-free. Per the hybrid backlog model, only the *active* sprint gets a GitHub milestone + issues — 5–12 stay strategy-only until promoted.
 
@@ -578,7 +572,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/sim_toolbar.py` (U7 ✅), `ui/tooltip.py` (U3 ✅), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅, U34 ✅ — `SimExit` relocated here), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
 - `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
-- `sim/sim_testbench.py` — U34 ✅ **replaced it with the headless bridge** (no pygame; streams state over `sim_link`; the pre-U34 pygame-testbench notes U5/U7/U21 ✅ are history — those UI surfaces now live in `ui/simulation_screen.py`), U9 ✅ (child-side duty sampling + the U38 pause-instant sample), U22
+- `sim/sim_testbench.py` — U34 ✅ **replaced it with the headless bridge** (no pygame; streams state over `sim_link`; the pre-U34 pygame-testbench notes U5/U7/U21 ✅ are history — those UI surfaces now live in `ui/simulation_screen.py`), U9 ✅ (child-side duty sampling + the U38 pause-instant sample); U22 ✅ needed no testbench change (the native wrapper adapts scan below the boundary)
 - `src/fpga_sim/ui/simulation_screen.py` — U34 ✅ (new: in-launcher `SimulationScreen` + `RunStats`), U23 (dirty-flag draw loop), U9/U37 ✅ (streamed brightness, channel-domain routing, pause-follow), U14 (`P` pause key)
 - `pyproject.toml` — D8 ✅ (`[tool.mypy]` now just `strict = true`), U26 (`dev` group gains Pillow)
 - `.pre-commit-config.yaml`, new `.editorconfig` — D10 ✅

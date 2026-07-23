@@ -321,12 +321,26 @@ board JSON — the cocotb testbench boundary never changes.
    LEDs/buttons/switches (polarity comes from the convention), **zero-extends** a
    LED bank narrower than the board's LED count onto the `led` boundary
    (`resize(...)`; uncovered LEDs stay dark), packs an `individual`-style 7-seg per
-   digit, and **ties off** absent input banks. The wrapper's default generics mirror
-   the board's resource counts, so analysis validates the same widths the run passes.
-4. **Unchanged boundary.** The cocotb testbench still drives `clk/sw/btn/led/seg`, so
-   the run mechanics, stats panel, and waveform capture are untouched. Only the
-   `individual` 7-seg style is adapted (scan/serial stay on the generic contract), and
-   native designs get **no `COUNTER_BITS` override**.
+   digit, **demultiplexes** a `scan`-style 7-seg (U22 — see below), and **ties off**
+   absent input banks. The wrapper's default generics mirror the board's resource
+   counts, so analysis validates the same widths the run passes.
+4. **Scan displays (U22).** On boards whose display is physically multiplexed
+   (Basys 3's shared `seg[6:0]` + `dp` + `an[3:0]`; the Nexys 4 DDR / A7 family's
+   `CA..CG` + `DP` + `AN[7:0]` scalars), the convention's `seven_seg` carries
+   `style: "scan"`: the segment side names the *shared lines*, the digit count is
+   `digit_enable.width`, and `dp` names the shared decimal-point scalar. The wrapper
+   gates combinationally — digit *i*'s boundary byte shows the polarity-corrected
+   segment lines only while its enable is active, deliberately **unlatched** — so
+   the duty engine integrates the honest 1/N scan brightness and a stopped scan
+   shows its one lit digit, exactly like the hardware. The display role is
+   **matched when declared**: a native design that drives none of the display ports
+   runs with dark digits (like an unused LED bank), while declaring only a subset
+   of them is a near-miss naming the missing ports — the guard that keeps a typo'd
+   scan interface from running silently dark.
+5. **Unchanged boundary.** The cocotb testbench still drives `clk/sw/btn/led/seg`, so
+   the run mechanics, stats panel, and waveform capture are untouched. The
+   `per_segment_scalars` and `serial` display styles stay on the generic contract,
+   and native designs get **no `COUNTER_BITS` override**.
 
 Conventions come from two tiers: **vendor-canonical** blocks (cited from constraint
 files, stamped `naming: "canonical"`) and **framework-derived** blocks that the litex

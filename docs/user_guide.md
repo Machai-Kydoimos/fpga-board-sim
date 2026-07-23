@@ -199,6 +199,25 @@ UI signals it in three places. (For how to write these designs, see
   "native"` and `"convention": "<maker>"` (both are `"generic"` / `null` for a
   standard contract run).
 
+### Scan displays (Basys 3, Nexys 4 / 4 DDR / A7)
+
+On boards whose 7-segment display is physically **multiplexed**, a board-native
+design drives the real scan interface — the shared segment lines plus the digit
+enables (`seg`/`dp`/`an` on Basys 3; the `CA..CG`/`DP`/`AN` scalars on the Nexys
+family), all active-low exactly as the reference manuals specify. The simulator
+demultiplexes the scan and shows each digit at its **honest scan brightness**: a
+digit lit one slot in N measures 1/N duty, so an 8-digit Nexys display renders
+dimmer than a 4-digit Basys 3 — just like the real boards. Three things to know:
+
+- **Use the Full measurement mode** (the default). The Off/Color-only modes sample
+  instantaneous levels, and an instant of a scan shows only the one digit whose
+  enable is active.
+- **Pausing** shows the actually-active digit — a stopped scan on real hardware
+  also lights just one digit.
+- A design that **doesn't drive the display** still runs board-native with dark
+  digits; driving only *part* of the scan interface is rejected with a message
+  naming the missing ports.
+
 ## Session and preferences
 
 Preferences and history live under `~/.fpga_simulator/`. Loading and saving are
