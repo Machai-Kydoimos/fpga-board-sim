@@ -19,6 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   table now carries the corrected ratios and its from-source build snippets
   pass `--disable-checks`.
 
+### Changed
+
+- **GHDL analysis/elaboration now passes `-O2`.** Measured +8–12% simulation
+  speed on the GHDL LLVM (AOT) backend for design-bound workloads (mx65 CPU
+  +12%, counter_7seg +11%, blinky +8%; library-bound designs unchanged), a
+  verified no-op on mcode and LLVM-JIT, and negligible analyze/elaborate cost
+  (`docs/u25_ghdl_perf_profile.md`). NVC keeps its own default (`-O2`; `-O3`
+  measured zero-to-negative).
+
 ### Fixed
 
 - **Embedded-core walker no longer goes dark on >16-LED boards** (#309). The

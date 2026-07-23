@@ -213,8 +213,11 @@ class _GHDLBackend(_SimBackend):
 
     @staticmethod
     def analyze_cmd(vhdl_path: Path, work_dir: str, binary: str | None = None) -> list[str]:
+        # -O2 speeds the llvm (AOT) backend +8-12% on design-bound workloads and
+        # is a measured no-op on mcode/llvm-jit, at negligible analyze/elab cost
+        # (docs/u25_ghdl_perf_profile.md), so it is passed unconditionally.
         ghdl = binary or _GHDLBackend.find()
-        return [ghdl, "-a", "--std=08", f"--workdir={work_dir}", str(vhdl_path)]
+        return [ghdl, "-a", "-O2", "--std=08", f"--workdir={work_dir}", str(vhdl_path)]
 
     @staticmethod
     def elaborate_cmd(
@@ -222,8 +225,9 @@ class _GHDLBackend(_SimBackend):
     ) -> list[str]:
         # GHDL takes no generics at -e (the compiled backends reject -g here);
         # they are simulation options, passed after the unit at run (-r) time.
+        # -O2: same rationale as analyze_cmd.
         ghdl = binary or _GHDLBackend.find()
-        return [ghdl, "-e", "--std=08", f"--workdir={work_dir}", toplevel]
+        return [ghdl, "-e", "-O2", "--std=08", f"--workdir={work_dir}", toplevel]
 
     @staticmethod
     def run_cmd(

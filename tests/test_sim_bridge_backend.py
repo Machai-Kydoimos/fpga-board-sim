@@ -127,6 +127,26 @@ def test_ghdl_run_cmd_empty_generics() -> None:
     assert not any(a.startswith("-g") for a in cmd)
 
 
+# ── GHDL design optimization (-O2 at analyze/elaborate, never at run) ─────────
+
+
+def test_ghdl_analyze_and_elaborate_pass_o2() -> None:
+    """-O2 rides -a and -e (llvm AOT +8-12%, measured no-op on mcode/jit)."""
+    for cmd in (
+        _GHDLBackend.analyze_cmd(Path("/x/blinky.vhd"), "/work"),
+        _GHDLBackend.elaborate_cmd("top", {}, "/work"),
+    ):
+        # An option, so it must sit between the subcommand and the trailing
+        # file/unit operand.
+        assert 0 < cmd.index("-O2") < len(cmd) - 1
+
+
+def test_ghdl_run_cmd_has_no_o2() -> None:
+    """-O2 is an analyze/elab option; the run command must not carry it."""
+    cmd = _GHDLBackend.run_cmd("top", {}, "/lib/vpi.so", "/work")
+    assert "-O2" not in cmd
+
+
 # ── NVC elaboration/run heap cap (-H) ─────────────────────────────────────────
 
 
