@@ -38,8 +38,11 @@ default); they are consistent with the pre-U9 record once the known duty cost is
   **8.6×**.
 
 **Action taken:** all three local backends (mcode, llvm, llvm-jit) rebuilt `--disable-checks` at
-their original prefixes (checks-enabled build dirs kept as debug fallbacks). CI is unaffected — it
-pins upstream release binaries.
+their original prefixes (checks-enabled build dirs kept as debug fallbacks). CI is operationally
+unaffected — it pins upstream release binaries. Note those upstream zips are themselves built with
+the checks-enabled default (upstream release CI audited 2026-07: `CONFIG_ARGS` never includes
+`--disable-checks`), which costs CI wall-time only, not correctness — and means a self-built
+`--disable-checks` LLVM backend outruns the official prebuilt one.
 
 ### 2. Per-operation standard-library call cost (architectural — explains the residual NVC gap)
 

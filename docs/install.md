@@ -22,7 +22,8 @@ cd fpga-board-sim
 
 You need at least one of GHDL or NVC. On Linux and macOS both are fully tested. On
 Windows, **GHDL is the tested choice**; NVC installs but its cocotb VHPI pipeline
-has not been verified there.
+has not been verified there. Unsure which (or which build of which)? See
+[Which to install — recommendations](#which-to-install--recommendations) below.
 
 ### GHDL
 
@@ -130,10 +131,30 @@ built `--disable-checks`; the profile behind these numbers is
 `uv run fpga-sim --benchmark 10 --no-ui` (add `--sim <name>` / `--board` /
 `--vhdl` to compare).
 
-**Which to install.** For casual use, your distro's `ghdl` (mcode) is plenty.
-Want it faster with no fuss? Install **NVC** — it's the quickest across the
-board. If you specifically need GHDL *and* more speed, build its LLVM code
-generators (below).
+### Which to install — recommendations
+
+| You want | Install |
+|---|---|
+| Simplest working setup | Your distro's `ghdl` (mcode) — one package, instant startup |
+| Fastest simulation, no fuss | **NVC** — prebuilt packages are fine (its default build is optimized) |
+| Fast **GHDL** specifically | Self-built GHDL **LLVM** with `--disable-checks` ([below](#building-ghdls-llvm-code-generators)) |
+| mcode's instant startup, some speed | Self-built GHDL **LLVM-JIT** with `--disable-checks` |
+| Windows | GHDL (the tested choice; NVC unverified there) |
+| The full picker | Install several — the `SIM:` toggle / `--sim` selects per run |
+
+> **Building GHDL yourself? Always pass `--disable-checks`.** GHDL's `configure`
+> *defaults to a debug build* — assertions on, unoptimized runtime, unoptimized
+> AOT ieee libraries — which costs the LLVM backend **40–70%** of its speed. The
+> official prebuilt GHDL release zips are built with that same default (upstream
+> CI audited 2026-07), so a self-built `--disable-checks` LLVM backend beats
+> them. mcode barely notices the flag (+2–9%), so distro mcode packages are fine
+> as the baseline. **NVC needs no such flag** — its standard build is already
+> optimized. Full measurements: [u25_ghdl_perf_profile.md](u25_ghdl_perf_profile.md).
+
+The simulator applies its own per-design optimization automatically (GHDL
+analyze/elaborate runs with `-O2`; NVC's default is already `-O2`), so there is
+no per-run flag to remember — the build configuration above is the only lever
+left to the installer.
 
 `fpga-sim --list-sims` prints every simulator it found — engine, code
 generator, version, and path. If one lives somewhere unusual, register it with
