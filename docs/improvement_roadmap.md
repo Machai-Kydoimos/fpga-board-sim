@@ -314,7 +314,7 @@ carry a `port_conventions` block (framework-derived + vendor-canonical), up from
 
 - **U23.** Dirty-flag redraw — skip `_draw()` when no LED / switch / button / 7-seg state changed since last frame. Touches the `SimulationScreen` draw loop (`ui/simulation_screen.py`, now that **U34 ✅** has landed) and `ui/board_display.py`. **Effort:** S. **Done when:** frame rate stays at the fps cap but CPU usage drops when no state changes.
 - **U24.** ~~Batch multiple `Timer` calls per frame at high speed-slider settings.~~ **Won't-do — resolved by measurement (U34 spike, 2026-07-16):** batching ×10 `Timer` calls per frame gained only **+3 %** on GHDL — the GPI round-trip is not the bottleneck (VHDL eval dominates), so the loop complexity is not worth it. The single-window child (U34) already free-runs the simulator to saturation on the benchmark path. **Effort:** M (not pursued).
-- **U25.** Profile GHDL GPI vs VHDL eval to find the next bottleneck. **Effort:** investigative. **Done when:** a written profile report identifies the top-3 bottlenecks with data.
+- **U25 ✅.** Profile GHDL GPI vs VHDL eval to find the next bottleneck. **Shipped 2026-07-23:** written report at [u25_ghdl_perf_profile.md](u25_ghdl_perf_profile.md). Top-3 with data: (1) **build config** — GHDL's configure *default* is a debug build (`enable_checks=true`: unoptimized asserting GRT + `-O0` AOT ieee libs); a `--disable-checks` rebuild recovered **+40–70% on LLVM AOT** (mcode +2–9%), shrinking NVC's edge to ~1.5× on conventional workloads and 13.3×→8.6× on `rgb_rainbow`; (2) **per-op standard-library call cost** (generic `numeric_std` routines + array-temp copies per operator — the architectural residual NVC wins on); (3) **wake structure × per-wake cost** (per-clock-wake designs are the pathological class). GPI/VPI overhead measured **negligible** — confirms U24's won't-do. Local backends rebuilt `--disable-checks`; CI unaffected (pins release binaries).
 
 The larger active performance + UX initiative:
 
@@ -514,7 +514,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **7** | Iteration & panel UX | U18 Recent files (+ keep dir on retry) · U14 Pause/resume · U15 Compact SimPanel · U19 Metrics checkbox |
 | **8** | Startup hardening + dev-DRY base | U16 Min window size · U17 Font pre-alloc · **D5 Path helper** → D13 Env-branch tests · D12 Arch diagram |
 | **9** | Untrusted-VHDL isolation | **D7 Decompose `start_simulation`** → D16 Sandbox the sim subprocess |
-| **10** | Performance deep-dive | U25 Profile GHDL GPI vs eval · ~~U24 Batch `Timer` calls~~ (won't-do, resolved by measurement) · ~~**U34 single-window**~~ ✅ (shipped ahead of this sprint — own release, v0.15.0) |
+| **10** | Performance deep-dive | ~~U25 Profile GHDL GPI vs eval~~ ✅ (2026-07-23 — report: [u25_ghdl_perf_profile.md](u25_ghdl_perf_profile.md)) · ~~U24 Batch `Timer` calls~~ (won't-do, resolved by measurement) · ~~**U34 single-window**~~ ✅ (shipped ahead of this sprint — own release, v0.15.0) |
 | **11** | Verilog / SystemVerilog | U20 Verilog support (Icarus) |
 | **12** | 7-seg physical mux | U22 7-seg physical mux (shares U21's wrapper-template 7-seg context) |
 
