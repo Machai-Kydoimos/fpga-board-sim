@@ -8,8 +8,9 @@
 [![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
-*CI matrix: Ubuntu + Windows × Python 3.10 / 3.12 / 3.13, plus GHDL 6.0 and NVC simulator
-jobs on Linux and GHDL 6.0 on Windows. macOS is supported but not CI-tested.*
+*CI matrix: Ubuntu + Windows × Python 3.10 / 3.12 / 3.13, plus simulator jobs — GHDL 6.0
+(mcode, LLVM, and LLVM-JIT backends) and NVC on Linux, GHDL 6.0 on Windows — and a
+board-data drift check. macOS is supported but not CI-tested.*
 
 Interactive FPGA board simulator for VHDL. Pick from **283 real FPGA board
 definitions** (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards),
@@ -68,7 +69,8 @@ from-source builds, AUR/Gentoo/FreeBSD packages, and the Windows/MSYS2 details, 
 
 ```bash
 uv sync                        # create the venv, install dependencies
-uv run fpga-sim                # launch (use --sim ghdl|nvc to force one)
+uv run fpga-sim                # launch (--sim ghdl|nvc|ghdl-llvm|… forces a backend;
+                               #  --list-sims shows every install it found)
 ```
 
 > `fpga-sim` opens a desktop window, so it needs a graphical display — not a bare SSH
@@ -155,12 +157,25 @@ LEDR <= std_logic_vector(count(27 downto 18));
 
 The simulator matches the file against the **selected** board's port convention and,
 on a match, runs it unmodified — inverting active-low pins and packing the 7-segment
-digits for you. **262 of the 283 boards** carry a convention (vendor-canonical names
-where cited, litex/amaranth framework names elsewhere; canonical wins when both
+digits for you. That includes **physically multiplexed scan displays**: a design
+driving the Basys 3's shared `seg`/`dp`/`an` or a Nexys 4 DDR's `CA..CG`/`DP`/`AN`
+exactly as on real hardware is demultiplexed live, each digit rendered at its honest
+1/N scan brightness. **262 of the 283 boards** carry a convention (vendor-canonical
+names where cited, litex/amaranth framework names elsewhere; canonical wins when both
 exist). Full guide: [docs/writing_designs.md](docs/writing_designs.md#board-native-designs).
 
 ## Features at a glance
 
+- **True LED brightness** — every LED and 7-segment channel's PWM duty cycle is
+  **measured exactly** in the simulator (not sampled), and rendered as perceptual
+  brightness: PWM dimming, RGB color mixing, and scan-display multiplexing all look
+  like the real hardware ([writing designs](docs/writing_designs.md#contract-details)).
+- **RGB LEDs** — 3-channel color mixing on boards that have them (Arty, Nexys, Cora,
+  …), via the generic contract's `NUM_RGB_LEDS` or the board's own channel names
+  ([writing designs](docs/writing_designs.md#rgb-led-boards)).
+- **Simulator picker** — every installed backend (GHDL mcode / LLVM / LLVM-JIT, NVC)
+  is a truthfully-labeled, selectable, persistable choice; `--list-sims` /
+  `--add-sim` from the CLI ([install guide](docs/install.md#choosing-a-simulator)).
 - **Waveform capture** — record VCD/FST per run, each with a ready-to-open `.gtkw` for
   **GTKWave** (or **Surfer**) ([user guide](docs/user_guide.md#waveform-capture)).
 - **Themes** — PCB Green / Dark / High Contrast, applied live
@@ -203,7 +218,7 @@ full pipeline, the GHDL/NVC backends, and the board-native matcher are documente
 | Python | 3.10+ | Runtime (must be standalone, not Windows Store) |
 | pygame | 2.6+ | GUI rendering |
 | cocotb | 2.0+ | Python ↔ simulator bridge (VPI/VHPI) |
-| GHDL | 6.0+ | VHDL compilation and simulation (mcode backend) |
+| GHDL | 6.0+ | VHDL compilation and simulation (mcode, LLVM, or LLVM-JIT backend — see [choosing a simulator](docs/install.md#choosing-a-simulator)) |
 | NVC | 1.11.0+ | Alternative VHDL simulator (LLVM native code; recommended ≥ 1.19.0; Linux/macOS fully tested; Windows available but untested with cocotb VHPI) |
 
 At least one of GHDL or NVC must be installed; both can coexist, selected via the UI

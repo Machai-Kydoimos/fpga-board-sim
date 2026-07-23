@@ -129,32 +129,36 @@ Configured in `pyproject.toml` under `[tool.ruff]`. Enabled rule sets:
 | `ANN` | annotations | Missing type annotations |
 | `D` | pydocstyle | Docstring conventions |
 
-**Exemptions** (see `[tool.ruff.lint.per-file-ignores]`):
+**Exemptions** (see `[tool.ruff.lint.per-file-ignores]` for the authoritative list):
 
 - `tests/*` — `ANN` and `D` are relaxed; pytest fixtures and test
   functions do not require annotations or docstrings.
 - `sim/sim_testbench.py` — `ANN201` (public return type) is relaxed;
   cocotb's `@cocotb.test()` decorator makes the return type implicit.
-- `sim/test_blinky.py`, `sim/test_7seg.py` — `ANN` is relaxed for the same reason.
+- **Every `sim/test_*.py` cocotb module** is `ANN`-relaxed (DUT signals are
+  dynamic). When you add a new cocotb test module under `sim/`, add it to the
+  per-file-ignores list — and to the mypy override list below — in the same PR.
+- A couple of `tests/` parser suites relax `E501`: they embed real
+  constraint-file excerpts verbatim, whose line length is a property of the
+  source format.
 
 ### Mypy (type checker)
 
-Configured in `pyproject.toml` under `[tool.mypy]`. Current strictness:
+Configured in `pyproject.toml` under `[tool.mypy]`. Since D8 (#125) the config
+is simply:
 
 ```toml
-disallow_untyped_defs    = true   # all functions must be annotated
-disallow_incomplete_defs = true   # no partial annotations
-check_untyped_defs       = true   # type-check bodies of untyped (e.g. test) funcs too
-warn_return_any          = true   # warn when returning Any from typed func
-warn_unused_ignores      = true   # keep type: ignore comments tidy
-ignore_missing_imports   = true   # third-party stubs not required
+strict = true                    # the full strict flag set
+ignore_missing_imports = true    # third-party stubs not required
 ```
 
-Test files (`tests.*`, `test_blinky`, `test_7seg`) are exempt from
-`disallow_untyped_defs` via `[[tool.mypy.overrides]]` — their functions need not
-be annotated. But `check_untyped_defs = true` (the first slice of roadmap D8)
-still type-checks the *bodies* of those untyped functions, so test code is not a
-type-checking blind spot. Consistent with the ruff exemptions above.
+Test modules — `tests.*` plus every `sim/test_*.py` cocotb module, listed by
+bare module name in `[[tool.mypy.overrides]]` — are exempt from
+`disallow_untyped_defs` / `disallow_untyped_calls`: their functions need not be
+annotated. Strict mode still type-checks the *bodies* of those untyped
+functions, so test code is not a type-checking blind spot. Consistent with the
+ruff exemptions above (and with the same rule: a new `sim/test_*.py` joins the
+override list in the PR that adds it).
 
 The `boards/` directory (JSON board definitions) is excluded from both ruff
 and mypy; its files are data, not source code.
@@ -288,10 +292,10 @@ setup. A few things that matter for contributors:
 
   `tests/test_controller.py` and `tests/test_settings_dialog.py` do this with
   an autouse fixture; follow that pattern in new test modules.
-- **`sim/test_blinky.py`** contains headless cocotb tests for the blinky
-  design. **`sim/test_7seg.py`** contains the equivalent tests for the
-  `counter_7seg` design. Both run via pytest through a cocotb–pytest
-  integration and require GHDL or NVC to be installed.
+- **`sim/test_*.py` are headless cocotb suites** (about ten modules: blinky,
+  counter_7seg, the embedded-CPU designs, the duty engine, RGB, the native
+  scan displays, …), each driven end-to-end by a pytest runner in `tests/`
+  and requiring GHDL or NVC. The catalog lives in `CLAUDE.md`'s file table.
 - **`tests/` has an `__init__.py`**; `sim/` does not. This matters if
   you add a mypy override — use `"tests.*"` for `tests/` and the bare
   module name (e.g. `"test_blinky"`) for `sim/` files.
@@ -318,11 +322,51 @@ It runs the real pipeline headlessly (`SDL_VIDEODRIVER=dummy`) for the given
 number of seconds and prints a board / VHDL / simulator summary and a performance
 report; a clean exit with `PASS=1 FAIL=0` means the combination builds and runs.
 `--board` takes a board **class name** (e.g. `ArtyA7_35Platform`; omit it to use
-the first discovered board), `--vhdl` defaults to `hdl/blinky.vhd`, and
-`--sim ghdl|nvc` picks the backend.
+the first discovered board), `--vhdl` defaults to `hdl/blinky.vhd`, and `--sim`
+picks the backend — an engine (`ghdl`/`nvc`), a specific GHDL code generator
+(`ghdl-mcode`/`ghdl-llvm`/`ghdl-jit`), or an absolute binary path. Discover and
+register installs with `--list-sims` / `--add-sim PATH` (see the install guide's
+"Choosing a simulator").
 
 For a *visual* check (rendered LED / 7-seg frames saved as PNGs), see
 `scripts/capture_demo.py`, which drives the same headless pipeline.
+
+---
+
+## Contributing board data
+
+Three of the four `boards/` sources are **machine-written** by the sync scripts
+(`amaranth-boards/`, `litex-boards/`, `digilent-xdc/`), and the **Board-data
+drift** CI job re-generates them at their recorded upstream pins on every PR —
+so a hand edit to a generated JSON will be flagged (and would be silently
+reverted by the next re-sync anyway). Route each kind of change through its
+pipeline instead:
+
+- **A new board** → add a JSON file under `boards/custom/` following
+  `boards/schema/board.schema.json`. Never fork a generated board into
+  `custom/` to tweak it — that leaves an un-removable, auto-regenerated
+  duplicate.
+- **An LED color** → add a cited entry (fetched vendor source, verify-or-omit)
+  to the registry in `docs/led_color_sources/*.toml` and run
+  `uv run python scripts/sync_led_colors.py`. The name heuristic
+  (`led_r` → red) is automatic; the registry is for colors the name doesn't
+  encode.
+- **A board-native port convention** (vendor-canonical names, polarity, 7-seg
+  style) → add or fix the canonical `port_conventions.<vendor>` block **in
+  place** on the existing board JSON, or go through the registry
+  (`docs/port_convention_sources/*.toml` + `overlay.toml`) — the re-sync
+  merge preserves canonical blocks per sub-key. Polarity and display styles
+  are **cited data** (reference-manual prose, schematics); follow the
+  verify-or-omit convention visible throughout the registries.
+- **A parser/classifier fix** (the generated data is *wrong*) → fix the parser
+  under `scripts/`, re-sync at the recorded pin
+  (`GITHUB_TOKEN=$(gh auth token) uv run python scripts/sync_digilent_xdc.py
+  --ref <pinned sha>` etc.), and commit the code + regenerated JSONs together;
+  the drift job proves the pair is consistent.
+
+`docs/architecture.md` covers the sync pipeline's structure;
+`docs/u21_board_native_vhdl_plan.md` and `docs/u22_7seg_scan_plan.md` are the
+deep references for conventions.
 
 ---
 
@@ -379,16 +423,19 @@ Every push and pull request runs the following jobs:
 |-----|--------|----------------------|---------------|
 | Lint & type-check | ubuntu-latest | none | n/a |
 | Test (matrix) | ubuntu + windows × py3.10 + py3.12 + py3.13 | none | `-m "not slow"` |
-| Test Linux + GHDL | ubuntu-24.04 | GHDL tarball from GitHub Releases (pinned v6.0.0) | full suite |
+| Test Linux + GHDL | ubuntu-24.04 | GHDL mcode tarball from GitHub Releases (pinned v6.0.0) | full suite |
+| Test Linux + GHDL-LLVM / GHDL-LLVM-JIT | ubuntu-24.04 | the official `ghdl-llvm` / `ghdl-llvm-jit` release assets (sha256-pinned) | full + slow suites |
 | Test Linux + NVC | ubuntu-latest | `nickg/setup-nvc` action | full suite |
 | Test Windows + GHDL | windows-latest | GHDL zip from GitHub Releases | full suite |
+| Board-data drift | ubuntu-latest | none (network + `GITHUB_TOKEN`) | n/a — re-syncs every generated `boards/` source at its recorded pin and requires zero diff, then chains `sync_port_conventions --check` + `sync_led_colors --check` |
 
 ### The `slow` marker
 
-Tests in `test_ghdl.py`, `test_nvc.py`, `test_simulation.py`, and
-`test_vhdl_validation.py` are marked `@pytest.mark.slow` — they invoke a
-real simulator subprocess. The pure-Python matrix jobs skip them with
-`-m "not slow"`.
+Tests that invoke a real simulator subprocess are marked `@pytest.mark.slow`
+(about a dozen files — `test_ghdl.py`, `test_nvc.py`, `test_simulation.py`,
+`test_vhdl_validation.py`, the native-design and cocotb-suite runners, and so
+on; grep for the marker for the current list). The pure-Python matrix jobs
+skip them with `-m "not slow"`.
 
 The `ghdl` and `nvc` fixtures both call `pytest.skip()` when the
 respective binary is absent, so running the full suite locally without one
@@ -406,10 +453,13 @@ A PR cannot be merged until these seven checks all pass:
 - `Test (windows-latest, Python 3.12)`
 - `Test (windows-latest, Python 3.13)`
 
-The simulator-specific jobs (Linux + GHDL, Linux + NVC, Windows + GHDL) are not
-required checks — they surface regressions but do not block merge on their own.
-If you introduce a change that touches `sim_bridge.py` or the simulator
-backends, confirm those jobs are green before merging.
+The simulator-specific jobs (Linux + GHDL / GHDL-LLVM / GHDL-LLVM-JIT / NVC,
+Windows + GHDL) and the Board-data drift job are not required checks — they
+surface regressions but do not block merge on their own. If you touch
+`sim_bridge.py` or the simulator backends, confirm the simulator jobs are green
+before merging; if you touch anything under `boards/`, `scripts/*parser*`, the
+sync scripts, or the convention/color registries, confirm Board-data drift is
+green.
 
 ### Gotchas
 
@@ -469,11 +519,17 @@ board data are in sync with their sources. Both commands only report drift; neit
 writes:
 
 ```bash
-uv run python scripts/sync_port_conventions.py --check  # port_conventions vs registry
-uv run python scripts/regen_embedded_cores.py           # embedded-core files vs specs (check only)
+GITHUB_TOKEN=$(gh auth token) \
+uv run python scripts/check_board_drift.py    # boards/ vs pinned upstreams; chains
+                                              # sync_port_conventions --check +
+                                              # sync_led_colors --check
+uv run python scripts/regen_embedded_cores.py # embedded-core files vs specs (check only)
 ```
 
-Investigate and resolve any reported drift before proceeding.
+(The token matters: unauthenticated GitHub API rate limits read as false drift.)
+Investigate and resolve any reported drift before proceeding — with one known
+benign class: pure *retrieved-date / source-pin churn* from an upstream repo
+moving is cosmetic, committed separately, and not a release blocker.
 
 1. **Create a release branch** from `main`:
 
@@ -486,16 +542,21 @@ Investigate and resolve any reported drift before proceeding.
    `[X.Y.Z] - YYYY-MM-DD` section and update the comparison links at the
    bottom of the file.
 
-3. **Bump the version** in `pyproject.toml`:
+3. **Bump the version** in `pyproject.toml`, then **re-lock**:
 
    ```toml
    version = "X.Y.Z"
    ```
 
+   ```bash
+   uv lock   # uv.lock records the project's own version — skip this and the
+             # next `uv sync`/CI run dirties the tree (the v0.15.0 lesson)
+   ```
+
 4. **Commit, push, and open a PR** targeting `main`:
 
    ```bash
-   git add CHANGELOG.md pyproject.toml
+   git add CHANGELOG.md pyproject.toml uv.lock
    git commit -m "chore: bump version to X.Y.Z and update CHANGELOG"
    git push -u origin release/vX.Y.Z
    gh pr create --title "chore: release vX.Y.Z"
@@ -509,8 +570,9 @@ Investigate and resolve any reported drift before proceeding.
    git push origin vX.Y.Z
    ```
 
-6. **Create a GitHub Release** from the tag. Use the `[X.Y.Z]` section of
-   `CHANGELOG.md` as the release body.
+6. **Create a GitHub Release** from the tag. Keep the body **short**: a few
+   headline highlights as one-liners, then a link to the `[X.Y.Z]` section of
+   `CHANGELOG.md` for the details — don't paste the whole section.
 
 ---
 
