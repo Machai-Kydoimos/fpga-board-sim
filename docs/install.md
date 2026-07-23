@@ -118,13 +118,15 @@ design takes to load:
 
 | Simulator | Relative speed | Startup / reload | Notes |
 |---|---|---|---|
-| NVC | fastest (~4–6x mcode) | fast | full VHPI; the speed pick, especially for embedded-CPU designs |
+| NVC | fastest (~3.5–6x mcode; more on arithmetic-heavy designs) | fast | full VHPI; the speed pick, especially for embedded-CPU designs |
 | GHDL mcode | baseline (1x) | instant | the default; what most distros ship |
 | GHDL LLVM-JIT | ~1.2x mcode | instant | mcode's feel, a free speedup |
-| GHDL LLVM | ~2–3x mcode | slower (compiles + links each launch/reload) | width errors still surface at load time |
+| GHDL LLVM | ~2.3–3.9x mcode | slower (compiles + links each launch/reload) | width errors still surface at load time |
 
 Ratios, not absolute times (which are machine-dependent). Measured on a Ryzen
-AI 9 HX 370 (GHDL 7.0.0-dev / NVC 1.22, 2026-07-18); reproduce with
+AI 9 HX 370 (GHDL 7.0.0-dev / NVC 1.22, 2026-07-23, all release builds — GHDL
+built `--disable-checks`; the profile behind these numbers is
+[u25_ghdl_perf_profile.md](u25_ghdl_perf_profile.md)). Reproduce with
 `uv run fpga-sim --benchmark 10 --no-ui` (add `--sim <name>` / `--board` /
 `--vhdl` to compare).
 
@@ -151,13 +153,16 @@ git clone https://github.com/ghdl/ghdl && cd ghdl
 
 # One build dir + one --prefix per backend. Never share a prefix between
 # backends, and never reconfigure an existing build dir for a different one.
+# --disable-checks matters: GHDL's configure DEFAULT is a debug build
+# (asserting runtime, unoptimized AOT ieee libraries) that costs the llvm
+# backend 40-70% (see docs/u25_ghdl_perf_profile.md).
 mkdir build-llvm && cd build-llvm
-../configure --prefix=/usr/local/ghdl-llvm --with-llvm-config
+../configure --prefix=/usr/local/ghdl-llvm --with-llvm-config --disable-checks
 make -j"$(nproc)" && sudo make install
 cd ..
 
 mkdir build-llvm-jit && cd build-llvm-jit
-../configure --prefix=/usr/local/ghdl-llvm-jit --with-llvm-jit
+../configure --prefix=/usr/local/ghdl-llvm-jit --with-llvm-jit --disable-checks
 make -j"$(nproc)" && sudo make install
 ```
 

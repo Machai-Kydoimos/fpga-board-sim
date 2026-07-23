@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **GHDL performance profile report (U25)** at `docs/u25_ghdl_perf_profile.md`.
+  Headline finding: GHDL's `configure` **default is a debug build**
+  (`enable_checks=true` — asserting unoptimized runtime, `-O0` AOT ieee
+  libraries), while NVC builds `-O2` by default, so published cross-simulator
+  ratios were optimized-NVC vs debug-GHDL. A same-commit `--disable-checks`
+  A/B recovers **+40–70% on the GHDL LLVM backend** (mcode +2–9%); the
+  residual NVC edge is per-operator `numeric_std` library-call structure, and
+  the cocotb VPI boundary measures negligible. The install guide's simulator
+  table now carries the corrected ratios and its from-source build snippets
+  pass `--disable-checks`.
+
 ### Fixed
 
 - **Embedded-core walker no longer goes dark on >16-LED boards** (#309). The

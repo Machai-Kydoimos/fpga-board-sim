@@ -155,12 +155,33 @@ Per-PR detail also lives in `CHANGELOG.md` and the linked PRs; the pre-condense 
 
 - ✅ **Shipped incrementally; completed by U5 ✅ (2026-07-06, PR #169).** `tests/test_session_config.py` covers every "Done when" scenario: missing file, malformed and non-dict JSON, old-schema files without newer keys, OSError-swallowing on write, and unknown-key preservation — the last now load-bearing rather than incidental, since U5 made every session write a merge (`update_session()` read-modify-write). U5 added the schema-expansion tests the card anticipated: merge semantics across writers, `update_session` over corrupt files, reserved-key round-trips, and `push_recent` dedup / cap / corruption tolerance.
 
+### U25. Profile GHDL GPI vs VHDL eval ✅
+
+- ✅ **Shipped 2026-07-23.** Full report: [u25_ghdl_perf_profile.md](u25_ghdl_perf_profile.md).
+  The headline: **GHDL's `configure` default (`enable_checks=true`) is a debug build** — GRT
+  unoptimized with Ada assertions on, AOT ieee libraries codegen'd `-O0` — while NVC builds
+  `-g -O2` by default, so every earlier cross-simulator ratio was optimized-NVC vs debug-GHDL.
+  A same-commit `--disable-checks` A/B recovered **+40–70% on LLVM AOT** (mcode +2–9%; it JITs
+  design *and* library code itself, so the Ada flags only touch GRT): honest AOT-over-mcode is
+  2.3–3.9×, NVC's real margin ~1.5× on conventional workloads and 8.6× (was 13.3×) on the
+  `rgb_rainbow` per-clock-wake outlier. gdb stack-sampling shows the residual gap is per-operator
+  `numeric_std` library calls with array-temp copies (structure, not codegen — design `-O2` ≈
+  noise), and the child's VPI/GPI boundary is **negligible** (~99% of the loop is simulator step;
+  scheduler frames minor) — closing U24's question for good. All three local backends rebuilt
+  `--disable-checks` at their original prefixes; CI pins upstream release binaries and is
+  unaffected.
+
 ---
 
 ## Delivery log
 
 Cross-cutting notes carried forward from completed work (forward-relevant gotchas also appear as ⚠ notes on the open cards they affect in [improvement_roadmap.md](improvement_roadmap.md)):
 
+- **Building GHDL from source? Pass `--disable-checks` (from U25 ✅).** GHDL's configure *default*
+  is a checks-enabled debug build (asserting, unoptimized GRT; `-O0` AOT ieee libraries) that costs
+  40–70% on the LLVM backend and mildly on mcode. One build dir per backend, each with its own
+  prefix (std/ieee libs are backend-specific — never share or reconfigure across backends). Any
+  benchmark that compares simulators must state the build configuration of *both* sides.
 - **Contract checks are parse-based; hint wordings are pinned to real simulator output (from U4 ✅).** New contract rules belong in `sim_bridge._check_parsed_contract()` (operating on `_IfaceDecl`s), not new whole-text regexes — and must keep the unparseable-interface fallback permissive, since stage 3 + `add_error_hints()` still catches what the parser can't see. The `add_error_hints()` rule regexes match the *observed* GHDL 6/7 and NVC 1.2x error wordings — when bumping either simulator, re-run the broken-design sweep (fixed width, missing generic, extra port, missing IEEE header, on both backends) and adjust the patterns if the wording drifted; a non-matching message silently loses its hint (tests cover the current wordings).
 - **Selector key handling (from U1 ✅).** Any new *printable* keyboard shortcut on the board selector must be intercepted in `BoardSelector._handle_keydown()` *above* the `filter_text += ev.unicode` branch (match on `ev.unicode`), or the keystroke leaks into the text filter — this is how `?` and type-to-filter coexist.
 - **Off-main-thread work (from U2 ✅).** `run_with_spinner()` is the pattern for any future long-running launcher operation (simulator install probe, board re-sync, large-file load): the worker callable runs on a `ThreadPoolExecutor` thread and **must not touch pygame** — only the main thread draws. Pass arguments with `functools.partial` (not a `lambda`) when the call site is inside a loop, so loop variables are bound eagerly (avoids B023 and the closure-widening that would otherwise re-introduce `str | None`).
