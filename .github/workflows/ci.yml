@@ -50,8 +50,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
+      # fail-fast off: the macOS/arm entries are experimental — a red one must
+      # not cancel the required ubuntu/windows checks mid-run.
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # macos-latest + ubuntu-24.04-arm are arm64.  cocotb publishes no Linux
+        # aarch64 wheel, so the arm job also proves the sdist (C++ GPI) build.
+        os: [ubuntu-latest, windows-latest, macos-latest, ubuntu-24.04-arm]
         python-version: ["3.10", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
