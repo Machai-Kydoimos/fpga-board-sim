@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Plain-LED designs no longer blur on NVC (#256).** The `COUNTER_BITS` floor
+  for generic-contract designs is now per simulator engine: NVC — whose ~8×
+  higher throughput after the U34 single-window speedup made a plain `blinky`
+  blink at a blurry ~17–42 Hz — gets a 20-bit floor (+3 bits ≈ ÷8), landing it
+  at GHDL's watchable ~2–5 Hz. GHDL (every code generator) and the analysis
+  path keep the 17-bit floor, and many-digit 7-seg displays still widen past
+  either floor. Board-native and embedded-core designs are unaffected (no
+  `COUNTER_BITS` override).
+
 ### Added
 
 - **macOS and Linux-arm64 CI.** The test matrix now runs on macOS (Apple
