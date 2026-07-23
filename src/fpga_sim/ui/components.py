@@ -137,8 +137,13 @@ class UIComponent(abc.ABC):
 
 #: Perceptual gamma for duty -> brightness.  Luminance is linear in duty cycle,
 #: but perception is not: a 10%-duty LED looks clearly lit on real hardware,
-#: where a linear ramp would render it as nearly black.
-GAMMA: float = 2.2
+#: where a linear ramp would render it as nearly black.  3.0 approximates
+#: Stevens' ~cube-root brightness law; raised from 2.2 after the U22 scan
+#: review (Rick, 2026-07-23) so an 8-way-scanned display's 1/8-duty digits
+#: render at half blend -- dimmer than full drive, clearly legible, exactly
+#: the real-hardware impression.  One constant for LEDs, RGB pucks, and
+#: segments alike, so equal duties always render equally.
+GAMMA: float = 3.0
 
 
 def _perceptual(level: float) -> float:
