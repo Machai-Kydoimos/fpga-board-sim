@@ -137,8 +137,8 @@
       "description": "Official LPF file from cheyao/icepi-zero repository (v1.3 variant) matches litex-boards platform definition exactly. Pin assignments verified against official constraint file.",
       "naming": "canonical",
       "source": {
-        "url": "https://raw.githubusercontent.com/cheyao/icepi-zero/f3da0ada813cf1a6b67bf571af13b6913d6c60c9/gateware/v1.3/icepi-zero-v1_3.lpf",
-        "retrieved": "2026-07-14",
+        "url": "https://raw.githubusercontent.com/cheyao/icepi-zero/a6766cb8e4db0cc1a73d5b72232e8146e806e1e2/gateware/v1.3/icepi-zero-v1_3.lpf",
+        "retrieved": "2026-07-23",
         "registry_board": "Icepi Zero"
       }
     }
