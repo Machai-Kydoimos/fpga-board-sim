@@ -157,6 +157,28 @@ def test_build_generics_counts_led_channels_not_components():
     assert build_generics(board)["NUM_LEDS"] == "16"
 
 
+def test_build_generics_nvc_widens_counter_floor():
+    """#256: NVC's ~8x throughput blurs a plain blinky, so it gets a wider floor.
+
+    GHDL (and the default/analysis path) keeps the 17-bit floor; NVC gets 20 so
+    the visible blink lands at GHDL's watchable rate instead of ~42 Hz.
+    """
+    board = _board(default_clock_hz=100e6)  # plain-LED, no 7-seg
+    assert build_generics(board)["COUNTER_BITS"] == "17"  # default (analysis/tests)
+    assert build_generics(board, simulator="ghdl")["COUNTER_BITS"] == "17"
+    assert build_generics(board, simulator="nvc")["COUNTER_BITS"] == "20"
+
+
+def test_build_generics_nvc_floor_does_not_shrink_7seg_widening():
+    """The 7-seg widening (4*num_segs) still dominates the NVC floor when larger."""
+    board = _board(
+        default_clock_hz=100e6,
+        seven_seg=SevenSegDef(6, True, False, True, False),  # 4*6 = 24 > 20
+    )
+    assert build_generics(board, simulator="nvc")["COUNTER_BITS"] == "24"
+    assert build_generics(board, simulator="ghdl")["COUNTER_BITS"] == "24"
+
+
 # ── SessionState ─────────────────────────────────────────────────────────────
 
 

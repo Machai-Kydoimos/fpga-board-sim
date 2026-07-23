@@ -171,7 +171,7 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
     print(f"[benchmark] Duration: {args.benchmark}s  (headless, {mode})")
 
     # Analyze VHDL
-    generics = build_generics(chosen)
+    generics = build_generics(chosen, simulator=sim.engine)
     ok, work_dir = analyze_vhdl(
         vhdl_path,
         toplevel=toplevel_name,
