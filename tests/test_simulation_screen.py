@@ -315,6 +315,175 @@ def test_no_toolbar_when_disabled(headless_pygame, fake_child):
     screen._render_frame()  # must not raise with the toolbar absent
 
 
+# ── redraw gating (U23) ───────────────────────────────────────────────────────
+
+
+def _park_cursor_off_board(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin the cursor off every component so hover never forces a redraw (U23)."""
+    monkeypatch.setattr("pygame.mouse.get_pos", lambda: (-50, -50))
+
+
+def test_render_skips_when_nothing_changed(headless_pygame, fake_child, monkeypatch):
+    """A second identical frame is skipped: no draw, no flip, no frames_drawn bump."""
+    _park_cursor_off_board(monkeypatch)
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+
+    screen._render_frame()  # first frame always draws (nothing drawn yet)
+    assert screen.run_stats.frames_drawn == 1
+    screen._render_frame()  # identical → skipped
+    screen._render_frame()  # still identical → skipped
+    assert screen.run_stats.frames_drawn == 1
+
+
+def test_render_redraws_on_led_change(headless_pygame, fake_child, monkeypatch):
+    """A changed LED level re-dirties the signature, forcing exactly one redraw."""
+    _park_cursor_off_board(monkeypatch)
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+
+    screen._render_frame()
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == 1  # settled → skipping
+
+    screen.board.set_led_level(0, 1.0)  # visible state change
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == 2
+    screen._render_frame()  # settled again
+    assert screen.run_stats.frames_drawn == 2
+
+
+def test_render_redraws_on_switch_and_button_change(headless_pygame, fake_child, monkeypatch):
+    """Switch and button state each re-dirty the signature (input still shows)."""
+    _park_cursor_off_board(monkeypatch)
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen._render_frame()
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == 1
+
+    screen.board.switches[0].state = True
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == 2
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == 2
+
+    screen.board.buttons[0].pressed = True
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == 3
+
+
+def test_render_redraws_on_pause_toggle(headless_pygame, fake_child, monkeypatch):
+    """Pausing swaps the overlay [PAUSE]/[RESUME] label, so it must redraw."""
+    _park_cursor_off_board(monkeypatch)
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen._render_frame()
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == 1
+
+    screen.panel.paused = True
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == 2
+
+
+def test_render_redraws_on_event(headless_pygame, fake_child, monkeypatch):
+    """Any pygame event this frame forces a redraw (hover/overlay highlights)."""
+    _park_cursor_off_board(monkeypatch)
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen._render_frame()
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == 1
+
+    # _pump_events sets the flag from whatever it drained; a posted event trips it.
+    headless_pygame.event.post(
+        headless_pygame.event.Event(headless_pygame.MOUSEMOTION, {"pos": (5, 5), "rel": (1, 1)})
+    )
+    screen._pump_events()
+    assert screen._events_this_frame is True
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == 2
+
+    # No new events → flag cleared by the next _pump_events → skip resumes.
+    screen._pump_events()
+    assert screen._events_this_frame is False
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == 2
+
+
+def test_render_redraws_while_hovering_component(headless_pygame, fake_child, monkeypatch):
+    """A cursor resting on a component keeps redrawing so its tooltip can appear."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    monkeypatch.setattr("pygame.mouse.get_pos", lambda: screen.board.leds[0].rect.center)
+
+    screen._render_frame()
+    screen._render_frame()
+    screen._render_frame()
+    # Every frame redraws while the cursor sits on the LED (no skipping).
+    assert screen.run_stats.frames_drawn == 3
+
+
+def test_render_redraws_on_connect_transition(headless_pygame, fake_child, monkeypatch):
+    """The disconnected 'Starting…' banner and the connected view differ (U23)."""
+    _park_cursor_off_board(monkeypatch)
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+
+    screen._render_frame()  # waiting banner
+    screen._render_frame()  # identical waiting → skipped
+    assert screen.run_stats.frames_drawn == 1
+
+    screen._connected = True  # connection established
+    screen._render_frame()  # must swap to the connected overlays
+    assert screen.run_stats.frames_drawn == 2
+
+
+def test_skipped_frame_leaves_surface_byte_identical(headless_pygame, fake_child, monkeypatch):
+    """A skip is a true no-op on the surface: the pixels equal the last drawn frame.
+
+    This is the correctness guarantee behind U23 — we only skip *redundant*
+    redraws, so what stays on screen is exactly what the previous draw produced.
+    """
+    _park_cursor_off_board(monkeypatch)
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+
+    screen._render_frame()  # draws
+    drawn = headless_pygame.image.tostring(screen.screen, "RGB")
+    screen._render_frame()  # skips (nothing changed)
+    assert screen.run_stats.frames_drawn == 1  # confirm it really skipped
+    skipped = headless_pygame.image.tostring(screen.screen, "RGB")
+    assert skipped == drawn
+
+
+def test_visual_signature_tracks_state(headless_pygame, fake_child):
+    """The board signature changes with LED/seg/switch/button state and size."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child, seg=True)
+    board = screen.board
+
+    base = board.visual_signature()
+    board.set_led_level(0, 0.5)
+    assert board.visual_signature() != base
+
+    sig_led = board.visual_signature()
+    board.set_seg_levels(0, [1.0, 0, 0, 0, 0, 0, 0, 0])
+    assert board.visual_signature() != sig_led
+
+    sig_seg = board.visual_signature()
+    board.switches[0].state = True
+    assert board.visual_signature() != sig_seg
+
+
 # ── e2e against a real simulator (slow) ───────────────────────────────────────
 
 

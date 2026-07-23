@@ -759,6 +759,40 @@ class FPGABoard:
         if hovered is not None:
             self._tooltip.draw(self.screen, pos, hovered.label, hovered.info, hovered.tooltip_extra)
 
+    # ── redraw gating (U23) ──────────────────────────────────────────
+
+    def visual_signature(self) -> tuple[object, ...]:
+        """Return a hashable fingerprint of everything ``_draw`` renders that can vary.
+
+        The simulation screen compares this frame-to-frame to skip an identical
+        redraw (U23): LED / 7-seg brightness (quantized well past the display's
+        resolution, so the persistence-of-vision easing settles to a stable
+        "clean" value), switch / button state, and the layout size (a resize
+        must force a redraw). Hover tooltips and the overlay/panel are handled
+        by the caller (see :meth:`hover_active`).
+        """
+        q = 1000  # quantize levels finer than any post-gamma pixel step
+        leds = tuple(
+            tuple(round(lv * q) for lv in led.levels)
+            if isinstance(led, RGBLED)
+            else round(led.level * q)
+            for led in self.leds
+        )
+        segs = tuple(tuple(round(lv * q) for lv in seg.levels) for seg in self._seven_segs)
+        switches = tuple(sw.state for sw in self.switches)
+        buttons = tuple(btn.pressed for btn in self.buttons)
+        return (self.width, self.height, self._height_offset, leds, segs, switches, buttons)
+
+    def hover_active(self) -> bool:
+        """Return True when the cursor is over a hover-target component (LED/switch/button).
+
+        The dwell-timed tooltip (U3) can appear and update while the board is
+        otherwise static, so the simulation screen keeps redrawing whenever this
+        holds — the redraw-skip (U23) only kicks in with the cursor off every
+        component, which is exactly when no tooltip is in play.
+        """
+        return self._component_at(pygame.mouse.get_pos()) is not None
+
     # ── drawing ──────────────────────────────────────────────────────
 
     def _draw(self, *, flip: bool = True) -> None:

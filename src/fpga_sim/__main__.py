@@ -264,6 +264,7 @@ def _benchmark_full_system(
             steps=stats.steps,
             sim_pct=stats.avg_sim_pct,
             frames=stats.frames,
+            frames_drawn=stats.frames_drawn,
             avg_fps=stats.avg_fps,
             draw_pct=stats.avg_draw_pct,
             idle_pct=stats.avg_idle_pct,
@@ -380,6 +381,7 @@ def _print_benchmark_report(
     steps: int,
     sim_pct: float,
     frames: int = 0,
+    frames_drawn: int = 0,
     avg_fps: float = 0.0,
     draw_pct: float = 0.0,
     idle_pct: float = 0.0,
@@ -395,7 +397,10 @@ def _print_benchmark_report(
     print(f"  Simulator : {sim.label}  ({sim.backend})")
     print(f"  Clock     : {board.default_clock_hz / 1e6:.4g} MHz")
     if ui:
+        skipped = frames - frames_drawn
+        pct = 100.0 * skipped / frames if frames else 0.0
         print(f"  Frames    : {frames}")
+        print(f"  Drawn     : {frames_drawn}   ({skipped} skipped, {pct:.0f}% — U23 redraw-skip)")
         print(f"  Avg FPS   : {avg_fps:.1f}")
     print(f"  Sim steps : {steps}")
     print(f"  Sim time  : {sim_ns / 1e9:.4g} s simulated")

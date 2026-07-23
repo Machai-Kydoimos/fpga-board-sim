@@ -19,6 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   aarch64 wheel upstream). Retires the README's "macOS is supported but not
   CI-tested" caveat.
 
+### Changed
+
+- **Idle-frame redraw skipping (U23).** The single-window simulation loop now
+  skips the board/panel/overlay redraw and buffer flip on any frame that would
+  be pixel-identical to the previous one — no LED / 7-seg / switch / button
+  change, no input event, no dwelling tooltip — while still pacing at the fps
+  cap. The rendered output is unchanged (a skipped frame leaves the surface
+  byte-identical); only redundant redraws are dropped. A static design's draw
+  work drops sharply — a headless full-system benchmark skipped ~90% of frames
+  at a steady 62 fps, cutting the host draw share from ~3% to ~0.5% — while
+  designs that change every frame are unaffected. The `--benchmark` full-system
+  report gains a `Drawn` (vs total `Frames`) line.
+
 ## [0.19.0] - 2026-07-23
 
 ### Added
