@@ -51,7 +51,7 @@ jobs:
     timeout-minutes: 15
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.10", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
@@ -172,6 +172,82 @@ jobs:
       - name: Verify GHDL (expect ${{ matrix.backend.name }} code generator)
         run: ghdl --version
       - name: Run full + slow test suite
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: uv run pytest
+
+  # macOS + GHDL: v6.0.0 ships no mcode for Apple Silicon (mcode's in-memory
+  # codegen is x86-only), so the mac jobs exercise the two compiled backends —
+  # the same pair the U35 picker offers.  The release tarball is self-contained
+  # (GNAT runtime + libgcc_s bundled, LLVM statically linked into ghdl1-llvm);
+  # the AOT llvm flavor links the simulation binary with the runner's clang.
+  # Not a branch-protection required check — promote once it has settled.
+  test-macos-ghdl:
+    name: Test macOS + GHDL-${{ matrix.backend.name }} (Python 3.12)
+    runs-on: macos-15  # pinned: matches the macos15-aarch64 GHDL release binary below
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        backend:
+          - flavor: llvm
+            name: LLVM
+            sha256: 69beb5913a490b5971980bd045af6a63b6f52e861b444fa990bffac436587478
+          - flavor: llvm-jit
+            name: LLVM-JIT
+            sha256: c21312d5a0cc5833e6d8690d8c4343e67f4fc32f070c07343816cd11a31c7769
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990  # v8.3.2
+        with:
+          python-version: "3.12"
+      - run: uv sync --group dev
+      - name: Cache GHDL ${{ matrix.backend.name }} install
+        id: cache-ghdl
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/ghdl
+          key: ghdl-${{ runner.os }}-${{ matrix.backend.flavor }}-6.0.0-${{ matrix.backend.sha256 }}
+      - name: Install GHDL v6.0.0 ${{ matrix.backend.name }} (pinned release)
+        if: steps.cache-ghdl.outputs.cache-hit != 'true'
+        run: |
+          ver="6.0.0"
+          url="https://github.com/ghdl/ghdl/releases/download/v$ver/ghdl-${{ matrix.backend.flavor }}-$ver-macos15-aarch64.tar.gz"
+          curl -sSL -o ghdl.tar.gz "$url"
+          expected="${{ matrix.backend.sha256 }}"
+          # macOS has no sha256sum; shasum ships with the system perl
+          actual="$(shasum -a 256 ghdl.tar.gz | cut -d' ' -f1)"
+          if [ "$actual" != "$expected" ]; then
+            echo "GHDL checksum mismatch: expected $expected, got $actual" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/ghdl"
+          tar -xzf ghdl.tar.gz -C "$HOME/ghdl"
+      - name: Add GHDL to PATH
+        run: dirname "$(find "$HOME/ghdl" -name ghdl -type f | head -1)" >> "$GITHUB_PATH"
+      - name: Verify GHDL (expect ${{ matrix.backend.name }} code generator)
+        run: ghdl --version
+      - name: Run full test suite
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: uv run pytest
+
+  test-macos-nvc:
+    name: Test macOS + NVC (Python 3.12)
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990  # v8.3.2
+        with:
+          python-version: "3.12"
+      - run: uv sync --group dev
+      - uses: nickg/setup-nvc@48f966dfc9b27bf13e873a473fcf1649ef8f5a0f  # v1 (Homebrew on macOS)
+      - name: Verify NVC
+        run: nvc --version
+      - name: Run full test suite
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
