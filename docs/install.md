@@ -120,7 +120,7 @@ design takes to load:
 |---|---|---|---|
 | NVC | fastest (~3.5–6x mcode; more on arithmetic-heavy designs) | fast | full VHPI; the speed pick, especially for embedded-CPU designs |
 | GHDL mcode | baseline (1x) | instant | the default; what most distros ship |
-| GHDL LLVM-JIT | ~1.2x mcode | instant | mcode's feel, a free speedup |
+| GHDL LLVM-JIT | ~1.2–1.4x mcode | instant | mcode's feel, a free speedup |
 | GHDL LLVM | ~2.3–3.9x mcode | slower (compiles + links each launch/reload) | width errors still surface at load time |
 
 Ratios, not absolute times (which are machine-dependent). Measured on a Ryzen

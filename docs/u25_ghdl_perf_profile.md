@@ -95,6 +95,26 @@ separate, smaller axis (U23 dirty-flag redraw remains open).
   `make install`. Never reconfigure an existing build dir to a different backend, and never share
   a prefix between backends (std/ieee libraries are backend-specific).
 
+## Post-install verification (2026-07-23, same day)
+
+All three local backends were rebuilt `--disable-checks` at their original prefixes and
+reinstalled. Verification against the installed binaries:
+
+- **Reproduction:** installed mcode/llvm reproduce the release-build A/B within noise
+  (blinky 0.00444x / 0.01762x; `rgb_rainbow` 0.00058x / 0.00134x).
+- **LLVM-JIT** (unmeasured above): essentially unchanged by the rebuild (+0–6%), as expected —
+  it JIT-compiles design *and* library code itself, so the Ada build flags touch only GRT.
+  Measured ratio over mcode: blinky 1.18×, `mx65` 1.28×, `rgb_rainbow` 1.36×, `counter_7seg`
+  1.42× — the install table's "~1.2–1.4x mcode".
+- **Acceptance:** the full project suite (fast + slow) passes **2015/2015 under each backend**
+  (mcode 64 s, llvm 66 s, llvm-jit 75 s).
+
+One caveat noted for the record: GHDL's in-tree `make test` showed unspecified failures on
+these rebuilds (not investigated). The in-tree suite runs from the *shared* source-tree
+`testsuite/` directory — back-to-back runs from different build dirs can collide on artifacts —
+and the dev-snapshot suite has categories with extra dependencies, so environmental causes are
+plausible; the project suite above is the acceptance gate that matters here.
+
 ## Follow-ups (assessed, not planned)
 
 - `-O2`/`-O3` library codegen (beyond `--disable-checks`' `-O1`): possible via `LIB_CFLAGS`;
