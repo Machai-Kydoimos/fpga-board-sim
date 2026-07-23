@@ -115,11 +115,35 @@ these rebuilds (not investigated). The in-tree suite runs from the *shared* sour
 and the dev-snapshot suite has categories with extra dependencies, so environmental causes are
 plausible; the project suite above is the acceptance gate that matters here.
 
+## Addendum: the gcc backend, measured (2026-07-23)
+
+The previously assessed-not-worth-it `ghdl-gcc` backend was subsequently built and measured
+(release config, GCC 15.2.0 sources + the tree's `ortho-lang-15.c` glue, `$HOME` prefix):
+
+| design | ghdl-gcc | ghdl-llvm | Δ |
+|---|---|---|---|
+| `blinky` | 0.01712x | 0.01769x | −3.2% |
+| `counter_7seg` | 0.004148x | 0.004284x | −3.2% |
+| `mx65` CPU | 0.003057x | 0.003137x | −2.5% |
+| `rgb_rainbow` | 0.001304x | 0.00133x | −2.0% |
+
+**Exactly llvm-class, uniformly 2–3% behind LLVM 21** — including the compute-bound CPU design,
+refuting the "possibly ahead there" hypothesis. This pins the earlier conclusion: the two AOT
+backends share GHDL's per-operator library-call model (§2), so the code generator choice is
+worth only a few percent either way, and NVC's remaining margin is architectural. Not worth
+installing or documenting as a fourth backend: same speed as llvm from a much heavier build
+with slower per-launch compiles.
+
+Two upstream snags for anyone reproducing a GCC-15 build of this GHDL snapshot (`e8653994f`):
+`make copy-sources` provides no `gcc/vhdl/lang.opt.urls`, which GCC ≥ 14's `s-options` target
+requires — a header-comment-only stub next to the copied `lang.opt` satisfies it (note:
+re-running `copy-sources` deletes the copied dir, stub included); and without `makeinfo`
+installed, pass `MAKEINFO=true` to **both** `make` and `make install`.
+
 ## Follow-ups (assessed, not planned)
 
 - `-O2`/`-O3` library codegen (beyond `--disable-checks`' `-O1`): possible via `LIB_CFLAGS`;
   expected minor — §2 shows the cost is call/temp *structure*, not codegen quality. Revisit only
   if a library-bound design becomes a real user pain point.
-- `ghdl-gcc` backend: same library-call model → expected llvm-class on library-bound designs;
-  heavy build, assessed not worth it (2026-07-22).
+- ~~`ghdl-gcc` backend~~: measured — see the addendum above; llvm-class confirmed, closed.
 - U23 (dirty-flag redraw) and P1 (NVC elaborate-once) remain the open roadmap perf items.
