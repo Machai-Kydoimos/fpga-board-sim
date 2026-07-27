@@ -249,14 +249,23 @@ activates only with `FPGA_SIM_SINGLE_WINDOW=1`.
 
    ```python
    class SimulationScreen:
-       def __init__(self, screen, clock, board_def, child: SimChild, *,
-                    speed_factor, match: ConventionMatch | None,
-                    show_toolbar: bool = True) -> None: ...
+       def __init__(
+           self,
+           screen,
+           clock,
+           board_def,
+           child: SimChild,
+           *,
+           speed_factor,
+           match: ConventionMatch | None,
+           show_toolbar: bool = True,
+       ) -> None: ...
        def run(self) -> SimExit: ...
+
        run_stats: RunStats  # small dataclass populated by run(): fps /
-                            # draw% / idle% averages, child timer% samples,
-                            # sim_ns, duration — feeds save_session_stats
-                            # here and the --benchmark report in PR3
+       # draw% / idle% averages, child timer% samples,
+       # sim_ns, duration — feeds save_session_stats
+       # here and the --benchmark report in PR3
    ```
 
    Contents are RELOCATED from `sim/sim_testbench.py`'s

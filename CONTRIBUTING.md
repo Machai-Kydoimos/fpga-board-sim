@@ -221,6 +221,7 @@ across a pygame call, use `cast()` rather than `# type: ignore`:
 
 ```python
 from typing import cast
+
 surface = cast(pygame.Surface, board.screen.copy())
 ```
 
@@ -230,7 +231,7 @@ carry `# type: ignore[attr-defined]` — this is correct, not a workaround:
 
 ```python
 dut.clk_half_ns.value = new_half  # type: ignore[attr-defined]
-led_val = int(dut.led.value)       # type: ignore[attr-defined]
+led_val = int(dut.led.value)  # type: ignore[attr-defined]
 ```
 
 Do not remove these ignores; they will cause mypy errors.

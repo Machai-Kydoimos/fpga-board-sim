@@ -513,12 +513,15 @@ def led_channels(self) -> list[tuple[ComponentInfo, str]]:
     """Boundary bit k -> (component, channel). Mono first (JSON order),
     then (r, g, b) per rgb_led component (JSON order). This IS the layout
     convention the VHDL contract documents."""
-mono = [c for c in self.leds if not c.is_rgb]     # is_rgb: name == "rgb_led" and len(pins) == 3
-rgb  = [c for c in self.leds if c.is_rgb]
+
+
+mono = [c for c in self.leds if not c.is_rgb]  # is_rgb: name == "rgb_led" and len(pins) == 3
+rgb = [c for c in self.leds if c.is_rgb]
 return [(c, "mono") for c in mono] + [(c, ch) for c in rgb for ch in ("r", "g", "b")]
 
+
 @property
-def num_led_channels(self) -> int: ...            # len(led_channels)
+def num_led_channels(self) -> int: ...  # len(led_channels)
 @property
 def num_rgb_leds(self) -> int: ...
 ```
@@ -727,13 +730,16 @@ Script (run from repo root):
 
 ```python
 import json, glob, collections
+
 rgb_boards, multi = [], []
-for f in sorted(glob.glob('boards/*/*.json')):
-    if '/_' in f: continue
-    d = json.load(open(f)); leds = d.get('leds') or []
-    names = collections.Counter(l['name'] for l in leds)
-    if any('rgb' in n for n in names):
-        pins = sorted({len(l['pins']) for l in leds if 'rgb' in l['name']})
+for f in sorted(glob.glob("boards/*/*.json")):
+    if "/_" in f:
+        continue
+    d = json.load(open(f))
+    leds = d.get("leds") or []
+    names = collections.Counter(l["name"] for l in leds)
+    if any("rgb" in n for n in names):
+        pins = sorted({len(l["pins"]) for l in leds if "rgb" in l["name"]})
         rgb_boards.append((f, dict(names), pins))
     elif len(names) > 1:
         multi.append((f, dict(names)))

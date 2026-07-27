@@ -286,10 +286,11 @@ Add to `board_loader.py` alongside `BoardDef`:
 @dataclass
 class SevenSegDef:
     """7-segment display capability extracted from a board definition."""
+
     num_digits: int
     has_dp: bool
     is_multiplexed: bool
-    inverted: bool         # board hardware active-low (metadata; VHDL is active-high)
+    inverted: bool  # board hardware active-low (metadata; VHDL is active-high)
     select_inverted: bool  # mux select lines active-low (v2 use)
 
     def to_dict(self) -> dict[str, object]:
@@ -304,10 +305,10 @@ class SevenSegDef:
     @classmethod
     def from_dict(cls, d: dict[str, object]) -> "SevenSegDef":
         return cls(
-            num_digits=d["num_digits"],           # strict: required field
-            has_dp=d["has_dp"],                   # strict: required field
-            is_multiplexed=d["is_multiplexed"],   # strict: required field
-            inverted=d.get("inverted", False),    # .get(): forward-compat default
+            num_digits=d["num_digits"],  # strict: required field
+            has_dp=d["has_dp"],  # strict: required field
+            is_multiplexed=d["is_multiplexed"],  # strict: required field
+            inverted=d.get("inverted", False),  # .get(): forward-compat default
             select_inverted=d.get("select_inverted", False),
         )
 ```
@@ -325,9 +326,11 @@ class BoardDef:
 
     @property
     def summary(self) -> str:
-        parts = [f"{len(self.leds)} LEDs",
-                 f"{len(self.buttons)} buttons",
-                 f"{len(self.switches)} switches"]
+        parts = [
+            f"{len(self.leds)} LEDs",
+            f"{len(self.buttons)} buttons",
+            f"{len(self.switches)} switches",
+        ]
         if self.seven_seg:
             parts.append(f"{self.seven_seg.num_digits}-digit 7-seg")
         return ", ".join(parts)
@@ -342,8 +345,7 @@ class BoardDef:
 `from_json()` addition:
 
 ```python
-seven_seg=(SevenSegDef.from_dict(data["seven_seg"])
-           if data.get("seven_seg") else None),
+seven_seg = ((SevenSegDef.from_dict(data["seven_seg"]) if data.get("seven_seg") else None),)
 ```
 
 ### 4.3 `Display7SegResource` mock
@@ -404,25 +406,29 @@ def _classify(resource: _Resource) -> str | None:
 ```python
 def _count_ctrl_pins(ctrl: _Resource) -> int:
     """Count pins in a mux-select companion resource."""
-    pins, _, _, _ = _extract_pins(ctrl)   # reuse existing helper
+    pins, _, _, _ = _extract_pins(ctrl)  # reuse existing helper
     return max(1, len(pins))
+
 
 def _ctrl_is_inverted(ctrl: _Resource) -> bool:
     """True when the companion resource uses PinsN or invert=True."""
     _, _, inverted, _ = _extract_pins(ctrl)
     return inverted
 
+
 def _extract_sevenseg(resources: list[_Resource]) -> "SevenSegDef | None":
-    seg_resources = [r for r in resources
-                     if isinstance(r, _Resource) and r.name == "display_7seg"]
+    seg_resources = [r for r in resources if isinstance(r, _Resource) and r.name == "display_7seg"]
     if not seg_resources:
         return None
 
     ctrl_resource = next(
-        (r for r in resources
-         if isinstance(r, _Resource)
-         and r.name.startswith("display_7seg_")
-         and r.name != "display_7seg"),
+        (
+            r
+            for r in resources
+            if isinstance(r, _Resource)
+            and r.name.startswith("display_7seg_")
+            and r.name != "display_7seg"
+        ),
         None,
     )
     # Prefix-based: catches any future companion name (e.g. "display_7seg_sel"),
@@ -483,6 +489,7 @@ class FakeDe0Platform(IntelPlatform):
     ]
 """
 
+
 def test_inline_4seg_independent():
     boards = load_board_from_source(_INLINE_4SEG_INDEPENDENT)
     ssd = boards[0].seven_seg
@@ -490,6 +497,7 @@ def test_inline_4seg_independent():
     assert ssd.is_multiplexed is False
     assert ssd.has_dp is True
     assert ssd.inverted is True
+
 
 _INLINE_8SEG_MULTIPLEXED = """
 from amaranth.build import *
@@ -502,12 +510,14 @@ class FakeNexys4Platform(XilinxPlatform):
     ]
 """
 
+
 def test_inline_8seg_multiplexed():
     boards = load_board_from_source(_INLINE_8SEG_MULTIPLEXED)
     ssd = boards[0].seven_seg
     assert ssd.num_digits == 8
     assert ssd.is_multiplexed is True
-    assert ssd.select_inverted is True   # PinsN companion → active-low
+    assert ssd.select_inverted is True  # PinsN companion → active-low
+
 
 _INLINE_6SEG_NO_DP = """
 from amaranth.build import *
@@ -524,9 +534,11 @@ class FakeDeCvPlatform(IntelPlatform):
     ]
 """
 
+
 def test_inline_no_dp_flag():
     boards = load_board_from_source(_INLINE_6SEG_NO_DP)
     assert boards[0].seven_seg.has_dp is False
+
 
 _INLINE_NO_SEG = """
 from amaranth.build import *
@@ -534,6 +546,7 @@ from amaranth.vendor import XilinxPlatform
 class FakeArtyPlatform(XilinxPlatform):
     resources = [*LEDResources(pins="A B C D")]
 """
+
 
 def test_inline_no_sevenseg():
     boards = load_board_from_source(_INLINE_NO_SEG)
@@ -545,14 +558,15 @@ def test_inline_no_sevenseg():
 ```python
 _EXPECTED_7SEG = {
     # name_fragment: (num_digits, has_dp, is_multiplexed)
-    "DE0":         (4, True,  False),
+    "DE0": (4, True, False),
     "Nandland Go": (2, False, False),
-    "DE0-CV":      (6, False, False),
-    "DE1-SoC":     (6, False, False),
-    "DE10-Lite":   (6, True,  False),
-    "Nexys4-DDR":  (8, True,  True),
-    "Mercury":     (4, True,  True),
+    "DE0-CV": (6, False, False),
+    "DE1-SoC": (6, False, False),
+    "DE10-Lite": (6, True, False),
+    "Nexys4-DDR": (8, True, True),
+    "Mercury": (4, True, True),
 }
+
 
 @pytest.mark.parametrize("name_frag,expected", _EXPECTED_7SEG.items())
 def test_real_board_sevenseg(all_boards, name_frag, expected):
@@ -565,6 +579,7 @@ def test_real_board_sevenseg(all_boards, name_frag, expected):
     assert ssd.num_digits == num_digits
     assert ssd.has_dp == has_dp
     assert ssd.is_multiplexed == is_mux
+
 
 def test_arty_has_no_sevenseg(all_boards):
     arty = next((b for b in all_boards if "Arty A7-35" in b.name), None)
@@ -579,21 +594,27 @@ def test_arty_has_no_sevenseg(all_boards):
 from fpga_sim.board_loader import BoardDef, SevenSegDef
 import pytest
 
+
 def test_roundtrip_with_sevenseg():
     ssd = SevenSegDef(6, False, False, True, False)
     bd = BoardDef(name="Test", class_name="TestPlatform", seven_seg=ssd)
     assert BoardDef.from_json(bd.to_json()).seven_seg == ssd
 
+
 def test_roundtrip_without_sevenseg():
     bd = BoardDef(name="Test", class_name="TestPlatform")
     assert BoardDef.from_json(bd.to_json()).seven_seg is None
 
-@pytest.mark.parametrize("num_digits,has_dp,is_mux,inv,sel_inv", [
-    (4, True,  False, True,  False),
-    (8, True,  True,  False, True),
-    (2, False, False, False, False),
-    (6, False, False, True,  False),
-])
+
+@pytest.mark.parametrize(
+    "num_digits,has_dp,is_mux,inv,sel_inv",
+    [
+        (4, True, False, True, False),
+        (8, True, True, False, True),
+        (2, False, False, False, False),
+        (6, False, False, True, False),
+    ],
+)
 def test_sevensegdef_dict_roundtrip(num_digits, has_dp, is_mux, inv, sel_inv):
     ssd = SevenSegDef(num_digits, has_dp, is_mux, inv, sel_inv)
     assert SevenSegDef.from_dict(ssd.to_dict()) == ssd
@@ -680,6 +701,7 @@ _WRAPPER_7SEG_TEMPLATE: Path = (
     Path(__file__).parent.parent.parent / "sim" / "sim_wrapper_7seg_template.vhd"
 )
 
+
 def _choose_wrapper_template(board_def: "BoardDef | None") -> Path:
     if board_def is not None and board_def.seven_seg is not None:
         return _WRAPPER_7SEG_TEMPLATE
@@ -692,7 +714,7 @@ def _choose_wrapper_template(board_def: "BoardDef | None") -> Path:
 def _generate_wrapper(
     toplevel: str,
     work_dir: str,
-    board_def: "BoardDef | None" = None,   # new optional param
+    board_def: "BoardDef | None" = None,  # new optional param
 ) -> Path:
     template = _choose_wrapper_template(board_def)
     content = template.read_text().replace("{toplevel}", toplevel)
@@ -706,7 +728,7 @@ def _generate_wrapper(
 ```python
 def check_vhdl_contract(
     path: str | Path,
-    board_def: "BoardDef | None" = None,   # new optional param
+    board_def: "BoardDef | None" = None,  # new optional param
 ) -> tuple[bool, str]:
     ...
     # Existing checks (entity name, required ports) unchanged.
@@ -740,7 +762,7 @@ def analyze_vhdl(
     work_dir: str | None = None,
     toplevel: str | None = None,
     simulator: str = "ghdl",
-    board_def: "BoardDef | None" = None,   # new optional param
+    board_def: "BoardDef | None" = None,  # new optional param
 ) -> tuple[bool, str]:
     ...
     wrapper_path = _generate_wrapper(toplevel, work_dir, board_def=board_def)
@@ -759,12 +781,13 @@ def launch_simulation(
     sim_height: int = 700,
     work_dir: str | None = None,
     simulator: str = "ghdl",
-    board_def: "BoardDef | None" = None,   # new optional param
+    board_def: "BoardDef | None" = None,  # new optional param
 ) -> bool:
     ...
     # Resolve board_def from JSON if not passed directly
     if board_def is None and board_json:
         from fpga_sim.board_loader import BoardDef as _BD
+
         try:
             board_def = _BD.from_json(board_json)
         except Exception:
@@ -812,8 +835,10 @@ if _seven_seg_def is not None:
 #### Updated banner
 
 ```python
-print(f"  {num_led} LEDs, {num_btn} buttons, {num_sw} switches"
-      + (f", {_seven_seg_def.num_digits}-digit 7-seg" if _seven_seg_def else ""))
+print(
+    f"  {num_led} LEDs, {num_btn} buttons, {num_sw} switches"
+    + (f", {_seven_seg_def.num_digits}-digit 7-seg" if _seven_seg_def else "")
+)
 ```
 
 #### Updated `_write_meta_sidecar()`
@@ -832,25 +857,29 @@ exact VHDL block).
 ```python
 def test_7seg_board_rejects_standard_design():
     from fpga_sim.board_loader import BoardDef, SevenSegDef
-    bd = BoardDef("DE0", "DE0Platform",
-                  seven_seg=SevenSegDef(4, True, False, False, False))
+
+    bd = BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, False, False))
     ok, msg = check_vhdl_contract(HDL / "blinky.vhd", board_def=bd)
     assert not ok
     assert "seg" in msg.lower()
 
+
 def test_non7seg_board_rejects_7seg_design():
     from fpga_sim.board_loader import BoardDef
-    bd = BoardDef("Arty", "ArtyPlatform")   # no seven_seg
+
+    bd = BoardDef("Arty", "ArtyPlatform")  # no seven_seg
     ok, msg = check_vhdl_contract(HDL / "counter_7seg.vhd", board_def=bd)
     assert not ok
     assert "seg" in msg.lower()
 
+
 def test_7seg_board_accepts_7seg_design():
     from fpga_sim.board_loader import BoardDef, SevenSegDef
-    bd = BoardDef("DE0", "DE0Platform",
-                  seven_seg=SevenSegDef(4, True, False, False, False))
+
+    bd = BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, False, False))
     ok, _ = check_vhdl_contract(HDL / "counter_7seg.vhd", board_def=bd)
     assert ok
+
 
 def test_non7seg_board_accepts_standard_design():
     ok, _ = check_vhdl_contract(HDL / "blinky.vhd", board_def=None)
@@ -862,28 +891,33 @@ def test_non7seg_board_accepts_standard_design():
 ```python
 def test_choose_wrapper_template_non_7seg():
     from fpga_sim.sim_bridge import _WRAPPER_TEMPLATE, _choose_wrapper_template
+
     assert _choose_wrapper_template(None) == _WRAPPER_TEMPLATE
+
 
 def test_choose_wrapper_template_7seg():
     from fpga_sim.board_loader import BoardDef, SevenSegDef
     from fpga_sim.sim_bridge import _WRAPPER_7SEG_TEMPLATE, _choose_wrapper_template
-    bd = BoardDef("DE0", "DE0Platform",
-                  seven_seg=SevenSegDef(4, True, False, False, False))
+
+    bd = BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, False, False))
     assert _choose_wrapper_template(bd) == _WRAPPER_7SEG_TEMPLATE
+
 
 def test_generate_wrapper_7seg_has_seg_port(tmp_path):
     from fpga_sim.board_loader import BoardDef, SevenSegDef
     from fpga_sim.sim_bridge import _generate_wrapper
-    bd = BoardDef("DE0", "DE0Platform",
-                  seven_seg=SevenSegDef(4, True, False, False, False))
+
+    bd = BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, False, False))
     out = _generate_wrapper("counter_7seg", str(tmp_path), board_def=bd)
     text = out.read_text()
     assert "seg" in text.lower()
     assert "NUM_SEGS" in text
-    assert "counter_7seg" in text   # {toplevel} substituted
+    assert "counter_7seg" in text  # {toplevel} substituted
+
 
 def test_generate_wrapper_non7seg_no_seg_port(tmp_path):
     from fpga_sim.sim_bridge import _generate_wrapper
+
     out = _generate_wrapper("blinky", str(tmp_path), board_def=None)
     assert "NUM_SEGS" not in out.read_text()
 ```
@@ -894,13 +928,14 @@ def test_generate_wrapper_non7seg_no_seg_port(tmp_path):
 # In the GOOD_BLINKYS / GOOD_7SEG section:
 GOOD_7SEG = ["counter_7seg.vhd"]
 
+
 @pytest.mark.slow
 @pytest.mark.parametrize("filename", GOOD_7SEG)
 def test_good_7seg_ghdl_pass(filename, ghdl):
     from fpga_sim.board_loader import BoardDef, SevenSegDef
+
     f = HDL / filename
-    bd = BoardDef("DE0", "DE0Platform",
-                  seven_seg=SevenSegDef(4, True, False, False, False))
+    bd = BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, False, False))
     ok, detail = analyze_vhdl(f, toplevel=f.stem, board_def=bd)
     assert ok, f"GHDL failed on {filename}: {detail}"
 ```
@@ -912,9 +947,24 @@ import cocotb
 from cocotb.triggers import Timer
 
 _VALID_HEX_GLYPHS = {
-    0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07,
-    0x7F, 0x6F, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71,
+    0x3F,
+    0x06,
+    0x5B,
+    0x4F,
+    0x66,
+    0x6D,
+    0x7D,
+    0x07,
+    0x7F,
+    0x6F,
+    0x77,
+    0x7C,
+    0x39,
+    0x5E,
+    0x79,
+    0x71,
 }
+
 
 @cocotb.test()
 async def test_seg_digit_0_is_valid_glyph(dut):
@@ -923,6 +973,7 @@ async def test_seg_digit_0_is_valid_glyph(dut):
     seg_raw = int(dut.seg.value)
     digit0 = seg_raw & 0xFF
     assert digit0 in _VALID_HEX_GLYPHS, f"digit 0 = 0x{digit0:02X} is not a hex glyph"
+
 
 @cocotb.test()
 async def test_seg_advances_over_time(dut):
@@ -933,12 +984,13 @@ async def test_seg_advances_over_time(dut):
         readings.append(int(dut.seg.value))
     assert len(set(readings)) >= 2, f"seg stuck: {readings}"
 
+
 @cocotb.test()
 async def test_seg_width_matches_num_segs(dut):
     """All 8*NUM_SEGS bits must be addressable; check no truncation for 4 digits."""
     await Timer(50_000, "ns")
     seg_raw = int(dut.seg.value)
-    expected_bits = len(dut.seg.value)   # cocotb BinaryValue length = actual port width
+    expected_bits = len(dut.seg.value)  # cocotb BinaryValue length = actual port width
     assert 0 <= seg_raw < (1 << expected_bits), (
         f"seg value {seg_raw} is out of {expected_bits}-bit range"
     )
@@ -954,8 +1006,8 @@ async def test_seg_width_matches_num_segs(dut):
 def test_7seg_analyzes_with_nvc(nvc, nvc_work_dir):
     """counter_7seg.vhd must analyze cleanly under NVC using the 7-seg wrapper."""
     from fpga_sim.board_loader import BoardDef, SevenSegDef
-    bd = BoardDef("DE0", "DE0Platform",
-                  seven_seg=SevenSegDef(4, True, False, False, False))
+
+    bd = BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, False, False))
     ok, detail = analyze_vhdl(
         HDL / "counter_7seg.vhd",
         work_dir=nvc_work_dir,
@@ -970,8 +1022,8 @@ def test_7seg_analyzes_with_nvc(nvc, nvc_work_dir):
 def test_7seg_nvc_simulation_passes(nvc, nvc_sim_env):
     """counter_7seg.vhd must run headlessly under NVC and produce non-zero seg output."""
     from fpga_sim.board_loader import BoardDef, SevenSegDef
-    bd = BoardDef("DE0", "DE0Platform",
-                  seven_seg=SevenSegDef(4, True, False, False, False))
+
+    bd = BoardDef("DE0", "DE0Platform", seven_seg=SevenSegDef(4, True, False, False, False))
     result = launch_simulation(
         board_json=bd.to_json(),
         vhdl_path=HDL / "counter_7seg.vhd",
@@ -1014,16 +1066,16 @@ internally, consistent with all other components.
 ```python
 from fpga_sim.ui.constants import get_font as _get_font
 
+
 class SevenSeg:
     """Draws one digit of a 7-segment display."""
 
-    SEG_ON  = (255, 140,  0)   # amber
-    SEG_OFF = ( 45,  25,  5)   # dark amber (ghost segments)
-    BG      = ( 15,  15, 15)
+    SEG_ON = (255, 140, 0)  # amber
+    SEG_OFF = (45, 25, 5)  # dark amber (ghost segments)
+    BG = (15, 15, 15)
 
     # Bit positions: {dp, g, f, e, d, c, b, a}
-    _BIT = {"a": 0, "b": 1, "c": 2, "d": 3,
-            "e": 4, "f": 5, "g": 6, "dp": 7}
+    _BIT = {"a": 0, "b": 1, "c": 2, "d": 3, "e": 4, "f": 5, "g": 6, "dp": 7}
 
     def __init__(self, index: int, has_dp: bool = False) -> None:
         self.index = index
@@ -1041,9 +1093,9 @@ class SevenSeg:
     def draw(self, surface: pygame.Surface) -> None:
         W, H = self.rect.width, self.rect.height
         thick = max(3, int(W * 0.12))
-        gap   = max(2, int(W * 0.06))
+        gap = max(2, int(W * 0.06))
         inner = max(1, W - 2 * gap - 2 * thick)
-        half  = H // 2
+        half = H // 2
         x0, y0 = self.rect.topleft
 
         pygame.draw.rect(surface, self.BG, self.rect, border_radius=3)
@@ -1054,32 +1106,44 @@ class SevenSeg:
 
         def hrect(x: int, y: int, w: int, h: int, n: str) -> None:
             c = color(n)
-            pts = [(x+h//2,y),(x+w-h//2,y),(x+w,y+h//2),
-                   (x+w-h//2,y+h),(x+h//2,y+h),(x,y+h//2)]
+            pts = [
+                (x + h // 2, y),
+                (x + w - h // 2, y),
+                (x + w, y + h // 2),
+                (x + w - h // 2, y + h),
+                (x + h // 2, y + h),
+                (x, y + h // 2),
+            ]
             pygame.draw.polygon(surface, c, pts)
 
         def vrect(x: int, y: int, w: int, h: int, n: str) -> None:
             c = color(n)
-            pts = [(x+w//2,y),(x+w,y+w//2),(x+w,y+h-w//2),
-                   (x+w//2,y+h),(x,y+h-w//2),(x,y+w//2)]
+            pts = [
+                (x + w // 2, y),
+                (x + w, y + w // 2),
+                (x + w, y + h - w // 2),
+                (x + w // 2, y + h),
+                (x, y + h - w // 2),
+                (x, y + w // 2),
+            ]
             pygame.draw.polygon(surface, c, pts)
 
-        ax, ay = x0+gap+thick, y0+gap
-        hrect(ax, ay,                           inner, thick, "a")
-        vrect(x0+W-gap-thick, y0+gap+thick,     thick, half-2*gap,        "b")
-        vrect(x0+W-gap-thick, y0+half+gap,      thick, half-2*gap-thick,  "c")
-        hrect(ax, y0+H-gap-thick,               inner, thick, "d")
-        vrect(x0+gap, y0+half+gap,              thick, half-2*gap-thick,  "e")
-        vrect(x0+gap, y0+gap+thick,             thick, half-2*gap,        "f")
-        hrect(ax, y0+half-thick//2,             inner, thick, "g")
+        ax, ay = x0 + gap + thick, y0 + gap
+        hrect(ax, ay, inner, thick, "a")
+        vrect(x0 + W - gap - thick, y0 + gap + thick, thick, half - 2 * gap, "b")
+        vrect(x0 + W - gap - thick, y0 + half + gap, thick, half - 2 * gap - thick, "c")
+        hrect(ax, y0 + H - gap - thick, inner, thick, "d")
+        vrect(x0 + gap, y0 + half + gap, thick, half - 2 * gap - thick, "e")
+        vrect(x0 + gap, y0 + gap + thick, thick, half - 2 * gap, "f")
+        hrect(ax, y0 + half - thick // 2, inner, thick, "g")
 
         if self.has_dp:
             r = max(2, thick // 2)
-            pygame.draw.circle(surface, color("dp"), (x0+W+r+2, y0+H-r-2), r)
+            pygame.draw.circle(surface, color("dp"), (x0 + W + r + 2, y0 + H - r - 2), r)
 
         lbl_sz = max(8, int(H * 0.18))
         lbl = _get_font(lbl_sz).render(str(self.index), True, (90, 90, 90))
-        surface.blit(lbl, (x0+W//2 - lbl.get_width()//2, y0+H+2))
+        surface.blit(lbl, (x0 + W // 2 - lbl.get_width() // 2, y0 + H + 2))
 ```
 
 ### 6.2 `FPGABoard` changes (`ui/board_display.py`)
@@ -1091,11 +1155,11 @@ class SevenSeg:
 if board_def and board_def.seven_seg:
     ssd = board_def.seven_seg
     self._seven_segs: list[SevenSeg] = [
-        SevenSeg(i, has_dp=ssd.has_dp)
-        for i in range(ssd.num_digits)
+        SevenSeg(i, has_dp=ssd.has_dp) for i in range(ssd.num_digits)
     ]
 else:
     self._seven_segs = []
+
 
 def set_seg(self, index: int, bits8: int) -> None:
     if 0 <= index < len(self._seven_segs):
@@ -1112,9 +1176,7 @@ def set_seg(self, index: int, bits8: int) -> None:
 self._prev_seg_bits: list[int] = [0] * len(self._seven_segs)
 
 # In update() / redraw guard (uses self._prev_seg_bits, not a local):
-seg_changed = any(
-    s.bits != prev for s, prev in zip(self._seven_segs, self._prev_seg_bits)
-)
+seg_changed = any(s.bits != prev for s, prev in zip(self._seven_segs, self._prev_seg_bits))
 if not (led_changed or seg_changed):
     return  # skip _draw()
 self._prev_seg_bits = [s.bits for s in self._seven_segs]
@@ -1132,14 +1194,13 @@ self._prev_seg_bits = [s.bits for s in self._seven_segs]
 if self._seven_segs:
     top_rect = ...  # existing full-width top rect already computed by _layout()
     chip_w = int(top_rect.width * 0.55)
-    seg_w  = top_rect.width - chip_w - section_pad
+    seg_w = top_rect.width - chip_w - section_pad
     chip_rect = pygame.Rect(top_rect.x, top_rect.y, chip_w, top_rect.height)
-    seg_rect  = pygame.Rect(top_rect.x + chip_w + section_pad,
-                            top_rect.y, seg_w, top_rect.height)
+    seg_rect = pygame.Rect(top_rect.x + chip_w + section_pad, top_rect.y, seg_w, top_rect.height)
     self._place_items([self.fpga_chip], chip_rect, "fpga")
     self._place_items(self._seven_segs, seg_rect, "seven_segs")
 else:
-    self._place_items([self.fpga_chip], ..., "fpga")   # unchanged
+    self._place_items([self.fpga_chip], ..., "fpga")  # unchanged
 ```
 
 #### Dynamic row count (in `_place_items` `"seven_segs"` branch)
@@ -1178,46 +1239,53 @@ def surface():
 
 def test_zero_glyph_middle_bar_off():
     seg = SevenSeg(0)
-    seg.set_bits(0x3F)   # "0": a,b,c,d,e,f on; g off
+    seg.set_bits(0x3F)  # "0": a,b,c,d,e,f on; g off
     assert seg._seg("a") and seg._seg("f")
     assert not seg._seg("g")
     assert not seg._seg("dp")
 
+
 def test_one_glyph_only_bc():
     seg = SevenSeg(0)
-    seg.set_bits(0x06)   # "1": b,c on
+    seg.set_bits(0x06)  # "1": b,c on
     assert seg._seg("b") and seg._seg("c")
     assert not seg._seg("a") and not seg._seg("g")
+
 
 def test_all_on_includes_dp():
     seg = SevenSeg(0, has_dp=True)
     seg.set_bits(0xFF)
-    for name in ("a","b","c","d","e","f","g","dp"):
+    for name in ("a", "b", "c", "d", "e", "f", "g", "dp"):
         assert seg._seg(name), f"segment '{name}' should be on"
+
 
 def test_blank_all_off():
     seg = SevenSeg(0)
     seg.set_bits(0x00)
-    for name in ("a","b","c","d","e","f","g"):
+    for name in ("a", "b", "c", "d", "e", "f", "g"):
         assert not seg._seg(name)
 
-@pytest.mark.parametrize("size", [(24,38),(48,76),(96,152),(200,320)])
+
+@pytest.mark.parametrize("size", [(24, 38), (48, 76), (96, 152), (200, 320)])
 def test_draw_various_sizes_no_crash(surface, size):
     seg = SevenSeg(0, has_dp=True)
     seg.rect = pygame.Rect(10, 10, *size)
-    seg.set_bits(0x6D)   # "5"
+    seg.set_bits(0x6D)  # "5"
     seg.draw(surface)
+
 
 def test_draw_no_dp_with_dp_bit_set_no_crash(surface):
     seg = SevenSeg(0, has_dp=False)
     seg.rect = pygame.Rect(10, 10, 48, 76)
-    seg.set_bits(0xFF)   # dp bit set but has_dp=False → no circle drawn
+    seg.set_bits(0xFF)  # dp bit set but has_dp=False → no circle drawn
     seg.draw(surface)
+
 
 def test_set_bits_masks_to_8_bits():
     seg = SevenSeg(0)
-    seg.set_bits(0x1FF)   # 9-bit value
+    seg.set_bits(0x1FF)  # 9-bit value
     assert seg.bits == 0xFF
+
 
 def test_index_label_is_digit_index():
     seg = SevenSeg(3)
@@ -1254,15 +1322,24 @@ def _svg_draw_7seg(
     """Draw a single 7-segment digit outline (all segments OFF) into the SVG."""
     W, H = seg_rect.width, seg_rect.height
     thick = max(3, int(W * 0.12))
-    gap   = max(2, int(W * 0.06))
+    gap = max(2, int(W * 0.06))
     x0, y0 = seg_rect.topleft
 
     # Housing background
-    ET.SubElement(parent, "rect", {
-        "x": str(x0), "y": str(y0),
-        "width": str(W), "height": str(H),
-        "rx": "3", "fill": "#0F0F0F", "stroke": "#050505", "stroke-width": "1",
-    })
+    ET.SubElement(
+        parent,
+        "rect",
+        {
+            "x": str(x0),
+            "y": str(y0),
+            "width": str(W),
+            "height": str(H),
+            "rx": "3",
+            "fill": "#0F0F0F",
+            "stroke": "#050505",
+            "stroke-width": "1",
+        },
+    )
 
     # Draw each segment as a filled polygon in SEG_OFF color (#2D1905).
     # _svg_draw_seg_polygon() is a NEW private helper defined in this same file —
@@ -1277,17 +1354,29 @@ def _svg_draw_7seg(
     # Decimal point circle (if present)
     if has_dp:
         r = max(2, thick // 2)
-        ET.SubElement(parent, "circle", {
-            "cx": str(x0 + W + r + 2), "cy": str(y0 + H - r - 2),
-            "r": str(r), "fill": "#2D1905",
-        })
+        ET.SubElement(
+            parent,
+            "circle",
+            {
+                "cx": str(x0 + W + r + 2),
+                "cy": str(y0 + H - r - 2),
+                "r": str(r),
+                "fill": "#2D1905",
+            },
+        )
 
     # Digit index label
-    ET.SubElement(parent, "text", {
-        "x": str(x0 + W // 2), "y": str(y0 + H + 12),
-        "text-anchor": "middle", "fill": "#5A5A5A",
-        "font-size": str(max(8, int(H * 0.18))),
-    }).text = str(digit_index)
+    ET.SubElement(
+        parent,
+        "text",
+        {
+            "x": str(x0 + W // 2),
+            "y": str(y0 + H + 12),
+            "text-anchor": "middle",
+            "fill": "#5A5A5A",
+            "font-size": str(max(8, int(H * 0.18))),
+        },
+    ).text = str(digit_index)
 ```
 
 Integrate into `build_svg()` alongside `_svg_draw_led()` etc., using the same
