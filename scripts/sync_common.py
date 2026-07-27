@@ -9,6 +9,7 @@ Each parser lives in its own module (``amaranth_parser`` / ``litex_parser`` /
 import hashlib
 import json
 import os
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -39,7 +40,7 @@ def unique_name(base: str, seen: dict[str, int]) -> str:
     return f"{base}_{seen[base]}"
 
 
-def resolve_commit_sha(repo: str, ref: str) -> str:
+def resolve_commit_sha(repo: str, ref: str, path: str | None = None) -> str:
     """Resolve a git ref to a commit SHA via the GitHub API (falls back to ref).
 
     Sends ``GITHUB_TOKEN`` / ``GH_TOKEN`` as a bearer credential when either is
@@ -48,16 +49,36 @@ def resolve_commit_sha(repo: str, ref: str) -> str:
     enough that a real population wave otherwise exhausts it mid-run and
     silently falls back to unpinned branch URLs. Auth is optional -- with no
     token the request is unchanged.
+
+    With ``path``, resolves the last commit that *touched that path* as seen
+    from ``ref``, instead of ``ref``'s tip.  A branch tip moves on every
+    upstream commit, so pinning it made an edit anywhere in the repo re-pin a
+    citation whose own file never changed -- which the U38 drift tripwire then
+    reported as board drift (it did, for icepi_zero on 2026-07-27, against a
+    byte-identical LPF).  The path-scoped commit is stable until the cited
+    file itself changes, which is the provenance the registry actually means.
+    An empty result (path absent from that ref's history) falls back to
+    ``ref``, so a mistyped path surfaces as an unpinnable citation rather than
+    silently pinning something unrelated.
     """
-    url = f"https://api.github.com/repos/{repo}/commits/{ref}"
-    headers = {"Accept": "application/vnd.github.sha"}
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if path is None:
+        url = f"https://api.github.com/repos/{repo}/commits/{ref}"
+        headers = {"Accept": "application/vnd.github.sha"}
+    else:
+        query = urllib.parse.urlencode({"path": path, "sha": ref, "per_page": 1})
+        url = f"https://api.github.com/repos/{repo}/commits?{query}"
+        headers = {"Accept": "application/vnd.github+json"}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
-            return str(resp.read().decode().strip())
+            body = str(resp.read().decode().strip())
+        if path is None:
+            return body
+        commits = json.loads(body)
+        return str(commits[0]["sha"]) if commits else ref
     except Exception:
         return ref
 

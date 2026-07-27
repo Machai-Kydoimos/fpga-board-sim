@@ -375,8 +375,9 @@
       "description": "Cyclone V SoC (5CSEMA5F31C6). Community reference design with full I/O coverage.",
       "naming": "canonical",
       "source": {
-        "url": "https://raw.githubusercontent.com/norxander/DE1-SoC-HPSFPGA/9205115114ffdd2c876aa7b012611f11fd9ed1d9/DE1_SoC.qsf",
-        "retrieved": "2026-07-12",
+        "url": "https://raw.githubusercontent.com/norxander/DE1-SoC-HPSFPGA/af773985fb32b659b72efbb1d68e5c3babc591af/DE1_SoC.qsf",
+        "content_sha256": "0692888f5c568be6c2a20b40d52d13af7d99e12f62ba58a4f3535e47649a3453",
+        "retrieved": "2026-07-28",
         "registry_board": "DE1 SoC"
       }
     },

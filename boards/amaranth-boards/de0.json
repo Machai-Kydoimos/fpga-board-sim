@@ -360,8 +360,9 @@
       "description": "Cyclone III (EP3C16F484C6). NOTE: uses LEDG (green LEDs) not LEDR; BUTTON naming vs KEY convention.",
       "naming": "canonical",
       "source": {
-        "url": "https://raw.githubusercontent.com/thomasrussellmurphy/quartus-DE0-project/48c001b66cf4bd22dfda6a860ae4e601b0720b06/DE0_TOP/DE0_TOP.qsf",
-        "retrieved": "2026-07-12",
+        "url": "https://raw.githubusercontent.com/thomasrussellmurphy/quartus-DE0-project/ae549f7e49031a76515f9b5b609d5254707be3b4/DE0_TOP/DE0_TOP.qsf",
+        "content_sha256": "29a8abc64ee02c345ffd570cc67e8e0791c234dd17111c402fa7dfb3a8bd9a3d",
+        "retrieved": "2026-07-28",
         "registry_board": "DE0"
       }
     },

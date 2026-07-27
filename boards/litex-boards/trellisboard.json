@@ -259,8 +259,9 @@
       "description": "Official Lattice ECP5-UM5G development board. Official LPF file from daveshah1/trellisboard repository matches litex-boards platform definition with identical pin assignments. Includes DIP switches (not captured in board JSON) and multiple clock options.",
       "naming": "canonical",
       "source": {
-        "url": "https://raw.githubusercontent.com/daveshah1/trellisboard/54e073cb5775e6312db093f4fdbd762250d38ff2/gateware/simple/trellisboard.lpf",
-        "retrieved": "2026-07-14",
+        "url": "https://raw.githubusercontent.com/daveshah1/trellisboard/b1847ef9299697b2975dc2d4dd74846b8e13f032/gateware/simple/trellisboard.lpf",
+        "content_sha256": "3cef7447796a576d3610a634803565b334859ac3b51ade97382373e5e1ad7457",
+        "retrieved": "2026-07-28",
         "registry_board": "Trellisboard"
       }
     }

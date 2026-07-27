@@ -142,7 +142,8 @@
       "naming": "canonical",
       "source": {
         "url": "https://raw.githubusercontent.com/alchitry/Au-Base-Project/e27480fa5d1ee6dda1e7b28846c6f886bd778312/au_base_project.srcs/constrs_1/new/au.xdc",
-        "retrieved": "2026-07-14",
+        "content_sha256": "a44486a5aec29330dee5908a4ac964ffe331730dc62181c3486e51a30ff5f2ad",
+        "retrieved": "2026-07-28",
         "registry_board": "Alchitry Au"
       }
     }

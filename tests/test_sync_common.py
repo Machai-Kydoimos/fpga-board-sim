@@ -618,3 +618,36 @@ def test_resolve_commit_sha_falls_back_to_ref_on_error(monkeypatch):
 
     # A resolution failure must never break a sync -- fall back to the ref.
     assert resolve_commit_sha("owner/repo", "v1.2.3") == "v1.2.3"
+
+
+def test_resolve_commit_sha_with_path_queries_the_path_scoped_endpoint(monkeypatch):
+    # Pinning the branch TIP made an upstream commit that never touched the
+    # cited file read as board drift; scoping to the path fixes that.
+    captured: list[Any] = []
+
+    def _fake(req: Any, timeout: int = 30) -> _FakeResp:
+        captured.append(req)
+        return _FakeResp(b'[{"sha": "0123456789abcdef"}]')
+
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.setattr("sync_common.urllib.request.urlopen", _fake)
+
+    assert resolve_commit_sha("owner/repo", "main", "dir/f.lpf") == "0123456789abcdef"
+    url = captured[0].full_url
+    assert url.startswith("https://api.github.com/repos/owner/repo/commits?")
+    assert "path=dir%2Ff.lpf" in url
+    assert "sha=main" in url
+
+
+def test_resolve_commit_sha_with_path_falls_back_when_path_not_in_history(monkeypatch):
+    # An empty result means the cited path does not exist at that ref. Falling
+    # back to the ref makes it surface as an unpinnable citation rather than
+    # silently pinning a commit that has nothing to do with the file.
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.setattr(
+        "sync_common.urllib.request.urlopen", lambda req, timeout=30: _FakeResp(b"[]")
+    )
+
+    assert resolve_commit_sha("owner/repo", "main", "nope.lpf") == "main"

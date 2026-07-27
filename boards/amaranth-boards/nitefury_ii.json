@@ -104,8 +104,9 @@
       "description": "Researched inline via GitHub API 2026-07-11. Official sample-project constraints.",
       "naming": "canonical",
       "source": {
-        "url": "https://raw.githubusercontent.com/RHSResearchLLC/NiteFury-and-LiteFury/6d1b8512f74c2faecec00a25a1cbf362eee2bf72/Sample-Projects/Project-0/FPGA/Nitefury-II/project/project.srcs/constrs_1/imports/constraints/normal.xdc",
-        "retrieved": "2026-07-15",
+        "url": "https://raw.githubusercontent.com/RHSResearchLLC/NiteFury-and-LiteFury/bfc80002beff575ddae85abe2e99303703871122/Sample-Projects/Project-0/FPGA/Nitefury-II/project/project.srcs/constrs_1/imports/constraints/normal.xdc",
+        "content_sha256": "84fec3d4b861de16777db35c89a061b67f12f5cc7d60d20d909078e73ee6012c",
+        "retrieved": "2026-07-28",
         "registry_board": "Nitefury II"
       }
     }

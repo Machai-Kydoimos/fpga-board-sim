@@ -224,8 +224,9 @@
       "description": "Cyclone IV (EP4CE22F17C6). No 7-segment display on this board.",
       "naming": "canonical",
       "source": {
-        "url": "https://raw.githubusercontent.com/gmarkall/DE0_NANO/00102c543eef9a01edb08cc535d4e8cc5c354892/DE0_NANO.qsf",
-        "retrieved": "2026-07-12",
+        "url": "https://raw.githubusercontent.com/gmarkall/DE0_NANO/caa04c2a46e5421de141913e497966698a16cde3/DE0_NANO.qsf",
+        "content_sha256": "b4dfe5817321c0907be9d9425dd15709cb38eada7036567494f7abc0de4ee6bd",
+        "retrieved": "2026-07-28",
         "registry_board": "DE0 Nano"
       }
     },

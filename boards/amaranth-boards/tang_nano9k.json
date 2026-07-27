@@ -144,8 +144,9 @@
       "description": "Official Sipeed TangNano-9K-example repo with complete constraint files. Clock 27MHz. 6 LEDs, 2 buttons confirmed from multiple examples.",
       "naming": "canonical",
       "source": {
-        "url": "https://raw.githubusercontent.com/sipeed/TangNano-9K-example/c3b795799f23de91982be52db4273a8eea100cdb/led/src/9K_LED_project.cst",
-        "retrieved": "2026-07-14",
+        "url": "https://raw.githubusercontent.com/sipeed/TangNano-9K-example/61adac151cc0d0066091e76a6f78483f349baf08/led/src/9K_LED_project.cst",
+        "content_sha256": "d3bfd12feaec49396a9e35ecc804582f630990e7987452c98fa592b822d30c7f",
+        "retrieved": "2026-07-28",
         "registry_board": "Tang Nano 9K"
       }
     }
