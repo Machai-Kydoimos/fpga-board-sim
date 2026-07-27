@@ -161,8 +161,9 @@
       "description": "Official Sipeed TangNano-20K-example repo. Device GW2AR-18. Multiple CST files with different configurations. Clock 27MHz, 6 LEDs, 2 buttons.",
       "naming": "canonical",
       "source": {
-        "url": "https://raw.githubusercontent.com/sipeed/TangNano-20K-example/e23949a0a77381b94960cbc4e97a7c5e5ba8d222/led/flow_led/src/flow_led.cst",
-        "retrieved": "2026-07-14",
+        "url": "https://raw.githubusercontent.com/sipeed/TangNano-20K-example/2589f80ac3f5e11a96a4481bce711963757b126d/led/flow_led/src/flow_led.cst",
+        "content_sha256": "d90c6ab2c094757dcb62a8b4956afd6b79e4a7e711582aa30455332e709b911e",
+        "retrieved": "2026-07-28",
         "registry_board": "Sipeed Tang Nano 20k"
       }
     }

@@ -411,7 +411,7 @@ def test_maker_slug_lowercases_and_sanitizes() -> None:
 
 
 def test_pin_url_to_commit_rewrites_ref_to_resolved_sha(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: "deadbeef")
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "deadbeef")
     repo, url = spc.pin_url_to_commit(
         "https://raw.githubusercontent.com/owner/repo/main/path/file.qsf"
     )
@@ -478,7 +478,7 @@ def _fake_row(**overrides: Any) -> dict[str, Any]:
 
 def test_process_board_end_to_end(monkeypatch: pytest.MonkeyPatch, _board_json: Path) -> None:
     monkeypatch.setattr(spc, "fetch_url", lambda url, cache_dir=None: _FAKE_QSF)
-    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: "abc123")
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "abc123")
 
     result = spc.process_board(
         "Test Board", _fake_row(), overlay={}, force=True, waves=set(), cache_dir=None
@@ -498,7 +498,7 @@ def test_process_board_end_to_end(monkeypatch: pytest.MonkeyPatch, _board_json: 
 
 def test_process_board_applies_overlay(monkeypatch: pytest.MonkeyPatch, _board_json: Path) -> None:
     monkeypatch.setattr(spc, "fetch_url", lambda url, cache_dir=None: _FAKE_QSF)
-    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: "abc123")
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "abc123")
     overlay = {"Test Board": {"clk": "OVERRIDDEN_CLK", "buttons": {"active_low": True}}}
 
     result = spc.process_board(
@@ -520,7 +520,7 @@ def test_process_board_skips_on_width_mismatch(
     board = {"name": "Test Board", "leds": [{}] * 2, "switches": [{}] * 2, "buttons": [{}] * 2}
     (board_dir / "test_board.json").write_text(json.dumps(board))
     monkeypatch.setattr(spc, "fetch_url", lambda url, cache_dir=None: _FAKE_QSF)
-    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: "abc123")
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "abc123")
 
     result = spc.process_board(
         "Test Board", _fake_row(), overlay={}, force=True, waves=set(), cache_dir=None
@@ -542,7 +542,7 @@ def test_process_board_second_files_target_independent_of_first(
     (tmp_path / "a" / "good.json").write_text(json.dumps(good))
     (tmp_path / "b" / "bad.json").write_text(json.dumps(bad))
     monkeypatch.setattr(spc, "fetch_url", lambda url, cache_dir=None: _FAKE_QSF)
-    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: "abc123")
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "abc123")
 
     row = _fake_row(files=["a/good.json", "b/bad.json"])
     result = spc.process_board(
@@ -559,7 +559,7 @@ def test_process_board_missing_target_file_is_a_per_file_skip(
 ) -> None:
     monkeypatch.setattr(spc, "BOARDS_DIR", tmp_path)
     monkeypatch.setattr(spc, "fetch_url", lambda url, cache_dir=None: _FAKE_QSF)
-    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: "abc123")
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "abc123")
 
     row = _fake_row(files=["nonexistent/board.json"])
     result = spc.process_board(
@@ -575,7 +575,7 @@ def test_process_board_fetch_failure_is_a_row_level_skip(monkeypatch: pytest.Mon
         raise TimeoutError("no route to host")
 
     monkeypatch.setattr(spc, "fetch_url", _boom)
-    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: "abc123")
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "abc123")
 
     result = spc.process_board(
         "Test Board", _fake_row(), overlay={}, force=True, waves=set(), cache_dir=None
@@ -757,7 +757,7 @@ def test_write_results_preserves_retrieved_for_unchanged_convention(
 
 def test_process_board_is_idempotent(monkeypatch: pytest.MonkeyPatch, _board_json: Path) -> None:
     monkeypatch.setattr(spc, "fetch_url", lambda url, cache_dir=None: _FAKE_QSF)
-    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: "abc123")
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "abc123")
 
     r1 = spc.process_board("Test Board", _fake_row(), {}, force=True, waves=set(), cache_dir=None)
     r2 = spc.process_board("Test Board", _fake_row(), {}, force=True, waves=set(), cache_dir=None)
@@ -835,7 +835,7 @@ def test_digilent_regression(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     (board_dir / "basys_3.json").write_text(json.dumps(board))
 
     monkeypatch.setattr(spc, "fetch_url", lambda url, cache_dir=None: _BASYS3_EXCERPT)
-    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: "00a3404")
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "00a3404")
 
     row = {
         "name": "Basys 3",
@@ -936,7 +936,7 @@ def test_hand_authored_terasic_regression(monkeypatch: pytest.MonkeyPatch, tmp_p
     (board_dir / "de10_standard.json").write_text(json.dumps(board))
 
     monkeypatch.setattr(spc, "fetch_url", lambda url, cache_dir=None: _DE10_STANDARD_EXCERPT)
-    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: "117be9a")
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "117be9a")
 
     row = {
         "name": "DE10-Standard",
@@ -1177,13 +1177,146 @@ def test_pin_url_raises_on_unresolved_branch_ref(monkeypatch: pytest.MonkeyPatch
     # resolve_commit_sha falls back to the ref on API failure (in practice a
     # renamed default branch, HTTP 422; a rate limit is the rarer cause);
     # writing/checking an unpinned URL would read as false board drift.
-    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: ref)
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: ref)
     with pytest.raises(ValueError, match="could not pin"):
         spc.pin_url_to_commit("https://raw.githubusercontent.com/o/r/main/f.xdc")
 
 
 def test_pin_url_passes_through_an_already_pinned_sha(monkeypatch: pytest.MonkeyPatch) -> None:
     sha = "a" * 40
-    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref: ref)
+    monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: ref)
     _repo, pinned = spc.pin_url_to_commit(f"https://raw.githubusercontent.com/o/r/{sha}/f.xdc")
     assert f"/{sha}/" in pinned
+
+
+def test_pin_url_resolves_scoped_to_the_cited_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The pin must follow the commit that touched the cited FILE, not the
+    # branch tip -- pinning the tip made an unrelated upstream commit read as
+    # board drift (icepi_zero, 2026-07-27).
+    seen: dict[str, str | None] = {}
+
+    def _resolve(repo: str, ref: str, path: str | None = None) -> str:
+        seen["path"] = path
+        return "b" * 40
+
+    monkeypatch.setattr(spc, "resolve_commit_sha", _resolve)
+    spc.pin_url_to_commit("https://raw.githubusercontent.com/o/r/main/dir/f.xdc")
+    assert seen["path"] == "dir/f.xdc"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  carry_forward_pin (content-hash drift)
+# ═══════════════════════════════════════════════════════════════════════
+
+
+_PIN = "https://raw.githubusercontent.com/o/r/{}/dir/f.lpf"
+_NEW_SHA, _OLD_SHA = "b" * 40, "a" * 40
+
+
+def _block(url: str, digest: str, retrieved: str = "2026-07-01") -> dict[str, Any]:
+    return {
+        "clk": "clk",
+        "source": {
+            "url": url,
+            "content_sha256": digest,
+            "retrieved": retrieved,
+            "registry_board": "B",
+        },
+    }
+
+
+def test_carry_forward_pin_keeps_old_pin_when_content_is_identical() -> None:
+    # The whole point: upstream committed something that did not touch the
+    # cited file, so the resolved pin moved but the bytes did not. That must
+    # be a byte-for-byte no-op, not drift.
+    digest = "a" * 64
+    new = _block(_PIN.format(_NEW_SHA), digest, retrieved="2026-07-27")
+    old = _block(_PIN.format(_OLD_SHA), digest, retrieved="2026-07-01")
+    assert spc.carry_forward_pin(new, old) == old
+
+
+def test_carry_forward_pin_updates_when_content_changed() -> None:
+    # A real upstream content change must surface -- that is the signal the
+    # check exists for.
+    new = _block(_PIN.format(_NEW_SHA), "b" * 64, retrieved="2026-07-27")
+    old = _block(_PIN.format(_OLD_SHA), "a" * 64)
+    assert spc.carry_forward_pin(new, old) == new
+
+
+def test_carry_forward_pin_updates_when_the_parsed_convention_changed() -> None:
+    # Same bytes, but the classifier now reads them differently (e.g. a parser
+    # fix): that is a real change to board data and must not be masked.
+    digest = "a" * 64
+    new = _block(_PIN.format(_NEW_SHA), digest)
+    new["clk"] = "clk50"
+    old = _block(_PIN.format(_OLD_SHA), digest)
+    assert spc.carry_forward_pin(new, old)["clk"] == "clk50"
+    assert spc.carry_forward_pin(new, old)["source"]["url"] == _PIN.format(_NEW_SHA)
+
+
+def test_carry_forward_pin_does_not_mask_a_url_pointing_elsewhere() -> None:
+    # Only the commit component may differ. A committed URL naming another
+    # repo or path is a different citation (or a corrupted one) -- keeping it
+    # because the bytes match would stop the check validating what it cites.
+    digest = "a" * 64
+    new = _block(_PIN.format(_NEW_SHA), digest)
+    other_path = _block(f"https://raw.githubusercontent.com/o/r/{_OLD_SHA}/other/f.lpf", digest)
+    other_repo = _block(f"https://raw.githubusercontent.com/o/OTHER/{_OLD_SHA}/dir/f.lpf", digest)
+    assert spc.carry_forward_pin(new, other_path) == new
+    assert spc.carry_forward_pin(new, other_repo) == new
+    # ...but the same file at another commit still carries forward.
+    same_file = _block(_PIN.format(_OLD_SHA), digest)
+    assert spc.carry_forward_pin(new, same_file) == same_file
+
+
+def test_carry_forward_pin_ignores_blocks_without_a_digest() -> None:
+    # Digilent sibling transplants never fetch, so they carry no digest; they
+    # must pass through untouched for carry_forward_retrieved to handle.
+    new = {"clk": "c", "source": {"url": "u2", "retrieved": "2026-07-27"}}
+    old = {"clk": "c", "source": {"url": "u1", "retrieved": "2026-07-01"}}
+    assert spc.carry_forward_pin(new, old) == new
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  coverage_regressions
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def test_coverage_regression_flags_a_committed_block_that_stopped_regenerating(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # A dead citation makes its row skip, and a skipped row is compared against
+    # nothing -- so without this guard the block silently stops being verified
+    # and the check stays green (how 8 renamed refs went unnoticed).
+    board = tmp_path / "src" / "b.json"
+    board.parent.mkdir(parents=True)
+    board.write_text(
+        json.dumps({"port_conventions": {"vendor": {"source": {"registry_board": "B"}}}})
+    )
+    monkeypatch.setattr(spc, "BOARDS_DIR", tmp_path)
+
+    assert spc.coverage_regressions([]) == ["src/b.json [vendor]"]
+    reproduced = [spc.BoardResult("B", convention_by_file={"src/b.json": {"vendor": {}}})]
+    assert spc.coverage_regressions(reproduced) == []
+
+
+def test_coverage_regression_ignores_hand_authored_blocks(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # Only registry-sourced blocks (stamped with source.registry_board) are
+    # this check's business; hand-authored and framework-derived ones are not
+    # regenerated here and must not read as lost coverage.
+    board = tmp_path / "src" / "b.json"
+    board.parent.mkdir(parents=True)
+    board.write_text(
+        json.dumps(
+            {
+                "port_conventions": {
+                    "amaranth": {"naming": "framework-derived"},
+                    "hand": {"source": {"url": "u"}},
+                }
+            }
+        )
+    )
+    monkeypatch.setattr(spc, "BOARDS_DIR", tmp_path)
+    assert spc.coverage_regressions([]) == []

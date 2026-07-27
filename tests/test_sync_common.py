@@ -16,7 +16,12 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from led_metadata import ColorBank  # noqa: E402
-from sync_common import resolve_commit_sha, validate_board_jsons, write_outputs  # noqa: E402
+from sync_common import (  # noqa: E402
+    fetch_url,
+    resolve_commit_sha,
+    validate_board_jsons,
+    write_outputs,
+)
 
 SCHEMA_PATH = Path(__file__).parent.parent / "boards" / "schema" / "board.schema.json"
 
@@ -618,3 +623,61 @@ def test_resolve_commit_sha_falls_back_to_ref_on_error(monkeypatch):
 
     # A resolution failure must never break a sync -- fall back to the ref.
     assert resolve_commit_sha("owner/repo", "v1.2.3") == "v1.2.3"
+
+
+def test_fetch_url_cache_round_trip_is_newline_faithful(monkeypatch, tmp_path):
+    # `Path.read_text` uses universal newlines, so the cache used to hand back
+    # CRLF source with every \r stripped -- i.e. a cached fetch returned
+    # different content than the network fetch it stands in for. Invisible
+    # while only line-oriented parsers consumed it; a real hash mismatch once
+    # source.content_sha256 recorded the fetched bytes (3 Terasic QSFs).
+    body = (
+        "set_location_assignment PIN_23 -to CLOCK_50\r\nset_location_assignment PIN_87 -to LEDG\r\n"
+    )
+    calls: list[str] = []
+
+    def _fake(url: Any, timeout: int = 30) -> _FakeResp:
+        calls.append(url)
+        return _FakeResp(body.encode("utf-8"))
+
+    monkeypatch.setattr("sync_common.urllib.request.urlopen", _fake)
+
+    fetched = fetch_url("https://x/f.qsf", cache_dir=tmp_path)
+    cached = fetch_url("https://x/f.qsf", cache_dir=tmp_path)
+
+    assert len(calls) == 1, "second call should have been served from the cache"
+    assert fetched == body
+    assert cached == fetched
+
+
+def test_resolve_commit_sha_with_path_queries_the_path_scoped_endpoint(monkeypatch):
+    # Pinning the branch TIP made an upstream commit that never touched the
+    # cited file read as board drift; scoping to the path fixes that.
+    captured: list[Any] = []
+
+    def _fake(req: Any, timeout: int = 30) -> _FakeResp:
+        captured.append(req)
+        return _FakeResp(b'[{"sha": "0123456789abcdef"}]')
+
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.setattr("sync_common.urllib.request.urlopen", _fake)
+
+    assert resolve_commit_sha("owner/repo", "main", "dir/f.lpf") == "0123456789abcdef"
+    url = captured[0].full_url
+    assert url.startswith("https://api.github.com/repos/owner/repo/commits?")
+    assert "path=dir%2Ff.lpf" in url
+    assert "sha=main" in url
+
+
+def test_resolve_commit_sha_with_path_falls_back_when_path_not_in_history(monkeypatch):
+    # An empty result means the cited path does not exist at that ref. Falling
+    # back to the ref makes it surface as an unpinnable citation rather than
+    # silently pinning a commit that has nothing to do with the file.
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.delenv("GH_TOKEN", raising=False)
+    monkeypatch.setattr(
+        "sync_common.urllib.request.urlopen", lambda req, timeout=30: _FakeResp(b"[]")
+    )
+
+    assert resolve_commit_sha("owner/repo", "main", "nope.lpf") == "main"

@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import re
 import sys
@@ -281,7 +282,7 @@ def pin_url_to_commit(url: str) -> tuple[str, str]:
     if not m:
         raise ValueError(f"not a raw.githubusercontent.com URL: {url}")
     repo, ref, path = m.groups()
-    sha = resolve_commit_sha(repo, ref)
+    sha = resolve_commit_sha(repo, ref, path)
     if sha == ref and not re.fullmatch(r"[0-9a-f]{40}", ref):
         raise ValueError(
             f"could not pin ref {ref!r} of {repo} "
@@ -496,6 +497,7 @@ def process_board(
     convention["naming"] = "canonical"
     convention["source"] = {
         "url": pinned_url,
+        "content_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
         "retrieved": date.today().isoformat(),
         "registry_board": name,
     }
@@ -522,6 +524,73 @@ def process_board(
 # ═══════════════════════════════════════════════════════════════════════
 #  Writing
 # ═══════════════════════════════════════════════════════════════════════
+
+
+def _same_repo_and_path(old_url: object, new_url: object) -> bool:
+    """Report whether two raw.githubusercontent URLs differ only in their commit.
+
+    Guards `carry_forward_pin`: the committed pin may be kept when it points
+    at the same file in the same repo at another commit, never when it names
+    something else entirely.
+    """
+    if not (isinstance(old_url, str) and isinstance(new_url, str)):
+        return False
+    old_match, new_match = _RAW_GITHUB_RE.match(old_url), _RAW_GITHUB_RE.match(new_url)
+    if not (old_match and new_match):
+        return old_url == new_url
+    return (old_match.group(1), old_match.group(3)) == (new_match.group(1), new_match.group(3))
+
+
+def carry_forward_pin(new_block: dict[str, Any], existing_block: object) -> dict[str, Any]:
+    """Keep the on-disk pin when the cited file's *content* is unchanged.
+
+    ``source.content_sha256`` is the invariant this pipeline actually cares
+    about: the bytes the convention was parsed from.  The pinned commit is
+    provenance *about* those bytes, and it can move for reasons that say
+    nothing about the board -- an upstream commit touching another file, a
+    history rewrite, a path-scoped resolve landing on a different-but-
+    equivalent commit.  When the digest matches and the rest of the block is
+    identical, the committed ``url``/``retrieved`` are kept so the re-sync is
+    a true byte-for-byte no-op and the drift check stays quiet.
+
+    A digest *mismatch* is never carried forward: that is a real upstream
+    content change, and it should surface as drift so a human re-verifies the
+    citation (which is exactly what the check is for).  Blocks with no digest
+    on either side -- e.g. the digilent sibling transplants, which never fetch
+    -- fall through unchanged to ``carry_forward_retrieved``.
+
+    The carry-forward is deliberately narrow: only the *commit* component of
+    the pin may differ.  A committed URL naming a different repo or a
+    different path is not "the same citation at another commit", it is a
+    different citation (or a corrupted one), and keeping it because the bytes
+    happen to match would let a bad URL sit undetected -- the check would stop
+    validating the very thing it cites.  Those still fall through to drift.
+    """
+    if not isinstance(existing_block, dict):
+        return new_block
+    new_src, old_src = new_block.get("source"), existing_block.get("source")
+    if not (isinstance(new_src, dict) and isinstance(old_src, dict)):
+        return new_block
+    digest = new_src.get("content_sha256")
+    if not digest or old_src.get("content_sha256") != digest:
+        return new_block
+    if not _same_repo_and_path(old_src.get("url"), new_src.get("url")):
+        return new_block
+
+    def _without_pin(block: dict[str, Any]) -> dict[str, Any]:
+        src = {k: v for k, v in block["source"].items() if k not in ("url", "retrieved")}
+        return {**block, "source": src}
+
+    if _without_pin(new_block) != _without_pin(existing_block):
+        return new_block
+    return {
+        **new_block,
+        "source": {
+            **new_src,
+            "url": old_src.get("url", new_src.get("url")),
+            "retrieved": old_src.get("retrieved", new_src.get("retrieved")),
+        },
+    }
 
 
 def carry_forward_retrieved(new_block: dict[str, Any], existing_block: object) -> dict[str, Any]:
@@ -599,7 +668,9 @@ def write_results(
             # Preserve the on-disk retrieval date for any sub-key whose content is
             # otherwise identical, so a no-op re-sync doesn't churn the timestamp.
             new_sub_keys = {
-                slug: carry_forward_retrieved(block, existing.get(slug))
+                slug: carry_forward_retrieved(
+                    carry_forward_pin(block, existing.get(slug)), existing.get(slug)
+                )
                 for slug, block in new_sub_keys.items()
             }
             board_json["port_conventions"] = {**existing, **new_sub_keys}
@@ -699,6 +770,54 @@ def digilent_sibling_results(
 
 
 # ═══════════════════════════════════════════════════════════════════════
+#  Coverage
+# ═══════════════════════════════════════════════════════════════════════
+
+
+def registry_sourced_blocks() -> set[tuple[str, str]]:
+    """Every committed ``(board file, sub-key)`` whose block came from the registry.
+
+    Identified by ``source.registry_board``, which both the fetch path
+    (`process_board`) and the transplant path (`digilent_sibling_results`)
+    stamp -- and which hand-authored blocks never carry.
+    """
+    found: set[tuple[str, str]] = set()
+    for path in sorted(BOARDS_DIR.rglob("*.json")):
+        if path.name.startswith("_") or "schema" in path.parts:
+            continue
+        try:
+            board = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        rel = path.relative_to(BOARDS_DIR).as_posix()
+        for slug, block in (board.get("port_conventions") or {}).items():
+            source = block.get("source") if isinstance(block, dict) else None
+            if isinstance(source, dict) and source.get("registry_board"):
+                found.add((rel, slug))
+    return found
+
+
+def coverage_regressions(results: list[BoardResult]) -> list[str]:
+    """List committed registry-sourced blocks this run failed to reproduce.
+
+    A skipped row contributes nothing to `write_results`, so ``--check`` never
+    compares its committed block against anything -- the block just stops
+    being verified, silently, and the check stays green.  That is how eight
+    renamed-branch citations rotted unnoticed until the 2026-07-27 sweep, and
+    why a *deleted* upstream source would have turned the job green rather
+    than red.  Treating a block that used to regenerate and now doesn't as a
+    failure closes that hole: the check can lose coverage only on purpose.
+    """
+    produced = {
+        (rel_path, slug)
+        for result in results
+        for rel_path, sub_keys in result.convention_by_file.items()
+        for slug in sub_keys
+    }
+    return sorted(f"{rel_path} [{slug}]" for rel_path, slug in registry_sourced_blocks() - produced)
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  CLI
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -730,6 +849,29 @@ def main(argv: list[str] | None = None) -> int:
 
     written_count = sum(1 for r in results if r.convention_by_file)
     print(f"\n{written_count}/{len(results)} board(s) produced a convention.")
+
+    # A dead citation is a silent skip line in a several-hundred-line log; call
+    # it out as its own class so it is not read as ordinary gate filtering.
+    unpinnable = [r.name for r in results if r.skipped and "could not pin ref" in r.skipped]
+    if unpinnable:
+        print(f"\n{len(unpinnable)} citation(s) could not be pinned -- ref renamed or deleted:")
+        for name in unpinnable:
+            print(f"  {name}")
+
+    # Coverage first: a board that used to regenerate and now doesn't is a
+    # worse failure than drift (drift is at least visible), and reporting it
+    # before the diff keeps the cause above the symptom.
+    if args.board is None:
+        regressions = coverage_regressions(results)
+        if regressions:
+            print("\nCoverage regression -- committed blocks this run could not reproduce:")
+            for item in regressions:
+                print(f"  {item}")
+            print(
+                "These blocks are no longer verified by this check. Fix the registry\n"
+                "citation, or drop the block if the source is genuinely gone."
+            )
+            return 1
 
     if args.check:
         drifted = []

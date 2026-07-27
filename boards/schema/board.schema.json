@@ -220,6 +220,11 @@
           "format": "uri",
           "description": "Canonical constraint-file URL the convention was parsed from"
         },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of the fetched source file. The drift check compares this rather than the pinned commit, so an upstream commit that does not touch the cited file is not drift"
+        },
         "retrieved": {
           "type": "string",
           "format": "date",

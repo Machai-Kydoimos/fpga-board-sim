@@ -375,8 +375,9 @@
       "description": "Cyclone V (5CEBA4F23C7). Complete I/O assignments from working Quartus starter project.",
       "naming": "canonical",
       "source": {
-        "url": "https://raw.githubusercontent.com/fb39ca4/quartus-vhdl-starter/01046372cb91873b5baea011d10a5c520b70cc9a/DE0-CV.qsf",
-        "retrieved": "2026-07-12",
+        "url": "https://raw.githubusercontent.com/fb39ca4/quartus-vhdl-starter/8bb10ae019b22eb43a17b03959ea48b4bb56c260/DE0-CV.qsf",
+        "content_sha256": "6a3f9630f08d46337d9ebd95d5fc5c1115e30dc5c2fb1b12bded7d173bc3ba08",
+        "retrieved": "2026-07-28",
         "registry_board": "DE0 CV"
       }
     },
