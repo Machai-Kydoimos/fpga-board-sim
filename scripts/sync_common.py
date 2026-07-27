@@ -99,18 +99,30 @@ def fetch_url(url: str, cache_dir: Path | None = None, timeout: int = 30) -> str
     repo that board's registry row cites -- a different repo per call, so
     per-URL caching (keyed by a hash of the URL) is what actually helps
     repeated ``--check``/debugging runs avoid re-fetching the same file.
+
+    The cache round-trip is newline-faithful (``newline=""`` on both sides).
+    ``Path.read_text`` defaults to universal newlines, which silently rewrote
+    every CRLF to a bare LF on the way out of the cache -- harmless while only
+    line-oriented parsers consumed the text, but it made a cached fetch return
+    different content than the network fetch it stood in for. That surfaced
+    the moment ``source.content_sha256`` started recording the fetched bytes:
+    three CRLF-authored Terasic QSFs hashed one way when fetched and another
+    when cached. A cache that alters what it caches is a bug regardless of who
+    currently notices.
     """
     if cache_dir is not None:
         cache_dir.mkdir(parents=True, exist_ok=True)
         cache_path = cache_dir / hashlib.sha256(url.encode()).hexdigest()
         if cache_path.exists():
-            return cache_path.read_text(encoding="utf-8")
+            with cache_path.open(encoding="utf-8", newline="") as cached:
+                return cached.read()
 
     with urllib.request.urlopen(url, timeout=timeout) as resp:
         text: str = resp.read().decode("utf-8")
 
     if cache_dir is not None:
-        cache_path.write_text(text, encoding="utf-8")
+        with cache_path.open("w", encoding="utf-8", newline="") as out:
+            out.write(text)
     return text
 
 

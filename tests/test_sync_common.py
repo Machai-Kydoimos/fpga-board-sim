@@ -16,7 +16,12 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from led_metadata import ColorBank  # noqa: E402
-from sync_common import resolve_commit_sha, validate_board_jsons, write_outputs  # noqa: E402
+from sync_common import (  # noqa: E402
+    fetch_url,
+    resolve_commit_sha,
+    validate_board_jsons,
+    write_outputs,
+)
 
 SCHEMA_PATH = Path(__file__).parent.parent / "boards" / "schema" / "board.schema.json"
 
@@ -618,6 +623,31 @@ def test_resolve_commit_sha_falls_back_to_ref_on_error(monkeypatch):
 
     # A resolution failure must never break a sync -- fall back to the ref.
     assert resolve_commit_sha("owner/repo", "v1.2.3") == "v1.2.3"
+
+
+def test_fetch_url_cache_round_trip_is_newline_faithful(monkeypatch, tmp_path):
+    # `Path.read_text` uses universal newlines, so the cache used to hand back
+    # CRLF source with every \r stripped -- i.e. a cached fetch returned
+    # different content than the network fetch it stands in for. Invisible
+    # while only line-oriented parsers consumed it; a real hash mismatch once
+    # source.content_sha256 recorded the fetched bytes (3 Terasic QSFs).
+    body = (
+        "set_location_assignment PIN_23 -to CLOCK_50\r\nset_location_assignment PIN_87 -to LEDG\r\n"
+    )
+    calls: list[str] = []
+
+    def _fake(url: Any, timeout: int = 30) -> _FakeResp:
+        calls.append(url)
+        return _FakeResp(body.encode("utf-8"))
+
+    monkeypatch.setattr("sync_common.urllib.request.urlopen", _fake)
+
+    fetched = fetch_url("https://x/f.qsf", cache_dir=tmp_path)
+    cached = fetch_url("https://x/f.qsf", cache_dir=tmp_path)
+
+    assert len(calls) == 1, "second call should have been served from the cache"
+    assert fetched == body
+    assert cached == fetched
 
 
 def test_resolve_commit_sha_with_path_queries_the_path_scoped_endpoint(monkeypatch):
