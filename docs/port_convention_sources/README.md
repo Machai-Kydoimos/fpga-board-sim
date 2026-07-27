@@ -74,6 +74,16 @@ this exact board · `candidate` = a real lead (gated download, repo) not
 fetch-verified · `none-found` = no constraint-file lead located (queries listed
 in notes) · `not-attempted` = not yet researched.
 
+**Language:** rows are written in English (US) — `name`, `notes`,
+`device_evidence`, and the extracted-port columns. `evidence[]` is the
+exception: those strings are **matched verbatim against the fetched source**,
+so a translated one would silently stop matching and break verify-or-omit.
+Quote the source's own bytes there, and put the English translation in `notes`.
+Several boards are documented only in Russian or Chinese — e.g. the
+RZ-EasyFPGA schematic states LED polarity as "4-bit LED (lit by low level)" and
+labels its inputs "independent keys and DIP switch (IO multiplexed)" — so the
+distinction is load-bearing, not hypothetical.
+
 **Source kinds:** `vendor-official` (the board maker / FPGA vendor itself) >
 `official-repo` (the board's own project org) > `community` (well-known
 collections, course material, reverse-engineering canon) > `personal`
