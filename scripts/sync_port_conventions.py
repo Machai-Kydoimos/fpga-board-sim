@@ -526,6 +526,21 @@ def process_board(
 # ═══════════════════════════════════════════════════════════════════════
 
 
+def _same_repo_and_path(old_url: object, new_url: object) -> bool:
+    """Report whether two raw.githubusercontent URLs differ only in their commit.
+
+    Guards `carry_forward_pin`: the committed pin may be kept when it points
+    at the same file in the same repo at another commit, never when it names
+    something else entirely.
+    """
+    if not (isinstance(old_url, str) and isinstance(new_url, str)):
+        return False
+    old_match, new_match = _RAW_GITHUB_RE.match(old_url), _RAW_GITHUB_RE.match(new_url)
+    if not (old_match and new_match):
+        return old_url == new_url
+    return (old_match.group(1), old_match.group(3)) == (new_match.group(1), new_match.group(3))
+
+
 def carry_forward_pin(new_block: dict[str, Any], existing_block: object) -> dict[str, Any]:
     """Keep the on-disk pin when the cited file's *content* is unchanged.
 
@@ -543,6 +558,13 @@ def carry_forward_pin(new_block: dict[str, Any], existing_block: object) -> dict
     citation (which is exactly what the check is for).  Blocks with no digest
     on either side -- e.g. the digilent sibling transplants, which never fetch
     -- fall through unchanged to ``carry_forward_retrieved``.
+
+    The carry-forward is deliberately narrow: only the *commit* component of
+    the pin may differ.  A committed URL naming a different repo or a
+    different path is not "the same citation at another commit", it is a
+    different citation (or a corrupted one), and keeping it because the bytes
+    happen to match would let a bad URL sit undetected -- the check would stop
+    validating the very thing it cites.  Those still fall through to drift.
     """
     if not isinstance(existing_block, dict):
         return new_block
@@ -551,6 +573,8 @@ def carry_forward_pin(new_block: dict[str, Any], existing_block: object) -> dict
         return new_block
     digest = new_src.get("content_sha256")
     if not digest or old_src.get("content_sha256") != digest:
+        return new_block
+    if not _same_repo_and_path(old_src.get("url"), new_src.get("url")):
         return new_block
 
     def _without_pin(block: dict[str, Any]) -> dict[str, Any]:

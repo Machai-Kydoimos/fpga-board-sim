@@ -1209,6 +1209,10 @@ def test_pin_url_resolves_scoped_to_the_cited_path(monkeypatch: pytest.MonkeyPat
 # ═══════════════════════════════════════════════════════════════════════
 
 
+_PIN = "https://raw.githubusercontent.com/o/r/{}/dir/f.lpf"
+_NEW_SHA, _OLD_SHA = "b" * 40, "a" * 40
+
+
 def _block(url: str, digest: str, retrieved: str = "2026-07-01") -> dict[str, Any]:
     return {
         "clk": "clk",
@@ -1226,16 +1230,16 @@ def test_carry_forward_pin_keeps_old_pin_when_content_is_identical() -> None:
     # cited file, so the resolved pin moved but the bytes did not. That must
     # be a byte-for-byte no-op, not drift.
     digest = "a" * 64
-    new = _block("https://x/NEWSHA/f.lpf", digest, retrieved="2026-07-27")
-    old = _block("https://x/OLDSHA/f.lpf", digest, retrieved="2026-07-01")
+    new = _block(_PIN.format(_NEW_SHA), digest, retrieved="2026-07-27")
+    old = _block(_PIN.format(_OLD_SHA), digest, retrieved="2026-07-01")
     assert spc.carry_forward_pin(new, old) == old
 
 
 def test_carry_forward_pin_updates_when_content_changed() -> None:
     # A real upstream content change must surface -- that is the signal the
     # check exists for.
-    new = _block("https://x/NEWSHA/f.lpf", "b" * 64, retrieved="2026-07-27")
-    old = _block("https://x/OLDSHA/f.lpf", "a" * 64)
+    new = _block(_PIN.format(_NEW_SHA), "b" * 64, retrieved="2026-07-27")
+    old = _block(_PIN.format(_OLD_SHA), "a" * 64)
     assert spc.carry_forward_pin(new, old) == new
 
 
@@ -1243,11 +1247,26 @@ def test_carry_forward_pin_updates_when_the_parsed_convention_changed() -> None:
     # Same bytes, but the classifier now reads them differently (e.g. a parser
     # fix): that is a real change to board data and must not be masked.
     digest = "a" * 64
-    new = _block("https://x/NEWSHA/f.lpf", digest)
+    new = _block(_PIN.format(_NEW_SHA), digest)
     new["clk"] = "clk50"
-    old = _block("https://x/OLDSHA/f.lpf", digest)
+    old = _block(_PIN.format(_OLD_SHA), digest)
     assert spc.carry_forward_pin(new, old)["clk"] == "clk50"
-    assert spc.carry_forward_pin(new, old)["source"]["url"] == "https://x/NEWSHA/f.lpf"
+    assert spc.carry_forward_pin(new, old)["source"]["url"] == _PIN.format(_NEW_SHA)
+
+
+def test_carry_forward_pin_does_not_mask_a_url_pointing_elsewhere() -> None:
+    # Only the commit component may differ. A committed URL naming another
+    # repo or path is a different citation (or a corrupted one) -- keeping it
+    # because the bytes match would stop the check validating what it cites.
+    digest = "a" * 64
+    new = _block(_PIN.format(_NEW_SHA), digest)
+    other_path = _block(f"https://raw.githubusercontent.com/o/r/{_OLD_SHA}/other/f.lpf", digest)
+    other_repo = _block(f"https://raw.githubusercontent.com/o/OTHER/{_OLD_SHA}/dir/f.lpf", digest)
+    assert spc.carry_forward_pin(new, other_path) == new
+    assert spc.carry_forward_pin(new, other_repo) == new
+    # ...but the same file at another commit still carries forward.
+    same_file = _block(_PIN.format(_OLD_SHA), digest)
+    assert spc.carry_forward_pin(new, same_file) == same_file
 
 
 def test_carry_forward_pin_ignores_blocks_without_a_digest() -> None:
