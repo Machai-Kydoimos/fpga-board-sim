@@ -262,12 +262,20 @@ def pin_url_to_commit(url: str) -> tuple[str, str]:
     that the same as any other per-board fetch failure: warn and skip.
 
     An *unresolved* branch ref also raises: ``resolve_commit_sha`` falls back
-    to the ref itself when the GitHub API fails (rate limit), and writing --
-    or ``--check``-comparing -- an unpinned branch URL against the committed
+    to the ref itself when the GitHub API fails, and writing -- or
+    ``--check``-comparing -- an unpinned branch URL against the committed
     pinned provenance would look like board drift when it is only a transient
     network failure (found by the U38 drift tripwire's first run).  Skipping
     the row keeps the check meaningful: verify what can be pinned, report the
     rest.  A ref that already IS a full SHA passes through untouched.
+
+    The failure is *not* usually a rate limit, despite that being the original
+    guess: a renamed default branch (``master`` -> ``main`` and back) resolves
+    to HTTP 422 here while ``raw.githubusercontent.com`` still serves the file
+    through GitHub's rename redirect -- so the citation looks alive in a
+    browser while the pin silently fails.  Every unresolvable ref found in the
+    2026-07-27 registry sweep was a rename, none was a rate limit, so the
+    message names that cause first.
     """
     m = _RAW_GITHUB_RE.match(url)
     if not m:
@@ -275,7 +283,10 @@ def pin_url_to_commit(url: str) -> tuple[str, str]:
     repo, ref, path = m.groups()
     sha = resolve_commit_sha(repo, ref)
     if sha == ref and not re.fullmatch(r"[0-9a-f]{40}", ref):
-        raise ValueError(f"could not pin ref {ref!r} of {repo} (GitHub API rate limit?)")
+        raise ValueError(
+            f"could not pin ref {ref!r} of {repo} "
+            f"(renamed/deleted upstream, or the GitHub API was unreachable/rate-limited)"
+        )
     return repo, f"https://raw.githubusercontent.com/{repo}/{sha}/{path}"
 
 
