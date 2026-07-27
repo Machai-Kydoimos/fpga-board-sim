@@ -171,14 +171,21 @@ license header** — it travels into every generated design. Then:
 generator documents (reset polarity, boot behavior):
 
 ```python
-MX65 = CpuPlugin(name="mx65", entity_name="mx65",
-                 core_files=(_CORES / "mx65.vhd",),
-                 adapter_file=_ADAPTERS / "mx65.vhd")            # reset active-high, boots at $FFFC
+MX65 = CpuPlugin(
+    name="mx65",
+    entity_name="mx65",
+    core_files=(_CORES / "mx65.vhd",),
+    adapter_file=_ADAPTERS / "mx65.vhd",
+)  # reset active-high, boots at $FFFC
 
-T80  = CpuPlugin(name="t80", entity_name="T80s",
-                 core_files=(_T80/"T80_Pack.vhd", ..., _T80/"T80s.vhd"),
-                 adapter_file=_ADAPTERS / "t80.vhd",
-                 reset_active_high=False, boots_at_zero=True)    # RESET_n low, boots at $0000
+T80 = CpuPlugin(
+    name="t80",
+    entity_name="T80s",
+    core_files=(_T80 / "T80_Pack.vhd", ..., _T80 / "T80s.vhd"),
+    adapter_file=_ADAPTERS / "t80.vhd",
+    reset_active_high=False,
+    boots_at_zero=True,
+)  # RESET_n low, boots at $0000
 ```
 
 `--cpu <name>` on the generator selects it.

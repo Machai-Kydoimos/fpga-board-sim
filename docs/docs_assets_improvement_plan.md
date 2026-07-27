@@ -216,6 +216,7 @@ nothing:
 
 ```python
 import re, pathlib
+
 md = pathlib.Path("docs/embedded_core_system_guide.md").read_text()
 body = re.sub(r"```.*?```", "", md, flags=re.S)
 seen = {}
