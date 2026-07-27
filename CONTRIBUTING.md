@@ -195,10 +195,17 @@ in the comment block atop `.pre-commit-config.yaml`.
 
 ### Spelling and text encoding
 
-Two conventions the linters don't catch:
+Three conventions the linters don't catch:
 
-- **US spelling** in code, comments, docs, and commit messages — `color`,
-  `behavior`, `standardize` (not `colour`, `behaviour`, `standardise`).
+- **English (US)** — the language, not only the spelling. Board data often comes
+  from Russian, Chinese, or German primary sources; translate them rather than
+  pasting the original in. Board names get Latin transliterations (`Marsohod 3`,
+  not `Марсоход 3`). Use `color`, `behavior`, `standardize` — not `colour`,
+  `behaviour`, `standardise`.
+  - *One deliberate exception:* an `evidence[]` entry in
+    `docs/port_convention_sources/` is a **verbatim string matched against the
+    fetched source**, so translating one would break verify-or-omit. Keep the
+    original there and put the translation in the row's `notes`.
 - **VHDL files must be plain ASCII, or UTF-8 without a BOM**, and free of
   decorative Unicode. Some simulator/toolchain front-ends choke on a byte-order
   mark or stray non-ASCII bytes in HDL source, so the launcher's
