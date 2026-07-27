@@ -201,6 +201,21 @@ def test_seven_seg_scan_style_when_digit_enable_present() -> None:
     }
 
 
+def test_seven_seg_scan_style_recognizes_dig_digit_enable() -> None:
+    # The Altera-hobbyist idiom (RZ-EasyFPGA, Zeowaa, Runber) names the digit
+    # selects DIG rather than AN. Unrecognized, the display degraded to
+    # packed_vector with the digit side dropped entirely -- and packed_vector
+    # is a style the native wrapper declines, so the digits never lit.
+    names = {f"SEG[{i}]": f"S{i}" for i in range(8)} | {f"DIG[{i}]": f"D{i}" for i in range(4)}
+    result = classify(_table(names))
+    assert result["seven_seg"] == {
+        "style": "scan",
+        "name": "SEG",
+        "width_per_digit": 8,
+        "digit_enable": {"name": "DIG", "width": 4},
+    }
+
+
 def test_seven_seg_packed_vector_style_without_digit_enable() -> None:
     names = {f"seg[{i}]": f"S{i}" for i in range(7)}
     result = classify(_table(names))

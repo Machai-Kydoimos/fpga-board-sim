@@ -161,3 +161,47 @@ name = "Nitefury II"
   [board.leds]
   active_low = true
   cite = "The Nitefury II's 4 user LEDs (LED_A1..LED_A4) are active-low -- driven low to light, per RHS Research's official sample-project HDL (Sample-Projects/Project-0/FPGA/Nitefury-II/.../HDL/CodeBlinker.v: `localparam LED_ON = 1'b0`), identical to its Litefury sibling; the board's constraint XDC corroborates with `PULLUP true` on each LED_A pin. (The amaranth-boards platform models these active-high, inverted=False -- incorrect per the vendor's own blinker.)"
+
+# --- RZ-EasyFPGA A2.2 (see project notes; two registry rows, one physical board) ---
+# The QSF packs the reset button into the user-key vector as KEY[4], so the classified
+# width (5) exceeds the board's 4 buttons and the whole file was being skipped. The facts
+# that resolve it -- which member is the reset, and every polarity -- live in the
+# manufacturer's schematic, not in the QSF, so they can only arrive here.
+#
+# The schematic is written in Chinese; per CONTRIBUTING's language convention the
+# translations are given here in the cites, and only `evidence[]` (matched verbatim
+# against a fetched source) would ever hold the original text.
+
+[[board]]
+name = "RZEasy FPGAA2-2"
+
+  [board.buttons]
+  width = 4
+  active_low = true
+  cite = "KEY[4] is the RESET button, not a fifth user key, so the user-button bank is KEY[3:0] on pins 88-91. RZ-EasyFPGA A2.1 schematic sheet 4, titled '50 MHz crystal and reset circuit' (www.digitalelectronicsdeeds.com/history/imm_2_40_330/RZEasyFPGASCH.pdf, fetched 2026-07-28), shows pin 25 driven by a dedicated RESET pushbutton with a 10K pull-up to 3.3V -- which also makes the bank active-low (each key pulls its pin to ground against a 10K pull-up, sheet 7). Corroborated four ways: MIPSfpga's digital-design-lab-manual README for this board ('pin_25 | KEY0 | system reset'); kdg-auts/RZ-easyFPGA ('set_location_assignment PIN_25 -to RST'); marsohod4you/basics-graphics-music boards/rzrd ('PIN_25 -to RESET', with pins 88-91 named KEY_SW[0:3]); and upstream litex-boards platforms/rz_easyfpga.py, which models pin 25 as ('rst_n', 0) and the four keys as user_btn_n."
+
+  [board.leds]
+  active_low = true
+  cite = "The 4 user LEDs are active-low -- driven low to light. RZ-EasyFPGA A2.1 schematic sheet 7 labels the bank '4-bit LED (lit by low level)' (translated from the Chinese original). The amaranth-boards platform agrees (inverted=True); the litex-boards platform models them active-high, which contradicts the schematic. A QSF binds names to pins only, so classify() cannot derive polarity."
+
+  [board.seven_seg]
+  active_low = true
+  digit_enable_active_low = true
+  cite = "The 4-digit display is common-anode with PNP (8550) digit drivers, so both segments and digit selects are active-low. RZ-EasyFPGA A2.1 schematic sheet 7 titles the block '4-digit common-anode 7-segment display' (translated from the Chinese original) and shows each DIG line driving an 8550 PNP base through a 10K resistor. Matches the board JSON's own inverted/select_inverted flags, and mirrors every other scan board in the registry (Nexys/Basys AN banks are all active_low)."
+
+[[board]]
+name = "Rz Easyfpga"
+
+  [board.buttons]
+  width = 4
+  active_low = true
+  cite = "Same physical board as the 'RZEasy FPGAA2-2' row above (the two registry rows target the amaranth- and litex-derived board JSONs of one board); see that row's cite for the full evidence that KEY[4] is the RESET button on pin 25 and that the bank is active-low."
+
+  [board.leds]
+  active_low = true
+  cite = "Same physical board as the 'RZEasy FPGAA2-2' row above: the A2.1 schematic sheet 7 labels the bank '4-bit LED (lit by low level)'. Note this correction matters most here -- the litex-boards platform this JSON derives from models the LEDs active-high, contradicting the schematic."
+
+  [board.seven_seg]
+  active_low = true
+  digit_enable_active_low = true
+  cite = "Same physical board as the 'RZEasy FPGAA2-2' row above: common-anode display with 8550 PNP digit drivers, so segments and digit selects are both active-low."

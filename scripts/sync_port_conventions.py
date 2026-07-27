@@ -79,6 +79,11 @@ _ACTIVE_LOW_OVERRIDABLE = ("leds", "leds_green", "switches", "buttons", "seven_s
 # name a course source renamed. `seven_seg` is excluded: it carries a `names` list,
 # not a single `name`.
 _NAME_OVERRIDABLE = ("leds", "leds_green", "switches", "buttons")
+# Sections whose classified *width* a cited overlay may narrow, for a source
+# that packs a separate resource into the same vector (see
+# `_apply_width_override`). `seven_seg` is excluded for the same reason as
+# `_NAME_OVERRIDABLE`: its shape is a `names` list, not a single width.
+_WIDTH_OVERRIDABLE = ("leds", "leds_green", "switches", "buttons")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -330,8 +335,57 @@ def apply_overlay(convention: dict[str, Any], overlay_row: dict[str, Any] | None
             result[section]["active_low"] = override["active_low"]
         if "name" in override and section in _NAME_OVERRIDABLE:
             result[section]["name"] = override["name"]
+        if "width" in override and section in _WIDTH_OVERRIDABLE:
+            _apply_width_override(result[section], override)
+        if section == "seven_seg" and "digit_enable_active_low" in override:
+            # A scan display's segment side and digit-select side have
+            # independent polarity, and the native wrapper inverts the enable
+            # bank off `digit_enable.active_low` specifically (sim_bridge's
+            # `_render_native_wrapper`), NOT off the board's `select_inverted`.
+            # classify() cannot derive it -- a constraint file binds names to
+            # pins only -- and the digilent parser sets it from its own cited
+            # data, so a generically-classified scan board can only get it
+            # here. Rebuilt rather than mutated: the nested dict is shared
+            # with the caller's convention.
+            enable = result[section].get("digit_enable")
+            if isinstance(enable, dict) and override.get("cite"):
+                result[section]["digit_enable"] = {
+                    **enable,
+                    "active_low": override["digit_enable_active_low"],
+                }
 
     return result
+
+
+def _apply_width_override(mapping: dict[str, Any], override: dict[str, Any]) -> None:
+    """Narrow a classified bank to a cited width, in place.
+
+    A constraint file sometimes declares one vector spanning resources the
+    board treats separately -- RZ-EasyFPGA's ``KEY[4:0]`` is four user keys
+    plus the *reset* button on ``KEY[4]``, so the classified width (5) exceeds
+    the board's 4 buttons and `cross_check_widths` skips the whole file. The
+    physical fact that the extra member is a reset lives in the schematic, not
+    the QSF, so it can only come from a cited overlay.
+
+    Two guards, both fail-safe (ignore rather than raise, matching
+    `_rank1_vouched_canonical`'s treatment of an uncited claim):
+
+    * **Requires a `cite`** -- an uncited narrowing would silently drop a real
+      resource, which is exactly what this registry exists to prevent.
+    * **Narrows only.** Widening would name ports the source never declares,
+      inventing hardware; the source is the authority on what exists.
+
+    Note the bank keeps its *low* ``width`` members, so this expresses "the
+    extra members are at the top of the vector". A board whose odd member sits
+    at the bottom would need a different override -- none has come up yet.
+    """
+    new_width = override["width"]
+    old_width = mapping.get("width")
+    if not override.get("cite") or not isinstance(new_width, int):
+        return
+    if not isinstance(old_width, int) or not 0 < new_width <= old_width:
+        return
+    mapping["width"] = new_width
 
 
 # ═══════════════════════════════════════════════════════════════════════

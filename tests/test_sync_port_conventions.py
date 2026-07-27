@@ -263,6 +263,59 @@ def test_apply_overlay_name_and_active_low_together() -> None:
     assert result["buttons"] == {"name": "KEY", "width": 2, "active_low": True}
 
 
+def test_apply_overlay_width_override_narrows_a_bank() -> None:
+    # RZ-EasyFPGA: the QSF declares KEY[4:0], but KEY[4] is the RESET button,
+    # so the user-button bank is 4 wide. Without this the classified width (5)
+    # exceeds the board's 4 buttons and the whole file is skipped.
+    convention = {"buttons": {"name": "KEY", "width": 5}}
+    overlay_row = {"buttons": {"width": 4, "cite": "schematic: pin 25 is RESET"}}
+    result = spc.apply_overlay(convention, overlay_row)
+    assert result["buttons"] == {"name": "KEY", "width": 4}
+
+
+def test_apply_overlay_width_override_requires_a_cite() -> None:
+    # Fail-safe, like the naming vouch: an uncited narrowing would silently
+    # drop a real resource, which is what this registry exists to prevent.
+    convention = {"buttons": {"name": "KEY", "width": 5}}
+    result = spc.apply_overlay(convention, {"buttons": {"width": 4}})
+    assert result["buttons"]["width"] == 5
+
+
+def test_apply_overlay_width_override_never_widens() -> None:
+    # Widening would name ports the source never declares -- inventing
+    # hardware. The source is the authority on what exists.
+    convention = {"buttons": {"name": "KEY", "width": 2}}
+    result = spc.apply_overlay(convention, {"buttons": {"width": 8, "cite": "c"}})
+    assert result["buttons"]["width"] == 2
+
+
+def test_apply_overlay_sets_scan_digit_enable_polarity() -> None:
+    # A scan display's segment and digit-select sides have independent
+    # polarity, and the native wrapper inverts the enable bank off
+    # digit_enable.active_low specifically. classify() can't derive it from a
+    # constraint file, so a generically-classified scan board (RZ-EasyFPGA)
+    # can only get it here -- without it the digits render inverted.
+    convention = {
+        "seven_seg": {
+            "style": "scan",
+            "name": "SEG",
+            "width_per_digit": 8,
+            "digit_enable": {"name": "DIG", "width": 4},
+        }
+    }
+    overlay_row = {"seven_seg": {"digit_enable_active_low": True, "cite": "common-anode, PNP"}}
+    result = spc.apply_overlay(convention, overlay_row)
+    assert result["seven_seg"]["digit_enable"] == {"name": "DIG", "width": 4, "active_low": True}
+    # ...and the caller's convention is not mutated (the nested dict is shared).
+    assert convention["seven_seg"]["digit_enable"] == {"name": "DIG", "width": 4}
+
+
+def test_apply_overlay_digit_enable_polarity_requires_a_cite() -> None:
+    convention = {"seven_seg": {"style": "scan", "digit_enable": {"name": "DIG", "width": 4}}}
+    result = spc.apply_overlay(convention, {"seven_seg": {"digit_enable_active_low": True}})
+    assert "active_low" not in result["seven_seg"]["digit_enable"]
+
+
 def test_apply_overlay_ignores_name_for_unclassified_section() -> None:
     # classify() found no leds; a name override must not fabricate a phantom port_mapping.
     result = spc.apply_overlay({"clk": "clk"}, {"leds": {"name": "LEDR", "cite": "c"}})
