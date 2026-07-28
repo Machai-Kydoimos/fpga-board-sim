@@ -28,6 +28,23 @@ notes = "Identical to Rz Easyfpga; 7-segment teaching board; strong GitHub commu
   active_low = "not visible in this source"
   evidence = ["set_location_assignment PIN_23 -to CLOCK_50", "set_location_assignment PIN_87 -to LEDG[0]", "set_location_assignment PIN_88 -to KEY[0]", "set_location_assignment PIN_128 -to SEG[0]"]
 
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://www.hwkitchen.cz/user/related_files/fpga-kit-cyclone-iv-ep4ce6-schema-pdf.pdf"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "unknown"
+  device_evidence = "EP4CE6E22C8, read from the FPGA main-chip block (image only; see note on evidence below)"
+  clk = "FPGA_CLK from a 50MHz crystal (crystal-and-reset block)"
+  leds = "LED1-LED4, anodes tied to 3.3V through 470R"
+  buttons = "KEY1-KEY4 through 220R to pushbuttons S1-S4 to ground, 10K pull-ups R38-R41"
+  switches = "4-position DIP switch SW wired onto the SAME KEY1-KEY4 nets, own 10K pull-ups R42-R45"
+  seven_seg = "4-digit common-anode tube; SEG0-SEG7 through 220R; DIG1-DIG4 through 10K to 8550 PNP emitter followers from 3.3V"
+  active_low = "LEDs, keys and the display are all active-low, shown by the topology: LED anodes and PNP emitters sit at 3.3V, and every key/DIP line is pulled up to 3.3V and switched to ground"
+  notes = "Same vendor as the rank-1-adjacent A2.1 schematic (www.OurFPGA.com) but hosted independently by a Czech distributor, and dated 2014-12-09 -- an earlier revision than the 2017-02-01 A2.1 drawing, whose pin numbers it nonetheless matches (spot-checked DIG4=137, LCD1=141, LCD3=143, VGA_VSYNC=103, VGA_B=104, VGA_G=105, VGA_R=106), which is evidence the family's pinout is stable across revisions. It is the only RZ source that shows the buttons/DIP-switch multiplexing visually rather than by inference. This PDF is a scanned image with no text layer, so it carries no `evidence` array: there is no source string to match verbatim, and per this directory's language convention `evidence` holds only matched strings. It was read by rendering the page and inspecting it."
+
 [[board]]
 name = "Rz Easyfpga"
 files = ["litex-boards/rz_easyfpga.json"]
@@ -51,6 +68,23 @@ notes = "Duplicate entry of RZEasy FPGAA2-2; same physical board, same device EP
   seven_seg = "SEG[0-7] 8-bit segment bus (PIN_128, PIN_121, PIN_125, PIN_129, PIN_132, PIN_126, PIN_124, PIN_127); DIG[0-3] digit selects (PIN_133, PIN_135, PIN_136, PIN_137)"
   active_low = "not visible in this source"
   evidence = ["set_location_assignment PIN_23 -to CLOCK_50", "set_location_assignment PIN_87 -to LEDG[0]", "set_location_assignment PIN_88 -to KEY[0]"]
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://www.hwkitchen.cz/user/related_files/fpga-kit-cyclone-iv-ep4ce6-schema-pdf.pdf"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "unknown"
+  device_evidence = "EP4CE6E22C8, read from the FPGA main-chip block (image only; see note on evidence below)"
+  clk = "FPGA_CLK from a 50MHz crystal (crystal-and-reset block)"
+  leds = "LED1-LED4, anodes tied to 3.3V through 470R"
+  buttons = "KEY1-KEY4 through 220R to pushbuttons S1-S4 to ground, 10K pull-ups R38-R41"
+  switches = "4-position DIP switch SW wired onto the SAME KEY1-KEY4 nets, own 10K pull-ups R42-R45"
+  seven_seg = "4-digit common-anode tube; SEG0-SEG7 through 220R; DIG1-DIG4 through 10K to 8550 PNP emitter followers from 3.3V"
+  active_low = "LEDs, keys and the display are all active-low, shown by the topology: LED anodes and PNP emitters sit at 3.3V, and every key/DIP line is pulled up to 3.3V and switched to ground"
+  notes = "Same vendor as the rank-1-adjacent A2.1 schematic (www.OurFPGA.com) but hosted independently by a Czech distributor, and dated 2014-12-09 -- an earlier revision than the 2017-02-01 A2.1 drawing, whose pin numbers it nonetheless matches (spot-checked DIG4=137, LCD1=141, LCD3=143, VGA_VSYNC=103, VGA_B=104, VGA_G=105, VGA_R=106), which is evidence the family's pinout is stable across revisions. Same physical board as the RZEasy FPGAA2-2 row. It is the only RZ source that shows the buttons/DIP-switch multiplexing visually rather than by inference. This PDF is a scanned image with no text layer, so it carries no `evidence` array: there is no source string to match verbatim, and per this directory's language convention `evidence` holds only matched strings. It was read by rendering the page and inspecting it."
 
 [[board]]
 name = "Mister"
