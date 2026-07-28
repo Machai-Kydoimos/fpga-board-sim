@@ -121,7 +121,18 @@ def _is_seg(name: str) -> bool:
 
 
 def _is_digit_enable(name: str) -> bool:
-    return _exact_base(name, "an") or _exact_base(name, "enable")
+    # `an` is the Digilent/Xilinx idiom; `dig`/`digit` is the Altera-hobbyist
+    # one used across the Chinese EP4CE6 family (RZ-EasyFPGA's DIG[3:0],
+    # Zeowaa, Runber). Without them a scan display degrades to
+    # `packed_vector` -- the digit-select side dropped entirely -- and
+    # `packed_vector` is a style the native wrapper declines, so the board's
+    # display would simply never light.
+    return (
+        _exact_base(name, "an")
+        or _exact_base(name, "enable")
+        or _exact_base(name, "dig")
+        or _exact_base(name, "digit")
+    )
 
 
 def _maybe_set_active_low(result: dict[str, Any], name: str) -> None:
