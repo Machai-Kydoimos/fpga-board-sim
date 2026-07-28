@@ -80,7 +80,17 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --group dev
+      - name: Cache GHDL mcode install
+        id: cache-ghdl
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: ~/ghdl
+          # Same shape as the LLVM jobs below: keyed on the pinned version +
+          # sha256, so a re-pinned asset re-downloads, and a warm cache
+          # survives a GitHub-releases CDN blip.
+          key: ghdl-${{ runner.os }}-mcode-6.0.0-30d6a977b8456d140bbafecbbe64b1947a3d92eeae8f5e6d9f528a174f9566e7
       - name: Install GHDL v6.0.0 (pinned release, matches Windows job)
+        if: steps.cache-ghdl.outputs.cache-hit != 'true'
         run: |
           ver="6.0.0"
           url="https://github.com/ghdl/ghdl/releases/download/v$ver/ghdl-mcode-$ver-ubuntu24.04-x86_64.tar.gz"
@@ -93,7 +103,11 @@ jobs:
           fi
           mkdir -p "$HOME/ghdl"
           tar -xzf ghdl.tar.gz -C "$HOME/ghdl"
-          dirname "$(find "$HOME/ghdl" -name ghdl -type f | head -1)" >> "$GITHUB_PATH"
+      # Separate from the install, and deliberately not `if:`-gated: on a cache
+      # hit the install step is skipped, so folding the PATH export into it
+      # would leave ghdl unreachable exactly when the cache works.
+      - name: Add GHDL to PATH
+        run: dirname "$(find "$HOME/ghdl" -name ghdl -type f | head -1)" >> "$GITHUB_PATH"
       - name: Verify GHDL
         run: ghdl --version
       - name: Run full test suite
@@ -268,7 +282,17 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --group dev
+      - name: Cache GHDL install
+        id: cache-ghdl
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+        with:
+          path: C:\ghdl
+          # Same shape as the Linux/macOS jobs: keyed on the pinned version +
+          # sha256, so a re-pinned asset re-downloads, and a warm cache
+          # survives a GitHub-releases CDN blip.
+          key: ghdl-${{ runner.os }}-mcode-6.0.0-76E160CEEC35834C73ADA6E4E484416D13AED4B64CBC7C74C5CCA53A7EF60E41
       - name: Install GHDL
+        if: steps.cache-ghdl.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           $ver = "6.0.0"
@@ -278,6 +302,12 @@ jobs:
           $actual = (Get-FileHash ghdl.zip -Algorithm SHA256).Hash
           if ($actual -ne $expected) { throw "GHDL checksum mismatch: expected $expected, got $actual" }
           Expand-Archive ghdl.zip -DestinationPath C:\ghdl
+      # Separate from the install, and deliberately not `if:`-gated: on a cache
+      # hit the install step is skipped, so folding the PATH export into it
+      # would leave ghdl unreachable exactly when the cache works.
+      - name: Add GHDL to PATH
+        shell: pwsh
+        run: |
           $bin = Get-ChildItem -Recurse C:\ghdl -Filter ghdl.exe |
                    Select-Object -First 1 -ExpandProperty DirectoryName
           echo $bin >> $env:GITHUB_PATH
