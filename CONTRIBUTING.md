@@ -89,16 +89,25 @@ shell, not PowerShell). `&&` chaining works natively in bash.
 
 ## Running quality checks
 
-All of these must pass before a PR is merged. The pre-commit hooks enforce
-ruff, mypy, and rumdl automatically; run them manually at any time:
+All of these must pass before a PR is merged. The pre-commit hooks enforce all
+of them except pytest automatically; run them manually at any time:
 
 ```bash
 uv run ruff check .        # linter — must report 0 errors
 uv run ruff format --check . # formatter check (ruff format . to auto-fix)
 uv run mypy .              # type checker — must report 0 errors
 uv run rumdl check .       # Markdown linter (rumdl check --fix to auto-fix)
+uv run python scripts/check_encoding.py $(git ls-files '*.py')   # explicit encoding=
+uv run python scripts/check_registry_schema.py                   # registry TOMLs
 uv run pytest              # test suite — all fast tests must pass (no display needed)
 ```
+
+The last two are cheap (~0.2s each) and cover ground the linters do not:
+`check_encoding.py` finds implicit-encoding sites ruff can't type-infer (see
+[Spelling and text encoding](#spelling-and-text-encoding)), and
+`check_registry_schema.py` validates the citation registries — which no
+ruff/mypy/rumdl hook touches, since all three are scoped to Python or Markdown
+and the registries are TOML.
 
 Running them all at once:
 
@@ -238,12 +247,18 @@ Three conventions here; only the last one is enforced automatically:
   because a stray byte in third-party tool output should degrade to a
   replacement character, not raise `UnicodeDecodeError` mid-simulation.
 
-  Two independent checks enforce this, and you need both:
+  Three checks enforce this, layered because each has a different blind spot:
 
   | Check | Catches | Blind spot |
   |---|---|---|
   | `ruff` rule `PLW1514` | statically, at every site whose receiver ruff can prove is a `Path` | anything it can't type-infer — an unannotated `tmp_path` fixture, or `SESSION_FILE = Path.home() / …`. Annotating the binding (`X: Path = …`) makes it visible. Does **not** look at `subprocess` at all |
-  | `EncodingWarning`-as-error in the test suite | every site actually executed, no inference needed — including `subprocess` | code no test exercises; and `subprocess` warnings only exist on Python 3.13+, so a 3.10-only run under-reports |
+  | `scripts/check_encoding.py` | statically, matching on *names* rather than inferred types, so it covers the two gaps above — including `subprocess` | a call assembled dynamically (`getattr(p, "read_text")()`) |
+  | `EncodingWarning`-as-error in the test suite | every site actually executed, no inference needed | code no test exercises; and `subprocess` warnings only exist on Python 3.13+, so a 3.10-only run under-reports |
+
+  `check_encoding.py` runs as a pre-commit hook on changed files, and
+  repo-wide from `tests/test_check_encoding.py::test_repo_is_clean` — the
+  latter is what enforces it on CI, which runs the lint tools directly rather
+  than through pre-commit.
 
   The runtime half only emits warnings when `PYTHONWARNDEFAULTENCODING=1` is
   set, which CI's test matrix does. To reproduce a CI failure locally:

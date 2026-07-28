@@ -102,6 +102,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Two new pre-commit hooks, both covering ground the existing ones could
+  not.** `check-encoding` runs the new `scripts/check_encoding.py`, which finds
+  implicit-encoding sites by matching on *names* rather than inferred types —
+  so it sees the cases ruff `PLW1514` structurally cannot: an uninferable
+  receiver like `SESSION_FILE = Path.home() / …`, an unannotated `tmp_path`
+  fixture, and `subprocess.run(text=True)`, which `PLW1514` does not inspect at
+  all. `check-registry-schema` wires up the existing (already CI-tested)
+  `scripts/check_registry_schema.py`. That one closed a plain gap: every hook
+  in the config was scoped to `python`/`pyi`/`markdown`, so editing a registry
+  TOML ran **no hook whatsoever** and a one-character typo like `fetchd = true`
+  — which never raises, because every registry field is read with `.get()` —
+  waited for a full CI round-trip. Both are ~0.2 s; the whole hook suite is
+  1.2 s on the full tree.
+
+  `check_encoding.py` is also enforced repo-wide by
+  `tests/test_check_encoding.py::test_repo_is_clean`, because CI runs the lint
+  tools directly rather than through pre-commit — a hook alone would be
+  bypassable with `--no-verify` or by simply not installing hooks.
+
 - **Terasic DE4 board.** Stratix IV GX (`EP4SGX230KF40C2`; the `EP4SGX530`
   variant has an identical pinout), hand-authored into `boards/custom/` from the
   vendor System CD: 8 active-low LEDs, 4 buttons, a 2-digit 7-segment display
