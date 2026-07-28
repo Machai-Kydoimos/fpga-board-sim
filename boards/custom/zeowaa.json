@@ -1,0 +1,379 @@
+{
+  "$schema": "../schema/board.schema.json",
+  "name": "Zeowaa",
+  "class_name": "ZeowaaPlatform",
+  "vendor": "Intel",
+  "device": "EP4CE6E22C8",
+  "package": "EQFP144",
+  "clocks": [
+    {
+      "name": "clk",
+      "hz": 50000000,
+      "pin": "23",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 50000000,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "69"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "70"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "71"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "75"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "76"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "77"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "84"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "83"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 8,
+      "pins": [
+        "80"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 9,
+      "pins": [
+        "74"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 10,
+      "pins": [
+        "73"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 11,
+      "pins": [
+        "72"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "86"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "87"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "91"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "90"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "68"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "67"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "66"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "65"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 4,
+      "pins": [
+        "64"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 5,
+      "pins": [
+        "60"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 6,
+      "pins": [
+        "59"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 7,
+      "pins": [
+        "58"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "io_standard": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "seven_seg": {
+    "num_digits": 8,
+    "has_dp": true,
+    "is_multiplexed": true,
+    "inverted": true,
+    "select_inverted": true
+  },
+  "source": {
+    "origin": "custom",
+    "reference_url": "https://github.com/marsohod4you/basics-graphics-music/tree/main/boards/zeowaa"
+  },
+  "port_conventions": {
+    "zeowaa": {
+      "description": "Zeowaa EP4CE6 development board. Hand-authored from two independent constraint files that agree on every pin: marsohod4you/basics-graphics-music boards/zeowaa (board_specific.qsf, names ABCDEFGH_N/DIGIT_N/LED_N/SW_N/KEY_N) and MIPSfpga/digital-design-lab-manual lab_11/src/board/zeowaa (zeowaa.qsf, names hex/digit/led/sw/key). The two differ only in index direction for the LED, segment and button banks -- a labeling convention, not a physical fact -- so the self-documenting ABCDEFGH order is used for the segments (index 0 = segment A). Both SDCs declare the clock at 50 MHz. Every bank is active-low, stated by the _N suffix throughout the first source. Segments are named for the segment letters, which the shared classifier does not recognize, so this convention is hand-authored here rather than generated.",
+      "naming": "canonical",
+      "clk": "CLK",
+      "leds": {
+        "name": "LED_N",
+        "width": 12,
+        "active_low": true
+      },
+      "switches": {
+        "name": "SW_N",
+        "width": 8,
+        "active_low": true
+      },
+      "buttons": {
+        "name": "KEY_N",
+        "width": 4,
+        "active_low": true
+      },
+      "seven_seg": {
+        "style": "scan",
+        "name": "ABCDEFGH_N",
+        "width_per_digit": 8,
+        "active_low": true,
+        "digit_enable": {
+          "name": "DIGIT_N",
+          "width": 8,
+          "active_low": true
+        }
+      }
+    }
+  }
+}
