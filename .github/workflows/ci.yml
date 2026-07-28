@@ -263,7 +263,17 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --group dev
-      - uses: nickg/setup-nvc@48f966dfc9b27bf13e873a473fcf1649ef8f5a0f  # v1 (Homebrew on macOS)
+      # NVC is a homebrew-core formula with an Apple-Silicon bottle, so this is
+      # a prebuilt download.  nickg/setup-nvc (still used by the Linux job,
+      # where it installs a .deb) *builds NVC from source* on macOS -- brew
+      # update, brew install llvm pkgconf check zstd, then configure + make -j
+      # + sudo make install.  That was 118s of a ~173s job whose actual test
+      # run is 40s.  Caching that build was the obvious idea and the wrong one:
+      # `sudo make install` scatters files through /usr/local and the result
+      # dynamically links against brew's llvm, so a restored cache without the
+      # matching brew state is broken.  Not building at all avoids the problem.
+      - name: Install NVC (homebrew-core bottle)
+        run: brew install nvc
       - name: Verify NVC
         run: nvc --version
       - name: Run full test suite
