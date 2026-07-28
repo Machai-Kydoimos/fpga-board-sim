@@ -273,7 +273,13 @@ jobs:
       # dynamically links against brew's llvm, so a restored cache without the
       # matching brew state is broken.  Not building at all avoids the problem.
       - name: Install NVC (homebrew-core bottle)
-        run: brew install nvc
+        # `brew update` first: the runner image ships a homebrew-core snapshot
+        # that lags, and without this the bottle poured is whatever that
+        # snapshot pinned (1.21.1 on the 2026-07-20 image) rather than the
+        # version the source build was producing.
+        run: |
+          brew update
+          brew install nvc
       - name: Verify NVC
         run: nvc --version
       - name: Run full test suite
