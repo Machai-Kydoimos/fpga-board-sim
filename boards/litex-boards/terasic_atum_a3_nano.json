@@ -140,12 +140,31 @@
   ],
   "seven_seg": null,
   "port_conventions": {
+    "terasic": {
+      "description": "Terasic Atum A3 Nano reference design",
+      "clk": "CLOCK0_50",
+      "leds": {
+        "name": "LED",
+        "width": 4,
+        "active_low": true
+      },
+      "buttons": {
+        "name": "KEY",
+        "width": 2,
+        "active_low": true
+      },
+      "switches": {
+        "name": "SW",
+        "width": 2
+      }
+    },
     "litex": {
       "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
       "clk": "clk50_1",
       "leds": {
         "name": "user_led",
-        "width": 4
+        "width": 4,
+        "active_low": true
       },
       "naming": "framework-derived",
       "switches": {
@@ -154,7 +173,8 @@
       },
       "buttons": {
         "name": "user_btn",
-        "width": 2
+        "width": 2,
+        "active_low": true
       }
     }
   },

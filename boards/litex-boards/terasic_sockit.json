@@ -177,6 +177,23 @@
   ],
   "seven_seg": null,
   "port_conventions": {
+    "terasic": {
+      "description": "Terasic SoCKit golden_top reference design",
+      "clk": "OSC_50_B3B",
+      "leds": {
+        "name": "LED",
+        "width": 4
+      },
+      "buttons": {
+        "name": "KEY",
+        "width": 4,
+        "active_low": true
+      },
+      "switches": {
+        "name": "SW",
+        "width": 4
+      }
+    },
     "litex": {
       "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
       "clk": "clk50",
@@ -191,7 +208,8 @@
       },
       "buttons": {
         "name": "user_btn",
-        "width": 4
+        "width": 4,
+        "active_low": true
       }
     }
   },

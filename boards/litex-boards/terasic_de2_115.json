@@ -30,7 +30,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -43,7 +44,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -56,7 +58,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -69,7 +72,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -82,7 +86,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -95,7 +100,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -108,7 +114,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -121,7 +128,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -134,7 +142,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -147,7 +156,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -160,7 +170,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -173,7 +184,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -186,7 +198,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -199,7 +212,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -212,7 +226,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -225,7 +240,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -238,7 +254,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     },
     {
       "name": "led",
@@ -251,7 +268,8 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "2.5 V"
-      }
+      },
+      "color": "red"
     }
   ],
   "buttons": [],
