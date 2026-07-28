@@ -97,6 +97,9 @@ _CD_CITED_TERASIC: tuple[tuple[str, str, str, bool], ...] = (
     ("custom/de23_lite.json", "CLOCK0_50", "LEDR", True),
     ("custom/de25_standard.json", "CLOCK0_50", "LEDR", True),
     ("custom/veek_mt2.json", "CLOCK_50", "LEDR", False),
+    # DE4's clock is OSC_50_BANK2 -- the manual's "schematic signal name" column
+    # calls it OSC_50_B2, but that is the net, not the golden top's HDL port.
+    ("custom/de4.json", "OSC_50_BANK2", "LED", True),
 )
 
 
@@ -113,6 +116,33 @@ def test_cd_cited_terasic_canonical_facts(
     assert block["buttons"]["active_low"] is True
     # Slide switches are active-high everywhere ("DOWN ... low logic level").
     assert "active_low" not in block["switches"]
+
+
+def test_de4_switch_banks_have_opposite_polarity() -> None:
+    # The DE4 is the fleet's only board with two switch banks of OPPOSITE polarity:
+    # 4 slide switches active-high, and an 8-position DIP switch active-low ("when
+    # the switch is in the ON position, a logic 0 is selected" -- DE4 User Manual
+    # Table 2-6).  `inverted` is descriptive metadata, so the generic contract still
+    # presents all 12 normalized; this pins the description itself.
+    sw = json.loads((PROJECT / "boards/custom/de4.json").read_text())["switches"]
+    slide = [s for s in sw if s["name"] == "switch"]
+    dip = [s for s in sw if s["name"] == "dip_switch"]
+    assert len(slide) == 4 and len(dip) == 8
+    assert all(s["inverted"] is False for s in slide)
+    assert all(s["inverted"] is True for s in dip)
+    # Only the slide bank is declarable board-native, and it must be the LOW
+    # boundary bits for the native wrapper's sw(3 downto 0) slice to be right.
+    assert [s["number"] for s in sw[:4]] == [0, 1, 2, 3]
+    assert {s["name"] for s in sw[:4]} == {"switch"}
+
+
+def test_de4_button3_follows_the_qsfs_not_the_manual() -> None:
+    # DE4 User Manual Table 2-4 says BUTTON3 = PIN_AH8, but five independent
+    # Terasic projects on the System CD (both golden tops + SDCARD/USB/PowerMeasure)
+    # all assign PIN_AG8.  The build-verified QSFs win; see the DE4 row in
+    # docs/port_convention_sources/terasic.toml.
+    btns = json.loads((PROJECT / "boards/custom/de4.json").read_text())["buttons"]
+    assert [b["pins"][0] for b in btns] == ["AH5", "AG5", "AG7", "AG8"]
 
 
 def test_rgb_only_boards_ship_no_framework_convention() -> None:

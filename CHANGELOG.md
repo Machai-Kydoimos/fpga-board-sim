@@ -49,6 +49,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Terasic DE4 board.** Stratix IV GX (`EP4SGX230KF40C2`; the `EP4SGX530`
+  variant has an identical pinout), hand-authored into `boards/custom/` from the
+  vendor System CD: 8 active-low LEDs, 4 buttons, a 2-digit 7-segment display
+  with decimal points, and **12 switches across two banks of opposite
+  polarity** — 4 slide switches (active high) plus an 8-position DIP switch
+  (active low). It is the fleet's first board with mixed-polarity switch banks;
+  per-component `inverted` describes them, and the generic contract still
+  presents all 12 normalized. Board-native designs are supported through the
+  golden top's own port names (`OSC_50_BANK2` / `LED` / `BUTTON` / `SLIDE_SW` /
+  `SEG0_D`+`SEG1_D`, with the `SEG*_DP` scalars left open as on the DE0); only
+  the slide-switch bank is declarable board-native, so the DIP switches sit
+  above it on the boundary and are reachable only under the generic contract.
+  Two documentation traps are recorded and pinned by tests: the manual's
+  Table 2-4 gives `BUTTON3 = PIN_AH8` but **five** independent Terasic projects
+  on the CD all assign `PIN_AG8` (the build-verified QSFs win), and the manual's
+  "schematic signal name" for the clock is `OSC_50_B2` while the actual HDL port
+  is `OSC_50_BANK2`.
+
 - **Four more Terasic boards are natively targetable.** DE10-Nano, SoCKit,
   VEEK-MT-SoCKit and Atum A3 Nano previously carried only framework-derived
   conventions (the generic litex/amaranth port names); their vendor System CDs

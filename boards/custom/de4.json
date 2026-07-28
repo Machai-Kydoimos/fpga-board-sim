@@ -1,0 +1,70 @@
+{
+  "$schema": "../schema/board.schema.json",
+  "name": "DE4",
+  "class_name": "DE4Platform",
+  "vendor": "Intel",
+  "device": "EP4SGX230",
+  "package": "KF40",
+  "clocks": [
+    { "name": "osc_50_bank2", "hz": 50000000, "pin": "AC35", "is_default": true },
+    { "name": "osc_50_bank3", "hz": 50000000, "pin": "AV22" },
+    { "name": "osc_50_bank4", "hz": 50000000, "pin": "AV19" },
+    { "name": "osc_50_bank5", "hz": 50000000, "pin": "AC6" },
+    { "name": "osc_50_bank6", "hz": 50000000, "pin": "AB6" },
+    { "name": "osc_50_bank7", "hz": 50000000, "pin": "A19" },
+    { "name": "gclkin", "hz": 100000000, "pin": "A21" }
+  ],
+  "default_clock_hz": 50000000,
+  "leds": [
+    { "name": "led", "number": 0, "pins": ["V28"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "2.5-V" } },
+    { "name": "led", "number": 1, "pins": ["W28"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "2.5-V" } },
+    { "name": "led", "number": 2, "pins": ["R29"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "2.5-V" } },
+    { "name": "led", "number": 3, "pins": ["P29"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "2.5-V" } },
+    { "name": "led", "number": 4, "pins": ["N29"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "2.5-V" } },
+    { "name": "led", "number": 5, "pins": ["M29"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "2.5-V" } },
+    { "name": "led", "number": 6, "pins": ["M30"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "2.5-V" } },
+    { "name": "led", "number": 7, "pins": ["N30"], "direction": "o", "inverted": true, "connector": null, "attrs": { "io_standard": "2.5-V" } }
+  ],
+  "buttons": [
+    { "name": "button", "number": 0, "pins": ["AH5"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.0-V" } },
+    { "name": "button", "number": 1, "pins": ["AG5"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.0-V" } },
+    { "name": "button", "number": 2, "pins": ["AG7"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.0-V" } },
+    { "name": "button", "number": 3, "pins": ["AG8"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.0-V" } }
+  ],
+  "switches": [
+    { "name": "switch", "number": 0, "pins": ["J7"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5-V" } },
+    { "name": "switch", "number": 1, "pins": ["K7"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5-V" } },
+    { "name": "switch", "number": 2, "pins": ["AK6"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "3.0-V" } },
+    { "name": "switch", "number": 3, "pins": ["L7"], "direction": "i", "inverted": false, "connector": null, "attrs": { "io_standard": "2.5-V" } },
+    { "name": "dip_switch", "number": 0, "pins": ["AB13"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.0-V" } },
+    { "name": "dip_switch", "number": 1, "pins": ["AB12"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.0-V" } },
+    { "name": "dip_switch", "number": 2, "pins": ["AB11"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.0-V" } },
+    { "name": "dip_switch", "number": 3, "pins": ["AB10"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.0-V" } },
+    { "name": "dip_switch", "number": 4, "pins": ["AB9"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.0-V" } },
+    { "name": "dip_switch", "number": 5, "pins": ["AC8"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.0-V" } },
+    { "name": "dip_switch", "number": 6, "pins": ["AH6"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.0-V" } },
+    { "name": "dip_switch", "number": 7, "pins": ["AG6"], "direction": "i", "inverted": true, "connector": null, "attrs": { "io_standard": "3.0-V" } }
+  ],
+  "seven_seg": {
+    "num_digits": 2,
+    "has_dp": true,
+    "is_multiplexed": false,
+    "inverted": true,
+    "select_inverted": false
+  },
+  "port_conventions": {
+    "terasic": {
+      "description": "Terasic DE4 golden_top reference design (Stratix IV GX). The board's 8-position DIP switch (SW[7:0], active-low) is a second, separate switch bank the convention cannot declare -- switches[] here is the 4 SLIDE_SW, which occupy the low sw boundary bits; the DIP switches sit above them and are not reachable board-native. The SEG*_DP scalars are left open, as on the DE0.",
+      "clk": "OSC_50_BANK2",
+      "leds": { "name": "LED", "width": 8, "active_low": true },
+      "buttons": { "name": "BUTTON", "width": 4, "active_low": true },
+      "switches": { "name": "SLIDE_SW", "width": 4 },
+      "seven_seg": {
+        "style": "individual",
+        "names": ["SEG0_D", "SEG1_D"],
+        "width_per_digit": 7,
+        "active_low": true
+      }
+    }
+  }
+}
