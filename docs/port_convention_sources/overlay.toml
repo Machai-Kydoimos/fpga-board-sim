@@ -21,11 +21,11 @@ clk_cite = "docs/port_convention_sources/terasic.toml DE10-Standard row's own cl
 
   [board.buttons]
   active_low = true
-  cite = "Rick's existing hand-authored boards/custom/de10_standard.json (Terasic KEY pushbuttons are active-low, per Terasic user-manual convention)."
+  cite = "DE10-Standard User Manual (Terasic System CD v1.4.0), section 3.6.1: \"The push-button generates a low logic level when it is pressed (Active low).\" A QSF only binds names to pins, so classify() cannot derive polarity. (Was cited to Rick's own hand-authored board JSON until 2026-07-28; see the DE10-Standard rank-3 source in terasic.toml.)"
 
   [board.seven_seg]
   active_low = true
-  cite = "Rick's existing hand-authored boards/custom/de10_standard.json."
+  cite = "DE10-Standard User Manual (Terasic System CD v1.4.0), section 3.6.2: the seven segments are \"(common anode)\" and \"The segment can be turned on or off by applying a low logic level or high logic level\" respectively. (Was cited to Rick's own hand-authored board JSON until 2026-07-28.)"
 
 [[board]]
 name = "DE2-115"
@@ -34,11 +34,11 @@ clk_cite = "docs/port_convention_sources/terasic.toml DE2-115 row's own clk evid
 
   [board.buttons]
   active_low = true
-  cite = "Rick's existing hand-authored boards/custom/de2_115.json."
+  cite = "DE2-115 User Manual (Terasic System CD v3.0.6), Using the Pushbutton and Slide Switches: \"Each push-button switch provides a high logic level when it is not pressed, and provides a low logic level when depressed.\" (Was cited to Rick's own hand-authored board JSON until 2026-07-28; see the DE2-115 rank-2 source in terasic.toml.)"
 
   [board.seven_seg]
   active_low = true
-  cite = "Rick's existing hand-authored boards/custom/de2_115.json."
+  cite = "DE2-115 User Manual (Terasic System CD v3.0.6), Using the 7-segment Displays: the seven segments are \"(common anode)\" and \"Applying a low logic level to a segment will light it up and applying a high logic level turns it off.\" (Was cited to Rick's own hand-authored board JSON until 2026-07-28.)"
 
 # --- U21 A4 Wave 1 (cited canonical-naming trust; see waves.toml + terasic.toml) ---
 # These three Terasic teaching boards populate from community-hosted QSFs whose
@@ -115,11 +115,11 @@ clk_cite = "The DE10-Lite's primary 50 MHz clock is MAX10_CLK1_50 (the board als
 
   [board.buttons]
   active_low = true
-  cite = "Terasic KEY pushbuttons are active-low (pressed = 0), per the DE10-Lite user manual; a QSF only binds names to pins, so classify() cannot derive polarity."
+  cite = "The DE10-Lite's KEY pushbuttons are active-low (pressed = 0), per the official DE10-Lite System CD v2.2.0 default design (Demonstrations/Default/DE10_LITE_Default.v), which wires the key straight to an active-low reset: 'assign resrt_n = KEY[0];' (the vendor's own typo for reset_n). NOTE, corrected 2026-07-28: this manual -- uniquely among the DE-series -- does NOT state KEY polarity in prose (section 3.3 covers only the Schmitt-trigger debounce) and the System CD ships no schematic, so the earlier wording 'per the DE10-Lite user manual' overstated its source. A QSF only binds names to pins, so classify() cannot derive polarity."
 
   [board.seven_seg]
   active_low = true
-  cite = "Terasic HEX 7-segment displays are active-low (segment lit = 0), per the DE10-Lite user manual."
+  cite = "Terasic HEX 7-segment displays are active-low (segment lit = 0): DE10-Lite User Manual (Terasic System CD v2.2.0), section 3.3, \"connection of seven segments (common anode) to pins on MAX 10 FPGA\" -- unlike the KEY polarity above, the 7-segment polarity IS stated in this manual."
 
 # --- U33 Wave 2 (clean official-repo boards; see waves.toml, #231) ---
 # Only Tang Nano 9K needs an overlay: its LEDs are active-low, which a Gowin CST

@@ -45,6 +45,24 @@ notes = "MAX 10 (10M50DA). Verified from two independent GitHub sources with mat
   active_low = "not visible in this source"
   evidence = ["LEDR[0] \u2192 PIN_A8", "KEY[0] \u2192 PIN_B8", "matches UIUC QSF exactly"]
 
+  [[board.source]]
+  rank = 3
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "http://de10-lite.terasic.com"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "DE10-Lite User Manual (Terasic System CD v2.2.0), Manual/DE10-Lite_User_Manual.pdf, dated October 17, 2022"
+  clk = "MAX10_CLK1_50 (see the overlay clk_cite)"
+  leds = "Table 3-5 Pin Assignment of user LEDs: LEDR[0..9]"
+  buttons = "Table 3-3: KEY0 PIN_B8 \"Push-button[0]\", 3.3 V SCHMITT TRIGGER"
+  switches = "SW[0..9]"
+  seven_seg = "HEX0..HEX5, 7 bits per digit"
+  active_low = "LEDs active HIGH and HEX active LOW are stated in prose; KEY polarity is NOT stated -- see notes"
+  evidence = ["driving its associated pin to a high logic", "level turns the LED on, and driving the pin low turns it off.", "connection of seven segments (common anode) to pins on MAX 10 FPGA. The segment can be"]
+  notes = "REAL GAP, recorded so it is not re-searched: this manual uniquely OMITS the \"provides a low logic level when pressed\" sentence that every sibling DE-series manual has -- section 3.3 describes only the Schmitt-trigger debounce -- and the System CD ships NO schematic. Verified by full-text search 2026-07-28. The best vendor-official corroboration for KEY being active low is the CD's own default design, Demonstrations/Default/DE10_LITE_Default.v, which wires the key straight to an active-low reset: `assign resrt_n = KEY[0];` (vendor's own typo for reset_n). The overlay's buttons cite is worded to say exactly this rather than claiming the manual states it."
+
 [[board]]
 name = "DE1 SoC"
 files = ["amaranth-boards/de1_so_c.json"]
@@ -70,6 +88,24 @@ notes = "Cyclone V SoC (5CSEMA5F31C6). Community reference design with full I/O 
   seven_seg = "HEX0..HEX5, 7 bits per digit"
   active_low = "not visible in this source"
   evidence = ["set_location_assignment PIN_V16 -to LEDR[0]", "set_location_assignment PIN_AA14 -to KEY[0]", "set_location_assignment PIN_AB12 -to SW[0]", "set_location_assignment PIN_AE26 -to HEX0[0]"]
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "http://cd-de1-soc.terasic.com"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "DE1-SoC User Manual (Terasic System CD v6.0.0, HW rev H), UserManual/DE1-SoC_User_manual.pdf, dated January 9, 2022"
+  clk = "CLOCK_50 (see the overlay clk_cite)"
+  leds = "Table 3-9 pin assignment of user LEDs: LEDR[0..9]"
+  buttons = "Table 3-8: KEY[0..3]"
+  switches = "Table 3-7: SW[0..9]"
+  seven_seg = "HEX0..HEX5, 7 bits per digit"
+  active_low = "LEDs active HIGH, KEY active LOW, HEX active LOW"
+  evidence = ["The push-button generates a low logic level or high logic level when it", "is pressed or not, respectively.", "driving its associated pin to a high logic level or low", "level to turn the LED on or off, respectively.", "the connection of seven segments (common anode) to pins on"]
+  notes = "Supplies the polarity a QSF cannot; the overlay's buttons/seven_seg cites for this board quote it. The evidence[] strings are split at the manual's own line wraps."
 
 [[board]]
 name = "DE0 CV"
@@ -97,6 +133,24 @@ notes = "Cyclone V (5CEBA4F23C7). Complete I/O assignments from working Quartus 
   active_low = "not visible in this source"
   evidence = ["set_location_assignment PIN_AA2 -to LEDR[0]", "set_location_assignment PIN_U7 -to KEY[0]", "set_location_assignment PIN_U13 -to SW[0]", "42 HEX assignments across HEX0-HEX5"]
 
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=165&No=921&PartNo=4"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "DE0-CV User Manual (Terasic System CD v1.2.1), Manual/DE0_CV_User_Manual.pdf, dated May 4, 2015"
+  clk = "CLOCK_50"
+  leds = "Table 3-4 pin assignment of user LEDs: LEDR[0..9]"
+  buttons = "Table 3-2: KEY0..KEY3 (the manual names five Schmitt-trigger outputs -- KEY0..KEY3 plus RESET_N; RESET_N is deliberately outside the buttons bank)"
+  switches = "Table 3-3: SW[0..9]"
+  seven_seg = "HEX0..HEX5, 7 bits per digit"
+  active_low = "LEDs active HIGH, KEY active LOW, HEX active LOW"
+  evidence = ["Each push-button switch provides a high logic level when it is not pressed, and provides a", "low logic level when depressed.", "driving its associated pin to a high logic level turns the", "LED on, and driving the pin low turns it off.", "Figure 3-9 shows the connection of seven segments (common anode) to pins on"]
+  notes = "Supplies the polarity a QSF cannot; the overlay's buttons/seven_seg cites for this board quote it. The evidence[] strings are split at the manual's own line wraps."
+
 [[board]]
 name = "DE0"
 files = ["amaranth-boards/de0.json"]
@@ -122,6 +176,24 @@ notes = "Cyclone III (EP3C16F484C6). NOTE: uses LEDG (green LEDs) not LEDR; BUTT
   naming = "canonical"
   naming_cite = "DE0's port names (LEDG / SW / BUTTON / CLOCK_50, and per-digit HEXn_D[6:0] + HEXn_DP) are the vendor-canonical names, confirmed field-for-field against the official DE0 CD-ROM v1.1 golden top (Demonstrations/DE0_Default/DE0_Default.qsf) -- this community QSF uses them verbatim, no rename. cite-not-copy: the fact is recorded, not the copyrighted QSF."
   evidence = ["set_location_assignment PIN_B1 -to LEDG[9]", "set_location_assignment PIN_H2 -to BUTTON[0]", "Cyclone III era board (earlier than CV); uses LEDG instead of LEDR"]
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=163&No=364&PartNo=4"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "DE0 User Manual (Terasic DE0 CD-ROM v1.1), Usermanual/DE0_User_manual.pdf"
+  clk = "CLOCK_50 (the board also has CLOCK_50_2); see the overlay clk_cite"
+  leds = "Table 4.3: LEDG[0..9]"
+  buttons = "Table 4.1: BUTTON0, BUTTON1, BUTTON2 -- three, not four"
+  switches = "Table 4.2: SW[0..9]"
+  seven_seg = "Table 4.4: HEX0..HEX3, per-digit HEXn_D[6:0] plus a separate HEXn_DP scalar"
+  active_low = "LEDs active HIGH (stated outright in the features list), BUTTON active LOW, HEX active LOW"
+  evidence = ["10 Green color LEDs (Active high)", "4 seven-segment displays (Active low)", "Each switch provides a high", "logic level (3.3 volts) when it is not pressed, and provides a low logic level (0 volts) when", "depressed.", "Applying a low logic level to a segment", "causes it to light up, and applying a high logic level turns it off."]
+  notes = "The clearest polarity source in the whole Terasic family: this manual states both LED and 7-seg polarity outright in its feature bullets, not just in prose. The evidence[] strings are split at the manual's own line wraps."
 
 [[board]]
 name = "DE10-Standard"
@@ -164,6 +236,24 @@ notes = "Cyclone V SoC (5CSXFC6D6F31C6). Verified from Quartus project in educat
   active_low = "not visible in search results"
   evidence = ["GitHub repo description: FPGA experimental DE10-Standard development board pin table"]
 
+  [[board.source]]
+  rank = 3
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "http://de10-standard.terasic.com/cd"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "DE10-Standard User Manual (Terasic System CD v1.4.0), Manual/DE10-Standard_User_manual.pdf, dated January 7, 2022"
+  clk = "CLOCK_50 (see the overlay clk_cite)"
+  leds = "Table 3-8 pin assignment of user LEDs: LEDR[0..9]; board features list \"10 red user LEDs\""
+  buttons = "Table 3-7: KEY[0..3]"
+  switches = "Table 3-6: SW[0..9]"
+  seven_seg = "HEX0..HEX5, 7 bits per digit"
+  active_low = "LEDs active HIGH, KEY active LOW, HEX active LOW"
+  evidence = ["The push-button generates a low logic level when it is", "pressed (Active low).", "driving its associated pin to a high logic level or low", "level to turn the LED on or off, respectively.", "the connection of seven segments (common anode) to pins on"]
+  notes = "Added 2026-07-28 to replace the overlay's previously self-referential polarity cite (it pointed at Rick's own hand-authored board JSON). The evidence[] strings are split at the manual's own line wraps."
+
 [[board]]
 name = "DE2-115"
 files = ["custom/de2_115.json", "litex-boards/terasic_de2_115.json"]
@@ -187,6 +277,24 @@ notes = "Cyclone IV E (EP4CE115F29C7). Complete pinout including 8 7-segment dis
   seven_seg = "HEX0..HEX7, 7 bits per digit"
   active_low = "not visible in this source"
   evidence = ["set_location_assignment PIN_G19 -to LEDR[0]", "set_location_assignment PIN_M23 -to KEY[0]", "set_location_assignment PIN_AB28 -to SW[0]", "56 HEX assignments for 8 displays"]
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=165&No=502&PartNo=4"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "DE2-115 User Manual (Terasic System CD v3.0.6), DE2_115_user_manual/DE2_115_User_manual.pdf"
+  clk = "CLOCK_50 (see the overlay clk_cite)"
+  leds = "Table 4-3: LEDR[0..17] described \"LED Red[0]\"..\"LED Red[17]\" and LEDG[0..8] \"LED Green[0..8]\"; features list \"18 Red user LEDs\" / \"9 Green user LEDs\""
+  buttons = "Table 4-1: KEY0..KEY3"
+  switches = "Table 4-2: SW[0..17]"
+  seven_seg = "Table 4-4: HEX0..HEX7, 7 bits per digit"
+  active_low = "LEDs (both banks) active HIGH, KEY active LOW, HEX active LOW"
+  evidence = ["Each push-button switch provides a high logic level when it is not pressed,", "and provides a low logic level when depressed.", "driving its associated pin to a high logic level turns the LED on, and driving", "the pin low turns it off.", "the seven segments (common anode) are connected to pins on Cyclone", "IV E FPGA. Applying a low logic level to a segment will light it up and applying a high logic level"]
+  notes = "Added 2026-07-28 to replace the overlay's previously self-referential polarity cite (it pointed at Rick's own hand-authored board JSON). Also the citation of record for the LED-color registry's two DE2-115 banks, and for the litex-boards file's 18 LEDs being the red bank. The evidence[] strings are split at the manual's own line wraps."
 
 [[board]]
 name = "DE0 Nano"
@@ -214,15 +322,69 @@ notes = "Cyclone IV (EP4CE22F17C6). No 7-segment display on this board."
   active_low = "not visible in this source"
   evidence = ["set_location_assignment PIN_A15 -to LED[0]", "set_location_assignment PIN_J15 -to KEY[0]", "set_location_assignment PIN_M1 -to SW[0]"]
 
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=165&No=593&PartNo=4"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "DE0-Nano User Manual (Terasic System CD v1.2.8), Usermanual/DE0_Nano_User_Manual.pdf"
+  clk = "CLOCK_50"
+  leds = "Table 3-3: LED[0..7]; board features list \"8 green LEDs\""
+  buttons = "Table 3-1 Pin Assignments for Push-buttons: KEY[0..1] -- two only"
+  switches = "Table 3-2: SW[0..3], a 4-position DIP switch"
+  seven_seg = "none"
+  active_low = "LEDs active HIGH, KEY active LOW; DIP switch active high"
+  evidence = ["driving its associated pin to a high logic level turns the LED on, and driving the pin low", "turns it off.", "pushbutton provides a high logic level when it is not pressed, and provides a low logic level when"]
+  notes = "TRAP, recorded so it is not \"fixed\" the wrong way: this manual CONTRADICTS ITSELF on LED polarity. The hardware chapter (section 3, \"LEDs\") says active HIGH, as quoted above; the tutorial chapter section 6.10 \"Verify The Hardware\" says \"The LEDs are active low\". Section 6.10 is boilerplate lifted from a generic Altera counter tutorial -- it says \"four development board LEDs\" on an 8-LED board and describes count state 0000 lighting them all. The hardware chapter and the pin table are authoritative; the board JSON's active-high claim is correct. A naive grep for \"active low\" over this PDF finds only the wrong one."
+
 [[board]]
 name = "DE10 Nano"
 files = ["amaranth-boards/de10_nano.json", "litex-boards/terasic_de10nano.json"]
 maker = "Terasic"
-status = "candidate"
-notes = "Cyclone V (5CSEBA6U23I7). Partial QSF found (LEDs only); KEY and SW pins not in fetched source. No 7-segment on this board."
+status = "verified"
+notes = "Cyclone V SoC (5CSEBA6U23I7). Resolved 2026-07-28 from the vendor System CD golden top (rank 1), which supplies the KEY/SW pins the old rank-1 community QSF lacked and corrects its port names. | TWO traps this row now settles: (1) the primary clock is FPGA_CLK1_50, NOT CLOCK_50 -- unique among the Terasic DE boards, so a design written to CLOCK_50 is a near-miss here, by design; (2) the LEDs are canonically LED, not LEDR (the DE0-Nano / DE10-Nano / Atum A3 Nano \"Nano\" boards all use LED). The old rank-1's oLedsPins_led[] was a project rename, not canonical."
 
   [[board.source]]
   rank = 1
+  kind = "vendor-official"
+  format = "OTHER"
+  url = "http://de10-nano.terasic.com/cd"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "set_global_assignment -name DEVICE 5CSEBA6U23I7"
+  clk = "FPGA_CLK1_50 (PIN_V11); FPGA_CLK2_50 / FPGA_CLK3_50 also present"
+  leds = "LED[0..7] -- PIN_W15, AA24, V16, V15, AF26, AE26, Y16, AA23"
+  buttons = "KEY[0..1] -- PIN_AH17, AH16"
+  switches = "SW[0..3] -- PIN_Y24, W24, W21, W20"
+  seven_seg = "none"
+  active_low = "not derivable from a QSF; see rank 2"
+  evidence = ["set_location_assignment PIN_W15 -to LED[0]", "set_location_assignment PIN_AH17 -to KEY[0]", "set_location_assignment PIN_Y24 -to SW[0]"]
+  notes = "format OTHER, not QSF: the file is Demonstrations/FPGA/Golden_top/DE10_Nano_golden_top.qsf inside DE10-Nano_v.1.1.0_HWrevE_SystemCD.zip -- no addressable raw URL to pin, so the gate skips before any fetch. cite-not-copy."
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "http://de10-nano.terasic.com/cd"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "DE10-Nano User Manual (System CD v1.1.0, HW rev E), Manual/DE10-Nano_User_manual.pdf, dated August 9, 2023"
+  clk = "Table 3-5 Pin Assignment of Clock Inputs: FPGA_CLK1_50 PIN_V11 \"50 MHz clock input\"; FPGA_CLK3_50 is noted \"share with FPGA_CLK1_50\""
+  leds = "Table 3-8 Pin Assignment of LEDs: LED[0..7]; board features list \"8 green user LEDs\""
+  buttons = "Table 3-7: KEY[0..1] \"Push-button[0..1]\""
+  switches = "Table 3-6: SW[0..3] \"Slide Switch[0..3]\""
+  seven_seg = "none"
+  active_low = "LEDs active HIGH, KEY active LOW; slide switches active high"
+  evidence = ["driving its associated pin to a high", "logic level or low level to turn the LED on or off, respectively", "The push-button", "generates a low logic level or high logic level when it is pressed or not, respectively", "When the switch is set to the DOWN position (towards the edge of the board), it generates a low logic level to the FPGA."]
+  notes = "pdftotext -layout drops the LED[6]/LED[7] rows of Table 3-8 across a page break -- use the rank-1 golden top for the complete 8-pin list, not this table alone. The evidence[] strings are split at the manual's own line wraps."
+
+  [[board.source]]
+  rank = 3
   kind = "community"
   format = "QSF"
   url = "https://raw.githubusercontent.com/t-crest/patmos/master/hardware/quartus/de10-nano/patmos.qsf"
@@ -231,46 +393,101 @@ notes = "Cyclone V (5CSEBA6U23I7). Partial QSF found (LEDs only); KEY and SW pin
   license = "unknown"
   device_evidence = "set_global_assignment -name DEVICE 5CSEBA6U23I7"
   clk = "not extracted"
-  leds = "oLedsPins_led[0..7] (8 LEDs found; port naming differs from standard)"
+  leds = "oLedsPins_led[0..7] (8 LEDs found; PROJECT-RENAMED, not the canonical LED[])"
   buttons = "not found in this QSF"
   switches = "not found in this QSF"
   seven_seg = "none"
   active_low = "not visible in this source"
   evidence = ["set_location_assignment PIN_W15 -to oLedsPins_led[0]", "This particular project omits button/switch pins"]
+  notes = "Demoted from rank 1 on 2026-07-28: superseded by the vendor golden top, which shows this source's LED names are a project rename (its PIN_W15 does match canonical LED[0])."
 
 [[board]]
 name = "SoCKit"
 files = ["litex-boards/terasic_sockit.json"]
 maker = "Terasic"
-status = "candidate"
-notes = "Cyclone V SoC (5CSXFC6D6F31C8, variant suffix differs from DE10-Standard). Extensive GitHub community activity but no complete QSF fetch obtained. Likely has LEDR[0..3], KEY[0..3], SW[0..3]."
+status = "verified"
+notes = "Cyclone V SoC (5CSXFC6D6F31C6). Resolved 2026-07-28 from the vendor System CD golden top (rank 1). | CORRECTION: the previous row guessed \"LEDR[0..3]\" -- the canonical name is LED, not LEDR. Counts (4/4/4) were right. | The board also has 4 HPS-side LEDs and 2 HPS keys (HPS_LED / HPS_KEY); those are not FPGA-fabric-reachable and stay out of the banks. | Clock caveat: the manual's section 3.5 \"Clock Circuits\" is a FIGURE ONLY -- no OSC_50_* name appears anywhere in the manual text -- so the clock names come from the golden top, whose SDC create_clocks all four OSC_50_* at 20 ns and designates no primary. OSC_50_B3B is the conventional pick (and what litex and the VEEK-MT-SoCKit demos use)."
 
   [[board.source]]
   rank = 1
-  kind = "community"
-  format = "HTML"
-  url = "https://github.com/SoCFPGA-learning/SoCKit"
+  kind = "vendor-official"
+  format = "OTHER"
+  url = "http://sockit.terasic.com"
   fetched = true
-  retrieved = "2026-07-11"
-  license = "unknown"
-  device_evidence = "Repository description: Arrow SoCKit development kit by Terasic based on Intel\u00ae Cyclone V SoC FPGA"
-  clk = "not extracted"
-  leds = "LEDR (0..3 inferred)"
-  buttons = "KEY (0..3 inferred)"
-  switches = "SW (0..3 inferred)"
-  seven_seg = "none (SoC-focused board)"
-  active_low = "not visible in this source"
-  evidence = ["Repository confirms Cyclone V 5CSXFC6D6 base; specific pin details in 'Documents' folder per README"]
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "set_global_assignment -name DEVICE 5CSXFC6D6F31C6"
+  clk = "OSC_50_B3B / OSC_50_B4A / OSC_50_B5B / OSC_50_B8A, all constrained to 20 ns (50 MHz) by the companion SoCKit_golden_top.sdc; no primary designated"
+  leds = "LED[0..3] -- PIN_AF10, AD10, AE11, AD7"
+  buttons = "KEY[0..3] -- PIN_AE9, AE12, AD9, AD11"
+  switches = "SW[0..3] -- PIN_W25, V25, AC28, AC29"
+  seven_seg = "none"
+  active_low = "not derivable from a QSF; see rank 2"
+  evidence = ["set_location_assignment PIN_AF10 -to LED[0]", "set_location_assignment PIN_AE9 -to KEY[0]", "create_clock -period 20 [get_ports OSC_50_B3B]"]
+  notes = "format OTHER, not QSF: the files are Demonstrations\\FPGA\\SoCKit_golden_top\\SoCKit_golden_top.{qsf,sdc} inside SoCKit_v.2.0.1_SystemCD.zip (note the archive uses backslash path separators) -- no addressable raw URL to pin, so the gate skips before any fetch. cite-not-copy."
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "http://sockit.terasic.com"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "SoCKit User Manual (System CD v2.0.1), User_Manaul/SoCKit_User_manual.pdf, dated June 26, 2015 (vendor's own directory typo preserved)"
+  clk = "not stated in the manual text -- section 3.5 is a figure only; see rank 1"
+  leds = "Table 3-11 Pin Assignments for LEDs: LED[0..3], described only as \"LED [0]\"..\"LED [3]\" -- NO COLOR STATED anywhere, so no LED-color registry entry (verify-or-omit); the CD ships no schematic either"
+  buttons = "Table 3-10: KEY[0..3] \"Push-button[0..3]\""
+  switches = "Table 3-9: SW[0..3] \"Slide Switch[0..3]\""
+  seven_seg = "none"
+  active_low = "LEDs active HIGH, KEY active LOW; slide switches active high"
+  evidence = ["Each push-button switch provides a high logic level when it", "is not pressed, and provides a low logic level when depressed.", "driving its associated pin to a high logic level turns", "the LED on, and driving the pin low turns it off."]
+  notes = "The evidence[] strings are split at the manual's own line wraps. Board features list says \"8 User LEDs (FPGA x4 ; HPS x 4)\" -- only the FPGA 4 are in the bank."
 
 [[board]]
 name = "DE23-Lite"
 files = ["custom/de23_lite.json"]
 maker = "Terasic"
-status = "candidate"
-notes = "Agilex 3 (A3CZ135BB18AE7S). New board (2025). Golden_top project on vendor System CD; user manuals available but behind registration walls (Mouser, DigiKey). No public GitHub QSF found."
+status = "verified"
+notes = "Agilex 3 (A3CZ135BB18AE7S). Resolved 2026-07-28 from the vendor Resource Package (see rank 1/2): the board JSON's hand-authored port_conventions.terasic block was in fact derived from this package's golden_top QSF when the board was added (commit ff34310), but the registry row still described the pre-download state. Both revA and revB packages carry identical pin assignments. | The LEDs are ACTIVE LOW -- a real break from the DE-series norm, confirmed in the manual's own prose (rank 2), so this row is the only citation standing behind that claim."
 
   [[board.source]]
   rank = 1
+  kind = "vendor-official"
+  format = "OTHER"
+  url = "http://de23-lite.terasic.com/cd"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic/Altera proprietary"
+  device_evidence = "set_global_assignment -name DEVICE A3CZ135BB18AE7S"
+  clk = "CLOCK0_50 (PIN_K43); CLOCK1_50 (PIN_A8) also present"
+  leds = "LEDR[0..9]"
+  buttons = "KEY[0..3]"
+  switches = "SW[0..9]"
+  seven_seg = "HEX0..HEX5, 7 bits per digit (no DP pin)"
+  active_low = "not derivable from a QSF; see rank 2"
+  evidence = ["set_location_assignment PIN_B39  -to LEDR[0]", "set_location_assignment PIN_K26  -to KEY[0]", "set_location_assignment PIN_K43  -to CLOCK0_50"]
+  notes = "format OTHER, not QSF: the constraint file is Demonstrations/golden_top/golden_top.qsf *inside* DE23-Lite_revB_v1.1.0_ResourcePackage.zip, so it has no directly addressable raw URL for sync_port_conventions.py to pin -- the gate skips this row before any fetch, which is the intended outcome. cite-not-copy: the facts are recorded, not the copyrighted QSF."
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "http://de23-lite.terasic.com/cd"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic/Altera proprietary"
+  device_evidence = "DE23-Lite User Manual rev B (Resource Package v1.1.0), Manual/DE23_Lite_User_manual_revB.pdf, dated December 18, 2025"
+  clk = "Table 3-4 Pin Assignment of Clock Inputs: CLOCK0_50 PIN_K43 \"50 MHz clock input\""
+  leds = "Table 3-8 Pin Assignments of LEDs: LEDR[0..9], described \"Red LED [0]\"..\"Red LED [9]\""
+  buttons = "Table 3-7: KEY[0..3] \"Push-button[0..3]\""
+  switches = "Table 3-6: SW[0..9] \"Slide Switch[0..9]\""
+  seven_seg = "Table 3-9: HEX0[0..6]..HEX5[0..6], 7 bits per digit"
+  active_low = "LEDs active LOW, KEY active LOW, HEX active LOW; slide switches active high"
+  evidence = ["driving its associated pin to a “low” logic level turn the LED “on”", "Each push-button generates a low logic level when it is pressed (Active low)", "the seven segments (common anode) to pins on the Agilex 3 FPGA. Each segment can be turned on by applying a low logic level from the FPGA", "When the switch is set to the DOWN position (towards the edge of the board), it sends a low logic level to the FPGA"]
+
+  [[board.source]]
+  rank = 3
   kind = "vendor-official"
   format = "PDF"
   url = "https://www.mouser.com/pdfDocs/DE23_Lite_User_manual.pdf"
@@ -285,9 +502,10 @@ notes = "Agilex 3 (A3CZ135BB18AE7S). New board (2025). Golden_top project on ven
   seven_seg = "HEX0..HEX5 (inferred, 6-digit board)"
   active_low = "not visible"
   evidence = ["PDF fetch timed out; manual is behind registration/download gate"]
+  notes = "Demoted from rank 1 on 2026-07-28: superseded by the vendor package itself, but kept live as a publicly reachable (if gated) mirror of the same manual."
 
   [[board.source]]
-  rank = 2
+  rank = 4
   kind = "vendor-official"
   format = "PDF"
   url = "https://www.mouser.com/pdfDocs/DE23_Lite_Getting_Started_Guide.pdf"
@@ -303,32 +521,50 @@ notes = "Agilex 3 (A3CZ135BB18AE7S). New board (2025). Golden_top project on ven
   active_low = "not visible"
   evidence = ["PDF behind download gate; Terasic official source but not publicly accessible"]
 
-  [[board.source]]
-  rank = 3
-  kind = "vendor-official"
-  format = "HTML"
-  url = "http://de23-lite.terasic.com/cd/"
-  fetched = false
-  retrieved = "2026-07-11"
-  license = "Terasic proprietary"
-  device_evidence = "Terasic official System CD link mentioned in search results"
-  clk = "not extracted"
-  leds = "not extracted"
-  buttons = "not extracted"
-  switches = "not extracted"
-  seven_seg = "not extracted"
-  active_low = "not visible"
-  evidence = ["System CD requires download from Terasic; golden_top QSF is the authoritative source per Terasic pattern"]
-
 [[board]]
 name = "DE25-Standard"
 files = ["custom/de25_standard.json"]
 maker = "Terasic"
-status = "candidate"
-notes = "Agilex 5 SoC (A5ED013BB32AE4S). Very new (2025). Similar to DE23-Lite: System CD golden_top is authoritative; user manual behind registration."
+status = "verified"
+notes = "Agilex 5 SoC (A5ED013BB32AE4S). Resolved 2026-07-28 from the vendor Resource Package (see rank 1/2), same story as DE23-Lite: the hand-authored block already matched, the registry row had not caught up. | LEDs are ACTIVE LOW here too. The golden_top also pins HPS_LED / HPS_KEY, which are HPS-side and deliberately outside the FPGA-fabric banks."
 
   [[board.source]]
   rank = 1
+  kind = "vendor-official"
+  format = "OTHER"
+  url = "http://de25-standard.terasic.com/cd"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic/Altera proprietary"
+  device_evidence = "set_global_assignment -name DEVICE A5ED013BB32AE4SCS"
+  clk = "CLOCK0_50 (PIN_CH128); CLOCK1_50 (PIN_D8) and CLOCK2_50 (PIN_BM71) also present"
+  leds = "LEDR[0..9]"
+  buttons = "KEY[0..3]"
+  switches = "SW[0..9]"
+  seven_seg = "HEX0..HEX5, 7 bits per digit (no DP pin)"
+  active_low = "not derivable from a QSF; see rank 2"
+  evidence = ["set_location_assignment PIN_CC71  -to LEDR[0]", "set_location_assignment PIN_BW59  -to KEY[0]", "set_location_assignment PIN_CH128 -to CLOCK0_50"]
+  notes = "format OTHER, not QSF: the file is Demonstration/FPGA/golden_top/golden_top.qsf inside DE25-Standard_revD_v1.2.0_ResourcePackage.zip -- no addressable raw URL to pin, so the gate skips before any fetch. cite-not-copy."
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "http://de25-standard.terasic.com/cd"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic/Altera proprietary"
+  device_evidence = "DE25-Standard User Manual rev D (Resource Package v1.2.0), Manual/DE25-Standard_User_manual_revD.pdf, dated November 21, 2025"
+  clk = "not extracted from the manual; see rank 1"
+  leds = "Table 3-13 Pin Assignments of LEDs: LEDR[0..9]; board features list \"10 red user LEDs\""
+  buttons = "Table 3-12: KEY[0..3] \"Push-button[0..3]\""
+  switches = "Table 3-11: SW[0..9] \"Slide Switch[0..9]\""
+  seven_seg = "Table 3-14: HEX0[0..6]..HEX5[0..6], 7 bits per digit"
+  active_low = "LEDs active LOW, KEY active LOW, HEX active LOW; slide switches active high"
+  evidence = ["driving its associated pin to a “low” logic level turn the LED “on”", "Each push-button generates a low logic level when it is pressed (Active low)", "the seven segments (common anode) to pins on the Agilex 5 SoC FPGA.", "Each segment can be turned on by applying a low logic level from the FPGA."]
+
+  [[board.source]]
+  rank = 3
   kind = "vendor-official"
   format = "PDF"
   url = "https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/7704/P0781.pdf"
@@ -343,47 +579,49 @@ notes = "Agilex 5 SoC (A5ED013BB32AE4S). Very new (2025). Similar to DE23-Lite: 
   seven_seg = "HEX0..HEX5 (inferred)"
   active_low = "not visible"
   evidence = ["PDF behind DigiKey download gate; very recent release (Oct 2025)"]
-
-  [[board.source]]
-  rank = 2
-  kind = "vendor-official"
-  format = "HTML"
-  url = "http://de25-standard.terasic.com/cd/"
-  fetched = false
-  retrieved = "2026-07-11"
-  license = "Terasic proprietary"
-  device_evidence = "Terasic official System CD link pattern from search results"
-  clk = "not extracted"
-  leds = "not extracted"
-  buttons = "not extracted"
-  switches = "not extracted"
-  seven_seg = "not extracted"
-  active_low = "not visible"
-  evidence = ["Golden_top QSF is authoritative per Terasic development flow"]
+  notes = "Demoted from rank 1 on 2026-07-28; kept live as a publicly reachable mirror of the same manual."
 
 [[board]]
 name = "VEEK-MT2"
 files = ["custom/veek_mt2.json"]
 maker = "Terasic"
-status = "candidate"
-notes = "Cyclone IV E (EP4CE115) on DE2-115 base + multimedia extensions. Similar pin base to DE2-115 plus video/touch interfaces."
+status = "verified"
+notes = "Cyclone IV E (EP4CE115F29C7) on DE2-115 base + multimedia extensions. Resolved 2026-07-28 from the vendor System CD's own golden top (rank 1), which confirms the whole DE2-115-identical user-IO set pin-for-pin. | Polarity is NOT stated in this board's manual -- it inherits the DE2-115 base hardware, so the polarity citation is the DE2-115 row's manual (LEDs active high, KEY active low, HEX active low)."
 
   [[board.source]]
   rank = 1
   kind = "vendor-official"
+  format = "OTHER"
+  url = "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=165&No=1020&PartNo=4"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "set_global_assignment -name DEVICE EP4CE115F29C7"
+  clk = "CLOCK_50; CLOCK2_50 / CLOCK3_50 also present"
+  leds = "LEDR[0..17] and LEDG[0..8]"
+  buttons = "KEY[0..3]"
+  switches = "SW[0..17]"
+  seven_seg = "HEX0..HEX7, 7 bits per digit"
+  active_low = "not derivable from a QSF; inherited from the DE2-115 base -- see the DE2-115 row"
+  evidence = ["set_location_assignment PIN_G19 -to LEDR[0]", "set_location_assignment PIN_M23 -to KEY[0]"]
+  notes = "format OTHER, not QSF: the file is Demonstrations/Golden_top/VEEK_MT2_GOLDEN_TOP.qsf inside VEEK-MT2_v.1.0.2_SystemCD.zip -- no addressable raw URL to pin, so the gate skips before any fetch. cite-not-copy."
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
   format = "PDF"
   url = "https://dcenet.fel.cvut.cz/edu/fpga/veek-mt2/VEEK-MT2_User_Manual.pdf"
   fetched = true
-  retrieved = "2026-07-11"
+  retrieved = "2026-07-28"
   license = "Terasic proprietary"
-  device_evidence = "Document title and URL confirm VEEK-MT2; based on EP4CE115"
+  device_evidence = "VEEK-MT2 User Manual (Terasic System CD v1.0.2), Usersmanual/VEEK-MT2_User_Manual.pdf; the cvut.cz URL mirrors the same document"
   clk = "not extracted"
-  leds = "LEDR[0..17] (shared with DE2-115 base)"
+  leds = "board features list: \"18 red and 9 green LEDs\""
   buttons = "KEY[0..3] (shared with DE2-115)"
   switches = "SW[0..17] (shared with DE2-115)"
   seven_seg = "HEX0..HEX7 (shared with DE2-115)"
-  active_low = "not visible in this source"
-  evidence = ["PDF fetch returned binary content; community mirror but not text-extractable"]
+  active_low = "not stated anywhere in this manual -- verified by full-text search 2026-07-28, not merely 'not seen'"
+  evidence = ["18 red and 9 green LEDs"]
 
   [[board.source]]
   rank = 2
@@ -406,25 +644,44 @@ notes = "Cyclone IV E (EP4CE115) on DE2-115 base + multimedia extensions. Simila
 name = "VEEK-MT-SoCKit"
 files = ["custom/veek_mt_sockit.json"]
 maker = "Terasic"
-status = "candidate"
-notes = "Cyclone V SoC (5CSXFC6D6) on SoCKit base + multimedia/HSMC extensions. HSMC-connected daughter card."
+status = "verified"
+notes = "Cyclone V SoC (5CSXFC6D6F31C8ES -- an engineering-sample variant of the SoCKit part) on SoCKit base + multimedia/HSMC extensions. Resolved 2026-07-28 from the vendor System CD's own demo QSFs (rank 1). | CORRECTION: the previous row guessed \"LEDR[0..3]\"; it is LED[0..3], same as the SoCKit base. | This board's user manual has NO user-IO chapter at all -- it is a display-module assembly/demo guide -- so BOTH the port names and the polarity are cited to the SoCKit base board (see the SoCKit row), with the demo QSFs here confirming the names carry over unchanged."
 
   [[board.source]]
   rank = 1
   kind = "vendor-official"
+  format = "OTHER"
+  url = "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=165&No=837"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic proprietary"
+  device_evidence = "set_global_assignment -name DEVICE 5CSXFC6D6F31C8ES"
+  clk = "OSC_50_B3B / OSC_50_B4A / OSC_50_B5B / OSC_50_B8A (SoCKit base)"
+  leds = "LED[0..3] -- PIN_AF10, AD10, AE11, AD7 (identical to the SoCKit base)"
+  buttons = "KEY[0..3] -- PIN_AE9, AE12, AD9, AD11 (identical to the SoCKit base)"
+  switches = "SW[0..3] -- PIN_W25, V25, AC28, AC29 (identical to the SoCKit base)"
+  seven_seg = "none (SoC-focused; video/touch via HSMC)"
+  active_low = "not derivable from a QSF; inherited from the SoCKit base -- see the SoCKit row"
+  evidence = ["set_location_assignment PIN_AF10 -to LED[0]", "set_location_assignment PIN_AE9 -to KEY[0]"]
+  notes = "format OTHER, not QSF: the files are Demonstrations/FPGA/SoCKit_*/\\*.qsf inside VEEK-MT-SoCKit_v.1.1.0_SystemCD.zip (this CD ships no golden_top -- SoCKit_G_sensor.qsf and its siblings serve the same role) -- no addressable raw URL to pin, so the gate skips before any fetch. cite-not-copy."
+
+  [[board.source]]
+  rank = 2
+  kind = "vendor-manual"
   format = "PDF"
   url = "https://dsp-tdi.com/Terasic/VEEK-MT-SoCKit.pdf"
   fetched = true
-  retrieved = "2026-07-11"
+  retrieved = "2026-07-28"
   license = "unknown"
-  device_evidence = "Document title confirms VEEK-MT-SoCKit; SoCKit base (5CSXFC6D6)"
+  device_evidence = "VEEK_MT_SoCKit_User_manual.pdf (System CD v1.1.0); the dsp-tdi.com URL mirrors the same document"
   clk = "not extracted"
-  leds = "LEDR[0..3] (SoCKit base)"
-  buttons = "KEY[0..3] (SoCKit base)"
-  switches = "SW[0..3] (SoCKit base)"
-  seven_seg = "none (SoC-focused; video/touch via HSMC)"
-  active_low = "not visible"
-  evidence = ["PDF fetch returned binary; community mirror of vendor doc"]
+  leds = "not documented in this manual"
+  buttons = "not documented in this manual"
+  switches = "not documented in this manual"
+  seven_seg = "none"
+  active_low = "no user-IO chapter exists in this manual -- verified by full-text search 2026-07-28; use the SoCKit row"
+  evidence = ["Connect the assembled SoCKit to the MTLC display module with a HSMC cable."]
+  notes = "Recorded as a deliberate negative result: this manual covers display-module assembly and demo software only. Do not re-search it for pin or polarity data."
 
   [[board.source]]
   rank = 2
@@ -447,11 +704,29 @@ notes = "Cyclone V SoC (5CSXFC6D6) on SoCKit base + multimedia/HSMC extensions. 
 name = "Terasic Atum A3 Nano"
 files = ["litex-boards/terasic_atum_a3_nano.json"]
 maker = "Terasic"
-status = "candidate"
-notes = "Agilex 3 (A3CZ135BB18AE7S). Official GitHub repo available; projects contain designs but QSF pin assignments require per-project inspection. Very new board; likely has 8 LEDs, 2 buttons, 2 switches based on Nano form factor. | official github.com/terasic account + golden_top folder confirmed via GitHub API 2026-07-11"
+status = "verified"
+notes = "Agilex 3 (A3CZ135BB18AE7S -- the same device as DE23-Lite, and CLOCK0_50 lands on PIN_K43 on both). Resolved 2026-07-28 from the vendor user manual (rank 1). | Settles what the old row guessed: 4 LEDs / 2 buttons / 2 switches are correct, and there is NO 7-segment display. The names are LED / KEY / SW (the \"Nano\" boards use LED, not LEDR) and the primary clock is CLOCK0_50. | LEDs are ACTIVE LOW, extending the Agilex-family pattern already seen on DE23-Lite and DE25-Standard. | No LED color is stated anywhere (the blue/green/yellow LEDB/LEDG/LEDY in the manual are Ethernet PHY status indicators, not user LEDs), so no LED-color registry entry -- verify-or-omit."
 
   [[board.source]]
   rank = 1
+  kind = "vendor-manual"
+  format = "PDF"
+  url = "http://atum-a3-nano.terasic.com/cd"
+  fetched = true
+  retrieved = "2026-07-28"
+  license = "Terasic/Altera proprietary"
+  device_evidence = "Atum A3 Nano User Manual, dated September 12, 2025; Agilex 3 A3CZ135BB18AE7S"
+  clk = "Table 3-4 Pin Assignment of Clock Inputs: CLOCK0_50 PIN_K43 \"50 MHz clock input\"; CLOCK1_50 (PIN_A8), CLOCK2_50 (PIN_AH9), CLOCK3_50 (PIN_R2) also present"
+  leds = "Table 3-7 Pin Assignments of LEDs: LED[0..3] -- PIN_AG2, AM6, AF1, AF2"
+  buttons = "Table 3-6: KEY[0..1] -- PIN_E2, K3"
+  switches = "Table 3-5: SW[0..1] -- PIN_A19, B24"
+  seven_seg = "none -- the board has no 7-segment display"
+  active_low = "LEDs active LOW, KEY active LOW; slide switches active high"
+  evidence = ["driving its associated pin to a “low” logic level turn the LED", "button generates a low logic level when it is pressed (Active low)", "When the switch is set to the DOWN position (towards the edge of the board), it sends a low logic level to the FPGA."]
+  notes = "Supplied as a standalone PDF rather than inside a CD archive; kept at format PDF (no parser), so the gate skips before any fetch. The evidence[] strings are split at the manual's own line wraps."
+
+  [[board.source]]
+  rank = 2
   kind = "vendor-official"
   format = "REPO"
   url = "https://github.com/terasic/Atum-A3-Nano"
@@ -460,10 +735,11 @@ notes = "Agilex 3 (A3CZ135BB18AE7S). Official GitHub repo available; projects co
   license = "unknown (Terasic official)"
   device_evidence = "Official Terasic GitHub repository for Atum A3 Nano; A3CZ135BB18AE7S device confirmed"
   clk = "not extracted"
-  leds = "likely 4 LEDs (inferred from Nano form factor)"
-  buttons = "likely 2 buttons (inferred)"
-  switches = "likely 2 switches (inferred)"
-  seven_seg = "unknown"
+  leds = "not extracted (per-project QSFs)"
+  buttons = "not extracted"
+  switches = "not extracted"
+  seven_seg = "not extracted"
   active_low = "not visible"
   evidence = ["Repository README lists 10+ design examples (golden_top, HDMI, SDRAM, UART, etc.); each has its own QSF in individual project folder per README"]
+  notes = "Demoted from rank 1 on 2026-07-28: superseded by the manual, but this is the one Terasic-official source here with per-project QSFs at pinnable raw URLs -- the best future upgrade path if this row should ever generate mechanically."
 

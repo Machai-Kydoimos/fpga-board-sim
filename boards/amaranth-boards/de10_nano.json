@@ -20,7 +20,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -33,7 +34,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -46,7 +48,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -59,7 +62,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -72,7 +76,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -85,7 +90,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -98,7 +104,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "green"
     },
     {
       "name": "led",
@@ -111,7 +118,8 @@
       "connector": null,
       "attrs": {
         "io_standard": "3.3-V LVTTL"
-      }
+      },
+      "color": "green"
     }
   ],
   "buttons": [
@@ -198,6 +206,23 @@
   ],
   "seven_seg": null,
   "port_conventions": {
+    "terasic": {
+      "description": "Terasic DE10-Nano golden_top reference design",
+      "clk": "FPGA_CLK1_50",
+      "leds": {
+        "name": "LED",
+        "width": 8
+      },
+      "buttons": {
+        "name": "KEY",
+        "width": 2,
+        "active_low": true
+      },
+      "switches": {
+        "name": "SW",
+        "width": 4
+      }
+    },
     "amaranth": {
       "description": "amaranth-boards platform port names (auto-derived from the board .py file)",
       "clk": "clk50",

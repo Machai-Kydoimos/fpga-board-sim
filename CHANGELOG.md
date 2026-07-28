@@ -49,6 +49,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Four more Terasic boards are natively targetable.** DE10-Nano, SoCKit,
+  VEEK-MT-SoCKit and Atum A3 Nano previously carried only framework-derived
+  conventions (the generic litex/amaranth port names); their vendor System CDs
+  settle the canonical ones, so each now ships a `port_conventions.terasic`
+  block verified pin-for-pin against the CD golden tops — `LED`/`SW`/`KEY`
+  with clocks `FPGA_CLK1_50`, `OSC_50_B3B` and `CLOCK0_50` respectively. Two
+  traps are now pinned by tests: DE10-Nano's clock is **not** the `CLOCK_50`
+  every other DE board uses (a design written to `CLOCK_50` is a near-miss
+  there, by design), and the "Nano" boards' LEDs are named `LED`, not `LEDR`.
+  Atum A3 Nano's LEDs are active-low, extending the Agilex-family pattern from
+  DE23-Lite and DE25-Standard.
+
+- **Cited LED colors for three more board files.** DE10-Nano is green ("8 green
+  user LEDs" — and since its canonical name is `LED`, not `LEDR`, the color is
+  not encoded in the name at all), covering both its amaranth and litex files;
+  the litex DE2-115's 18 LEDs are red, being pin-for-pin `LEDR[0..17]` per the
+  manual's Table 4-3. SoCKit, VEEK-MT-SoCKit and Atum A3 Nano state no user-LED
+  color anywhere, so under verify-or-omit they stay uncolored — with that
+  negative result recorded so it is not re-searched.
+
 - **macOS and Linux-arm64 CI.** The test matrix now runs on macOS (Apple
   Silicon) and `ubuntu-24.04-arm` alongside Ubuntu + Windows, and three new
   macOS simulator jobs exercise the full cocotb pipeline: pinned GHDL 6.0.0
@@ -79,6 +99,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which already models that pin as `rst_n`.
 
 ### Changed
+
+- **The Terasic port-convention registry is now backed by the vendor CDs.** All
+  10 fleet Terasic boards' port names, resource counts and polarity were audited
+  against their vendor System CDs / Resource Packages. No factual errors were
+  found — every value in the board JSONs already matched — so this is a citation
+  upgrade, not a data change: seven rows go `candidate` → `verified` with a
+  vendor-official rank-1 source, and polarity (previously uncited family-wide —
+  every source row read `active_low = "not visible in this source"`) now quotes
+  each manual verbatim. Two self-referential overlay cites that pointed at
+  hand-authored board JSONs were replaced with the manuals' own words, and two
+  registry guesses corrected (SoCKit and VEEK-MT-SoCKit use `LED`, not the
+  guessed `LEDR`). Two findings are recorded in-file so they are not re-derived
+  wrongly: the **DE0-Nano manual contradicts itself** on LED polarity — its
+  tutorial chapter says "active low" but is boilerplate lifted from a generic
+  Altera tutorial that also says "four development board LEDs" on an 8-LED
+  board, while the hardware chapter and pin table say active high (a naive grep
+  finds only the wrong one) — and the **DE10-Lite manual uniquely omits the KEY
+  polarity sentence** every sibling manual has, with no schematic on its CD, so
+  that cite now points at the CD's own default design, which wires the key
+  straight to an active-low reset.
 
 - **Idle-frame redraw skipping (U23).** The single-window simulation loop now
   skips the board/panel/overlay redraw and buffer flip on any frame that would
