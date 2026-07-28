@@ -89,8 +89,20 @@ def _strip_index(name: str) -> str:
 
 
 def _exact_base(name: str, token: str) -> bool:
-    """Return whether `name`'s base (after stripping a trailing index) is exactly `token`."""
-    return _strip_index(name).lower() == token.lower()
+    """Return whether `name`'s base is exactly `token`, ignoring index and `_n` suffix.
+
+    A trailing active-low marker is stripped before comparing, because it says
+    something about *polarity*, not about which resource the port is. Without
+    that, a board is penalized for documenting its own polarity in its port
+    names: the regex matchers `search`, so ``LED_N`` classifies fine, but the
+    exact-base ones compared the whole name, so ``SW_N``/``KEY_N``/``DIGIT_N``
+    silently matched nothing. Zeowaa names every bank that way and classified
+    as clock-plus-LEDs only, dropping its switches, buttons and 8-digit
+    display. The suffix is still what `_maybe_set_active_low` reads to derive
+    the polarity itself.
+    """
+    base = _RE_ACTIVE_LOW_SUFFIX.sub("", _strip_index(name))
+    return base.lower() == token.lower()
 
 
 def _is_leds_green(name: str) -> bool:

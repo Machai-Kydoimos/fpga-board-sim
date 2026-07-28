@@ -201,6 +201,23 @@ def test_seven_seg_scan_style_when_digit_enable_present() -> None:
     }
 
 
+def test_exact_base_matchers_tolerate_an_active_low_suffix() -> None:
+    # A board that documents its own polarity in its port names was being
+    # penalized for it: the regex matchers `search` (so LED_N classified
+    # fine), but the exact-base ones compared the whole name, so SW_N / KEY_N
+    # / DIGIT_N matched nothing. Zeowaa names every bank that way and came out
+    # as clock-plus-LEDs only, silently dropping switches, buttons and digits.
+    names = (
+        {f"LED_N[{i}]": f"L{i}" for i in range(4)}
+        | {f"SW_N[{i}]": f"S{i}" for i in range(8)}
+        | {f"KEY_N[{i}]": f"K{i}" for i in range(4)}
+    )
+    result = classify(_table(names))
+    assert result["switches"] == {"name": "SW_N", "width": 8, "active_low": True}
+    assert result["buttons"] == {"name": "KEY_N", "width": 4, "active_low": True}
+    assert result["leds"] == {"name": "LED_N", "width": 4, "active_low": True}
+
+
 def test_seven_seg_scan_style_recognizes_dig_digit_enable() -> None:
     # The Altera-hobbyist idiom (RZ-EasyFPGA, Zeowaa, Runber) names the digit
     # selects DIG rather than AN. Unrecognized, the display degraded to
