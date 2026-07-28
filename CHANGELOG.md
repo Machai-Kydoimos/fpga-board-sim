@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-07-28
+
 ### Fixed
 
 - **Every text read and write now names its encoding (323 call sites).**
@@ -1551,7 +1553,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
-[Unreleased]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.16.0...v0.17.0
