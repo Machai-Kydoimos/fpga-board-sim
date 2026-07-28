@@ -17,6 +17,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   either floor. Board-native and embedded-core designs are unaffected (no
   `COUNTER_BITS` override).
 
+- **The board-data drift check no longer cries wolf — or stays quiet when it
+  should not (#335, #336).** It compared the pinned *commit* when what it cares
+  about is the cited *content*, which broke it in both directions. Too fragile:
+  a citation pinned to a branch *tip* was re-pinned by any upstream commit, so
+  CI went red against a byte-identical file. Not sensitive enough: a skipped row
+  was compared against nothing, so a board whose citation died silently stopped
+  being verified — a *deleted* upstream source would have turned the job green
+  rather than red. Pins are now resolved to the last commit that touched the
+  cited path, a `content_sha256` is what the check compares, and a coverage
+  floor fails the run when a block that used to regenerate no longer does.
+
+- **Eight registry citations that had silently rotted (#335).** Each named a
+  branch its upstream had renamed. `raw.githubusercontent.com` still serves
+  those through GitHub's rename redirect, so the links looked alive in a
+  browser while the commits API returned HTTP 422 and the board was skipped —
+  under an error message that blamed a rate limit. The message now names the
+  rename first.
+
+- **Boards that document their polarity in their port names no longer lose
+  banks (#339).** The classifier's exact-base matchers compared the whole name,
+  so `SW_N` / `KEY_N` / `DIGIT_N` matched nothing while the regex-based ones
+  matched `LED_N` fine — a board was penalized for being explicit. Zeowaa
+  classified as clock-plus-LEDs only before this.
+
+- **The port-convention fetch cache is now byte-faithful (#336).** `read_text`
+  applies universal newlines, so a cached fetch returned CRLF source with every
+  carriage return stripped — different content than the network fetch it stood
+  in for. Harmless while only line-oriented parsers consumed it, and caught the
+  moment `content_sha256` started recording the fetched bytes.
+
 ### Added
 
 - **macOS and Linux-arm64 CI.** The test matrix now runs on macOS (Apple
@@ -30,6 +60,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   aarch64 wheel upstream). Retires the README's "macOS is supported but not
   CI-tested" caveat.
 
+- **Zeowaa EP4CE6 board (#340).** A 12-LED / 8-switch / 4-button board with an
+  8-digit multiplexed display, hand-authored into `boards/custom/` and verified
+  against two independent constraint files that agree on every pin. Both the
+  generic contract and a board-native design using the board's own port names
+  (`CLK` / `KEY_N` / `SW_N` / `LED_N` / `ABCDEFGH_N` / `DIGIT_N`) run on it. The
+  two sources disagree only on index *direction* for three banks — a labeling
+  convention, not a physical fact — which is recorded in the board's own
+  convention description rather than hidden.
+
+- **Board-native support for the RZ-EasyFPGA A2.2 (#338).** Both board JSONs
+  gained a canonical `port_conventions` block, including the `SEG`/`DIG` scan
+  7-segment display they previously had no convention for at all. The vendor
+  QSF packs the reset button into the user-key vector as `KEY[4]`, so the
+  classified width (5) exceeded the board's 4 buttons and the whole file was
+  being skipped; that `KEY[4]` is the reset is settled by the manufacturer's
+  schematic and corroborated by four other sources, including upstream litex,
+  which already models that pin as `rst_n`.
+
 ### Changed
 
 - **Idle-frame redraw skipping (U23).** The single-window simulation loop now
@@ -42,6 +90,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   at a steady 62 fps, cutting the host draw share from ~3% to ~0.5% — while
   designs that change every frame are unaffected. The `--benchmark` full-system
   report gains a `Drawn` (vs total `Frames`) line.
+
+- **`port_conventions[].source` gained `content_sha256` (#336).** The board
+  schema records the SHA-256 of the constraint file each convention was parsed
+  from, so provenance identifies the *content* and not merely the commit it was
+  read at.
+
+- **CI caches the pinned GHDL installs on every job (#341).** The Linux mcode
+  and Windows jobs re-downloaded theirs on each run while the LLVM and macOS
+  jobs already cached; all four now share one pattern, keyed on the pinned
+  version plus the release asset's sha256. This buys robustness rather than
+  wall-clock — the jobs run in parallel — but a warm cache survives a
+  GitHub-releases CDN blip.
 
 ## [0.19.0] - 2026-07-23
 
