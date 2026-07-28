@@ -367,7 +367,7 @@ def test_write_gtkw_lists_toplevel_ports_with_widths(tmp_path):
     gtkw = tmp_path / "blinky.gtkw"
     dump = tmp_path / "blinky.vcd"
     _write_gtkw(gtkw, dump, {"NUM_SWITCHES": "4", "NUM_BUTTONS": "2", "NUM_LEDS": "8"})
-    text = gtkw.read_text()
+    text = gtkw.read_text(encoding="utf-8")
     assert f'[dumpfile] "{dump}"' in text
     assert "sim_wrapper.clk" in text
     assert "sim_wrapper.sw[3:0]" in text
@@ -380,7 +380,7 @@ def test_write_gtkw_includes_seg_when_7seg(tmp_path):
     """seg packs 8 bits per digit: NUM_SEGS=6 → seg[47:0]."""
     gtkw = tmp_path / "c.gtkw"
     _write_gtkw(gtkw, tmp_path / "c.fst", {"NUM_LEDS": "10", "NUM_SEGS": "6"})
-    text = gtkw.read_text()
+    text = gtkw.read_text(encoding="utf-8")
     assert "sim_wrapper.seg[47:0]" in text  # 6*8 - 1
     assert "sim_wrapper.led[9:0]" in text
 
@@ -389,7 +389,7 @@ def test_write_gtkw_skips_ports_with_missing_or_bad_generics(tmp_path):
     """clk is always present; a vector whose generic is absent/garbage is omitted, not broken."""
     gtkw = tmp_path / "x.gtkw"
     _write_gtkw(gtkw, tmp_path / "x.vcd", {"NUM_LEDS": "oops"})
-    text = gtkw.read_text()
+    text = gtkw.read_text(encoding="utf-8")
     assert "sim_wrapper.clk" in text
     assert "sim_wrapper.sw" not in text and "sim_wrapper.btn" not in text
     assert "sim_wrapper.led" not in text  # garbage width → skipped, no "led[-1:0]"
@@ -483,13 +483,15 @@ def test_open_waveform_falls_back_when_viewer_missing(monkeypatch, tmp_path):
 
 def _write_exe(path: Path, body: str) -> None:
     """Write a POSIX shell stand-in for the compiled sim_wrapper executable."""
-    path.write_text(body)
+    path.write_text(body, encoding="utf-8")
     path.chmod(path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
 
 
 def test_name_bound_check_port_appends_association(tmp_path):
     """The offending wrapper line (a 'port => port' association) is appended."""
-    (tmp_path / "sim_wrapper.vhd").write_text("a\nb\nseg => seg\n")  # seg on line 3
+    (tmp_path / "sim_wrapper.vhd").write_text(
+        "a\nb\nseg => seg\n", encoding="utf-8"
+    )  # seg on line 3
     msg = _name_bound_check_port("bound check failure at sim_wrapper.vhd:3", str(tmp_path))
     assert msg.endswith("seg => seg")
 
@@ -501,7 +503,7 @@ def test_name_bound_check_port_no_lineno_passthrough(tmp_path):
 
 def test_bound_check_probe_skipped_without_executable(tmp_path):
     """mcode / llvm-jit emit no sim_wrapper executable → the probe is a no-op."""
-    (tmp_path / "sim_wrapper.vhd").write_text("-- wrapper\n")
+    (tmp_path / "sim_wrapper.vhd").write_text("-- wrapper\n", encoding="utf-8")
     assert _bound_check_probe(str(tmp_path)) is None
 
 
@@ -509,14 +511,16 @@ def test_bound_check_probe_skipped_without_executable(tmp_path):
 def test_bound_check_probe_clean_run_returns_none(tmp_path):
     """A compiled wrapper that elaborates + runs cleanly for zero time → no error."""
     _write_exe(tmp_path / "sim_wrapper", "#!/bin/sh\nexit 0\n")
-    (tmp_path / "sim_wrapper.vhd").write_text("-- wrapper\n")
+    (tmp_path / "sim_wrapper.vhd").write_text("-- wrapper\n", encoding="utf-8")
     assert _bound_check_probe(str(tmp_path)) is None
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX shell fake; compiled GHDL is Unix-only")
 def test_bound_check_probe_catches_failure_and_names_port(tmp_path):
     """A load-time bound-check failure is caught and mapped onto the port hint."""
-    (tmp_path / "sim_wrapper.vhd").write_text("entity sim_wrapper is\nport map (\nled => led\n);\n")
+    (tmp_path / "sim_wrapper.vhd").write_text(
+        "entity sim_wrapper is\nport map (\nled => led\n);\n", encoding="utf-8"
+    )
     _write_exe(
         tmp_path / "sim_wrapper",
         "#!/bin/sh\n"
@@ -535,7 +539,7 @@ def test_bound_check_probe_catches_failure_and_names_port(tmp_path):
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX shell fake; compiled GHDL is Unix-only")
 def test_bound_check_probe_flags_error_during_elaboration_on_rc0(tmp_path):
     """'error during elaboration' in the output is a failure even at returncode 0."""
-    (tmp_path / "sim_wrapper.vhd").write_text("x\nled => led\n")
+    (tmp_path / "sim_wrapper.vhd").write_text("x\nled => led\n", encoding="utf-8")
     _write_exe(
         tmp_path / "sim_wrapper",
         '#!/bin/sh\necho "error during elaboration at sim_wrapper.vhd:2"\nexit 0\n',

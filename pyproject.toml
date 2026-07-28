@@ -51,6 +51,16 @@ markers = [
     "slow: requires GHDL or NVC subprocess (deselect with -m 'not slow')",
     "ui: requires headless pygame display",
 ]
+# Reading or writing text without an explicit encoding uses the locale default,
+# which is cp1252 on Windows and UTF-8 everywhere else -- so the same file parses
+# differently per platform.  Ruff's PLW1514 catches this statically but only
+# where it can prove the receiver is a Path, which misses every `tmp_path / "x"`
+# in this suite.  This filter is the inference-independent half: it fires on any
+# call actually executed.  It only has teeth when warnings are emitted at all,
+# which needs PYTHONWARNDEFAULTENCODING=1 -- set on CI's test matrix, so local
+# runs are unaffected.  To reproduce CI:
+#   PYTHONWARNDEFAULTENCODING=1 uv run pytest
+filterwarnings = ["error::EncodingWarning"]
 
 # ── Ruff (linter + formatter) ────────────────────────────────────────────────
 [tool.ruff]
@@ -59,6 +69,14 @@ line-length = 100
 exclude = ["amaranth-boards/", "boards/"]
 
 [tool.ruff.lint]
+# PLW1514 is still a preview rule, so preview mode has to be on to select it.
+# `explicit-preview-rules` keeps that from being a blank cheque: only preview
+# rules named in `select` below activate, so turning this on does not silently
+# enrol the repo in every other preview rule (6 unrelated ones fire without it).
+# Scoped to [lint] rather than [tool.ruff] so the *formatter* stays on stable
+# style and this cannot reflow code.
+preview = true
+explicit-preview-rules = true
 select = [
     "E", "W",   # pycodestyle
     "F",        # pyflakes
@@ -68,6 +86,7 @@ select = [
     "B",        # flake8-bugbear – common bugs
     "ANN",      # missing type annotations
     "D",        # pydocstyle – docstring conventions
+    "PLW1514",  # unspecified-encoding – see EncodingWarning note under [tool.pytest]
 ]
 ignore = [
     "D203",     # conflicts with D211 (no-blank-line-before-class)

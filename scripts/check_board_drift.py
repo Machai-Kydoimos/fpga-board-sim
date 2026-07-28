@@ -42,7 +42,7 @@ def read_pins() -> dict[str, str]:
     pins: dict[str, str] = {}
     for _script, subdir in SOURCES:
         meta_path = BOARDS_DIR / subdir / "_sync_metadata.json"
-        with meta_path.open() as f:
+        with meta_path.open(encoding="utf-8") as f:
             pins[subdir] = json.load(f)["source_commit"]
     return pins
 
@@ -55,6 +55,8 @@ def _boards_tree_status() -> str:
         capture_output=True,
         text=True,
         check=True,
+        encoding="utf-8",
+        errors="replace",
     )
     return out.stdout.strip()
 

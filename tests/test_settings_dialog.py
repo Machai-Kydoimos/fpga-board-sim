@@ -122,12 +122,12 @@ class TestActions:
 
     def test_reset_speed_noop_when_already_default(self, screen, session_file):
         update_session(speed_factor=SPEED_DEFAULT)
-        before = session_file.read_text()
+        before = session_file.read_text(encoding="utf-8")
         dlg = SettingsDialog(screen)
         dlg._draw()
         assert dlg._reset_rect is not None
         dlg._click(dlg._reset_rect.center)
-        assert session_file.read_text() == before
+        assert session_file.read_text(encoding="utf-8") == before
 
     def test_clear_recent_empties_list(self, screen, session_file):
         update_session(recent=[{"board_class": "B", "board_source": "s", "vhdl_path": "a.vhd"}])
@@ -172,7 +172,8 @@ class TestActions:
 
     def test_actions_preserve_other_session_keys(self, screen, session_file):
         session_file.write_text(
-            json.dumps({"board_class": "KeepMe", "speed_factor": 5.0, "recent": [{"a": 1}]})
+            json.dumps({"board_class": "KeepMe", "speed_factor": 5.0, "recent": [{"a": 1}]}),
+            encoding="utf-8",
         )
         dlg = SettingsDialog(screen)
         dlg._draw()

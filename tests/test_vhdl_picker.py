@@ -19,9 +19,9 @@ def screen(headless_pygame):
 def workdir(tmp_path):
     """A directory with one subdir, two VHDL files, and a non-VHDL file."""
     (tmp_path / "sub").mkdir()
-    (tmp_path / "a.vhd").write_text("-- a\n")
-    (tmp_path / "b.vhdl").write_text("-- b\n")
-    (tmp_path / "ignore.txt").write_text("nope\n")
+    (tmp_path / "a.vhd").write_text("-- a\n", encoding="utf-8")
+    (tmp_path / "b.vhdl").write_text("-- b\n", encoding="utf-8")
+    (tmp_path / "ignore.txt").write_text("nope\n", encoding="utf-8")
     return tmp_path
 
 

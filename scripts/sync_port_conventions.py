@@ -565,7 +565,7 @@ def process_board(
         if not board_path.exists():
             file_skips[rel_path] = "board JSON not found"
             continue
-        with board_path.open() as f:
+        with board_path.open(encoding="utf-8") as f:
             board_json = json.load(f)
         mismatch = cross_check_widths(convention, board_json)
         if mismatch:
@@ -718,7 +718,7 @@ def write_results(
     for result in results:
         for rel_path, new_sub_keys in result.convention_by_file.items():
             board_path = BOARDS_DIR / rel_path
-            board_json = per_file.get(rel_path) or json.load(board_path.open())
+            board_json = per_file.get(rel_path) or json.load(board_path.open(encoding="utf-8"))
             existing = board_json.get("port_conventions") or {}
             # Preserve the on-disk retrieval date for any sub-key whose content is
             # otherwise identical, so a no-op re-sync doesn't churn the timestamp.
@@ -788,7 +788,7 @@ def digilent_sibling_results(
         if not src_path.is_file():
             results.append(BoardResult(name, skipped=f"source {sources[0]} missing"))
             continue
-        with src_path.open() as f:
+        with src_path.open(encoding="utf-8") as f:
             block = (json.load(f).get("port_conventions") or {}).get("digilent")
         if not isinstance(block, dict):
             results.append(BoardResult(name, skipped="no digilent block on the source board"))
@@ -813,7 +813,7 @@ def digilent_sibling_results(
             if not tgt_path.is_file():
                 skips[rel] = "target file missing"
                 continue
-            with tgt_path.open() as f:
+            with tgt_path.open(encoding="utf-8") as f:
                 board = json.load(f)
             mismatch = cross_check_widths(block, board)
             if mismatch is not None:
@@ -841,7 +841,7 @@ def registry_sourced_blocks() -> set[tuple[str, str]]:
         if path.name.startswith("_") or "schema" in path.parts:
             continue
         try:
-            board = json.loads(path.read_text())
+            board = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
         rel = path.relative_to(BOARDS_DIR).as_posix()
@@ -945,7 +945,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.check:
         drifted = []
         for rel_path, merged in write_results(results, dry_run=True).items():
-            with (BOARDS_DIR / rel_path).open() as f:
+            with (BOARDS_DIR / rel_path).open(encoding="utf-8") as f:
                 on_disk = json.load(f)
             if merged != on_disk:
                 drifted.append(rel_path)

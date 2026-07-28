@@ -67,7 +67,7 @@ def _load_meta(csv_path: Path) -> dict[str, Any]:
         # Fallback: same stem, .meta.json extension
         meta_path = csv_path.with_name(csv_path.stem + ".meta.json")
     try:
-        return json.loads(meta_path.read_text()) if meta_path.exists() else {}
+        return json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
     except (json.JSONDecodeError, OSError):
         return {}
 
@@ -75,7 +75,7 @@ def _load_meta(csv_path: Path) -> dict[str, Any]:
 def analyze(path: Path) -> None:  # noqa: PLR0912, PLR0915
     """Load *path* and print a full performance report."""
     rows: list[dict[str, float]] = []
-    with path.open(newline="") as f:
+    with path.open(encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f):
             rows.append({str(k): float(v) for k, v in row.items()})
 

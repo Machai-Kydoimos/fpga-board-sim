@@ -95,6 +95,8 @@ def _simulator_version(sim_name: str) -> str:
             capture_output=True,
             text=True,
             timeout=5,
+            encoding="utf-8",
+            errors="replace",
         )
         return (result.stdout or result.stderr).splitlines()[0].strip()
     except Exception:  # noqa: BLE001 - best-effort metadata only
@@ -182,7 +184,7 @@ def _write_meta_sidecar(
     }
 
     meta_path = str(Path(csv_path).with_suffix("")) + ".meta.json"
-    with open(meta_path, "w") as f:
+    with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2)
     print(f"[bridge] metrics metadata written to: {meta_path}")
 

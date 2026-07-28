@@ -31,7 +31,7 @@ def _board_files() -> list[str]:
 def test_no_framework_bank_contradicts_canonical_polarity() -> None:
     disagreements: list[str] = []
     for f in _board_files():
-        pc = json.loads(Path(f).read_text()).get("port_conventions")
+        pc = json.loads(Path(f).read_text(encoding="utf-8")).get("port_conventions")
         if not isinstance(pc, dict):
             continue
         canonical = [
@@ -66,12 +66,14 @@ def test_no_framework_bank_contradicts_canonical_polarity() -> None:
 def test_de0_cv_framework_led_inherits_active_high_canonical() -> None:
     # Upstream amaranth de0_cv.py marks LEDs invert=True, but the DE0-CV LEDR are
     # active-high (cited terasic canonical block); the framework bank inherits that.
-    fw = json.loads((PROJECT / "boards/amaranth-boards/de0_cv.json").read_text())
+    fw = json.loads((PROJECT / "boards/amaranth-boards/de0_cv.json").read_text(encoding="utf-8"))
     assert fw["port_conventions"]["amaranth"]["leds"].get("active_low", False) is False
 
 
 def test_tang_nano_9k_framework_led_inherits_active_low_canonical() -> None:
-    d = json.loads((PROJECT / "boards/litex-boards/sipeed_tang_nano_9k.json").read_text())
+    d = json.loads(
+        (PROJECT / "boards/litex-boards/sipeed_tang_nano_9k.json").read_text(encoding="utf-8")
+    )
     assert d["port_conventions"]["litex"]["leds"]["active_low"] is True
 
 
@@ -79,7 +81,9 @@ def test_atum_a3_nano_framework_led_inherits_active_low_canonical() -> None:
     # Agilex-family LEDs are active-low (Atum A3 Nano user manual: "driving its
     # associated pin to a 'low' logic level turn the LED 'on'"), same as its
     # DE23-Lite / DE25-Standard siblings -- the litex bank inherits that.
-    d = json.loads((PROJECT / "boards/litex-boards/terasic_atum_a3_nano.json").read_text())
+    d = json.loads(
+        (PROJECT / "boards/litex-boards/terasic_atum_a3_nano.json").read_text(encoding="utf-8")
+    )
     assert d["port_conventions"]["litex"]["leds"]["active_low"] is True
 
 
@@ -107,7 +111,9 @@ _CD_CITED_TERASIC: tuple[tuple[str, str, str, bool], ...] = (
 def test_cd_cited_terasic_canonical_facts(
     rel: str, clk: str, led_name: str, led_active_low: bool
 ) -> None:
-    block = json.loads((PROJECT / "boards" / rel).read_text())["port_conventions"]["terasic"]
+    block = json.loads((PROJECT / "boards" / rel).read_text(encoding="utf-8"))["port_conventions"][
+        "terasic"
+    ]
     assert block["clk"] == clk
     assert block["leds"]["name"] == led_name
     assert bool(block["leds"].get("active_low", False)) is led_active_low
@@ -124,7 +130,7 @@ def test_de4_switch_banks_have_opposite_polarity() -> None:
     # the switch is in the ON position, a logic 0 is selected" -- DE4 User Manual
     # Table 2-6).  `inverted` is descriptive metadata, so the generic contract still
     # presents all 12 normalized; this pins the description itself.
-    sw = json.loads((PROJECT / "boards/custom/de4.json").read_text())["switches"]
+    sw = json.loads((PROJECT / "boards/custom/de4.json").read_text(encoding="utf-8"))["switches"]
     slide = [s for s in sw if s["name"] == "switch"]
     dip = [s for s in sw if s["name"] == "dip_switch"]
     assert len(slide) == 4 and len(dip) == 8
@@ -141,7 +147,7 @@ def test_de4_button3_follows_the_qsfs_not_the_manual() -> None:
     # Terasic projects on the System CD (both golden tops + SDCARD/USB/PowerMeasure)
     # all assign PIN_AG8.  The build-verified QSFs win; see the DE4 row in
     # docs/port_convention_sources/terasic.toml.
-    btns = json.loads((PROJECT / "boards/custom/de4.json").read_text())["buttons"]
+    btns = json.loads((PROJECT / "boards/custom/de4.json").read_text(encoding="utf-8"))["buttons"]
     assert [b["pins"][0] for b in btns] == ["AH5", "AG5", "AG7", "AG8"]
 
 
@@ -156,5 +162,10 @@ def test_rgb_only_boards_ship_no_framework_convention() -> None:
         "litex-boards/modretro_chromatic.json",
         "litex-boards/efinix_titanium_ti60_f225_dev_kit.json",
     ):
-        pc = json.loads((PROJECT / "boards" / rel).read_text()).get("port_conventions") or {}
+        pc = (
+            json.loads((PROJECT / "boards" / rel).read_text(encoding="utf-8")).get(
+                "port_conventions"
+            )
+            or {}
+        )
         assert "litex" not in pc and "amaranth" not in pc, f"{rel} still has a framework block"

@@ -440,6 +440,8 @@ def _probe_simulator(path: str) -> SimulatorInfo | None:
             capture_output=True,
             text=True,
             timeout=5,
+            encoding="utf-8",
+            errors="replace",
         )
     except Exception:  # noqa: BLE001 - a missing/hung/broken binary is simply "not a simulator"
         return None
@@ -641,6 +643,8 @@ def _libpython_via_config(venv_scripts: Path) -> str:
             capture_output=True,
             text=True,
             timeout=10,
+            encoding="utf-8",
+            errors="replace",
         )
         path = result.stdout.strip()
         if result.returncode == 0 and path and Path(path).exists():
@@ -1587,7 +1591,7 @@ def check_vhdl_contract(
     path = Path(path)
     stem = path.stem.lower()
     try:
-        text = path.read_text(errors="replace")
+        text = path.read_text(encoding="utf-8", errors="replace")
     except OSError as e:
         return ContractResult(False, f"Cannot read file: {e}")
 
@@ -1776,7 +1780,9 @@ def _duty_fragment(part: str, prefix: str, count: str) -> str:
     expression, spliced verbatim into VHDL — ``48 * 8 * NUM_SEGS - 1`` parses as
     intended, so no parenthesizing is needed.
     """
-    text = (_DUTY_FRAGMENT_DIR / f"{resolve_duty_algo()}.{part}.vhd.frag").read_text()
+    text = (_DUTY_FRAGMENT_DIR / f"{resolve_duty_algo()}.{part}.vhd.frag").read_text(
+        encoding="utf-8"
+    )
     return text.format(p=prefix, n=count)
 
 
@@ -2113,7 +2119,9 @@ def _generate_wrapper(
     out = Path(work_dir) / "sim_wrapper.vhd"
     mode = resolve_duty_mode(duty)
     if match is not None:
-        out.write_text(_render_native_wrapper(toplevel, match, board_def, duty=mode))
+        out.write_text(
+            _render_native_wrapper(toplevel, match, board_def, duty=mode), encoding="utf-8"
+        )
         return out
 
     use_seg = board_def is not None and board_def.seven_seg is not None and design_has_seg
@@ -2136,7 +2144,7 @@ def _generate_wrapper(
         rgb_generic = ""
         rgb_generic_map = ""
 
-    content = _WRAPPER_TEMPLATE.read_text().format(
+    content = _WRAPPER_TEMPLATE.read_text(encoding="utf-8").format(
         toplevel=toplevel,
         seg_generic=seg_generic,
         seg_port=seg_port,
@@ -2147,7 +2155,7 @@ def _generate_wrapper(
         led_sig=led_sig,
         **splice,
     )
-    out.write_text(content)
+    out.write_text(content, encoding="utf-8")
     return out
 
 
@@ -2165,7 +2173,9 @@ def _name_bound_check_port(message: str, work_dir: str) -> str:
     if m is None:
         return message
     try:
-        wrapper_lines = (Path(work_dir) / "sim_wrapper.vhd").read_text().splitlines()
+        wrapper_lines = (
+            (Path(work_dir) / "sim_wrapper.vhd").read_text(encoding="utf-8").splitlines()
+        )
     except OSError:
         return message
     lineno = int(m.group(1))
@@ -2200,6 +2210,8 @@ def _bound_check_probe(work_dir: str) -> str | None:
             text=True,
             timeout=30,
             cwd=work_dir,
+            encoding="utf-8",
+            errors="replace",
         )
     except (OSError, subprocess.TimeoutExpired):
         return None  # cannot run it: defer to the (passed) -e result
@@ -2256,6 +2268,8 @@ def analyze_vhdl(
             capture_output=True,
             text=True,
             timeout=30,
+            encoding="utf-8",
+            errors="replace",
         )
         if result.returncode != 0:
             return False, add_error_hints(result.stderr.strip(), board_def)
@@ -2277,6 +2291,8 @@ def analyze_vhdl(
             capture_output=True,
             text=True,
             timeout=30,
+            encoding="utf-8",
+            errors="replace",
         )
         if result2.returncode != 0:
             msg = add_error_hints(result2.stderr.strip(), board_def)
@@ -2290,7 +2306,9 @@ def analyze_vhdl(
             capture_output=True,
             text=True,
             timeout=30,
-            cwd=work_dir,  # GHDL's compiled backends emit an executable here
+            cwd=work_dir,
+            encoding="utf-8",
+            errors="replace",  # GHDL's compiled backends emit an executable here
         )
         if elab.returncode != 0:
             combined = (result2.stderr + elab.stderr).strip()
@@ -2340,6 +2358,8 @@ def _build_sim_env(
         [str(venv_python), "-c", "import sys; print(sys.base_exec_prefix)"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     ).stdout.strip()
 
     be = _backend(simulator)
@@ -2568,7 +2588,7 @@ def _write_gtkw(
         f"-{top}",
         *signals,
     ]
-    gtkw_path.write_text("\n".join(lines) + "\n")
+    gtkw_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _env_flag(name: str) -> bool | None:
@@ -2757,6 +2777,8 @@ def _prepare_simulation(
         capture_output=True,
         text=True,
         cwd=work_dir,
+        encoding="utf-8",
+        errors="replace",
     )
     if elab.returncode != 0:
         raise RuntimeError(elab.stderr.strip() or f"{simulator.upper()} elaboration failed.")

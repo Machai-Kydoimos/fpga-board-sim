@@ -164,7 +164,7 @@ def _check_keys(data: dict[str, object], allowed: frozenset[str], context: str) 
 
 def load(path: str | Path) -> SystemSpec:
     """Load and validate a SystemSpec from a TOML file."""
-    data = tomllib.loads(Path(path).read_text())
+    data = tomllib.loads(Path(path).read_text(encoding="utf-8"))
     _check_keys(data, _TOP_LEVEL_KEYS, "top level")
     mem = data["memory"]
     _check_keys(mem, _MEMORY_KEYS, "the 'memory' table")

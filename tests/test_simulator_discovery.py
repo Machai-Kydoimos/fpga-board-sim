@@ -154,7 +154,7 @@ def test_discover_order_and_labels(monkeypatch):
 def test_discover_dedups_by_realpath(tmp_path, monkeypatch):
     """A binary reached by two paths (symlink) appears once."""
     real = tmp_path / "ghdl_real"
-    real.write_text("#!/bin/sh\ntrue\n")
+    real.write_text("#!/bin/sh\ntrue\n", encoding="utf-8")
     link = tmp_path / "ghdl_link"
     link.symlink_to(real)
     real_rp = os.path.realpath(str(real))

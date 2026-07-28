@@ -33,6 +33,8 @@ def test_sim_testbench_no_undefined_names(ruff):
         [ruff, "check", "--select=F", str(SIM_TESTBENCH)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode == 0, (
         "ruff F-rules found issues in sim_testbench.py:\n" + result.stdout
@@ -45,6 +47,8 @@ def test_sim_testbench_full_lint(ruff):
         [ruff, "check", str(SIM_TESTBENCH)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode == 0, "ruff found issues in sim_testbench.py:\n" + result.stdout
 
@@ -66,7 +70,13 @@ def test_sim_testbench_is_pygame_free():
     )
     code = "import sim_testbench, sys; print('pygame' in sys.modules)"
     result = subprocess.run(
-        [sys.executable, "-c", code], capture_output=True, text=True, env=env, timeout=60
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=60,
+        encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip().splitlines()[-1] == "False"

@@ -8,6 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Every text read and write now names its encoding (323 call sites).**
+  Without an explicit `encoding=`, Python uses the *locale* default — UTF-8 on
+  Linux and macOS, **cp1252 on Windows** — so the same file decoded to
+  different text depending on the platform. The failure mode is worse than a
+  crash: cp1252 has a mapping for nearly every byte, so a UTF-8 em-dash
+  silently became `â€"` and the run stayed green. Only five bytes (`0x81`,
+  `0x8D`, `0x8F`, `0x90`, `0x9D`) raise at all, which is why this had surfaced
+  exactly once — a `UnicodeDecodeError` on Windows CI while the registry schema
+  work above was landing — and been fixed as a one-off each time. It was latent
+  across the whole repo, including live paths: `system_spec.py` read
+  `systems/*.toml` (three carry a `§`), `sim_bridge.check_vhdl_contract` read
+  user VHDL, and `sync_port_conventions.py` read and rewrote board JSONs.
+  It also covered 67 `subprocess.run(..., text=True)` calls, which decode a
+  child process's output the same locale-dependent way — so a GHDL or NVC
+  diagnostic containing a non-ASCII character read differently on Windows.
+  Those pass `errors="replace"` as well, so a stray byte in third-party tool
+  output degrades to a replacement character instead of raising mid-simulation.
+  Two complementary guards now keep it closed, because neither suffices alone:
+  - **ruff `PLW1514`** (`unspecified-encoding`) catches new sites statically —
+    but only where it can prove the receiver is a `Path`. It found 11 of the
+    323. It sees `_WRAPPER_TEMPLATE: Path = …` and misses
+    `SESSION_FILE = Path.home() / …`; every `tmp_path / "x"` in the test suite
+    is invisible to it, and it does not inspect `subprocess` at all.
+  - **`EncodingWarning` as a test-suite error**, enabled by
+    `PYTHONWARNDEFAULTENCODING=1` on CI's 12-way OS/Python matrix, covers every
+    site a test actually executes, with no type inference involved. It rides
+    the existing test job, so it costs no additional CI time.
+
+  Verified by reverting one fixed site: ruff reported "All checks passed" while
+  the runtime guard failed 41 tests. The `subprocess` half of the problem was
+  invisible until this landed on CI — Python 3.13 is the first version to warn
+  there, so the 3.13 matrix entries failed while 3.10 passed.
+
 - **The registry TOMLs are schema-validated.** The board JSONs have been
   schema-checked since the sync pipeline was built; the registries that *feed*
   it never were. That mattered because every registry field is read with

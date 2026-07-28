@@ -73,7 +73,9 @@ def test_print_theme_list_names_labels_and_default(capsys):
 
 def _run_generator(*extra_args: str, timeout: int = 180) -> subprocess.CompletedProcess[str]:
     cmd = [sys.executable, "-m", "fpga_sim.generate_board_images", *extra_args]
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    return subprocess.run(
+        cmd, capture_output=True, text=True, timeout=timeout, encoding="utf-8", errors="replace"
+    )
 
 
 def test_list_themes_exits_cleanly():

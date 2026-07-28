@@ -83,7 +83,15 @@ def _run_rgb_suite(simulator: Simulator, backend_cls: type[_SimBackend]) -> None
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_COCOTB_TESTS}" in output, (
         f"rgb cocotb suite did not pass under {simulator.upper()}.\n"
@@ -134,6 +142,8 @@ def test_rgb_rainbow_elaborates_without_rgb_leds(ghdl):
         cwd=d,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode == 0, result.stderr
 

@@ -79,7 +79,15 @@ def test_cocotb_simulation_passes(ghdl, sim_env, work_dir):
     run_env["TOPLEVEL"] = "blinky"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
 
     # Surface cocotb result lines in pytest output
@@ -112,10 +120,18 @@ def test_ghdl_vcd_capture_produces_populated_file(ghdl, sim_env, work_dir, tmp_p
     run_env["COCOTB_TEST_MODULES"] = "test_blinky"
     run_env["TOPLEVEL"] = "blinky"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
-    result = subprocess.run(cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
 
     assert vcd.is_file(), f"VCD not written.\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
-    text = vcd.read_text()
+    text = vcd.read_text(encoding="utf-8")
     assert text.strip(), "VCD file is empty"
     assert "$var" in text  # standard VCD signal declarations
     assert "clk" in text and "led" in text  # top-level design signals captured

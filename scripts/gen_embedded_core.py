@@ -56,7 +56,7 @@ def generate_vhdl(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes) -> str:
     # The temp file is named <spec.name>.vhd so the entity==filename check passes.
     with tempfile.TemporaryDirectory() as d:
         probe = Path(d) / f"{spec.name}.vhd"
-        probe.write_text(vhdl)
+        probe.write_text(vhdl, encoding="utf-8")
         enc_ok, enc_msg = check_vhdl_encoding(probe)
         contract = check_vhdl_contract(probe)  # U21: now a ContractResult, not a tuple
         for label, ok, msg in (
@@ -99,7 +99,7 @@ def main() -> None:
 
     plugin = get_plugin(spec.cpu)
     vhdl = generate_vhdl(spec, plugin, rom_path.read_bytes())
-    out_path.write_text(vhdl)
+    out_path.write_text(vhdl, encoding="utf-8")
     print(f"wrote {out_path} ({len(vhdl.splitlines())} lines)")
 
 
