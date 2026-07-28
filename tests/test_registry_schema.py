@@ -15,11 +15,16 @@ closed for dead citations and this closes for malformed ones.
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
-import tomllib
 from check_registry_schema import LCS_DIR, PCS_DIR, check_cross_field, check_schemas, maker_files
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # pragma: no cover - exercised only on Python 3.10
+    import tomli as tomllib
 
 PROJECT = Path(__file__).resolve().parent.parent
 
@@ -56,7 +61,7 @@ def test_every_registry_file_is_covered_by_a_schema() -> None:
 def test_schema_files_are_strict(schema_path: Path) -> None:
     # additionalProperties:false is what turns a typo into an error instead of a
     # silently-ignored key, so assert it survives future edits to these schemas.
-    schema = json.loads(schema_path.read_text())
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
 
     def objects(node: object) -> list[dict[str, object]]:
         found: list[dict[str, object]] = []
@@ -78,8 +83,8 @@ def test_a_typod_key_is_rejected(tmp_path: Path) -> None:
     # The motivating case, asserted end to end rather than by inspection.
     import jsonschema
 
-    schema = json.loads((PCS_DIR / "registry.schema.json").read_text())
-    good = tomllib.loads((PCS_DIR / "terasic.toml").read_text())
+    schema = json.loads((PCS_DIR / "registry.schema.json").read_text(encoding="utf-8"))
+    good = tomllib.loads((PCS_DIR / "terasic.toml").read_text(encoding="utf-8"))
     validator = jsonschema.Draft202012Validator(schema)
     assert list(validator.iter_errors(good)) == []
 

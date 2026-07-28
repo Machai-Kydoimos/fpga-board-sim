@@ -35,7 +35,11 @@ from pathlib import Path
 from typing import Any
 
 import jsonschema
-import tomllib
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # pragma: no cover - exercised only on Python 3.10
+    import tomli as tomllib
 
 REPO = Path(__file__).parent.parent
 BOARDS_DIR = REPO / "boards"
@@ -54,7 +58,10 @@ def _load(path: Path) -> dict[str, Any]:
 
 def _validate(data: dict[str, Any], schema_path: Path, label: str) -> list[str]:
     """Return one message per schema violation, deepest-path first."""
-    validator = jsonschema.Draft202012Validator(json.loads(schema_path.read_text()))
+    # encoding is explicit everywhere here: the registries carry em-dashes and
+    # curly quotes, and Windows' locale default (cp1252) cannot decode them.
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
+    validator = jsonschema.Draft202012Validator(schema)
     out = []
     for err in sorted(validator.iter_errors(data), key=lambda e: list(e.absolute_path)):
         where = "/".join(str(p) for p in err.absolute_path) or "(root)"
