@@ -56,7 +56,9 @@ def _assemble_mx65(stem: str, scratch: Path) -> tuple[Path, list[str]]:
         ["ld65", "-C", str(cfg), "-o", str(out), str(obj)],
     ]
     for command in commands:
-        subprocess.run(command, check=True, capture_output=True, text=True)
+        subprocess.run(
+            command, check=True, capture_output=True, text=True, encoding="utf-8", errors="replace"
+        )
     return out, [" ".join(command) for command in commands]
 
 
@@ -72,7 +74,15 @@ def _assemble_t80(stem: str, scratch: Path) -> tuple[Path, list[str]]:
     local_src.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
     out = scratch / f"{stem}.bin"
     command = ["z80asm", "-b", f"-o{out.name}", local_src.name]
-    subprocess.run(command, check=True, capture_output=True, text=True, cwd=scratch)
+    subprocess.run(
+        command,
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=scratch,
+        encoding="utf-8",
+        errors="replace",
+    )
     return out, [f"(cd {scratch} && {' '.join(command)})"]
 
 

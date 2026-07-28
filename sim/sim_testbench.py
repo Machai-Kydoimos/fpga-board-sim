@@ -95,6 +95,8 @@ def _simulator_version(sim_name: str) -> str:
             capture_output=True,
             text=True,
             timeout=5,
+            encoding="utf-8",
+            errors="replace",
         )
         return (result.stdout or result.stderr).splitlines()[0].strip()
     except Exception:  # noqa: BLE001 - best-effort metadata only

@@ -440,6 +440,8 @@ def _probe_simulator(path: str) -> SimulatorInfo | None:
             capture_output=True,
             text=True,
             timeout=5,
+            encoding="utf-8",
+            errors="replace",
         )
     except Exception:  # noqa: BLE001 - a missing/hung/broken binary is simply "not a simulator"
         return None
@@ -641,6 +643,8 @@ def _libpython_via_config(venv_scripts: Path) -> str:
             capture_output=True,
             text=True,
             timeout=10,
+            encoding="utf-8",
+            errors="replace",
         )
         path = result.stdout.strip()
         if result.returncode == 0 and path and Path(path).exists():
@@ -2206,6 +2210,8 @@ def _bound_check_probe(work_dir: str) -> str | None:
             text=True,
             timeout=30,
             cwd=work_dir,
+            encoding="utf-8",
+            errors="replace",
         )
     except (OSError, subprocess.TimeoutExpired):
         return None  # cannot run it: defer to the (passed) -e result
@@ -2262,6 +2268,8 @@ def analyze_vhdl(
             capture_output=True,
             text=True,
             timeout=30,
+            encoding="utf-8",
+            errors="replace",
         )
         if result.returncode != 0:
             return False, add_error_hints(result.stderr.strip(), board_def)
@@ -2283,6 +2291,8 @@ def analyze_vhdl(
             capture_output=True,
             text=True,
             timeout=30,
+            encoding="utf-8",
+            errors="replace",
         )
         if result2.returncode != 0:
             msg = add_error_hints(result2.stderr.strip(), board_def)
@@ -2296,7 +2306,9 @@ def analyze_vhdl(
             capture_output=True,
             text=True,
             timeout=30,
-            cwd=work_dir,  # GHDL's compiled backends emit an executable here
+            cwd=work_dir,
+            encoding="utf-8",
+            errors="replace",  # GHDL's compiled backends emit an executable here
         )
         if elab.returncode != 0:
             combined = (result2.stderr + elab.stderr).strip()
@@ -2346,6 +2358,8 @@ def _build_sim_env(
         [str(venv_python), "-c", "import sys; print(sys.base_exec_prefix)"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     ).stdout.strip()
 
     be = _backend(simulator)
@@ -2763,6 +2777,8 @@ def _prepare_simulation(
         capture_output=True,
         text=True,
         cwd=work_dir,
+        encoding="utf-8",
+        errors="replace",
     )
     if elab.returncode != 0:
         raise RuntimeError(elab.stderr.strip() or f"{simulator.upper()} elaboration failed.")

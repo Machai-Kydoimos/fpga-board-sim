@@ -55,6 +55,8 @@ def _boards_tree_status() -> str:
         capture_output=True,
         text=True,
         check=True,
+        encoding="utf-8",
+        errors="replace",
     )
     return out.stdout.strip()
 

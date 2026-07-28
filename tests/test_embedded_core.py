@@ -145,6 +145,8 @@ def test_mx65_analyzes_under_ghdl(ghdl):
         _GHDLBackend.analyze_cmd(MX65, d),
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode == 0, f"GHDL analysis failed:\n{result.stderr}"
 
@@ -156,6 +158,8 @@ def test_mx65_analyzes_under_nvc(nvc):
         _NVCBackend.analyze_cmd(MX65, d),
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode == 0, f"NVC analysis failed:\n{result.stderr}"
 
@@ -203,7 +207,11 @@ def test_t80_analyzes_under_ghdl(ghdl):
     d = tempfile.mkdtemp(prefix="t80_ghdl_")
     for name in T80_FILES:
         result = subprocess.run(
-            _GHDLBackend.analyze_cmd(T80_DIR / f"{name}.vhd", d), capture_output=True, text=True
+            _GHDLBackend.analyze_cmd(T80_DIR / f"{name}.vhd", d),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         assert result.returncode == 0, f"GHDL analysis of {name} failed:\n{result.stderr}"
 
@@ -214,7 +222,11 @@ def test_t80_analyzes_under_nvc(nvc):
     d = tempfile.mkdtemp(prefix="t80_nvc_")
     for name in T80_FILES:
         result = subprocess.run(
-            _NVCBackend.analyze_cmd(T80_DIR / f"{name}.vhd", d), capture_output=True, text=True
+            _NVCBackend.analyze_cmd(T80_DIR / f"{name}.vhd", d),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         assert result.returncode == 0, f"NVC analysis of {name} failed:\n{result.stderr}"
 
@@ -268,7 +280,15 @@ def test_mx65_walking_runs_nvc(nvc):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under NVC.\n" + "\n".join(output.splitlines()[-30:])
@@ -303,7 +323,15 @@ def test_mx65_irq_runs_nvc(nvc):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under NVC (interrupt-driven design).\n"
@@ -333,7 +361,15 @@ def test_mx65_irq_runs_ghdl(ghdl):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under GHDL (interrupt-driven design).\n"
@@ -369,7 +405,15 @@ def test_t80_walking_runs_nvc(nvc):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under NVC (Z80 design).\n"
@@ -399,7 +443,15 @@ def test_t80_walking_runs_ghdl(ghdl):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under GHDL (Z80 design).\n"
@@ -427,6 +479,8 @@ def test_generator_reproduces_t80_design():
         cwd=PROJECT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert out.read_text(encoding="utf-8") == T80_SYS.read_text(encoding="utf-8"), (
         "gen_embedded_core.py output drifted from hdl/t80_walking_counter_7seg.vhd — "
@@ -467,6 +521,8 @@ def test_generator_reproduces_t80_irq_design():
         cwd=PROJECT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert out.read_text(encoding="utf-8") == T80_IRQ_SYS.read_text(encoding="utf-8"), (
         "gen_embedded_core.py output drifted from hdl/t80_irq_counter_7seg.vhd — "
@@ -502,7 +558,15 @@ def test_t80_irq_runs_nvc(nvc):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under NVC (Z80 IM 2 design).\n"
@@ -532,7 +596,15 @@ def test_t80_irq_runs_ghdl(ghdl):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under GHDL (Z80 IM 2 design).\n"
@@ -571,6 +643,8 @@ def test_generator_reproduces_t80_portio_design():
         cwd=PROJECT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert out.read_text(encoding="utf-8") == T80_PORTIO_SYS.read_text(encoding="utf-8"), (
         "gen_embedded_core.py output drifted from hdl/t80_portio_counter_7seg.vhd — "
@@ -606,7 +680,15 @@ def test_t80_portio_runs_nvc(nvc):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under NVC (Z80 port-IO design).\n"
@@ -636,7 +718,15 @@ def test_t80_portio_runs_ghdl(ghdl):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under GHDL (Z80 port-IO design).\n"
@@ -675,6 +765,8 @@ def test_generator_reproduces_t80_irq_portio_design():
         cwd=PROJECT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert out.read_text(encoding="utf-8") == T80_IRQPORTIO_SYS.read_text(encoding="utf-8"), (
         "gen_embedded_core.py output drifted from hdl/t80_irq_portio_counter_7seg.vhd — "
@@ -710,7 +802,15 @@ def test_t80_irq_portio_runs_nvc(nvc):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under NVC (Z80 capstone).\n"
@@ -740,7 +840,15 @@ def test_t80_irq_portio_runs_ghdl(ghdl):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under GHDL (Z80 capstone).\n"
@@ -770,7 +878,15 @@ def test_mx65_walking_runs_ghdl(ghdl):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WALKING_TEST_COUNT}" in output, (
         "cocotb walking suite did not pass under GHDL.\n" + "\n".join(output.splitlines()[-30:])
@@ -802,7 +918,15 @@ def test_mx65_walking_wide_board_runs_ghdl(ghdl):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_WIDE_LED_TEST_COUNT}" in output, (
         "cocotb wide-LED regression did not pass under GHDL.\n"
@@ -841,7 +965,15 @@ def test_mx65_hello_runs_nvc(nvc):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_HELLO_TEST_COUNT}" in output, (
         "cocotb hello suite did not pass under NVC.\n" + "\n".join(output.splitlines()[-30:])
@@ -870,7 +1002,15 @@ def test_mx65_hello_runs_ghdl(ghdl):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_HELLO_TEST_COUNT}" in output, (
         "cocotb hello suite did not pass under GHDL.\n" + "\n".join(output.splitlines()[-30:])
@@ -908,7 +1048,15 @@ def test_mx65_dice_runs_nvc(nvc):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_DICE_TEST_COUNT}" in output, (
         "cocotb dice suite did not pass under NVC.\n" + "\n".join(output.splitlines()[-30:])
@@ -937,7 +1085,15 @@ def test_mx65_dice_runs_ghdl(ghdl):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_DICE_TEST_COUNT}" in output, (
         "cocotb dice suite did not pass under GHDL.\n" + "\n".join(output.splitlines()[-30:])
@@ -1063,6 +1219,8 @@ def test_generator_cli_reproduces_committed_design():
         cwd=PROJECT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert out.read_text(encoding="utf-8") == MX65_SYS.read_text(encoding="utf-8"), (
         "gen_embedded_core.py output drifted from hdl/mx65_walking_counter_7seg.vhd — "
@@ -1079,6 +1237,8 @@ def test_generator_cli_short_form_infers_cpu_rom_out():
         cwd=PROJECT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert out.read_text(encoding="utf-8") == MX65_SYS.read_text(encoding="utf-8"), (
         "short-form CLI (--system + --out only) drifted from hdl/mx65_walking_counter_7seg.vhd"
@@ -1105,6 +1265,8 @@ def test_generator_reproduces_irq_design():
         cwd=PROJECT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert out.read_text(encoding="utf-8") == MX65_IRQ_SYS.read_text(encoding="utf-8"), (
         "gen_embedded_core.py output drifted from hdl/mx65_irq_counter_7seg.vhd — "
@@ -1121,6 +1283,8 @@ def test_generator_reproduces_hello_design():
         cwd=PROJECT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert out.read_text(encoding="utf-8") == MX65_HELLO_SYS.read_text(encoding="utf-8"), (
         "gen_embedded_core.py output drifted from hdl/mx65_hello_7seg.vhd — "
@@ -1137,6 +1301,8 @@ def test_generator_reproduces_dice_design():
         cwd=PROJECT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert out.read_text(encoding="utf-8") == MX65_DICE_SYS.read_text(encoding="utf-8"), (
         "gen_embedded_core.py output drifted from hdl/mx65_dice_7seg.vhd — "
@@ -1263,7 +1429,13 @@ def test_unequal_rom_ram_sizes_analyze_under_ghdl(ghdl):
     d = tempfile.mkdtemp(prefix="unequal_ghdl_")
     probe = Path(d) / f"{spec.name}.vhd"
     probe.write_text(generated, encoding="utf-8")
-    result = subprocess.run(_GHDLBackend.analyze_cmd(probe, d), capture_output=True, text=True)
+    result = subprocess.run(
+        _GHDLBackend.analyze_cmd(probe, d),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     assert result.returncode == 0, f"GHDL analysis failed:\n{result.stderr}"
 
 
@@ -1485,6 +1657,8 @@ def test_regen_script_check_mode_clean_tree():
         cwd=PROJECT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     assert result.returncode == 0, result.stdout + result.stderr
     system_count = len(list(SYSTEMS_DIR.glob("*.toml")))

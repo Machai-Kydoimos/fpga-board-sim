@@ -41,7 +41,9 @@ def test_nvc_found(nvc):
 
 def test_nvc_version(nvc):
     """NVC must report a version (sanity-check it runs at all)."""
-    result = subprocess.run([nvc, "--version"], capture_output=True, text=True)
+    result = subprocess.run(
+        [nvc, "--version"], capture_output=True, text=True, encoding="utf-8", errors="replace"
+    )
     assert result.returncode == 0
     assert "nvc" in result.stdout.lower() or "nvc" in result.stderr.lower()
 
@@ -156,7 +158,15 @@ def test_nvc_cocotb_simulation_passes(nvc, nvc_sim_env, nvc_work_dir):
     run_env["TOPLEVEL"] = "blinky"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=nvc_work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=nvc_work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
 
     for line in output.splitlines():
@@ -193,7 +203,15 @@ def test_nvc_fst_capture_produces_populated_file(nvc, nvc_sim_env, nvc_work_dir,
     run_env["COCOTB_TEST_MODULES"] = "test_blinky"
     run_env["TOPLEVEL"] = "blinky"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
-    result = subprocess.run(run_cmd, env=run_env, cwd=nvc_work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=nvc_work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
 
     assert fst.is_file(), f"FST not written.\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
     assert fst.stat().st_size > 0, "FST file is empty"
@@ -247,7 +265,15 @@ def test_nvc_dump_arrays_captures_embedded_core_memory(nvc, nvc_sim_env, tmp_pat
         # Standalone dump: drop the cocotb VHPI plugin (wrapper self-clocks), bound the run.
         cmd = [a for a in cmd if not a.startswith("--load=")]
         cmd.append("--stop-time=20us")
-        result = subprocess.run(cmd, env=env, cwd=work_dir, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd,
+            env=env,
+            cwd=work_dir,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
         assert out.is_file(), f"VCD (dump_arrays={dump_arrays}) not written.\n{result.stderr}"
         text = out.read_text(errors="ignore", encoding="utf-8")
         # NVC expands the cpu_ram memory into per-cell vars ram[0][7:0]..ram[N-1][7:0].
@@ -308,7 +334,13 @@ def test_7seg_nvc_simulation_passes(nvc, nvc_sim_env, nvc_7seg_work_dir):
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
     result = subprocess.run(
-        run_cmd, env=run_env, cwd=nvc_7seg_work_dir, capture_output=True, text=True
+        run_cmd,
+        env=run_env,
+        cwd=nvc_7seg_work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     output = result.stdout + result.stderr
 

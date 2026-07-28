@@ -1006,7 +1006,9 @@ def test_native_de25_run_inverts_leds_under_nvc(nvc: str, tmp_path: Any) -> None
         a for a in cmd if not a.startswith("--load=")
     ]  # standalone: no cocotb, wrapper self-clocks
     cmd.append("--stop-time=2us")
-    subprocess.run(cmd, env=env, cwd=work, capture_output=True, text=True)
+    subprocess.run(
+        cmd, env=env, cwd=work, capture_output=True, text=True, encoding="utf-8", errors="replace"
+    )
     assert vcd.is_file(), "no VCD produced by the standalone DE25 run"
 
     vals = _vcd_last_values(vcd.read_text(errors="ignore", encoding="utf-8"))
@@ -1084,7 +1086,16 @@ def test_native_arty_cocotb_loop_zero_extend_and_switch_xor(ghdl: str, tmp_path:
         "CLK_HALF_NS_INIT": "10",
     }
     cmd = _GHDLBackend.run_cmd("sim_wrapper", generics, plugin_lib, work)
-    proc = subprocess.run(cmd, env=env, cwd=work, capture_output=True, text=True, timeout=180)
+    proc = subprocess.run(
+        cmd,
+        env=env,
+        cwd=work,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        encoding="utf-8",
+        errors="replace",
+    )
     assert out.is_file(), (
         "cocotb module produced no output (did it run?).\n"
         f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
@@ -1159,7 +1170,16 @@ def test_native_arty_rgb_cocotb_run_packs_channels(ghdl: str, tmp_path: Any) -> 
         "CLK_HALF_NS_INIT": "10",
     }
     cmd = _GHDLBackend.run_cmd("sim_wrapper", generics, plugin_lib, work)
-    proc = subprocess.run(cmd, env=env, cwd=work, capture_output=True, text=True, timeout=180)
+    proc = subprocess.run(
+        cmd,
+        env=env,
+        cwd=work,
+        capture_output=True,
+        text=True,
+        timeout=180,
+        encoding="utf-8",
+        errors="replace",
+    )
     assert out.is_file(), (
         "cocotb module produced no output (did it run?).\n"
         f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"

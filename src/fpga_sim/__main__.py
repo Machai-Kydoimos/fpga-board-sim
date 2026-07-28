@@ -483,7 +483,14 @@ def _list_sims() -> int:
 def _probe_diagnostic(path: str) -> str:
     """Best-effort ``--version`` text of a rejected --add-sim path, for the error."""
     try:
-        result = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=5)
+        result = subprocess.run(
+            [path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            encoding="utf-8",
+            errors="replace",
+        )
     except Exception:  # noqa: BLE001 - the diagnostic is best-effort
         return ""
     return (result.stdout or result.stderr).strip()

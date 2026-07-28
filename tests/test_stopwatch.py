@@ -64,7 +64,15 @@ def test_stopwatch_runs_nvc(nvc):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_STOPWATCH_TEST_COUNT}" in output, (
         "cocotb stopwatch suite did not pass under NVC.\n" + "\n".join(output.splitlines()[-30:])
@@ -93,7 +101,15 @@ def test_stopwatch_runs_ghdl(ghdl):
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_STOPWATCH_TEST_COUNT}" in output, (
         "cocotb stopwatch suite did not pass under GHDL.\n" + "\n".join(output.splitlines()[-30:])

@@ -231,12 +231,19 @@ Three conventions here; only the last one is enforced automatically:
   contains non-ASCII. Use binary mode plus an explicit decode where the payload
   genuinely isn't text; `tomllib` in particular wants `open(path, "rb")`.
 
+  **It applies to `subprocess` too.** `subprocess.run(..., text=True)` decodes
+  the child's output with the same locale default, so a GHDL or NVC diagnostic
+  containing a non-ASCII character decodes differently on Windows. Those calls
+  pass `encoding="utf-8", errors="replace"` — `errors=` deliberately included,
+  because a stray byte in third-party tool output should degrade to a
+  replacement character, not raise `UnicodeDecodeError` mid-simulation.
+
   Two independent checks enforce this, and you need both:
 
   | Check | Catches | Blind spot |
   |---|---|---|
-  | `ruff` rule `PLW1514` | statically, at every site whose receiver ruff can prove is a `Path` | anything it can't type-infer — an unannotated `tmp_path` fixture, or `SESSION_FILE = Path.home() / …`. Annotating the binding (`X: Path = …`) makes it visible |
-  | `EncodingWarning`-as-error in the test suite | every site actually executed, no inference needed | code no test exercises |
+  | `ruff` rule `PLW1514` | statically, at every site whose receiver ruff can prove is a `Path` | anything it can't type-infer — an unannotated `tmp_path` fixture, or `SESSION_FILE = Path.home() / …`. Annotating the binding (`X: Path = …`) makes it visible. Does **not** look at `subprocess` at all |
+  | `EncodingWarning`-as-error in the test suite | every site actually executed, no inference needed — including `subprocess` | code no test exercises; and `subprocess` warnings only exist on Python 3.13+, so a 3.10-only run under-reports |
 
   The runtime half only emits warnings when `PYTHONWARNDEFAULTENCODING=1` is
   set, which CI's test matrix does. To reproduce a CI failure locally:

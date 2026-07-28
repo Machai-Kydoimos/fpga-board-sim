@@ -93,7 +93,15 @@ def _run_scan_suite(toplevel: str, board_rel: str, digits: int, leds: int, sim: 
     run_env["TOPLEVEL"] = "sim_wrapper"
     run_env["PYTHONPATH"] = str(PROJECT / "sim") + os.pathsep + run_env.get("PYTHONPATH", "")
 
-    result = subprocess.run(run_cmd, env=run_env, cwd=work_dir, capture_output=True, text=True)
+    result = subprocess.run(
+        run_cmd,
+        env=run_env,
+        cwd=work_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
     output = result.stdout + result.stderr
     assert "FAIL=0" in output and f"PASS={_COCOTB_TESTS}" in output, (
         f"native scan cocotb suite did not pass for {toplevel} under {sim.upper()}.\n"

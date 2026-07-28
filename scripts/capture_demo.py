@@ -151,7 +151,9 @@ def _resolve_board(spec: str) -> Path:
 
 def _run_step(cmd: list[str], env: dict[str, str], cwd: str, what: str) -> None:
     """Run a build subprocess, raising with captured output on failure."""
-    result = subprocess.run(cmd, env=env, cwd=cwd, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd, env=env, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace"
+    )
     if result.returncode != 0:
         raise SystemExit(
             f"{what} failed (rc={result.returncode}):\n{result.stdout}\n{result.stderr}"

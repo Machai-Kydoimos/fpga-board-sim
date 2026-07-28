@@ -95,7 +95,9 @@ end architecture;
 
 def _run(cmd: list[str], cwd: Path, what: str) -> None:
     """Run a build subprocess, raising with captured output on failure."""
-    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    result = subprocess.run(
+        cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace"
+    )
     if result.returncode != 0:
         raise SystemExit(
             f"{what} failed (rc={result.returncode}):\n{result.stdout}\n{result.stderr}"
