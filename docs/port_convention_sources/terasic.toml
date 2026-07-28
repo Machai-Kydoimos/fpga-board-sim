@@ -667,7 +667,7 @@ notes = "Cyclone IV E (EP4CE115F29C7) on DE2-115 base + multimedia extensions. R
   evidence = ["18 red and 9 green LEDs"]
 
   [[board.source]]
-  rank = 2
+  rank = 3
   kind = "community"
   format = "HTML"
   url = "https://www.terasic.com.tw/cgi-bin/page/archive.pl?Language=English&CategoryNo=165&No=1020&PartNo=4"
@@ -727,7 +727,7 @@ notes = "Cyclone V SoC (5CSXFC6D6F31C8ES -- an engineering-sample variant of the
   notes = "Recorded as a deliberate negative result: this manual covers display-module assembly and demo software only. Do not re-search it for pin or polarity data."
 
   [[board.source]]
-  rank = 2
+  rank = 3
   kind = "vendor-official"
   format = "PDF"
   url = "https://www.mouser.com/pdfdocs/Terasic_VEEKMT_User_manual.pdf"

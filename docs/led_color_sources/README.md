@@ -55,3 +55,13 @@ outranks an inferred one.
 with its registry colors (no network needed). The same application also runs
 inside `sync_common.write_outputs`, so a board re-sync (amaranth/litex/digilent)
 re-applies colors rather than dropping them.
+
+## Validation
+
+`registry.schema.json` describes this file's shape, enforced by
+`scripts/check_registry_schema.py` (offline; run from
+`tests/test_registry_schema.py` on every PR, and chained from
+`sync_port_conventions.py`). It also checks that every `files[]` entry resolves
+to a board JSON that exists. The schema is `additionalProperties: false`, so a
+misspelled key is an error rather than a silently ignored line — adding a field
+means updating the schema too.

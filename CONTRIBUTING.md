@@ -350,6 +350,20 @@ so a hand edit to a generated JSON will be flagged (and would be silently
 reverted by the next re-sync anyway). Route each kind of change through its
 pipeline instead:
 
+> **The registries under `docs/` are schema-validated too.** Both
+> `docs/port_convention_sources/` and `docs/led_color_sources/` have JSON
+> Schemas beside them, enforced by `scripts/check_registry_schema.py` — which
+> runs offline in the test suite and gates `sync_port_conventions.py`. Every
+> registry field is read with `.get()`, so nothing validates a key *name* at
+> load time and a typo doesn't raise: `fetchd = true` reads as not-fetched and
+> silently skips the row. The schemas are `additionalProperties: false` to make
+> that loud, which means **adding a new field means updating the schema in the
+> same PR**. Run it directly for a fast answer while editing:
+>
+> ```bash
+> uv run python scripts/check_registry_schema.py
+> ```
+
 - **A new board** → add a JSON file under `boards/custom/` following
   `boards/schema/board.schema.json`. Never fork a generated board into
   `custom/` to tweak it — that leaves an un-removable, auto-regenerated
@@ -365,7 +379,9 @@ pipeline instead:
   (`docs/port_convention_sources/*.toml` + `overlay.toml`) — the re-sync
   merge preserves canonical blocks per sub-key. Polarity and display styles
   are **cited data** (reference-manual prose, schematics); follow the
-  verify-or-omit convention visible throughout the registries.
+  verify-or-omit convention visible throughout the registries. Keep source
+  `rank`s consecutive from 1: replacing a rank-1 source without renumbering the
+  ones below it is the easy mistake, and the validator fails on it.
 - **A parser/classifier fix** (the generated data is *wrong*) → fix the parser
   under `scripts/`, re-sync at the recorded pin
   (`GITHUB_TOKEN=$(gh auth token) uv run python scripts/sync_digilent_xdc.py
