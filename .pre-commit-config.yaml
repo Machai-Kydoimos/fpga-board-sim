@@ -49,3 +49,31 @@ repos:
         entry: uv run rumdl check --fix
         language: system
         types: [markdown]
+      # Text I/O with no explicit encoding decodes via the locale default —
+      # cp1252 on Windows — so the same file yields different text per platform,
+      # usually as silent mojibake rather than an error. Ruff's PLW1514 (in the
+      # `select` list) covers this too, but only where it can prove the receiver
+      # is a Path: 11 of the 323 sites the repo actually had. It cannot see
+      # `SESSION_FILE = Path.home() / ...`, cannot see an unannotated `tmp_path`
+      # fixture, and does not inspect subprocess at all. This hook matches on
+      # names instead of inferred types to cover the rest. It is the fast local
+      # path only — `tests/test_check_encoding.py::test_repo_is_clean` is what
+      # enforces it in CI, since CI runs the lint tools directly, not pre-commit.
+      - id: check-encoding
+        name: check-encoding
+        entry: uv run python scripts/check_encoding.py
+        language: system
+        types_or: [python, pyi]
+      # The registry TOMLs gained JSON Schemas in #346, but every hook above is
+      # scoped to python/pyi/markdown — so a TOML edit ran *no* hook at all and a
+      # typo waited for CI. Every registry field is read with .get(), so a
+      # misspelled key never raises: `fetchd = true` reads as not-fetched and the
+      # row is silently skipped. pass_filenames is false because the script always
+      # validates the whole registry (cross-file rules: unique row names, overlay
+      # and waves entries naming real rows); `files` only decides *when* to run.
+      - id: check-registry-schema
+        name: check-registry-schema
+        entry: uv run python scripts/check_registry_schema.py
+        language: system
+        files: ^docs/(port_convention_sources|led_color_sources)/.*\.(toml|json)$
+        pass_filenames: false
