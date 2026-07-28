@@ -49,6 +49,7 @@ if sys.version_info >= (3, 11):
 else:  # pragma: no cover - exercised only on Python 3.10
     import tomli as tomllib
 
+from check_registry_schema import check_cross_field, check_schemas
 from framework_conventions import reconcile_framework_polarity
 from port_convention_parsers import boardstore_xml, ccf, classify, cst, lpf, pcf, qsf, ucf, xdc
 from port_convention_parsers.types import PortTable
@@ -888,6 +889,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--board", help="Process a single board by its registry row name.")
     args = parser.parse_args(argv)
+
+    # Validate the registry before reading a single field from it. Every field
+    # below is read with .get(), so a typo'd key does not raise -- it reads as
+    # absent and quietly changes what this run does (a misspelled `fetched`
+    # skips the row; a misspelled `status` never verifies). Failing here keeps
+    # a malformed registry from producing a confidently wrong green run, and
+    # costs nothing: it is offline and reads 23 small files.
+    if registry_errors := check_schemas() + check_cross_field():
+        print(f"Registry schema check FAILED ({len(registry_errors)} issue(s)):")
+        for err in registry_errors:
+            print(f"  - {err}")
+        print("\nFix the registry before generating; every field below is read with .get(),")
+        print("so an invalid one changes this run's behavior silently rather than loudly.")
+        return 1
 
     results = generate_boards(board_filter=args.board)
     results += digilent_sibling_results(load_registry(), board_filter=args.board)

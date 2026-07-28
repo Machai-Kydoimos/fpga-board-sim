@@ -8,6 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The registry TOMLs are schema-validated.** The board JSONs have been
+  schema-checked since the sync pipeline was built; the registries that *feed*
+  it never were. That mattered because every registry field is read with
+  `.get()`, so nothing validated a key name and a typo didn't raise — it read
+  as absent and quietly changed what a sync run did. `fetchd = true` skips the
+  row as unfetched, `status = "verifed"` never verifies, `format = "QFS"` finds
+  no parser: the run stays green and simply does less, which is the same
+  silent-skip shape #335 closed for dead citations. Four JSON Schemas now cover
+  the two registry directories, and `scripts/check_registry_schema.py` enforces
+  them plus the cross-field rules a schema can't express — consecutive source
+  ranks, unique row names, `files[]` resolving to real board JSONs, and every
+  `overlay.toml` / `waves.toml` entry naming a real row. It runs offline in the
+  test suite and gates `sync_port_conventions.py` before it reads a field.
+  It found two real defects on its first run: two Terasic rows carried a
+  duplicate `rank = 2` (a new source had been inserted above a surviving one),
+  and nine `ice40-hobbyist` sources stored a fetch-failure reason
+  (`not-fetched`, `blocked-403`, `product-page-only`) in `retrieved`, which is
+  a date — those reasons moved to `notes`, where `fetched = false` already
+  belonged alongside them.
+
 - **Plain-LED designs no longer blur on NVC (#256).** The `COUNTER_BITS` floor
   for generic-contract designs is now per simulator engine: NVC — whose ~8×
   higher throughput after the U34 single-window speedup made a plain `blinky`

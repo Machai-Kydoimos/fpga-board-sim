@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Machai-Kydoimos/fpga-board-sim/docs/port_convention_sources/overlay.schema.json",
+  "title": "Port-convention overlay (overlay.toml)",
+  "description": "Cited per-board overrides applied by sync_port_conventions.py on top of what classify() derives from a constraint file -- polarity (which a QSF cannot express), a pinned primary clock, and vendor-canonical name restorations. Every override carries a cite; that is the whole point of the file, so cite is required everywhere.",
+  "type": "object",
+  "required": ["board"],
+  "additionalProperties": false,
+  "properties": {
+    "board": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/board" }
+    }
+  },
+  "$defs": {
+    "board": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Must match a board row's name in a per-maker registry file (checked by the validator)."
+        },
+        "clk": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pins the board's primary oscillator when classify()'s file-order fallback would pick a wrong clk-shaped name."
+        },
+        "clk_cite": { "type": "string", "minLength": 1 },
+        "leds": { "$ref": "#/$defs/bank" },
+        "buttons": { "$ref": "#/$defs/bank" },
+        "seven_seg": { "$ref": "#/$defs/bank" }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["clk"] },
+          "then": { "required": ["clk_cite"], "description": "An uncited clock override is exactly the guess this registry exists to prevent." }
+        }
+      ]
+    },
+    "bank": {
+      "type": "object",
+      "required": ["cite"],
+      "additionalProperties": false,
+      "properties": {
+        "active_low": { "type": "boolean" },
+        "digit_enable_active_low": {
+          "type": "boolean",
+          "description": "Scan-style displays only: polarity of the digit-enable (AN-style) lines, read by the native wrapper."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Restores a vendor-canonical resource name when the rank-1 source project-renamed it."
+        },
+        "width": { "type": "integer", "minimum": 1 },
+        "cite": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where this fact comes from. Never cite a board JSON in this repo -- that is circular; cite the vendor document or design that establishes it."
+        }
+      }
+    }
+  }
+}

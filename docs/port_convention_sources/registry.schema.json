@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Machai-Kydoimos/fpga-board-sim/docs/port_convention_sources/registry.schema.json",
+  "title": "Port-convention source registry (per-maker TOML)",
+  "description": "Schema for the per-maker files in docs/port_convention_sources/ (everything except overlay.toml and waves.toml, which have their own schemas). Enforced by scripts/check_registry_schema.py, which is chained from sync_port_conventions.py --check. `additionalProperties: false` is the point of this file: these rows are hand-authored, nothing validates a key name at load time, and sync_port_conventions._gate reads every field with .get() -- so a typo'd `fetchd` silently reads as not-fetched and skips the row, which is the same silent-skip failure #335 was written to close. See README.md for the prose schema.",
+  "type": "object",
+  "required": ["board"],
+  "additionalProperties": false,
+  "properties": {
+    "board": {
+      "type": "array",
+      "description": "One entry per PHYSICAL board.",
+      "items": { "$ref": "#/$defs/board" }
+    }
+  },
+  "$defs": {
+    "board": {
+      "type": "object",
+      "required": ["name", "files", "maker", "status", "notes"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Display name; matches the board JSON's name. Unique across the whole registry."
+        },
+        "files": {
+          "type": "array",
+          "description": "Every boards/ JSON this row applies to, as a path relative to boards/.",
+          "items": { "type": "string", "pattern": "^[^/]+/.+\\.json$" }
+        },
+        "maker": { "type": "string", "minLength": 1 },
+        "status": {
+          "enum": ["verified", "candidate", "none-found", "not-attempted"],
+          "description": "verified = at least one fetched source plausibly for this exact board; candidate = a real lead not fetch-verified; none-found = no lead located (queries listed in notes); not-attempted = not yet researched."
+        },
+        "notes": {
+          "type": "string",
+          "description": "History + caveats; for none-found, the queries tried."
+        },
+        "source": {
+          "type": "array",
+          "description": "Ranked pointers, rank 1 = most authoritative. Absent for none-found / not-attempted rows.",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/source" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "verified" } }, "required": ["status"] },
+          "then": {
+            "required": ["source"],
+            "description": "A verified row must point at something; otherwise nothing was verified."
+          }
+        }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "rank",
+        "kind",
+        "format",
+        "url",
+        "fetched",
+        "retrieved",
+        "license",
+        "device_evidence",
+        "clk",
+        "leds"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "rank": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1 = most authoritative. Ranks must be consecutive from 1 within a board (checked by the validator, not expressible here)."
+        },
+        "kind": {
+          "enum": [
+            "vendor-official",
+            "official-repo",
+            "community",
+            "personal",
+            "vendor-manual"
+          ],
+          "description": "Trust tier, descending. vendor-manual marks documentation that authoritatively answers polarity/pin questions without being a constraint file."
+        },
+        "format": {
+          "enum": [
+            "QSF", "SDC", "TCL", "XDC", "UCF", "PCF", "LPF", "PDC", "CST",
+            "CCF", "ISF", "XML", "ACF", "CSV", "PDF", "HTML", "MD", "REPO", "OTHER"
+          ],
+          "description": "Only the constraint-file formats with a parser under scripts/port_convention_parsers/ can generate a block; the rest make the trust gate skip the row before it attempts a fetch, which is the intended shape for an offline vendor source (a CD archive with no addressable raw URL)."
+        },
+        "url": { "type": "string", "format": "uri", "pattern": "^https?://" },
+        "fetched": {
+          "type": "boolean",
+          "description": "true ONLY if the content was actually retrieved and inspected. Load-bearing: the trust gate refuses to generate from an unfetched rank-1."
+        },
+        "retrieved": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "license": { "type": "string", "minLength": 1 },
+        "device_evidence": { "type": "string", "minLength": 1 },
+        "clk": { "type": "string", "minLength": 1 },
+        "leds": { "type": "string", "minLength": 1 },
+        "leds_rgb": { "type": "string" },
+        "buttons": { "type": "string" },
+        "switches": { "type": "string" },
+        "seven_seg": { "type": "string" },
+        "active_low": { "type": "string" },
+        "evidence": {
+          "type": "array",
+          "description": "Strings matched VERBATIM against the fetched source -- quote the source's own bytes, never a translation (see README).",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "naming": {
+          "enum": ["canonical"],
+          "description": "Vouches that a community-hosted source nevertheless uses vendor-canonical port names, which lets the trust gate accept it."
+        },
+        "naming_cite": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["naming"] },
+          "then": {
+            "required": ["naming_cite"],
+            "description": "A canonical-naming vouch must say how it was established -- it unlocks the trust gate."
+          }
+        }
+      ]
+    }
+  }
+}

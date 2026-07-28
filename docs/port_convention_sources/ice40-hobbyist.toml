@@ -75,7 +75,8 @@ notes = "iCEBreaker v1.0 \u2014 iCE40UP5K SG48; active-low naming convention (_N
   format = "PCF"
   url = "https://github.com/projf/projf-explore/blob/main/graphics/fpga-graphics/ice40/icebreaker.pcf"
   fetched = false
-  retrieved = "not-fetched"
+  retrieved = "2026-07-11"
+  notes = "Listed but not retrieved during the 2026-07-11 curation batch; `fetched = false` carries that. (Reason moved out of `retrieved`, which is a date, 2026-07-28.)"
   license = "unknown"
   device_evidence = "Project F community graphics examples targeting icebreaker; alternative constraint source"
   clk = "CLK"
@@ -133,7 +134,8 @@ notes = "Lattice iCEstick Evaluation Kit \u2014 iCE40HX1K TQ144; 5 LEDs (4 red +
   format = "PDF"
   url = "https://www.latticesemi.com/~/media/LatticeSemi/Documents/UserManuals/EI/icestickusermanual.pdf"
   fetched = false
-  retrieved = "blocked-403"
+  retrieved = "2026-07-11"
+  notes = "Retrieval attempted 2026-07-11 and refused with HTTP 403; `fetched = false` carries that. (Reason moved out of `retrieved`, which is a date, 2026-07-28.)"
   license = "unknown"
   device_evidence = "Official Lattice Semiconductor iCEstick user manual (EB82_01.0); authoritative but fetched blocked by server"
   clk = "12 MHz oscillator (TQ144)"
@@ -174,7 +176,8 @@ notes = "TinyFPGA BX \u2014 iCE40LP8K CM81; minimal I/O on board (clock + single
   format = "PCF"
   url = "https://raw.githubusercontent.com/tinyfpga/TinyFPGA-BX/master/apio_template/pins.pcf"
   fetched = false
-  retrieved = "not-fetched"
+  retrieved = "2026-07-11"
+  notes = "Listed but not retrieved during the 2026-07-11 curation batch; `fetched = false` carries that. (Reason moved out of `retrieved`, which is a date, 2026-07-28.)"
   license = "unknown"
   device_evidence = "Official TinyFPGA BX APIO template variant of same board"
   clk = "CLK"
@@ -215,7 +218,8 @@ notes = "Lattice iCE40-HX8K Breakout Board \u2014 iCE40HX8K CT256; 8 LEDs, no bu
   format = "PDF"
   url = "https://www.fpgakey.com/uploads/files/productFamilyDoc/LATTICE/iCE40HX8K.pdf"
   fetched = false
-  retrieved = "not-fetched"
+  retrieved = "2026-07-11"
+  notes = "Listed but not retrieved during the 2026-07-11 curation batch; `fetched = false` carries that. (Reason moved out of `retrieved`, which is a date, 2026-07-28.)"
   license = "unknown"
   device_evidence = "Lattice official EVN board user guide; reference only"
   clk = "oscillator"
@@ -280,7 +284,8 @@ notes = "MuseLab iCESugar \u2014 iCE40UP5K SG48; RGB LED (3 channels), 4 DIP swi
   format = "HTML"
   url = "https://www.techrm.com/fpga-ice40up5k-ubuntu-toolchain-first-project-rgb/"
   fetched = false
-  retrieved = "not-fetched"
+  retrieved = "2026-07-11"
+  notes = "Listed but not retrieved during the 2026-07-11 curation batch; `fetched = false` carries that. (Reason moved out of `retrieved`, which is a date, 2026-07-28.)"
   license = "unknown"
   device_evidence = "Techrm blog tutorial for iCESugar RGB project; references pins 39/40/41 for RGB and pin 35 for clock"
   clk = "35"
@@ -393,7 +398,8 @@ notes = "Black Ice (original) \u2014 iCE40HX4K TQ144; variant of Black Ice II; s
   format = "PCF"
   url = "https://github.com/hackaday.io/blacksoc/blob/master/boards/ice40hx4k/blackice-board.pcf"
   fetched = false
-  retrieved = "not-fetched"
+  retrieved = "2026-07-11"
+  notes = "Listed but not retrieved during the 2026-07-11 curation batch; `fetched = false` carries that. (Reason moved out of `retrieved`, which is a date, 2026-07-28.)"
   license = "unknown"
   device_evidence = "hackaday.io blacksoc project; reference only"
   clk = "unknown"
@@ -417,7 +423,8 @@ notes = "Queries tried: 'iCE40 UP5K breakout EVN constraints pins', 'iCE40-UP5K-
   format = "PDF"
   url = "https://www.latticesemi.com/-/media/LatticeSemi/Documents/UserManuals/EI/FPGAUG0200110.ashx?document_id=51987"
   fetched = false
-  retrieved = "blocked-403"
+  retrieved = "2026-07-11"
+  notes = "Retrieval attempted 2026-07-11 and refused with HTTP 403; `fetched = false` carries that. (Reason moved out of `retrieved`, which is a date, 2026-07-28.)"
   license = "unknown"
   device_evidence = "Official Lattice Semiconductor iCE40 UltraPlus Breakout Board User Guide (FPGA-UG-02001); blocked by server"
   clk = "unknown"
@@ -441,7 +448,8 @@ notes = "Queries tried: 'iCE40 HX1K blink EVN constraints pin'. Board is obsolet
   format = "PDF"
   url = "https://www.digikey.com/en/products/detail/lattice-semiconductor-corporation/ICE40HX1K-BLINK-EVN/3198285"
   fetched = false
-  retrieved = "product-page-only"
+  retrieved = "2026-07-11"
+  notes = "Only a product page was reachable on 2026-07-11, no constraint file; `fetched = false` carries that. (Reason moved out of `retrieved`, which is a date, 2026-07-28.)"
   license = "unknown"
   device_evidence = "DigiKey product page; board is listed as obsolete/not in stock"
   clk = "unknown"
@@ -513,7 +521,8 @@ notes = "Queries tried: 'Upduino V1 constraints PCF'. Only V3.x documentation fo
   format = "REPO"
   url = "https://github.com/tinyvision-ai-inc/UPduino-v3.0"
   fetched = false
-  retrieved = "not-fetched"
+  retrieved = "2026-07-11"
+  notes = "Listed but not retrieved during the 2026-07-11 curation batch; `fetched = false` carries that. (Reason moved out of `retrieved`, which is a date, 2026-07-28.)"
   license = "unknown"
   device_evidence = "Official tinyvision-ai-inc org; only current V3.0 repo available; V1 obsolete"
   clk = "unknown"

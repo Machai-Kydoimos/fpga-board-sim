@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Machai-Kydoimos/fpga-board-sim/docs/led_color_sources/registry.schema.json",
+  "title": "LED color source registry (per-maker TOML)",
+  "description": "Cited LED colors stamped onto boards/*.json by scripts/sync_led_colors.py. Every entry quotes a fetched vendor source: the verify-or-omit rule means a color with no quotable citation is left absent, not guessed. See README.md for the prose schema.",
+  "type": "object",
+  "required": ["board"],
+  "additionalProperties": false,
+  "properties": {
+    "board": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/board" }
+    }
+  },
+  "$defs": {
+    "board": {
+      "type": "object",
+      "required": ["name", "files", "maker", "bank"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Every boards/ JSON these banks apply to, relative to boards/. A bank that matches no LED in a given file is a no-op, which is how a file carrying only one of a board's banks is handled.",
+          "items": { "type": "string", "pattern": "^[^/]+/.+\\.json$" }
+        },
+        "maker": { "type": "string", "minLength": 1 },
+        "bank": {
+          "type": "array",
+          "minItems": 1,
+          "description": "One entry per LED bank -- a consecutive same-name run in the board JSON's leds[].",
+          "items": { "$ref": "#/$defs/bank" }
+        }
+      }
+    },
+    "bank": {
+      "type": "object",
+      "required": ["match", "color", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "match": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The leds[].name this bank colors (e.g. 'led', 'led_g')."
+        },
+        "color": {
+          "description": "Mirrors the board schema's component color: a named color or #RRGGBB.",
+          "oneOf": [
+            { "enum": ["red", "green", "blue", "yellow", "orange", "amber", "white"] },
+            { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The fetched vendor source, quoted. A cited color outranks the LED-name heuristic in scripts/led_metadata.py."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Machai-Kydoimos/fpga-board-sim/docs/port_convention_sources/waves.schema.json",
+  "title": "Port-convention population waves (waves.toml)",
+  "description": "The batches sync_port_conventions.py is allowed to write. A board not listed in any wave is skipped by the trust gate even when its row is otherwise verified, so this file is the deliberate scope control on mechanical population.",
+  "type": "object",
+  "required": ["wave"],
+  "additionalProperties": false,
+  "properties": {
+    "wave": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["number", "description", "boards"],
+        "additionalProperties": false,
+        "properties": {
+          "number": { "type": "integer", "minimum": 1 },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Scope and rationale, including which listed boards are held back and why."
+          },
+          "boards": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Registry board-row names. Every entry must resolve to a real row (checked by the validator).",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}
