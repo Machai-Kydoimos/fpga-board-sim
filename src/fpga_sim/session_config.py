@@ -62,7 +62,7 @@ def load_session() -> dict[str, Any]:
     raises.
     """
     try:
-        data = json.loads(SESSION_FILE.read_text())
+        data = json.loads(SESSION_FILE.read_text(encoding="utf-8"))
         return data if isinstance(data, dict) else {}
     except (OSError, json.JSONDecodeError, ValueError):
         return {}
@@ -78,7 +78,7 @@ def update_session(**fields: object) -> None:
         SESSION_FILE.parent.mkdir(parents=True, exist_ok=True)
         data = load_session()
         data.update(fields)
-        SESSION_FILE.write_text(json.dumps(data, indent=2))
+        SESSION_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
     except OSError:
         pass
 

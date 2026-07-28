@@ -65,7 +65,7 @@ _Started = tuple["SimChild", dict[str, Any], _FakeProc]
 def start(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> Callable[..., _Started]:
     """Return a ``start(**kwargs)`` that runs start_simulation against fakes."""
     vhdl = tmp_path / "blinky.vhd"
-    vhdl.write_text("entity blinky is end;")
+    vhdl.write_text("entity blinky is end;", encoding="utf-8")
     work_dir = tmp_path / "wd"
     work_dir.mkdir()
     monkeypatch.setattr(sim_bridge, "_build_sim_env", lambda **kw: ({}, "plugin.so"))

@@ -131,7 +131,7 @@ def test_native_wrapper_bank_narrower_than_board_boundary() -> None:
     # RGB = 16, matching build_generics / the run) and the bank zero-extends onto
     # it -- board channels the convention omits stay dark.
     arty = PROJECT / "boards" / "litex-boards" / "digilent_arty.json"
-    bd = BoardDef.from_json(arty.read_text())
+    bd = BoardDef.from_json(arty.read_text(encoding="utf-8"))
     assert bd.num_led_channels == 16  # 4 mono + 3 * 4 RGB
     res = check_vhdl_contract(NATIVE / "arty_litex.vhd", board_def=bd)
     assert res.ok and res.match is not None
@@ -286,7 +286,7 @@ def test_native_wrapper_rgb_without_board_falls_back_to_bank_widths() -> None:
 def test_write_gtkw_native_rgb_scalars_are_preselected(tmp_path: Any) -> None:
     gtkw = tmp_path / "arty.gtkw"
     _write_gtkw(gtkw, tmp_path / "arty.vcd", {"NUM_LEDS": "16"}, match=_arty_rgb_match())
-    text = gtkw.read_text()
+    text = gtkw.read_text(encoding="utf-8")
     assert "sim_wrapper.uut.led0_r" in text  # unranged scalars, like names[] LEDs
     assert "sim_wrapper.uut.led3_b" in text
 
@@ -299,7 +299,7 @@ def test_write_gtkw_native_preselects_uut_ports(tmp_path: Any) -> None:
     dump = tmp_path / "de25.vcd"
     generics = {"NUM_SWITCHES": "10", "NUM_BUTTONS": "4", "NUM_LEDS": "10", "NUM_SEGS": "6"}
     _write_gtkw(gtkw, dump, generics, match=_de25_match())
-    text = gtkw.read_text()
+    text = gtkw.read_text(encoding="utf-8")
     # the design's own names (lowercased, as GHDL/NVC emit them) under uut
     assert "sim_wrapper.uut.clock0_50" in text
     assert "sim_wrapper.uut.ledr[9:0]" in text
@@ -315,7 +315,7 @@ def test_write_gtkw_generic_path_has_no_uut_paths(tmp_path: Any) -> None:
     _write_gtkw(
         gtkw, tmp_path / "b.vcd", {"NUM_SWITCHES": "4", "NUM_BUTTONS": "4", "NUM_LEDS": "4"}
     )
-    text = gtkw.read_text()
+    text = gtkw.read_text(encoding="utf-8")
     assert ".uut." not in text
     assert "sim_wrapper.sw[3:0]" in text
 
@@ -331,7 +331,7 @@ def test_write_gtkw_native_scalar_led_is_unranged(tmp_path: Any) -> None:
     )
     gtkw = tmp_path / "bx.gtkw"
     _write_gtkw(gtkw, tmp_path / "bx.vcd", {"NUM_LEDS": "1"}, match=m)
-    text = gtkw.read_text()
+    text = gtkw.read_text(encoding="utf-8")
     assert "sim_wrapper.uut.led" in text
     assert "sim_wrapper.uut.led[" not in text  # scalar -> no [msb:0] range
     assert "sim_wrapper.uut.clk16" in text
@@ -347,7 +347,7 @@ def _canonical_boards() -> list[BoardDef]:
         if "schema" in f or "_sync_metadata" in f:
             continue
         try:
-            d = json.loads(Path(f).read_text())
+            d = json.loads(Path(f).read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
         pc = d.get("port_conventions")
@@ -513,7 +513,9 @@ def test_de10_native_file_on_de25_board_is_near_miss_not_silent_run() -> None:
     # The concrete case: a DE10-Standard native file selected against a DE25 board.
     # The clock names differ (CLOCK_50 vs CLOCK0_50) so it is a near-miss, rejected
     # -- it does not silently run with DE25's active-low LED inversion applied.
-    de25 = BoardDef.from_json((PROJECT / "boards/custom/de25_standard.json").read_text())
+    de25 = BoardDef.from_json(
+        (PROJECT / "boards/custom/de25_standard.json").read_text(encoding="utf-8")
+    )
     res = check_vhdl_contract(NATIVE / "de10_standard.vhd", board_def=de25)
     assert res.ok is False
     assert res.match is None
@@ -759,7 +761,7 @@ def test_native_wrapper_ties_off_absent_input_banks() -> None:
 
 def test_partial_match_message_lists_only_declared_roles(tmp_path: Any) -> None:
     vhd = tmp_path / "led_key.vhd"
-    vhd.write_text(_LED_BTN_SRC)
+    vhd.write_text(_LED_BTN_SRC, encoding="utf-8")
     res = check_vhdl_contract(vhd, board_def=_synth_board(_LED_BTN_BLOCK))
     assert res.ok and res.match is not None
     # clk, buttons, LEDs -- no switches placeholder between clk and LEDR
@@ -775,7 +777,9 @@ def test_partial_extra_input_near_miss_message(tmp_path: Any) -> None:
         "    SW       : in  std_logic_vector(3 downto 0);\n"
         "    LEDR     : out std_logic_vector(9 downto 0)\n"
         "  );\nend entity;\n"
-        "architecture rtl of led_extra is\nbegin\n  LEDR <= (others => SW(0));\nend architecture;\n"
+        "architecture rtl of led_extra is\nbegin\n"
+        "  LEDR <= (others => SW(0));\nend architecture;\n",
+        encoding="utf-8",
     )
     res = check_vhdl_contract(vhd, board_def=_synth_board(_LED_ONLY_BLOCK))
     assert res.ok is False
@@ -799,7 +803,7 @@ def test_partial_match_gtkw_omits_absent_switch(tmp_path: Any) -> None:
     )
     gtkw = tmp_path / "p.gtkw"
     _write_gtkw(gtkw, tmp_path / "p.vcd", {"NUM_BUTTONS": "2", "NUM_LEDS": "10"}, match=m)
-    text = gtkw.read_text()
+    text = gtkw.read_text(encoding="utf-8")
     assert "sim_wrapper.uut.ledr[9:0]" in text
     assert "sim_wrapper.uut.key[1:0]" in text
     assert "uut.sw" not in text  # absent bank not preselected
@@ -808,7 +812,7 @@ def test_partial_match_gtkw_omits_absent_switch(tmp_path: Any) -> None:
 @pytest.mark.slow
 def test_partial_native_wrapper_analyzes_under_ghdl(ghdl: str, tmp_path: Any) -> None:
     vhd = tmp_path / "led_blink.vhd"
-    vhd.write_text(_LED_ONLY_SRC)
+    vhd.write_text(_LED_ONLY_SRC, encoding="utf-8")
     bd = _synth_board(_LED_ONLY_BLOCK)
     res = check_vhdl_contract(vhd, board_def=bd)
     assert res.ok and res.match is not None
@@ -821,7 +825,7 @@ def test_partial_native_wrapper_analyzes_under_ghdl(ghdl: str, tmp_path: Any) ->
 @pytest.mark.slow
 def test_partial_native_wrapper_analyzes_under_nvc(nvc: str, tmp_path: Any) -> None:
     vhd = tmp_path / "led_blink.vhd"
-    vhd.write_text(_LED_ONLY_SRC)
+    vhd.write_text(_LED_ONLY_SRC, encoding="utf-8")
     bd = _synth_board(_LED_ONLY_BLOCK)
     res = check_vhdl_contract(vhd, board_def=bd)
     assert res.ok and res.match is not None
@@ -835,14 +839,16 @@ def test_partial_native_wrapper_analyzes_under_nvc(nvc: str, tmp_path: Any) -> N
 
 
 def _tiny_fpgabx() -> BoardDef:
-    return BoardDef.from_json((PROJECT / "boards/amaranth-boards/tiny_fpgabx.json").read_text())
+    return BoardDef.from_json(
+        (PROJECT / "boards/amaranth-boards/tiny_fpgabx.json").read_text(encoding="utf-8")
+    )
 
 
 def _write_and_check(
     src: str, top: str, bd: BoardDef, tmp_path: Any
 ) -> tuple[Path, ConventionMatch]:
     vhd = tmp_path / f"{top}.vhd"
-    vhd.write_text(src)
+    vhd.write_text(src, encoding="utf-8")
     res = check_vhdl_contract(vhd, board_def=bd)
     assert res.ok and res.match is not None, f"{top} not recognized as native on {bd.name}"
     return vhd, res.match
@@ -912,7 +918,7 @@ _E2E_CASES = [
 
 
 def _load_native(top: str, rel: str) -> tuple[BoardDef, ConventionMatch]:
-    bd = BoardDef.from_json((PROJECT / "boards" / rel).read_text())
+    bd = BoardDef.from_json((PROJECT / "boards" / rel).read_text(encoding="utf-8"))
     res = check_vhdl_contract(NATIVE / f"{top}.vhd", board_def=bd)
     assert res.ok and res.match is not None, f"{top} not recognized as native on {bd.name}"
     return bd, res.match
@@ -1003,7 +1009,7 @@ def test_native_de25_run_inverts_leds_under_nvc(nvc: str, tmp_path: Any) -> None
     subprocess.run(cmd, env=env, cwd=work, capture_output=True, text=True)
     assert vcd.is_file(), "no VCD produced by the standalone DE25 run"
 
-    vals = _vcd_last_values(vcd.read_text(errors="ignore"))
+    vals = _vcd_last_values(vcd.read_text(errors="ignore", encoding="utf-8"))
     led = [p for p in vals if p == "sim_wrapper.led"]
     ledr = [p for p in vals if p.endswith("uut.ledr")]
     assert ledr, f"native uut.ledr signal absent from dump (paths: {sorted(vals)[:15]})"
@@ -1028,7 +1034,9 @@ def test_native_arty_cocotb_loop_zero_extend_and_switch_xor(ghdl: str, tmp_path:
     hand 2026-07-15; this makes the native cocotb loop a permanent regression
     guard (the rest of the suite covers native *analysis*, not a driven run).
     """
-    bd = BoardDef.from_json((PROJECT / "boards/litex-boards/digilent_arty.json").read_text())
+    bd = BoardDef.from_json(
+        (PROJECT / "boards/litex-boards/digilent_arty.json").read_text(encoding="utf-8")
+    )
     vhd = NATIVE / "arty_litex.vhd"
     res = check_vhdl_contract(vhd, board_def=bd)
     assert res.ok and res.match is not None
@@ -1060,7 +1068,8 @@ def test_native_arty_cocotb_loop_zero_extend_and_switch_xor(ghdl: str, tmp_path:
         "    await Timer(1, unit='us')\n"
         "    led5 = int(dut.led.value)\n"
         "    with open(os.environ['FPGA_SIM_F8_OUT'], 'w') as f:\n"
-        "        json.dump({'led0': led0, 'led5': led5}, f)\n"
+        "        json.dump({'led0': led0, 'led5': led5}, f)\n",
+        encoding="utf-8",
     )
 
     env, plugin_lib = _build_sim_env(simulator="ghdl")
@@ -1080,7 +1089,7 @@ def test_native_arty_cocotb_loop_zero_extend_and_switch_xor(ghdl: str, tmp_path:
         "cocotb module produced no output (did it run?).\n"
         f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
     )
-    data = json.loads(out.read_text())
+    data = json.loads(out.read_text(encoding="utf-8"))
     # Zero-extend: the 4-bit user_led bank leaves the upper 4 board LEDs dark.
     assert (data["led5"] >> 4) == 0, f"upper LED nibble not zero: {data['led5']:#010b}"
     # user_sw XORs the low nibble: setting sw=0b0101 flips exactly those bits.
@@ -1099,7 +1108,9 @@ def test_native_arty_rgb_cocotb_run_packs_channels(ghdl: str, tmp_path: Any) -> 
     (active-high bank, no inversion), while the mono nibble keeps the
     arty_litex-style `count xor sw` behavior on led(3 downto 0).
     """
-    bd = BoardDef.from_json((PROJECT / "boards/digilent-xdc/arty_a7-100.json").read_text())
+    bd = BoardDef.from_json(
+        (PROJECT / "boards/digilent-xdc/arty_a7-100.json").read_text(encoding="utf-8")
+    )
     vhd = NATIVE / "arty_rgb.vhd"
     res = check_vhdl_contract(vhd, board_def=bd)
     assert res.ok and res.match is not None and res.match.leds_rgb is not None
@@ -1132,7 +1143,8 @@ def test_native_arty_rgb_cocotb_run_packs_channels(ghdl: str, tmp_path: Any) -> 
         "    await Timer(1, unit='us')\n"
         "    led_lamp = int(dut.led.value)\n"
         "    with open(os.environ['FPGA_SIM_RGB_OUT'], 'w') as f:\n"
-        "        json.dump({'free': led_free, 'sw': led_sw, 'lamp': led_lamp}, f)\n"
+        "        json.dump({'free': led_free, 'sw': led_sw, 'lamp': led_lamp}, f)\n",
+        encoding="utf-8",
     )
 
     env, plugin_lib = _build_sim_env(simulator="ghdl")
@@ -1152,7 +1164,7 @@ def test_native_arty_rgb_cocotb_run_packs_channels(ghdl: str, tmp_path: Any) -> 
         "cocotb module produced no output (did it run?).\n"
         f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
     )
-    data = json.loads(out.read_text())
+    data = json.loads(out.read_text(encoding="utf-8"))
     # Lamp test: the twelve RGB channels occupy led(15 downto 4), all on.
     assert (data["lamp"] >> 4) == 0xFFF, f"RGB block not all-on: {data['lamp']:#018b}"
     # Mono nibble: sw=0b0101 XORs exactly those bits (arty_litex-style check).
@@ -1306,7 +1318,7 @@ def test_scan_gtkw_preselects_physical_ports(tmp_path: Any) -> None:
         {"NUM_SWITCHES": "16", "NUM_BUTTONS": "5", "NUM_LEDS": "22", "NUM_SEGS": "8"},
         match=_nexys_scan_match(),
     )
-    text = gtkw.read_text()
+    text = gtkw.read_text(encoding="utf-8")
     assert "sim_wrapper.uut.ca" in text
     assert "sim_wrapper.uut.cg" in text
     assert "sim_wrapper.uut.dp" in text
@@ -1407,7 +1419,7 @@ end architecture;
 
 
 def _real_board(rel: str) -> BoardDef:
-    return BoardDef.from_json((PROJECT / "boards" / rel).read_text())
+    return BoardDef.from_json((PROJECT / "boards" / rel).read_text(encoding="utf-8"))
 
 
 def test_scan_design_matches_real_nexys4ddr_board() -> None:
@@ -1415,7 +1427,7 @@ def test_scan_design_matches_real_nexys4ddr_board() -> None:
     bd = _real_board("digilent-xdc/nexys_4_ddr.json")
     with tempfile.TemporaryDirectory() as td:
         vhd = Path(td) / "nexys_scan.vhd"
-        vhd.write_text(_NEXYS_SCAN_SRC)
+        vhd.write_text(_NEXYS_SCAN_SRC, encoding="utf-8")
         res = check_vhdl_contract(vhd, board_def=bd)
     assert res.ok, res.message
     assert res.match is not None
@@ -1428,7 +1440,7 @@ def test_scan_design_matches_real_basys3_board() -> None:
     bd = _real_board("digilent-xdc/basys_3.json")
     with tempfile.TemporaryDirectory() as td:
         vhd = Path(td) / "basys3_scan.vhd"
-        vhd.write_text(_BASYS_SCAN_SRC)
+        vhd.write_text(_BASYS_SCAN_SRC, encoding="utf-8")
         res = check_vhdl_contract(vhd, board_def=bd)
     assert res.ok, res.message
     assert res.match is not None
@@ -1441,7 +1453,7 @@ def test_scan_design_matches_real_basys3_board() -> None:
 def test_scan_native_wrapper_analyzes_under_ghdl(ghdl: str, tmp_path: Any) -> None:
     bd = _real_board("digilent-xdc/nexys_4_ddr.json")
     vhd = tmp_path / "nexys_scan.vhd"
-    vhd.write_text(_NEXYS_SCAN_SRC)
+    vhd.write_text(_NEXYS_SCAN_SRC, encoding="utf-8")
     res = check_vhdl_contract(vhd, board_def=bd)
     assert res.ok and res.match is not None
     ok, detail = analyze_vhdl(
@@ -1454,7 +1466,7 @@ def test_scan_native_wrapper_analyzes_under_ghdl(ghdl: str, tmp_path: Any) -> No
 def test_scan_native_wrapper_analyzes_under_nvc(nvc: str, tmp_path: Any) -> None:
     bd = _real_board("digilent-xdc/basys_3.json")
     vhd = tmp_path / "basys3_scan.vhd"
-    vhd.write_text(_BASYS_SCAN_SRC)
+    vhd.write_text(_BASYS_SCAN_SRC, encoding="utf-8")
     res = check_vhdl_contract(vhd, board_def=bd)
     assert res.ok and res.match is not None
     ok, detail = analyze_vhdl(

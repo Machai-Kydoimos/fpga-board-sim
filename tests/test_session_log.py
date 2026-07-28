@@ -47,13 +47,13 @@ def test_returns_path_in_session_dir(session_dir):
 
 def test_file_is_valid_json(session_dir):
     path = _call()
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     assert isinstance(data, dict)
 
 
 def test_json_has_required_keys(session_dir):
     path = _call()
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     for key in (
         "timestamp",
         "board",
@@ -73,20 +73,20 @@ def test_json_has_required_keys(session_dir):
 
 
 def test_mode_defaults_to_generic(session_dir):
-    data = json.loads(_call().read_text())
+    data = json.loads(_call().read_text(encoding="utf-8"))
     assert data["mode"] == "generic"
     assert data["convention"] is None
 
 
 def test_native_mode_and_convention_stored(session_dir):
-    data = json.loads(_call(mode="native", convention="terasic").read_text())
+    data = json.loads(_call(mode="native", convention="terasic").read_text(encoding="utf-8"))
     assert data["mode"] == "native"
     assert data["convention"] == "terasic"
 
 
 def test_board_and_simulator_stored(session_dir):
     path = _call(board_name="Arty A7-35", simulator="nvc")
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     assert data["board"] == "Arty A7-35"
     assert data["simulator"] == "nvc"
 
@@ -99,14 +99,14 @@ def test_filename_contains_board_slug(session_dir):
 
 def test_sim_rate_is_positive(session_dir):
     path = _call(duration_s=5.0, sim_time_ns=10_000_000)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     assert data["sim_rate"] > 0.0
 
 
 def test_sim_rate_zero_duration_does_not_crash(session_dir):
     """duration_s=0 must not raise ZeroDivisionError."""
     path = _call(duration_s=0.0, sim_time_ns=0)
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     assert data["sim_rate"] == 0.0
 
 
@@ -124,7 +124,7 @@ def test_simulator_backend_and_path_recorded(session_dir):
     path = _call(
         simulator="ghdl", simulator_backend="llvm", simulator_path="/opt/ghdl-llvm/bin/ghdl"
     )
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     assert data["simulator"] == "ghdl"  # engine slug unchanged
     assert data["simulator_backend"] == "llvm"
     assert data["simulator_path"] == "/opt/ghdl-llvm/bin/ghdl"
@@ -132,6 +132,6 @@ def test_simulator_backend_and_path_recorded(session_dir):
 
 def test_simulator_backend_and_path_default_empty(session_dir):
     """Older callers that omit the U35 fields still write valid entries."""
-    data = json.loads(_call().read_text())
+    data = json.loads(_call().read_text(encoding="utf-8"))
     assert data["simulator_backend"] == ""
     assert data["simulator_path"] == ""

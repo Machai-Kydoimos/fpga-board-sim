@@ -240,7 +240,7 @@ def test_generate_wrapper_7seg_has_seg_port(tmp_path):
     out = _generate_wrapper(
         "counter_7seg", str(tmp_path), board_def=_7seg_board(), design_has_seg=True
     )
-    text = out.read_text()
+    text = out.read_text(encoding="utf-8")
     assert "seg" in text.lower()
     assert "NUM_SEGS" in text
     assert "counter_7seg" in text
@@ -249,13 +249,13 @@ def test_generate_wrapper_7seg_has_seg_port(tmp_path):
 def test_generate_wrapper_non7seg_no_seg_port(tmp_path):
     """Generated wrapper for a standard board must not contain NUM_SEGS."""
     out = _generate_wrapper("blinky", str(tmp_path), board_def=None)
-    assert "NUM_SEGS" not in out.read_text()
+    assert "NUM_SEGS" not in out.read_text(encoding="utf-8")
 
 
 def test_generate_wrapper_7seg_board_no_seg_design(tmp_path):
     """7-seg board + standard design must not inject seg ports or generics."""
     out = _generate_wrapper("blinky", str(tmp_path), board_def=_7seg_board(), design_has_seg=False)
-    assert "NUM_SEGS" not in out.read_text()
+    assert "NUM_SEGS" not in out.read_text(encoding="utf-8")
 
 
 # ── GHDL: 7-seg design analysis ───────────────────────────────────────────────
@@ -322,7 +322,7 @@ def _design(name: str, *, generics: str | None = None, ports: str | None = None)
 
 def _write(tmp_path: Path, name: str, text: str) -> Path:
     f = tmp_path / f"{name}.vhd"
-    f.write_text(text)
+    f.write_text(text, encoding="utf-8")
     return f
 
 
@@ -795,11 +795,11 @@ def test_fixed_led_width_message_spells_out_channel_math(tmp_path):
 
 def test_wrapper_includes_rgb_generic_when_design_declares_it(tmp_path):
     out = _generate_wrapper("blinky", str(tmp_path), board_def=_rgb_board(), design_has_rgb=True)
-    text = out.read_text()
+    text = out.read_text(encoding="utf-8")
     assert "NUM_RGB_LEDS     : natural  := 0;" in text
     assert "NUM_RGB_LEDS => NUM_RGB_LEDS," in text
 
 
 def test_wrapper_omits_rgb_generic_by_default(tmp_path):
     out = _generate_wrapper("blinky", str(tmp_path), board_def=_rgb_board())
-    assert "NUM_RGB_LEDS" not in out.read_text()
+    assert "NUM_RGB_LEDS" not in out.read_text(encoding="utf-8")

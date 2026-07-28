@@ -24,7 +24,7 @@ def _all_board_json_files() -> Iterator[Path]:
 
 @pytest.fixture(scope="module")
 def schema():
-    return json.loads(SCHEMA_PATH.read_text())
+    return json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
 
 
 @pytest.fixture(scope="module")
@@ -43,7 +43,7 @@ def test_board_files_exist(board_files):
 @pytest.mark.parametrize("json_file", list(_all_board_json_files()), ids=lambda p: p.stem)
 def test_board_has_required_fields(json_file):
     """Every board JSON has the required fields for BoardDef.from_json()."""
-    data = json.loads(json_file.read_text())
+    data = json.loads(json_file.read_text(encoding="utf-8"))
     assert "name" in data
     assert "class_name" in data
     assert "vendor" in data
@@ -63,7 +63,7 @@ def test_board_loads_as_boarddef(json_file):
     """Every board JSON deserializes to a valid BoardDef."""
     from fpga_sim.board_loader import BoardDef
 
-    raw = json_file.read_text()
+    raw = json_file.read_text(encoding="utf-8")
     board = BoardDef.from_json(raw)
     assert board.name
     assert board.class_name
@@ -79,7 +79,7 @@ def test_schema_validates_with_jsonschema(schema, board_files):
         pytest.skip("jsonschema not installed")
 
     for json_file in board_files:
-        data = json.loads(json_file.read_text())
+        data = json.loads(json_file.read_text(encoding="utf-8"))
         try:
             jsonschema.validate(data, schema)
         except jsonschema.ValidationError as e:

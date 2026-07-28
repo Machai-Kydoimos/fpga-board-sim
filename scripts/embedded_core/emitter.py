@@ -65,7 +65,7 @@ def _frag(name: str, *, prefix: str = "\n") -> str:
     the splice site expects; the trailing newline from the file read is
     stripped so the caller controls what follows.
     """
-    return prefix + (_TEMPLATES / "fragments" / name).read_text().rstrip("\n")
+    return prefix + (_TEMPLATES / "fragments" / name).read_text(encoding="utf-8").rstrip("\n")
 
 
 def _decode(spec: SystemSpec) -> str:
@@ -202,7 +202,7 @@ def emit(spec: SystemSpec, plugin: CpuPlugin, rom_bytes: bytes, firmware_source:
         )
 
     def block(name: str) -> str:
-        return _fill((_TEMPLATES / name).read_text(), tokens)
+        return _fill((_TEMPLATES / name).read_text(encoding="utf-8"), tokens)
 
     result = "".join(
         [

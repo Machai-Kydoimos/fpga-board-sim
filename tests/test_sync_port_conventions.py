@@ -505,7 +505,7 @@ def _board_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         "switches": [{}] * 2,
         "buttons": [{}] * 2,
     }
-    (board_dir / "test_board.json").write_text(json.dumps(board))
+    (board_dir / "test_board.json").write_text(json.dumps(board), encoding="utf-8")
     return tmp_path
 
 
@@ -571,7 +571,7 @@ def test_process_board_skips_on_width_mismatch(
     board_dir.mkdir()
     # Board JSON says only 2 LEDs; the fake QSF's classified LED width is 4.
     board = {"name": "Test Board", "leds": [{}] * 2, "switches": [{}] * 2, "buttons": [{}] * 2}
-    (board_dir / "test_board.json").write_text(json.dumps(board))
+    (board_dir / "test_board.json").write_text(json.dumps(board), encoding="utf-8")
     monkeypatch.setattr(spc, "fetch_url", lambda url, cache_dir=None: _FAKE_QSF)
     monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "abc123")
 
@@ -592,8 +592,8 @@ def test_process_board_second_files_target_independent_of_first(
     (tmp_path / "b").mkdir()
     good = {"name": "Test Board", "leds": [{}] * 4, "switches": [{}] * 2, "buttons": [{}] * 2}
     bad = {"name": "Test Board", "leds": [{}] * 1, "switches": [{}] * 2, "buttons": [{}] * 2}
-    (tmp_path / "a" / "good.json").write_text(json.dumps(good))
-    (tmp_path / "b" / "bad.json").write_text(json.dumps(bad))
+    (tmp_path / "a" / "good.json").write_text(json.dumps(good), encoding="utf-8")
+    (tmp_path / "b" / "bad.json").write_text(json.dumps(bad), encoding="utf-8")
     monkeypatch.setattr(spc, "fetch_url", lambda url, cache_dir=None: _FAKE_QSF)
     monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "abc123")
 
@@ -702,7 +702,7 @@ def test_write_results_merges_without_disturbing_sibling_keys(
         "buttons": [],
         "port_conventions": {"other_maker": {"clk": "preexisting"}},
     }
-    (board_dir / "test_board.json").write_text(json.dumps(board))
+    (board_dir / "test_board.json").write_text(json.dumps(board), encoding="utf-8")
 
     result = spc.BoardResult(
         "Test Board",
@@ -716,7 +716,7 @@ def test_write_results_merges_without_disturbing_sibling_keys(
     assert conventions["other_maker"] == {"clk": "preexisting"}
     assert conventions["test"]["clk"] == "clk"
     # dry_run=True must not touch the file on disk
-    on_disk = json.loads((board_dir / "test_board.json").read_text())
+    on_disk = json.loads((board_dir / "test_board.json").read_text(encoding="utf-8"))
     assert "test" not in on_disk.get("port_conventions", {})
 
 
@@ -791,7 +791,7 @@ def test_write_results_preserves_retrieved_for_unchanged_convention(
         "buttons": [],
         "port_conventions": {"test": _conv("2026-01-01")},
     }
-    (board_dir / "test_board.json").write_text(json.dumps(board))
+    (board_dir / "test_board.json").write_text(json.dumps(board), encoding="utf-8")
 
     # Regeneration produces the identical block but stamped with today's date.
     result = spc.BoardResult(
@@ -885,7 +885,7 @@ def test_digilent_regression(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
         ],
         "seven_seg": {"num_digits": 4, "has_dp": True, "is_multiplexed": True, "inverted": True},
     }
-    (board_dir / "basys_3.json").write_text(json.dumps(board))
+    (board_dir / "basys_3.json").write_text(json.dumps(board), encoding="utf-8")
 
     monkeypatch.setattr(spc, "fetch_url", lambda url, cache_dir=None: _BASYS3_EXCERPT)
     monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "00a3404")
@@ -986,7 +986,7 @@ def test_hand_authored_terasic_regression(monkeypatch: pytest.MonkeyPatch, tmp_p
         ],
         "seven_seg": {"num_digits": 6, "has_dp": False, "is_multiplexed": False, "inverted": True},
     }
-    (board_dir / "de10_standard.json").write_text(json.dumps(board))
+    (board_dir / "de10_standard.json").write_text(json.dumps(board), encoding="utf-8")
 
     monkeypatch.setattr(spc, "fetch_url", lambda url, cache_dir=None: _DE10_STANDARD_EXCERPT)
     monkeypatch.setattr(spc, "resolve_commit_sha", lambda repo, ref, path=None: "117be9a")
@@ -1053,7 +1053,8 @@ def test_load_waves_accumulates_across_wave_entries(
 ) -> None:
     monkeypatch.setattr(spc, "REGISTRY_DIR", tmp_path)
     (tmp_path / "waves.toml").write_text(
-        '[[wave]]\nnumber = 1\nboards = ["A", "B"]\n\n[[wave]]\nnumber = 2\nboards = ["C"]\n'
+        '[[wave]]\nnumber = 1\nboards = ["A", "B"]\n\n[[wave]]\nnumber = 2\nboards = ["C"]\n',
+        encoding="utf-8",
     )
     assert spc.load_waves() == {"A", "B", "C"}
 
@@ -1067,7 +1068,9 @@ def test_load_overlay_missing_file_returns_empty_dict(
 
 def test_load_overlay_keys_by_board_name(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(spc, "REGISTRY_DIR", tmp_path)
-    (tmp_path / "overlay.toml").write_text('[[board]]\nname = "X"\nclk = "CLK50"\n')
+    (tmp_path / "overlay.toml").write_text(
+        '[[board]]\nname = "X"\nclk = "CLK50"\n', encoding="utf-8"
+    )
     assert spc.load_overlay() == {"X": {"name": "X", "clk": "CLK50"}}
 
 
@@ -1079,8 +1082,12 @@ def test_load_registry_excludes_waves_and_overlay_toml(
     # weren't excluded by filename, their rows would masquerade as registry
     # boards with nonsense fields.
     monkeypatch.setattr(spc, "REGISTRY_DIR", tmp_path)
-    (tmp_path / "family.toml").write_text('[[board]]\nname = "Real Board"\nmaker = "Acme"\n')
-    (tmp_path / "overlay.toml").write_text('[[board]]\nname = "Not A Registry Row"\nclk = "x"\n')
+    (tmp_path / "family.toml").write_text(
+        '[[board]]\nname = "Real Board"\nmaker = "Acme"\n', encoding="utf-8"
+    )
+    (tmp_path / "overlay.toml").write_text(
+        '[[board]]\nname = "Not A Registry Row"\nclk = "x"\n', encoding="utf-8"
+    )
     registry = spc.load_registry()
     assert registry == {"Real Board": {"name": "Real Board", "maker": "Acme"}}
 
@@ -1131,7 +1138,7 @@ def _sibling_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
             }
         },
     }
-    (tmp_path / "digilent-xdc" / "arty_a7-100.json").write_text(json.dumps(src))
+    (tmp_path / "digilent-xdc" / "arty_a7-100.json").write_text(json.dumps(src), encoding="utf-8")
     sibling = {
         "name": "Arty A7-100",
         "leds": [{"name": "led", "pins": ["a"]}] * 4
@@ -1140,7 +1147,9 @@ def _sibling_setup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         "buttons": [{}] * 4,
         "port_conventions": {"amaranth": {"clk": "clk100", "naming": "framework-derived"}},
     }
-    (tmp_path / "amaranth-boards" / "arty_a7-100.json").write_text(json.dumps(sibling))
+    (tmp_path / "amaranth-boards" / "arty_a7-100.json").write_text(
+        json.dumps(sibling), encoding="utf-8"
+    )
 
 
 def _sibling_row(**overrides: Any) -> dict[str, Any]:
@@ -1187,9 +1196,9 @@ def test_sibling_transplant_gates_each_target_on_widths(
     # A sibling modeling zero buttons must be skipped, not silently overclaimed
     # (the live litex digilent_zybo_z7 case).
     sib = tmp_path / "amaranth-boards" / "arty_a7-100.json"
-    board = json.loads(sib.read_text())
+    board = json.loads(sib.read_text(encoding="utf-8"))
     board["buttons"] = []
-    sib.write_text(json.dumps(board))
+    sib.write_text(json.dumps(board), encoding="utf-8")
     r = spc.digilent_sibling_results({"Arty A7-100": _sibling_row()})[0]
     assert not r.convention_by_file
     assert "buttons width 4 exceeds" in r.file_skips["amaranth-boards/arty_a7-100.json"]
@@ -1344,7 +1353,8 @@ def test_coverage_regression_flags_a_committed_block_that_stopped_regenerating(
     board = tmp_path / "src" / "b.json"
     board.parent.mkdir(parents=True)
     board.write_text(
-        json.dumps({"port_conventions": {"vendor": {"source": {"registry_board": "B"}}}})
+        json.dumps({"port_conventions": {"vendor": {"source": {"registry_board": "B"}}}}),
+        encoding="utf-8",
     )
     monkeypatch.setattr(spc, "BOARDS_DIR", tmp_path)
 
@@ -1369,7 +1379,8 @@ def test_coverage_regression_ignores_hand_authored_blocks(
                     "hand": {"source": {"url": "u"}},
                 }
             }
-        )
+        ),
+        encoding="utf-8",
     )
     monkeypatch.setattr(spc, "BOARDS_DIR", tmp_path)
     assert spc.coverage_regressions([]) == []

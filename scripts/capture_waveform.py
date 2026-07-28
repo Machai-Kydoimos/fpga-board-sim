@@ -106,7 +106,7 @@ def simulate(vcd_out: Path) -> None:
     """Analyze/elaborate/run the hello design plus the inline testbench, writing a VCD."""
     with tempfile.TemporaryDirectory(prefix="capture_waveform_") as tmp:
         work = Path(tmp)
-        (work / "wave_tb.vhd").write_text(_TESTBENCH)
+        (work / "wave_tb.vhd").write_text(_TESTBENCH, encoding="utf-8")
         _run(["ghdl", "-a", "--std=08", str(HELLO_VHD), "wave_tb.vhd"], work, "analyze")
         _run(["ghdl", "-e", "--std=08", "wave_tb"], work, "elaborate")
         _run(
@@ -150,7 +150,7 @@ def parse_vcd(vcd_path: Path) -> tuple[dict[str, Signal], dict[str, list[Sample]
     header = True
     time_ns = 0
 
-    for raw_line in vcd_path.read_text().splitlines():
+    for raw_line in vcd_path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line:
             continue
@@ -603,7 +603,7 @@ def write_gtkw(gtkw_path: Path, vcd_hint: str) -> None:
         "wave_tb.dut.cpu_we",
         "wave_tb.dut.led[3:0]",
     ]
-    gtkw_path.write_text("\n".join(lines) + "\n")
+    gtkw_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 # --- CLI -----------------------------------------------------------------------

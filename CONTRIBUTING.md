@@ -128,6 +128,14 @@ Configured in `pyproject.toml` under `[tool.ruff]`. Enabled rule sets:
 | `B` | flake8-bugbear | Common bugs and design issues |
 | `ANN` | annotations | Missing type annotations |
 | `D` | pydocstyle | Docstring conventions |
+| `PLW1514` | pylint | Text I/O without an explicit `encoding` (see [Spelling and text encoding](#spelling-and-text-encoding)) |
+
+`PLW1514` is still a **preview** rule, so `[tool.ruff.lint]` sets
+`preview = true` to select it at all. That is paired with
+`explicit-preview-rules = true`, which limits preview mode to the preview rules
+named in `select` — without it, six unrelated preview rules activate too. Both
+live under `[lint]` rather than `[tool.ruff]` so the *formatter* stays on stable
+style. Adding another preview rule is therefore just a `select` entry.
 
 **Exemptions** (see `[tool.ruff.lint.per-file-ignores]` for the authoritative list):
 
@@ -195,7 +203,7 @@ in the comment block atop `.pre-commit-config.yaml`.
 
 ### Spelling and text encoding
 
-Three conventions the linters don't catch:
+Three conventions here; only the last one is enforced automatically:
 
 - **English (US)** — the language, not only the spelling. Board data often comes
   from Russian, Chinese, or German primary sources; translate them rather than
@@ -211,6 +219,31 @@ Three conventions the linters don't catch:
   mark or stray non-ASCII bytes in HDL source, so the launcher's
   `check_vhdl_encoding()` rejects a BOM or any byte > 127 (reporting the
   offending line) before analysis.
+- **Every text read/write in Python passes `encoding="utf-8"`.** Omit it and
+  Python uses the *locale* default — UTF-8 on Linux and macOS, but **cp1252 on
+  Windows** — so the same file yields different text per platform. cp1252
+  decodes almost any byte, so the usual outcome is not a crash but silent
+  mojibake: an em-dash becomes `â€"` and the run stays green. Only five bytes
+  (`0x81`, `0x8D`, `0x8F`, `0x90`, `0x9D`) raise, which is why this surfaces at
+  random. Applies to `open()`, `Path.open()`, `Path.read_text()`, and
+  `Path.write_text()`, in tests as much as in shipped code — the suite reads
+  real repo data (`boards/schema/board.schema.json`, the registry TOMLs) that
+  contains non-ASCII. Use binary mode plus an explicit decode where the payload
+  genuinely isn't text; `tomllib` in particular wants `open(path, "rb")`.
+
+  Two independent checks enforce this, and you need both:
+
+  | Check | Catches | Blind spot |
+  |---|---|---|
+  | `ruff` rule `PLW1514` | statically, at every site whose receiver ruff can prove is a `Path` | anything it can't type-infer — an unannotated `tmp_path` fixture, or `SESSION_FILE = Path.home() / …`. Annotating the binding (`X: Path = …`) makes it visible |
+  | `EncodingWarning`-as-error in the test suite | every site actually executed, no inference needed | code no test exercises |
+
+  The runtime half only emits warnings when `PYTHONWARNDEFAULTENCODING=1` is
+  set, which CI's test matrix does. To reproduce a CI failure locally:
+
+  ```bash
+  PYTHONWARNDEFAULTENCODING=1 uv run pytest
+  ```
 
 ---
 

@@ -121,7 +121,7 @@ class SimMetrics:
     # ── Background writer ─────────────────────────────────────────────────────
 
     def _writer(self) -> None:
-        with self._path.open("w", newline="") as f:
+        with self._path.open("w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=_FIELDS)
             writer.writeheader()
             f.flush()

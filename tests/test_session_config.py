@@ -27,13 +27,13 @@ def test_load_missing_file_returns_empty(session_file):
 
 def test_load_corrupt_json_returns_empty(session_file):
     session_file.parent.mkdir(parents=True)
-    session_file.write_text("not valid json {{{")
+    session_file.write_text("not valid json {{{", encoding="utf-8")
     assert load_session() == {}
 
 
 def test_load_empty_file_returns_empty(session_file):
     session_file.parent.mkdir(parents=True)
-    session_file.write_text("")
+    session_file.write_text("", encoding="utf-8")
     assert load_session() == {}
 
 
@@ -50,7 +50,7 @@ def test_save_creates_file(session_file):
 
 def test_save_writes_valid_json(session_file):
     save_session("MyBoard", "/some/path/blinky.vhd")
-    data = json.loads(session_file.read_text())
+    data = json.loads(session_file.read_text(encoding="utf-8"))
     assert data["board_class"] == "MyBoard"
     assert data["vhdl_path"] == "/some/path/blinky.vhd"
 
@@ -64,7 +64,9 @@ def test_roundtrip(session_file):
 
 def test_load_ignores_extra_keys(session_file):
     session_file.parent.mkdir(parents=True)
-    session_file.write_text(json.dumps({"board_class": "X", "vhdl_path": "y", "extra": 42}))
+    session_file.write_text(
+        json.dumps({"board_class": "X", "vhdl_path": "y", "extra": 42}), encoding="utf-8"
+    )
     result = load_session()
     assert result["board_class"] == "X"
     assert result["extra"] == 42  # extra keys preserved, not an error
@@ -83,13 +85,13 @@ def test_save_overwrites_previous(session_file):
 
 def test_save_default_simulator_is_ghdl(session_file):
     save_session("MyBoard", "/path/blinky.vhd")
-    data = json.loads(session_file.read_text())
+    data = json.loads(session_file.read_text(encoding="utf-8"))
     assert data["simulator"] == "ghdl"
 
 
 def test_save_nvc_simulator(session_file):
     save_session("MyBoard", "/path/blinky.vhd", simulator="nvc")
-    data = json.loads(session_file.read_text())
+    data = json.loads(session_file.read_text(encoding="utf-8"))
     assert data["simulator"] == "nvc"
 
 
@@ -123,7 +125,7 @@ def test_simulator_path_defaults_empty(session_file):
 def test_load_missing_simulator_key(session_file):
     """Old session files without 'simulator' key load without error."""
     session_file.parent.mkdir(parents=True)
-    session_file.write_text(json.dumps({"board_class": "X", "vhdl_path": "y"}))
+    session_file.write_text(json.dumps({"board_class": "X", "vhdl_path": "y"}), encoding="utf-8")
     result = load_session()
     assert "simulator" not in result  # caller supplies a default
 
@@ -134,7 +136,7 @@ def test_load_missing_simulator_key(session_file):
 def test_load_json_number_returns_empty(session_file):
     """A file containing a bare number (valid JSON, not a dict) returns {}."""
     session_file.parent.mkdir(parents=True)
-    session_file.write_text("42")
+    session_file.write_text("42", encoding="utf-8")
     # Non-dict JSON is treated as corrupt: merge-on-write needs a real dict.
     assert load_session() == {}
 
@@ -158,7 +160,7 @@ def test_save_session_does_not_raise_on_oserror(tmp_path, monkeypatch):
 
 def test_save_board_sort(session_file):
     save_session("MyBoard", "/path/b.vhd", board_sort="leds")
-    data = json.loads(session_file.read_text())
+    data = json.loads(session_file.read_text(encoding="utf-8"))
     assert data["board_sort"] == "leds"
 
 
@@ -168,7 +170,7 @@ def test_save_component_filters(session_file):
         "/path/b.vhd",
         component_filters=["has_leds", "has_7seg"],
     )
-    data = json.loads(session_file.read_text())
+    data = json.loads(session_file.read_text(encoding="utf-8"))
     assert data["component_filters"] == ["has_leds", "has_7seg"]
 
 
@@ -178,13 +180,13 @@ def test_save_vendor_filters(session_file):
         "/path/b.vhd",
         vendor_filters=["Xilinx", "Lattice"],
     )
-    data = json.loads(session_file.read_text())
+    data = json.loads(session_file.read_text(encoding="utf-8"))
     assert data["vendor_filters"] == ["Xilinx", "Lattice"]
 
 
 def test_filter_fields_default_to_empty(session_file):
     save_session("MyBoard", "/path/b.vhd")
-    data = json.loads(session_file.read_text())
+    data = json.loads(session_file.read_text(encoding="utf-8"))
     assert data["board_sort"] == ""
     assert data["component_filters"] == []
     assert data["vendor_filters"] == []
@@ -207,7 +209,9 @@ def test_filter_roundtrip(session_file):
 def test_load_old_session_without_filter_keys(session_file):
     """Old session files without filter keys load without error."""
     session_file.parent.mkdir(parents=True)
-    session_file.write_text(json.dumps({"board_class": "X", "vhdl_path": "y", "simulator": "ghdl"}))
+    session_file.write_text(
+        json.dumps({"board_class": "X", "vhdl_path": "y", "simulator": "ghdl"}), encoding="utf-8"
+    )
     result = load_session()
     assert "component_filters" not in result
     assert "vendor_filters" not in result
@@ -247,7 +251,7 @@ def test_save_without_window_size_keeps_previous(session_file):
 def test_update_session_creates_file_and_directory(session_file):
     assert not session_file.parent.exists()
     update_session(speed_factor=1.5)
-    assert json.loads(session_file.read_text()) == {"speed_factor": 1.5}
+    assert json.loads(session_file.read_text(encoding="utf-8")) == {"speed_factor": 1.5}
 
 
 def test_update_session_merges_into_existing(session_file):
@@ -261,14 +265,14 @@ def test_update_session_merges_into_existing(session_file):
 
 def test_update_session_over_corrupt_file_starts_fresh(session_file):
     session_file.parent.mkdir(parents=True)
-    session_file.write_text("not valid json {{{")
+    session_file.write_text("not valid json {{{", encoding="utf-8")
     update_session(theme="dark")
     assert load_session() == {"theme": "dark"}
 
 
 def test_update_session_over_non_dict_json_starts_fresh(session_file):
     session_file.parent.mkdir(parents=True)
-    session_file.write_text("42")
+    session_file.write_text("42", encoding="utf-8")
     update_session(theme="dark")
     assert load_session() == {"theme": "dark"}
 

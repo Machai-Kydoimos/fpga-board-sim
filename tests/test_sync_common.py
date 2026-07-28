@@ -92,7 +92,9 @@ def _boards_root(tmp_path: Path) -> Path:
     """Build a tmp boards/ layout: a schema/ dir (real schema) + return the root."""
     schema_dir = tmp_path / "schema"
     schema_dir.mkdir()
-    (schema_dir / "board.schema.json").write_text(SCHEMA_PATH.read_text(), encoding="utf-8")
+    (schema_dir / "board.schema.json").write_text(
+        SCHEMA_PATH.read_text(encoding="utf-8"), encoding="utf-8"
+    )
     return tmp_path
 
 
@@ -175,7 +177,7 @@ def test_write_outputs_first_sync_no_existing_file(tmp_path):
     out = root / "test-source"
     content = json.dumps(_valid_board(), indent=2) + "\n"
     write_outputs(out, {"board.json": content}, "abc123", "owner/repo")
-    assert (out / "board.json").read_text() == content
+    assert (out / "board.json").read_text(encoding="utf-8") == content
 
 
 def test_write_outputs_no_conventions_round_trips_byte_identical(tmp_path):
@@ -194,7 +196,7 @@ def test_write_outputs_no_conventions_round_trips_byte_identical(tmp_path):
     fresh_content = json.dumps(fresh, indent=2) + "\n"
     write_outputs(out, {"board.json": fresh_content}, "abc123", "owner/repo")
 
-    assert (out / "board.json").read_text() == fresh_content
+    assert (out / "board.json").read_text(encoding="utf-8") == fresh_content
 
 
 def test_write_outputs_preserves_existing_port_conventions(tmp_path):
@@ -212,7 +214,7 @@ def test_write_outputs_preserves_existing_port_conventions(tmp_path):
     fresh["device"] = "new-device"
     write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
 
-    written = json.loads((out / "board.json").read_text())
+    written = json.loads((out / "board.json").read_text(encoding="utf-8"))
     assert written["device"] == "new-device"  # the parser's regenerated key updates
     assert written["port_conventions"] == {"custom": {"clk": "CLK"}}  # preserved
 
@@ -239,7 +241,7 @@ def test_write_outputs_drops_framework_derived_key_the_parser_stopped_emitting(t
     fresh = _valid_board()  # parser emits no port_conventions this run
     write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo", color_registry={})
 
-    written = json.loads((out / "board.json").read_text())
+    written = json.loads((out / "board.json").read_text(encoding="utf-8"))
     assert written["port_conventions"] == {"vendor": {"clk": "CLK"}}
 
 
@@ -269,7 +271,7 @@ def test_write_outputs_framework_derived_key_reemitted_is_updated_not_dropped(tm
     }
     write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo", color_registry={})
 
-    written = json.loads((out / "board.json").read_text())
+    written = json.loads((out / "board.json").read_text(encoding="utf-8"))
     assert written["port_conventions"]["litex"]["leds"]["width"] == 1
 
 
@@ -302,15 +304,15 @@ def test_write_outputs_reconciles_framework_polarity_to_canonical(tmp_path):
     }
     write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
 
-    written = json.loads((out / "board.json").read_text())
+    written = json.loads((out / "board.json").read_text(encoding="utf-8"))
     # The framework bank inherited the canonical (active-high) truth; canonical intact.
     assert "active_low" not in written["port_conventions"]["amaranth"]["leds"]
     assert written["port_conventions"]["terasic"]["leds"] == {"name": "LEDR", "width": 10}
 
     # Idempotent: a second identical re-sync produces byte-identical output.
-    first = (out / "board.json").read_text()
+    first = (out / "board.json").read_text(encoding="utf-8")
     write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
-    assert (out / "board.json").read_text() == first
+    assert (out / "board.json").read_text(encoding="utf-8") == first
 
 
 def test_write_outputs_digilent_per_key_merge(tmp_path):
@@ -331,7 +333,7 @@ def test_write_outputs_digilent_per_key_merge(tmp_path):
     fresh["port_conventions"] = {"digilent": {"clk": "CLK_FRESH"}}
     write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
 
-    written = json.loads((out / "board.json").read_text())
+    written = json.loads((out / "board.json").read_text(encoding="utf-8"))
     assert written["port_conventions"]["digilent"] == {"clk": "CLK_FRESH"}
     assert written["port_conventions"]["terasic"] == {"clk": "CLOCK_50"}
 
@@ -347,7 +349,7 @@ def test_write_outputs_preserves_existing_peripherals(tmp_path):
 
     write_outputs(out, _jsons({"board.json": _valid_board()}), "abc123", "owner/repo")
 
-    written = json.loads((out / "board.json").read_text())
+    written = json.loads((out / "board.json").read_text(encoding="utf-8"))
     assert written["peripherals"] == [{"type": "vga", "name": "ADV7123"}]
 
 
@@ -378,7 +380,7 @@ def test_write_outputs_dry_run_preserves_without_writing(tmp_path):
 
     write_outputs(out, _jsons({"board.json": _valid_board()}), "abc123", "owner/repo", dry_run=True)
 
-    assert (out / "board.json").read_text() == original  # untouched
+    assert (out / "board.json").read_text(encoding="utf-8") == original  # untouched
 
 
 def test_write_outputs_rejects_corrupt_existing_json(tmp_path):
@@ -422,7 +424,7 @@ def test_write_outputs_tolerates_explicit_null_fresh_conventions(tmp_path):
     fresh["port_conventions"] = None
     write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
 
-    written = json.loads((out / "board.json").read_text())
+    written = json.loads((out / "board.json").read_text(encoding="utf-8"))
     assert written["port_conventions"] == {"custom": {"clk": "CLK"}}
 
 
@@ -442,7 +444,7 @@ def test_write_outputs_fresh_peripherals_wins_over_existing(tmp_path):
     fresh["peripherals"] = [{"type": "audio", "name": "NEW"}]
     write_outputs(out, _jsons({"board.json": fresh}), "abc123", "owner/repo")
 
-    written = json.loads((out / "board.json").read_text())
+    written = json.loads((out / "board.json").read_text(encoding="utf-8"))
     assert written["peripherals"] == [{"type": "audio", "name": "NEW"}]
 
 
@@ -474,7 +476,7 @@ def test_write_outputs_noop_resync_keeps_on_disk_stamp(tmp_path):
     fresh = _stamped_board("newsha", "2026-07-22T00:00:00+00:00")
     write_outputs(out, _jsons({"board.json": fresh}), "newsha", "owner/repo", color_registry={})
 
-    assert (out / "board.json").read_text() == on_disk
+    assert (out / "board.json").read_text(encoding="utf-8") == on_disk
 
 
 def test_write_outputs_real_change_takes_fresh_stamp(tmp_path):
@@ -488,7 +490,7 @@ def test_write_outputs_real_change_takes_fresh_stamp(tmp_path):
     fresh = _stamped_board("newsha", "2026-07-22T00:00:00+00:00", device="new-device")
     write_outputs(out, _jsons({"board.json": fresh}), "newsha", "owner/repo", color_registry={})
 
-    written = json.loads((out / "board.json").read_text())
+    written = json.loads((out / "board.json").read_text(encoding="utf-8"))
     assert written["device"] == "new-device"
     assert written["source"]["sync_commit"] == "newsha"
     assert written["source"]["sync_timestamp"] == "2026-07-22T00:00:00+00:00"
@@ -501,7 +503,7 @@ def test_write_outputs_first_sync_takes_fresh_stamp(tmp_path):
     fresh = _stamped_board("newsha", "2026-07-22T00:00:00+00:00")
     write_outputs(out, _jsons({"board.json": fresh}), "newsha", "owner/repo", color_registry={})
 
-    written = json.loads((out / "board.json").read_text())
+    written = json.loads((out / "board.json").read_text(encoding="utf-8"))
     assert written["source"]["sync_commit"] == "newsha"
 
 
@@ -521,7 +523,7 @@ def test_write_outputs_noop_resync_with_folded_conventions_keeps_stamp(tmp_path)
     fresh = _stamped_board("newsha", "2026-07-22T00:00:00+00:00")  # parser emits no conventions
     write_outputs(out, _jsons({"board.json": fresh}), "newsha", "owner/repo", color_registry={})
 
-    assert (out / "board.json").read_text() == on_disk
+    assert (out / "board.json").read_text(encoding="utf-8") == on_disk
 
 
 def test_write_outputs_metadata_noop_resync_keeps_timestamp(tmp_path):
@@ -531,10 +533,10 @@ def test_write_outputs_metadata_noop_resync_keeps_timestamp(tmp_path):
     out = root / "test-source"
     fresh = _stamped_board("sha1", "2026-07-22T00:00:00+00:00")
     write_outputs(out, _jsons({"board.json": fresh}), "sha1", "owner/repo", color_registry={})
-    first_meta = (out / "_sync_metadata.json").read_text()
+    first_meta = (out / "_sync_metadata.json").read_text(encoding="utf-8")
 
     write_outputs(out, _jsons({"board.json": fresh}), "sha1", "owner/repo", color_registry={})
-    assert (out / "_sync_metadata.json").read_text() == first_meta
+    assert (out / "_sync_metadata.json").read_text(encoding="utf-8") == first_meta
 
 
 def test_write_outputs_metadata_pin_bump_rewrites(tmp_path):
@@ -544,13 +546,13 @@ def test_write_outputs_metadata_pin_bump_rewrites(tmp_path):
     out = root / "test-source"
     fresh = _stamped_board("sha1", "2026-07-22T00:00:00+00:00")
     write_outputs(out, _jsons({"board.json": fresh}), "sha1", "owner/repo", color_registry={})
-    board_v1 = (out / "board.json").read_text()
+    board_v1 = (out / "board.json").read_text(encoding="utf-8")
 
     bumped = _stamped_board("sha2", "2026-07-23T00:00:00+00:00")
     write_outputs(out, _jsons({"board.json": bumped}), "sha2", "owner/repo", color_registry={})
 
-    assert (out / "board.json").read_text() == board_v1  # board: no churn
-    meta = json.loads((out / "_sync_metadata.json").read_text())
+    assert (out / "board.json").read_text(encoding="utf-8") == board_v1  # board: no churn
+    meta = json.loads((out / "_sync_metadata.json").read_text(encoding="utf-8"))
     assert meta["source_commit"] == "sha2"  # metadata: records the new pin
 
 

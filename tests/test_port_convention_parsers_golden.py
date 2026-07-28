@@ -199,7 +199,7 @@ set_property CONFIG_MODE SPIx4 [current_design]
 
 
 def _stored_convention() -> dict[str, Any]:
-    with open(BOARDS_DIR / "digilent-xdc" / "basys_3.json") as f:
+    with open(BOARDS_DIR / "digilent-xdc" / "basys_3.json", encoding="utf-8") as f:
         board = json.load(f)
     convention: dict[str, Any] = board["port_conventions"]["digilent"]
     return convention

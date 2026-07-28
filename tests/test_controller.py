@@ -264,7 +264,7 @@ def test_resolve_sim_missing_saved_path_falls_back_with_note(capsys):
 
 def test_ctor_restores_existing_vhdl_and_prefs(headless_pygame, tmp_path):
     vhdl = tmp_path / "blinky.vhd"
-    vhdl.write_text("-- design")
+    vhdl.write_text("-- design", encoding="utf-8")
     ctrl = _make_controller(
         headless_pygame,
         session={
@@ -575,7 +575,7 @@ def test_picker_cancel_keeps_existing_vhdl(headless_pygame, monkeypatch):
 
 def test_picker_first_pick_starts_at_current_vhdl(headless_pygame, monkeypatch, tmp_path):
     vhdl = tmp_path / "mine.vhd"
-    vhdl.write_text("-- design")
+    vhdl.write_text("-- design", encoding="utf-8")
     ctrl = _make_controller(headless_pygame, session={"vhdl_path": str(vhdl)})
     ctrl.on_board_selected(_board())
     _install_picker(monkeypatch, [None])
@@ -585,7 +585,7 @@ def test_picker_first_pick_starts_at_current_vhdl(headless_pygame, monkeypatch, 
 
 def test_picker_success_records_state(headless_pygame, monkeypatch, tmp_path):
     vhdl = tmp_path / "good.vhd"
-    vhdl.write_text("-- design")
+    vhdl.write_text("-- design", encoding="utf-8")
     ctrl = _make_controller(headless_pygame)
     ctrl.on_board_selected(_board())
     _install_picker(monkeypatch, [str(vhdl)])
@@ -619,7 +619,7 @@ def test_picker_validation_error_back_bails_to_selector(headless_pygame, monkeyp
 
 def test_picker_retry_reopens_at_hdl_dir(headless_pygame, monkeypatch, tmp_path):
     vhdl = tmp_path / "mine.vhd"
-    vhdl.write_text("-- design")
+    vhdl.write_text("-- design", encoding="utf-8")
     ctrl = _make_controller(headless_pygame, session={"vhdl_path": str(vhdl)})
     ctrl.on_board_selected(_board())
     _install_picker(monkeypatch, [str(vhdl), None])  # fail once, then cancel
@@ -718,7 +718,7 @@ def _attached_harness(
     ``SimulationScreen.run()`` returns (exhausted → ``SimExit.STOPPED``).
     """
     vhdl = tmp_path / "blinky.vhd"
-    vhdl.write_text("-- design")
+    vhdl.write_text("-- design", encoding="utf-8")
     ctrl = _make_controller(headless_pygame)
     ctrl.on_board_selected(_board())
     ctrl.state.vhdl_path = str(vhdl)

@@ -46,7 +46,7 @@ class CpuPlugin:
 
     def core_vhdl_text(self) -> str:
         """Return the vendored core VHDL, files concatenated leaf-first."""
-        return "\n".join(f.read_text() for f in self.core_files)
+        return "\n".join(f.read_text(encoding="utf-8") for f in self.core_files)
 
     def adapter_vhdl(self, vectored: bool = False, port: bool = False) -> str:
         """Return the normalized-bus adapter block for this core.
@@ -59,16 +59,16 @@ class CpuPlugin:
         if vectored and port:
             if self.vectored_port_adapter_file is None:
                 raise ValueError(f"core {self.name!r} has no vectored + port-IO adapter")
-            return self.vectored_port_adapter_file.read_text()
+            return self.vectored_port_adapter_file.read_text(encoding="utf-8")
         if vectored:
             if self.vectored_adapter_file is None:
                 raise ValueError(f"core {self.name!r} has no vectored-interrupt adapter")
-            return self.vectored_adapter_file.read_text()
+            return self.vectored_adapter_file.read_text(encoding="utf-8")
         if port:
             if self.port_adapter_file is None:
                 raise ValueError(f"core {self.name!r} has no port-mapped-IO adapter")
-            return self.port_adapter_file.read_text()
-        return self.adapter_file.read_text()
+            return self.port_adapter_file.read_text(encoding="utf-8")
+        return self.adapter_file.read_text(encoding="utf-8")
 
 
 MX65 = CpuPlugin(

@@ -69,7 +69,7 @@ def _assemble_t80(stem: str, scratch: Path) -> tuple[Path, list[str]]:
     """
     src = FIRMWARE / f"{stem}.asm"
     local_src = scratch / src.name
-    local_src.write_text(src.read_text())
+    local_src.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
     out = scratch / f"{stem}.bin"
     command = ["z80asm", "-b", f"-o{out.name}", local_src.name]
     subprocess.run(command, check=True, capture_output=True, text=True, cwd=scratch)
@@ -90,11 +90,11 @@ def _check_or_write(spec: SystemSpec, *, write: bool) -> tuple[str, bool]:
     rom = FIRMWARE / f"{spec.firmware}.bin"
     out_path = HDL / f"{spec.name}.vhd"
     vhdl = generate_vhdl(spec, plugin, rom.read_bytes())
-    existing = out_path.read_text() if out_path.is_file() else None
+    existing = out_path.read_text(encoding="utf-8") if out_path.is_file() else None
     if existing == vhdl:
         return "OK", True
     if write:
-        out_path.write_text(vhdl)
+        out_path.write_text(vhdl, encoding="utf-8")
         return "WRITTEN", True
     return ("MISSING" if existing is None else "DIFFERS"), False
 

@@ -249,7 +249,7 @@ def test_nvc_dump_arrays_captures_embedded_core_memory(nvc, nvc_sim_env, tmp_pat
         cmd.append("--stop-time=20us")
         result = subprocess.run(cmd, env=env, cwd=work_dir, capture_output=True, text=True)
         assert out.is_file(), f"VCD (dump_arrays={dump_arrays}) not written.\n{result.stderr}"
-        text = out.read_text(errors="ignore")
+        text = out.read_text(errors="ignore", encoding="utf-8")
         # NVC expands the cpu_ram memory into per-cell vars ram[0][7:0]..ram[N-1][7:0].
         return sum(1 for line in text.splitlines() if "$var" in line and "ram[" in line)
 

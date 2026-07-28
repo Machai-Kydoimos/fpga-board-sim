@@ -171,7 +171,7 @@ def main() -> None:
     fps = args.fps if args.fps is not None else defaults["fps"]
 
     board_json_path = _resolve_board(args.board)
-    board_def = BoardDef.from_json(board_json_path.read_text())
+    board_def = BoardDef.from_json(board_json_path.read_text(encoding="utf-8"))
     vhdl_path = args.vhdl.resolve()
     toplevel = vhdl_path.stem
     try:
@@ -180,7 +180,7 @@ def main() -> None:
         vhdl_rel = vhdl_path.name
     if args.vhdl_label is not None:
         vhdl_rel = args.vhdl_label
-    design_has_seg = _has_seg_port(vhdl_path.read_text())
+    design_has_seg = _has_seg_port(vhdl_path.read_text(encoding="utf-8"))
 
     generics: dict[str, str] = {
         "NUM_SWITCHES": str(len(board_def.switches)),
@@ -219,7 +219,7 @@ def main() -> None:
                 "COCOTB_TEST_MODULES": "capture_frames",
                 "TOPLEVEL": "sim_wrapper",
                 "TOPLEVEL_LANG": "vhdl",
-                "FPGA_SIM_BOARD_JSON": board_json_path.read_text(),
+                "FPGA_SIM_BOARD_JSON": board_json_path.read_text(encoding="utf-8"),
                 "SDL_VIDEODRIVER": "dummy",
                 "SDL_AUDIODRIVER": "dummy",
                 "CAPTURE_OUTDIR": frames_dir,

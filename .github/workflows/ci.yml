@@ -68,6 +68,13 @@ jobs:
         env:
           SDL_VIDEODRIVER: dummy
           SDL_AUDIODRIVER: dummy
+          # Emit EncodingWarning on any implicit-locale text read/write; pytest's
+          # filterwarnings (pyproject) turns those into errors.  This is the
+          # runtime half of the encoding guard whose static half is ruff PLW1514
+          # -- it catches the sites ruff cannot type-infer.  Free to run here: it
+          # rides the existing matrix, and windows-latest is the one platform
+          # whose locale default (cp1252) actually differs.
+          PYTHONWARNDEFAULTENCODING: "1"
         run: uv run pytest -m "not slow"
 
   test-linux-ghdl:

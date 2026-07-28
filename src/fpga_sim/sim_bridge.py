@@ -1587,7 +1587,7 @@ def check_vhdl_contract(
     path = Path(path)
     stem = path.stem.lower()
     try:
-        text = path.read_text(errors="replace")
+        text = path.read_text(encoding="utf-8", errors="replace")
     except OSError as e:
         return ContractResult(False, f"Cannot read file: {e}")
 
@@ -1776,7 +1776,9 @@ def _duty_fragment(part: str, prefix: str, count: str) -> str:
     expression, spliced verbatim into VHDL — ``48 * 8 * NUM_SEGS - 1`` parses as
     intended, so no parenthesizing is needed.
     """
-    text = (_DUTY_FRAGMENT_DIR / f"{resolve_duty_algo()}.{part}.vhd.frag").read_text()
+    text = (_DUTY_FRAGMENT_DIR / f"{resolve_duty_algo()}.{part}.vhd.frag").read_text(
+        encoding="utf-8"
+    )
     return text.format(p=prefix, n=count)
 
 
@@ -2113,7 +2115,9 @@ def _generate_wrapper(
     out = Path(work_dir) / "sim_wrapper.vhd"
     mode = resolve_duty_mode(duty)
     if match is not None:
-        out.write_text(_render_native_wrapper(toplevel, match, board_def, duty=mode))
+        out.write_text(
+            _render_native_wrapper(toplevel, match, board_def, duty=mode), encoding="utf-8"
+        )
         return out
 
     use_seg = board_def is not None and board_def.seven_seg is not None and design_has_seg
@@ -2136,7 +2140,7 @@ def _generate_wrapper(
         rgb_generic = ""
         rgb_generic_map = ""
 
-    content = _WRAPPER_TEMPLATE.read_text().format(
+    content = _WRAPPER_TEMPLATE.read_text(encoding="utf-8").format(
         toplevel=toplevel,
         seg_generic=seg_generic,
         seg_port=seg_port,
@@ -2147,7 +2151,7 @@ def _generate_wrapper(
         led_sig=led_sig,
         **splice,
     )
-    out.write_text(content)
+    out.write_text(content, encoding="utf-8")
     return out
 
 
@@ -2165,7 +2169,9 @@ def _name_bound_check_port(message: str, work_dir: str) -> str:
     if m is None:
         return message
     try:
-        wrapper_lines = (Path(work_dir) / "sim_wrapper.vhd").read_text().splitlines()
+        wrapper_lines = (
+            (Path(work_dir) / "sim_wrapper.vhd").read_text(encoding="utf-8").splitlines()
+        )
     except OSError:
         return message
     lineno = int(m.group(1))
@@ -2568,7 +2574,7 @@ def _write_gtkw(
         f"-{top}",
         *signals,
     ]
-    gtkw_path.write_text("\n".join(lines) + "\n")
+    gtkw_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def _env_flag(name: str) -> bool | None:

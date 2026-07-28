@@ -233,8 +233,8 @@ def test_to_json_with_empty_components_is_valid():
 
 def test_discover_boards_ignores_stray_root_files(tmp_path):
     """discover_boards() ignores stray files in the boards root; only subdirs are sources."""
-    (tmp_path / "stray.json").write_text("not valid json {{{")
-    (tmp_path / "notes.txt").write_text("hello\n")
+    (tmp_path / "stray.json").write_text("not valid json {{{", encoding="utf-8")
+    (tmp_path / "notes.txt").write_text("hello\n", encoding="utf-8")
     boards = discover_boards(tmp_path)
     assert boards == []  # no source subdirectories → nothing discovered
 
@@ -276,7 +276,7 @@ def test_discover_boards_json_basic(tmp_path):
     """discover_boards() loads JSON files from source subdirectories."""
     src = tmp_path / "source_a"
     src.mkdir()
-    (src / "test.json").write_text(_SAMPLE_BOARD_JSON)
+    (src / "test.json").write_text(_SAMPLE_BOARD_JSON, encoding="utf-8")
     boards = discover_boards(tmp_path)
     assert len(boards) == 1
     assert boards[0].name == "Test Board"
@@ -290,8 +290,8 @@ def test_all_sources_loaded(tmp_path):
     src_b = tmp_path / "source_b"
     src_a.mkdir()
     src_b.mkdir()
-    (src_a / "board.json").write_text(_SAMPLE_BOARD_JSON)
-    (src_b / "board.json").write_text(_SAMPLE_BOARD_JSON)
+    (src_a / "board.json").write_text(_SAMPLE_BOARD_JSON, encoding="utf-8")
+    (src_b / "board.json").write_text(_SAMPLE_BOARD_JSON, encoding="utf-8")
     boards = discover_boards(tmp_path)
     assert len(boards) == 2
     assert boards[0].class_name == boards[1].class_name
@@ -301,7 +301,7 @@ def test_source_field_set(tmp_path):
     """BoardDef.source is set to the subdirectory name."""
     src = tmp_path / "my-source"
     src.mkdir()
-    (src / "board.json").write_text(_SAMPLE_BOARD_JSON)
+    (src / "board.json").write_text(_SAMPLE_BOARD_JSON, encoding="utf-8")
     boards = discover_boards(tmp_path)
     assert boards[0].source == "my-source"
 
@@ -310,8 +310,8 @@ def test_discover_boards_json_skips_invalid(tmp_path):
     """Malformed JSON files are silently skipped."""
     src = tmp_path / "upstream"
     src.mkdir()
-    (src / "bad.json").write_text("not valid json {{{")
-    (src / "good.json").write_text(_SAMPLE_BOARD_JSON)
+    (src / "bad.json").write_text("not valid json {{{", encoding="utf-8")
+    (src / "good.json").write_text(_SAMPLE_BOARD_JSON, encoding="utf-8")
     boards = discover_boards(tmp_path)
     assert len(boards) == 1
 
@@ -333,7 +333,7 @@ def test_json_unknown_fields_ignored_but_port_conventions_loaded(tmp_path):
 
     src = tmp_path / "custom"
     src.mkdir()
-    (src / "board.json").write_text(json.dumps(data))
+    (src / "board.json").write_text(json.dumps(data), encoding="utf-8")
     boards = discover_boards(tmp_path)
     assert len(boards) == 1
     assert boards[0].name == "Test Board"
@@ -346,7 +346,7 @@ def test_discover_board_without_conventions_gets_empty_mapping(tmp_path):
     """A board JSON with no port_conventions key loads with an empty mapping."""
     src = tmp_path / "source_a"
     src.mkdir()
-    (src / "test.json").write_text(_SAMPLE_BOARD_JSON)  # has no port_conventions
+    (src / "test.json").write_text(_SAMPLE_BOARD_JSON, encoding="utf-8")  # has no port_conventions
     boards = discover_boards(tmp_path)
     assert boards[0].port_conventions == {}
 
@@ -364,7 +364,7 @@ def test_clocks_object_format(tmp_path):
 
     src = tmp_path / "test"
     src.mkdir()
-    (src / "board.json").write_text(json.dumps(data))
+    (src / "board.json").write_text(json.dumps(data), encoding="utf-8")
     boards = discover_boards(tmp_path)
     assert boards[0].clocks == [50000000, 50000000]
     assert boards[0].default_clock_hz == 50000000
@@ -379,7 +379,7 @@ def test_clocks_empty_array(tmp_path):
 
     src = tmp_path / "test"
     src.mkdir()
-    (src / "board.json").write_text(json.dumps(data))
+    (src / "board.json").write_text(json.dumps(data), encoding="utf-8")
     boards = discover_boards(tmp_path)
     assert boards[0].clocks == []
 
@@ -388,10 +388,10 @@ def test_schema_dir_excluded(tmp_path):
     """The schema/ subdirectory is not treated as a source."""
     schema_dir = tmp_path / "schema"
     schema_dir.mkdir()
-    (schema_dir / "board.schema.json").write_text('{"type": "object"}')
+    (schema_dir / "board.schema.json").write_text('{"type": "object"}', encoding="utf-8")
     src = tmp_path / "upstream"
     src.mkdir()
-    (src / "board.json").write_text(_SAMPLE_BOARD_JSON)
+    (src / "board.json").write_text(_SAMPLE_BOARD_JSON, encoding="utf-8")
     boards = discover_boards(tmp_path)
     assert len(boards) == 1
 
@@ -400,8 +400,8 @@ def test_metadata_files_skipped(tmp_path):
     """Files starting with _ (like _sync_metadata.json) are skipped."""
     src = tmp_path / "upstream"
     src.mkdir()
-    (src / "_sync_metadata.json").write_text('{"source_commit": "abc123"}')
-    (src / "board.json").write_text(_SAMPLE_BOARD_JSON)
+    (src / "_sync_metadata.json").write_text('{"source_commit": "abc123"}', encoding="utf-8")
+    (src / "board.json").write_text(_SAMPLE_BOARD_JSON, encoding="utf-8")
     boards = discover_boards(tmp_path)
     assert len(boards) == 1
 

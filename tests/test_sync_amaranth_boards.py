@@ -132,7 +132,7 @@ def test_sync_metadata_structure():
     if not meta_path.exists():
         pytest.skip("Sync metadata not generated yet")
 
-    meta = json.loads(meta_path.read_text())
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
     assert "source_repo" in meta
     assert "source_commit" in meta
     assert "sync_timestamp" in meta

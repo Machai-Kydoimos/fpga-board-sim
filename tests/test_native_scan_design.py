@@ -56,7 +56,7 @@ def _run_scan_suite(toplevel: str, board_rel: str, digits: int, leds: int, sim: 
     """Match + analyze (Full duty) + run sim/test_native_scan.py against sim_wrapper."""
     backend_cls = _backend(sim)
     design = NATIVE / f"{toplevel}.vhd"
-    bd = BoardDef.from_json((PROJECT / "boards" / board_rel).read_text())
+    bd = BoardDef.from_json((PROJECT / "boards" / board_rel).read_text(encoding="utf-8"))
 
     res = check_vhdl_contract(design, board_def=bd)
     assert res.ok and res.match is not None, f"{toplevel} did not match: {res.message}"

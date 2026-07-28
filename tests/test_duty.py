@@ -162,7 +162,7 @@ def test_every_algo_has_its_fragments(algo, tmp_path, monkeypatch):
     monkeypatch.setenv("FPGA_SIM_DUTY_ALGO", algo)
     work = tmp_path / algo
     work.mkdir()
-    text = _generate_wrapper("blinky", str(work), duty="full").read_text()
+    text = _generate_wrapper("blinky", str(work), duty="full").read_text(encoding="utf-8")
     assert "led_acc     : out std_logic_vector(48 * NUM_LEDS - 1 downto 0)" in text
     assert "led_meas" in text and "led <= led_int;" in text
     # The seconds->ns product is a ~900-bit-op numeric_std multiply; it must stay
@@ -175,7 +175,7 @@ def test_unmeasured_wrapper_is_byte_identical(mode, tmp_path):
     """Off and Color-only emit exactly the pre-U9 wrapper -- no integrator, no cost."""
     work = tmp_path / mode
     work.mkdir()
-    off = _generate_wrapper("blinky", str(work), duty=mode).read_text()
+    off = _generate_wrapper("blinky", str(work), duty=mode).read_text(encoding="utf-8")
     assert "_acc" not in off and "_tch" not in off
     assert "numeric_std" not in off
     assert "led => led\n" in off, "the uut must drive the boundary port directly"
@@ -183,7 +183,7 @@ def test_unmeasured_wrapper_is_byte_identical(mode, tmp_path):
 
 
 def test_full_wrapper_splices_the_integrator(tmp_path):
-    full = _generate_wrapper("blinky", str(tmp_path), duty="full").read_text()
+    full = _generate_wrapper("blinky", str(tmp_path), duty="full").read_text(encoding="utf-8")
     assert "led_acc     : out std_logic_vector(48 * NUM_LEDS - 1 downto 0)" in full
     assert "led_tch     : out std_logic_vector(48 * NUM_LEDS - 1 downto 0)" in full
     assert "use ieee.numeric_std.all;" in full
@@ -195,7 +195,7 @@ def test_full_wrapper_measures_segments_too(tmp_path):
     """Segments are LEDs: a 7-seg run integrates all 8 channels per digit."""
     full = _generate_wrapper(
         "counter_7seg", str(tmp_path), board_def=_7seg_board(), design_has_seg=True, duty="full"
-    ).read_text()
+    ).read_text(encoding="utf-8")
     assert "seg_acc     : out std_logic_vector(48 * 8 * NUM_SEGS - 1 downto 0)" in full
     assert "seg => seg_int" in full and "seg <= seg_int;" in full
     assert _duty_channels("full", has_seg=True) == [("led", "NUM_LEDS"), ("seg", "8 * NUM_SEGS")]
@@ -214,7 +214,7 @@ def test_native_wrapper_measures_the_boundary_value(tmp_path):
 
     native = _generate_wrapper(
         "de0", str(tmp_path), board_def=board, match=result.match, duty="full"
-    ).read_text()
+    ).read_text(encoding="utf-8")
     assert "led_int <= std_logic_vector(resize(" in native, "LEDs must feed the integrator"
     assert "led <= led_int;" in native
     assert "seg_int(6 downto 0) <= not hex0_uut;" in native, "measure the inverted value"

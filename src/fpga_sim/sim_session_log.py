@@ -130,6 +130,6 @@ def save_session_stats(
         "mode": mode,
         "convention": convention,
     }
-    path.write_text(json.dumps(data, indent=2) + "\n")
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     print(f"[session] Stats saved → {path}")
     return path

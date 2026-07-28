@@ -85,7 +85,8 @@ def test_contract_entity_mismatch_message_names_found_entity(tmp_path):
     vhd.write_text(
         "entity gadget is\n"
         "  port (clk: in bit; sw: in bit; btn: in bit; led: out bit);\n"
-        "end entity;\n"
+        "end entity;\n",
+        encoding="utf-8",
     )
     _, msg = _contract(vhd)
     assert "gadget" in msg
@@ -97,7 +98,8 @@ def test_contract_entity_mismatch_message_names_expected_stem(tmp_path):
     vhd.write_text(
         "entity gadget is\n"
         "  port (clk: in bit; sw: in bit; btn: in bit; led: out bit);\n"
-        "end entity;\n"
+        "end entity;\n",
+        encoding="utf-8",
     )
     _, msg = _contract(vhd)
     assert "widget" in msg
@@ -110,7 +112,8 @@ def test_contract_missing_clk_message_names_clk(tmp_path):
     """Missing 'clk' port error must identify 'clk' explicitly."""
     vhd = tmp_path / "noclk.vhd"
     vhd.write_text(
-        "entity noclk is\n  port (sw: in bit; btn: in bit; led: out bit);\nend entity;\n"
+        "entity noclk is\n  port (sw: in bit; btn: in bit; led: out bit);\nend entity;\n",
+        encoding="utf-8",
     )
     ok, msg = _contract(vhd)
     assert not ok
@@ -120,7 +123,10 @@ def test_contract_missing_clk_message_names_clk(tmp_path):
 def test_contract_missing_led_message_names_led(tmp_path):
     """Missing 'led' port error must identify 'led' explicitly."""
     vhd = tmp_path / "noled.vhd"
-    vhd.write_text("entity noled is\n  port (clk: in bit; sw: in bit; btn: in bit);\nend entity;\n")
+    vhd.write_text(
+        "entity noled is\n  port (clk: in bit; sw: in bit; btn: in bit);\nend entity;\n",
+        encoding="utf-8",
+    )
     ok, msg = _contract(vhd)
     assert not ok
     assert "led" in msg.lower()
@@ -130,7 +136,8 @@ def test_contract_missing_sw_message_names_sw(tmp_path):
     """Missing 'sw' port error must identify 'sw' explicitly."""
     vhd = tmp_path / "nosw.vhd"
     vhd.write_text(
-        "entity nosw is\n  port (clk: in bit; btn: in bit; led: out bit);\nend entity;\n"
+        "entity nosw is\n  port (clk: in bit; btn: in bit; led: out bit);\nend entity;\n",
+        encoding="utf-8",
     )
     ok, msg = _contract(vhd)
     assert not ok
@@ -159,7 +166,7 @@ def test_bad_contract_message_names_expected_filename_stem():
 def test_analyze_bad_syntax_returns_false(tmp_path):
     """Syntactically broken VHDL must return ok=False."""
     vhd = tmp_path / "broken.vhd"
-    vhd.write_text("this is not valid vhdl !!!\n")
+    vhd.write_text("this is not valid vhdl !!!\n", encoding="utf-8")
     ok, _ = analyze_vhdl(vhd, toplevel="broken")
     assert not ok
 
@@ -168,6 +175,6 @@ def test_analyze_bad_syntax_returns_false(tmp_path):
 def test_analyze_bad_syntax_returns_nonempty_error(tmp_path):
     """Syntax errors must produce a non-empty error string."""
     vhd = tmp_path / "broken.vhd"
-    vhd.write_text("this is not valid vhdl !!!\n")
+    vhd.write_text("this is not valid vhdl !!!\n", encoding="utf-8")
     _, msg = analyze_vhdl(vhd, toplevel="broken")
     assert msg

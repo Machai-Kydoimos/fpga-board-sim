@@ -58,7 +58,7 @@ def test_csv_has_all_required_headers(tmp_path):
     m = SimMetrics(path, flush_interval=1)
     m.start()
     m.stop()
-    with path.open() as f:
+    with path.open(encoding="utf-8") as f:
         header = next(csv.reader(f))
     assert header == _FIELDS
 
@@ -68,7 +68,7 @@ def test_csv_header_includes_wall_and_timer(tmp_path):
     m = SimMetrics(path, flush_interval=1)
     m.start()
     m.stop()
-    with path.open() as f:
+    with path.open(encoding="utf-8") as f:
         header = next(csv.reader(f))
     assert "wall_us" in header
     assert "timer_us" in header
@@ -84,7 +84,7 @@ def test_record_writes_one_row(tmp_path):
     m.start()
     _sample_record(m)
     m.stop()
-    rows = list(csv.DictReader(path.open()))
+    rows = list(csv.DictReader(path.open(encoding="utf-8")))
     assert len(rows) == 1
 
 
@@ -101,7 +101,7 @@ def test_record_values_are_written_correctly(tmp_path):
         speed_factor=0.5,
     )
     m.stop()
-    rows = list(csv.DictReader(path.open()))
+    rows = list(csv.DictReader(path.open(encoding="utf-8")))
     assert float(rows[0]["timer_us"]) == pytest.approx(123.4, abs=0.1)
     assert float(rows[0]["draw_us"]) == pytest.approx(56.7, abs=0.1)
     assert int(rows[0]["sim_step_ns"]) == 2000
@@ -122,7 +122,7 @@ def test_multiple_records_produce_multiple_rows(tmp_path):
             speed_factor=0.1,
         )
     m.stop()
-    rows = list(csv.DictReader(path.open()))
+    rows = list(csv.DictReader(path.open(encoding="utf-8")))
     assert len(rows) == 5
 
 
@@ -131,7 +131,7 @@ def test_no_records_produces_header_only_file(tmp_path):
     m = SimMetrics(path, flush_interval=1)
     m.start()
     m.stop()
-    rows = list(csv.DictReader(path.open()))
+    rows = list(csv.DictReader(path.open(encoding="utf-8")))
     assert rows == []
 
 
@@ -145,7 +145,7 @@ def test_wall_us_is_nonnegative(tmp_path):
     time.sleep(0.001)  # ensure a measurable elapsed wall time
     _sample_record(m)
     m.stop()
-    rows = list(csv.DictReader(path.open()))
+    rows = list(csv.DictReader(path.open(encoding="utf-8")))
     assert float(rows[0]["wall_us"]) >= 0.0
 
 

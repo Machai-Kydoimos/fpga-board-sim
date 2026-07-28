@@ -31,6 +31,8 @@ def test_read_pins_returns_a_sha_per_source(
     for _script, subdir in cbd.SOURCES:
         d = tmp_path / subdir
         d.mkdir()
-        (d / "_sync_metadata.json").write_text(json.dumps({"source_commit": f"sha-{subdir}"}))
+        (d / "_sync_metadata.json").write_text(
+            json.dumps({"source_commit": f"sha-{subdir}"}), encoding="utf-8"
+        )
     pins = cbd.read_pins()
     assert pins == {subdir: f"sha-{subdir}" for _s, subdir in cbd.SOURCES}

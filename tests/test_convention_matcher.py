@@ -136,7 +136,7 @@ def _write(tmp_path: Any, name: str, ports: list[str]) -> str:
         f"architecture rtl of {name} is begin end architecture;\n"
     )
     f = tmp_path / f"{name}.vhd"
-    f.write_text(text)
+    f.write_text(text, encoding="utf-8")
     return str(f)
 
 
@@ -417,7 +417,7 @@ def test_contract_generic_design_unchanged(tmp_path: Any) -> None:
         "architecture rtl of gen is begin led <= (others => '0'); end architecture;\n"
     )
     f = tmp_path / "gen.vhd"
-    f.write_text(text)
+    f.write_text(text, encoding="utf-8")
     res = check_vhdl_contract(f, board_def=_board(_terasic_conv()))
     assert res.ok is True
     assert res.match is None
