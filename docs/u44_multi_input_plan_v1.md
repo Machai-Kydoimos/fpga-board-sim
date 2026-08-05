@@ -1,9 +1,12 @@
 # U44 — Multi-input: simultaneous holds, latched buttons, keyboard mapping (arc plan v1)
 
-> **Status:** **v1 — PRELIMINARY, FOR REVIEW.** Drafted 2026-07-29. Not started; no milestone,
-> no issues, no roadmap card filed yet. Five open decisions in [§5](#5-decisions-to-make-open--settle-these-first)
-> gate execution; everything else is settled. This document is expected to be revised — refinements
-> land as `_v2` (precedent: `docs_assets_improvement_plan_v2.md`) or in place while it stays unstarted.
+> **Status:** **APPROVED FOR EXECUTION — the active arc.** Drafted 2026-07-29; the five
+> decisions in [§5](#5-decisions-to-make-open--settle-these-first) were **resolved 2026-08-05
+> (Rick), all as recommended: A1 · B1 · C1 · D1 · E confirmed** (Phase 0b ✅), so the phase
+> scopes below apply exactly as written. Roadmap card filed 2026-08-05
+> (`improvement_roadmap.md` → Current focus + Part 1 / Tier 2); target release **v0.21.0**.
+> Execution not yet started — the milestone and phase issues are opened just-in-time when
+> Phase 1 begins.
 >
 > **Base commit:** every fact and `file:line` locator below was verified against `main` @ `c759258`
 > (post-v0.20.0, 2026-07-29). If `main` has advanced, re-verify by grepping the quoted content
@@ -12,7 +15,9 @@
 > **Card IDs:** **U44** (this arc) and **P31+** (follow-ons) are the next free numbers — verified
 > 2026-07-29. `improvement_roadmap.md` allocates through U38 / D16 / P24; `docs/u39_peripherals_plan.md`
 > reserves U39–U41 + P25–P30 and names follow-ons U42/U43. Re-verify before opening issues if this
-> sits unstarted through another arc.
+> sits unstarted through another arc. **2026-08-05: the U44 card is now filed and the roadmap's
+> new ID-allocation note records every reservation (next free: U46 · D17 · P34) — the roadmap is
+> again the allocation source of truth.**
 >
 > **Audience contract:** written to be executed phase-by-phase by a capable model without additional
 > context. Every phase has **Do**, **Verify**, **Quality gates**. Do not start a phase until the
@@ -302,6 +307,9 @@ cocotb-free, pygame-free helper unit-tested with **no simulator installed** — 
 
 Each decision names its options, the evidence, and a recommendation. Phase numbering assumes the
 recommendations; if a decision flips, the affected phase's scope changes but the ordering does not.
+
+> **✅ RESOLVED 2026-08-05 (Rick): all five as recommended — A1 · B1 · C1 · D1 · E confirmed.**
+> The analyses below are retained as the decision record; do not relitigate them.
 
 ---
 
@@ -607,7 +615,7 @@ collapse; backlog cap bounds lag; non-input kinds bypass the queue.
 | Phase | Scope | Size | PR | Status |
 |---|---|---|---|---|
 | 0 | Commit this plan as `docs/u44_multi_input_plan_v1.md` (docs-only) | XS | — | ✅ done |
-| 0b | **Resolve the five decisions in §5**; revise this doc accordingly | XS | — | **blocking** |
+| 0b | **Resolve the five decisions in §5**; revise this doc accordingly | XS | — | ✅ done 2026-08-05 (A1 · B1 · C1 · D1 · E confirmed) |
 | 1 | Hold-source model + mouse identity + chrome `continue` | M | — | not started |
 | 2 | Input atomicity (+ child input queue if D1) | M | — | not started |
 | 3 | Latching + visual + tooltip discoverability | M | — | not started |

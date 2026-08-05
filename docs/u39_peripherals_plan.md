@@ -1,12 +1,16 @@
 # U39–U41 — Simulated board peripherals: arc plan (framework + character LCD + SPI OLED)
 
-**Status:** DRAFT — **in review** (drafted 2026-07-27, committed 2026-07-28). Not started; no
-milestone or issues opened, and no roadmap card filed yet. The phase ledger in §13 is the status
-source of truth once execution begins.
+**Status:** **APPROVED 2026-08-05** (Rick; drafted 2026-07-27, committed 2026-07-28 — the
+architecture decisions below were locked 2026-07-27). Queued **after the U44 multi-input arc** →
+target release **v0.22.0**. Roadmap card filed 2026-08-05 (`improvement_roadmap.md` → Current
+focus + Part 1 / Tier 4). Not started; milestone and issues are opened just-in-time at arc
+start. The phase ledger in §13 is the status source of truth once execution begins.
 
 **Card IDs:** U39/U40/U41 and P25–P30 are the next free numbers — **verified against
 [`improvement_roadmap.md`](improvement_roadmap.md) 2026-07-28** (highest allocated: U38, D16, P24).
-Re-verify before opening issues if this sits unstarted through another arc.
+Re-verify before opening issues if this sits unstarted through another arc. **2026-08-05: the
+U39–U41 card is now filed and the roadmap's ID-allocation note records every reservation (next
+free: U46 · D17 · P34).**
 
 **Decided 2026-07-27 (Rick):** in-repo package with a maintained extraction strategy · integrated
 display section now, maximize-overlay later · open-drain supports both electrical styles with
@@ -581,8 +585,9 @@ guardrail.
 | 7 | Soft-core firmware drives the LCD | M | — | not started |
 | 8 | HPS-side device as attachable module | XS–S | — | not started |
 
-Comparable to the U21 arc (9 phases) and the LED-complete arc. Target release **v0.21.0**; ship the
-already-merged U23 / #256 / macOS-CI work as v0.20.0 first.
+Comparable to the U21 arc (9 phases) and the LED-complete arc. Target release **v0.22.0**
+(updated 2026-08-05: v0.20.0 shipped 2026-07-28, and the U44 multi-input arc → v0.21.0 precedes
+this one in the queue).
 
 | ID | Scope | Trigger |
 |---|---|---|

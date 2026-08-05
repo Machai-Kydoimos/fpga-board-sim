@@ -1,14 +1,19 @@
 # Docs & Assets Improvement Plan — Round 2
 
-> **Status:** DRAFT — **decisions pending Rick.** Drafted 2026-07-28. Not started.
+> **Status:** **DECISIONS RESOLVED 2026-08-05 (Rick), all as recommended — A2 (single-renderer
+> P20 refactor) · B (RGB mixing + scan display + PWM brightness → README; themes + debug duty
+> bars → user-guide stills) · C (re-capture the same hero storyboard).** Drafted 2026-07-28.
+> Not started. **Split execution adopted 2026-08-05:** PRs 1–2 run early (small, independent —
+> may interleave with the U44 arc); PRs 3–6 run **after** the U39–U41 peripherals arc, so one
+> asset refresh captures both new feature sets. See `improvement_roadmap.md` → Current focus.
 > **Base commit:** every fact and `file:line` locator below was verified against `main` @
 > `0d034ee` (v0.20.0, 2026-07-28). If `main` has advanced, re-verify by grepping the quoted
 > content before trusting any line number.
 > **Executor:** a future Claude session — read this document top to bottom, then execute the PRs
-> **sequentially** (they touch overlapping files). Unlike
-> [round 1](docs_assets_improvement_plan.md), **the decisions in §4 are NOT settled** — resolve
-> them with Rick at the top of the session before writing code. If reality contradicts a stated
-> fact, stop and surface it rather than improvising.
+> in order (PRs 3–6 touch overlapping files and stay strictly sequential; per the 2026-08-05
+> split above, PRs 3–6 wait until the peripherals arc ships). The §4 decisions are **settled —
+> do not relitigate them.** If reality contradicts a stated fact, stop and surface it rather
+> than improvising.
 > **Closeout:** when the last PR merges, complete [§9](#9-closeout).
 
 ## 1. Ledger
@@ -118,9 +123,15 @@ need `capture_demo.py`'s machinery. That gap is decision A (§4).
 | `docs/improvement_roadmap.md:16` | "43 test files (1445 tests)… 278 board definitions… **v0.14.0 released**" | 2127 tests, 285 boards, v0.20.0 |
 
 The board count is now wrong in **eight** places after a single board addition (DE4, #345). Fix
-the numbers **and** add the guard — see PR 1.
+the numbers **and** add the guard — see PR 1. *(2026-08-05: the `improvement_roadmap.md:16`
+row was already refreshed by the roadmap reconciliation — PR 1 re-verifies it rather than
+re-fixing it.)*
 
 ## 4. Decisions to make (open — settle these first)
+
+> **✅ RESOLVED 2026-08-05 (Rick), all as recommended: A2 · B (RGB mixing + scan display + PWM
+> brightness for the README; themes + debug duty bars as user-guide stills) · C (re-capture the
+> same hero storyboard).** The analyses below are retained as the decision record.
 
 ### Decision A — how do interactive GIFs get true brightness?
 
