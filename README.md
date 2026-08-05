@@ -135,6 +135,14 @@ The entity name must match the filename stem. Boards with a **7-segment display*
 add a `seg` output — see [docs/writing_designs.md](docs/writing_designs.md) for that
 and for the single-file embedded-CPU systems.
 
+> **⚠ A design is a program.** The simulator doesn't just parse a `.vhd` file — it
+> compiles and **runs** it with your user privileges. VHDL can read and write files
+> (`std.textio`) on every backend, and on the native-code backends (NVC and GHDL's
+> LLVM/JIT/GCC variants) a design can bind and call arbitrary native functions via
+> `VHPIDIRECT` foreign declarations. Treat a design you didn't write like a script
+> you didn't write: read it before you run it. A sandboxed run mode is planned
+> ([roadmap D16](docs/improvement_roadmap.md)).
+
 ### Board-native designs
 
 A design can instead use a **board's own port names and fixed widths, with no
