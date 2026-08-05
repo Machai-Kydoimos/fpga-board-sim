@@ -1,19 +1,110 @@
 # Virtual FPGA Boards — Improvement Roadmap
 
-*Drafted 2026-05-19 · Updated 2026-07-06 · Status: draft for review · Companion to CHANGELOG.md / CONTRIBUTING.md*
+*Drafted 2026-05-19 · Updated 2026-08-05 · Status: living document — the strategy source of truth · Companion to CHANGELOG.md / CONTRIBUTING.md*
 
 A comprehensive, impact-weighted roadmap covering improvements from two perspectives:
 
 1. **User-facing** — UX, performance, presentation, persistence, features.
 2. **Developer-facing** — architecture, DRY, type safety, documentation, tests, tooling.
 
-Each item lists *why* it matters, *what* to do, *which files* are touched, a rough effort estimate (XS / S / M / L / XL), and a *done-when* acceptance criterion. Tier numbers reflect impact-weighted priority, not strict execution order; see "Suggested merge order" at the end for a practical sequencing and "Dependencies" for required ordering constraints. Completed cards are condensed to a one-line stub here, with full shipped detail in [roadmap_delivered.md](roadmap_delivered.md).
+Each item lists *why* it matters, *what* to do, *which files* are touched, a rough effort estimate (XS / S / M / L / XL), and a *done-when* acceptance criterion. Tier numbers reflect impact-weighted priority, not strict execution order; see [Current focus](#current-focus) for the live queue ("Suggested merge order" at the end is the historical 2026-07 sequencing) and "Dependencies" for required ordering constraints. Completed cards are condensed to a one-line stub here, with full shipped detail in [roadmap_delivered.md](roadmap_delivered.md).
+
+---
+
+## Current focus
+
+*Updated 2026-08-05 — the live execution view; the tiers below are strategy and delivered
+history. This section says what is in flight, what is queued in what order, and what was just
+decided. Update it when an arc starts, ships, or changes order.*
+
+> **Standing rule (2026-08-05):** an arc does not start execution until it has a card in this
+> document — a one-paragraph stub linking its plan doc suffices. (The 2026-07 arcs U39–U41 and
+> U44 were planned in standalone docs with no card here, which is how this file went stale and
+> why card IDs were being reserved by cross-references between plan docs. This rule and the
+> ID-allocation note below close that gap.)
+
+### Now — U44 multi-input → v0.21.0, "the input release"
+
+Simultaneous button holds, right-click latching, a keyboard map with on-widget badges,
+drag-paint switch sweeps, frame-coalesced input messages, and the
+[#353](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/353) swallowed-tap fix.
+Plan: [u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md) (five phases, one PR each).
+**Decisions resolved 2026-08-05 (Rick): A1 · B1 · C1 · D1, and the Decision-E confirmations
+stand** — all five as the plan recommends. Milestone and phase issues are opened when execution
+starts (the just-in-time model). Full card: U44 in Part 1 / Tier 2.
+
+### Next — in order
+
+1. **Docs & Assets round 2, PRs 1–2 only** ([plan](docs_assets_improvement_plan_v2.md)) — the
+   count-drift fix + guard test, and `--screenshots` on the benchmark path
+   ([#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129)). Both small and
+   independent; may interleave with U44. PR 2 is also the peripherals arc's Phase-5
+   visual-review enabler.
+2. **U39–U41 board peripherals** → v0.22.0 ([plan](u39_peripherals_plan.md)) — plan **approved
+   2026-08-05** (its architecture decisions were locked 2026-07-27). Full card: U39–U41 in
+   Part 1 / Tier 4.
+3. **Docs & Assets round 2, PRs 3–6** — one asset refresh that captures U44 *and* the
+   peripherals ("shine with the latest" once, not twice); then make the
+   [#354](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/354) GHDL-Cosim offer on top
+   of the refreshed docs. Decisions resolved 2026-08-05: **A2 · B as recommended (RGB mixing +
+   scan display + PWM brightness → README; themes + debug duty bars → user-guide stills) · C
+   (re-capture the same hero storyboard)**.
+4. **D7 → D16 sandbox** → v0.23.0, "the trust release" — priority raised by the 2026-07-30 NVC
+   wontfix (see the D16 card in Part 2 / Tier 2); the interim README/user-guide warning shipped
+   2026-08-05.
+
+**Between-arc filler:** the Tier-3 usability sweep — U14 pause key · U16 minimum window size ·
+U18 recent files · U19 metrics toggle. **Later:** U20 Verilog (the headline candidate once this
+queue clears) · U8 splash · U27 user JSON themes · Icebox items as their triggers fire.
+
+### Plan documents index
+
+The three live plans, then executed history (each file carries its own detailed status header).
+`u25_ghdl_perf_profile.md` is a measurement report, not a plan.
+
+| Plan document | Status |
+|---|---|
+| [u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md) | **LIVE — active arc**; decisions resolved 2026-08-05 → v0.21.0 |
+| [u39_peripherals_plan.md](u39_peripherals_plan.md) | **LIVE — approved 2026-08-05**; queued second → v0.22.0 |
+| [docs_assets_improvement_plan_v2.md](docs_assets_improvement_plan_v2.md) | **LIVE — decisions resolved 2026-08-05**; split execution: PRs 1–2 early, PRs 3–6 after the peripherals arc |
+| [u22_7seg_scan_plan.md](u22_7seg_scan_plan.md) | executed → v0.19.0 |
+| [u9_led_complete_plan.md](u9_led_complete_plan.md) | executed → v0.17.0 + v0.18.0 |
+| [u35_simulator_picker_plan.md](u35_simulator_picker_plan.md) | executed → v0.16.0 |
+| [u34_single_window_plan.md](u34_single_window_plan.md) | executed → v0.15.0 |
+| [u21_board_native_vhdl_plan.md](u21_board_native_vhdl_plan.md) | executed → v0.14.0 |
+| [board_native_release_plan.md](board_native_release_plan.md) | executed → v0.14.0 |
+| [docs_assets_improvement_plan.md](docs_assets_improvement_plan.md) | executed (round 1) → v0.10.0 |
+| [embedded_core_improvement_plan.md](embedded_core_improvement_plan.md) | executed → v0.9.0 |
+| [embedded_core_system_plan.md](embedded_core_system_plan.md) | executed → v0.9.0 |
+| [7seg_display_plan_v2.md](7seg_display_plan_v2.md) | executed (7-seg v1); the deferred physical-scan half shipped as U22 ✅ |
+
+### ID allocation
+
+**Next free: U46 · D17 · P34.** Reserved by the live plans, to be filed as full cards / Icebox
+rows at each arc's closeout (until then the plan doc is their source of truth): U42/U43 +
+P25–P30 ([u39_peripherals_plan.md](u39_peripherals_plan.md) §13); U45 + P31–P33
+([u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md) §9).
+
+### Loose threads
+
+- [#353](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/353) (sim child collapses
+  queued inputs — fast taps vanish) — scheduled: U44 Phase 2 under Decision D1; that phase's PR
+  closes it.
+- [#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129) (`--screenshots` on the
+  benchmark path) — scheduled: Docs & Assets round 2, PR 2 (Next #1).
+- [#354](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/354) (GHDL-Cosim doc offer) —
+  gated on the docs refresh (Next #3).
+- NVC disclosure closed as **wontfix** 2026-07-30 → D16 is now the only mitigation; promoted to
+  Next #4. The interim README/user-guide warning shipped 2026-08-05.
+- RZ-EasyFPGA `KEY[4]` width gap (a 2026-07 session note) — **verified resolved 2026-08-05**:
+  both RZ board JSONs carry 4 buttons and a width-4 canonical `KEY` bank (#338's width
+  override).
 
 ---
 
 ## Context
 
-The simulator is mature: ~6,000 LOC across 20+ Python modules (≈7,400 incl. `sim/`), 43 test files (1445 tests), multi-platform CI, two simulator backends (GHDL/NVC), 7-segment support shipped, embedded CPU core systems (6502/Z80) shipped, 278 board definitions from four sources, three UI themes, performance heavily tuned (PR #31), **v0.14.0 released (2026-07-16)** — the board-native release (board-native VHDL mode, U21 / U31 / U32 / U33).
+The simulator is mature: ~11,900 LOC across 30 Python modules (≈13,700 incl. `sim/`), 83 test files (2127 tests), multi-platform CI (Linux x64/arm64 · Windows · macOS arm64), two simulator engines surfaced as four selectable backends (GHDL mcode/LLVM/JIT + NVC, U35), 7-segment support including physical scan displays shipped, embedded CPU core systems (6502/Z80) shipped, 285 board definitions from four sources, three UI themes with exact duty-cycle brightness and RGB rendering, performance profiled and tuned (PR #31 / U25 / U34), **v0.20.0 released (2026-07-28)** — the data-integrity release. *(Counts refreshed 2026-08-05.)*
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
@@ -118,6 +209,37 @@ This document inventories all viable improvements and ranks them by impact.
 
 - Shipped to main 2026-07-18 (arc: identity #270 → selection round-trip #271 → compiled-backend parity #272 → this CI/docs closeout). Every installed simulator — GHDL mcode / LLVM / LLVM-JIT + NVC — is now discovered, truthfully labeled (`SIM: GHDL` / `GHDL-LLVM` / `GHDL-JIT` / `NVC`), selectable from the `[SIM:…]` toggle / `--sim` slugs / a path, registerable for odd locations (`--add-sim`, `extra_simulators`, `FPGA_SIM_EXTRA_SIMS`), and **honored end-to-end** (analysis, run, benchmark, session log all use the chosen binary) with per-session persistence and a safe PATH-default fallback. A stage-3 runtime-elaboration probe restores load-time rejection of bad designs on the compiled backends; the slow suite is green under all three GHDL code generators locally and in a new (non-required) CI matrix job. Phase-2 GUI "Browse…" parked as Icebox **P21**. Execution plan: [u35_simulator_picker_plan.md](u35_simulator_picker_plan.md). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
+#### U44. Multi-input — simultaneous holds, latched buttons, keyboard mapping (ACTIVE)
+
+- **Status:** the active arc (see [Current focus](#current-focus)) → target v0.21.0. Plan
+  drafted 2026-07-29; **decisions resolved 2026-08-05 (Rick), all as recommended** — **A1**
+  right-click latch (modeless) · **B1** hex keymap `0`–`9`/`A`/`B`/`C`, digits bound by
+  scancode with a unicode fallback (covers all 285 boards; the fleet maximum is 13 buttons) ·
+  **C1** drag-paint switch sweeps · **D1** fix the swallowed-tap bug
+  ([#353](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/353)) in-arc · the
+  Decision-E confirmations stand.
+- **Why:** on real hardware you hold three buttons with three fingers and release them in any
+  order; the simulator has exactly one cursor-hold, any mouse-up releases *every* button, and
+  no keyboard input path exists at all. Separately, the sim child collapses all inputs drained
+  in one iteration into a single write (#353), so fast taps vanish outright on CPU-limited
+  designs — exactly the embedded-core and multi-digit-scan designs built around button input.
+- **What:** the hold-source model (a button is down while its *set* of hold sources is
+  non-empty), mouse-button identity, frame-coalesced full-state input messages, right-click
+  latching with themed visuals, the scancode keymap with on-widget key badges (mandatory — five
+  boards render duplicate button labels), drag-paint switches, and a bounded child-side input
+  queue applying at most one input state per sim step (the #353 fix). Five phases, one PR each,
+  every phase with Do / Verify / Quality gates.
+- **Plan:** [u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md) — evidence map, measured
+  pygame facts, decision analyses, test strategy, risk register. Follow-ons reserved there:
+  **U45** (carry preview input state into the sim run), **P31** (input record/replay), **P32**
+  (multi-touch), **P33** (arm-and-fire staging).
+- **Effort:** M + M + M + L + S across the five phases.
+- **Done when:** the plan's §12 end-to-end acceptance passes — multiple simultaneous keyboard
+  holds released in any order; latches surviving modals/pauses with `R` as the escape hatch; a
+  16-switch pattern set in one sweep; every simultaneous change reaching the DUT in one atomic
+  message; no gesture, modal, focus loss, or resize stranding a button; fast taps never
+  swallowed on CPU-limited designs.
+
 ### Tier 3 — Quick wins (ship anytime)
 
 | ID | Item | Files | Effort |
@@ -148,6 +270,32 @@ This document inventories all viable improvements and ranks them by impact.
 **Note on U13 — done (2026-06-01, PR #85):** Keyboard navigation on both list screens — `↑`/`↓` + `PgUp`/`PgDn` move the cursor (auto-scrolled into view) and `Enter` activates the row; each screen's KEYDOWN now routes through a unit-testable `_handle_keydown()`. 32 new tests.
 
 ### Tier 4 — Larger features (long-horizon)
+
+#### U39–U41. Simulated board peripherals — framework + character LCD + SPI OLED (QUEUED)
+
+- **Status:** plan **approved 2026-08-05** (Rick; its architecture decisions were locked
+  2026-07-27) — queued after U44 → target v0.22.0 (see [Current focus](#current-focus)).
+  Milestone and issues open at arc start.
+- **Why:** the board model stops at LEDs / switches / buttons / 7-seg, but on real hardware the
+  lesson after "blink an LED" is "drive the LCD" — and today a design driving LCD ports
+  analyzes, elaborates, runs, and is silently dark (extra `out` ports already pass the
+  contract).
+- **What:** a peripheral framework in the U9 duty-engine shape — capture in VHDL (fragment
+  splice), decode in pure Python, render in the host, zero new Python wakes (**U39**) — plus
+  two device families end-to-end on any board in the fleet: the HD44780 character LCD
+  (**U40**) and the SSD1306 SPI OLED (**U41**). Auto-attach by port-convention match, a "how to
+  add a peripheral" developer guide, a soft-core-drives-the-LCD demo, and an honestly-labeled
+  HPS-side module. Consumes the `BoardDef.peripherals` subset of Icebox **P5**; supersedes the
+  parked "LCD / OLED display support" item.
+- **Plan:** [u39_peripherals_plan.md](u39_peripherals_plan.md) — nine phases (spike-first),
+  peripheral catalog, bus taxonomy, the open-drain finding, the HPS program, extraction
+  strategy. Follow-ons reserved there: **U42** (lwHPS2FPGA bridge), **U43** (32-bit soft core +
+  real C toolchain), **P25–P30**.
+- **Effort:** L arc (comparable to U21 and the LED-complete arc).
+- **Done when:** the plan's §16 — a design written against a module's port names auto-attaches
+  with an info message and renders live on any board; both devices pass their cocotb suites
+  under GHDL and NVC; the peripheral-free wrapper stays byte-identical; `--benchmark` shows no
+  regression; a reader can add device #3 from the developer guide alone.
 
 #### U20. Verilog / SystemVerilog support
 
@@ -369,7 +517,7 @@ See also **P1** (NVC elaborate-once / run-many) in the [Icebox](#icebox).
 
 #### D16. Sandbox the simulation subprocess (untrusted-VHDL isolation)
 
-- **Why:** A user-supplied `.vhd` is *executed*, not just parsed — the tool analyzes, elaborates, and **runs** it — so a downloaded design is a code-execution vector. On the **default GHDL** backend a design can read/write any file the user can via `std.textio` (enough to exfiltrate `~/.ssh/id_rsa` or overwrite `~/.bashrc`); on **NVC** it escalates to full native code execution — a `VHPIDIRECT` foreign binding resolves arbitrary libc symbols (`system`/`execve`/`socket`), empirically verified with a bare `.vhd` calling `getpid`/`geteuid`. It runs with the invoking user's privileges (not root — so not a direct kernel rootkit, but ample for data theft, tampering, a reverse shell, or fetching a second stage). Board **JSON is not a risk** (pure `json.loads` + typed coercion; values reach VHDL only as single `-g` argv elements — no shell, no injection). Reported to NVC via private disclosure (2026-07-04); **this card is the local mitigation and does not depend on an NVC fix** — it also closes the GHDL file-I/O vector that exists on the default backend.
+- **Why:** A user-supplied `.vhd` is *executed*, not just parsed — the tool analyzes, elaborates, and **runs** it — so a downloaded design is a code-execution vector. On the **default GHDL** backend a design can read/write any file the user can via `std.textio` (enough to exfiltrate `~/.ssh/id_rsa` or overwrite `~/.bashrc`); on any **native-codegen** backend — NVC *and* GHDL-LLVM/JIT/GCC; only GHDL mcode blocks the route (scope corrected 2026-07-30; the earlier NVC-only framing was wrong) — it escalates to full native code execution: a `VHPIDIRECT` foreign binding resolves arbitrary libc symbols (`system`/`execve`/`socket`), empirically verified on NVC with a bare `.vhd` calling `getpid`/`geteuid`. It runs with the invoking user's privileges (not root — so not a direct kernel rootkit, but ample for data theft, tampering, a reverse shell, or fetching a second stage). Board **JSON is not a risk** (pure `json.loads` + typed coercion; values reach VHDL only as single `-g` argv elements — no shell, no injection). Reported to NVC via private disclosure (2026-07-04); **this card is the local mitigation and does not depend on an NVC fix** — it also closes the GHDL file-I/O vector that exists on the default backend. **Update 2026-07-30 → priority raised:** NVC closed the disclosure as intended behavior (wontfix), so this card is the **only** mitigation. Scheduled as v0.23.0, "the trust release" (see [Current focus](#current-focus)); the interim README/user-guide warning that a design executes with the user's privileges shipped 2026-08-05.
 - **What:** A new `sandbox.py` that wraps the sim **run** subprocess in **bubblewrap (`bwrap`)** when available. Policy: **auto-on when `bwrap` + unprivileged user namespaces are present; warn-and-continue otherwise** — encourage, never mandate (mandating breaks Windows/macOS, hardened-kernel Linux, and adoption). Override via `FPGA_SIM_SANDBOX=auto|off|require|bwrap` (and a toggle in the **U5 ✅** Settings dialog). The sim legitimately needs **zero network**, so `--unshare-net` is a zero-cost, high-value control that kills the NVC exfil path outright.
 - **Verified bind set** — *prototyped against `bwrap` 2026-07-04: a real headless `blinky` GHDL+cocotb run behaved identically sandboxed vs. unsandboxed (same `TESTS=4 PASS=3 FAIL=1`, VPI loaded); `pygame`+`cocotb`+`fpga_sim` imported fine inside; an in-sandbox network connect was blocked; a planted `$HOME` secret was hidden:*
   - **Strategy A (recommended default — robust, distro-agnostic):** `--ro-bind / /`, then *subtract* — `--dev /dev`, `--proc /proc`, `--tmpfs /tmp`, `--bind <work_dir> <work_dir>` (rw) + `--chdir <work_dir>`, `--tmpfs $HOME` (hides personal files), then re-expose **read-only** the two paths under `$HOME` the sim needs: the **project root** (`src/`, `sim/`, `.venv` incl. cocotb libs, `hdl/`) and the **uv interpreter root** `~/.local/share/uv/python` (venv-symlink target + libpython). Plus `--unshare-net --die-with-parent --new-session`.
@@ -495,6 +643,10 @@ All other items (U0, U1, U2, U3, U4, U8, U9, U11-U17, U21-U25, U28-U30, D3-D5, D
 
 ## Suggested merge order
 
+> **Historical record.** This table is the 2026-07-09 sequencing, kept for the delivery history
+> (the ✅ marks are accurate); arcs have rightly jumped it since (U22, U34, and the U39–U44
+> plans). The live queue is [Current focus](#current-focus) at the top of this document.
+
 A practical sequencing if all items were in flight (impact-weighted, with foundations early enough to unblock later work). Sprint 1 is split into two sub-sprints to keep batch sizes manageable (~8-12 h each).
 
 | Sprint | Theme | Items |
@@ -529,7 +681,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **P2** | Board-sync Phase 3 — merge-aware / curation sync | Upstream removes a board we ship (recon to date: 0 removed) | L | Retain upstream-removed boards, dual upstream/adopted timestamps, `--check`, `--with-dates`. The schema `source` block permits additive provenance fields. A *subset* (preserve hand-added `port_conventions` / `peripherals` on re-sync, ~10 lines) shipped as **U21 Phase A1 ✅** (#210). Maintainer tooling in `scripts/sync_*.py`, not the app. |
 | **P3** | Mercury board 7-segment | A user requests it, or the I2C-expander path becomes worth modeling | M/L | Mercury's display sits behind an I2C GPIO expander (not directly pinned), so it was excluded from 7-seg v1. Needs an expander model + readback path. |
 | **P4** | Python 3.14 in the CI matrix | pygame **and** cocotb both ship `cp314` wheels | S | As of 2026-06, pygame 2.6.1 / cocotb 2.0.1 top out at `cp313`; adding 3.14 breaks `uv sync` (pygame sdist build). Re-check PyPI wheel tags before bumping the matrix upper bound. |
-| **P5** | Sync-time peripheral extraction | A peripheral type becomes consumable — the sim gains a peripheral model (VGA/audio/…), or the board-info UI wants to list on-board peripherals | M | All three parsers extract only LED/button/switch (+clock/7-seg) and discard everything else — `peripheral` appears nowhere in `scripts/` or `src/`. Upstream exposes the data richly: amaranth already has typed `Resource` stubs (`VGAResource`, `UARTResource`, `SDRAMResource`, `DDR3Resource`, …) that are currently inert; Digilent XDC section headers (`## VGA`, `## Audio`, …) are already parsed, then dropped; litex `_io` names (`serial`, `sdram`, `eth`, …) need a name→type map. `BoardDef` has no `peripherals` field, so the 6 hand-authored `custom/` boards' `peripherals` blocks are schema-valid but silently dropped at load. Needs: parser extraction → new `BoardDef.peripherals` field → JSON round-trip (the schema already defines `peripheral`). Auto-extracted data is shallower than the hand-curated attributes (`bits_per_channel`, `size_mb`, chip names). Complements **P2** / **U21** (preserve hand-added peripherals on re-sync) and the eventual per-type discriminated-union schema. **Addressable/serial RGB (ws2812-style) routes here too** (decided at U37): the census found 1-pin `rgb_led` impostors (colorlight_i9plus, sipeed_tang_nano_20k) that are single-data-line addressable parts, not analog 3-channel RGB — they need a peripheral model, and the U37 `is_rgb` gate (`name == "rgb_led" and len(pins) == 3`) deliberately excludes them until then. |
+| **P5** | Sync-time peripheral extraction | A peripheral type becomes consumable — the sim gains a peripheral model (VGA/audio/…), or the board-info UI wants to list on-board peripherals | M | All three parsers extract only LED/button/switch (+clock/7-seg) and discard everything else — `peripheral` appears nowhere in `scripts/` or `src/`. Upstream exposes the data richly: amaranth already has typed `Resource` stubs (`VGAResource`, `UARTResource`, `SDRAMResource`, `DDR3Resource`, …) that are currently inert; Digilent XDC section headers (`## VGA`, `## Audio`, …) are already parsed, then dropped; litex `_io` names (`serial`, `sdram`, `eth`, …) need a name→type map. `BoardDef` has no `peripherals` field, so the 6 hand-authored `custom/` boards' `peripherals` blocks are schema-valid but silently dropped at load. Needs: parser extraction → new `BoardDef.peripherals` field → JSON round-trip (the schema already defines `peripheral`). **The `BoardDef.peripherals` round-trip subset is scheduled in the U39–U41 arc (its Phase 2); the parser-extraction remainder is P28, reserved in that plan.** Auto-extracted data is shallower than the hand-curated attributes (`bits_per_channel`, `size_mb`, chip names). Complements **P2** / **U21** (preserve hand-added peripherals on re-sync) and the eventual per-type discriminated-union schema. **Addressable/serial RGB (ws2812-style) routes here too** (decided at U37): the census found 1-pin `rgb_led` impostors (colorlight_i9plus, sipeed_tang_nano_20k) that are single-data-line addressable parts, not analog 3-channel RGB — they need a peripheral model, and the U37 `is_rgb` gate (`name == "rgb_led" and len(pins) == 3`) deliberately excludes them until then. |
 | **P6** | User-configurable / external boards directory | A user installs via wheel (custom boards under the package dir are wiped on upgrade), or asks to keep board JSON outside the package | S/M | `get_default_boards_path()` hardcodes `<package>/../../boards` with no override and `discover_boards()` is only ever called with it, so the board selector is closed to the bundled tree (custom boards must live in `boards/custom/` *inside* the package). Add a `FPGA_SIM_BOARDS_PATH` env var and/or a Settings entry (U5) pointing at an extra source root (e.g. `~/.fpga_simulator/boards/`), merged with the bundled sources. The loader already treats each subdirectory as an independent source, so an external root drops in with no schema change. Distinct from **P2** (upstream sync curation) — this is user-supplied boards. Pairs with **U5** / **U18** (same Settings/persistence surface; the VHDL picker already browses arbitrary dirs, so this closes the equivalent gap on the board side). |
 | **P7** | VHDL lint/format via **VSG** (VHDL Style Guide) | The embedded-core **generator (Stage 3, see [embedded_core_system_plan.md](embedded_core_system_plan.md)) starts emitting VHDL** — at which point a canonical formatter pays off (stable generated diffs + consistent hand-written `hdl/` examples). | S | VHDL is the only language here with no linter/formatter; the others run as `uv run <tool>` *local* pre-commit hooks pinned by `uv.lock` and mirrored in CI (see **D10 ✅**). VSG (`uv`-installable) slots into that exact pattern: add to the `dev` group, a `vsg` local hook, and a **check-only** CI step (like `ruff format --check`; `--fix` stays a local convenience). **Hard exclusions — VSG must never touch:** `scripts/embedded_core/cores/**` (vendored verbatim; reformatting breaks byte-identity and the pinned-commit integrity tests in `test_embedded_core.py`), `hdl/bad_*` (deliberately broken negative-test fixtures), `sim/sim_wrapper_template.vhd` (`{placeholder}` tokens are not valid VHDL), and `scripts/embedded_core/templates/**` (`.vhd.tmpl` files carry `@@TOKEN@@` markers, and `.vhd.frag` fragments are partial design units — VSG cannot parse either, for the same reason as `sim_wrapper_template.vhd`). **Generator nuance:** a generated `mx65_*.vhd` embeds the verbatim mx65, so never `--fix` generated output — author templates to the ruleset's style by hand (VSG never parses them; CI checks hand-written `hdl/` only). *Refinement idea, not a requirement:* a generated file's system blocks (everything after the `-- System blocks (generated)` ruler) are complete, valid design units on their own and could be mechanically style-checked via a temp-file slice — the vendored core above the ruler is what must stay untouched. Land it as its own PR (the one-time reformat of the ~9 `hdl/*.vhd` examples is isolated churn; tune a ruleset that respects the readable teaching style rather than fighting it). **Limit:** style only — not a substitute for `ghdl -a` / `nvc -a` analysis (the real correctness gate) and won't catch logic bugs (e.g. the `walking_counter` switch-rate issue, [#133](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/133)). |
 | **P8** | Third core: **RISC-V (NEORV32)** embedded-core example | Appetite for a 32-bit third core to prove the "any core" abstraction beyond 8-bit; best started after #135 (the embedded-core feature) merges. NEORV32 is the natural pick — it's the standout **VHDL** RISC-V core; most compact ones (PicoRV32, VexRiscv) are Verilog, which GHDL/NVC can't analyze. | L | **Feasibility spike done 2026-07-02 — the core is clean; this is a skeleton-generalization arc, not a Z80-style drop-in.** Against a fresh `stnolting/neorv32` clone: the CPU (`rtl/file_list_cpu.f`, 20 files, ~11k lines — CPU only; the full SoC is far larger) **analyzes 100% clean under both GHDL `--std=08` and NVC `--std=2008` with no `-fsynopsys`** (standard IEEE, `std_ulogic`), clearing the core requirement (guide §4.1). The real work is the **8→32-bit jump** the 6502/Z80 never forced: **(1) bus bridge** — NEORV32 exposes *two* 32-bit **handshaked** buses (Harvard `ibus_req_o`/`dbus_req_o` of record `bus_req_t`: `addr(31:0)`, `data(31:0)`, byte-enable `ben(3:0)`, `stb`/`rw`; + `bus_rsp_t` data/ack/err) vs our normalized **8-bit same-cycle combinational** bus, so the adapter becomes real logic (arbitrate or keep Harvard, generate `ack`, honor `ben`), not a trivial `block`; **(2) data width** — parameterize the ROM/RAM/IO skeleton to 32-bit (word-addressed IO) or bridge byte lanes (`cpu_din`/`cpu_dout` are 8-bit today); **(3) named library** — the core uses `library neorv32; use neorv32.…` (analyze with `--work=neorv32`), so the single-file/`work` model needs a mechanical `neorv32.`→`work.` rewrite across the files (a broader T80-style patch) or multi-library support; **(4)** `std_ulogic`/records at the boundary (minor); **(5)** boot is easy — a `BOOT_ADDR` generic, no fixed reset vector. **Firmware toolchain:** none installed, but Fedora packages it — `binutils-riscv32-linux-gnu` (`as`/`ld`/`objcopy` → an assembly-source→`.bin` flow mirroring ca65/z80asm) and `gcc-riscv32-linux-gnu` (adds C); one `dnf install` when the arc starts (rv32 target = the riscv32 packages; riscv64 works via `-march=rv32i` multilib). They are `-linux-gnu` (not bare-metal `-elf`), but a **freestanding** build (`-ffreestanding -nostdlib -nostartfiles` + our own linker script) is fine for minimal firmware — we don't need NEORV32's own `riscv-none-elf` software framework. (clang also targets riscv32, but `ld.lld` is absent, so binutils is the simpler linker path.) The `qemu-*`/`edk2-*` RISC-V packages aren't relevant (we simulate the RTL in GHDL/NVC). Dev-time only — the checked-in `.bin` stays the source of truth, not a CI dep. **Vendoring:** CPU-only, configure unused features off via generics (FPU/PMP/crypto/debug/`C`) to shrink the ~11k lines inlined per design. Start with the data-width decision + a minimal `neorv32_cpu` + bridge spike before any firmware. **Sequencing (2026-07-02):** build the bus bridge as **"normalized bus v2 first"** — a handshaked, width-parameterized bus (valid/ready + byte enables) — and re-express the mx65/T80 adapters as its degenerate case (ack always `'1'`, width 8) rather than special-casing a second bus beside v1. Script the `neorv32.` → `work.` library rewrite as a re-runnable patch script (a T80-style documented patch, but automated — 20 files is too many to hand-edit reproducibly). **Decision point:** at ~11k inlined lines per design, evaluate whether `sim_bridge`'s single-file rule should gain a relief valve (analyze a design + companion files) before committing to inline-everything for a 32-bit core. **Requires** [`embedded_core_improvement_plan.md`](embedded_core_improvement_plan.md) Phases 0–4 (spec validation + the emitter's fragment seam) to land first. |
@@ -544,13 +696,13 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **P17** | Board-native "frozen-divider" warning heuristic | A user reports a board-native design that renders as static LEDs/digits because it divides the full clock down, or board-native authoring becomes common enough to warrant a lint | S | Board-native designs (U21 ✅) carry **no `COUNTER_BITS` override** — that generic is generic-contract-only — so a design that derives its visible rate from the top bits of a real 50 MHz divider looks **frozen** at the simulator's sub-real-time throughput (a real board would tick it fast). U21 handled this **by documentation**: the `hdl/native/*.vhd` examples tap *mid* counter bits, and CLAUDE.md's board-native section calls out the gotcha. A **literal-constant warning heuristic** — detect a large fixed divider threshold / top-bit tap in a native design and warn "this may look static at sim speed; tap lower bits or reduce the divider" — was parked here (U21 decision 6) rather than built, since it's advisory and easy to get wrong (false positives on legitimate slow signals). |
 | **P18** | `add_port_convention.py` — one-command authoritative-convention authoring | A user (or maintainer) finds an authoritative source for a specific board's port names and wants it usable board-native without hand-editing JSON | S | Today, adding a *vendor-canonical* convention for one board means either the registry + `waves.toml` + `overlay.toml` path (rigorous, cited, but needs a machine-parseable constraint file) or a hand-edited `port_conventions.<vendor>` block in the board JSON (preserved by the A1 guard, but hand-written JSON). Neither is a *single* command. A small helper — `add_port_convention.py --board X --key terasic --clk CLOCK_50 --leds LEDR:10 --buttons KEY:4:active_low --seg HEX:6:active_low --cite <URL>` — would emit a schema-valid `naming: "canonical"` block with a `source` citation and merge it into the board JSON's `port_conventions` the way `sync_port_conventions.write_results` does (coexisting with any U32 framework-derived block, winning via `_convention_precedence`). Raised during U32 (2026-07-14) when weighing how a future authoritative source gets incorporated as ground truth; the data model already supports it, so this is pure authoring ergonomics. |
 | **P19** | `analyze_metrics.py` rework for split-process metrics | Someone analyzes the per-frame metrics CSV again and finds the draw/idle columns zeroed | S | Single-window (**U34 ✅**) split the sim loop (headless child) from rendering (host). The `FPGA_SIM_METRICS` CSV is still written child-side with real `timer_us` / `sim_step_ns` / `clk_period_ns` / `speed_factor`, but `draw_us` / `tick_us` are now **`0.0`** there (rendering moved to the host, which does not write the CSV). `scripts/analyze_metrics.py` therefore reports zero draw/idle for single-window runs. Rework it to read the host-side draw/idle (from the session log / `SimulationScreen.run_stats`) or merge the two sources. Parked at U34 closeout — no active metrics-analysis consumer today. |
-| **P20** | Modernize `sim/capture_frames.py` (offline GIF capture) | The offline GIF/demo-capture path needs updating, or it drifts far enough from the single-window model to confuse | XS/S | `sim/capture_frames.py` + `scripts/capture_demo.py` legitimately keep the **pygame-in-the-cocotb-child** pattern (headless offline GIF capture, invoked outside the launcher), so **U34 ✅** left them untouched. They now diverge from the production single-window path (which renders in the host). Optionally refactor them to drive the sim over `sim_link` and render via `SimulationScreen` for a single rendering path, or leave them as the standalone capture tool they are. Cosmetic / DRY only — they work as-is. |
+| **P20** | Modernize `sim/capture_frames.py` (offline GIF capture) | The offline GIF/demo-capture path needs updating, or it drifts far enough from the single-window model to confuse | XS/S | `sim/capture_frames.py` + `scripts/capture_demo.py` legitimately keep the **pygame-in-the-cocotb-child** pattern (headless offline GIF capture, invoked outside the launcher), so **U34 ✅** left them untouched. They now diverge from the production single-window path (which renders in the host). Optionally refactor them to drive the sim over `sim_link` and render via `SimulationScreen` for a single rendering path, or leave them as the standalone capture tool they are. Cosmetic / DRY only — they work as-is. **Scheduled 2026-08-05: retired by Docs & Assets round 2 PR 3 under decision A2** (the capture path moves onto `sim_link` + `SimulationScreen` — one renderer). |
 | **P21** | GUI "Browse…" to register a simulator (reuse the VHDL picker) | A user wants to add an off-PATH simulator from the UI rather than `--add-sim` / hand-editing the session | S | U35 ✅ registers undiscoverable installs via `fpga-sim --add-sim <path>`, the `extra_simulators` session list, and `FPGA_SIM_EXTRA_SIMS` — deliberately **no new text-input widget** (the app has none, which shaped that design). A file-picker "Browse…" button on the preview/settings surface, reusing `ui/vhdl_picker.py` to point at a `ghdl`/`nvc` binary and probe it (`_probe_simulator`), would close the last hand-editing gap. Parked as phase-2 at U35 planning: the CLI/env/file paths cover the need, so a picker is pure ergonomics. |
 | **P22** | Replicate real boards' physical component layouts | Appetite for a board-fidelity pass (Rick, someday 2026-07-21), or per-board photos/coordinates become available for the popular boards | L | The U36 ✅ flow-packer lays components out as generic banked rows (balanced, centered, labeled) — readable but not where they sit on the physical board. A physical-layout mode needs per-board coordinates (curated, or extracted from vendor images), a schema field for them, and a renderer path that honors them with the banked flow as fallback. Raised by Rick during the U36 layout review. |
 | **P23** | Session-log duty statistics | A user asks for per-run brightness/duty analytics, or the session log gains a consumer that wants them | S | The child measures exact per-channel duty all run (U9 ✅) but `sim_session_log.py` records none of it. Cheap adds: final/mean duty per channel, time-at-full, blink counts. Deferred at U38 closeout — no consumer today. |
 | **P24** | Bi-color 2-pin LEDs + charlieplexed LED matrices | A board with a 2-pin bi-color LED (red/green anti-parallel) or a charlieplexed matrix joins the fleet and someone wants it faithful | M | Neither shape fits the U37 channel model: a 2-pin bi-color LED is *one* component whose color depends on drive polarity (red / green / amber via alternation), and a charlieplexed matrix multiplexes N·(N−1) LEDs over N tri-stated pins. The U9 ✅ duty engine already renders the *time-division* half honestly (see the U22 head-start note); what's missing is the component model + tri-state pin awareness. No current board needs either (census 2026-07-19: zero such parts). |
 
-**Also parked (speculative, no trigger):** *LCD / OLED display support* — a stretch goal from the original `prompt_info` vision (alongside 7-seg, which shipped). No board JSON models a character LCD / OLED and no user has requested it; recorded for completeness only.
+**Also parked (speculative, no trigger):** *LCD / OLED display support* — a stretch goal from the original `prompt_info` vision (alongside 7-seg, which shipped). **Superseded 2026-08-05: scheduled as the U39–U41 peripherals arc (HD44780 character LCD + SSD1306 SPI OLED; plan approved) — see the Tier-4 card.** This line is retired at that arc's closeout.
 
 ---
 
@@ -595,7 +747,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (1393 tests across 40 files including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip, UIComponent base contract, component hover tooltips). All sprints must keep this green.
+1. **Tests** — `uv run pytest` (2127 tests across 83 files as of 2026-08-05, including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip, UIComponent base contract, component hover tooltips). All sprints must keep this green.
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy .` (`strict = true` since D8 ✅).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23); add `--no-ui` to isolate the simulator from UI changes. Baseline (single-window, v0.15.0): ~62 fps host; GHDL/Arty/blinky 0.0038–0.0041x (`--no-ui` ~0.0040–0.0043x); NVC/Arty/blinky 0.024–0.027x; GHDL/DE10-Lite/counter_7seg ≈0.0061x (from `memory/project_sim_performance.md`).
