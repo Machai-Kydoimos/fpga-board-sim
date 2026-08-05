@@ -57,6 +57,13 @@ designs as starting points — LED blinkers, 7-segment counters, and the generat
 6502/Z80 embedded-core systems. See [docs/writing_designs.md](writing_designs.md) for
 the full catalog and the design contract.
 
+> **⚠ Simulating a design executes it.** Analysis, elaboration, and the run itself
+> all happen with your user privileges: any design can read and write files through
+> `std.textio`, and on the native-code backends (NVC and GHDL's LLVM/JIT/GCC
+> variants) a `VHPIDIRECT` foreign declaration can call arbitrary native code. Treat
+> a downloaded `.vhd` like a downloaded script — read it before you run it. A
+> sandboxed run mode is planned ([roadmap D16](improvement_roadmap.md)).
+
 When you pick a file, the simulator analyzes and elaborates it (a few seconds on a
 large design); a spinner overlay keeps the window responsive while this runs and
 reports any contract or compile error.

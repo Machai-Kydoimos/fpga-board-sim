@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **The README and user guide now warn that simulating a design executes
+  it.** A `.vhd` file is compiled and run with the invoking user's
+  privileges: file read/write via `std.textio` on every backend, and
+  arbitrary native code via `VHPIDIRECT` foreign declarations on the
+  native-code backends (NVC and GHDL's LLVM/JIT/GCC variants). Upstream NVC
+  closed the 2026-07-04 disclosure as intended behavior (2026-07-30), so
+  documented awareness — treat a downloaded design like a downloaded
+  script — is the interim mitigation ahead of the planned sandboxed run
+  mode (roadmap D16, queued as the trust release). (#358)
+
 ## [0.20.0] - 2026-07-28
 
 ### Fixed
