@@ -25,6 +25,14 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy .
       - run: uv run rumdl check .
+      # Lints this file.  Paired with the pre-commit hook, and both are needed
+      # because each covers the other's blind spot: a hook only fires on
+      # *staged* files, so a broken ci.yml left sitting in the working tree
+      # sails through an unrelated commit and only this step catches it --
+      # while a workflow malformed badly enough may never reach this step at
+      # all, which only the hook catches.  Verified by breaking the workflow
+      # and walking both paths, rather than assumed.
+      - run: uv run actionlint
 
   board-drift:
     # U38 drift tripwire: re-sync every generated boards/ source at its
