@@ -45,7 +45,7 @@ cd fpga-board-sim
 # Install runtime + dev dependencies (pytest, ruff, mypy, pre-commit)
 uv sync --group dev
 
-# Install the pre-commit hooks (runs ruff, mypy, and rumdl on every commit)
+# Install the pre-commit hooks (runs ruff, mypy, rumdl, actionlint on every commit)
 uv run pre-commit install
 ```
 
@@ -97,22 +97,31 @@ uv run ruff check .        # linter — must report 0 errors
 uv run ruff format --check . # formatter check (ruff format . to auto-fix)
 uv run mypy .              # type checker — must report 0 errors
 uv run rumdl check .       # Markdown linter (rumdl check --fix to auto-fix)
+uv run actionlint          # GitHub Actions workflow linter (incl. shellcheck)
 uv run python scripts/check_encoding.py $(git ls-files '*.py')   # explicit encoding=
 uv run python scripts/check_registry_schema.py                   # registry TOMLs
 uv run pytest              # test suite — all fast tests must pass (no display needed)
 ```
 
-The last two are cheap (~0.2s each) and cover ground the linters do not:
+The last three are cheap (~0.2s each) and cover ground the linters do not.
 `check_encoding.py` finds implicit-encoding sites ruff can't type-infer (see
 [Spelling and text encoding](#spelling-and-text-encoding)), and
 `check_registry_schema.py` validates the citation registries — which no
 ruff/mypy/rumdl hook touches, since all three are scoped to Python or Markdown
 and the registries are TOML.
 
+`actionlint` closes the same kind of gap for `.github/workflows/`, which had no
+gate at all for the same reason: every hook is scoped to python/pyi/markdown/toml
+and rumdl additionally excludes `.github`, so editing `ci.yml` ran *zero* hooks.
+It is Actions-aware rather than a generic YAML linter — it runs shellcheck over
+`run:` blocks (the workflow does curl + sha256 verification, tar extraction, and
+PATH surgery), validates `uses:` refs, and reports duplicate keys, which are
+*valid* YAML that silently keeps the last value.
+
 Running them all at once:
 
 ```bash
-uv run ruff check . && uv run mypy . && uv run rumdl check . && uv run pytest
+uv run ruff check . && uv run mypy . && uv run rumdl check . && uv run actionlint && uv run pytest
 ```
 
 > **Windows / PowerShell 5.1:** `&&` is not supported — upgrade to

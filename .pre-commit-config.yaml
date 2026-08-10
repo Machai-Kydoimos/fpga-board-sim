@@ -71,6 +71,34 @@ repos:
       # row is silently skipped. pass_filenames is false because the script always
       # validates the whole registry (cross-file rules: unique row names, overlay
       # and waves entries naming real rows); `files` only decides *when* to run.
+      # Workflow YAML had no gate at all: every hook above is scoped to
+      # python/pyi/markdown/toml, and rumdl additionally excludes .github -- so
+      # editing ci.yml ran *zero* hooks and any mistake waited for a push.
+      # actionlint is Actions-aware where a generic YAML linter is not: it runs
+      # shellcheck over `run:` blocks (this workflow does curl + sha256
+      # verification, tar extraction, and PATH surgery, where an unquoted
+      # variable is a real bug class), validates `uses:` refs, and reports
+      # duplicate keys -- which are *valid* YAML that silently keeps the last
+      # value, so neither GitHub nor a plain parse would complain.
+      #
+      # yamllint was measured against this instead and rejected: on the repo's
+      # three YAML files it found 0 real defects, ~50 line-length nits at an
+      # 80-column default that contradicts this project's 100, and one false
+      # positive (`on:` read as boolean, which GitHub requires spelled that
+      # way).  Configured down to silence, the only substantive rule it still
+      # contributed was key-duplicates -- which actionlint already covers.
+      #
+      # Local hook via `uv run` rather than upstream's rhysd/actionlint hook,
+      # for the same reason as ruff/mypy/rumdl above: a hook `rev:` is not
+      # tracked by Dependabot and would drift from uv.lock.  pass_filenames is
+      # false because actionlint discovers .github/workflows itself; `files`
+      # only decides when to run.
+      - id: actionlint
+        name: actionlint
+        entry: uv run actionlint
+        language: system
+        files: ^\.github/workflows/.*\.ya?ml$
+        pass_filenames: false
       - id: check-registry-schema
         name: check-registry-schema
         entry: uv run python scripts/check_registry_schema.py

@@ -40,6 +40,17 @@ dev = [
     "pytest-randomly>=4.1.0",
     "rumdl>=0.2.53",
     "pillow>=12.3.0",
+    # Workflow linter.  Ships as an sdist that downloads the upstream
+    # rhysd/actionlint release binary at build time and verifies it against a
+    # sha256 baked into the sdist, so the chain is uv.lock -> sdist hash ->
+    # pinned binary hash -> official release.  Trade-off: installing needs
+    # network (there are no wheels), which CI already has.
+    "actionlint-py>=1.7.12.24",
+    # Only used by tests/test_workflow_lint_guard.py, to assert on the hook
+    # config structurally rather than by string matching.  Already in the tree
+    # as a pre-commit dependency, but declared here so the test does not rest
+    # on a transitive one that pre-commit could drop.
+    "pyyaml>=6.0",
     # TOML reader for the embedded-core generator on Python 3.10; 3.11+ uses stdlib tomllib.
     "tomli>=2.0 ; python_version < '3.11'",
 ]
