@@ -133,9 +133,29 @@ jobs:
         with:
           python-version: "3.12"
       - run: uv sync --group dev
+      # NVC floats on purpose -- it is the one simulator here that is not
+      # version-pinned, and that is a decision rather than an oversight.
+      # Upstream publishes no macOS binary at all (a release carries a .msi, a
+      # source tarball, and amd64 .debs), so the Linux and macOS jobs install
+      # through different channels -- and only this one can express a version.
+      # `brew install nvc` takes whatever homebrew-core currently holds, and
+      # `brew pin` only freezes an already-installed formula, so the macOS leg
+      # has no version knob at all.  Pinning here alone would therefore
+      # guarantee the two legs drift apart; today they agree, because
+      # homebrew-core bumps the formula the same day as every upstream release.
+      # A pin would also quietly acquire a dependency on the runner label: the
+      # action picks the .deb matching the *runner's* Ubuntu version, and no
+      # release before r1.22.x ships a 26.04 .deb, so a pin plus a rolled
+      # `ubuntu-latest` is a hard failure waiting to happen.
+      #
+      # What floating actually costs is knowing which version a green run
+      # tested against, so record it in the run summary rather than leaving it
+      # buried in a log step.
       - uses: nickg/setup-nvc@48f966dfc9b27bf13e873a473fcf1649ef8f5a0f  # v1
-      - name: Verify NVC
-        run: nvc --version
+      - name: Verify and record NVC version
+        run: |
+          nvc --version
+          echo "**NVC (Linux):** \`$(nvc --version | head -1)\`" >> "$GITHUB_STEP_SUMMARY"
       - name: Run full test suite
         env:
           SDL_VIDEODRIVER: dummy
@@ -287,8 +307,13 @@ jobs:
         run: |
           brew update
           brew install nvc
-      - name: Verify NVC
-        run: nvc --version
+      # Floating is deliberate on both NVC legs -- see the rationale on
+      # test-linux-nvc above.  This is the leg that cannot be pinned at all, so
+      # recording what brew actually poured matters more here than anywhere.
+      - name: Verify and record NVC version
+        run: |
+          nvc --version
+          echo "**NVC (macOS):** \`$(nvc --version | head -1)\`" >> "$GITHUB_STEP_SUMMARY"
       - name: Run full test suite
         env:
           SDL_VIDEODRIVER: dummy
