@@ -17,7 +17,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
 ]
 dependencies = [
-    "pygame>=2.6",
+    "pygame-ce>=2.5.8",
     "cocotb>=2.0",
     "find_libpython",
 ]

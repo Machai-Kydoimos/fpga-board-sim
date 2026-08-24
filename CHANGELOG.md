@@ -6,6 +6,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The GUI now depends on `pygame-ce` rather than upstream `pygame`.** Both
+  provide the same `import pygame`, and no application code changed; the swap is
+  about maintenance. Upstream's last release is 2.6.1 (2024-09-29), with 14
+  commits in the twelve months since, and it ships no wheels past `cp313`.
+  pygame-ce 2.5.8 (2026-08-09) ships `cp310`–`cp315` and bundles **SDL 2.32.10**
+  in place of **SDL 2.28.4**. (The two version lines are independent — 2.5.8 is
+  not "older" than 2.6.1, and a `pygame-ce>=2.6` pin is unsatisfiable.)
+  Verified: the full suite passes on pygame-ce (2134 tests, including the 121
+  GHDL/NVC ones), `mypy .` stays clean under `strict = true` against pygame-ce's
+  stubs, and a headless 10 s benchmark is unchanged (62.2 → 62.1 fps, draw share
+  6.1 % → 6.3 %, sim rate within the ±3 % run-to-run variance). Rendering is
+  effectively identical: the board-selector screen is **byte-identical**, and a
+  board preview differs by 0.16–0.18 % of pixels — a ≤1-pixel placement shift
+  inside the FPGA-chip block plus ~140 pixels at the 7-segment digits,
+  indistinguishable at 100 % zoom. Tested in isolation, glyph rasterization,
+  font metrics, draw primitives, alpha compositing, float-coordinate blitting
+  and the computed layout geometry are each byte-identical between the two, so
+  the residue was not attributed further; repeat renders within one flavor are
+  bit-exact, so it is a real difference rather than run-to-run noise. Every job
+  in the CI matrix resolves to a real wheel with no sdist build, confirmed by
+  cross-installing for Linux x86_64/aarch64, macOS arm64 (`universal2`) and
+  Windows x86_64 on Python 3.10/3.12/3.13.
+- **Two pygame-ce behavior differences are worth knowing** even though neither
+  affects existing code. Every `WINDOW*` event constant and `USEREVENT` is
+  numbered one lower than upstream — `WINDOWFOCUSLOST` is `32785`, and `32786`
+  now means `WINDOWCLOSE` — so these must always be referenced by symbol, never
+  by integer; and `pygame.key.get_focused()` returns `True` under the dummy
+  video driver where upstream returned `False`. The repo already uses the
+  symbols and never calls `get_focused()`; both facts are recorded in the U44
+  multi-input plan's measured-facts table.
+- **One cosmetic difference in the U38 RGB debug view, on machines without
+  Consolas** (most Linux boxes, and every CI runner, where
+  `SysFont("consolas")` silently falls back to pygame's bundled
+  `freesansbold.ttf`). The tight bounding height of `"100%"` at font size 9 is
+  5 px under upstream pygame and **4 px** under pygame-ce — exactly the budget
+  an 8 px-tall duty bar allows — so the tiny `%` readout now renders inside
+  those bars where it previously did not. `_pct_font_size` is behaving as
+  designed (it fits the font actually in use); whether a 4 px glyph is worth
+  showing is a separate judgement, left unchanged here. This surfaced as a real
+  CI failure: `test_debug_view_rgbled_draws_linear_length_bars` probes the fill
+  near the bar's right edge, which is where that label sits. The test claimed to
+  defend against platform font variance by passing a large `font`, but that
+  argument never gated the `%` text; it now pins `_pct_font_size` off so the
+  probes measure pure bar geometry on any machine. The full suite was re-run
+  with fontconfig seeing **no** system fonts, reproducing the CI environment:
+  2134 passed, and that test was the only one carrying the assumption.
+- **Upgrading an existing environment:** `uv sync` swaps the two atomically and
+  needs nothing special. With `pip`, uninstall `pygame` *before* installing
+  `pygame-ce` — installing over it appears to succeed (both register, `pip
+  check` stays clean) but silently overwrites files, and a later `pip uninstall
+  pygame` then deletes files pygame-ce owns, breaking `import pygame`. A new
+  guard, `tests/test_pygame_distribution.py`, fails loudly if both are ever
+  installed at once. See [docs/install.md](docs/install.md#pygame-ce).
+
 ### Security
 
 - **The README and user guide now warn that simulating a design executes

@@ -62,7 +62,8 @@ which is all the bridge reads.
 ## Results (2026-07-16)
 
 Machine: AMD Ryzen AI 9 HX 370, Fedora (kernel 7.1.3-100.fc43), Python
-3.13.12, pygame-ce 2.6.1 (SDL 2.28.4), GHDL 7.0.0-dev (6.0.0.r205), nvc
+3.13.12, pygame 2.6.1 (SDL 2.28.4 — upstream, predating the pygame-ce
+switch), GHDL 7.0.0-dev (6.0.0.r205), nvc
 1.22-devel (1.21.0.r94). Headless (`SDL_VIDEODRIVER=dummy`), 10 s runs
 (6 s where noted). Baseline = current `--benchmark` (UI inside the sim
 process); bridge = this spike, child free-running. Run-to-run variance ≈ ±3%.

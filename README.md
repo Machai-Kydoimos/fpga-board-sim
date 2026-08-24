@@ -225,14 +225,15 @@ full pipeline, the GHDL/NVC backends, and the board-native matcher are documente
 | Tool | Version | Purpose |
 |------|---------|---------|
 | Python | 3.10+ | Runtime (must be standalone, not Windows Store) |
-| pygame | 2.6+ | GUI rendering |
+| pygame-ce | 2.5.8+ | GUI rendering (imports as `pygame`) |
 | cocotb | 2.0+ | Python ↔ simulator bridge (VPI/VHPI) |
 | GHDL | 6.0+ | VHDL compilation and simulation (mcode, LLVM, or LLVM-JIT backend — see [choosing a simulator](docs/install.md#choosing-a-simulator)) |
 | NVC | 1.11.0+ | Alternative VHDL simulator (LLVM native code; recommended ≥ 1.19.0; Linux/macOS fully tested; Windows available but untested with cocotb VHPI) |
 
 At least one of GHDL or NVC must be installed; both can coexist, selected via the UI
 toggle or `--sim` flag. Installation details, including the
-[pygame-ce](https://github.com/pygame-community/pygame-ce) note, are in
+[pygame-ce](https://github.com/pygame-community/pygame-ce) note (it is the
+community fork, and it imports as plain `pygame`), are in
 [docs/install.md](docs/install.md).
 
 ## Contributing

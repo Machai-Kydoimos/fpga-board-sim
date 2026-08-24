@@ -231,11 +231,31 @@ uv run fpga-sim --sim nvc       # NVC (available via winget; untested on Windows
 
 ## pygame-ce
 
-[pygame-ce](https://github.com/pygame-community/pygame-ce) (community edition) is an
-actively maintained fork that uses the identical `import pygame` API. It cannot
-coexist with standard `pygame` in the same environment — you must uninstall one
-before installing the other. It has not been tested with this project, but should
-work as a drop-in replacement.
+The GUI is rendered with [pygame-ce](https://github.com/pygame-community/pygame-ce)
+(pygame Community Edition), the actively maintained community fork. It imports as
+plain `pygame`, and nothing here is written against fork-only API.
+
+`uv sync` is the supported install path and needs no special handling: if an older
+checkout left upstream `pygame` in the virtualenv, uv removes it and installs
+pygame-ce in the same step.
+
+**If you install with `pip` instead, order matters.** The two distributions own the
+same `pygame/` import directory, and pip does not detect the collision:
+
+- `pip install pygame-ce` while upstream `pygame` is installed *appears* to work —
+  both are listed by `pip list`, `pip check` reports nothing wrong, and pygame-ce's
+  files silently overwrite pygame's.
+- `pip uninstall pygame` afterwards then **breaks the environment**, because pip
+  deletes files that now belong to pygame-ce. `import pygame` fails with
+  `AttributeError: module 'pygame' has no attribute 'init'`.
+
+So with pip, uninstall `pygame` *first*, then install `pygame-ce`. To repair an
+environment already in that state, uninstall both and reinstall `pygame-ce`.
+`tests/test_pygame_distribution.py` fails loudly if both are ever installed at once.
+
+Version numbers are **not** comparable across the two: pygame-ce's latest (2.5.8) is
+numerically lower than upstream pygame's (2.6.1) because they are independent
+version lines — a `pygame-ce>=2.6` pin is unsatisfiable.
 
 ## Troubleshooting
 

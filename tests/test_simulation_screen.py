@@ -458,10 +458,10 @@ def test_skipped_frame_leaves_surface_byte_identical(headless_pygame, fake_child
     screen._connected = True
 
     screen._render_frame()  # draws
-    drawn = headless_pygame.image.tostring(screen.screen, "RGB")
+    drawn = headless_pygame.image.tobytes(screen.screen, "RGB")
     screen._render_frame()  # skips (nothing changed)
     assert screen.run_stats.frames_drawn == 1  # confirm it really skipped
-    skipped = headless_pygame.image.tostring(screen.screen, "RGB")
+    skipped = headless_pygame.image.tobytes(screen.screen, "RGB")
     assert skipped == drawn
 
 

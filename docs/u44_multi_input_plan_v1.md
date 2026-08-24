@@ -103,14 +103,19 @@ Two findings that were not part of the original ask:
 | Preview and sim build **two separate** `FPGABoard`s; preview input state is discarded | `controller.py:349` vs `simulation_screen.py:138` |
 | Keys taken in-sim: `Esc` `F1`/`?` `R` `S` `D`; **`P` reserved** by roadmap card U14 | `simulation_screen.py:434,440,444`; `board_display.py:642,646,651`; `improvement_roadmap.md:128` |
 
-### 2.1 pygame facts, measured on this machine (pygame 2.6.1, SDL 2.28.4, upstream not -ce)
+### 2.1 pygame facts, measured on this machine (pygame-ce 2.5.8, SDL 2.32.10)
+
+> Originally measured under upstream pygame 2.6.1 / SDL 2.28.4 and **re-measured after the
+> move to pygame-ce**. Two rows changed; both are called out inline below. Everything else
+> — scancodes, `get_pressed()`, sparse synthetic events, modifier masks — is identical.
 
 | Probe | Result | Consequence |
 |---|---|---|
 | `pygame.key.set_repeat` called anywhere? | **Never** | No auto-repeat. A held key yields exactly one KEYDOWN — which is what a held button needs. Do not enable it. |
 | `KSCAN_1..KSCAN_0`, `KSCAN_KP_1..KSCAN_KP_0` | 30–39, 89–98 | Layout-independent physical positions exist and are usable. |
 | `type(get_pressed()).__getitem__ is tuple.__getitem__` | **False** | `get_pressed()` re-maps every index through `SDL_GetScancodeFromKey`. `ks[KSCAN_1]` silently returns `False` forever. **Polling cannot back up event tracking.** |
-| `pygame.key.get_focused()` under `SDL_VIDEODRIVER=dummy` | **False** | Unusable — the whole `headless_pygame` suite (`tests/conftest.py:48-71`) runs under dummy. Never gate a hold on it. Use the `WINDOWFOCUSLOST` event (32786), which tests can post. |
+| `pygame.key.get_focused()` under `SDL_VIDEODRIVER=dummy` | **True** on pygame-ce 2.5.8 — **False** on upstream pygame 2.6.1 (**changed**) | **Flavor-dependent, so still never gate a hold on it.** The rule survives the switch; only its reason changed. It is no longer uniformly `False` under the dummy driver the whole `headless_pygame` suite (`tests/conftest.py:48-71`) runs on, so a hold gated on it would now behave differently in tests than it did before — and differently again for anyone still on upstream. Use the `WINDOWFOCUSLOST` event, which tests can post. |
+| Numeric value of `pygame.WINDOWFOCUSLOST` | **32785** on pygame-ce — **32786** on upstream (**changed**) | Every `WINDOW*` constant *and* `USEREVENT` sit exactly one lower on pygame-ce (19 of 28 compared constants shifted; none added or removed). **Always compare against the symbol, never the integer** — the literal `32786` is `WINDOWCLOSE` here, so a focus-loss handler written to the old number would fire on window close instead. The repo hardcodes none of these today. |
 | `Event(KEYUP, {"key":…, "mod":0})` has `.scancode`? | **False** | Synthetic test events are sparse. Read `getattr(ev, "scancode", None)` and fall back — exactly the trap the repo already records for `.unicode` at `improvement_roadmap.md:142`. |
 | `KMOD_CTRL` = 192, `KMOD_SHIFT` = 3, `KMOD_MODE` = 16384 | — | AltGr synthesizes `LCTRL+RALT` on Windows/X11 — see Decision C. |
 
@@ -538,8 +543,9 @@ intermediate states; KEYUP after the modifier was already released still release
 `WINDOWFOCUSLOST` clears key holds but not latches; F1 mid-hold then release inside the modal leaves
 nothing held; a KEYUP with no `.scancode` attribute (synthetic test events) still works.
 
-**Quality gates:** no `pygame.key.get_focused()` and no `pygame.key.get_pressed()` anywhere — both are
-unusable here (§2.1). No `set_repeat`. PNGs showing badges on a small-rect board (13-button ULX3S) and
+**Quality gates:** no `pygame.key.get_focused()` and no `pygame.key.get_pressed()` anywhere — `get_pressed()`
+is unusable here and `get_focused()` is flavor-dependent (§2.1). No hardcoded `WINDOW*` event
+integers. No `set_repeat`. PNGs showing badges on a small-rect board (13-button ULX3S) and
 a duplicate-label board (Sword).
 
 ### Phase 5 — drag-paint switches (S)
@@ -597,7 +603,7 @@ collapse; backlog cap bounds lag; non-input kinds bypass the queue.
 |---|---|
 | Held key stranded when a modifier is released first | Record the resolved target at KEYDOWN; pop it at KEYUP. Never re-resolve modifiers (§3.2). Regression test. |
 | Held key stranded by a blocking modal (which discards KEYUP) | `release_transient_holds()` on every modal entry (Phase 4 step 2). |
-| Held key stranded by focus loss / Alt-Tab | Handle `pygame.WINDOWFOCUSLOST` (32786). **Not** `get_focused()` — it is `False` under the test driver. |
+| Held key stranded by focus loss / Alt-Tab | Handle `pygame.WINDOWFOCUSLOST` — **by symbol, never by its integer** (§2.1: pygame-ce renumbered it to 32785, where 32786 means `WINDOWCLOSE`). **Not** `get_focused()`, whose value under the test driver depends on the pygame flavor. |
 | Held key stranded by the chrome `return` dropping a KEYUP | Convert to `continue` (Phase 1 step 3). |
 | Latched button not repainted (U23 redraw-skip) | Latch state enters `visual_signature()`; a test that fails without it. |
 | `pressed` setter breaks `capture_frames.py` / existing tests | Setter is silent and state-only; run the frame-capture path in Phase 1 Verify. |
