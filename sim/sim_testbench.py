@@ -63,6 +63,7 @@ from cocotb.triggers import Timer
 
 from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ, BoardDef
 from fpga_sim.sim_duty import DutyTracker
+from fpga_sim.sim_input import InputQueue
 from fpga_sim.sim_link import connect_from_env, drain, send
 
 # Loop-pacing constants.  _SPEED_DEFAULT mirrors the host slider default
@@ -245,6 +246,11 @@ async def bridge_sim(dut: object) -> None:
 
     paused = False
     running = True
+    # Inputs are queued, not applied as drained: the drain has no await in it,
+    # so a press and its release arriving together would collapse to the release
+    # and the design would never see the press (#353).  One state per iteration
+    # gives every distinct value an await Timer of exposure.
+    input_q = InputQueue()
     input_seq = 0  # last applied host input, echoed in every state send
     input_dirty = False  # force a prompt state send after applying an input
     last_led: int | None = None
@@ -299,13 +305,13 @@ async def bridge_sim(dut: object) -> None:
         # -- Apply control messages -------------------------------------------
         for kind, payload in drain(conn):
             if kind == "input":
-                for name in ("sw", "btn"):
-                    try:
-                        getattr(dut, name).value = int(payload.get(name, 0))
-                    except AttributeError:
-                        pass
-                input_seq = int(payload.get("seq", input_seq))
-                input_dirty = True
+                # Queued here, applied one per iteration below.  Every other
+                # message kind stays immediate: only input carries edges.
+                input_q.push(
+                    int(payload.get("sw", 0)),
+                    int(payload.get("btn", 0)),
+                    int(payload.get("seq", input_seq)),
+                )
             elif kind == "speed":
                 speed = max(1e-4, float(payload.get("factor", speed)))
             elif kind == "clk":
@@ -337,6 +343,23 @@ async def bridge_sim(dut: object) -> None:
                 paused = pausing
             elif kind in ("stop", "eof"):
                 running = False
+
+        # -- Apply at most one queued input (#353) -----------------------------
+        pending = input_q.pop()
+        if pending is not None:
+            for name, value in (("sw", pending.sw), ("btn", pending.btn)):
+                try:
+                    getattr(dut, name).value = value
+                except AttributeError:
+                    pass
+            input_dirty = True
+        # Acknowledge whatever is settled -- a popped state, or a duplicate the
+        # queue dropped because the DUT already shows it.
+        input_seq = input_q.applied_seq
+        # A backlog still to drain must keep the loop sending: the host's
+        # throttle would otherwise not hear about the edges as they land.
+        if input_q:
+            input_dirty = True
 
         # -- Throttled state send ----------------------------------------------
         now = time.monotonic()

@@ -24,6 +24,7 @@ from fpga_sim.ui.results import SimExit
 from fpga_sim.ui.simulation_screen import SimulationScreen
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from multiprocessing.connection import Connection
     from types import ModuleType
 
@@ -202,15 +203,170 @@ def test_bye_message_returns_stopped(headless_pygame, fake_child):
 
 
 def test_switch_callback_sends_input(headless_pygame, fake_child):
+    """A widget callback marks input dirty; the frame flush is what sends (U44)."""
     child, client = fake_child
     screen = _make_screen(headless_pygame, child)
     screen._connected = True
     screen.board.switches[0].state = True
     screen._on_switch(0, True, None)
+    screen._flush_input()
     msgs = _collect(client, 1)
     assert msgs[0][0] == "input"
     assert msgs[0][1]["sw"] == 0b0001
     assert msgs[0][1]["seq"] == 1
+
+
+# ── Input atomicity: one message per frame (U44) ──────────────────────────────
+
+
+def _wide_board() -> BoardDef:
+    """An 18-switch board -- the fleet maximum (DE2-115, VEEK-MT2)."""
+    return BoardDef(
+        name="Wide Board",
+        class_name="WideBoard",
+        vendor="TestVendor",
+        device="TestDevice",
+        package="QFP100",
+        leds=[ComponentInfo("led", "led", i, []) for i in range(4)],
+        buttons=[ComponentInfo("button", "button", i, []) for i in range(3)],
+        switches=[ComponentInfo("switch", "switch", i, []) for i in range(18)],
+    )
+
+
+def _wide_screen(pygame: ModuleType, child: SimChild) -> SimulationScreen:
+    surface = pygame.display.set_mode((1024, 700))
+    return SimulationScreen(
+        surface,
+        pygame.time.Clock(),
+        _wide_board(),
+        child,
+        speed_factor=0.1,
+        match=None,
+        vhdl_path="blinky.vhd",
+        sim=_sim("ghdl"),
+    )
+
+
+def test_reset_on_a_wide_board_sends_exactly_one_message(headless_pygame, fake_child):
+    """R changed 18 widgets and sent 18 full-state messages; now it sends one.
+
+    Each send is a complete snapshot, so the extra 17 were pure duplication --
+    and if two of them straddled a child drain, the DUT held a half-reset switch
+    vector for a whole sim step (up to ~9.6k clock cycles).
+    """
+    child, client = fake_child
+    screen = _wide_screen(headless_pygame, child)
+    screen._connected = True
+    for sw in screen.board.switches:
+        sw.state = True
+    screen.board.buttons[0].hold("mouse:1")
+
+    reset = headless_pygame.event.Event(headless_pygame.KEYDOWN, {"key": headless_pygame.K_r})
+    screen.board._handle_events([reset])
+    screen._flush_input()
+
+    msgs = _collect(client, 1)
+    assert len(msgs) == 1
+    assert msgs[0][0] == "input"
+    assert msgs[0][1] == {"sw": 0, "btn": 0, "seq": 1}
+
+
+def test_many_changes_in_one_frame_coalesce_to_one_message(headless_pygame, fake_child):
+    """Simultaneous switch and button changes reach the DUT atomically."""
+    child, client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+
+    screen.board.switches[0].state = True
+    screen._on_switch(0, True, None)
+    screen.board.switches[2].state = True
+    screen._on_switch(2, True, None)
+    screen.board.buttons[1].hold("key:31")
+    screen._on_button(1, True, None)
+    screen._flush_input()
+
+    msgs = _collect(client, 1)
+    assert len(msgs) == 1
+    assert msgs[0][1]["sw"] == 0b0101
+    assert msgs[0][1]["btn"] == 0b010
+    assert msgs[0][1]["seq"] == 1
+
+
+def test_flush_without_changes_sends_nothing(headless_pygame, fake_child):
+    """A quiet frame must not put a redundant message on the wire."""
+    child, client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen._flush_input()
+    screen._flush_input()
+    assert _collect(client, 1, timeout=0.1) == []
+    assert screen._input_seq == 0
+
+
+def test_flush_is_idempotent_after_sending(headless_pygame, fake_child):
+    """The dirty flag clears on flush, so re-flushing the same frame is a no-op."""
+    child, client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen.board.switches[0].state = True
+    screen._on_switch(0, True, None)
+    screen._flush_input()
+    screen._flush_input()
+    assert len(_collect(client, 2, timeout=0.2)) == 1
+
+
+def test_input_before_connect_is_delivered_once_connected(headless_pygame, fake_child):
+    """Input taken during the connect spinner must not be silently discarded.
+
+    The board widget already showed the switch on, so dropping the message left
+    the display claiming a state the DUT had never been told about.
+    """
+    child, client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = False
+
+    screen.board.switches[1].state = True
+    screen._on_switch(1, True, None)
+    screen._flush_input()
+    assert _collect(client, 1, timeout=0.1) == []
+    assert screen._input_dirty is True  # still owed
+
+    screen._connected = True
+    screen._flush_input()
+    msgs = _collect(client, 1)
+    assert len(msgs) == 1
+    assert msgs[0][1]["sw"] == 0b0010
+
+
+def test_run_flushes_input_once_per_frame(headless_pygame, fake_child, monkeypatch):
+    """run() must call the flush after events are handled, not per callback."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+
+    order: list[str] = []
+
+    def _note(name: str) -> Callable[[], None]:
+        def _record() -> None:
+            order.append(name)
+
+        return _record
+
+    monkeypatch.setattr(screen, "_pump_link", _note("link"))
+    monkeypatch.setattr(screen, "_pump_events", _note("events"))
+    monkeypatch.setattr(screen, "_flush_input", _note("flush"))
+    monkeypatch.setattr(screen, "_render_frame", lambda: None)
+    monkeypatch.setattr(screen, "_teardown", lambda *_a: None)
+
+    def _stop_after_two_frames() -> None:
+        if order.count("flush") >= 2:
+            screen.panel.stop_requested = True
+
+    monkeypatch.setattr(screen, "_sync_controls", _stop_after_two_frames)
+    screen.run()
+
+    assert order[:3] == ["link", "events", "flush"]
+    assert order.count("flush") == 2
 
 
 def test_help_modal_pauses_and_resumes(headless_pygame, fake_child, monkeypatch):
@@ -539,6 +695,7 @@ def _run_screen_e2e(pygame: ModuleType, simulator: str) -> None:
                 if not injected:
                     screen.board.switches[0].state = True
                     screen._on_switch(0, True, None)  # input seq 1 -> child echoes it
+                    screen._flush_input()
                     injected = True
             time.sleep(0.01)
         assert exit_intent is SimExit.STOPPED, f"expected STOPPED, got {exit_intent}"
