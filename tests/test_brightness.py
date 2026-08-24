@@ -467,6 +467,29 @@ def test_debug_view_rgbled_draws_linear_length_bars(
     assert surface.get_at((40, 34))[:3] == _bar_track_color()
 
 
+def test_pct_readout_is_dropped_when_it_would_be_sub_legible(headless_pygame, monkeypatch):
+    """A % readout that would render as unreadable specks is suppressed, and the
+    decision does not depend on which fonts the machine happens to have.
+
+    `_get_font` is `SysFont("consolas")`, which falls back to pygame's bundled
+    freesansbold.ttf wherever Consolas is absent -- every CI runner and most
+    Linux boxes.  Under that fallback "100%" at the size-9 floor has a 4px tight
+    height on pygame-ce (5px on upstream pygame), so an 8px debug bar, whose
+    text budget is exactly 4px, would "fit" a readout nobody can read.  Pinning
+    the sizing font to the bundled one makes this test independent of the host's
+    font set; the fit cache is keyed only by geometry, so it is reset too.
+    """
+    from fpga_sim.ui import components
+
+    monkeypatch.setattr(
+        components, "_get_font", lambda fs, bold=False: headless_pygame.font.Font(None, fs)
+    )
+    monkeypatch.setattr(components, "_PCT_FIT_CACHE", {})
+
+    assert components._pct_font_size(4, 52) is None  # an 8px bar's budget
+    assert components._pct_font_size(24, 120) is not None  # real room: still sized
+
+
 def test_debug_view_bar_percent_text_appears_when_it_fits(headless_pygame, restore_debug_view):
     """A bar tall enough for the label font gets its % readout (white glyphs)."""
     from fpga_sim.ui.components import RGBLED, set_debug_view
