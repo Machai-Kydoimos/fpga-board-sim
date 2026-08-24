@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Buttons are now held by a *set* of sources rather than a single boolean**
+  (U44 phase 1). A button is down whenever at least one source holds it —
+  `"mouse:1"`, later a key or a latch — so releasing one source never disturbs
+  another, and a mouse-up releases only the button that mouse button actually
+  pressed. Previously *any* mouse-up released *every* button, because
+  `Button.handle_release()` carried no identity at all. Holds are keyed by
+  widget index, never by rect or position, so a resize mid-gesture keeps them.
+  The callback still fires only on the pressed edge, so a button held by three
+  sources reports exactly one release; `.pressed` remains assignable and stays
+  deliberately silent for the callers that drive the widget and the DUT
+  themselves. `R` continues to clear everything.
+- **A click on the preview footer's chrome no longer discards the rest of that
+  frame's events.** The six chrome handlers returned out of the whole event
+  loop; they now continue to the next event. Invisible today, but it becomes a
+  stuck-button path as soon as a release event can be the one dropped.
+- One user-visible change falls out of the above: pressing a button, dragging
+  onto a *different* button, and releasing there now releases the button the
+  press landed on, and never presses the one under the cursor. That is both the
+  standard UI convention and what real hardware does.
 - **The GUI now depends on `pygame-ce` rather than upstream `pygame`.** Both
   provide the same `import pygame`, and no application code changed; the swap is
   about maintenance. Upstream's last release is 2.6.1 (2024-09-29), with 14

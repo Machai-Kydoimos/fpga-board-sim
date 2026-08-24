@@ -534,15 +534,69 @@ class Switch(UIComponent):
 
 
 class Button(UIComponent):
-    """A momentary push-button – pressed while the mouse is held down."""
+    """A push-button that is down while *any* hold source holds it (U44).
+
+    A button is not "pressed or not" — it is held by a **set of sources**, and
+    it is down whenever that set is non-empty.  A mouse button, a keyboard key,
+    and a latch are independent sources, so releasing one never disturbs
+    another: hold BTN0 with the mouse *and* with a key, let the mouse go, and
+    the button stays down because the key hold remains.
+
+    Source tokens are opaque strings owned by the caller
+    (``"mouse:1"``, ``"key:30"``, ``"latch"``).  The callback fires only on the
+    ``pressed`` **edge**, never per source mutation, so clearing a button held
+    by three sources reports exactly one release.
+    """
 
     _LABEL_PREFIX = "BTN"
+
+    #: Hold source recorded by the back-compat ``pressed`` setter.
+    DIRECT_SOURCE = "direct"
+
+    #: Hold source a latch gesture owns; the one source focus loss keeps.
+    LATCH_SOURCE = "latch"
 
     def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
         """Initialize the button with its board index and optional component metadata."""
         super().__init__(index, info)
-        self.pressed = False
+        self._holds: set[str] = set()
         self.callback: Callable[[int, bool, ComponentInfo | None], None] | None = None
+
+    @property
+    def pressed(self) -> bool:
+        """True while at least one source holds the button down."""
+        return bool(self._holds)
+
+    @pressed.setter
+    def pressed(self, value: bool) -> None:
+        """Set the down state directly, **silently** — no callback is fired.
+
+        Back-compat for the callers that drive both the widget and the DUT
+        themselves (``sim/capture_frames.py``) or assert on a screen whose
+        callbacks are already wired (``tests/``): a firing setter would emit a
+        stray ``input`` message or double-drive ``dut.btn``.  Interactive input
+        goes through :meth:`hold` / :meth:`release`, which own the callback.
+        """
+        if value:
+            self._holds.add(self.DIRECT_SOURCE)
+        else:
+            self._holds.clear()
+
+    @property
+    def holds(self) -> frozenset[str]:
+        """The current hold sources (read-only view)."""
+        return frozenset(self._holds)
+
+    def _fire(self, state: bool) -> None:
+        if self.callback:
+            self.callback(self.index, state, self.info)
+
+    def hold(self, source: str) -> None:
+        """Add *source* to the hold set, firing the callback on the down edge."""
+        was_pressed = self.pressed
+        self._holds.add(source)
+        if not was_pressed:
+            self._fire(True)
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         """Draw the push-button with a highlight when pressed, plus its label."""
@@ -556,21 +610,37 @@ class Button(UIComponent):
         lbl = font.render(self.label, True, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
 
-    def handle_press(self, pos: tuple[int, int]) -> bool:
-        """Mark the button as pressed if pos is within its rect; return True on hit."""
+    def handle_press(self, pos: tuple[int, int], source: str = DIRECT_SOURCE) -> bool:
+        """Hold the button under *pos* via *source*; return True on hit."""
         if self.rect.collidepoint(pos):
-            self.pressed = True
-            if self.callback:
-                self.callback(self.index, True, self.info)
+            self.hold(source)
             return True
         return False
 
-    def handle_release(self) -> None:
-        """Release the button and fire the callback if it was previously pressed."""
-        if self.pressed:
-            self.pressed = False
-            if self.callback:
-                self.callback(self.index, False, self.info)
+    def handle_release(self, source: str | None = None) -> None:
+        """Drop *source* from the hold set — or **all** sources when None.
+
+        Fires the callback only if this drops the last hold; releasing a source
+        that was never held is a no-op.
+        """
+        was_pressed = self.pressed
+        if source is None:
+            self._holds.clear()
+        else:
+            self._holds.discard(source)
+        if was_pressed and not self.pressed:
+            self._fire(False)
+
+    def release_transient(self) -> None:
+        """Drop every hold except a latch, firing at most one release callback.
+
+        A latch is deliberate, hands-free state; a mouse or key hold is live and
+        cannot outlive the event stream that would end it.
+        """
+        was_pressed = self.pressed
+        self._holds = {s for s in self._holds if s == self.LATCH_SOURCE}
+        if was_pressed and not self.pressed:
+            self._fire(False)
 
 
 class SevenSeg:

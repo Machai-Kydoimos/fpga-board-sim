@@ -46,6 +46,11 @@ if TYPE_CHECKING:
 HOVER_TOOLTIP_MS = 400
 
 
+def _mouse_source(button: int) -> str:
+    """Hold-source token for a mouse button (U44), e.g. ``"mouse:1"``."""
+    return f"mouse:{button}"
+
+
 class _Positionable(Protocol):
     """Structural type for board widgets `_place_items` can lay out (assigns `.rect`)."""
 
@@ -234,6 +239,11 @@ class FPGABoard:
         self._tooltip = Tooltip()
         self._hover_target: UIComponent | None = None
         self._hover_since_ms = 0
+
+        # Which widget each held mouse button is holding (U44).  Keyed by the
+        # pygame mouse-button number and storing the *widget index* — never a
+        # rect or a position, because _layout() reassigns every rect on resize.
+        self._mouse_holds: dict[int, int] = {}
 
         # Default callbacks – print name + connector info
         def _sw_cb(idx: int, state: bool, info: ComponentInfo | None) -> None:
@@ -654,8 +664,7 @@ class FPGABoard:
                         sw.state = False
                         if sw.callback:
                             sw.callback(sw.index, False, sw.info)
-                for btn in self.buttons:
-                    btn.handle_release()
+                self.release_all_holds()
 
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 if self.vhdl_path is not None:
@@ -669,12 +678,12 @@ class FPGABoard:
                 # Help (?) button
                 if self._help_btn_rect and self._help_btn_rect.collidepoint(event.pos):
                     self._help_requested = True
-                    return
+                    continue
 
                 # Settings (gear) button
                 if self._settings_btn_rect and self._settings_btn_rect.collidepoint(event.pos):
                     self._settings_requested = True
-                    return
+                    continue
 
                 # Simulator toggle (cycle to next installed simulator)
                 if (
@@ -688,7 +697,7 @@ class FPGABoard:
                         else 0
                     )
                     self.sim = self.available_sims[(idx + 1) % len(self.available_sims)]
-                    return
+                    continue
 
                 # [Select Board] button
                 if self._select_board_btn_rect and self._select_board_btn_rect.collidepoint(
@@ -696,13 +705,13 @@ class FPGABoard:
                 ):
                     self._go_back = True
                     self.running = False
-                    return
+                    continue
 
                 # [Load VHDL File] button
                 if self._load_vhdl_btn_rect and self._load_vhdl_btn_rect.collidepoint(event.pos):
                     self._load_vhdl = True
                     self.running = False
-                    return
+                    continue
 
                 # [Start Simulation] button (only active when VHDL is loaded)
                 if (
@@ -712,16 +721,53 @@ class FPGABoard:
                 ):
                     self._simulate = True
                     self.running = False
-                    return
+                    continue
 
                 for sw in self.switches:
                     sw.handle_click(event.pos)
+                source = _mouse_source(event.button)
                 for btn in self.buttons:
-                    btn.handle_press(event.pos)
+                    if btn.handle_press(event.pos, source):
+                        self._mouse_holds[event.button] = btn.index
+                        break
 
             elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-                for btn in self.buttons:
-                    btn.handle_release()
+                self._release_mouse_hold(event.button)
+
+    # ── hold-source bookkeeping (U44) ────────────────────────────────
+
+    def _release_mouse_hold(self, button: int) -> None:
+        """Release only the widget that mouse *button* is holding.
+
+        The pre-U44 handler released *every* button on any mouse-up, so a
+        second hold taken by the keyboard (or another mouse button) died with
+        it.  The registry makes the release identity-scoped.
+        """
+        index = self._mouse_holds.pop(button, None)
+        if index is not None:
+            self.buttons[index].handle_release(_mouse_source(button))
+
+    def release_transient_holds(self) -> None:
+        """Drop every live hold (mouse, keyboard) while keeping latches.
+
+        For the moments the event stream itself goes away — window focus loss,
+        a blocking modal running its own ``event.get()`` loop — where the
+        MOUSEBUTTONUP / KEYUP that would end a hold is never delivered and the
+        button would otherwise stay down forever.  Fires one release callback
+        per button that actually goes up.
+        """
+        self._mouse_holds.clear()
+        for btn in self.buttons:
+            btn.release_transient()
+
+    def release_all_holds(self) -> None:
+        """Drop *every* hold source on every button, latches included (the ``R`` reset).
+
+        Fires at most one release callback per button, whatever it was held by.
+        """
+        self._mouse_holds.clear()
+        for btn in self.buttons:
+            btn.handle_release()
 
     # ── hover tooltips (U3) ──────────────────────────────────────────
 

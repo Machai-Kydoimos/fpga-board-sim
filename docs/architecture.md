@@ -156,6 +156,18 @@ preview loop and `SimulationScreen` drive that same `_draw`, any board-area over
 added there appears in both — no simulation-screen change. Per-component metadata to
 surface goes in `tooltip_rows()`.
 
+**Button hold sources (U44).** A `Button` is not "pressed or not" — it carries a set
+of opaque **hold-source** tokens (`"mouse:1"`, and later a key or a latch) and is down
+whenever that set is non-empty. `FPGABoard._mouse_holds` records which widget *index*
+each held mouse button took, so a mouse-up releases only that button and never a hold
+some other source owns; indices rather than rects, because `_layout()` reassigns every
+`rect` on resize. The callback fires on the `pressed` **edge** only, so dropping the
+last of three sources reports exactly one release. `Button.pressed` stays assignable
+and is deliberately **silent** — `sim/capture_frames.py` drives the widget and `dut.btn`
+itself, and a firing setter would double-drive it. `release_transient_holds()` drops
+live holds while keeping latches (for focus loss and blocking modals, which never
+deliver the release event); `release_all_holds()` is the `R` reset.
+
 ## Simulation pipeline
 
 When the user clicks "Start Simulation" and picks a VHDL file, the launcher window

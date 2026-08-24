@@ -95,3 +95,112 @@ def test_uniform_access_across_a_mixed_component_list():
     assert [c.label for c in comps] == ["LED0", "SW1", "BTN2"]
     assert all(c.info is None for c in comps)
     assert all(isinstance(c.rect, pygame.Rect) for c in comps)
+
+
+# ── Button hold sources (U44) ────────────────────────────────────────────────
+
+
+def test_button_pressed_setter_is_state_only():
+    """Assigning .pressed must change state and fire nothing (invariant 1)."""
+    btn = Button(0)
+    fired: list[tuple[int, bool]] = []
+    btn.callback = lambda idx, state, _info: fired.append((idx, state))
+
+    btn.pressed = True
+    assert btn.pressed is True
+    btn.pressed = False
+    assert btn.pressed is False
+    assert fired == []
+
+
+def test_button_pressed_setter_clears_every_source():
+    """`.pressed = False` is a full reset, not just the direct source."""
+    btn = Button(0)
+    btn.hold("mouse:1")
+    btn.hold("key:30")
+    btn.pressed = False
+    assert btn.holds == frozenset()
+
+
+def test_button_multiple_hold_sources():
+    """The button stays down until the *last* source lets go, in any order."""
+    btn = Button(0)
+    btn.hold("mouse:1")
+    btn.hold("key:30")
+    assert btn.pressed is True
+
+    btn.handle_release("mouse:1")
+    assert btn.pressed is True  # the key still holds it
+    btn.handle_release("key:30")
+    assert btn.pressed is False
+
+
+def test_button_callback_fires_once_per_edge():
+    """Adding/removing sources mid-hold must not fire; only edges do (invariant 2)."""
+    btn = Button(0)
+    fired: list[tuple[int, bool]] = []
+    btn.callback = lambda idx, state, _info: fired.append((idx, state))
+
+    btn.hold("mouse:1")
+    btn.hold("key:30")
+    btn.hold("latch")
+    assert fired == [(0, True)]
+
+    btn.handle_release("key:30")
+    assert fired == [(0, True)]
+
+    btn.handle_release()  # clears the two remaining sources at once
+    assert fired == [(0, True), (0, False)]
+
+
+def test_button_release_unknown_source_is_noop():
+    """Releasing a source that never held the button changes nothing."""
+    btn = Button(0)
+    fired: list[tuple[int, bool]] = []
+    btn.callback = lambda idx, state, _info: fired.append((idx, state))
+
+    btn.handle_release("key:99")
+    assert fired == []
+
+    btn.hold("mouse:1")
+    btn.handle_release("key:99")
+    assert btn.pressed is True
+    assert fired == [(0, True)]
+
+
+def test_button_release_transient_keeps_the_latch():
+    """Focus loss drops live holds; a latch is deliberate state and survives."""
+    btn = Button(0)
+    fired: list[tuple[int, bool]] = []
+    btn.callback = lambda idx, state, _info: fired.append((idx, state))
+
+    btn.hold("mouse:1")
+    btn.hold(Button.LATCH_SOURCE)
+    btn.release_transient()
+    assert btn.pressed is True
+    assert btn.holds == frozenset({Button.LATCH_SOURCE})
+    assert fired == [(0, True)]  # no release edge — it never went up
+
+
+def test_button_release_transient_fires_once_when_it_goes_up():
+    """With no latch held, release_transient() reports exactly one release."""
+    btn = Button(0)
+    fired: list[tuple[int, bool]] = []
+    btn.callback = lambda idx, state, _info: fired.append((idx, state))
+
+    btn.hold("mouse:1")
+    btn.hold("key:30")
+    btn.release_transient()
+    assert btn.pressed is False
+    assert fired == [(0, True), (0, False)]
+
+
+def test_button_handle_press_records_its_source():
+    """A hit press registers the caller's source token; a miss changes nothing."""
+    btn = Button(0)
+    btn.rect = pygame.Rect(10, 10, 20, 20)
+
+    assert btn.handle_press((15, 15), "mouse:1") is True
+    assert btn.holds == frozenset({"mouse:1"})
+    assert btn.handle_press((100, 100), "mouse:3") is False
+    assert btn.holds == frozenset({"mouse:1"})

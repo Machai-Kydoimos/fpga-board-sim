@@ -282,3 +282,133 @@ def test_result_maps_exit_flags_to_screenresult(headless_pygame):
     assert board._result() is ScreenResult.LOAD_VHDL
     board._simulate = True  # simulate outranks everything
     assert board._result() is ScreenResult.SIMULATE
+
+
+# ── Hold sources: mouse identity, transient release, reset (U44) ─────────────
+
+
+def _mousedown(pygame: ModuleType, pos: tuple[int, int], button: int = 1) -> Event:
+    ev: Event = pygame.event.Event(pygame.MOUSEBUTTONDOWN, {"pos": pos, "button": button})
+    return ev
+
+
+def _mouseup(pygame: ModuleType, pos: tuple[int, int], button: int = 1) -> Event:
+    ev: Event = pygame.event.Event(pygame.MOUSEBUTTONUP, {"pos": pos, "button": button})
+    return ev
+
+
+def test_mouse_up_releases_only_the_pressed_button(headless_pygame):
+    """A mouse release must not disturb a button held by another source."""
+    board = _make_board(headless_pygame)
+    board._draw()  # lay out the widget rects
+    board.buttons[0].hold("key:30")
+
+    board._handle_events([_mousedown(headless_pygame, board.buttons[1].rect.center)])
+    assert board.buttons[1].pressed is True
+
+    board._handle_events([_mouseup(headless_pygame, board.buttons[1].rect.center)])
+    assert board.buttons[1].pressed is False
+    assert board.buttons[0].pressed is True  # the key hold is untouched
+
+
+def test_two_buttons_release_in_reverse_order(headless_pygame):
+    """Independent hold sets release independently, whatever the order."""
+    board = _make_board(headless_pygame)
+    board.buttons[0].hold("key:30")
+    board.buttons[1].hold("key:31")
+
+    board.buttons[1].handle_release("key:31")
+    assert (board.buttons[0].pressed, board.buttons[1].pressed) == (True, False)
+    board.buttons[0].handle_release("key:30")
+    assert (board.buttons[0].pressed, board.buttons[1].pressed) == (False, False)
+
+
+def test_drag_off_then_release_releases_the_pressed_button(headless_pygame):
+    """Press BTN0, drag onto BTN1, release: BTN0 goes up, BTN1 never went down.
+
+    The hold is keyed by the widget the press landed on, not by where the
+    cursor happens to be at release — the standard UI convention, and what
+    real hardware does.
+    """
+    board = _make_board(headless_pygame)
+    board._draw()
+    board._handle_events([_mousedown(headless_pygame, board.buttons[0].rect.center)])
+    board._handle_events([_mouseup(headless_pygame, board.buttons[1].rect.center)])
+    assert board.buttons[0].pressed is False
+    assert board.buttons[1].pressed is False
+
+
+def test_mouse_up_off_every_widget_still_releases_the_hold(headless_pygame):
+    """Releasing over empty board area must not strand the pressed button."""
+    board = _make_board(headless_pygame)
+    board._draw()
+    board._handle_events([_mousedown(headless_pygame, board.buttons[0].rect.center)])
+    assert board.buttons[0].pressed is True
+    board._handle_events([_mouseup(headless_pygame, (0, 0))])
+    assert board.buttons[0].pressed is False
+
+
+def test_mouse_hold_survives_a_resize(headless_pygame):
+    """Holds are keyed by widget index, so a mid-gesture relayout keeps them."""
+    board = _make_board(headless_pygame)
+    board._draw()
+    board._handle_events([_mousedown(headless_pygame, board.buttons[0].rect.center)])
+    board._resize(1400, 900)
+    assert board.buttons[0].pressed is True
+
+    board._handle_events([_mouseup(headless_pygame, board.buttons[0].rect.center)])
+    assert board.buttons[0].pressed is False
+
+
+def test_release_transient_holds_keeps_latches(headless_pygame):
+    """Focus loss / a modal drops live holds only; latched buttons stay down."""
+    from fpga_sim.ui.components import Button
+
+    board = _make_board(headless_pygame)
+    board._draw()
+    board._handle_events([_mousedown(headless_pygame, board.buttons[0].rect.center)])
+    board.buttons[1].hold(Button.LATCH_SOURCE)
+    board.buttons[2].hold("key:32")
+
+    board.release_transient_holds()
+    assert [b.pressed for b in board.buttons] == [False, True, False]
+    assert board._mouse_holds == {}
+
+
+def test_r_clears_latches_with_one_callback_each(headless_pygame):
+    """R is the documented escape hatch, so it must clear latches too."""
+    from fpga_sim.ui.components import Button
+
+    board = _make_board(headless_pygame)
+    board.buttons[0].hold(Button.LATCH_SOURCE)
+    board.buttons[0].hold("key:30")
+    board.buttons[1].hold(Button.LATCH_SOURCE)
+
+    fired: list[tuple[int, bool]] = []
+    for btn in board.buttons:
+        btn.callback = lambda idx, state, _info, fired=fired: fired.append((idx, state))
+
+    board._handle_events([_r_keydown(headless_pygame)])
+    assert all(not btn.pressed for btn in board.buttons)
+    assert fired == [(0, False), (1, False)]
+
+
+def test_chrome_click_does_not_drop_later_events_in_the_batch(headless_pygame):
+    """A chrome hit must consume only its own event, not the rest of the frame.
+
+    Pre-U44 the chrome handlers ``return``ed out of the whole event loop, so
+    every later event in the same batch — including a MOUSEBUTTONUP that ends
+    a hold — was silently discarded.
+    """
+    board = _make_board(headless_pygame)
+    board._draw()  # populates the footer chrome rects
+    assert board._help_btn_rect is not None
+
+    board._handle_events(
+        [
+            _mousedown(headless_pygame, board._help_btn_rect.center),
+            _mousedown(headless_pygame, board.buttons[0].rect.center),
+        ]
+    )
+    assert board._help_requested is True
+    assert board.buttons[0].pressed is True  # the second event was still handled
