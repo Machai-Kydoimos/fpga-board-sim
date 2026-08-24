@@ -190,6 +190,18 @@ def _bar_track_color() -> tuple[int, int, int]:
 #: fit search to a dict hit.
 _PCT_FIT_CACHE: dict[tuple[int, int, str], int] = {}
 
+#: Smallest tight glyph height (px) a % readout may render at.  Below this the
+#: digits are illegible mush -- and worse, *which* side of the line a given bar
+#: falls on depended on the installed font rather than on the design: the tight
+#: bounding height of "100%" at the size-9 floor is 5 px under upstream pygame's
+#: bundled freesansbold.ttf but 4 px under pygame-ce's, so an 8 px debug bar
+#: (whose budget is exactly 4 px) silently gained a readout when the GUI moved
+#: to pygame-ce (#366).  That fallback font is what most machines actually use
+#: here -- ``_get_font`` is ``SysFont("consolas")``, and Consolas is absent from
+#: every CI runner and most Linux boxes -- so the difference was widely visible.
+#: Gating on legibility instead makes the view identical on every font.
+_PCT_MIN_GLYPH_H = 5
+
 
 def _pct_font_size(max_h: int, max_w: int, sample: str = "100%") -> int | None:
     """Largest font size whose tight-rendered *sample* fits max_h x max_w.
@@ -198,6 +210,10 @@ def _pct_font_size(max_h: int, max_w: int, sample: str = "100%") -> int | None:
     includes generous line spacing) lets the text use the real vertical room;
     measuring the widest possible string ("100%", or "100" for the stacked
     circle readout) keeps a row of mixed duties at one uniform size.
+
+    Returns ``None`` when nothing fits *legibly*: a candidate must also clear
+    :data:`_PCT_MIN_GLYPH_H`, so a readout is dropped rather than drawn as
+    unreadable specks in a very short bar or a tiny LED circle.
     """
     key = (max_h, max_w, sample)
     if key not in _PCT_FIT_CACHE:
@@ -205,7 +221,8 @@ def _pct_font_size(max_h: int, max_w: int, sample: str = "100%") -> int | None:
             (
                 fs
                 for fs in range(max(9, max_h * 2), 8, -1)
-                if (t := _get_font(fs).render(sample, True, WHITE).get_bounding_rect()).height
+                if _PCT_MIN_GLYPH_H
+                <= (t := _get_font(fs).render(sample, True, WHITE).get_bounding_rect()).height
                 <= max_h
                 and t.width <= max_w
             ),

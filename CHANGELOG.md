@@ -46,7 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an 8 px-tall duty bar allows — so the tiny `%` readout now renders inside
   those bars where it previously did not. `_pct_font_size` is behaving as
   designed (it fits the font actually in use); whether a 4 px glyph is worth
-  showing is a separate judgement, left unchanged here. This surfaced as a real
+  showing was left as a separate judgement, and is resolved by the legibility
+  floor under **Fixed** below. This surfaced as a real
   CI failure: `test_debug_view_rgbled_draws_linear_length_bars` probes the fill
   near the bar's right edge, which is where that label sits. The test claimed to
   defend against platform font variance by passing a large `font`, but that
@@ -61,6 +62,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   pygame` then deletes files pygame-ce owns, breaking `import pygame`. A new
   guard, `tests/test_pygame_distribution.py`, fails loudly if both are ever
   installed at once. See [docs/install.md](docs/install.md#pygame-ce).
+
+### Fixed
+
+- **A duty readout is no longer drawn when it would be too small to read.**
+  `_pct_font_size` fitted the largest `"100%"` that fit a bar or LED circle with
+  no lower bound, so a very short bar got a 4 px-tall readout — legible only as
+  specks. Worse, *which* side of that line a given bar fell on depended on the
+  machine's fonts rather than on the design: `_get_font` is
+  `SysFont("consolas")`, absent from every CI runner and most Linux boxes, and
+  the bundled fallback's tight height for `"100%"` at the size-9 floor is 5 px
+  under upstream pygame but 4 px under pygame-ce. A candidate size must now also
+  clear `_PCT_MIN_GLYPH_H` (5 px), which makes the outcome identical on every
+  font. The effect is confined to a narrow band — measured on an Arty A7-100 RGB
+  debug view, windows around 640×460 and 700×500 (bar text budgets of 4 and 5 px)
+  drop their readout, while 800×560 and larger render pixel-identically, as do
+  560×420 and smaller, which never showed one.
 
 ### Security
 
