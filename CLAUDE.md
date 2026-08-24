@@ -91,7 +91,7 @@ The simulator runs in a **single window** (U34): the launcher's pygame process o
 | `systems/` | TOML system specs consumed by the generator (e.g. `mx65_walking_counter_7seg.toml`) |
 | `firmware/` | CPU firmware: 6502 `.s` (ca65/ld65) + Z80 `.asm` (z80asm) sources + assembled `.bin`, embedded verbatim as the ROM constant |
 | `scripts/capture_waveform.py` | Simulates `mx65_hello_7seg` against an inline testbench and renders `docs/assets/mx65_hello_waveform.png` (+ `.gtkw`) — an annotated GTKWave-idiom waveform for the guide's debugging section, with all five callouts located programmatically from the parsed VCD |
-| `docs/install.md` | Full install reference: GHDL/NVC per-OS matrix (incl. from-source, AUR/Gentoo/FreeBSD), uv setup, Windows run notes + PATH/DLL/MSYS2 troubleshooting, pygame-ce note (absorbed from README) |
+| `docs/install.md` | Full install reference: GHDL/NVC per-OS matrix (incl. from-source, AUR/Gentoo/FreeBSD), uv setup, Windows run notes + PATH/DLL/MSYS2 troubleshooting, pygame-ce note (the GUI dependency, plus the pip-collision trap) |
 | `docs/user_guide.md` | User-facing runtime reference: the four launcher screens, in-sim controls, stats panel, board-native runs (info tag / active-low note / session-log fields), and session/preferences (persistence, recent files, settings, themes, waveform capture + env vars, session logs) |
 | `docs/architecture.md` | Architecture reference: single-window process model (U34), project tree, board loading, pygame UI, simulation pipeline + backends, "How board-native works" internals, and contributor notes (absorbed from README's "How It Works" + CONTRIBUTING's "Architecture overview") |
 
