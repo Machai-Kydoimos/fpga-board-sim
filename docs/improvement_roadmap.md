@@ -214,10 +214,12 @@ This document inventories all viable improvements and ranks them by impact.
 - **Status:** the active arc (see [Current focus](#current-focus)) → target v0.21.0. Plan
   drafted 2026-07-29; **decisions resolved 2026-08-05 (Rick), all as recommended** — **A1**
   right-click latch (modeless) · **B1** hex keymap `0`–`9`/`A`/`B`/`C`, digits bound by
-  scancode with a unicode fallback (covers all 285 boards; the fleet maximum is 13 buttons) ·
-  **C1** drag-paint switch sweeps · **D1** fix the swallowed-tap bug
+  scancode and the letters by key code (covers all 285 boards; the fleet maximum is 13 buttons) ·
+  **C1** drag-paint switch sweeps — *paint*, not toggle · **D1** fix the swallowed-tap bug
   ([#353](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/353)) in-arc · the
-  Decision-E confirmations stand.
+  Decision-E confirmations stand. **Phase 0c (2026-08-24): every measurement re-verified against
+  pygame-ce (#366) and #367; the plan's §2.1, Decisions B · C · E, Phases 3-5, test strategy and
+  risk register were amended. No decision changed.**
 - **Why:** on real hardware you hold three buttons with three fingers and release them in any
   order; the simulator has exactly one cursor-hold, any mouse-up releases *every* button, and
   no keyboard input path exists at all. Separately, the sim child collapses all inputs drained

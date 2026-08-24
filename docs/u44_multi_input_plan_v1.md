@@ -6,11 +6,13 @@
 > scopes below apply exactly as written. Roadmap card filed 2026-08-05
 > (`improvement_roadmap.md` → Current focus + Part 1 / Tier 2); target release **v0.21.0**.
 > Execution not yet started — the milestone and phase issues are opened just-in-time when
-> Phase 1 begins.
+> Phase 1 begins. **Phase 0c (2026-08-24) re-ran every measurement against pygame-ce and amended
+> the decision detail; all five decisions are unchanged.**
 >
 > **Base commit:** every fact and `file:line` locator below was verified against `main` @ `c759258`
-> (post-v0.20.0, 2026-07-29). If `main` has advanced, re-verify by grepping the quoted content
-> before trusting any line number.
+> (post-v0.20.0, 2026-07-29) and **re-verified against `main` @ `41ac6d1` on 2026-08-24 (Phase 0c)**,
+> after the move to pygame-ce (#366) and the duty-readout legibility floor (#367). If `main` has
+> advanced again, re-verify by grepping the quoted content before trusting any line number.
 >
 > **Card IDs:** **U44** (this arc) and **P31+** (follow-ons) are the next free numbers — verified
 > 2026-07-29. `improvement_roadmap.md` allocates through U38 / D16 / P24; `docs/u39_peripherals_plan.md`
@@ -45,7 +47,7 @@ elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
         btn.handle_release()          # ← releases EVERY button, regardless of which was pressed
 ```
 
-`Button.handle_release()` (`components.py:551`) takes no position and no identity. Any mouse-up
+`Button.handle_release()` (`components.py:568`) takes no position and no identity. Any mouse-up
 clears every held button. There is no keyboard path at all — **no `KEYUP` handler exists anywhere
 in `src/`** — so N-key rollover, the one input device a user already owns that can express
 simultaneity, is unused.
@@ -86,8 +88,8 @@ Two findings that were not part of the original ask:
 
 | Fact | Locator |
 |---|---|
-| `Button` is momentary; `pressed: bool`; `handle_release()` takes **no identity** | `src/fpga_sim/ui/components.py:519-556` |
-| `Switch` is a toggle; `handle_click(pos)` flips `state` | `src/fpga_sim/ui/components.py:484-516` |
+| `Button` is momentary; `pressed: bool`; `handle_release()` takes **no identity** | `src/fpga_sim/ui/components.py:536-573` |
+| `Switch` is a toggle; `handle_click(pos)` flips `state` | `src/fpga_sim/ui/components.py:501-533` |
 | Mouse-down hit-tests every switch then every button; mouse-up releases **all** buttons | `src/fpga_sim/ui/board_display.py:717-724` |
 | Chrome-button hits `return` out of the whole event loop, dropping the rest of the frame's events | `board_display.py:672,677,691,699,705,715` |
 | `R` resets switches off + releases all buttons | `board_display.py:651-658` |
@@ -101,13 +103,15 @@ Two findings that were not part of the original ask:
 | Tests assign `.pressed` directly too | `tests/test_board_display_events.py:127,136,170`; `tests/test_simulation_screen.py:374` |
 | Chrome rects stay `None` in sim mode (`_draw` early-returns when `_show_footer` is False) | `board_display.py:863-867` |
 | Preview and sim build **two separate** `FPGABoard`s; preview input state is discarded | `controller.py:349` vs `simulation_screen.py:138` |
-| Keys taken in-sim: `Esc` `F1`/`?` `R` `S` `D`; **`P` reserved** by roadmap card U14 | `simulation_screen.py:434,440,444`; `board_display.py:642,646,651`; `improvement_roadmap.md:128` |
+| Keys taken in-sim: `Esc` `F1`/`?` `R` `S` `D`; **`P` reserved** by roadmap card U14 | `simulation_screen.py:434,440,444`; `board_display.py:642,646,651`; `improvement_roadmap.md:250,264` |
 
 ### 2.1 pygame facts, measured on this machine (pygame-ce 2.5.8, SDL 2.32.10)
 
 > Originally measured under upstream pygame 2.6.1 / SDL 2.28.4 and **re-measured after the
 > move to pygame-ce**. Two rows changed; both are called out inline below. Everything else
 > — scancodes, `get_pressed()`, sparse synthetic events, modifier masks — is identical.
+> **Phase 0c (2026-08-24) re-ran every probe on pygame-ce 2.5.8 and added the final row: the fork
+> ships two polling APIs upstream never had, and they carry the same trap `get_pressed()` does.**
 
 | Probe | Result | Consequence |
 |---|---|---|
@@ -116,8 +120,9 @@ Two findings that were not part of the original ask:
 | `type(get_pressed()).__getitem__ is tuple.__getitem__` | **False** | `get_pressed()` re-maps every index through `SDL_GetScancodeFromKey`. `ks[KSCAN_1]` silently returns `False` forever. **Polling cannot back up event tracking.** |
 | `pygame.key.get_focused()` under `SDL_VIDEODRIVER=dummy` | **True** on pygame-ce 2.5.8 — **False** on upstream pygame 2.6.1 (**changed**) | **Flavor-dependent, so still never gate a hold on it.** The rule survives the switch; only its reason changed. It is no longer uniformly `False` under the dummy driver the whole `headless_pygame` suite (`tests/conftest.py:48-71`) runs on, so a hold gated on it would now behave differently in tests than it did before — and differently again for anyone still on upstream. Use the `WINDOWFOCUSLOST` event, which tests can post. |
 | Numeric value of `pygame.WINDOWFOCUSLOST` | **32785** on pygame-ce — **32786** on upstream (**changed**) | Every `WINDOW*` constant *and* `USEREVENT` sit exactly one lower on pygame-ce (19 of 28 compared constants shifted; none added or removed). **Always compare against the symbol, never the integer** — the literal `32786` is `WINDOWCLOSE` here, so a focus-loss handler written to the old number would fire on window close instead. The repo hardcodes none of these today. |
-| `Event(KEYUP, {"key":…, "mod":0})` has `.scancode`? | **False** | Synthetic test events are sparse. Read `getattr(ev, "scancode", None)` and fall back — exactly the trap the repo already records for `.unicode` at `improvement_roadmap.md:142`. |
+| `Event(KEYUP, {"key":…, "mod":0})` has `.scancode`? | **False** (nor `.unicode`) | Synthetic test events are sparse. Read `getattr(ev, "scancode", None)` and fall back to `ev.key` — exactly the trap the repo already records for `.unicode` at `improvement_roadmap.md:264`. |
 | `KMOD_CTRL` = 192, `KMOD_SHIFT` = 3, `KMOD_MODE` = 16384 | — | AltGr synthesizes `LCTRL+RALT` on Windows/X11 — see Decision C. |
+| `key.get_just_pressed()` / `key.get_just_released()` (and the `mouse` pair) | **Present on pygame-ce (new in 2.4.0); absent from upstream pygame** — so they arrived with #366. Both return a `ScancodeWrapper`, `__getitem__` re-mapped exactly as `get_pressed()`'s | **Never use them**, and ban them by shape rather than by name (Phase 4 gate). They index by *key code*, so `ks[KSCAN_1]` is silently `False` forever — the same lie as `get_pressed()`. Worse, per pygame-ce's own docs a key reads "just released" *while still held* if it was released and re-pressed inside one frame, and "multiple releases and presses of the same key are not distinguished from a single release" — precisely the hold-source state this arc exists to get right. They also cannot see a KEYUP consumed inside a modal's own `event.get()` loop. **All input state comes from the event stream.** |
 
 ### 2.2 The fleet (measured over all 285 boards via `discover_boards('boards')`)
 
@@ -232,7 +237,7 @@ per-callback console `print` as-is (per-edge logging is useful).
 | Press two buttons at the *same instant* | keyboard chord (both KEYDOWNs in one frame batch → one coalesced message) | **exact** |
 | Hold a button indefinitely, hands free | latch | — |
 | Latched + live hold together | independent hold sources | — |
-| Set a 16-switch pattern fast | drag-paint (Decision C) | one message per motion frame |
+| Set a 16-switch pattern fast | drag-paint (Decision C) — *paint*, not toggle: the sweep drives every switch it crosses to one value | one message per motion frame |
 | Latch two buttons | two gestures → two messages, one frame apart | overlapping, staggered ~16 ms |
 
 The last row is the only staggered case, and it is faithful: on real hardware two fingers never land
@@ -252,6 +257,7 @@ Rick supplied a Gemini-generated catalog of multi-press UX patterns. Each was ev
 | **Paint / drag selection (lasso)** | **Adopted for switches** (Decision C). Sweeping a pen across a DIP bank is a real hardware gesture, and setting a 16-bit pattern is the actual pain point. |
 | **Marquee / bounding-box selection** | **Cut.** Same selection-model objection, plus board widgets are laid out in adaptive grids, so a rectangle rarely means anything. |
 | **Mouse button chording (L+R together)** | **Cut as a chord**; right-click is used as a *distinct gesture* instead (Decision A). Simultaneous L+R is undiscoverable and conflicts with OS-level gestures. |
+| **Double-click to latch** (not in the catalog — raised in the Phase 0c review) | **Cut, and it must stay cut.** Decision D1 exists precisely to make *rapid tapping* work (tap `btn(0)` to roll the die in `mx65_dice_7seg`). A double-click latch would hijack exactly that interaction: the second tap of a fast pair would latch the button down instead of registering as a tap. Right-click (A1) has no such conflict — which is an argument *for* A1, not merely against this. |
 | **Hover + key combination** | **Cut, superseded.** "Point at A, press key for B" is strictly worse than "press key for A and key for B," which the keymap gives directly. |
 | **Multi-finger touchpad gestures** | **Cut.** A touchpad reports fingers, not positions-over-widgets; there is no sensible mapping. |
 | **Spatial multi-tap (touchscreen)** | **Deferred to P32**, trigger: a user runs on a touchscreen. `FINGERDOWN`/`FINGERUP` would be the truest analog to fingers on a board, but it cannot be tested without hardware. |
@@ -360,14 +366,35 @@ Rick's explicit open question. Fleet reality: max **13** buttons; only **6** of 
 | Layout risk | `A`/`B`/`C` are relabeled on AZERTY (physical `A` is labeled `Q`), so a scancode binding's badge would mislead those users; the digit row is labeled identically on every Latin layout | None | `Shift+0` = button 10 is not memorable |
 | Failure mode | A future 14-button board would want `D`, which is taken | 6 boards keep mouse+latch only | — |
 
-**Recommendation: B1**, with the letter tier bound by **character** (`ev.unicode`) rather than
-scancode so the badge always matches the user's physical keycap, while the digit tier stays
-scancode-bound. Hex is the right idiom here and it covers the fleet exactly.
+**Recommendation: B1** — a **two-tier** binding, and the split is forced rather than stylistic: the
+digit tier binds by **scancode** (physical position), the letter tier by **key code** (`ev.key`, which
+SDL has already mapped through the active layout). Verified on pygame-ce 2.5.8: `pygame.key` exposes
+only `ScancodeWrapper`, `key_code`, and `name` — there is **no** scancode → current-layout-keycap
+lookup, so a scancode-bound letter *cannot* be badged accurately. Splitting the tiers is the only way
+every badge matches the keycap under the user's fingers. Hex is the right idiom here and it covers the
+fleet exactly.
 
-**B2 is a perfectly defensible smaller answer** — it drops one binding tier and one layout caveat,
-and it costs coverage on 6 niche boards (Sword, 4× ULX3S, 2× Lattice EVN) that are not the teaching
-boards this tool is aimed at. If the `A`/`B`/`C` layout asymmetry feels like a wart, take B2 and say
-so in the help legend.
+Bind the letter tier by **`ev.key`, not `ev.unicode`** (amended in Phase 0c). Both are layout-mapped,
+so the badge is correct either way — but `ev.key` is present on both KEYDOWN and KEYUP, is immune to
+Shift / CapsLock case (`'A'` vs `'a'`), is carried by this repo's synthetic test events (built as
+`{"key": …, "mod": 0}`), and matches the existing idiom: every letter binding in `src/` uses `K_r` /
+`K_s` / `K_d`, the sole `unicode` use being `?` (`board_display.py:647`), where it is genuinely
+correct because `?` is shift-dependent. This is a robustness choice, not a bug fix — `ev.unicode` *is*
+populated on KEYUP (pygame-ce lists `key, mod, unicode, scancode, window`).
+
+**B2 is a perfectly defensible smaller answer** — it drops one binding tier and one layout caveat, and
+it costs coverage on the 6 boards above: Sword, 4× ULX3S, and Lattice CertusPro-NX EVN — **one**
+Lattice board, not two (CrossLink-NX EVN has exactly 10 buttons and is covered either way). None are
+the teaching boards this tool is aimed at. If the `A`/`B`/`C` layout asymmetry feels like a wart, take
+B2 and say so in the help legend.
+
+**Know what the extra tier actually buys** (measured in Phase 0c). The only genuinely-13-button boards
+are the 4 ULX3S, whose indices 6-12 are `PWR0`, `FIRE0`, `FIRE1`, `UP0`, `DOWN0`, `LEFT0`, `RIGHT0` —
+so `A`/`B`/`C` land on **DOWN / LEFT / RIGHT of a d-pad**. Lattice CertusPro-NX EVN's 11 include three
+`button__n` active-low duplicate entries, and Sword's 11 carry duplicated `number`s
+(0,0,0,1,1,2,2,3,3,4,4). Keep the tier — it is cheap and hex is the right idiom — but it is serving
+upstream data artifacts and one d-pad, not seven distinct user buttons. Arrow-key aliases on d-pad
+boards would be a better follow-on than ever extending the map to `D`.
 
 Reject **B3**: it buys headroom no board needs, at the cost of re-opening the modifier-release bug class.
 
@@ -380,15 +407,26 @@ quickly**. This reframing is why drag-paint leads and a keymap does not.
 
 | | **C1 — drag-paint only** | **C2 — drag-paint + `Shift`+digit toggles** | **C3 — drag-paint + `Ctrl`+digit tiers** |
 |---|---|---|---|
-| Gesture | Press and sweep across a switch row; each switch the cursor *enters* toggles once | C1 + `Shift`+`0`-`9` toggle switches 0-9 | C1 + `Ctrl`+digit (0-9) and `Ctrl+Shift`+digit (10-17) |
+| Gesture | Press and sweep across a switch row; the sweep **paints** every switch it crosses to one value (see the recommendation) | C1 + `Shift`+`0`-`9` toggle switches 0-9 | C1 + `Ctrl`+digit (0-9) and `Ctrl+Shift`+digit (10-17) |
 | Coverage | All 18, in one gesture | All 18 by mouse; 10 by key | All 18 by key |
 | Release-order risk | None | **None** — a toggle acts on key-*down* only, so there is no hold to leak | None, same reason |
-| Modifier risk | None | Interacts with Decision B: on AZERTY, `Shift`+physical-`1` *produces* the character `1`, so a unicode fallback for buttons and a Shift tier for switches become ambiguous. Resolve by preferring the modifier-qualified reading | **AltGr synthesizes `LCTRL+RALT`** on Windows/X11, so AltGr+digit trips switch bindings for German/French/Polish/Czech users. Requires guarding `KMOD_ALT` *and* `KMOD_MODE` (16384) |
+| Modifier risk | None | Interacts with Decision B: on AZERTY, `Shift`+physical-`1` *produces* the character `1`, so a character-based reading for buttons and a Shift tier for switches would collide. Decision B's key-code binding sidesteps it; if C2 is ever taken, prefer the modifier-qualified reading | **AltGr synthesizes `LCTRL+RALT`** on Windows/X11, so AltGr+digit trips switch bindings for German/French/Polish/Czech users. Requires guarding `KMOD_ALT` *and* `KMOD_MODE` (16384) |
 | Cost | One MOUSEMOTION branch (there is none today) | + one binding tier | + two binding tiers + three modifier guards |
 
-**Recommendation: C1.** A sweep sets a 16-bit pattern in one gesture with zero modifier surface and
-nothing to memorize, and it mirrors running a pen across a real DIP bank. The keyboard's unique value
-is *simultaneity*, which toggles do not need.
+**Recommendation: C1**, with **paint** semantics rather than toggle-on-enter. A sweep sets a 16-bit
+pattern in one gesture with zero modifier surface and nothing to memorize, and it mirrors running a pen
+across a real DIP bank. The keyboard's unique value is *simultaneity*, which toggles do not need.
+
+**Paint, not toggle** (amended in Phase 0c). The framing at the head of this decision is the right one
+— the gap is *setting* 16 switches, not holding them — but toggle-on-enter does not set, it
+**inverts**. From a mixed pattern a sweep yields the complement, so no gesture reaches "all on" and the
+user is back to clicking individually, which is the pain point this was meant to remove. Instead:
+mouse-down toggles the first switch, `v` becomes that switch's **new** value, and every switch the drag
+subsequently crosses is *set to* `v`. Start on an off switch to drive the bank on, on an on switch to
+drive it off — deterministic from any starting state, and self-recovering, since after a paint the bank
+is uniform and any restart inverts it. It is also the *more* faithful analogy: a pen pushed along a DIP
+bank pushes every switch the same way rather than flipping each one. Same cost, and a single click
+stays a plain toggle.
 
 **C2 is a reasonable add** if "the keyboard can drive the whole board" is worth a tier — it is genuinely
 safe (no hold to leak) and cheap once the digit machinery exists. Note it leaves switches 10-17
@@ -430,11 +468,13 @@ These follow directly from the original request and are recorded so review can v
    throughout `hdl/` and the docs. The alternative (positional: `1` → first button) would bake a
    permanent off-by-one against documented designs like `hdl/stopwatch_7seg.vhd` (`btn(0)` start/stop,
    `btn(1)` reset).
-2. **Keys bind by physical position (scancode), with a `unicode` fallback**, and the resolved target
-   is recorded at key-down and popped at key-up (§3.2). Without scancodes, AZERTY and Czech layouts —
-   where the digit row is *shifted* — lose the binding entirely. The numpad comes free
+2. **The digit tier binds by physical position (scancode); the letter tier binds by key code**
+   (`ev.key`) — Decision B explains why that split is forced — and in both tiers the resolved target is
+   recorded at key-down and popped at key-up (§3.2). Without scancodes, AZERTY and Czech layouts —
+   where the digit row is *shifted* — lose the digit binding entirely. The numpad comes free
    (`KSCAN_KP_1..KP_0` are NumLock-independent), and a numpad is the closest thing a user has to a
-   physical button pad.
+   physical button pad. Record under `getattr(ev, "scancode", None) or ev.key`: synthetic test events
+   carry neither `.scancode` nor `.unicode`.
 3. **Left-click behavior is unchanged.** Press-and-hold is still momentary. Everything here is additive.
 4. **Latches survive modals and pauses; `R` clears everything** (mouse, key, and latch holds). `R` is
    the documented escape hatch (`help_dialog.py:51`); leaving latches set would make the only way out
@@ -512,7 +552,11 @@ added to `[tool.ruff.lint.per-file-ignores]` per `pyproject.toml:96-113`.
    mouse-hold BTN0 → right-click to latch → release the mouse; `pressed` stays `True` throughout, the
    signature never changes, the U23 redraw-skip fires, and the board shows the wrong style forever.
 5. `Button.tooltip_extra` / `Switch.tooltip_extra` (currently `[]`, `components.py:124`) gain live
-   rows — the latch gesture hint and current latch state. This is the discoverability mechanism.
+   rows — the latch gesture hint and current latch state. This is the discoverability mechanism. Add
+   the widget's **vector bit** as well (`btn(3)` / `sw(11)`): on the five duplicate-label boards the
+   rendered label is *not* the index — Sword's index 3 draws as `BTN1` — so the tooltip is the one
+   place a user can connect what they see to what their VHDL indexes. Phase 4 adds the bound key to
+   the same block.
 6. `SHORTCUTS` row (`help_dialog.py:42-54`) + `docs/user_guide.md` preview and in-sim control lists.
 
 **Verify:** latch + live hold coexist; latch survives mouse-up, modal open, and pause; `R` clears it;
@@ -526,8 +570,10 @@ the mouse-held → latched transition repaints (a test that fails without step 4
 **Do:**
 
 1. Scancode map: `KSCAN_1..KSCAN_9, KSCAN_0` and `KSCAN_KP_1..KSCAN_KP_0` → button indices 0-9;
-   *(B1)* `A`/`B`/`C` by `ev.unicode` → indices 10/11/12. Resolve at KEYDOWN, record under
-   `getattr(ev, "scancode", None) or ev.key`, pop at KEYUP (§3.2).
+   *(B1)* `A`/`B`/`C` by **`ev.key`** (`K_a`/`K_b`/`K_c` — already layout-mapped by SDL and, unlike
+   `ev.unicode`, immune to Shift/CapsLock case and present on both edges) → indices 10/11/12. Resolve
+   at KEYDOWN, record under `getattr(ev, "scancode", None) or ev.key`, pop at KEYUP (§3.2). A key with
+   no matching button (key `5` on a two-button board) is an explicit no-op.
 2. Wire `release_transient_holds()` (built in Phase 1) to `pygame.WINDOWFOCUSLOST` **and** to every
    blocking-modal entry — `simulation_screen.py:471` (`_run_help_modal`) and the preview's dialog
    launches in `board_display.run()`. The help modal's own loop discards KEYUP entirely
@@ -535,7 +581,12 @@ the mouse-held → latched transition repaints (a test that fails without step 4
    `_run_help_modal` then *unpauses* the child, so the design runs on with a phantom button.
 3. Key badges rendered on bound buttons — **mandatory**, not polish (§1.1): on 5 boards the labels are
    duplicated, so the badge is the only thing that identifies which key drives which button. Skip the
-   badge when the rect is too small to render it legibly.
+   badge when the rect is too small to render it legibly — via an explicit **glyph-height floor**
+   modeled on `_PCT_MIN_GLYPH_H` (`components.py`, #367), sized against pygame's *bundled* font.
+   #367's lesson transfers directly: without a floor, *which* badges appear depends on the host's
+   installed fonts rather than on the design (the same glyph measured 5 px under upstream pygame and
+   4 px under pygame-ce). Because a badge can legitimately be dropped, the bound key must **also**
+   appear in the hover tooltip (Phase 3 step 5) — the badge is an optimization, never the sole channel.
 4. `SHORTCUTS` rows + `docs/user_guide.md`. State the >10-button rule explicitly.
 
 **Verify:** two keys held → both bits set in **one** message; release in reverse order → correct
@@ -543,30 +594,52 @@ intermediate states; KEYUP after the modifier was already released still release
 `WINDOWFOCUSLOST` clears key holds but not latches; F1 mid-hold then release inside the modal leaves
 nothing held; a KEYUP with no `.scancode` attribute (synthetic test events) still works.
 
-**Quality gates:** no `pygame.key.get_focused()` and no `pygame.key.get_pressed()` anywhere — `get_pressed()`
-is unusable here and `get_focused()` is flavor-dependent (§2.1). No hardcoded `WINDOW*` event
-integers. No `set_repeat`. PNGs showing badges on a small-rect board (13-button ULX3S) and
-a duplicate-label board (Sword).
+**Quality gates:** **all input state comes from the event stream — no `pygame.key.*` / `pygame.mouse.*`
+polling anywhere.** State it as a *shape* rule, not a name list: `get_pressed`, `get_just_pressed`,
+`get_just_released` and `get_focused` are all banned, on both modules. `get_pressed()` and the
+`get_just_*` pair share the scancode-remapping lie; the `get_just_*` pair additionally cannot
+distinguish a same-frame release/re-press and never sees a KEYUP a modal consumed; `get_focused()` is
+flavor-dependent (§2.1). The `get_just_*` family is **new on pygame-ce**, so it is exactly what an
+implementer will reach for. No hardcoded `WINDOW*` event integers (pygame-ce renumbered them, §2.1).
+No `set_repeat`. PNGs showing badges on a small-rect board (13-button ULX3S) and a duplicate-label
+board (Sword), **captured with `FONTCONFIG_FILE` pointing at an empty config** so they reflect CI's
+font set rather than the developer's.
 
 ### Phase 5 — drag-paint switches (S)
 
-**Do:** a MOUSEMOTION branch in `board_display._handle_events` (there is none today) with a per-drag
-`set[int]` of already-toggled **indices**, cleared on mouse-up. *(Decision C2 only: `Shift`+digit
-switch toggles.)*
+**Do:** a MOUSEMOTION branch in `board_display._handle_events` (there is none today), armed **only**
+when the mouse-down actually hit a switch — a press that starts on a button and drags across the bank
+must paint nothing — carrying the paint value `v` plus a per-drag `set[int]` of already-painted
+**indices**, both cleared on mouse-up. Paint semantics per Decision C: mouse-down toggles the first
+switch, `v` is its new value, every switch the drag crosses is *set to* `v`.
 
-**Verify:** sweeping across 4 switches toggles each exactly once; re-entering a switch mid-drag does
-not re-toggle; a `WINDOWRESIZED` mid-drag does not corrupt the set (§3.1 invariant 3); one coalesced
-message per motion frame.
+**Hit-test the segment, not the point.** Measured in Phase 0c on Nexys4 DDR: switches are 47x81 px on
+a **77 px pitch** (a 30 px dead gap between them), so any single MOUSEMOTION delta wider than 77 px
+skips a switch outright — roughly 4600 px/s at 60 fps, and proportionally slower whenever the frame
+rate dips. Point-testing `event.pos` therefore drops switches on a fast flick: intermittent, invisible,
+and blamed on the feature. Use `rect.clipline(prev, pos)` (present on pygame-ce 2.5.8; returns `()` on
+a miss) with `prev = pos - event.rel`, which MOUSEMOTION supplies for free. *(Decision C2 only:
+`Shift`+digit switch toggles.)*
+
+**Verify:** sweeping across 4 switches drives each to `v` exactly once; re-entering a switch mid-drag
+does not re-toggle; **one large-delta motion event spanning the bank paints every switch it crosses**
+(the segment-test regression — fails with a point test); a drag begun on a button paints nothing; a
+`WINDOWRESIZED` mid-drag does not corrupt the set (§3.1 invariant 3); one coalesced message per motion
+frame.
 
 **Quality gates:** single-click switch behavior byte-identical. PNGs of a 16-switch board mid-sweep.
+Note for acceptance: the 18-switch boards (DE2-115, VEEK-MT2) **wrap to two rows**, so a full-bank set
+there is two sweeps, not one.
 
 ---
 
 ## 7. Test strategy
 
 Three classes, all following existing repo patterns. `headless_pygame` (`tests/conftest.py:48-71`) is
-session-scoped under `SDL_VIDEODRIVER=dummy`; **no test may depend on `get_focused()` or
-`get_pressed()`** — post `WINDOWFOCUSLOST` explicitly instead.
+session-scoped under `SDL_VIDEODRIVER=dummy`; **no test may depend on any `pygame.key.*` /
+`pygame.mouse.*` poll** — `get_focused()`, `get_pressed()`, `get_just_pressed()`,
+`get_just_released()` (§2.1). Post `WINDOWFOCUSLOST` explicitly instead, **by symbol, never by its
+integer** (pygame-ce renumbered it; the old literal `32786` now means `WINDOWCLOSE`).
 
 **Widget unit tests** — extend `tests/test_ui_component_base.py` (defaults block at `:62-65`):
 `test_button_pressed_setter_is_state_only`, `test_button_multiple_hold_sources`,
@@ -579,8 +652,10 @@ only the pressed button; drag-off-then-release; digit KEYDOWN/KEYUP; numpad scan
 the existing `test_r_key_without_unicode_does_not_crash` at `:197-203`); `WINDOWFOCUSLOST` clears key
 holds; `release_transient_holds` keeps latches; right-click latches and left mouse-up does not clear
 it; `R` clears latches with one callback each; **chrome click does not drop later events in the same
-batch**; drag-paint toggles each switch once; resize mid-drag preserves holds; badges only on bound
-indices (13-button ULX3S fixture); index mapping survives duplicate labels (Sword-shaped fixture).
+batch**; drag-paint drives each crossed switch to the paint value exactly once; **a single
+large-delta motion paints the whole span** (segment vs. point hit-test); a drag begun on a button
+paints nothing; resize mid-drag preserves holds; badges only on bound indices (13-button ULX3S
+fixture); index mapping survives duplicate labels (Sword-shaped fixture).
 
 **Screen/IPC tests** — extend `tests/test_simulation_screen.py` (`pygame.event.post` + `_pump_events`,
 `_collect(client, n)` at `:85-92`): two KEYDOWNs in one frame send **one** message carrying both bits;
@@ -607,8 +682,11 @@ collapse; backlog cap bounds lag; non-input kinds bypass the queue.
 | Held key stranded by the chrome `return` dropping a KEYUP | Convert to `continue` (Phase 1 step 3). |
 | Latched button not repainted (U23 redraw-skip) | Latch state enters `visual_signature()`; a test that fails without it. |
 | `pressed` setter breaks `capture_frames.py` / existing tests | Setter is silent and state-only; run the frame-capture path in Phase 1 Verify. |
-| Keymap dead on non-US layouts | Bind by scancode with a `unicode` fallback; digit-row positions are labeled identically on every Latin layout. |
-| Synthetic test events lack `.scancode` | `getattr(ev, "scancode", None)` fallback — the repo already records this trap class for `.unicode` (`improvement_roadmap.md:142`). |
+| Keymap dead on non-US layouts | Digits by scancode, letters by `ev.key` (Decision B) — both layout-correct, and digit-row positions are labeled identically on every Latin layout. |
+| Synthetic test events lack `.scancode` | `getattr(ev, "scancode", None) or ev.key` fallback — the repo already records this trap class for `.unicode` (`improvement_roadmap.md:264`) and regression-tests it (`test_r_key_without_unicode_does_not_crash`). |
+| Implementer reaches for pygame-ce's `get_just_pressed` / `get_just_released` | Banned by a **shape** rule, not a name list (Phase 4 gate, §7). They carry the `get_pressed()` remapping lie, cannot distinguish a same-frame release/re-press, and never see a KEYUP a modal consumed (§2.1). New on pygame-ce, so the old name-list gate did not cover them. |
+| Fast drag skips switches (point hit-test) | Test the motion **segment** — `rect.clipline(pos - rel, pos)`. At a 77 px pitch a 78 px delta already skips one (Phase 5). |
+| Key badge visibility depends on the host's fonts | Glyph-height floor modeled on `_PCT_MIN_GLYPH_H` (#367), sized against pygame's bundled font; capture the PNG gate under an empty `FONTCONFIG_FILE`. The tooltip always carries the key, so a dropped badge is never the only loss. |
 | Right-click latches a button hidden under sim chrome | Filter chrome-rect hits before `board._handle_events` (Phase 3 step 2). |
 | Input queue lags the design behind the user | Drop consecutive duplicates on push; hard-cap the backlog. |
 | Latch gesture undiscoverable | Hover tooltip rows + `SHORTCUTS` + a visibly distinct latched style. Revisit if Decision A picks A1 and review still finds it opaque. |
@@ -622,6 +700,7 @@ collapse; backlog cap bounds lag; non-input kinds bypass the queue.
 |---|---|---|---|---|
 | 0 | Commit this plan as `docs/u44_multi_input_plan_v1.md` (docs-only) | XS | — | ✅ done |
 | 0b | **Resolve the five decisions in §5**; revise this doc accordingly | XS | — | ✅ done 2026-08-05 (A1 · B1 · C1 · D1 · E confirmed) |
+| 0c | Re-verify every measurement against pygame-ce (#366) / #367; amend §2.1, Decisions B · C · E, Phases 3-5, tests and risks. **No decision changed** | XS | — | ✅ done 2026-08-24 |
 | 1 | Hold-source model + mouse identity + chrome `continue` | M | — | not started |
 | 2 | Input atomicity (+ child input queue if D1) | M | — | not started |
 | 3 | Latching + visual + tooltip discoverability | M | — | not started |
@@ -689,7 +768,9 @@ Interactive acceptance — the capabilities this arc exists to deliver:
 4. Hold key `3` while BTN2 is latched → both down; releasing `3` leaves BTN2 latched
 5. F1 mid-hold, release the key inside the modal → on close, nothing stranded; latch survives
 6. Alt-Tab away mid-hold and back → key holds cleared, latch survives
-7. Sweep the mouse across SW0–SW7 → each toggles exactly once
+7. With SW0–SW7 in a mixed pattern, press on an *off* switch and sweep to SW7 → all eight end **on**
+   (paint, not invert); sweep back starting on an on switch → all eight end **off**; flick fast across
+   the bank → none skipped
 8. Press `R` → everything clears, switches off
 
 **Board `Sword`** (class `SwordPlatform`; 11 buttons, **three** buttons all labeled `BTN0`):
@@ -711,8 +792,9 @@ uv run fpga-sim --benchmark   # no sim-rate regression vs docs/u25_ghdl_perf_pro
 ```
 
 **Done when:** a user can hold several buttons at once from the keyboard and release them in any
-order; latch any button down hands-free and combine latched with live holds; set a 16-switch pattern
-in one sweep; every simultaneous change reaches the DUT in a single atomic message; no gesture,
+order; latch any button down hands-free and combine latched with live holds; drive a 16-switch bank to
+a uniform pattern in one sweep — two on the 18-switch two-row boards — with none skipped by a fast
+flick; every simultaneous change reaches the DUT in a single atomic message; no gesture,
 modal, focus change, or resize can strand a button down; the keymap is legible on every board in the
 fleet including the five with duplicated labels; and — under Decision D1 — a fast tap is never
 silently swallowed on a CPU-limited design.
