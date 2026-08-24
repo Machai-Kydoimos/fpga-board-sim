@@ -425,16 +425,30 @@ def test_rgbled_draws_the_gamma_encoded_mix(headless_pygame):
     assert off == THEME.led_off  # dark neutral, no color cast
 
 
-def test_debug_view_rgbled_draws_linear_length_bars(headless_pygame, restore_debug_view):
+def test_debug_view_rgbled_draws_linear_length_bars(
+    headless_pygame, restore_debug_view, monkeypatch
+):
     """U38 debug view: three stacked R/G/B bars whose fill length is the
     *linear* duty — a 50% channel fills exactly half the track (perceptual
     encoding would fill ~73%), which is the whole point of the mode."""
+    from fpga_sim.ui import components
     from fpga_sim.ui.components import _LED_COLOR_RGB, RGBLED, _bar_track_color, set_debug_view
+
+    # Pin the % readout off, so every probe below is pure bar geometry.
+    # `_draw_duty_bar` sizes that text with `_get_font` -- SysFont("consolas"),
+    # which silently falls back to pygame's bundled freesansbold.ttf on a machine
+    # without Consolas (most Linux boxes, and every CI runner).  Whether it then
+    # "fits" an 8px bar is decided by a 1px margin: the tight bounding height of
+    # "100%" at size 9 is 5px under upstream pygame but 4px under pygame-ce,
+    # exactly the budget here -- so on pygame-ce the label appears and the probe
+    # at x=60 lands on a glyph instead of the fill.  Passing a large `font` (as
+    # this test used to) does not prevent it; that argument is only used for the
+    # component's own label.  The readout's real behavior is covered by
+    # test_debug_view_bar_percent_text_appears_when_it_fits below.
+    monkeypatch.setattr(components, "_pct_font_size", lambda *a, **k: None)
 
     surface = headless_pygame.Surface((90, 60))
     surface.fill((0, 0, 0))
-    # A font taller than the 8px bars: the % text never renders, so every
-    # probed pixel is pure bar geometry (font metrics vary per platform).
     font = headless_pygame.font.Font(None, 40)
     puck = RGBLED(0)
     puck.rect = headless_pygame.Rect(10, 10, 60, 30)  # gap=2 -> three 8px bars

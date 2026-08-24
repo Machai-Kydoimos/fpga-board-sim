@@ -38,6 +38,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   video driver where upstream returned `False`. The repo already uses the
   symbols and never calls `get_focused()`; both facts are recorded in the U44
   multi-input plan's measured-facts table.
+- **One cosmetic difference in the U38 RGB debug view, on machines without
+  Consolas** (most Linux boxes, and every CI runner, where
+  `SysFont("consolas")` silently falls back to pygame's bundled
+  `freesansbold.ttf`). The tight bounding height of `"100%"` at font size 9 is
+  5 px under upstream pygame and **4 px** under pygame-ce — exactly the budget
+  an 8 px-tall duty bar allows — so the tiny `%` readout now renders inside
+  those bars where it previously did not. `_pct_font_size` is behaving as
+  designed (it fits the font actually in use); whether a 4 px glyph is worth
+  showing is a separate judgement, left unchanged here. This surfaced as a real
+  CI failure: `test_debug_view_rgbled_draws_linear_length_bars` probes the fill
+  near the bar's right edge, which is where that label sits. The test claimed to
+  defend against platform font variance by passing a large `font`, but that
+  argument never gated the `%` text; it now pins `_pct_font_size` off so the
+  probes measure pure bar geometry on any machine. The full suite was re-run
+  with fontconfig seeing **no** system fonts, reproducing the CI environment:
+  2134 passed, and that test was the only one carrying the assumption.
 - **Upgrading an existing environment:** `uv sync` swaps the two atomically and
   needs nothing special. With `pip`, uninstall `pygame` *before* installing
   `pygame-ce` — installing over it appears to succeed (both register, `pip
