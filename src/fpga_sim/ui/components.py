@@ -718,6 +718,24 @@ class Button(UIComponent):
         """The keyboard key bound to this button, or None if it has none."""
         return badge_for(self.index)
 
+    def _badge_budget(self) -> int:
+        """Largest square the badge may occupy without touching the latch corner.
+
+        The padlock's corner is reserved **whether or not the button is latched**:
+        a badge that resized the moment you right-clicked would read as a glitch.
+        Only near-square buttons are actually constrained by this — on a wide
+        button the centered badge never reaches the corner.
+        """
+        short = min(self.rect.height, self.rect.width)
+        budget = round(short * _BADGE_MAX_FRACTION)
+        # A centered square of side s clears a corner icon of side `icon` inset
+        # by `pad` when s <= w - 2*(pad+icon)  (badge ends left of it)
+        #                or s <= h - 2*(pad+icon)  (badge starts below it),
+        # so the long side governs.
+        reserved = round(short * self._LATCH_ICON_SCALE) + self._LATCH_ICON_PAD
+        clear = max(self.rect.width, self.rect.height) - 2 * reserved
+        return max(0, min(budget, clear))
+
     def _draw_badge(self, surface: pygame.Surface, ink: tuple[int, int, int]) -> None:
         """Draw the bound key in the button's center, if it fits legibly.
 
@@ -730,12 +748,21 @@ class Button(UIComponent):
         text = self.badge
         if text is None:
             return
-        budget = round(min(self.rect.height, self.rect.width) * _BADGE_MAX_FRACTION)
+        budget = self._badge_budget()
         size = _badge_font_size(budget, budget)
         if size is None:
             return
         glyph = _get_font(size, bold=True).render(text, True, ink)
-        surface.blit(glyph, glyph.get_rect(center=self.rect.center))
+        # Center the glyph's INK, not its surface.  ``render`` reserves room for
+        # descenders that digits and capitals never use, so centering the surface
+        # floats the visible mark above the middle -- by 3 px at the sizes a
+        # large button uses, which reads as a misalignment rather than a font
+        # detail.
+        box = glyph.get_bounding_rect()
+        surface.blit(
+            glyph,
+            (self.rect.centerx - box.centerx, self.rect.centery - box.centery),
+        )
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         """Draw the push-button — idle, held, or latched — plus badge and label."""
