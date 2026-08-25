@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Switch banks can be set in one sweep** (U44 phase 5). Press on a switch and
+  drag across the row: the sweep **paints** rather than toggles — the switch you
+  press on decides the value, and every switch the drag crosses is *set to* it.
+  Toggle-on-enter was rejected deliberately: from a mixed pattern it yields the
+  complement, so no gesture could ever reach "all on" and the user would be back
+  to clicking individually, which is the pain point the gesture exists to
+  remove. Painting is predictable from any starting state, self-recovering (after
+  one sweep the bank is uniform, so any restart inverts it), and the more
+  faithful analogy — a pen run along a DIP bank pushes every switch the same way.
+  A single click is unchanged, and a drag that began on a button or on empty
+  board paints nothing.
+  - The **motion segment** is hit-tested, not the cursor point. Switches sit on
+    a pitch far wider than they are — 64 px wide on a 123 px pitch at 1024x700,
+    a 59 px gap — so any motion event whose delta exceeds the pitch would skip a
+    switch outright on a fast flick: intermittent, invisible, and blamed on the
+    feature. `rect.clipline` tests the whole segment, and `event.rel` supplies
+    the previous position for free.
+  - The whole sweep still reaches the design as **one atomic message per frame**,
+    so the DUT never observes a half-painted switch vector.
 - **Buttons can now be held from the keyboard** (U44 phase 4) — `0`-`9` then
   `A`/`B`/`C`, plus the numpad. Key *d* presses the button at *index* d, so `0`
   is the first button, matching the `btn(0)` VHDL contract and the 0-based

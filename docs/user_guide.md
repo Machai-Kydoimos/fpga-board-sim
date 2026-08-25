@@ -33,7 +33,14 @@ board data cites a vendor source (reference-manual figure or prose). A 3-pin
 **RGB LED** draws as a single puck (`RGB0`, `RGB1`, …) that mixes its three
 channels into one color.
 
-- **Click switches** to toggle them
+- **Click switches** to toggle them, or **press and sweep across a row** to set
+  a whole bank in one gesture. The sweep *paints* rather than toggles: the
+  switch you press on decides the value, and every switch the drag crosses is
+  set to that value. Start on an **off** switch to drive the bank on, on an
+  **on** switch to drive it off — so it is predictable from any starting
+  pattern, unlike toggling, which would just hand you the complement. Wide
+  banks wrap to two rows at smaller window sizes, in which case a full bank is
+  one sweep per row
 - **Click and hold buttons** to press them
 - **Hold `0`-`9`, then `A` `B` `C`** to press buttons by index — key `0` is the
   **first** button (`btn(0)` in your VHDL), matching the labels the board draws.
