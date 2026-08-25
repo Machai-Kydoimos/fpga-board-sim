@@ -84,7 +84,7 @@ def main() -> None:
         frame_paths.append(path)
         durations.append(duration_ms)
 
-    snap(900)  # initial: all 278 boards, no filters active
+    snap(900)  # initial: the unfiltered list, no filters active
     for kind, key in _STEPS:
         target = rects[key].center
         for _ in range(6):  # ease the cursor onto the chip
