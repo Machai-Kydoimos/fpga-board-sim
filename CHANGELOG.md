@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Switch and button changes now reach the simulator as one atomic message per
+  frame** rather than one per widget callback (U44 phase 2). Within a single
+  child drain the two are equivalent — the drain has no `await` in it, so N
+  assignments to `dut.btn` produce exactly one simulator write of the last value
+  either way — but they are *not* equivalent at the drain boundary: two of a
+  frame's sends straddling a drain leave the DUT holding a spurious intermediate
+  for a whole simulation step, up to ~9,600 clock cycles, which is ample for an
+  edge detector to latch a transition that never happened. This was reachable
+  rather than theoretical: `R` on an 18-switch board fired one callback per
+  changed widget and so sent **18** full-state messages in a single frame, where
+  it now sends one. Per-edge console logging is unchanged.
 - **Buttons are now held by a *set* of sources rather than a single boolean**
   (U44 phase 1). A button is down whenever at least one source holds it —
   `"mouse:1"`, later a key or a latch — so releasing one source never disturbs
@@ -84,6 +95,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Fast button taps are no longer silently swallowed on CPU-limited designs**
+  ([#353](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/353), U44
+  phase 2). The headless child drained every pending input message and assigned
+  `dut.sw` / `dut.btn` for each with no `await` between them, so cocotb collapsed
+  the whole batch to the last value written and the intermediate states never
+  reached the simulator. Usually invisible — one loop iteration is 16.667 ms at
+  *every* speed setting, and no human generates two edges inside one frame — but
+  when the requested step hits the cycle cap the loop is CPU-limited and a single
+  iteration can take hundreds of milliseconds. A press and its release then
+  landed in the same drain, collapsed to `btn = 0`, and **the design never saw
+  the press**: tapping `btn(0)` to roll the die in `mx65_dice_7seg` did nothing,
+  intermittently. The child now buffers drained input and applies **at most one
+  state per loop iteration**, so every distinct value gets at least one
+  `await Timer` of exposure — turning the input stream from a sampled level into
+  a sequence of edges, which is what a button actually is. Consecutive duplicate
+  states are dropped on push (the host sends full state, so an unchanged state
+  carries no edge) and the backlog is hard-capped at 16, discarding the oldest:
+  past that, the DUT trailing the board by many seconds is a worse artifact than
+  the dropped edges. The queue is pure logic in `fpga_sim/sim_input.py` —
+  cocotb-free and pygame-free, unit-tested with no simulator installed, following
+  the `sim_duty.py` precedent — and is proven end to end against GHDL and NVC by
+  a burst of eight taps sent in one batch, counted by the new `sim/input_probe.vhd`
+  edge-latching fixture.
+- **Input taken while the connect spinner is still up is now delivered** once the
+  child arrives, instead of being dropped. The board already drew the switch on,
+  so discarding the message left the display claiming a state the DUT had never
+  been told about.
 - **A duty readout is no longer drawn when it would be too small to read.**
   `_pct_font_size` fitted the largest `"100%"` that fit a bar or LED circle with
   no lower bound, so a very short bar got a 4 px-tall readout — legible only as
