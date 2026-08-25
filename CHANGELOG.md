@@ -8,38 +8,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **A latched button now carries a padlock icon** in its top-right corner
-  (U44), replacing the inset ring as the primary non-color cue. The ring said
-  *different*; the padlock says *locked*, which is the actual state. It is
-  Kenney's CC0 `locked` icon — chosen over the runner-up down-arrow because an
-  arrow reads as a *direction label* on the d-pad boards (the 13-button ULX3S
-  has `UP0`/`DOWN0`/`LEFT0`/`RIGHT0`), which is exactly where an on-widget
-  marker matters most. The corner placement leaves the button's center free for
-  the key badges arriving with the keyboard map. New `fpga_sim.ui.icons` keeps
-  the icon *source* swappable behind one function, recolors the monochrome
-  asset per theme through its alpha mask, and caches by `(name, size, color)`.
-  **Every failure path returns `None` rather than raising** — a missing or
-  corrupt asset, or a button too small for the glyph to read as one, silently
-  falls back to the inset ring, so a decorative asset is never load-bearing.
-- **Right-click a button to latch it down** (U44 phase 3) — the way to hold a
-  reset or an enable while working the rest of the board, hands-free. Modeless
-  by design: there is no sticky mode to remember, render, or explain, and it
-  does not fight the keyboard for a modifier. Button 3 was entirely unhandled
-  before this, so it costs nothing elsewhere. A latch is just another hold
-  source, so it composes freely with live ones — hold a button with the mouse
-  *and* latch it, let the mouse go, and it stays down. `R` clears latches along
-  with everything else, and they survive the help overlay, a pause, and a
-  resize. Latched buttons draw in their own theme color (`push_latched`) **with
-  an inset ring**, so "locked down" stays legible in a screenshot, in the
-  reduced high-contrast palette, and to a viewer who cannot separate the two
-  hues.
-- **Hover tooltips on switches and buttons now name the vector bit they drive**
-  (`btn(3)` / `sw(11)`), and a button's tooltip carries its latch state and the
-  right-click hint. The bit is not cosmetic: on five boards in the fleet the
-  *drawn label* is not the index — the Sword renders three different buttons all
-  labeled `BTN0` — so the tooltip is the one place the on-screen widget and the
-  VHDL index can be lined up. The gesture row is also the discoverability
-  mechanism for latching, put where a confused user is already looking.
+- **Buttons can now be held from the keyboard** (U44 phase 4) — `0`-`9` then
+  `A`/`B`/`C`, plus the numpad. Key *d* presses the button at *index* d, so `0`
+  is the first button, matching the `btn(0)` VHDL contract and the 0-based
+  labels the board draws. This is the capability the arc exists for: a keyboard
+  has N-key rollover, so several buttons go down at once and release in any
+  order, and two keys pressed in the same frame reach the design in **one atomic
+  update** — something a single mouse cursor can never express. Hex covers the
+  whole fleet exactly: the maximum is 13 buttons, and only 6 of 285 boards
+  exceed 10.
+  - The digit tier binds by **scancode** (physical position) because the digit
+    row is *shifted* on AZERTY and Czech layouts, where a key-code binding would
+    lose it entirely; the letter tier binds by **key code**, because pygame
+    exposes no scancode → current-keycap lookup, so a scancode-bound letter
+    could not be badged accurately (on AZERTY the physical `A` is labeled `Q`).
+    Splitting the tiers is the only way every badge matches the key under the
+    user's fingers.
+  - A key's target is resolved once at key-down and **looked up** at key-up,
+    never recomputed — SDL reports modifier state at event time, so releasing a
+    modifier before the key would otherwise resolve to a different button and
+    leak the real hold forever.
+  - `KSCAN_1` and `KSCAN_KP_1` both press button 0, so a button can be held by
+    two keys at once and releasing one does not release it.
+  - Ctrl / Alt / AltGr chords deliberately do **not** press buttons (AltGr
+    synthesizes `LCTRL+RALT` on Windows and X11). Shift is allowed, since the
+    digit tier binds by position.
+- **Bound buttons show their key on their face.** Not decoration: on five boards
+  in the fleet the drawn labels are *duplicated* — the Sword renders `BTN0`
+  three times — so the badge is the only thing that says which key drives which
+  button. It is dropped on a button too small to render it legibly, gated by an
+  explicit glyph-height floor so *which* badges appear depends on the design
+  rather than on the host's installed fonts; the hover tooltip always carries
+  the key, so a dropped badge is never the only channel.
 
 ### Changed
 
@@ -130,6 +130,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A held key can no longer be stranded down by a modal or by focus loss**
+  (U44 phase 4). Every blocking dialog runs its own `event.get()` loop handling
+  only QUIT/RESIZE/KEYDOWN/MOUSEBUTTONDOWN, so a KEYUP during one was simply
+  discarded — pressing F1 while holding `1` left `BTN1` down, and the help modal
+  then *unpauses* the child, so the design ran on with a phantom button held.
+  Live holds are now dropped when a modal opens (and the release reaches the
+  child **before** it resumes) and on `WINDOWFOCUSLOST` for Alt-Tab. Latches are
+  deliberate state and survive both.
+- **A latched button now carries a padlock icon** in its top-right corner
+  (U44), replacing the inset ring as the primary non-color cue. The ring said
+  *different*; the padlock says *locked*, which is the actual state. It is
+  Kenney's CC0 `locked` icon — chosen over the runner-up down-arrow because an
+  arrow reads as a *direction label* on the d-pad boards (the 13-button ULX3S
+  has `UP0`/`DOWN0`/`LEFT0`/`RIGHT0`), which is exactly where an on-widget
+  marker matters most. The corner placement leaves the button's center free for
+  the key badges arriving with the keyboard map. New `fpga_sim.ui.icons` keeps
+  the icon *source* swappable behind one function, recolors the monochrome
+  asset per theme through its alpha mask, and caches by `(name, size, color)`.
+  **Every failure path returns `None` rather than raising** — a missing or
+  corrupt asset, or a button too small for the glyph to read as one, silently
+  falls back to the inset ring, so a decorative asset is never load-bearing.
+- **Right-click a button to latch it down** (U44 phase 3) — the way to hold a
+  reset or an enable while working the rest of the board, hands-free. Modeless
+  by design: there is no sticky mode to remember, render, or explain, and it
+  does not fight the keyboard for a modifier. Button 3 was entirely unhandled
+  before this, so it costs nothing elsewhere. A latch is just another hold
+  source, so it composes freely with live ones — hold a button with the mouse
+  *and* latch it, let the mouse go, and it stays down. `R` clears latches along
+  with everything else, and they survive the help overlay, a pause, and a
+  resize. Latched buttons draw in their own theme color (`push_latched`) **with
+  an inset ring**, so "locked down" stays legible in a screenshot, in the
+  reduced high-contrast palette, and to a viewer who cannot separate the two
+  hues.
+- **Hover tooltips on switches and buttons now name the vector bit they drive**
+  (`btn(3)` / `sw(11)`), and a button's tooltip carries its latch state and the
+  right-click hint. The bit is not cosmetic: on five boards in the fleet the
+  *drawn label* is not the index — the Sword renders three different buttons all
+  labeled `BTN0` — so the tooltip is the one place the on-screen widget and the
+  VHDL index can be lined up. The gesture row is also the discoverability
+  mechanism for latching, put where a confused user is already looking.
 - **A press on the simulation overlay's chrome no longer also reaches the board
   widget underneath it** (U44 phase 3). `_pump_events()` passed every event to
   the board *before* hit-testing `[Stop]` / `[PAUSE]` / the toolbar, so a click

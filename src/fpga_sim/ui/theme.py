@@ -69,6 +69,7 @@ class Theme:
     push_off: RGB = GRAY  # idle push-button body
     push_latched: RGB = (255, 140, 0)  # latched down (U44): held, and locked
     latch_icon_ink: RGB = (20, 60, 20)  # the padlock drawn on push_latched
+    badge_ink: RGB = (35, 35, 40)  # key badge, drawn on every push_* fill
 
     # ── 7-segment display ───────────────────────────────────────────────────
     seg_on: RGB = (255, 140, 0)  # amber
@@ -328,6 +329,7 @@ _HIGH_CONTRAST = Theme(
     # brightness, which high contrast has already spent.
     push_latched=(0, 255, 255),
     latch_icon_ink=(0, 0, 0),  # black on cyan: the maximum separation available
+    badge_ink=(0, 0, 0),
     seg_on=_HC_YELLOW,
     seg_off=(60, 60, 60),
     seg_bg=_HC_BLACK,

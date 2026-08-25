@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Protocol
 import pygame
 
 from fpga_sim.board_loader import BoardDef, ComponentInfo
+from fpga_sim.ui import keymap
 from fpga_sim.ui.components import LED, RGBLED, Button, FPGAChip, SevenSeg, Switch, UIComponent
 from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
@@ -49,6 +50,16 @@ HOVER_TOOLTIP_MS = 400
 def _mouse_source(button: int) -> str:
     """Hold-source token for a mouse button (U44), e.g. ``"mouse:1"``."""
     return f"mouse:{button}"
+
+
+def _key_source(token: str) -> str:
+    """Hold-source token for a bound key (U44), e.g. ``"key:s30"``.
+
+    Per-key tokens are load-bearing: ``KSCAN_1`` and ``KSCAN_KP_1`` both press
+    button 0, so a user can hold one button with two keys, and releasing one
+    must not release the button.
+    """
+    return f"key:{token}"
 
 
 class _Positionable(Protocol):
@@ -245,6 +256,13 @@ class FPGABoard:
         # rect or a position, because _layout() reassigns every rect on resize.
         self._mouse_holds: dict[int, int] = {}
 
+        # Which button each held KEY is holding, keyed by keymap.event_token.
+        # The target is resolved once at key-down and *looked up* at key-up,
+        # never recomputed: SDL reports modifiers at event time, so a chord
+        # released modifier-first would otherwise resolve to a different button
+        # and leak the real hold forever (U44 §3.2).
+        self._key_holds: dict[str, int] = {}
+
         # Default callbacks – print name + connector info
         def _sw_cb(idx: int, state: bool, info: ComponentInfo | None) -> None:
             label = info.display_name if info else f"Switch {idx}"
@@ -377,10 +395,16 @@ class FPGABoard:
             self._handle_events()
             if self._help_requested:
                 self._help_requested = False
+                # A modal runs its own event.get() loop and handles only
+                # QUIT/RESIZE/KEYDOWN/MOUSEBUTTONDOWN, so every KEYUP and
+                # MOUSEBUTTONUP during it is discarded.  Without this, F1 while
+                # holding `1` strands BTN1 down for the rest of the session.
+                self.release_transient_holds()
                 HelpDialog(self.screen).run(self.clock)
                 self._sync_to_surface()
             if self._settings_requested:
                 self._settings_requested = False
+                self.release_transient_holds()  # same KEYUP-swallowing modal
                 SettingsDialog(self.screen).run(self.clock)
                 self._sync_to_surface()
             self._draw()
@@ -658,6 +682,9 @@ class FPGABoard:
             ):
                 self._help_requested = True
 
+            elif event.type == pygame.KEYUP:
+                self._release_key_hold(event)
+
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 for sw in self.switches:
                     if sw.state:
@@ -671,8 +698,24 @@ class FPGABoard:
                     self._simulate = True
                     self.running = False
 
+            elif event.type == pygame.KEYDOWN:
+                # Last in the KEYDOWN chain on purpose: a named shortcut always
+                # outranks a board binding, so adding a letter shortcut later
+                # can never be silently swallowed by the keymap.  An unbound key
+                # falls through here and does nothing.
+                self._bind_key(event)
+
             elif event.type == pygame.WINDOWRESIZED:
                 self._resize(event.x, event.y)
+
+            elif event.type == pygame.WINDOWFOCUSLOST:
+                # Alt-Tab away mid-hold and the KEYUP is delivered to whatever
+                # has focus instead, stranding the button down.  Compared by
+                # SYMBOL, never by its integer: pygame-ce renumbered every
+                # WINDOW* constant one lower, so the old literal 32786 now means
+                # WINDOWCLOSE.  (Not key.get_focused() — its value under the
+                # test video driver depends on the pygame flavor.)
+                self.release_transient_holds()
 
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 # Help (?) button
@@ -759,6 +802,28 @@ class FPGABoard:
         if index is not None:
             self.buttons[index].handle_release(_mouse_source(button))
 
+    def _bind_key(self, event: pygame.event.Event) -> None:
+        """Take a key hold for *event* if it binds to a button on this board.
+
+        A key with no binding, or one whose index the board does not reach
+        (``5`` on a two-button board), is an explicit no-op rather than an error.
+        """
+        index = keymap.resolve(event)
+        if index is None or index >= len(self.buttons):
+            return
+        token = keymap.event_token(event)
+        if token in self._key_holds:
+            return  # already down; ignore a repeat rather than double-holding
+        self._key_holds[token] = index
+        self.buttons[index].hold(_key_source(token))
+
+    def _release_key_hold(self, event: pygame.event.Event) -> None:
+        """Release whatever button this key took at key-down, if anything."""
+        token = keymap.event_token(event)
+        index = self._key_holds.pop(token, None)
+        if index is not None:
+            self.buttons[index].handle_release(_key_source(token))
+
     def release_transient_holds(self) -> None:
         """Drop every live hold (mouse, keyboard) while keeping latches.
 
@@ -769,6 +834,7 @@ class FPGABoard:
         per button that actually goes up.
         """
         self._mouse_holds.clear()
+        self._key_holds.clear()
         for btn in self.buttons:
             btn.release_transient()
 
@@ -778,6 +844,7 @@ class FPGABoard:
         Fires at most one release callback per button, whatever it was held by.
         """
         self._mouse_holds.clear()
+        self._key_holds.clear()
         for btn in self.buttons:
             btn.handle_release()
 

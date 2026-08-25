@@ -12,6 +12,7 @@ from fpga_sim.board_loader import ComponentInfo
 from fpga_sim.ui.constants import GRAY, WHITE, lerp_rgb
 from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.icons import latch_icon
+from fpga_sim.ui.keymap import badge_for
 from fpga_sim.ui.theme import THEME
 
 # ── Component classes ────────────────────────────────────────────────
@@ -539,6 +540,47 @@ class Switch(UIComponent):
         return False
 
 
+#: Legibility floor for a key badge, mirroring ``_PCT_MIN_GLYPH_H`` (#367).
+#: Which badges appear must depend on the *design*, not on the host's installed
+#: fonts -- ``_get_font`` is ``SysFont("consolas")``, and Consolas is absent from
+#: every CI runner and most Linux boxes, so the same rect renders different glyph
+#: heights on different machines.  Gating on a measured floor makes the board
+#: identical everywhere.
+_BADGE_MIN_GLYPH_H = 6
+
+#: Fraction of the button a badge may occupy; the rest keeps it clear of the
+#: border and of the latch padlock in the opposite corner.
+_BADGE_MAX_FRACTION = 0.55
+
+_BADGE_FIT_CACHE: dict[tuple[int, int], int] = {}
+
+
+def _badge_font_size(max_h: int, max_w: int) -> int | None:
+    """Largest bold font size whose badge glyph fits max_h x max_w, else None.
+
+    Measures a constant sample rather than the actual character so every badge
+    in a row renders at one uniform size.  Returns None when nothing fits
+    legibly, so a badge is dropped rather than drawn as an unreadable speck --
+    the caller then relies on the hover tooltip, which always carries the key.
+    """
+    key = (max_h, max_w)
+    if key not in _BADGE_FIT_CACHE:
+        _BADGE_FIT_CACHE[key] = next(
+            (
+                fs
+                for fs in range(max(9, max_h * 2), 8, -1)
+                if _BADGE_MIN_GLYPH_H
+                <= (
+                    t := _get_font(fs, bold=True).render("0", True, WHITE).get_bounding_rect()
+                ).height
+                <= max_h
+                and t.width <= max_w
+            ),
+            0,
+        )
+    return _BADGE_FIT_CACHE[key] or None
+
+
 class Button(UIComponent):
     """A push-button that is down while *any* hold source holds it (U44).
 
@@ -622,6 +664,8 @@ class Button(UIComponent):
         guessable, and this is where a confused user is already looking.
         """
         rows = [("Bit", f"btn({self.index})")]
+        if self.badge is not None:
+            rows.append(("Key", self.badge))
         if self.latched:
             rows.append(("Latched", "yes"))
         rows.append(("Right-click", "latch / unlatch"))
@@ -669,8 +713,32 @@ class Button(UIComponent):
         if ring.width > 2 and ring.height > 2:
             pygame.draw.rect(surface, WHITE, ring, 2, border_radius=4)
 
+    @property
+    def badge(self) -> str | None:
+        """The keyboard key bound to this button, or None if it has none."""
+        return badge_for(self.index)
+
+    def _draw_badge(self, surface: pygame.Surface, ink: tuple[int, int, int]) -> None:
+        """Draw the bound key in the button's center, if it fits legibly.
+
+        Mandatory rather than decorative: on five boards in the fleet the drawn
+        *labels* are duplicated (the Sword renders ``BTN0`` three times), so the
+        badge is the only thing on the board that says which key drives which
+        button.  It can still be dropped on a rect too small for it, which is
+        why the bound key also appears in the hover tooltip.
+        """
+        text = self.badge
+        if text is None:
+            return
+        budget = round(min(self.rect.height, self.rect.width) * _BADGE_MAX_FRACTION)
+        size = _badge_font_size(budget, budget)
+        if size is None:
+            return
+        glyph = _get_font(size, bold=True).render(text, True, ink)
+        surface.blit(glyph, glyph.get_rect(center=self.rect.center))
+
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
-        """Draw the push-button — idle, held, or latched — plus its label."""
+        """Draw the push-button — idle, held, or latched — plus badge and label."""
         if self.pressed:
             inner = self.rect.inflate(-4, -4)
             fill = THEME.push_latched if self.latched else THEME.push_on
@@ -679,6 +747,7 @@ class Button(UIComponent):
                 self._draw_latch_marker(surface)
         else:
             pygame.draw.rect(surface, THEME.push_off, self.rect, border_radius=6)
+        self._draw_badge(surface, THEME.badge_ink)
         pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=6)
 
         lbl = font.render(self.label, True, WHITE)

@@ -35,6 +35,14 @@ channels into one color.
 
 - **Click switches** to toggle them
 - **Click and hold buttons** to press them
+- **Hold `0`-`9`, then `A` `B` `C`** to press buttons by index — key `0` is the
+  **first** button (`btn(0)` in your VHDL), matching the labels the board draws.
+  Hold as many as you like and release them in any order; two keys pressed in
+  the same frame reach the design in one atomic update, which the mouse cannot
+  do with its single cursor. The **numpad** digits work too, so a numeric keypad
+  becomes a button pad. Each bound button shows its key on its face, and the
+  hover tooltip names it as well. Hex covers the whole fleet: the largest board
+  has 13 buttons, and only 6 of 285 have more than 10
 - **Right-click a button** to **latch** it down hands-free; right-click again to
   release it. A latched button draws in its own color with a small padlock in
   its top-right corner, and combines freely with a live hold — hold it with the mouse *as well*, let the
@@ -84,6 +92,10 @@ window** — the board you previewed stays on screen and becomes interactive, wh
 simulator itself runs headless in the background:
 
 - **Switches/buttons** drive FPGA inputs in real time
+- **Hold `0`-`9` / `A` `B` `C`** (or the numpad) to press buttons from the
+  keyboard — several at once, released in any order. Alt-Tabbing away or opening
+  the help overlay releases held keys, so nothing is left stuck down; latches
+  survive both
 - **Right-click a button** to **latch** it down — the way to hold a reset or an
   enable while you work the rest of the board. Latches survive the help overlay
   and a pause; `R` clears them
