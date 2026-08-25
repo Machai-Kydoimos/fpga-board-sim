@@ -36,8 +36,8 @@ channels into one color.
 - **Click switches** to toggle them
 - **Click and hold buttons** to press them
 - **Right-click a button** to **latch** it down hands-free; right-click again to
-  release it. A latched button draws in its own color with an inset ring, and
-  combines freely with a live hold — hold it with the mouse *as well*, let the
+  release it. A latched button draws in its own color with a small padlock in
+  its top-right corner, and combines freely with a live hold — hold it with the mouse *as well*, let the
   mouse go, and it stays down because the latch is a separate hold
 - **Hover a component** → tooltip with its net name, pin, direction, and the
   vector bit it drives (`btn(3)` / `sw(11)`). The bit is worth knowing: on a few

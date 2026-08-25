@@ -261,3 +261,82 @@ def test_button_tooltip_names_the_vector_bit_and_gesture():
 
 def test_switch_tooltip_names_the_vector_bit():
     assert dict(Switch(11).tooltip_extra)["Bit"] == "sw(11)"
+
+
+# ── Latch marker: padlock, with the ring as fallback (U44) ───────────────────
+
+
+def _draw_button(headless_pygame, btn, size=(120, 62)):
+    """Render *btn* onto a blank surface and return it."""
+    from fpga_sim.ui.constants import get_font
+
+    surf = headless_pygame.Surface(size)
+    surf.fill((0, 0, 0))
+    btn.rect = headless_pygame.Rect(0, 0, *size)
+    btn.draw(surf, get_font(12))
+    return surf
+
+
+def _pixels(surf):
+    return {
+        surf.get_at((x, y))[:3] for x in range(surf.get_width()) for y in range(surf.get_height())
+    }
+
+
+def _has_near(pixels, color, tol=6):
+    """True if any pixel is within *tol* per channel of *color*.
+
+    Smoothscale plus the 8-bit multiply blend land the ink a few levels off its
+    nominal value, so an exact-match assertion would be testing the blend's
+    rounding rather than whether the padlock was drawn.
+    """
+    return any(all(abs(p[i] - color[i]) <= tol for i in range(3)) for p in pixels)
+
+
+def test_latched_button_draws_the_padlock(headless_pygame):
+    """The latched button must paint the icon's ink, which held never does."""
+    from fpga_sim.ui.theme import THEME
+
+    held = Button(0)
+    held.hold("mouse:1")
+    latched = Button(0)
+    latched.toggle_latch()
+
+    assert _has_near(_pixels(_draw_button(headless_pygame, latched)), THEME.latch_icon_ink)
+    assert not _has_near(_pixels(_draw_button(headless_pygame, held)), THEME.latch_icon_ink)
+
+
+def test_latched_button_falls_back_to_the_ring_without_the_asset(
+    headless_pygame, tmp_path, monkeypatch
+):
+    """A missing asset must still leave the latch visually distinct.
+
+    This is why `icons.latch_icon` returns None instead of raising: the button
+    quietly reverts to the inset ring rather than losing the state cue.
+    """
+    from fpga_sim.ui import icons
+
+    monkeypatch.setattr(icons, "_ASSET_DIR", tmp_path)
+    icons.clear_cache()
+
+    latched = Button(0)
+    latched.toggle_latch()
+    px = _pixels(_draw_button(headless_pygame, latched))
+    icons.clear_cache()
+
+    held = Button(0)
+    held.hold("mouse:1")
+    assert px != _pixels(_draw_button(headless_pygame, held))
+
+
+def test_tiny_latched_button_falls_back_to_the_ring(headless_pygame):
+    """Below the glyph floor the icon declines, so the ring takes over."""
+    from fpga_sim.ui import icons
+    from fpga_sim.ui.theme import THEME
+
+    icons.clear_cache()
+    latched = Button(0)
+    latched.toggle_latch()
+    # 0.34 * 14 = 5 px, under MIN_ICON_PX.
+    px = _pixels(_draw_button(headless_pygame, latched, size=(20, 14)))
+    assert not _has_near(px, THEME.latch_icon_ink)
