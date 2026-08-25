@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-08-25
+
 ### Added
 
 - **Switch banks can be set in one sweep** (U44 phase 5). Press on a switch and
@@ -1811,7 +1813,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
-[Unreleased]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.17.0...v0.18.0
