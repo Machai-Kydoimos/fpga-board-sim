@@ -48,6 +48,7 @@ SHORTCUTS: list[tuple[str, str]] = [
     ("Enter", "Select board · open folder · pick file · start sim"),
     ("Type", "Filter the board list"),
     ("Wheel", "Scroll the board & file lists"),
+    ("0-9  A B C", "Hold the button at that index — several at once (numpad too)"),
     ("Right-click", "Latch a button down / release it (preview & sim)"),
     ("R", "Reset switches & buttons, including latches (preview & sim)"),
     ("S", "Toggle the stats panel (simulation)"),

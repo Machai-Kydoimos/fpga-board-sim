@@ -124,6 +124,13 @@ class TestContent:
         assert "Right-click" in rows
         assert "latch" in rows["Right-click"].lower()
 
+    def test_shortcuts_document_the_keyboard_map(self):
+        # The badge on a button and the legend must agree; the legend is the
+        # single source of truth for "what keys exist" (U44).
+        joined = " ".join(k for k, _ in SHORTCUTS)
+        assert "0-9" in joined
+        assert "A B C" in joined
+
     def test_reset_row_mentions_latches(self):
         # R is the documented escape hatch; if it left latches set, the only way
         # out would not work.  The legend has to say it clears them.

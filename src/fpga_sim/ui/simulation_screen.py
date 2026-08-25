@@ -510,6 +510,12 @@ class SimulationScreen:
         return self._toolbar is not None and self._toolbar.covers(ev.pos)
 
     def _run_help_modal(self) -> None:
+        # HelpDialog's own event.get() loop discards KEYUP and MOUSEBUTTONUP, so
+        # anything held on the way in would never come up -- and this method then
+        # *unpauses* the child, leaving the design running with a phantom button
+        # held down.  Drop live holds first; latches are deliberate and survive.
+        self.board.release_transient_holds()
+        self._flush_input()  # the child must see the release before it resumes
         was_paused = self.panel.paused
         if self._connected and not was_paused:
             send(self.child.link.conn, "pause", {"on": True})

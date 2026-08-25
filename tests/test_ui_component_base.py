@@ -340,3 +340,71 @@ def test_tiny_latched_button_falls_back_to_the_ring(headless_pygame):
     # 0.34 * 14 = 5 px, under MIN_ICON_PX.
     px = _pixels(_draw_button(headless_pygame, latched, size=(20, 14)))
     assert not _has_near(px, THEME.latch_icon_ink)
+
+
+# ── Badge placement (U44 phase 4 review fixes) ───────────────────────────────
+
+
+def _ink_box(surf, color, tol=40):
+    """Bounding box of pixels close to *color*, or None."""
+    import pygame as _pg
+
+    xs, ys = [], []
+    for x in range(surf.get_width()):
+        for y in range(surf.get_height()):
+            p = surf.get_at((x, y))
+            if all(abs(p[i] - color[i]) <= tol for i in range(3)):
+                xs.append(x)
+                ys.append(y)
+    if not xs:
+        return None
+    return _pg.Rect(min(xs), min(ys), max(xs) - min(xs) + 1, max(ys) - min(ys) + 1)
+
+
+@pytest.mark.parametrize("size", [(171, 81), (120, 62), (62, 56)])
+def test_badge_ink_is_vertically_centered(headless_pygame, size):
+    """`render` reserves descender room digits never use.
+
+    Centering the *surface* therefore floats the visible mark above the middle
+    — by 3 px at the sizes a large button uses, which reads as a misalignment.
+    The glyph's ink box is what must be centered.
+    """
+    from fpga_sim.ui.theme import THEME
+
+    btn = Button(3)
+    surf = _draw_button(headless_pygame, btn, size=size)
+    box = _ink_box(surf, THEME.badge_ink)
+    assert box is not None, "no badge was drawn"
+    assert abs(box.centery - btn.rect.centery) <= 2
+    assert abs(box.centerx - btn.rect.centerx) <= 2
+
+
+@pytest.mark.parametrize("size", [(171, 81), (73, 48), (62, 56), (40, 30), (24, 24)])
+def test_badge_never_overlaps_the_latch_corner(headless_pygame, size):
+    """A centered badge and the corner padlock must not collide.
+
+    They did on near-square buttons: the 62x56 ULX3S overlapped by 7 px, while
+    wide buttons stayed clear — which is why it survived the first screenshots.
+    """
+    btn = Button(3)
+    btn.rect = headless_pygame.Rect(0, 0, *size)
+    budget = btn._badge_budget()
+    if budget == 0:
+        pytest.skip("no badge fits at this size")
+
+    badge = headless_pygame.Rect(0, 0, budget, budget)
+    badge.center = btn.rect.center
+    icon = round(min(size) * Button._LATCH_ICON_SCALE)
+    pad = Button._LATCH_ICON_PAD
+    lock = headless_pygame.Rect(btn.rect.right - pad - icon, btn.rect.top + pad, icon, icon)
+    assert not badge.colliderect(lock)
+
+
+def test_badge_size_does_not_change_when_latched(headless_pygame):
+    """The corner is reserved always — a badge that resized on right-click
+    would read as a glitch rather than as feedback."""
+    btn = Button(3)
+    btn.rect = headless_pygame.Rect(0, 0, 62, 56)
+    before = btn._badge_budget()
+    btn.toggle_latch()
+    assert btn._badge_budget() == before

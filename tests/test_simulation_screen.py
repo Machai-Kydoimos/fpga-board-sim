@@ -442,6 +442,128 @@ def test_chrome_release_still_reaches_the_board(headless_pygame, fake_child):
     assert btn.pressed is False
 
 
+# ── Keyboard holds reach the DUT atomically (U44 phase 4) ────────────────────
+
+
+def test_two_keys_in_one_frame_send_one_message_with_both_bits(headless_pygame, fake_child):
+    """The keyboard is the only device that can express true simultaneity.
+
+    Both KEYDOWNs land in one event batch, so the frame flush must deliver them
+    as a single input message — not two, which would let the DUT observe an
+    intermediate state that never existed.
+    """
+    child, client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    for key in (headless_pygame.K_1, headless_pygame.K_2):
+        headless_pygame.event.post(
+            headless_pygame.event.Event(headless_pygame.KEYDOWN, {"key": key, "mod": 0})
+        )
+    screen._pump_events()
+    screen._flush_input()
+
+    msgs = _collect(client, 1)
+    assert len(msgs) == 1
+    assert msgs[0][1]["btn"] == 0b011
+    assert msgs[0][1]["seq"] == 1
+
+
+def test_help_modal_mid_hold_leaves_nothing_pressed(headless_pygame, fake_child, monkeypatch):
+    """F1 while holding a key must not strand the button down.
+
+    HelpDialog runs its own event.get() loop handling only QUIT/RESIZE/KEYDOWN/
+    MOUSEBUTTONDOWN, so the KEYUP is discarded — and _run_help_modal then
+    *unpauses* the child, leaving the design running with a phantom button.
+    """
+
+    class _NoopHelp:
+        def __init__(self, _screen: Any) -> None:
+            pass
+
+        def run(self, _clock: Any) -> None:
+            pass
+
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.HelpDialog", _NoopHelp)
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+
+    screen.board._handle_events(
+        [
+            headless_pygame.event.Event(
+                headless_pygame.KEYDOWN, {"key": headless_pygame.K_1, "mod": 0}
+            )
+        ]
+    )
+    assert screen.board.buttons[0].pressed is True
+
+    screen._run_help_modal()
+    assert all(not b.pressed for b in screen.board.buttons)
+    assert screen.board._key_holds == {}
+
+
+def test_help_modal_keeps_latches(headless_pygame, fake_child, monkeypatch):
+    """Latches are deliberate state; only live holds are transient."""
+
+    class _NoopHelp:
+        def __init__(self, _screen: Any) -> None:
+            pass
+
+        def run(self, _clock: Any) -> None:
+            pass
+
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.HelpDialog", _NoopHelp)
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen.board.buttons[1].toggle_latch()
+
+    screen._run_help_modal()
+    assert screen.board.buttons[1].latched is True
+    assert screen.board.buttons[1].pressed is True
+
+
+def test_help_modal_tells_the_child_about_the_release_before_resuming(
+    headless_pygame, fake_child, monkeypatch
+):
+    """The release must reach the child before the modal unpauses it.
+
+    Otherwise the design resumes for a frame still seeing a button that the
+    user physically let go of while the overlay was up.
+    """
+
+    class _NoopHelp:
+        def __init__(self, _screen: Any) -> None:
+            pass
+
+        def run(self, _clock: Any) -> None:
+            pass
+
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.HelpDialog", _NoopHelp)
+    child, client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen.board._handle_events(
+        [
+            headless_pygame.event.Event(
+                headless_pygame.KEYDOWN, {"key": headless_pygame.K_1, "mod": 0}
+            )
+        ]
+    )
+    screen._flush_input()
+    _collect(client, 1)  # drain the press
+
+    screen._run_help_modal()
+    seq = [(kind, payload) for kind, payload in _collect(client, 3)]
+    kinds = [k for k, _ in seq]
+
+    assert "input" in kinds, "the release was never sent"
+    release_at = kinds.index("input")
+    unpause_at = next(i for i, (k, p) in enumerate(seq) if k == "pause" and p.get("on") is False)
+    assert release_at < unpause_at
+    assert seq[release_at][1]["btn"] == 0
+
+
 def test_help_modal_pauses_and_resumes(headless_pygame, fake_child, monkeypatch):
     child, client = fake_child
     screen = _make_screen(headless_pygame, child)

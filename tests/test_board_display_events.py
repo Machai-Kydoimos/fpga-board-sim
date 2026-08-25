@@ -495,3 +495,164 @@ def test_r_clears_a_latch_taken_by_right_click(headless_pygame):
     board._handle_events([_r_keydown(headless_pygame)])
     assert board.buttons[1].latched is False
     assert board.buttons[1].pressed is False
+
+
+# ── Keyboard holds (U44 phase 4) ─────────────────────────────────────────────
+
+
+def _key(
+    pygame: ModuleType, kind: int, key: int, *, scancode: int | None = None, mod: int = 0
+) -> Event:
+    attrs: dict[str, int] = {"key": key, "mod": mod}
+    if scancode is not None:
+        attrs["scancode"] = scancode
+    ev: Event = pygame.event.Event(kind, attrs)
+    return ev
+
+
+def test_digit_key_holds_and_releases_its_button(headless_pygame):
+    board = _make_board(headless_pygame)  # 3 buttons
+    board._handle_events([_key(headless_pygame, headless_pygame.KEYDOWN, headless_pygame.K_2)])
+    assert [b.pressed for b in board.buttons] == [False, True, False]
+
+    board._handle_events([_key(headless_pygame, headless_pygame.KEYUP, headless_pygame.K_2)])
+    assert all(not b.pressed for b in board.buttons)
+
+
+def test_two_keys_held_then_released_in_reverse_order(headless_pygame):
+    """The capability the arc exists for: several buttons, any release order."""
+    board = _make_board(headless_pygame)
+    kd, ku = headless_pygame.KEYDOWN, headless_pygame.KEYUP
+    board._handle_events(
+        [
+            _key(headless_pygame, kd, headless_pygame.K_1),
+            _key(headless_pygame, kd, headless_pygame.K_2),
+        ]
+    )
+    assert [b.pressed for b in board.buttons] == [True, True, False]
+
+    board._handle_events([_key(headless_pygame, ku, headless_pygame.K_2)])
+    assert [b.pressed for b in board.buttons] == [True, False, False]
+    board._handle_events([_key(headless_pygame, ku, headless_pygame.K_1)])
+    assert all(not b.pressed for b in board.buttons)
+
+
+def test_keyup_after_the_modifier_was_released_still_releases(headless_pygame):
+    """The §3.2 regression: KEYUP looks the target up, never re-resolves it.
+
+    SDL reports modifier state at event time, and letting go of a modifier
+    before the key is the normal way people release a chord. Re-resolving would
+    clear a hold that was never taken and leak the real one forever.
+    """
+    board = _make_board(headless_pygame)
+    kd, ku = headless_pygame.KEYDOWN, headless_pygame.KEYUP
+    sc = headless_pygame.KSCAN_1
+
+    board._handle_events([_key(headless_pygame, kd, headless_pygame.K_1, scancode=sc)])
+    assert board.buttons[0].pressed is True
+
+    # Shift went down and came back up while `1` was held; the KEYUP arrives bare.
+    board._handle_events([_key(headless_pygame, ku, headless_pygame.K_1, scancode=sc, mod=0)])
+    assert board.buttons[0].pressed is False
+
+
+def test_two_keys_on_one_button_need_both_released(headless_pygame):
+    """KSCAN_1 and KSCAN_KP_1 both press button 0 — per-key tokens matter."""
+    board = _make_board(headless_pygame)
+    kd, ku = headless_pygame.KEYDOWN, headless_pygame.KEYUP
+    board._handle_events(
+        [
+            _key(headless_pygame, kd, headless_pygame.K_1, scancode=headless_pygame.KSCAN_1),
+            _key(headless_pygame, kd, headless_pygame.K_KP1, scancode=headless_pygame.KSCAN_KP_1),
+        ]
+    )
+    assert board.buttons[0].pressed is True
+
+    board._handle_events(
+        [_key(headless_pygame, ku, headless_pygame.K_1, scancode=headless_pygame.KSCAN_1)]
+    )
+    assert board.buttons[0].pressed is True, "the numpad key still holds it"
+
+    board._handle_events(
+        [_key(headless_pygame, ku, headless_pygame.K_KP1, scancode=headless_pygame.KSCAN_KP_1)]
+    )
+    assert board.buttons[0].pressed is False
+
+
+def test_key_with_no_matching_button_is_a_noop(headless_pygame):
+    """`5` on a three-button board does nothing — explicitly, not as an error."""
+    board = _make_board(headless_pygame)
+    board._handle_events([_key(headless_pygame, headless_pygame.KEYDOWN, headless_pygame.K_6)])
+    assert all(not b.pressed for b in board.buttons)
+    board._handle_events([_key(headless_pygame, headless_pygame.KEYUP, headless_pygame.K_6)])
+    assert all(not b.pressed for b in board.buttons)
+
+
+def test_repeated_keydown_does_not_double_hold(headless_pygame):
+    """One KEYUP must fully release, even if the OS repeated the KEYDOWN."""
+    board = _make_board(headless_pygame)
+    kd, ku = headless_pygame.KEYDOWN, headless_pygame.KEYUP
+    for _ in range(3):
+        board._handle_events([_key(headless_pygame, kd, headless_pygame.K_1)])
+    board._handle_events([_key(headless_pygame, ku, headless_pygame.K_1)])
+    assert board.buttons[0].pressed is False
+
+
+def test_key_hold_fires_one_callback_per_edge(headless_pygame):
+    board = _make_board(headless_pygame)
+    fired: list[tuple[int, bool]] = []
+    for btn in board.buttons:
+        btn.callback = lambda idx, state, _info, fired=fired: fired.append((idx, state))
+
+    kd, ku = headless_pygame.KEYDOWN, headless_pygame.KEYUP
+    board._handle_events([_key(headless_pygame, kd, headless_pygame.K_1)])
+    board._handle_events([_key(headless_pygame, ku, headless_pygame.K_1)])
+    assert fired == [(0, True), (0, False)]
+
+
+def test_named_shortcuts_outrank_bindings(headless_pygame):
+    """R still resets rather than being swallowed by the keymap."""
+    board = _make_board(headless_pygame)
+    board.switches[0].state = True
+    board._handle_events([_r_keydown(headless_pygame)])
+    assert all(not sw.state for sw in board.switches)
+
+
+def test_ctrl_chord_does_not_press_a_button(headless_pygame):
+    board = _make_board(headless_pygame)
+    board._handle_events(
+        [
+            _key(
+                headless_pygame,
+                headless_pygame.KEYDOWN,
+                headless_pygame.K_1,
+                mod=headless_pygame.KMOD_CTRL,
+            )
+        ]
+    )
+    assert all(not b.pressed for b in board.buttons)
+
+
+# ── Focus loss and modals cannot strand a key hold ───────────────────────────
+
+
+def test_focus_loss_clears_key_holds_but_not_latches(headless_pygame):
+    """Alt-Tab delivers the KEYUP elsewhere, so the hold must be dropped here."""
+    board = _make_board(headless_pygame)
+    board._draw()
+    board._handle_events([_key(headless_pygame, headless_pygame.KEYDOWN, headless_pygame.K_1)])
+    board._handle_events([_mousedown(headless_pygame, board.buttons[1].rect.center, button=3)])
+    assert [b.pressed for b in board.buttons] == [True, True, False]
+
+    # By SYMBOL, never the integer: pygame-ce renumbered every WINDOW* constant.
+    board._handle_events([headless_pygame.event.Event(headless_pygame.WINDOWFOCUSLOST, {})])
+    assert [b.pressed for b in board.buttons] == [False, True, False]
+    assert board.buttons[1].latched is True
+
+
+def test_focus_loss_empties_the_key_registry(headless_pygame):
+    """A stale registry entry would release the wrong button on the next KEYUP."""
+    board = _make_board(headless_pygame)
+    board._handle_events([_key(headless_pygame, headless_pygame.KEYDOWN, headless_pygame.K_1)])
+    board._handle_events([headless_pygame.event.Event(headless_pygame.WINDOWFOCUSLOST, {})])
+    assert board._key_holds == {}
