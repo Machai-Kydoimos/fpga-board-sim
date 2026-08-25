@@ -189,12 +189,26 @@ controller.py + ui/simulation_screen.py    sim_bridge.py           headless Simu
    ──────────────────────                   ─────────────────────────────────
    render board + panel @ 60 fps            8.  Deserialize BoardDef; connect to host
    drain link → set_led / set_seg           9.  Main loop:
-   clicks    → "input" messages ──────────────→  apply sw / btn / speed / clk / pause
+   clicks    → "input" (1 per frame) ─────────→  queue input; apply ONE per iteration
    slider/clk → "speed" / "clk" ─────────────→   await Timer(step_ns)  ← advance sim
    ◄──────── "state" (led/seg/…) ──────────────  read dut.led / dut.seg
    [Stop]/ESC/X → return a SimExit          10. send throttled "state" up; heartbeat
 8. finish_waveform(child)                   11. on stop/bye: close link, exit
 ```
+
+**Input is edges, not levels (U44).** The host coalesces a frame's switch/button
+changes into **one** full-state `input` message, flushed once per frame after events
+are handled — several sends in one frame could otherwise straddle a child drain and
+leave the DUT holding a spurious intermediate for a whole simulation step. The child
+in turn *queues* what it drains (`fpga_sim/sim_input.InputQueue`) and applies at most
+one state per loop iteration, so every distinct value gets an `await Timer` of
+exposure. Without that, a press and its release drained together collapsed to the
+release — cocotb keeps only the last write when no time passes between them — and the
+design never saw the press at all (#353), which bit hardest on the CPU-limited
+embedded-core and scan designs where one iteration can take hundreds of milliseconds.
+Consecutive duplicate states are dropped and the backlog is capped, so a burst cannot
+leave the DUT trailing the board. `input_seq` rides in every `state` message as the
+acknowledgement of the last state actually applied.
 
 The simulator loop runs **in a separate headless process**; the pygame UI runs in the
 launcher and never blocks on the child (all link reads are `poll(0)` drains, child

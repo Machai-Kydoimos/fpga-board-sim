@@ -193,15 +193,38 @@ class SimulationScreen:
         self._idle_acc: list[float] = []
         self._sim_acc: list[float] = []
 
+        # Set by the widget callbacks, flushed once per frame by _flush_input
+        # (U44): one atomic full-state message per frame, never a send per edge.
+        self._input_dirty = False
+
         self.board.set_switch_callback(self._on_switch)
         self.board.set_button_callback(self._on_button)
 
     # ── Input wiring ──────────────────────────────────────────────────────────
 
-    def _send_input(self) -> None:
-        """Push the current switch/button state to the child as one input message."""
-        if not self._connected:
+    def _flush_input(self) -> None:
+        """Send the frame's accumulated switch/button state as **one** message.
+
+        Called once per frame from :meth:`run`, after the events that changed
+        anything have been handled (U44).  Firing per callback instead would be
+        equivalent *within* one child drain -- the drain has no ``await`` in it,
+        so N assignments to ``dut.btn`` produce one simulator write of the last
+        value either way -- but it is not equivalent at the **drain boundary**:
+        two of a frame's sends straddling a drain leave the DUT holding a
+        spurious intermediate for a whole sim step, up to ~9.6k clock cycles,
+        which is ample for an edge detector to latch a transition that never
+        happened.  ``R`` on an 18-switch board fired 18 sends in one frame, so
+        this was reachable rather than theoretical.
+
+        The dirty flag deliberately survives a disconnected frame: input taken
+        while the connect spinner is still up is delivered once the child
+        arrives, instead of leaving a switch drawn on that the DUT never saw.
+        """
+        if not self._input_dirty:
             return
+        if not self._connected:
+            return  # keep the flag: flush as soon as the child connects
+        self._input_dirty = False
         sw_val = sum(1 << s.index for s in self.board.switches if s.state)
         btn_val = sum(1 << b.index for b in self.board.buttons if b.pressed)
         self._input_seq += 1
@@ -212,13 +235,13 @@ class SimulationScreen:
         )
 
     def _on_switch(self, idx: int, state: bool, info: ComponentInfo | None) -> None:
-        self._send_input()
+        self._input_dirty = True
         label = info.display_name if info else f"SW{idx}"
         conn = f"  [{info.connector_str}]" if info else ""
         print(f"{label}: {'ON' if state else 'OFF'}{conn}")
 
     def _on_button(self, idx: int, pressed: bool, info: ComponentInfo | None) -> None:
-        self._send_input()
+        self._input_dirty = True
         label = info.display_name if info else f"BTN{idx}"
         conn = f"  [{info.connector_str}]" if info else ""
         print(f"{label}: {'PRESSED' if pressed else 'RELEASED'}{conn}")
@@ -270,6 +293,7 @@ class SimulationScreen:
             if exit_intent is not None:
                 break
 
+            self._flush_input()
             self._sync_controls()
             if self._connected and self._last_state:
                 self.panel.set_remote(
