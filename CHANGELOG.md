@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A latched button now carries a padlock icon** in its top-right corner
+  (U44), replacing the inset ring as the primary non-color cue. The ring said
+  *different*; the padlock says *locked*, which is the actual state. It is
+  Kenney's CC0 `locked` icon — chosen over the runner-up down-arrow because an
+  arrow reads as a *direction label* on the d-pad boards (the 13-button ULX3S
+  has `UP0`/`DOWN0`/`LEFT0`/`RIGHT0`), which is exactly where an on-widget
+  marker matters most. The corner placement leaves the button's center free for
+  the key badges arriving with the keyboard map. New `fpga_sim.ui.icons` keeps
+  the icon *source* swappable behind one function, recolors the monochrome
+  asset per theme through its alpha mask, and caches by `(name, size, color)`.
+  **Every failure path returns `None` rather than raising** — a missing or
+  corrupt asset, or a button too small for the glyph to read as one, silently
+  falls back to the inset ring, so a decorative asset is never load-bearing.
 - **Right-click a button to latch it down** (U44 phase 3) — the way to hold a
   reset or an enable while working the rest of the board, hands-free. Modeless
   by design: there is no sticky mode to remember, render, or explain, and it

@@ -49,6 +49,7 @@ The simulator runs in a **single window** (U34): the launcher's pygame process o
 | `src/fpga_sim/sim_link.py` | IPC transport between the UI host and the headless sim child (`multiprocessing.connection` over 127.0.0.1 + random HMAC authkey); pygame-free (U34) |
 | `src/fpga_sim/ui/` | pygame UI package (board_selector, board_display, simulation_screen, sim_panel, components, etc.) |
 | `src/fpga_sim/ui/simulation_screen.py` | `SimulationScreen`: renders the board in the launcher's window while the headless child streams signal state over `sim_link`; returns a `SimExit` (U34) |
+| `src/fpga_sim/ui/icons.py` + `ui/assets/` | Themed raster icons for board widgets (U44). One entry point (`latch_icon`) so the icon *source* stays swappable; monochrome+alpha PNGs recolored per theme through the alpha mask, cached by `(name, size, color)`. **Every failure path returns `None`, never raises** — a missing/corrupt asset or a rect below the glyph floor falls back to `Button`'s inset ring, keeping a decorative asset off the critical path. Asset provenance + license in `ui/assets/README.md` |
 | `boards/` | JSON board definitions (multi-source: `amaranth-boards/`, `litex-boards/`, `digilent-xdc/`, `custom/`) |
 | `boards/schema/board.schema.json` | JSON Schema for board definition validation |
 | `scripts/sync_amaranth_boards.py` | Syncs board definitions from amaranth-boards GitHub repo |

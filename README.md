@@ -258,4 +258,6 @@ This simulator was inspired by these working examples of interactive virtual FPG
 
 This project is licensed under the [MIT License](LICENSE).
 
+The latched-button padlock icon (`src/fpga_sim/ui/assets/locked.png`) is from the [Game Icons](https://kenney.nl/assets/game-icons) pack by [Kenney](https://kenney.nl) (CC0 1.0 — credit given although the license does not require it).
+
 Board definitions in `boards/amaranth-boards/` are derived from [amaranth-lang/amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) (BSD-2-Clause). Board definitions in `boards/litex-boards/` are derived from [litex-hub/litex-boards](https://github.com/litex-hub/litex-boards) (BSD-2-Clause). Board definitions in `boards/digilent-xdc/` are derived from [Digilent/digilent-xdc](https://github.com/Digilent/digilent-xdc) (MIT).

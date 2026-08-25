@@ -11,6 +11,7 @@ import pygame
 from fpga_sim.board_loader import ComponentInfo
 from fpga_sim.ui.constants import GRAY, WHITE, lerp_rgb
 from fpga_sim.ui.constants import get_font as _get_font
+from fpga_sim.ui.icons import latch_icon
 from fpga_sim.ui.theme import THEME
 
 # ── Component classes ────────────────────────────────────────────────
@@ -637,21 +638,45 @@ class Button(UIComponent):
         if not was_pressed:
             self._fire(True)
 
-    def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
-        """Draw the push-button — idle, held, or latched — plus its label.
+    #: Corner padlock size as a fraction of the button, and its inset.  The
+    #: icon annotates the widget from a corner rather than filling it, leaving
+    #: the centre for the key badge.
+    _LATCH_ICON_SCALE = 0.34
+    _LATCH_ICON_PAD = 4
 
-        A latch gets its own fill *and* an inset ring rather than colour alone:
-        the ring keeps "locked down" legible in a screenshot, in the reduced
-        high-contrast palette, and to a viewer who cannot separate the two hues.
+    def _draw_latch_marker(self, surface: pygame.Surface) -> None:
+        """Mark the button as latched: a corner padlock, else an inset ring.
+
+        Colour alone would not carry the state -- it has to survive a
+        screenshot, the reduced high-contrast palette, and a viewer who cannot
+        separate the two hues.  The padlock says *locked* rather than merely
+        *different*, so it is preferred; the ring is the fallback for whenever
+        :func:`~fpga_sim.ui.icons.latch_icon` declines (asset missing, or a
+        rect too small for the glyph to read as one).
         """
+        size = min(
+            round(self.rect.height * self._LATCH_ICON_SCALE),
+            round(self.rect.width * self._LATCH_ICON_SCALE),
+        )
+        marker = latch_icon(size, THEME.latch_icon_ink)
+        if marker is not None:
+            pad = self._LATCH_ICON_PAD
+            surface.blit(
+                marker, marker.get_rect(topright=(self.rect.right - pad, self.rect.top + pad))
+            )
+            return
+        ring = self.rect.inflate(-10, -10)
+        if ring.width > 2 and ring.height > 2:
+            pygame.draw.rect(surface, WHITE, ring, 2, border_radius=4)
+
+    def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
+        """Draw the push-button — idle, held, or latched — plus its label."""
         if self.pressed:
             inner = self.rect.inflate(-4, -4)
             fill = THEME.push_latched if self.latched else THEME.push_on
             pygame.draw.rect(surface, fill, inner, border_radius=6)
             if self.latched:
-                ring = self.rect.inflate(-10, -10)
-                if ring.width > 2 and ring.height > 2:
-                    pygame.draw.rect(surface, WHITE, ring, 2, border_radius=4)
+                self._draw_latch_marker(surface)
         else:
             pygame.draw.rect(surface, THEME.push_off, self.rect, border_radius=6)
         pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=6)
