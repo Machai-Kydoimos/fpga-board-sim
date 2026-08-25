@@ -256,6 +256,14 @@ class FPGABoard:
         # rect or a position, because _layout() reassigns every rect on resize.
         self._mouse_holds: dict[int, int] = {}
 
+        # Drag-paint state (U44 phase 5), armed only by a mouse-down that
+        # actually hit a switch, and cleared on mouse-up.  ``_paint_value`` is
+        # the value every switch the drag crosses is *set to* -- painting, not
+        # toggling -- and ``_painted`` is the set of widget INDICES already
+        # driven this drag, so re-entering one mid-sweep does not flip it back.
+        self._paint_value: bool | None = None
+        self._painted: set[int] = set()
+
         # Which button each held KEY is holding, keyed by keymap.event_token.
         # The target is resolved once at key-down and *looked up* at key-up,
         # never recomputed: SDL reports modifiers at event time, so a chord
@@ -767,7 +775,13 @@ class FPGABoard:
                     continue
 
                 for sw in self.switches:
-                    sw.handle_click(event.pos)
+                    if sw.handle_click(event.pos):
+                        # Arm the sweep with the value this first switch just
+                        # took, so dragging on from an off switch drives the
+                        # bank on and from an on switch drives it off.
+                        self._paint_value = sw.state
+                        self._painted = {sw.index}
+                        break
                 source = _mouse_source(event.button)
                 for btn in self.buttons:
                     if btn.handle_press(event.pos, source):
@@ -784,10 +798,15 @@ class FPGABoard:
                         btn.toggle_latch()
                         break
 
+            elif event.type == pygame.MOUSEMOTION:
+                self._paint_switches(event)
+
             elif event.type == pygame.MOUSEBUTTONUP:
                 # Any mouse button, not just 1: a release must always be able to
                 # end the hold its press took, or the button stays down forever.
                 self._release_mouse_hold(event.button)
+                self._paint_value = None
+                self._painted.clear()
 
     # ── hold-source bookkeeping (U44) ────────────────────────────────
 
@@ -823,6 +842,34 @@ class FPGABoard:
         index = self._key_holds.pop(token, None)
         if index is not None:
             self.buttons[index].handle_release(_key_source(token))
+
+    def _paint_switches(self, event: pygame.event.Event) -> None:
+        """Drive every switch this motion crossed to the armed paint value.
+
+        Only runs while a sweep is armed — a press that began on a button, on
+        the board background, or on chrome paints nothing.
+
+        **The motion segment is tested, not the cursor point.** Switches sit on
+        a pitch far wider than they are (measured on a 1024x700 Nexys 4 DDR:
+        64 px wide on a 123 px pitch, a 59 px gap), so any single MOUSEMOTION
+        delta wider than the pitch would skip a switch outright on a fast
+        flick — intermittent, invisible, and blamed on the feature.
+        ``rect.clipline`` tests the whole segment; ``event.rel`` gives the
+        previous position for free.
+        """
+        if self._paint_value is None:
+            return
+        prev = (event.pos[0] - event.rel[0], event.pos[1] - event.rel[1])
+        for sw in self.switches:
+            if sw.index in self._painted:
+                continue
+            if not sw.rect.clipline(prev, event.pos):
+                continue
+            self._painted.add(sw.index)
+            if sw.state != self._paint_value:
+                sw.state = self._paint_value
+                if sw.callback:
+                    sw.callback(sw.index, sw.state, sw.info)
 
     def release_transient_holds(self) -> None:
         """Drop every live hold (mouse, keyboard) while keeping latches.

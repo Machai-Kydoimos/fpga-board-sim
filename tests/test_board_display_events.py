@@ -656,3 +656,158 @@ def test_focus_loss_empties_the_key_registry(headless_pygame):
     board._handle_events([_key(headless_pygame, headless_pygame.KEYDOWN, headless_pygame.K_1)])
     board._handle_events([headless_pygame.event.Event(headless_pygame.WINDOWFOCUSLOST, {})])
     assert board._key_holds == {}
+
+
+# ── Drag-paint switches (U44 phase 5) ────────────────────────────────────────
+
+
+def _motion(pygame: ModuleType, pos: tuple[int, int], rel: tuple[int, int]) -> Event:
+    ev: Event = pygame.event.Event(
+        pygame.MOUSEMOTION, {"pos": pos, "rel": rel, "buttons": (1, 0, 0)}
+    )
+    return ev
+
+
+def _sweep(
+    pygame: ModuleType, board: FPGABoard, start_idx: int, end_idx: int, *, steps: int = 12
+) -> None:
+    """Press on switch *start_idx*, then drag in small steps to *end_idx*."""
+    a = board.switches[start_idx].rect.center
+    b = board.switches[end_idx].rect.center
+    board._handle_events([_mousedown(pygame, a)])
+    prev = a
+    for i in range(1, steps + 1):
+        pos = (
+            round(a[0] + (b[0] - a[0]) * i / steps),
+            round(a[1] + (b[1] - a[1]) * i / steps),
+        )
+        board._handle_events([_motion(pygame, pos, (pos[0] - prev[0], pos[1] - prev[1]))])
+        prev = pos
+    board._handle_events([_mouseup(pygame, b)])
+
+
+def test_sweep_drives_every_crossed_switch_to_the_paint_value(headless_pygame):
+    board = _make_board(headless_pygame)  # 4 switches
+    board._draw()
+    _sweep(headless_pygame, board, 0, 3)
+    assert all(sw.state for sw in board.switches)
+
+
+def test_sweep_paints_rather_than_inverts(headless_pygame):
+    """From a mixed pattern a sweep must reach a *uniform* bank.
+
+    Toggle-on-enter would yield the complement, so no gesture could ever reach
+    "all on" and the user would be back to clicking individually — which is the
+    pain point drag-paint exists to remove.
+    """
+    board = _make_board(headless_pygame)
+    board._draw()
+    board.switches[1].state = True
+    board.switches[2].state = True
+
+    _sweep(headless_pygame, board, 0, 3)  # started on an OFF switch -> all on
+    assert [sw.state for sw in board.switches] == [True, True, True, True]
+
+    _sweep(headless_pygame, board, 0, 3)  # started on an ON switch -> all off
+    assert [sw.state for sw in board.switches] == [False, False, False, False]
+
+
+def test_each_switch_is_painted_exactly_once(headless_pygame):
+    """Re-entering a switch mid-drag must not flip it back."""
+    board = _make_board(headless_pygame)
+    board._draw()
+    fired: list[tuple[int, bool]] = []
+    for sw in board.switches:
+        sw.callback = lambda idx, state, _info, fired=fired: fired.append((idx, state))
+
+    a = board.switches[0].rect.center
+    b = board.switches[2].rect.center
+    board._handle_events([_mousedown(headless_pygame, a)])
+    # Out to switch 2 and back across 1 and 0 again.
+    for pos, prev in ((b, a), (a, b), (b, a)):
+        board._handle_events([_motion(headless_pygame, pos, (pos[0] - prev[0], pos[1] - prev[1]))])
+    board._handle_events([_mouseup(headless_pygame, b)])
+
+    assert sorted(fired) == [(0, True), (1, True), (2, True)]
+
+
+def test_one_large_delta_paints_the_whole_span(headless_pygame):
+    """The segment hit-test regression — this fails with a point test.
+
+    Switches sit on a pitch far wider than they are (64 px wide on a 123 px
+    pitch at 1024x700), so a fast flick produces one motion event whose
+    ``pos`` lands past several switches without ever being inside them.
+    """
+    board = _make_board(headless_pygame)
+    board._draw()
+    a = board.switches[0].rect.center
+    b = board.switches[3].rect.center
+
+    board._handle_events([_mousedown(headless_pygame, a)])
+    board._handle_events([_motion(headless_pygame, b, (b[0] - a[0], b[1] - a[1]))])
+    board._handle_events([_mouseup(headless_pygame, b)])
+
+    assert all(sw.state for sw in board.switches), "a fast flick skipped switches"
+
+
+def test_drag_begun_on_a_button_paints_nothing(headless_pygame):
+    """The sweep is armed only by a press that actually hit a switch."""
+    board = _make_board(headless_pygame)
+    board._draw()
+    a = board.buttons[0].rect.center
+    b = board.switches[3].rect.center
+    board._handle_events([_mousedown(headless_pygame, a)])
+    board._handle_events([_motion(headless_pygame, b, (b[0] - a[0], b[1] - a[1]))])
+    board._handle_events([_mouseup(headless_pygame, b)])
+    assert all(not sw.state for sw in board.switches)
+
+
+def test_motion_without_a_press_paints_nothing(headless_pygame):
+    """Plain hover across the bank must not change anything."""
+    board = _make_board(headless_pygame)
+    board._draw()
+    a = board.switches[0].rect.center
+    b = board.switches[3].rect.center
+    board._handle_events([_motion(headless_pygame, b, (b[0] - a[0], b[1] - a[1]))])
+    assert all(not sw.state for sw in board.switches)
+
+
+def test_mouse_up_disarms_the_sweep(headless_pygame):
+    """A motion after the release is a plain hover, not a continuation."""
+    board = _make_board(headless_pygame)
+    board._draw()
+    a = board.switches[0].rect.center
+    b = board.switches[3].rect.center
+    board._handle_events([_mousedown(headless_pygame, a)])
+    board._handle_events([_mouseup(headless_pygame, a)])
+    board._handle_events([_motion(headless_pygame, b, (b[0] - a[0], b[1] - a[1]))])
+    assert [sw.state for sw in board.switches] == [True, False, False, False]
+
+
+def test_single_click_still_just_toggles(headless_pygame):
+    """Byte-identical single-click behavior is the gate on this phase."""
+    board = _make_board(headless_pygame)
+    board._draw()
+    pos = board.switches[2].rect.center
+    board._handle_events([_mousedown(headless_pygame, pos)])
+    board._handle_events([_mouseup(headless_pygame, pos)])
+    assert [sw.state for sw in board.switches] == [False, False, True, False]
+
+    board._handle_events([_mousedown(headless_pygame, pos)])
+    board._handle_events([_mouseup(headless_pygame, pos)])
+    assert all(not sw.state for sw in board.switches)
+
+
+def test_resize_mid_drag_does_not_corrupt_the_painted_set(headless_pygame):
+    """Holds and paint state key on widget INDEX, so a relayout is survivable."""
+    board = _make_board(headless_pygame)
+    board._draw()
+    board._handle_events([_mousedown(headless_pygame, board.switches[0].rect.center)])
+    assert board._painted == {0}
+
+    board._resize(1400, 900)
+    b = board.switches[3].rect.center
+    a = board.switches[0].rect.center
+    board._handle_events([_motion(headless_pygame, b, (b[0] - a[0], b[1] - a[1]))])
+    board._handle_events([_mouseup(headless_pygame, b)])
+    assert all(sw.state for sw in board.switches)

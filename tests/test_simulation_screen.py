@@ -564,6 +564,43 @@ def test_help_modal_tells_the_child_about_the_release_before_resuming(
     assert seq[release_at][1]["btn"] == 0
 
 
+def test_drag_paint_sends_one_message_per_motion_frame(headless_pygame, fake_child):
+    """A sweep crossing several switches is still one atomic update per frame.
+
+    Without frame coalescing this would emit one full-state message per switch
+    crossed, and two of them straddling a child drain would leave the DUT
+    holding a half-painted switch vector for a whole simulation step.
+    """
+    child, client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen._render_frame()  # lay out the switch rects
+
+    first = screen.board.switches[0].rect.center
+    last = screen.board.switches[3].rect.center
+    screen.board._handle_events(
+        [
+            headless_pygame.event.Event(
+                headless_pygame.MOUSEBUTTONDOWN, {"pos": first, "button": 1}
+            ),
+            headless_pygame.event.Event(
+                headless_pygame.MOUSEMOTION,
+                {
+                    "pos": last,
+                    "rel": (last[0] - first[0], last[1] - first[1]),
+                    "buttons": (1, 0, 0),
+                },
+            ),
+        ]
+    )
+    screen._flush_input()
+
+    msgs = _collect(client, 1)
+    assert len(msgs) == 1
+    assert msgs[0][1]["sw"] == 0b1111
+    assert msgs[0][1]["seq"] == 1
+
+
 def test_help_modal_pauses_and_resumes(headless_pygame, fake_child, monkeypatch):
     child, client = fake_child
     screen = _make_screen(headless_pygame, child)
