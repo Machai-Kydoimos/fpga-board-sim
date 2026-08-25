@@ -458,7 +458,16 @@ class SimulationScreen:
             elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
                 nav = SimExit.STOPPED
 
-        self.board._handle_events(events)  # switches/buttons/help/resize
+        # Chrome sits *over* the board, so a press on [Stop] / [PAUSE] / the
+        # toolbar must not also reach the widget underneath it (U44).  Harmless
+        # while every board gesture was a momentary press; with right-click
+        # latching it would leave a hidden button latched down with no way to
+        # see or clear it.
+        #
+        # Presses only -- never releases.  A MOUSEBUTTONUP has to reach the
+        # board wherever the cursor ended up, or pressing a button and dragging
+        # onto [Stop] before letting go would strand that button down.
+        self.board._handle_events([ev for ev in events if not self._chrome_press(ev)])
 
         for ev in events:
             if ev.type == pygame.KEYDOWN and ev.key == pygame.K_s:
@@ -490,6 +499,15 @@ class SimulationScreen:
             self._run_help_modal()
 
         return nav
+
+    def _chrome_press(self, ev: pygame.event.Event) -> bool:
+        """Return True when *ev* is a mouse press landing on the sim overlay's chrome."""
+        if ev.type != pygame.MOUSEBUTTONDOWN:
+            return False
+        for rect in (self._stop_btn_rect, self._pause_btn_rect):
+            if rect is not None and rect.collidepoint(ev.pos):
+                return True
+        return self._toolbar is not None and self._toolbar.covers(ev.pos)
 
     def _run_help_modal(self) -> None:
         was_paused = self.panel.paused

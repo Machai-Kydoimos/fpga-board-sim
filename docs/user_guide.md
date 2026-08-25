@@ -35,7 +35,15 @@ channels into one color.
 
 - **Click switches** to toggle them
 - **Click and hold buttons** to press them
-- **Hover a component** → tooltip with its net name, pin, and direction
+- **Right-click a button** to **latch** it down hands-free; right-click again to
+  release it. A latched button draws in its own color with an inset ring, and
+  combines freely with a live hold — hold it with the mouse *as well*, let the
+  mouse go, and it stays down because the latch is a separate hold
+- **Hover a component** → tooltip with its net name, pin, direction, and the
+  vector bit it drives (`btn(3)` / `sw(11)`). The bit is worth knowing: on a few
+  boards the *drawn label* is not the index — the Sword renders three different
+  buttons all labeled `BTN0` — so the tooltip is where the on-screen widget and
+  your VHDL index line up
 - **`SIM: …`** toggle → cycle between installed simulators, each shown by a
   short label (`SIM: GHDL`, `SIM: NVC`, and the GHDL code generators
   `SIM: GHDL-LLVM` / `SIM: GHDL-JIT`); the choice is remembered per session.
@@ -43,7 +51,7 @@ channels into one color.
   one in a non-standard location — see
   [Choosing a simulator](install.md#choosing-a-simulator)
 - **"Start Simulation"** button → opens the VHDL file picker
-- **R** → reset all switches off and release any held buttons
+- **R** → reset all switches off and release every held button, latches included
 - **F1 / ? / (?)** → open the help overlay
 - **Gear button** (next to the `(?)`) → open the [Settings dialog](#settings-dialog):
   switch the UI theme, reset the remembered sim speed, toggle waveform capture,
@@ -76,14 +84,18 @@ window** — the board you previewed stays on screen and becomes interactive, wh
 simulator itself runs headless in the background:
 
 - **Switches/buttons** drive FPGA inputs in real time
+- **Right-click a button** to **latch** it down — the way to hold a reset or an
+  enable while you work the rest of the board. Latches survive the help overlay
+  and a pause; `R` clears them
 - **LEDs** reflect FPGA outputs from the simulation
 - **7-segment digits** show live hex glyphs on supported boards
-- **Hover a component** → tooltip with its net name, pin, and direction
+- **Hover a component** → tooltip with its net name, pin, direction, vector bit,
+  and whether it is latched
 - **Toolbar** (bottom-left) → **[Back to Boards]**, **[Change VHDL]**, or
   **[Reload VHDL]** — Reload re-analyzes the current file (pick up edits you just
   made in your editor) and restarts, without leaving the simulation
-- **R** — reset all switches off and release any held buttons (inputs only; design
-  state is unaffected)
+- **R** — reset all switches off and release every held button, latches included
+  (inputs only; design state is unaffected)
 - **S** — toggle the [stats panel](#stats-panel)
 - **D** — toggle the [debug duty-bar view](#debug-duty-bar-view)
 - **F1 / ?** — open the help overlay

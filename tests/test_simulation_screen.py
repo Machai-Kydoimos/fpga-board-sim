@@ -369,6 +369,79 @@ def test_run_flushes_input_once_per_frame(headless_pygame, fake_child, monkeypat
     assert order.count("flush") == 2
 
 
+# ── Latching: redraw + chrome z-order (U44 phase 3) ───────────────────────────
+
+
+def test_render_redraws_on_latch_while_held(headless_pygame, fake_child, monkeypatch):
+    """Latching a button the mouse already holds must repaint it.
+
+    `pressed` stays True across the transition, so only the latch entering
+    `visual_signature()` breaks the U23 redraw-skip. Fails without that.
+    """
+    _park_cursor_off_board(monkeypatch)
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen.board.buttons[0].hold("mouse:1")
+    screen._render_frame()
+    screen._render_frame()
+    drawn = screen.run_stats.frames_drawn
+
+    screen.board.buttons[0].toggle_latch()
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == drawn + 1
+    assert screen.board.buttons[0].pressed is True
+
+
+def test_chrome_press_does_not_reach_the_board(headless_pygame, fake_child):
+    """A right-click on [Stop] must not latch a button hidden underneath it."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen._render_frame()  # populates the chrome rects
+    assert screen._stop_btn_rect is not None
+
+    # Park a button exactly under the [Stop] chrome.
+    screen.board.buttons[0].rect = screen._stop_btn_rect.copy()
+    pos = screen._stop_btn_rect.center
+    headless_pygame.event.post(
+        headless_pygame.event.Event(headless_pygame.MOUSEBUTTONDOWN, {"pos": pos, "button": 3})
+    )
+    screen._pump_events()
+    assert screen.board.buttons[0].latched is False
+
+
+def test_chrome_release_still_reaches_the_board(headless_pygame, fake_child):
+    """Filtering must not eat a release, or the hold under it is stranded.
+
+    Press a button, drag onto [Stop], let go there: the button has to come up.
+    """
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen._render_frame()
+    assert screen._stop_btn_rect is not None
+
+    btn = screen.board.buttons[0]
+    screen.board._handle_events(
+        [
+            headless_pygame.event.Event(
+                headless_pygame.MOUSEBUTTONDOWN, {"pos": btn.rect.center, "button": 1}
+            )
+        ]
+    )
+    assert btn.pressed is True
+
+    headless_pygame.event.post(
+        headless_pygame.event.Event(
+            headless_pygame.MOUSEBUTTONUP,
+            {"pos": screen._stop_btn_rect.center, "button": 1},
+        )
+    )
+    screen._pump_events()
+    assert btn.pressed is False
+
+
 def test_help_modal_pauses_and_resumes(headless_pygame, fake_child, monkeypatch):
     child, client = fake_child
     screen = _make_screen(headless_pygame, child)

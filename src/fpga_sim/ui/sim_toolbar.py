@@ -75,6 +75,10 @@ class SimToolbar:
             x = rect.right + gap
         return self._hit[0][0].unionall([r for r, _ in self._hit[1:]])
 
+    def covers(self, pos: tuple[int, int]) -> bool:
+        """Return True when *pos* falls on one of the toolbar's buttons (U44 z-order)."""
+        return any(rect.collidepoint(pos) for rect, _ in self._hit)
+
     def handle_click(self, pos: tuple[int, int]) -> SimExit | None:
         """Return the intent for a left-click at *pos*, or ``None`` on a miss."""
         for rect, intent in self._hit:

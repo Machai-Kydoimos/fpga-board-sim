@@ -731,7 +731,19 @@ class FPGABoard:
                         self._mouse_holds[event.button] = btn.index
                         break
 
-            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+                # Right-click toggles a latch (U44).  Modeless by design: there
+                # is no sticky mode to render, remember, or explain, and it does
+                # not fight the keyboard for a modifier.  Button 3 was entirely
+                # unhandled before this, so it costs nothing elsewhere.
+                for btn in self.buttons:
+                    if btn.rect.collidepoint(event.pos):
+                        btn.toggle_latch()
+                        break
+
+            elif event.type == pygame.MOUSEBUTTONUP:
+                # Any mouse button, not just 1: a release must always be able to
+                # end the hold its press took, or the button stays down forever.
                 self._release_mouse_hold(event.button)
 
     # ── hold-source bookkeeping (U44) ────────────────────────────────
@@ -826,7 +838,11 @@ class FPGABoard:
         )
         segs = tuple(tuple(round(lv * q) for lv in seg.levels) for seg in self._seven_segs)
         switches = tuple(sw.state for sw in self.switches)
-        buttons = tuple(btn.pressed for btn in self.buttons)
+        # Latch state is part of the fingerprint, not just `pressed`: mouse-hold
+        # a button, right-click to latch it, then release the mouse and
+        # `pressed` never changes -- so without this the redraw-skip would hold
+        # the held style on screen over a latched button forever.
+        buttons = tuple((btn.pressed, btn.latched) for btn in self.buttons)
         return (self.width, self.height, self._height_offset, leds, segs, switches, buttons)
 
     def hover_active(self) -> bool:
