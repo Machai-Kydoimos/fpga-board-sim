@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Right-click a button to latch it down** (U44 phase 3) — the way to hold a
+  reset or an enable while working the rest of the board, hands-free. Modeless
+  by design: there is no sticky mode to remember, render, or explain, and it
+  does not fight the keyboard for a modifier. Button 3 was entirely unhandled
+  before this, so it costs nothing elsewhere. A latch is just another hold
+  source, so it composes freely with live ones — hold a button with the mouse
+  *and* latch it, let the mouse go, and it stays down. `R` clears latches along
+  with everything else, and they survive the help overlay, a pause, and a
+  resize. Latched buttons draw in their own theme color (`push_latched`) **with
+  an inset ring**, so "locked down" stays legible in a screenshot, in the
+  reduced high-contrast palette, and to a viewer who cannot separate the two
+  hues.
+- **Hover tooltips on switches and buttons now name the vector bit they drive**
+  (`btn(3)` / `sw(11)`), and a button's tooltip carries its latch state and the
+  right-click hint. The bit is not cosmetic: on five boards in the fleet the
+  *drawn label* is not the index — the Sword renders three different buttons all
+  labeled `BTN0` — so the tooltip is the one place the on-screen widget and the
+  VHDL index can be lined up. The gesture row is also the discoverability
+  mechanism for latching, put where a confused user is already looking.
+
 ### Changed
 
 - **Switch and button changes now reach the simulator as one atomic message per
@@ -95,6 +117,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A press on the simulation overlay's chrome no longer also reaches the board
+  widget underneath it** (U44 phase 3). `_pump_events()` passed every event to
+  the board *before* hit-testing `[Stop]` / `[PAUSE]` / the toolbar, so a click
+  on chrome hit both. Harmless while every board gesture was a momentary press;
+  with right-click latching it would leave a button latched down underneath the
+  chrome, invisible and unclearable. Only *presses* are filtered — a release
+  must still reach the board wherever the cursor ended up, or pressing a button
+  and dragging onto `[Stop]` before letting go would strand it down.
 - **Fast button taps are no longer silently swallowed on CPU-limited designs**
   ([#353](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/353), U44
   phase 2). The headless child drained every pending input message and assigned

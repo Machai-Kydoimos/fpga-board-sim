@@ -117,6 +117,19 @@ class TestContent:
         for token in ("Esc", "Enter", "R", "S"):
             assert token in joined
 
+    def test_shortcuts_document_the_latch_gesture(self):
+        # Right-click latching is not guessable, so the legend is load-bearing
+        # discoverability rather than documentation (U44).
+        rows = {k: d for k, d in SHORTCUTS}
+        assert "Right-click" in rows
+        assert "latch" in rows["Right-click"].lower()
+
+    def test_reset_row_mentions_latches(self):
+        # R is the documented escape hatch; if it left latches set, the only way
+        # out would not work.  The legend has to say it clears them.
+        reset = next(d for k, d in SHORTCUTS if k == "R")
+        assert "latch" in reset.lower()
+
     def test_workflow_is_four_numbered_steps(self):
         assert [num for num, _ in WORKFLOW] == ["1", "2", "3", "4"]
         for _num, desc in WORKFLOW:

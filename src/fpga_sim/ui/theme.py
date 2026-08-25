@@ -67,6 +67,7 @@ class Theme:
     switch_off: RGB = (40, 50, 80)
     push_on: RGB = YELLOW  # pressed push-button
     push_off: RGB = GRAY  # idle push-button body
+    push_latched: RGB = (255, 140, 0)  # latched down (U44): held, and locked
 
     # ── 7-segment display ───────────────────────────────────────────────────
     seg_on: RGB = (255, 140, 0)  # amber
@@ -321,6 +322,10 @@ _HIGH_CONTRAST = Theme(
     switch_off=(70, 70, 70),
     push_on=_HC_YELLOW,
     push_off=(160, 160, 160),
+    # A latch must read as distinct from a live hold even where the palette is
+    # deliberately reduced, so hue (yellow -> cyan) carries it rather than
+    # brightness, which high contrast has already spent.
+    push_latched=(0, 255, 255),
     seg_on=_HC_YELLOW,
     seg_off=(60, 60, 60),
     seg_bg=_HC_BLACK,

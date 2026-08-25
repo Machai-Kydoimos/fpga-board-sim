@@ -523,6 +523,11 @@ class Switch(UIComponent):
         lbl = font.render(self.label, True, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
 
+    @property
+    def tooltip_extra(self) -> list[tuple[str, str]]:
+        """Hover row naming the vector bit this switch drives (see Button)."""
+        return [("Bit", f"sw({self.index})")]
+
     def handle_click(self, pos: tuple[int, int]) -> bool:
         """Toggle the switch state if pos falls within its rect; return True on hit."""
         if self.rect.collidepoint(pos):
@@ -587,6 +592,40 @@ class Button(UIComponent):
         """The current hold sources (read-only view)."""
         return frozenset(self._holds)
 
+    @property
+    def latched(self) -> bool:
+        """True while a latch holds the button down hands-free (U44)."""
+        return self.LATCH_SOURCE in self._holds
+
+    def toggle_latch(self) -> None:
+        """Latch the button down, or release an existing latch.
+
+        Independent of every live hold: latching a button the mouse is already
+        holding keeps it down when the mouse lets go, and unlatching one a key
+        is also holding leaves the key's hold intact.
+        """
+        if self.latched:
+            self.handle_release(self.LATCH_SOURCE)
+        else:
+            self.hold(self.LATCH_SOURCE)
+
+    @property
+    def tooltip_extra(self) -> list[tuple[str, str]]:
+        """Hover rows: which vector bit this is, its latch state, the gesture.
+
+        The bit matters because the drawn label is *not* the index on every
+        board -- five boards in the fleet render duplicate button labels (Sword
+        shows ``BTN0`` three times), so the tooltip is the one place a user can
+        connect what they see to what their VHDL indexes.  The gesture row is
+        the discoverability mechanism for latching: right-click is not
+        guessable, and this is where a confused user is already looking.
+        """
+        rows = [("Bit", f"btn({self.index})")]
+        if self.latched:
+            rows.append(("Latched", "yes"))
+        rows.append(("Right-click", "latch / unlatch"))
+        return rows
+
     def _fire(self, state: bool) -> None:
         if self.callback:
             self.callback(self.index, state, self.info)
@@ -599,10 +638,20 @@ class Button(UIComponent):
             self._fire(True)
 
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
-        """Draw the push-button with a highlight when pressed, plus its label."""
+        """Draw the push-button — idle, held, or latched — plus its label.
+
+        A latch gets its own fill *and* an inset ring rather than colour alone:
+        the ring keeps "locked down" legible in a screenshot, in the reduced
+        high-contrast palette, and to a viewer who cannot separate the two hues.
+        """
         if self.pressed:
             inner = self.rect.inflate(-4, -4)
-            pygame.draw.rect(surface, THEME.push_on, inner, border_radius=6)
+            fill = THEME.push_latched if self.latched else THEME.push_on
+            pygame.draw.rect(surface, fill, inner, border_radius=6)
+            if self.latched:
+                ring = self.rect.inflate(-10, -10)
+                if ring.width > 2 and ring.height > 2:
+                    pygame.draw.rect(surface, WHITE, ring, 2, border_radius=4)
         else:
             pygame.draw.rect(surface, THEME.push_off, self.rect, border_radius=6)
         pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=6)

@@ -412,3 +412,86 @@ def test_chrome_click_does_not_drop_later_events_in_the_batch(headless_pygame):
     )
     assert board._help_requested is True
     assert board.buttons[0].pressed is True  # the second event was still handled
+
+
+# ── Right-click latching (U44 phase 3) ───────────────────────────────────────
+
+
+def test_right_click_latches_and_unlatches(headless_pygame):
+    board = _make_board(headless_pygame)
+    board._draw()
+    pos = board.buttons[1].rect.center
+
+    board._handle_events([_mousedown(headless_pygame, pos, button=3)])
+    assert board.buttons[1].latched is True
+    assert board.buttons[1].pressed is True
+
+    board._handle_events([_mousedown(headless_pygame, pos, button=3)])
+    assert board.buttons[1].latched is False
+    assert board.buttons[1].pressed is False
+
+
+def test_left_mouse_up_does_not_clear_a_latch(headless_pygame):
+    """The pre-U44 mouse-up released everything; a latch must survive it."""
+    board = _make_board(headless_pygame)
+    board._draw()
+    pos = board.buttons[0].rect.center
+
+    board._handle_events([_mousedown(headless_pygame, pos)])  # left hold
+    board._handle_events([_mousedown(headless_pygame, pos, button=3)])  # + latch
+    board._handle_events([_mouseup(headless_pygame, pos)])  # left release
+
+    assert board.buttons[0].pressed is True
+    assert board.buttons[0].latched is True
+
+
+def test_right_click_off_every_button_is_a_noop(headless_pygame):
+    board = _make_board(headless_pygame)
+    board._draw()
+    board._handle_events([_mousedown(headless_pygame, (0, 0), button=3)])
+    assert all(not b.latched for b in board.buttons)
+
+
+def test_right_click_latches_only_the_button_under_the_cursor(headless_pygame):
+    board = _make_board(headless_pygame)
+    board._draw()
+    board._handle_events([_mousedown(headless_pygame, board.buttons[2].rect.center, button=3)])
+    assert [b.latched for b in board.buttons] == [False, False, True]
+
+
+def test_latch_survives_release_transient_holds(headless_pygame):
+    """Focus loss / a modal must not silently drop a deliberate latch."""
+    board = _make_board(headless_pygame)
+    board._draw()
+    board._handle_events([_mousedown(headless_pygame, board.buttons[0].rect.center, button=3)])
+    board.release_transient_holds()
+    assert board.buttons[0].latched is True
+    assert board.buttons[0].pressed is True
+
+
+def test_latch_enters_the_visual_signature(headless_pygame):
+    """Mouse-hold → latch → mouse-up leaves `pressed` True the whole way.
+
+    Without the latch in the fingerprint the U23 redraw-skip would keep the
+    held style on screen over a latched button indefinitely.
+    """
+    board = _make_board(headless_pygame)
+    board._draw()
+    pos = board.buttons[0].rect.center
+
+    board._handle_events([_mousedown(headless_pygame, pos)])
+    held = board.visual_signature()
+    board._handle_events([_mousedown(headless_pygame, pos, button=3)])
+    latched = board.visual_signature()
+
+    assert board.buttons[0].pressed is True  # unchanged across the transition
+    assert latched != held
+
+
+def test_r_clears_a_latch_taken_by_right_click(headless_pygame):
+    board = _make_board(headless_pygame)
+    board._draw()
+    board._handle_events([_mousedown(headless_pygame, board.buttons[1].rect.center, button=3)])
+    board._handle_events([_r_keydown(headless_pygame)])
+    assert board.buttons[1].latched is False
+    assert board.buttons[1].pressed is False
