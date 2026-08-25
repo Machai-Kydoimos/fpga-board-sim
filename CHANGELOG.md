@@ -237,6 +237,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   debug view, windows around 640×460 and 700×500 (bar text budgets of 4 and 5 px)
   drop their readout, while 800×560 and larger render pixel-identically, as do
   560×420 and smaller, which never showed one.
+- **The board count quoted in the docs is correct again, and can no longer
+  drift silently.** Adding one board (the DE4, #345) aged **eight** separate
+  numbers across the README, the user guide, and the design-writing guide, and
+  the stale figures survived four weeks because prose has no compiler. The
+  counts are corrected (285 boards, 266 of them carrying a `port_conventions`
+  block) and `tests/test_docs_board_counts.py` now derives both numbers from
+  `discover_boards()` and checks every sentence that quotes them. It is a suite
+  test rather than a pre-commit hook on purpose: hooks only ever see *staged*
+  files, so a board added in one commit and a doc read in another would slip
+  straight past one. Rewording a checked sentence fails the test too — the
+  rewriter has to re-register it rather than quietly drop it out of the guard —
+  and a second sweep catches any new three-digit board count nobody registered.
+  Historical text (the changelog, the delivered-roadmap log, completed plan
+  documents) is deliberately out of scope: those numbers were true when written.
 
 ### Security
 

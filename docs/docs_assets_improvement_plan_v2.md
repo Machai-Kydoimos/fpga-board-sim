@@ -20,7 +20,7 @@
 
 | PR | Scope | Size | Status |
 |---|---|---|---|
-| PR 1 | Doc accuracy sweep + a count-drift guard test | S | not started |
+| PR 1 | Doc accuracy sweep + a count-drift guard test | S | ✅ **done 2026-08-25** |
 | PR 2 | `--screenshots` on the benchmark path (issue [#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129)) | S | not started |
 | PR 3 | Capture pipeline renders true brightness (§4 decision A) | M–L | not started |
 | PR 4 | Re-capture the existing asset set | M | not started |
@@ -116,6 +116,18 @@ need `capture_demo.py`'s machinery. That gap is decision A (§4).
 
 ### 3.1 Count drift (PR 1's worklist)
 
+> **✅ Delivered 2026-08-25.** All eight user-facing counts corrected to **285 boards /
+> 266 with conventions** (both re-derived from `discover_boards()`, not carried forward),
+> and `tests/test_docs_board_counts.py` added so the next board addition fails the suite.
+> Two rows resolved differently from the table below, both deliberately:
+> `README.md:30`'s **GIF alt-text** had its count *removed* rather than set to 285 — alt
+> text describes the image, and the GIF still shows 278 until PR 4 re-captures it, so a
+> number there would be a new lie rather than a fixed one; and the
+> `improvement_roadmap.md` stats line was re-verified as planned and found stale *again*
+> (U44 moved tests 2127 → 2308), so it was refreshed along with LOC and module counts.
+> `scripts/capture_selector.py`'s "all 278 boards" comment was made count-free for the
+> same reason as the alt text.
+
 | Location | Says | Should say |
 |---|---|---|
 | `README.md:16` | 284 boards | 285 |
@@ -192,6 +204,8 @@ Global conventions in §6 apply to all of them. Each PR: branch off freshly-pull
 CHANGELOG entry, merge before starting the next.
 
 ### PR 1 — Doc accuracy sweep + count-drift guard (S)
+
+**✅ Done 2026-08-25.** See the §3.1 note for what shipped.
 
 **Do:** fix all nine locations in §3.1. Then add the guard: a test that asserts the
 documented board count matches `len(discover_boards(...))` wherever it appears, so the next board
