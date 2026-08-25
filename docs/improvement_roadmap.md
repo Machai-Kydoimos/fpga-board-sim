@@ -23,23 +23,19 @@ decided. Update it when an arc starts, ships, or changes order.*
 > why card IDs were being reserved by cross-references between plan docs. This rule and the
 > ID-allocation note below close that gap.)
 
-### Now — U44 multi-input → v0.21.0, "the input release"
+### Now — Docs & Assets round 2, PRs 1–2 → then peripherals
 
-Simultaneous button holds, right-click latching, a keyboard map with on-widget badges,
-drag-paint switch sweeps, frame-coalesced input messages, and the
-[#353](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/353) swallowed-tap fix.
-Plan: [u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md) (five phases, one PR each).
-**Decisions resolved 2026-08-05 (Rick): A1 · B1 · C1 · D1, and the Decision-E confirmations
-stand** — all five as the plan recommends. Milestone and phase issues are opened when execution
-starts (the just-in-time model). Full card: U44 in Part 1 / Tier 2.
+**U44 multi-input shipped 2026-08-25** (six PRs, milestone closed, #353 fixed) and is queued for
+release as **v0.21.0, "the input release"** — see the ✅ card in Part 1 / Tier 2 and the full
+record in [roadmap_delivered.md](roadmap_delivered.md). Next up is the Docs & Assets round-2
+split described below.
 
 ### Next — in order
 
 1. **Docs & Assets round 2, PRs 1–2 only** ([plan](docs_assets_improvement_plan_v2.md)) — the
    count-drift fix + guard test, and `--screenshots` on the benchmark path
    ([#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129)). Both small and
-   independent; may interleave with U44. PR 2 is also the peripherals arc's Phase-5
-   visual-review enabler.
+   independent. PR 2 is also the peripherals arc's Phase-5 visual-review enabler.
 2. **U39–U41 board peripherals** → v0.22.0 ([plan](u39_peripherals_plan.md)) — plan **approved
    2026-08-05** (its architecture decisions were locked 2026-07-27). Full card: U39–U41 in
    Part 1 / Tier 4.
@@ -80,16 +76,17 @@ The three live plans, then executed history (each file carries its own detailed 
 
 ### ID allocation
 
-**Next free: U46 · D17 · P34.** Reserved by the live plans, to be filed as full cards / Icebox
+**Next free: U46 · D17 · P34.** (U45 and P31–P33 were filed 2026-08-25 at U44's closeout.) Reserved by the live plans, to be filed as full cards / Icebox
 rows at each arc's closeout (until then the plan doc is their source of truth): U42/U43 +
 P25–P30 ([u39_peripherals_plan.md](u39_peripherals_plan.md) §13); U45 + P31–P33
 ([u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md) §9).
 
 ### Loose threads
 
-- [#353](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/353) (sim child collapses
-  queued inputs — fast taps vanish) — scheduled: U44 Phase 2 under Decision D1; that phase's PR
-  closes it.
+- ~~[#353](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/353) (sim child collapses
+  queued inputs — fast taps vanish)~~ — ✅ **fixed and closed 2026-08-25** by U44 Phase 2 (PR
+  #373), Decision D1. Measured before the fix: a burst of 8 taps sent back-to-back had **7 of 8
+  presses swallowed** on both GHDL and NVC.
 - [#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129) (`--screenshots` on the
   benchmark path) — scheduled: Docs & Assets round 2, PR 2 (Next #1).
 - [#354](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/354) (GHDL-Cosim doc offer) —
@@ -209,38 +206,31 @@ This document inventories all viable improvements and ranks them by impact.
 
 - Shipped to main 2026-07-18 (arc: identity #270 → selection round-trip #271 → compiled-backend parity #272 → this CI/docs closeout). Every installed simulator — GHDL mcode / LLVM / LLVM-JIT + NVC — is now discovered, truthfully labeled (`SIM: GHDL` / `GHDL-LLVM` / `GHDL-JIT` / `NVC`), selectable from the `[SIM:…]` toggle / `--sim` slugs / a path, registerable for odd locations (`--add-sim`, `extra_simulators`, `FPGA_SIM_EXTRA_SIMS`), and **honored end-to-end** (analysis, run, benchmark, session log all use the chosen binary) with per-session persistence and a safe PATH-default fallback. A stage-3 runtime-elaboration probe restores load-time rejection of bad designs on the compiled backends; the slow suite is green under all three GHDL code generators locally and in a new (non-required) CI matrix job. Phase-2 GUI "Browse…" parked as Icebox **P21**. Execution plan: [u35_simulator_picker_plan.md](u35_simulator_picker_plan.md). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
-#### U44. Multi-input — simultaneous holds, latched buttons, keyboard mapping (ACTIVE)
+#### U44. Multi-input — simultaneous holds, latched buttons, keyboard mapping ✅
 
-- **Status:** the active arc (see [Current focus](#current-focus)) → target v0.21.0. Plan
-  drafted 2026-07-29; **decisions resolved 2026-08-05 (Rick), all as recommended** — **A1**
-  right-click latch (modeless) · **B1** hex keymap `0`–`9`/`A`/`B`/`C`, digits bound by
-  scancode and the letters by key code (covers all 285 boards; the fleet maximum is 13 buttons) ·
-  **C1** drag-paint switch sweeps — *paint*, not toggle · **D1** fix the swallowed-tap bug
-  ([#353](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/353)) in-arc · the
-  Decision-E confirmations stand. **Phase 0c (2026-08-24): every measurement re-verified against
-  pygame-ce (#366) and #367; the plan's §2.1, Decisions B · C · E, Phases 3-5, test strategy and
-  risk register were amended. No decision changed.**
-- **Why:** on real hardware you hold three buttons with three fingers and release them in any
-  order; the simulator has exactly one cursor-hold, any mouse-up releases *every* button, and
-  no keyboard input path exists at all. Separately, the sim child collapses all inputs drained
-  in one iteration into a single write (#353), so fast taps vanish outright on CPU-limited
-  designs — exactly the embedded-core and multi-digit-scan designs built around button input.
-- **What:** the hold-source model (a button is down while its *set* of hold sources is
-  non-empty), mouse-button identity, frame-coalesced full-state input messages, right-click
-  latching with themed visuals, the scancode keymap with on-widget key badges (mandatory — five
-  boards render duplicate button labels), drag-paint switches, and a bounded child-side input
-  queue applying at most one input state per sim step (the #353 fix). Five phases, one PR each,
-  every phase with Do / Verify / Quality gates.
-- **Plan:** [u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md) — evidence map, measured
-  pygame facts, decision analyses, test strategy, risk register. Follow-ons reserved there:
-  **U45** (carry preview input state into the sim run), **P31** (input record/replay), **P32**
-  (multi-touch), **P33** (arm-and-fire staging).
-- **Effort:** M + M + M + L + S across the five phases.
-- **Done when:** the plan's §12 end-to-end acceptance passes — multiple simultaneous keyboard
-  holds released in any order; latches surviving modals/pauses with `R` as the escape hatch; a
-  16-switch pattern set in one sweep; every simultaneous change reaching the DUT in one atomic
-  message; no gesture, modal, focus loss, or resize stranding a button; fast taps never
-  swallowed on CPU-limited designs.
+- ✅ **Complete 2026-08-25** — six PRs (#371 · #373 · #375 · #376 · #378 · #380), milestone
+  "U44 — Multi-input (v0.21.0)", closing [#353](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/353).
+  Plan: [u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md). Full detail:
+  [roadmap_delivered.md](roadmap_delivered.md#u44-multi-input--simultaneous-holds-latched-buttons-keyboard-mapping-).
+  Follow-ons filed: **U45** · **P31**–**P33**.
+
+#### U45. Carry preview switch/latch state into the simulation run
+
+- **Status:** filed 2026-08-25 at U44's closeout. Unscheduled — small, and it can ride along with
+  any UI work.
+- **Why:** the preview screen and the simulation build **two separate `FPGABoard` objects**
+  (`controller.py` vs `simulation_screen.py`), so every switch toggled and every button latched
+  during preview is silently discarded the moment the run starts. A pre-existing wart that U44
+  makes markedly more surprising: latching is now a deliberate, visible, *sticky* act, so
+  "I latched reset, hit Start, and nothing was latched" reads as a bug rather than as a screen
+  boundary.
+- **What:** carry the preview board's switch states and latch holds into the run's board at
+  construction. The hold-source model makes the transfer well-defined — copy `sw.state` and the
+  `"latch"` source per index, deliberately **not** the live mouse/key holds, which belong to the
+  gesture that is already over.
+- **Alternative if not done:** document the behavior in the user guide, so at least it is stated
+  rather than surprising.
+- **Effort:** S.
 
 ### Tier 3 — Quick wins (ship anytime)
 
@@ -703,6 +693,9 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **P22** | Replicate real boards' physical component layouts | Appetite for a board-fidelity pass (Rick, someday 2026-07-21), or per-board photos/coordinates become available for the popular boards | L | The U36 ✅ flow-packer lays components out as generic banked rows (balanced, centered, labeled) — readable but not where they sit on the physical board. A physical-layout mode needs per-board coordinates (curated, or extracted from vendor images), a schema field for them, and a renderer path that honors them with the banked flow as fallback. Raised by Rick during the U36 layout review. |
 | **P23** | Session-log duty statistics | A user asks for per-run brightness/duty analytics, or the session log gains a consumer that wants them | S | The child measures exact per-channel duty all run (U9 ✅) but `sim_session_log.py` records none of it. Cheap adds: final/mean duty per channel, time-at-full, blink counts. Deferred at U38 closeout — no consumer today. |
 | **P24** | Bi-color 2-pin LEDs + charlieplexed LED matrices | A board with a 2-pin bi-color LED (red/green anti-parallel) or a charlieplexed matrix joins the fleet and someone wants it faithful | M | Neither shape fits the U37 channel model: a 2-pin bi-color LED is *one* component whose color depends on drive polarity (red / green / amber via alternation), and a charlieplexed matrix multiplexes N·(N−1) LEDs over N tri-stated pins. The U9 ✅ duty engine already renders the *time-division* half honestly (see the U22 head-start note); what's missing is the component model + tri-state pin awareness. No current board needs either (census 2026-07-19: zero such parts). |
+| **P31** | Input record/replay over `sim_link` | Scripted input is needed for capture — [#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129) / Docs & Assets round 2 PR 2 wants it for GIFs — or a user asks to replay a bug's exact input sequence | M | U44 ✅ made the tap point exist: input is now **one coalesced full-state message per frame** carrying a monotonic `seq`, and the child echoes `input_seq` in every `state` payload (`sim_testbench.py`), so a recorder is "log the flushed messages" and a player is "feed them back with the same frame spacing", with the echoed seq as the acknowledgement channel. This is the principled version of the *preset/macro buttons* pattern rejected during U44 planning — same capability, no invented UI, and it has an independent driver. |
+| **P32** | Multi-touch board input (`FINGERDOWN` / `FINGERUP`) | A user runs the simulator on a touchscreen | M | The truest analog to fingers on a real board — several simultaneous holds with no keyboard indirection — and U44 ✅ makes it cheap: the hold-source model already accepts arbitrary per-source tokens, so a finger is just `"touch:<id>"` and nothing else changes. Deferred because **it cannot be tested without the hardware**: `SDL_VIDEODRIVER=dummy` synthesizes no touch events, so the headless suite could not cover it. |
+| **P33** | Arm-and-fire staging (arm several buttons, commit atomically) | A user hits the transient-combination hazard — a combo where pressing A alone *before* A+B triggers unwanted behavior — and the keyboard chord is not available to them | M | Evaluated and **cut** during U44 planning: latching already yields "several buttons down at once", and frame-coalescing already makes each change atomic, so staging would add a third visual state, a third `visual_signature()` entry, and a *mode* — for a capability that already exists. The residual gap is genuinely narrow: a user who cannot use the keyboard chord (accessibility, one-button input) *and* has a design that misbehaves on the intermediate state. If that user appears, this is also the case where a global sticky **mode** (U44 Decision A2) finally beats a gesture, and it would justify wiring a gear button into the sim screen. |
 
 **Also parked (speculative, no trigger):** *LCD / OLED display support* — a stretch goal from the original `prompt_info` vision (alongside 7-seg, which shipped). **Superseded 2026-08-05: scheduled as the U39–U41 peripherals arc (HD44780 character LCD + SSD1306 SPI OLED; plan approved) — see the Tier-4 card.** This line is retired at that arc's closeout.
 

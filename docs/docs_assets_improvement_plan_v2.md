@@ -30,6 +30,12 @@
 No roadmap card needed — this is a maintenance arc, like round 1. Open one umbrella issue and
 link each PR to it.
 
+> **Scripted input for capture (added 2026-08-25):** U44 ✅ left the tap point in place — input is
+> now **one coalesced full-state message per frame** carrying a monotonic `seq`, echoed back by the
+> child as `input_seq` in every `state` payload. Icebox **P31** (input record/replay over
+> `sim_link`) is the card for turning that into a recorder/player, and PR 2 here is its named
+> trigger.
+
 ## 2. Context — why this exists
 
 Rick asked for this on 2026-07-23: *"at the appropriate time we will do a new Docs/Assets

@@ -1,6 +1,11 @@
 # U44 — Multi-input: simultaneous holds, latched buttons, keyboard mapping (arc plan v1)
 
-> **Status:** **APPROVED FOR EXECUTION — the active arc.** Drafted 2026-07-29; the five
+> **Status:** ✅ **COMPLETE — shipped 2026-08-25** across six PRs (#371 · #373 · #375 · #376 ·
+> #378 · #380); milestone "U44 — Multi-input (v0.21.0)"; #353 closed. Queued for release as
+> **v0.21.0**. Full delivered record: `docs/roadmap_delivered.md`. Retained as the decision and
+> evidence record; §9 carries the per-phase ledger and the corrections found during execution.
+>
+> **Originally:** APPROVED FOR EXECUTION — the active arc. Drafted 2026-07-29; the five
 > decisions in [§5](#5-decisions-to-make-open--settle-these-first) were **resolved 2026-08-05
 > (Rick), all as recommended: A1 · B1 · C1 · D1 · E confirmed** (Phase 0b ✅), so the phase
 > scopes below apply exactly as written. Roadmap card filed 2026-08-05
@@ -613,7 +618,12 @@ must paint nothing — carrying the paint value `v` plus a per-drag `set[int]` o
 **indices**, both cleared on mouse-up. Paint semantics per Decision C: mouse-down toggles the first
 switch, `v` is its new value, every switch the drag crosses is *set to* `v`.
 
-**Hit-test the segment, not the point.** Measured in Phase 0c on Nexys4 DDR: switches are 47x81 px on
+**Hit-test the segment, not the point.** *(Numbers corrected during Phase 5 execution: Phase 0c
+recorded 47x81 px on a 77 px pitch without noting the window size it measured at; at 1024x700 they
+are **64x36 px on a 123 px pitch — a 59 px gap**. The conclusion is unchanged and stronger, since a
+wider gap makes point-testing worse. Likewise the note below says the 18-switch boards wrap to two
+rows — at 1024x700 the **16**-switch boards already do, so "one sweep per bank" depends on window
+size rather than switch count.)* Measured in Phase 0c on Nexys4 DDR: switches are 47x81 px on
 a **77 px pitch** (a 30 px dead gap between them), so any single MOUSEMOTION delta wider than 77 px
 skips a switch outright — roughly 4600 px/s at 60 fps, and proportionally slower whenever the frame
 rate dips. Point-testing `event.pos` therefore drops switches on a fast flick: intermittent, invisible,
@@ -701,11 +711,12 @@ collapse; backlog cap bounds lag; non-input kinds bypass the queue.
 | 0 | Commit this plan as `docs/u44_multi_input_plan_v1.md` (docs-only) | XS | — | ✅ done |
 | 0b | **Resolve the five decisions in §5**; revise this doc accordingly | XS | — | ✅ done 2026-08-05 (A1 · B1 · C1 · D1 · E confirmed) |
 | 0c | Re-verify every measurement against pygame-ce (#366) / #367; amend §2.1, Decisions B · C · E, Phases 3-5, tests and risks. **No decision changed** | XS | — | ✅ done 2026-08-24 |
-| 1 | Hold-source model + mouse identity + chrome `continue` | M | — | not started |
-| 2 | Input atomicity (+ child input queue if D1) | M | — | not started |
-| 3 | Latching + visual + tooltip discoverability | M | — | not started |
-| 4 | Keyboard holds + badges + hold-clearing | L | — | not started |
-| 5 | Drag-paint switches | S | — | not started |
+| 1 | Hold-source model + mouse identity + chrome `continue` | M | #371 | ✅ merged 2026-08-25 |
+| 2 | Input atomicity + child input queue (D1) | M | #373 | ✅ merged — closed #353 |
+| 3 | Latching + visual + tooltip discoverability | M | #375 | ✅ merged |
+| 3b | Padlock icon + swappable `ui/icons.py` | S | #376 | ✅ merged — split from phase 3 on request, so "latching works" stayed separately reviewable from "latching looks like this" |
+| 4 | Keyboard holds + badges + hold-clearing | L | #378 | ✅ merged |
+| 5 | Drag-paint switches | S | #380 | ✅ merged |
 
 Never predict PR numbers in docs (house rule); fill the column in as each merges.
 
@@ -731,20 +742,21 @@ registered in `SHORTCUTS` (`help_dialog.py:42-54`), never only in the handler.
 
 ## 11. Closeout checklist
 
-- [ ] File the U44 roadmap card in `improvement_roadmap.md`; condense to a ✅ one-line stub with full
+- [x] File the U44 roadmap card in `improvement_roadmap.md`; condense to a ✅ one-line stub with full
       detail moved to `roadmap_delivered.md` when complete
-- [ ] File **U45** and **P31–P33** (§9) with their triggers; P31 cross-referenced from
+- [x] File **U45** and **P31–P33** (§9) with their triggers; P31 cross-referenced from
       `docs/docs_assets_improvement_plan_v2.md`
-- [ ] `CLAUDE.md`: note the hold-source model and the keymap in the UI section of the file table
-- [ ] `docs/user_guide.md`: preview + in-sim control lists updated with the keymap, the latch gesture,
+- [x] `CLAUDE.md`: note the hold-source model and the keymap in the UI section of the file table
+- [x] `docs/user_guide.md`: preview + in-sim control lists updated with the keymap, the latch gesture,
       and drag-paint; the >10-button rule stated
-- [ ] `docs/architecture.md:129-157`: the "Board components and hover overlays" paragraph amended for
+- [x] `docs/architecture.md`: the "Board components and hover overlays" paragraph amended for
       the hold-source model
-- [ ] Project memory: `project_multi_input_arc.md` + a `MEMORY.md` pointer, recording the durable
+- [x] Project memory: `project_multi_input_arc.md` + a `MEMORY.md` pointer, recording the durable
       traps (scancode/`get_pressed` lie, modal KEYUP swallowing, the drain-collapse bug)
-- [ ] CHANGELOG entries per phase reconciled for the release
-- [ ] Decision D2 only: the swallowed-tap bug filed as its own issue with a known-issues line in the
-      user guide
+- [x] CHANGELOG entries per phase reconciled for the release
+- [x] ~~Decision D2 only: the swallowed-tap bug filed as its own issue~~ — **N/A: D1 was taken**, so
+      it was fixed in Phase 2 (#373). Worth noting the bug was **already filed as #353** before the
+      arc began, which the D2 wording ("file it as its own issue") does not anticipate
 
 ---
 
