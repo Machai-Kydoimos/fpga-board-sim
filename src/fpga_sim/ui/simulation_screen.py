@@ -596,7 +596,13 @@ class SimulationScreen:
             else:
                 self._draw_waiting()
             if shot_sig is not None and self.shots is not None:
-                self.shots.capture(self.screen, shot_sig, shot_now)
+                # The sim time comes out of the same _last_state payload that
+                # produced these pixels, so the filename and the frame describe
+                # one instant -- which is what makes the name a usable waveform
+                # marker rather than merely a label.
+                self.shots.capture(
+                    self.screen, shot_sig, shot_now, int(self._last_state.get("sim_ns", 0))
+                )
             pygame.display.flip()
             draw_us = (time.monotonic_ns() - t_draw_start) / 1_000
             self._last_frame_sig = sig

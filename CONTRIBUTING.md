@@ -412,12 +412,45 @@ uv run fpga-sim --benchmark 5 --board DE10LitePlatform \
 
 These are frames from the **product's own renderer** — `--benchmark` (without
 `--no-ui`) drives the real `SimulationScreen` under the dummy video driver — so
-what you see is what a user sees, including true duty-cycle brightness. The
-files are `shot_<n>_t<seconds>s.png`, saved when the board's appearance changes
-(brightness quantized coarsely, so a fade yields a handful of stills rather than
-one per frame), plus one a second while nothing changes so a frozen design still
-leaves a trail. A run is capped at 240 files; the closing
-`[screenshots] N PNGs in …` line reports the count and any drops.
+what you see is what a user sees, including true duty-cycle brightness. Frames
+are saved when the board's appearance changes (brightness quantized coarsely, so
+a fade yields a handful of stills rather than one per frame), plus one a second
+while nothing changes so a frozen design still leaves a trail. A run is capped at
+240 files; the closing `[screenshots] N PNGs in …` line reports the count, any
+drops, and the wall→simulated time ratio for the run.
+
+**Filenames carry simulated time, not wall time:** `shot_0007_sim8123456ns.png`
+is the frame drawn from the state at **8,123,456 ns of simulated time**. The
+simulator runs far slower than the hardware would — five seconds of your time is
+roughly twenty *milliseconds* of the design's — so wall time would only say how
+long you had been waiting. Simulated time is the domain a waveform dump is
+indexed in, which makes the filename a marker you can use directly:
+
+```bash
+# capture stills and a matching trace in one run
+FPGA_SIM_WAVEFORM=fst uv run fpga-sim --benchmark 5 --board Basys3 \
+                --vhdl hdl/native/basys3_scan.vhd --screenshots /tmp/shots
+# then in GTKWave, jump to the instant a PNG shows: Edit -> Set Marker -> 8123456 ns
+```
+
+Two things to know when you get there:
+
+- **The dump's own timescale is not ns.** GHDL writes `$timescale 1 fs`, so a bare
+  number means femtoseconds. Always carry the unit — GTKWave parses `8123456 ns`
+  correctly, a bare `8123456` lands a million times too early.
+- **A PNG is not an instantaneous sample of its timestamp.** It shows the LED
+  *duty over the window ending there* — which is the point of the U9 engine, and
+  is further eased ~100 ms for persistence of vision. Measured over 72
+  (frame, LED) samples of `blinky` on an Arty: pixel brightness correlates
+  **r = +0.02** with the instantaneous `led` bit at the named time, and
+  **r = +0.70** with the duty over the preceding window. So for a signal that is
+  *stable* across a window — a switch, a button, a settled digit, a slow blinker —
+  the trace at that timestamp is exactly what the PNG shows; for one toggling
+  faster than the window (PWM, a scan display, a fast counter) compare against the
+  duty, not the value at a single nanosecond.
+
+Waveform capture is off unless you enable it — see the user guide's Waveform
+capture section, or `FPGA_SIM_WAVEFORM=fst` as above.
 
 `--screenshots` requires `--benchmark` and cannot be combined with `--no-ui`
 (which draws nothing to capture). For the README/user-guide **GIFs** — a

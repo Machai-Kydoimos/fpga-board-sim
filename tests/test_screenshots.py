@@ -63,33 +63,57 @@ def test_due_is_pure(tmp_path: Path) -> None:
 
 def test_change_is_rate_limited(tmp_path: Path, surface: Any) -> None:
     rec = _rec(tmp_path, min_gap_s=0.25, interval_s=1.0)
-    rec.capture(surface, _SIG_A, 0.0)
+    rec.capture(surface, _SIG_A, 0.0, 0)
     assert not rec.due(_SIG_B, 0.10)  # changed, but too soon after the last shot
     assert rec.due(_SIG_B, 0.25)  # changed, and the gap has elapsed
 
 
 def test_unchanged_waits_for_the_liveness_interval(tmp_path: Path, surface: Any) -> None:
     rec = _rec(tmp_path, min_gap_s=0.25, interval_s=1.0)
-    rec.capture(surface, _SIG_A, 0.0)
+    rec.capture(surface, _SIG_A, 0.0, 0)
     assert not rec.due(_SIG_A, 0.5)  # unchanged: the min gap is not enough
     assert rec.due(_SIG_A, 1.0)  # unchanged: but the trail shot is owed
 
 
-def test_capture_writes_a_png_and_names_it_by_index_and_time(tmp_path: Path, surface: Any) -> None:
+def test_capture_names_shots_by_simulated_time_not_wall(tmp_path: Path, surface: Any) -> None:
+    """The filename must be a waveform marker, so it carries the sim time exactly.
+
+    Wall and sim time differ by orders of magnitude here -- 1.5 s of sitting at
+    the laptop is 8.12 ms of simulated time -- and only the latter can be looked
+    up in a VCD/FST dump.
+    """
     rec = _rec(tmp_path)
-    first = rec.capture(surface, _SIG_A, 10.0)  # t0 is the first capture, not zero
-    second = rec.capture(surface, _SIG_B, 11.5)
+    first = rec.capture(surface, _SIG_A, 10.0, 4_000_000)
+    second = rec.capture(surface, _SIG_B, 11.5, 12_123_456)
     assert first is not None and second is not None
-    assert first.name == "shot_0001_t000.00s.png"
-    assert second.name == "shot_0002_t001.50s.png"
+    assert first.name == "shot_0001_sim4000000ns.png"
+    assert second.name == "shot_0002_sim12123456ns.png"
     assert first.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
     assert rec.saved == [first, second]
+
+
+def test_shots_sharing_a_sim_time_stay_distinct(tmp_path: Path, surface: Any) -> None:
+    """A paused run advances no sim time, so the index -- not the time -- is the key."""
+    rec = _rec(tmp_path)
+    rec.capture(surface, _SIG_A, 0.0, 500)
+    rec.capture(surface, _SIG_B, 1.0, 500)
+    assert [p.name for p in rec.saved] == ["shot_0001_sim500ns.png", "shot_0002_sim500ns.png"]
+
+
+def test_summary_relates_wall_time_to_simulated_time(tmp_path: Path, surface: Any) -> None:
+    """The ratio is the surprising part, so it is stated where the files are announced."""
+    rec = _rec(tmp_path)
+    rec.capture(surface, _SIG_A, 0.0, 0)
+    rec.capture(surface, _SIG_B, 5.0, 20_000_000)
+    out = rec.summary()
+    assert "SIMULATED time" in out
+    assert "5.0 s wall spans 20 ms" in out
 
 
 def test_limit_caps_files_and_counts_the_drops(tmp_path: Path, surface: Any) -> None:
     rec = _rec(tmp_path, limit=2)
     for i in range(5):
-        rec.capture(surface, (i,), float(i))
+        rec.capture(surface, (i,), float(i), i * 1000)
     assert len(rec.saved) == 2
     assert rec.dropped == 3
     assert len(list(rec.out_dir.glob("*.png"))) == 2
@@ -98,15 +122,15 @@ def test_limit_caps_files_and_counts_the_drops(tmp_path: Path, surface: Any) -> 
 def test_summary_reports_count_and_directory(tmp_path: Path, surface: Any) -> None:
     rec = _rec(tmp_path)
     assert "no frames captured" in rec.summary()
-    rec.capture(surface, _SIG_A, 0.0)
+    rec.capture(surface, _SIG_A, 0.0, 0)
     assert "1 PNGs" in rec.summary() and str(rec.out_dir) in rec.summary()
 
 
 def test_summary_mentions_the_limit_only_when_it_bit(tmp_path: Path, surface: Any) -> None:
     rec = _rec(tmp_path, limit=1)
-    rec.capture(surface, _SIG_A, 0.0)
+    rec.capture(surface, _SIG_A, 0.0, 0)
     assert "dropped" not in rec.summary()
-    rec.capture(surface, _SIG_B, 1.0)
+    rec.capture(surface, _SIG_B, 1.0, 1000)
     assert "1 dropped past the 1-frame limit" in rec.summary()
 
 
@@ -160,6 +184,32 @@ def test_screen_captures_once_connected(
     screen._render_frame()
     assert len(screen.shots.saved) == 1
     assert screen.shots.saved[0].exists()
+
+
+def test_shot_is_named_by_the_state_it_was_drawn_from(
+    headless_pygame: Any, fake_child: Any, tmp_path: Path
+) -> None:
+    """The filename's sim time and the captured pixels must be one instant.
+
+    Both come out of ``_last_state``, which is the whole basis for using a
+    filename as a waveform marker: look up that nanosecond in the dump and the
+    signals are the ones this PNG shows.
+    """
+    from fpga_sim.sim_link import send
+    from tests.test_simulation_screen import _make_screen, _pump_state
+
+    child, client = fake_child
+    screen = _make_screen(headless_pygame, child, screenshot_dir=tmp_path / "out")
+    assert screen.shots is not None
+    screen._connected = True
+    send(client, "state", {"led": 0b0101, "seg": None, "sim_ns": 7_654_321, "at_max": False})
+    _pump_state(screen)
+    screen._render_frame()
+
+    assert screen.shots.saved[0].name == "shot_0001_sim7654321ns.png"
+    # ...and the pixels really are that state's: led bits 0 and 2 are lit.
+    assert screen.board.leds[0].level > 0 and screen.board.leds[2].level > 0
+    assert screen.board.leds[1].level == 0
 
 
 def test_screen_skips_the_starting_splash(

@@ -23,10 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     (brightness quantized to 16 steps for this purpose, so a persistence-of-vision
     fade yields a handful of stills instead of one per frame, no sooner than
     0.25 s apart), plus one a second while nothing changes so a frozen design
-    still leaves a trail, capped at 240 files. Files are named
-    `shot_<n>_t<seconds>s.png` and a closing `[screenshots] N PNGs in …` line
-    reports the count and any drops. Frames before the simulator connects — the
-    "Starting …" splash — are skipped.
+    still leaves a trail, capped at 240 files. Frames before the simulator
+    connects — the "Starting …" splash — are skipped.
+  - **Filenames carry simulated time**, so they double as waveform markers:
+    `shot_0007_sim8123456ns.png` is the frame drawn from the state at 8,123,456 ns
+    of *simulated* time, which is the domain a VCD/FST dump is indexed in — paste
+    it into GTKWave and every signal is as that PNG shows. Wall-clock time would
+    have been misleading here, since the simulator runs far slower than the
+    hardware (five seconds of yours is roughly twenty milliseconds of the
+    design's). The name and the pixels come from the same child state message, so
+    they describe one instant; the closing `[screenshots] N PNGs in …` line states
+    the run's wall→simulated ratio. Note that a PNG shows LED *duty over the window
+    ending* at that timestamp (the U9 engine measures duty rather than sampling it),
+    further eased ~100 ms for persistence of vision — so a signal stable across a
+    window reads back exactly, while one toggling faster than the window should be
+    compared against its duty rather than its value at a single nanosecond.
 
 ### Changed
 
