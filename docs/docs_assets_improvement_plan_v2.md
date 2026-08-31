@@ -3,12 +3,23 @@
 > **Status:** **DECISIONS RESOLVED 2026-08-05 (Rick), all as recommended — A2 (single-renderer
 > P20 refactor) · B (RGB mixing + scan display + PWM brightness → README; themes + debug duty
 > bars → user-guide stills) · C (re-capture the same hero storyboard).** Drafted 2026-07-28.
-> Not started. **Split execution adopted 2026-08-05:** PRs 1–2 run early (small, independent —
-> may interleave with the U44 arc); PRs 3–6 run **after** the U39–U41 peripherals arc, so one
-> asset refresh captures both new feature sets. See `improvement_roadmap.md` → Current focus.
+> **PRs 1–2 are done** (2026-08-25 and 2026-08-31); PRs 3–6 have not started.
+> **Split execution adopted 2026-08-05:** PRs 1–2 run early (small, independent — they did
+> interleave with, and then follow, the U44 arc); PRs 3–6 run **after** the U39–U41 peripherals
+> arc, so one asset refresh captures both new feature sets. See `improvement_roadmap.md` →
+> Current focus.
+>
+> **PR 2's outcome, for PR 3 to build on:** `--screenshots DIR` on the benchmark path saves the
+> **product renderer's** frames, so the §2 "two renderers" problem is now solved for *stills* —
+> a PWM design's PNGs show graded brightness and `rgb_rainbow`'s show four independently mixed
+> pucks, measured on-machine. The GIF path (`sim/capture_frames.py`) is untouched and still
+> binary, which is exactly the scope decision A2 already made: PR 3 retires that second renderer.
+> PR 2 also added `FPGABoard.visual_signature(quantize=…)` and `ui/screenshots.py`'s gate, both
+> reusable by PR 4's re-capture.
 > **Base commit:** every fact and `file:line` locator below was verified against `main` @
-> `0d034ee` (v0.20.0, 2026-07-28). If `main` has advanced, re-verify by grepping the quoted
-> content before trusting any line number.
+> `0d034ee` (v0.20.0, 2026-07-28). **`main` has since advanced through v0.21.0 + U45, so treat
+> every line number below as stale** — re-verify by grepping the quoted content before trusting
+> one. The §2 findings themselves were re-confirmed during PR 2 and still hold.
 > **Executor:** a future Claude session — read this document top to bottom, then execute the PRs
 > in order (PRs 3–6 touch overlapping files and stay strictly sequential; per the 2026-08-05
 > split above, PRs 3–6 wait until the peripherals arc ships). The §4 decisions are **settled —
@@ -21,7 +32,7 @@
 | PR | Scope | Size | Status |
 |---|---|---|---|
 | PR 1 | Doc accuracy sweep + a count-drift guard test | S | ✅ **done 2026-08-25** |
-| PR 2 | `--screenshots` on the benchmark path (issue [#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129)) | S | not started |
+| PR 2 | `--screenshots` on the benchmark path (issue [#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129)) | S | ✅ **done 2026-08-31** |
 | PR 3 | Capture pipeline renders true brightness (§4 decision A) | M–L | not started |
 | PR 4 | Re-capture the existing asset set | M | not started |
 | PR 5 | New visuals for the unillustrated features (§4 decision B) | M | not started |

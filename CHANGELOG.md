@@ -6,6 +6,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`--screenshots DIR` on the benchmark path** — the visual half of the board
+  smoke-test ([#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129)).
+  `uv run fpga-sim --benchmark 5 --board DE10LitePlatform --vhdl hdl/counter_7seg.vhd
+  --screenshots /tmp/shots` now saves the frames it renders as PNGs, so a new
+  board + design can be checked by eye — active-low inversion, LED colors and
+  banks, 7-seg digit layout, RGB mixing — and not only by `PASS=1`.
+  - These are frames from the **product's own renderer**: `--benchmark` without
+    `--no-ui` already drove the real `SimulationScreen` under the dummy video
+    driver, so the stills show true duty-cycle brightness, RGB color mixing and
+    scan-display multiplexing rather than a second renderer's binary
+    approximation of them. No new rendering path was added.
+  - Capture is gated, not per-frame: a shot when the board's appearance changes
+    (brightness quantized to 16 steps for this purpose, so a persistence-of-vision
+    fade yields a handful of stills instead of one per frame, no sooner than
+    0.25 s apart), plus one a second while nothing changes so a frozen design
+    still leaves a trail, capped at 240 files. Frames before the simulator
+    connects — the "Starting …" splash — are skipped.
+  - **Filenames carry simulated time**, so they double as waveform markers:
+    `shot_0007_sim8123456ns.png` is the frame drawn from the state at 8,123,456 ns
+    of *simulated* time, which is the domain a VCD/FST dump is indexed in — paste
+    it into GTKWave and every signal is as that PNG shows. Wall-clock time would
+    have been misleading here, since the simulator runs far slower than the
+    hardware (five seconds of yours is roughly twenty milliseconds of the
+    design's). The name and the pixels come from the same child state message, so
+    they describe one instant; the closing `[screenshots] N PNGs in …` line states
+    the run's wall→simulated ratio. Note that a PNG shows LED *duty over the window
+    ending* at that timestamp (the U9 engine measures duty rather than sampling it),
+    further eased ~100 ms for persistence of vision — so a signal stable across a
+    window reads back exactly, while one toggling faster than the window should be
+    compared against its duty rather than its value at a single nanosecond.
+
+### Changed
+
+- **Benchmark-only flags now say when they do nothing.** `--board`, `--vhdl`,
+  `--no-ui` and `--screenshots` are meaningful only with `--benchmark`, and
+  without it all four were accepted and silently ignored — a flag the user
+  deliberately typed did nothing and said nothing. They now print
+  `ignoring …: only meaningful with --benchmark` and **continue**, so no
+  currently-working invocation changes behavior. The one genuinely contradictory
+  combination — `--benchmark --screenshots --no-ui`, asking to capture rendered
+  frames while suppressing rendering — exits 2 with a one-line reason.
+
 ## [0.21.0] - 2026-08-25
 
 ### Added

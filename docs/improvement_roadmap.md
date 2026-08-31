@@ -87,8 +87,10 @@ P25–P30 ([u39_peripherals_plan.md](u39_peripherals_plan.md) §13); U45 + P31�
   queued inputs — fast taps vanish)~~ — ✅ **fixed and closed 2026-08-25** by U44 Phase 2 (PR
   #373), Decision D1. Measured before the fix: a burst of 8 taps sent back-to-back had **7 of 8
   presses swallowed** on both GHDL and NVC.
-- [#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129) (`--screenshots` on the
-  benchmark path) — scheduled: Docs & Assets round 2, PR 2 (Next #1).
+- ~~[#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129) (`--screenshots` on the
+  benchmark path)~~ — ✅ **done 2026-08-31** as Docs & Assets round 2, PR 2. Reuses the product
+  renderer the benchmark already drives, so the stills show true duty/RGB/scan brightness that
+  `sim/capture_frames.py` cannot — which is also why PR 3 exists.
 - [#354](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/354) (GHDL-Cosim doc offer) —
   gated on the docs refresh (Next #3).
 - NVC disclosure closed as **wontfix** 2026-07-30 → D16 is now the only mitigation; promoted to
@@ -101,7 +103,7 @@ P25–P30 ([u39_peripherals_plan.md](u39_peripherals_plan.md) §13); U45 + P31�
 
 ## Context
 
-The simulator is mature: ~12,800 LOC across 33 Python modules (≈14,600 incl. `sim/`), 80 test files (2308 tests), multi-platform CI (Linux x64/arm64 · Windows · macOS arm64), two simulator engines surfaced as four selectable backends (GHDL mcode/LLVM/JIT + NVC, U35), 7-segment support including physical scan displays shipped, embedded CPU core systems (6502/Z80) shipped, 285 board definitions from four sources, three UI themes with exact duty-cycle brightness and RGB rendering, performance profiled and tuned (PR #31 / U25 / U34), **v0.21.0 released (2026-08-25)** — the input release. *(Counts refreshed 2026-08-25.)*
+The simulator is mature: ~13,100 LOC across 34 Python modules (≈15,000 incl. `sim/`), 83 test files (2350 tests), multi-platform CI (Linux x64/arm64 · Windows · macOS arm64), two simulator engines surfaced as four selectable backends (GHDL mcode/LLVM/JIT + NVC, U35), 7-segment support including physical scan displays shipped, embedded CPU core systems (6502/Z80) shipped, 285 board definitions from four sources, three UI themes with exact duty-cycle brightness and RGB rendering, performance profiled and tuned (PR #31 / U25 / U34), **v0.21.0 released (2026-08-25)** — the input release. *(Counts refreshed 2026-08-31.)*
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
@@ -742,7 +744,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 Per-item verification is described in each entry's "Done when" criterion above. Cross-cutting checks for any merge:
 
-1. **Tests** — `uv run pytest` (2127 tests across 83 files as of 2026-08-05, including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip, UIComponent base contract, component hover tooltips). All sprints must keep this green.
+1. **Tests** — `uv run pytest` (2350 tests across 83 files as of 2026-08-31, including UI scaling, board selector filtering, board loader, both backends, 7-seg, embedded-core generator + designs, help overlay, theme value-preservation, screen-result enums, ScreenController transitions, settings dialog + session persistence, in-sim toolbar + exit-intent round-trip, UIComponent base contract, component hover tooltips). All sprints must keep this green.
 2. **Lint / type** — `uv run ruff check .` and `uv run mypy .` (`strict = true` since D8 ✅).
 3. **Manual smoke** — `uv run fpga-sim` end-to-end on a known board (e.g. Arty A7-35) with `hdl/blinky.vhd`; for 7-seg work use `counter_7seg.vhd` on DE10-Lite.
 4. **Benchmark regression** — `uv run fpga-sim --benchmark 10` before/after performance-touching merges (U9 / U23); add `--no-ui` to isolate the simulator from UI changes. Baseline (single-window, v0.15.0): ~62 fps host; GHDL/Arty/blinky 0.0038–0.0041x (`--no-ui` ~0.0040–0.0043x); NVC/Arty/blinky 0.024–0.027x; GHDL/DE10-Lite/counter_7seg ≈0.0061x (from `memory/project_sim_performance.md`).
