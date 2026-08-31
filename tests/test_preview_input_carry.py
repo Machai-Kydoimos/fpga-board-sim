@@ -167,7 +167,7 @@ def test_carried_state_reaches_the_child_before_the_first_step(
 ) -> None:
     """The dirty flag survives the disconnected frames, so nothing is lost."""
     from fpga_sim.sim_link import drain
-    from tests.test_simulation_screen import _make_screen
+    from tests.test_simulation_screen import _collect, _make_screen
 
     child, client = fake_child
     screen = _make_screen(
@@ -175,12 +175,16 @@ def test_carried_state_reaches_the_child_before_the_first_step(
         child,
         initial_inputs=BoardInputs(switches=(True, False, True, False), latched={2}),
     )
+    # Nothing can be in flight here: _flush_input returns before sending.
     screen._flush_input()  # still disconnected: held back, flag kept
     assert drain(client) == []
 
     screen._connected = True
     screen._flush_input()
-    msgs = drain(client)
+    # _collect, not a bare drain: the loopback send is asynchronous, so on a
+    # slower host the write has not landed by the time drain() looks. This
+    # failed on macOS/py3.10 in CI while passing everywhere else.
+    msgs = _collect(client, 1)
     assert len(msgs) == 1
     kind, payload = msgs[0]
     assert kind == "input"
@@ -190,14 +194,15 @@ def test_carried_state_reaches_the_child_before_the_first_step(
 
 def test_no_carried_state_sends_nothing(headless_pygame: ModuleType, fake_child: Any) -> None:
     """An all-off carry must not manufacture an input message the user never made."""
-    from fpga_sim.sim_link import drain
-    from tests.test_simulation_screen import _make_screen
+    from tests.test_simulation_screen import _collect, _make_screen
 
     child, client = fake_child
     screen = _make_screen(headless_pygame, child, initial_inputs=BoardInputs())
     screen._connected = True
     screen._flush_input()
-    assert drain(client) == []
+    # Asserting an absence, so allow time for a send to arrive before concluding
+    # none was made -- a bare drain() would pass with one still in flight.
+    assert _collect(client, 1, timeout=0.3) == []
 
 
 # ── The controller flow ───────────────────────────────────────────────────────
