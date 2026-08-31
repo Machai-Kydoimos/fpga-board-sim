@@ -216,23 +216,15 @@ This document inventories all viable improvements and ranks them by impact.
   [roadmap_delivered.md](roadmap_delivered.md#u44-multi-input--simultaneous-holds-latched-buttons-keyboard-mapping-).
   Follow-ons filed: **U45** · **P31**–**P33**.
 
-#### U45. Carry preview switch/latch state into the simulation run
+#### U45. Carry preview switch/latch state into the simulation run ✅
 
-- **Status:** filed 2026-08-25 at U44's closeout. Unscheduled — small, and it can ride along with
-  any UI work.
-- **Why:** the preview screen and the simulation build **two separate `FPGABoard` objects**
-  (`controller.py` vs `simulation_screen.py`), so every switch toggled and every button latched
-  during preview is silently discarded the moment the run starts. A pre-existing wart that U44
-  makes markedly more surprising: latching is now a deliberate, visible, *sticky* act, so
-  "I latched reset, hit Start, and nothing was latched" reads as a bug rather than as a screen
-  boundary.
-- **What:** carry the preview board's switch states and latch holds into the run's board at
-  construction. The hold-source model makes the transfer well-defined — copy `sw.state` and the
-  `"latch"` source per index, deliberately **not** the live mouse/key holds, which belong to the
-  gesture that is already over.
-- **Alternative if not done:** document the behavior in the user guide, so at least it is stated
-  rather than surprising.
-- **Effort:** S.
+- ✅ **Shipped 2026-08-31**, riding along with Docs & Assets round 2 PR 2 as the card invited.
+  Full detail → [roadmap_delivered.md](roadmap_delivered.md#u45-carry-preview-switchlatch-state-into-the-simulation-run-).
+  **Scope grew once on evidence:** the card described preview → run, but
+  `ScreenController.run()` builds a fresh `FPGABoard` on *every* preview entry, so the state was
+  also lost on a trip through the file picker. The carry therefore lives on `SessionState`
+  (whose docstring already claimed to be what survives re-entries) and runs in **both**
+  directions, cleared when the board changes.
 
 ### Tier 3 — Quick wins (ship anytime)
 

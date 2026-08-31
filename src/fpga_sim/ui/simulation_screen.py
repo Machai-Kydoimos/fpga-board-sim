@@ -27,7 +27,7 @@ import pygame
 from fpga_sim.session_config import update_session
 from fpga_sim.sim_link import drain, send
 from fpga_sim.sim_session_log import save_session_stats
-from fpga_sim.ui.board_display import FPGABoard
+from fpga_sim.ui.board_display import BoardInputs, FPGABoard
 from fpga_sim.ui.components import debug_view_enabled, set_debug_view
 from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.error_dialog import ErrorDialog
@@ -113,6 +113,7 @@ class SimulationScreen:
         sim: SimulatorInfo,
         show_toolbar: bool = True,
         screenshot_dir: str | Path | None = None,
+        initial_inputs: BoardInputs | None = None,
     ) -> None:
         """Build the board/panel/toolbar and wire pygame input to link messages."""
         self.screen = screen
@@ -202,6 +203,14 @@ class SimulationScreen:
         # Set by the widget callbacks, flushed once per frame by _flush_input
         # (U44): one atomic full-state message per frame, never a send per edge.
         self._input_dirty = False
+
+        # Carry the preview's switches and latches onto the run (U45).  Applied
+        # silently, then flagged dirty as a whole: _flush_input sends the *full*
+        # state and its dirty flag deliberately survives disconnected frames, so
+        # the child receives this the moment it connects -- before it has run a
+        # single step, which is what makes a latched reset behave like one.
+        if initial_inputs is not None and self.board.restore_inputs(initial_inputs):
+            self._input_dirty = True
 
         self.board.set_switch_callback(self._on_switch)
         self.board.set_button_callback(self._on_button)

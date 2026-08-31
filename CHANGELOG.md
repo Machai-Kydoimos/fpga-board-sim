@@ -39,6 +39,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     window reads back exactly, while one toggling faster than the window should be
     compared against its duty rather than its value at a single nanosecond.
 
+- **Preview switch and latch state carries into the simulation** (U45). The
+  switches you flip and the buttons you latch on the preview screen are now what
+  the design sees on its **first clock edge**, so a reset or a mode select can be
+  staged before pressing Start instead of raced afterwards. Previously the
+  preview and the simulation built two separate boards and everything set on the
+  first was silently discarded — a long-standing wart that v0.21.0's latching
+  made markedly more surprising, since latching is a deliberate, visible, sticky
+  act and "I latched reset, hit Start, and nothing was latched" reads as a bug.
+  - It is carried in **both** directions and across every screen boundary: back
+    out of a run into the preview, and through a trip to the file picker (the
+    preview's board is rebuilt on every entry, so this was lost there too).
+    Choosing a **different board** resets it — switch and button indices mean
+    nothing across boards.
+  - **Live mouse and keyboard holds are deliberately not carried.** They belong
+    to a gesture that is over by the time the screen changes; only the latch is
+    state the user meant to leave behind.
+
 ### Changed
 
 - **Benchmark-only flags now say when they do nothing.** `--board`, `--vhdl`,

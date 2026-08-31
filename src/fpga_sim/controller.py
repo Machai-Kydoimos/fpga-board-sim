@@ -46,6 +46,7 @@ from fpga_sim.sim_bridge import (
     start_simulation,
 )
 from fpga_sim.ui import (
+    BoardInputs,
     BoardSelector,
     DialogResult,
     ErrorDialog,
@@ -156,6 +157,11 @@ class SessionState:
     board_sort: str = ""
     component_filters: list[str] = field(default_factory=list)
     vendor_filters: list[str] = field(default_factory=list)
+    # U45: switches and latches follow the user across preview re-entries and
+    # into the run, instead of being discarded with each screen's FPGABoard.
+    # Board-specific by construction (indices mean nothing across boards), so
+    # picking a different board clears it — see on_board_selected.
+    inputs: BoardInputs = field(default_factory=BoardInputs)
 
     def needs_reanalysis(self) -> bool:
         """Report whether ``work_dir`` is stale for the current simulator install.
@@ -333,6 +339,10 @@ class ScreenController:
         if (s.board_class, s.board_source) != (board.class_name, board.source):
             s.board_class = board.class_name
             s.board_source = board.source
+            # A carried switch/latch set (U45) is indexed against the board it
+            # was taken from -- SW3 on one board is a different pin, or absent,
+            # on the next -- so a new board starts from the board's own defaults.
+            s.inputs = BoardInputs()
             self._save_session()
         return NextScreen.PREVIEW
 
@@ -344,6 +354,11 @@ class ScreenController:
         Three footer buttons: [Select Board] [Load VHDL File]
         [Start Simulation].  The window title is set by
         ``FPGABoard.__init__`` (it includes the VHDL filename when loaded).
+
+        A fresh ``FPGABoard`` is built on **every** entry — including a return
+        trip through the file picker — so the switches and latches the user set
+        are restored from (and saved back to) ``state.inputs`` around the run
+        (U45); without that they would be discarded at each screen boundary.
         """
         assert self.board is not None  # PREVIEW is only reachable after on_board_selected()
         preview = FPGABoard(
@@ -353,7 +368,9 @@ class ScreenController:
             available_sims=self.available_sims,
             vhdl_path=self.state.vhdl_path,
         )
+        preview.restore_inputs(self.state.inputs)
         result = preview.run()
+        self.state.inputs = preview.input_snapshot()
         if preview.sim is not None and preview.sim != self.state.sim:  # pick up any toggle change
             self.state.sim = preview.sim
             self._save_session()
@@ -583,7 +600,7 @@ class ScreenController:
                 sim_error = str(e)
                 break
 
-            sim_exit = SimulationScreen(
+            sim_screen = SimulationScreen(
                 self.screen,
                 self.clock,
                 board,
@@ -592,7 +609,13 @@ class ScreenController:
                 match=s.convention,
                 vhdl_path=s.vhdl_path,
                 sim=s.sim,
-            ).run()
+                initial_inputs=s.inputs,
+            )
+            sim_exit = sim_screen.run()
+            # Carry the run's switches/latches back out (U45), so [Stop] into
+            # the preview -- or [Reload VHDL] into the next launch -- shows the
+            # board as the user left it rather than resetting it under them.
+            s.inputs = sim_screen.board.input_snapshot()
             finish_waveform(child)
 
             if sim_exit is not SimExit.RELOAD_VHDL:

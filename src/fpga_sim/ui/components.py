@@ -652,6 +652,19 @@ class Button(UIComponent):
         else:
             self.hold(self.LATCH_SOURCE)
 
+    def set_latched(self, on: bool) -> None:
+        """Set the latch **silently** — no callback, like the ``pressed`` setter.
+
+        For *restoring* a latch rather than gesturing one (U45): the caller
+        carrying state onto a fresh board owns the consequences, and ships the
+        whole input state in one message instead of one per widget.  Live
+        mouse/key holds are untouched, as with :meth:`toggle_latch`.
+        """
+        if on:
+            self._holds.add(self.LATCH_SOURCE)
+        else:
+            self._holds.discard(self.LATCH_SOURCE)
+
     @property
     def tooltip_extra(self) -> list[tuple[str, str]]:
         """Hover rows: which vector bit this is, its latch state, the gesture.

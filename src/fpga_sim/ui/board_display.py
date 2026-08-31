@@ -24,6 +24,8 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Sequence
+from collections.abc import Set as AbstractSet
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
@@ -60,6 +62,44 @@ def _key_source(token: str) -> str:
     must not release the button.
     """
     return f"key:{token}"
+
+
+@dataclass(frozen=True)
+class BoardInputs:
+    """A board's user-set input state, carried between boards for one board choice (U45).
+
+    The preview screen and the simulation build **separate** ``FPGABoard``
+    objects, and the preview's is rebuilt on every re-entry, so without this a
+    switch flipped or a button latched before pressing Start is silently
+    discarded.  U44 made that markedly more surprising: latching is now a
+    deliberate, visible, sticky act, so "I latched reset, hit Start, and
+    nothing was latched" reads as a bug rather than as a screen boundary.
+
+    Live **mouse and key holds are deliberately absent**.  They belong to a
+    gesture that is over by the time this is carried anywhere — the hand is off
+    the mouse — and only the latch is state the user meant to leave behind.
+
+    In-memory for the session's screen flow only: this is never persisted, so
+    a relaunched app opens with the board as the design left it, not as the
+    last session did.
+    """
+
+    switches: tuple[bool, ...] = ()
+    latched: AbstractSet[int] = frozenset()
+
+    def __post_init__(self) -> None:
+        """Normalize *latched* to a frozenset, so the value stays hashable.
+
+        Callers name the latched indices however is natural at the call site
+        (``{0, 2}`` reads better than ``frozenset({0, 2})``); the stored value
+        is always immutable, which is what ``frozen=True`` promises.
+        """
+        if not isinstance(self.latched, frozenset):
+            object.__setattr__(self, "latched", frozenset(self.latched))
+
+    def __bool__(self) -> bool:
+        """Report whether anything is set — an all-off board carries nothing."""
+        return any(self.switches) or bool(self.latched)
 
 
 class _Positionable(Protocol):
@@ -870,6 +910,33 @@ class FPGABoard:
                 sw.state = self._paint_value
                 if sw.callback:
                     sw.callback(sw.index, sw.state, sw.info)
+
+    def input_snapshot(self) -> BoardInputs:
+        """Capture the user-set input state, for carrying onto another board (U45)."""
+        return BoardInputs(
+            switches=tuple(sw.state for sw in self.switches),
+            latched=frozenset(btn.index for btn in self.buttons if btn.latched),
+        )
+
+    def restore_inputs(self, snap: BoardInputs) -> bool:
+        """Apply *snap* silently; report whether it left anything set.
+
+        Silent (no widget callbacks) because the caller owns the consequences:
+        the preview has nobody to notify, and the simulation screen sets its
+        own dirty flag so the restored state ships as one ``input`` message
+        rather than one per widget — with a per-widget notification the console
+        would also narrate a dozen phantom ``SW3: ON`` lines the user did not
+        just do.
+
+        Extra entries are ignored rather than an error: a snapshot only ever
+        meets a board of a different size through a bug, and dropping the tail
+        is a better outcome than an ``IndexError`` in the launcher.
+        """
+        for sw, state in zip(self.switches, snap.switches, strict=False):
+            sw.state = state
+        for btn in self.buttons:
+            btn.set_latched(btn.index in snap.latched)
+        return bool(snap)
 
     def release_transient_holds(self) -> None:
         """Drop every live hold (mouse, keyboard) while keeping latches.
