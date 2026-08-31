@@ -933,7 +933,7 @@ class FPGABoard:
 
     # ── redraw gating (U23) ──────────────────────────────────────────
 
-    def visual_signature(self) -> tuple[object, ...]:
+    def visual_signature(self, *, quantize: int = 1000) -> tuple[object, ...]:
         """Return a hashable fingerprint of everything ``_draw`` renders that can vary.
 
         The simulation screen compares this frame-to-frame to skip an identical
@@ -942,8 +942,13 @@ class FPGABoard:
         "clean" value), switch / button state, and the layout size (a resize
         must force a redraw). Hover tooltips and the overlay/panel are handled
         by the caller (see :meth:`hover_active`).
+
+        *quantize* sets the brightness resolution. The 1000-step default is the
+        redraw gate's; the ``--screenshots`` recorder asks for a much coarser
+        one, because at 1000 steps every frame of a fade reads as a change
+        (see :mod:`fpga_sim.ui.screenshots`).
         """
-        q = 1000  # quantize levels finer than any post-gamma pixel step
+        q = quantize
         leds = tuple(
             tuple(round(lv * q) for lv in led.levels)
             if isinstance(led, RGBLED)

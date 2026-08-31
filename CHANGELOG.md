@@ -6,6 +6,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`--screenshots DIR` on the benchmark path** — the visual half of the board
+  smoke-test ([#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129)).
+  `uv run fpga-sim --benchmark 5 --board DE10LitePlatform --vhdl hdl/counter_7seg.vhd
+  --screenshots /tmp/shots` now saves the frames it renders as PNGs, so a new
+  board + design can be checked by eye — active-low inversion, LED colors and
+  banks, 7-seg digit layout, RGB mixing — and not only by `PASS=1`.
+  - These are frames from the **product's own renderer**: `--benchmark` without
+    `--no-ui` already drove the real `SimulationScreen` under the dummy video
+    driver, so the stills show true duty-cycle brightness, RGB color mixing and
+    scan-display multiplexing rather than a second renderer's binary
+    approximation of them. No new rendering path was added.
+  - Capture is gated, not per-frame: a shot when the board's appearance changes
+    (brightness quantized to 16 steps for this purpose, so a persistence-of-vision
+    fade yields a handful of stills instead of one per frame, no sooner than
+    0.25 s apart), plus one a second while nothing changes so a frozen design
+    still leaves a trail, capped at 240 files. Files are named
+    `shot_<n>_t<seconds>s.png` and a closing `[screenshots] N PNGs in …` line
+    reports the count and any drops. Frames before the simulator connects — the
+    "Starting …" splash — are skipped.
+
+### Changed
+
+- **Benchmark-only flags now say when they do nothing.** `--board`, `--vhdl`,
+  `--no-ui` and `--screenshots` are meaningful only with `--benchmark`, and
+  without it all four were accepted and silently ignored — a flag the user
+  deliberately typed did nothing and said nothing. They now print
+  `ignoring …: only meaningful with --benchmark` and **continue**, so no
+  currently-working invocation changes behavior. The one genuinely contradictory
+  combination — `--benchmark --screenshots --no-ui`, asking to capture rendered
+  frames while suppressing rendering — exits 2 with a one-line reason.
+
 ## [0.21.0] - 2026-08-25
 
 ### Added

@@ -77,7 +77,14 @@ def _parse_args() -> argparse.Namespace:
         "--no-ui",
         action="store_true",
         help="Benchmark the simulator only (headless child, no pygame UI); "
-        "requires --benchmark. Isolates simulator throughput from UI rendering.",
+        "benchmark mode only. Isolates simulator throughput from UI rendering.",
+    )
+    p.add_argument(
+        "--screenshots",
+        metavar="DIR",
+        default=None,
+        help="Save rendered simulation frames as PNGs in DIR (visual smoke-test); "
+        "benchmark mode only, and incompatible with --no-ui.",
     )
     p.add_argument(
         "--list-sims",
@@ -91,6 +98,47 @@ def _parse_args() -> argparse.Namespace:
         help="Register a simulator binary at PATH (probe it, save it to the session) and exit",
     )
     return p.parse_args()
+
+
+def _validate_args(args: argparse.Namespace) -> str | None:
+    """Return a message for a genuinely unusable combination, else ``None``.
+
+    Only *contradictions* are fatal.  A benchmark-only flag given without
+    ``--benchmark`` is merely inapplicable, not wrong, and is warned about by
+    :func:`_inapplicable_flags` instead — see there for why.
+    """
+    if args.benchmark is not None and args.screenshots is not None and args.no_ui:
+        return "--screenshots captures rendered frames, which --no-ui does not draw; drop one."
+    return None
+
+
+def _inapplicable_flags(args: argparse.Namespace) -> list[str]:
+    """Name the benchmark-only flags given without ``--benchmark`` (a warning, not an error).
+
+    Four flags only mean anything in benchmark mode, and all four were silently
+    ignored outside it — so a flag the user deliberately typed did nothing and
+    said nothing.  Warning is the fix; erroring is not, for two reasons.
+
+    **One rule for all four.**  ``--board`` and ``--vhdl`` have been ignored
+    this way since the benchmark existed, so singling out the newer flags would
+    make the CLI less consistent, not more.
+
+    **Erroring would break working invocations.**  ``--no-ui`` has shipped since
+    v0.15.0; a wrapper script that passes it unconditionally works today and has
+    no reason to stop.  Nothing is lost by continuing — the launcher does exactly
+    what it would have done — so a warning tells the user what happened without
+    turning a harmless redundancy into a failure.  Genuine contradictions stay
+    fatal (:func:`_validate_args`).
+    """
+    if args.benchmark is not None:
+        return []
+    given = (
+        ("--board", args.board is not None),
+        ("--vhdl", args.vhdl is not None),
+        ("--no-ui", args.no_ui),
+        ("--screenshots", args.screenshots is not None),
+    )
+    return [name for name, was_given in given if was_given]
 
 
 def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) -> int:
@@ -169,6 +217,8 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
     print(f"[benchmark] VHDL:     {vhdl_path.name}")
     print(f"[benchmark] Sim:      {sim.label}  ({sim.backend})")
     print(f"[benchmark] Duration: {args.benchmark}s  (headless, {mode})")
+    if args.screenshots is not None:
+        print(f"[benchmark] Shots:    {args.screenshots}")
 
     # Analyze VHDL
     generics = build_generics(chosen, simulator=sim.engine)
@@ -192,7 +242,15 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
             chosen, vhdl_path, toplevel_name, generics, sim, work_dir, res.match, args.benchmark
         )
     return _benchmark_full_system(
-        chosen, vhdl_path, toplevel_name, generics, sim, work_dir, res.match, args.benchmark
+        chosen,
+        vhdl_path,
+        toplevel_name,
+        generics,
+        sim,
+        work_dir,
+        res.match,
+        args.benchmark,
+        screenshots=args.screenshots,
     )
 
 
@@ -205,6 +263,8 @@ def _benchmark_full_system(
     work_dir: str,
     match: ConventionMatch | None,
     secs: int,
+    *,
+    screenshots: str | None = None,
 ) -> int:
     """Benchmark the whole app headless: the real SimulationScreen + a free-running child.
 
@@ -213,6 +273,11 @@ def _benchmark_full_system(
     the numbers cover pygame rendering + the IPC link, not just the simulator.
     The child free-runs via *secs* and self-stops, so the screen exits on its
     own with no event injection.  Reads the screen's public ``run_stats``.
+
+    With *screenshots* set, the screen also saves PNGs of the frames it draws
+    (issue #129) — the visual half of the board smoke-test.  Because this is
+    the product's own renderer, those stills show true PWM/RGB/scan brightness
+    rather than a second renderer's approximation of it.
     """
     from fpga_sim.sim_bridge import finish_waveform, start_simulation
     from fpga_sim.ui import SimulationScreen
@@ -251,9 +316,12 @@ def _benchmark_full_system(
             vhdl_path=vhdl_path,
             sim=sim,
             show_toolbar=False,
+            screenshot_dir=screenshots,
         )
         sim_screen.run()
         finish_waveform(child)
+        if sim_screen.shots is not None:
+            print(sim_screen.shots.summary())
         stats = sim_screen.run_stats
         _print_benchmark_report(
             board,
@@ -522,6 +590,17 @@ def _add_sim(path: str) -> int:
 def main() -> None:
     """Run the FPGA Board Simulator: set up pygame, then hand off to ScreenController."""
     args = _parse_args()
+    err = _validate_args(args)
+    if err is not None:
+        print(f"[fpga-sim] {err}", file=sys.stderr)
+        sys.exit(2)
+    inapplicable = _inapplicable_flags(args)
+    if inapplicable:
+        print(
+            f"[fpga-sim] ignoring {', '.join(inapplicable)}: "
+            "only meaningful with --benchmark. Continuing.",
+            file=sys.stderr,
+        )
 
     # Headless registry utilities: probe/report installed simulators, then exit.
     if args.list_sims:

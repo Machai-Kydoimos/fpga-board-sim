@@ -33,6 +33,7 @@ from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.error_dialog import ErrorDialog
 from fpga_sim.ui.help_dialog import HelpDialog
 from fpga_sim.ui.results import SimExit
+from fpga_sim.ui.screenshots import COARSE_LEVELS, ScreenshotRecorder
 from fpga_sim.ui.sim_panel import _PANEL_H_BASE, SimPanel
 from fpga_sim.ui.sim_toolbar import SimToolbar
 from fpga_sim.ui.theme import THEME
@@ -111,6 +112,7 @@ class SimulationScreen:
         vhdl_path: str | Path,
         sim: SimulatorInfo,
         show_toolbar: bool = True,
+        screenshot_dir: str | Path | None = None,
     ) -> None:
         """Build the board/panel/toolbar and wire pygame input to link messages."""
         self.screen = screen
@@ -121,6 +123,10 @@ class SimulationScreen:
         self.sim = sim
         self._vhdl_name = Path(vhdl_path).name
         self._show_toolbar = show_toolbar
+        # --screenshots (#129): PNGs of this very surface, gated on visible
+        # change. Benchmark-path only; None everywhere else, so the interactive
+        # loop pays one `is not None` per frame and nothing else.
+        self.shots = ScreenshotRecorder(screenshot_dir) if screenshot_dir is not None else None
 
         clk_hz = board_def.default_clock_hz if board_def else 0.0
         self._board_name = board_def.name if board_def else "Generic"
@@ -529,6 +535,23 @@ class SimulationScreen:
 
     # ── Rendering ──────────────────────────────────────────────────────────────
 
+    def _screenshot_gate(self) -> tuple[tuple[object, ...] | None, float]:
+        """Return ``(signature, now)`` when ``--screenshots`` wants this frame, else ``(None, …)``.
+
+        Split out of :meth:`_render_frame` so the coarse signature is computed
+        only when capture is on — with no recorder this is one ``is None`` test
+        and the interactive loop pays nothing.
+
+        Nothing is captured before the child connects: those frames are the
+        "Starting <simulator>…" splash, and on a slow NVC start the liveness
+        rule would otherwise fill the directory with copies of it.
+        """
+        if self.shots is None or not self._connected:
+            return None, 0.0
+        now = time.monotonic()
+        coarse = self.board.visual_signature(quantize=COARSE_LEVELS)
+        return (coarse if self.shots.due(coarse, now) else None), now
+
     def _render_frame(self) -> None:
         """Draw board + panel + overlays and flip — unless nothing changed (U23).
 
@@ -548,12 +571,18 @@ class SimulationScreen:
                 self._board_offset = cur_offset
 
         sig = (self._connected, self.panel.paused, self.board.visual_signature())
+        # A screenshot that is due forces the draw it will capture: on a static
+        # design the liveness shot lands on a frame U23 would otherwise skip,
+        # and capturing before `flip` means the surface provably holds the
+        # frame just drawn rather than whatever survived the buffer swap.
+        shot_sig, shot_now = self._screenshot_gate()
         dirty = (
             self._events_this_frame  # mouse/keys/resize/expose/focus this frame
             or self._last_frame_sig is None  # nothing drawn yet
             or self._show_panel  # stats panel updates its live counters every frame
             or sig != self._last_frame_sig  # LED/seg/switch/button/size/pause change
             or self.board.hover_active()  # a dwell-timed tooltip may be in play
+            or shot_sig is not None  # --screenshots wants this frame (#129)
         )
 
         draw_us = 0.0
@@ -566,6 +595,8 @@ class SimulationScreen:
                 self._draw_overlays()
             else:
                 self._draw_waiting()
+            if shot_sig is not None and self.shots is not None:
+                self.shots.capture(self.screen, shot_sig, shot_now)
             pygame.display.flip()
             draw_us = (time.monotonic_ns() - t_draw_start) / 1_000
             self._last_frame_sig = sig

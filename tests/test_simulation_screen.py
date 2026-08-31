@@ -68,6 +68,7 @@ def _make_screen(
     *,
     seg: bool = False,
     show_toolbar: bool = True,
+    screenshot_dir: str | Path | None = None,
 ) -> SimulationScreen:
     surface = pygame.display.set_mode((1024, 700))
     return SimulationScreen(
@@ -80,6 +81,7 @@ def _make_screen(
         vhdl_path="blinky.vhd",
         sim=_sim("ghdl"),
         show_toolbar=show_toolbar,
+        screenshot_dir=screenshot_dir,
     )
 
 

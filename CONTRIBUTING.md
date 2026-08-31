@@ -400,8 +400,28 @@ picks the backend — an engine (`ghdl`/`nvc`), a specific GHDL code generator
 register installs with `--list-sims` / `--add-sim PATH` (see the install guide's
 "Choosing a simulator").
 
-For a *visual* check (rendered LED / 7-seg frames saved as PNGs), see
-`scripts/capture_demo.py`, which drives the same headless pipeline.
+For a *visual* check, add `--screenshots DIR` and the same run also saves the
+frames it renders as PNGs — so you can eyeball that the board actually lights up
+correctly (active-low inversion, LED colors and banks, 7-seg digit layout, RGB
+mixing):
+
+```bash
+uv run fpga-sim --benchmark 5 --board DE10LitePlatform \
+                --vhdl hdl/counter_7seg.vhd --screenshots /tmp/de10-shots
+```
+
+These are frames from the **product's own renderer** — `--benchmark` (without
+`--no-ui`) drives the real `SimulationScreen` under the dummy video driver — so
+what you see is what a user sees, including true duty-cycle brightness. The
+files are `shot_<n>_t<seconds>s.png`, saved when the board's appearance changes
+(brightness quantized coarsely, so a fade yields a handful of stills rather than
+one per frame), plus one a second while nothing changes so a frozen design still
+leaves a trail. A run is capped at 240 files; the closing
+`[screenshots] N PNGs in …` line reports the count and any drops.
+
+`--screenshots` requires `--benchmark` and cannot be combined with `--no-ui`
+(which draws nothing to capture). For the README/user-guide **GIFs** — a
+different job, with scripted interaction — use `scripts/capture_demo.py`.
 
 ---
 
