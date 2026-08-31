@@ -68,6 +68,14 @@ channels into one color.
 - **"Start Simulation"** button → opens the VHDL file picker
 - **R** → reset all switches off and release every held button, latches included
 - **F1 / ? / (?)** → open the help overlay
+- Whatever you set here **carries into the run**: the switches you flip and the
+  buttons you latch are exactly what the design sees on its very first clock
+  edge, so you can stage a reset or a mode select before pressing Start rather
+  than racing to click it afterwards. Live mouse and keyboard holds are not
+  carried — those end with the gesture. The state follows you back out of the
+  simulation too, and survives a trip through the file picker; **choosing a
+  different board** resets it, since switch and button indices mean nothing
+  across boards
 - **Gear button** (next to the `(?)`) → open the [Settings dialog](#settings-dialog):
   switch the UI theme, reset the remembered sim speed, toggle waveform capture,
   auto-open the waveform viewer, or clear the recent-files list

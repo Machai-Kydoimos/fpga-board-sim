@@ -6,7 +6,7 @@ Import from here for public API access:
     from fpga_sim.ui import SimPanel, HelpDialog, SpinnerOverlay, run_with_spinner
 """
 
-from fpga_sim.ui.board_display import FPGABoard
+from fpga_sim.ui.board_display import BoardInputs, FPGABoard
 from fpga_sim.ui.board_selector import BoardSelector
 from fpga_sim.ui.components import LED, Button, FPGAChip, SevenSeg, Switch, UIComponent
 from fpga_sim.ui.error_dialog import ErrorDialog
@@ -32,6 +32,7 @@ __all__ = [
     "Button",
     "BoardSelector",
     "FPGABoard",
+    "BoardInputs",
     "VHDLFilePicker",
     "ErrorDialog",
     "HelpDialog",

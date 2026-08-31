@@ -43,7 +43,7 @@ The simulator runs in a **single window** (U34): the launcher's pygame process o
 | File | Role |
 |------|------|
 | `src/fpga_sim/__main__.py` | Thin entry point: arg parsing, pygame/window setup, headless benchmark |
-| `src/fpga_sim/controller.py` | `ScreenController` + `SessionState`: drives the launcher screen flow (selector → preview → picker → simulate) |
+| `src/fpga_sim/controller.py` | `ScreenController` + `SessionState`: drives the launcher screen flow (selector → preview → picker → simulate). **Every screen builds its own `FPGABoard`** — the preview's is rebuilt on each entry — so anything the user set on one must be carried explicitly: `SessionState.inputs` (a `BoardInputs` snapshot of switches + latches, U45) travels preview ⇄ run and is cleared when the board changes. Live mouse/key holds are deliberately never carried |
 | `src/fpga_sim/board_loader.py` | Loads board definitions from JSON into `BoardDef` objects (runtime loader) |
 | `src/fpga_sim/sim_bridge.py` | GHDL/NVC analysis + elaboration; `start_simulation()` spawns the headless child (`SimChild`) + `finish_waveform()`; platform-specific VPI env setup |
 | `src/fpga_sim/sim_link.py` | IPC transport between the UI host and the headless sim child (`multiprocessing.connection` over 127.0.0.1 + random HMAC authkey); pygame-free (U34) |

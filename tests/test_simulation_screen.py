@@ -20,6 +20,7 @@ from fpga_sim import sim_link
 from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
 from fpga_sim.sim_bridge import SimChild, SimulatorInfo
 from fpga_sim.sim_link import drain, send
+from fpga_sim.ui.board_display import BoardInputs
 from fpga_sim.ui.results import SimExit
 from fpga_sim.ui.simulation_screen import SimulationScreen
 
@@ -69,6 +70,7 @@ def _make_screen(
     seg: bool = False,
     show_toolbar: bool = True,
     screenshot_dir: str | Path | None = None,
+    initial_inputs: BoardInputs | None = None,
 ) -> SimulationScreen:
     surface = pygame.display.set_mode((1024, 700))
     return SimulationScreen(
@@ -82,6 +84,7 @@ def _make_screen(
         sim=_sim("ghdl"),
         show_toolbar=show_toolbar,
         screenshot_dir=screenshot_dir,
+        initial_inputs=initial_inputs,
     )
 
 

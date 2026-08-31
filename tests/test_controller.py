@@ -27,7 +27,7 @@ from fpga_sim.controller import (
     example_vhdl_for,
 )
 from fpga_sim.sim_bridge import ContractResult, SimulatorInfo
-from fpga_sim.ui import DialogResult, ScreenResult, SimExit
+from fpga_sim.ui import BoardInputs, DialogResult, ScreenResult, SimExit
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 
 if TYPE_CHECKING:
@@ -452,12 +452,28 @@ class _FakePreview:
     result: ScreenResult = ScreenResult.QUIT
     sim_info: SimulatorInfo = _sim("ghdl")
     last_kwargs: dict[str, Any] = {}
+    #: What the user leaves the preview holding (U45), replayed by ``run()``.
+    final_inputs: BoardInputs | None = None
+    #: Every snapshot the controller restored onto a preview, in order.
+    restored: list[BoardInputs] = []
 
     def __init__(self, **kwargs: Any) -> None:
         type(self).last_kwargs = kwargs
         self.sim: SimulatorInfo = type(self).sim_info
+        self.inputs = BoardInputs()
+
+    def restore_inputs(self, snap: BoardInputs) -> bool:
+        type(self).restored.append(snap)
+        self.inputs = snap
+        return bool(snap)
+
+    def input_snapshot(self) -> BoardInputs:
+        return self.inputs
 
     def run(self) -> ScreenResult:
+        final = type(self).final_inputs
+        if final is not None:
+            self.inputs = final
         return type(self).result
 
 
@@ -467,6 +483,8 @@ def _install_preview(
     _FakePreview.result = result
     _FakePreview.sim_info = sim or _sim("ghdl")
     _FakePreview.last_kwargs = {}
+    _FakePreview.final_inputs = None
+    _FakePreview.restored = []
     monkeypatch.setattr(controller_mod, "FPGABoard", _FakePreview)
     return _FakePreview
 
@@ -687,18 +705,34 @@ def test_picker_error_dialog_gets_7seg_example(headless_pygame, monkeypatch):
 # ── on_simulate: single-window attached path (U34, the default) ──────────────
 
 
+class _FakeSimBoard:
+    """The one thing the controller reads off a finished screen: its board's inputs (U45)."""
+
+    def __init__(self) -> None:
+        self.inputs = BoardInputs()
+
+    def input_snapshot(self) -> BoardInputs:
+        return self.inputs
+
+
 class _FakeSimScreen:
     """Fake SimulationScreen: records construction and scripts run() results."""
 
     instances: list[dict[str, Any]] = []
     exits: list[SimExit] = []
+    #: Snapshot each successive run() leaves on its board, as a real run would.
+    final_inputs: list[BoardInputs] = []
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         type(self).instances.append(kwargs)
         self.run_stats = None
+        self.board = _FakeSimBoard()
 
     def run(self) -> SimExit:
-        return type(self).exits.pop(0) if type(self).exits else SimExit.STOPPED
+        cls = type(self)
+        if cls.final_inputs:
+            self.board.inputs = cls.final_inputs.pop(0)
+        return cls.exits.pop(0) if cls.exits else SimExit.STOPPED
 
 
 def _attached_harness(
@@ -749,6 +783,7 @@ def _attached_harness(
 
     _FakeSimScreen.instances = []
     _FakeSimScreen.exits = list(sim_exits or [])
+    _FakeSimScreen.final_inputs = []
     monkeypatch.setattr(controller_mod, "start_simulation", fake_start)
     monkeypatch.setattr(controller_mod, "SimulationScreen", _FakeSimScreen)
     monkeypatch.setattr(controller_mod, "finish_waveform", lambda child: finishes.append(child))
