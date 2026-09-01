@@ -51,7 +51,8 @@ split described below.
 
 **Between-arc filler:** the Tier-3 usability sweep — U14 pause key · U16 minimum window size ·
 U18 recent files · U19 metrics toggle. **Later:** U20 Verilog (the headline candidate once this
-queue clears) · U8 splash · U27 user JSON themes · Icebox items as their triggers fire.
+queue clears) · U8 splash · U27 user JSON themes · U46 retro display skin (unscheduled,
+mood-driven) · Icebox items as their triggers fire.
 
 ### Plan documents index
 
@@ -76,7 +77,7 @@ The three live plans, then executed history (each file carries its own detailed 
 
 ### ID allocation
 
-**Next free: U46 · D17 · P34.** (U45 and P31–P33 were filed 2026-08-25 at U44's closeout.) Reserved by the live plans, to be filed as full cards / Icebox
+**Next free: U47 · D17 · P34.** (U45 and P31–P33 were filed 2026-08-25 at U44's closeout; U46 was filed 2026-09-01 as the retro display skin.) Reserved by the live plans, to be filed as full cards / Icebox
 rows at each arc's closeout (until then the plan doc is their source of truth): U42/U43 +
 P25–P30 ([u39_peripherals_plan.md](u39_peripherals_plan.md) §13); U45 + P31–P33
 ([u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md) §9).
@@ -225,6 +226,116 @@ This document inventories all viable improvements and ranks them by impact.
   also lost on a trip through the file picker. The carry therefore lives on `SessionState`
   (whose docstring already claimed to be what survives re-entries) and runs in **both**
   directions, cleared when the board changes.
+
+#### U46. Retro display skin — the TESLA ZM1040 "digitron" (Nixie) as an alternative to the 7-segment
+
+- **Status:** unscheduled, opportunistic — filed 2026-09-01 so the idea has a home; no queue slot,
+  no trigger, pick it up when the mood strikes. Be honest about what it is: **delight, not
+  capability.** The skin renders strictly *less* information than the display it replaces (see the
+  fallback question below), so it should never take a slot from an arc that adds ability.
+- **Why:** the board renderer has exactly one display idiom — the flat amber 7-segment digit — and
+  this is a teaching/demo tool where looking good is part of the job (the argument that bought
+  **U6** themes and **U26**'s visual README). A stacked-cathode Nixie is the most recognizable
+  retro numeric display there is, and it is the rare piece of period hardware whose defining
+  behaviors we can already render *honestly*: **U9 ✅** gives the renderer continuous per-segment
+  duty rather than on/off, and **U22 ✅** already puts true 1/N brightness on scan displays — which
+  is precisely what a multiplexed Nixie clock looks like in life. The skin's most convincing
+  property therefore comes free from work that already shipped and is already tested.
+- **What:** a **view skin** over the existing display data — not a board property, not a contract
+  change. `SevenSeg` keeps taking its eight `levels`; a sibling renderer draws a ZM1040-style tube
+  instead of seven bars. A Settings toggle selects it, persisted like the theme, applying on every
+  screen that draws digits. Deliberately **not** a board-JSON field: no real FPGA board has Nixies,
+  so putting it in board data would invent a fact and drag the drift tripwire in for nothing.
+  - **Glyph set: 0–F.** A real ZM1040 has ten cathodes and no A–F, so hex is a **stated liberty** —
+    design the six extras as if a TESLA engineer in 1970 had been told to add them (same bent-wire
+    construction, same stroke, same period letterforms), never as a font drop-in.
+  - **Stack & masking — the payoff.** Render back-to-front: draw the lit cathode's glow, then every
+    cathode *in front of it* as dark wire, so the frontmost unlit digits genuinely occlude the lit
+    one; per-layer scale/offset/blur carries the depth. Cheap — a handful of blits.
+  - **Glow.** Neon orange, brightness driven by the same `_perceptual()` ramp the LEDs and segments
+    already use, plus a cheap bloom (downscale → `smoothscale` up → additive blit) and the mesh
+    anode's fine screen texture laid over it.
+  - **Cache** by `(glyph, duty bucket, size, theme)` — the `ui/icons.py` `lru_cache` pattern. That
+    is what keeps a glow-heavy digit off the per-frame budget; U23's dirty-flag loop does the rest.
+- **Open design questions — the ones that actually shape it:**
+  1. **The fallback is the load-bearing decision.** Today's display is *segment-faithful*: a design
+     asserts eight bits and we draw those eight bits, including `HELP`, `-`, `_`, chasing-segment
+     spinners, and buggy decoders. A Nixie is *glyph-faithful* — one whole cathode or nothing. So
+     the skin needs a pattern→glyph table (accepting the variant 6/7/9 forms) **and** a defined
+     answer for the ~240 patterns with no glyph. Nearest-match *lies about what the design did*,
+     which costs the thing the simulator exists for. Blanking is honest, and the hardware rescues
+     it: a blanked Nixie still shows its full ghost stack of unlit cathodes, so "no glyph" reads as
+     characterful rather than broken. Recommend blank — but decide it deliberately, it sets the
+     mode's whole character.
+  2. **Stack order is computable, not a taste call.** Occlusion cost — Σ over lit digit *d* of the
+     area of *d* hidden by everything in front of it — falls straight out of the glyph geometry, so
+     derive the order offline and pin it with a test asserting the worst case stays under a
+     threshold (this repo's idiom: measurable gates, not vibes). It matters *more* here than on a
+     real tube: **sixteen cathodes clutter far worse than ten**, and that — not the anachronism —
+     is what "modified a bit" really costs.
+  3. **Hold the orange.** The neon glow *is* the recognizability; retheming the hue turns a Nixie
+     into a VFD. Theme what surrounds it instead — glass tint, socket, bloom spilling onto the PCB,
+     reflections. Note the default theme's `seg_on` is already amber `(255, 140, 0)`, so the skin is
+     not a color departure from today's look. If a themable retro *family* is ever wanted, VFD is
+     the honest second member: flat, segmented, cyan-green, no masking.
+  4. **Cathodes are bent wire, not a font.** Constant stroke width, round caps, slight overshoot at
+     the terminals, visible support tabs. Get that and it reads instantly; miss it and sixteen
+     beautifully drawn glyphs still look like a typeface behind glass. Sixteen hand-authored vector
+     paths are the real bulk of this card — not the glow.
+  5. **`dp`.** If the tube carries no decimal-point cathode (verify), render bit 7 as a discrete
+     neon bulb between tubes — what real clocks actually do — or drop it and say so in the docs.
+  6. **Geometry.** Tall cylinders with generous spacing do not fit the rect a flat 7-seg occupies,
+     and the display sits among LEDs and switches in the flow-packed layout. Fit-in-place (safe,
+     may read cramped) vs. claim more space (looks right, perturbs layout) is unresolved.
+- **What we would need to confirm** (verify-or-omit, the `docs/led_color_sources/` habit): digit
+  height (~18 mm?) and envelope diameter · side-view vs. top-view · whether the tube has a decimal
+  point · the **true front-to-back cathode order** (tube-specific, and never plain 0–9) · lead/base
+  style · the glow color as a wavelength or a measured photo sample, and whether the purple cathode
+  fringe is pronounced enough to be worth drawing. Cited notes in a plan doc suffice — a TOML
+  registry like the LED colors would be overkill for a cosmetic skin.
+- **Research hints:**
+  - **"Digitron" is simply the Czech word for a Nixie tube**, and TESLA is the Czechoslovak
+    electronics conglomerate (not the car company) — searching the Czech term reaches the vendor
+    material, while "TESLA ZM1040" in English reaches modern clock-kit sellers, who reliably
+    document pinout and dimensions.
+  - Primary sources are Czech-language TESLA datasheets. Per CONTRIBUTING's **English (US)** rule
+    (the language, not just the spelling): translate them; never paste the original into the repo.
+  - **A good high-resolution photo of a powered tube is worth more than the datasheet here.** It
+    gives glyph shapes, wire gauge, glow falloff *and* the cathode stack order at once — the order
+    is directly readable off a front-lit shot, no document needed. Macro video shows how the glow
+    spreads with current.
+  - Construction references worth reading before drawing anything: Ronald Dekker's tube pages
+    (dos4ever.com), Andrew Wylie's tube site, and the Wikipedia "Nixie tube" construction section.
+  - Free flavor if wanted: the getter flash at the envelope top, mica spacers, and cathode
+    poisoning / the anti-poisoning cathode-cycling routine.
+- **Touches:** `ui/components.py` (`SevenSeg` at ~:829 gains a sibling renderer, or a strategy
+  behind it — keep the `levels` interface); new `ui/nixie.py` + glyph path data; `ui/assets/` only
+  if a raster is used (respect the `ui/assets/README.md` provenance rule); `ui/theme.py` (glass /
+  socket / glow roles); `ui/settings_dialog.py` + `session_config.py` (the persisted toggle);
+  `ui/board_display.py` (digit geometry); `docs/user_guide.md`; tests.
+- **Effort:** M/L — and **guard the scope**, it has no natural floor (glow, bloom, glass
+  reflections, getter flash, anode mesh, parallax, poisoning). Name a small "authentic enough" core
+  — wire glyphs, orange glow, stack occlusion, mesh screen — and exile the rest to a nice-to-have
+  list *before* starting.
+- **Dependencies:** none hard. **U9 ✅ / U22 ✅** supply the duty data that makes it convincing;
+  **U6 ✅** supplies the theme machinery. If screenshots of it are wanted, sequence after **Docs &
+  Assets round 2 PR 3**, which is what puts the product's continuous rendering into the capture
+  path.
+- ⚠ **Carried-forward (from U6 ✅ / U23 ✅):** read `THEME.<role>` at **draw time** only —
+  import-time captures (module *or* class level) silently defeat retheming, and theme-switching
+  tests take the `restore_theme` fixture. `visual_signature()` fingerprints *levels*, not pixels,
+  so a skin swap is invisible to both the U23 redraw gate and the `--screenshots` gate — correct
+  (the skin changes no signal), but it means a *programmatic* swap must force one redraw; a swap
+  driven by a keypress or a closing modal already gets one via `_events_this_frame`. This is a
+  render change: capture PNGs (`--benchmark --screenshots DIR`) and get a visual review before
+  merging.
+- **Done when:** a Settings toggle switches every 7-segment digit on every screen between the flat
+  display and the digitron skin, and survives a restart; the tube renders 0–F as occluded stacked
+  cathodes with duty-driven glow, and a scan design shows honest per-digit dimming; an unmapped
+  segment pattern resolves to the agreed fallback, pinned by a test; the stack order is derived,
+  documented, and guarded by a worst-case-occlusion test; the default 7-segment output stays
+  **pixel-identical** (the established byte-diff check); `--benchmark` shows no regression with the
+  skin active.
 
 ### Tier 3 — Quick wins (ship anytime)
 
@@ -701,16 +812,16 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/controller.py` — D6b ✅ (new: `ScreenController` + `SessionState`), U4 ✅ (`example_vhdl_for` wiring), U5 ✅ (save-on-pick/change/quit + speed plumbing), U7 ✅ (`on_simulate` acts on the returned `SimExit`; reload/back/change routing), U21 ✅ (`SessionState.convention` + `ConventionMatch` threading), U18 (retry start-dir), U35 ✅ (persist simulator engine + path)
 - `src/fpga_sim/sim_bridge.py` — U4 ✅ (parsed contract checks + `add_error_hints`), U5 ✅ (`speed_factor` → `FPGA_SIM_SPEED`), U7 ✅ (`SimExit` enum + exit-intent sidecar; `launch_simulation()` returns it), U10 ✅, U21 ✅ (convention matcher + native `_render_native_wrapper`; native `.gtkw` preselection), D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`), D16 (wrap the run subprocess), U34 ✅ (`SimChild` + `start_simulation` + `finish_waveform`; `launch_simulation` and the exit-intent file removed — `SimExit` now lives in `ui/results.py`), U35 ✅ (simulator discovery/identity + stage-3 runtime-elab probe)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅, U21 ✅ (B1: `BoardDef.port_conventions` + serialization)
-- `src/fpga_sim/session_config.py` — U5 ✅ (merge-on-write; new `update_session` / `push_recent`), U18, D9 ✅, D14 ✅, D16 (sandbox toggle), U35 ✅ (`extra_simulators` + `simulator_path`)
+- `src/fpga_sim/session_config.py` — U5 ✅ (merge-on-write; new `update_session` / `push_recent`), U18, D9 ✅, D14 ✅, D16 (sandbox toggle), U35 ✅ (`extra_simulators` + `simulator_path`), U46 (persisted display-skin toggle)
 - `src/fpga_sim/ui/constants.py` — D15 ✅ (now base neutrals only), U17
-- `src/fpga_sim/ui/theme.py` — D15 ✅ (new: `Theme` dataclass + `THEME`), U2 ✅ (`spinner_arc` / `spinner_track` roles), U5 ✅ (`THEME_NAMES` / `THEME_LABELS` + settings button styles), U6 ✅ (`dark` / `high-contrast` instances + `set_theme` / `current_theme_name`), U27 (dynamic registry + JSON loader)
-- `src/fpga_sim/ui/components.py` — U3 ✅, U9/U36–U38 ✅ (`LED.level` brightness, colored banks, `RGBLED` puck, debug duty bars), D3 ✅, D15
-- `src/fpga_sim/ui/board_display.py` — U1 ✅, U3 ✅, U5 ✅ (gear trigger), U11, U16, D3 ✅, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15, U35 ✅ (`[SIM:…]` cycles labeled backend variants)
+- `src/fpga_sim/ui/theme.py` — D15 ✅ (new: `Theme` dataclass + `THEME`), U2 ✅ (`spinner_arc` / `spinner_track` roles), U5 ✅ (`THEME_NAMES` / `THEME_LABELS` + settings button styles), U6 ✅ (`dark` / `high-contrast` instances + `set_theme` / `current_theme_name`), U27 (dynamic registry + JSON loader), U46 (glass / socket / glow roles)
+- `src/fpga_sim/ui/components.py` — U3 ✅, U9/U36–U38 ✅ (`LED.level` brightness, colored banks, `RGBLED` puck, debug duty bars), D3 ✅, D15, U46 (a Nixie sibling renderer beside `SevenSeg`)
+- `src/fpga_sim/ui/board_display.py` — U1 ✅, U3 ✅, U5 ✅ (gear trigger), U11, U16, D3 ✅, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15, U35 ✅ (`[SIM:…]` cycles labeled backend variants), U46 (digit geometry for the taller tube)
 - `src/fpga_sim/ui/board_selector.py` — U0, U1 ✅, U8, U12, U13 ✅, D15
 - `src/fpga_sim/ui/sim_panel.py` — U5 ✅ (`speed_factor` ctor param; public `SPEED_DEFAULT`), U21 ✅ (native-convention INFO note), U34 ✅ (`set_remote` remote stats feed; child `sim_pct` G zone), U14, U15, U19, D4 ✅, D15
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15
 - `src/fpga_sim/ui/error_dialog.py` — U4 ✅ (`example_path` → [View Example]), D4 ✅, D6a ✅ (`run()` returns `DialogResult`), D15
-- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/sim_toolbar.py` (U7 ✅), `ui/tooltip.py` (U3 ✅), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅, U34 ✅ — `SimExit` relocated here), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
+- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/sim_toolbar.py` (U7 ✅), `ui/tooltip.py` (U3 ✅), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅, U34 ✅ — `SimExit` relocated here), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `src/fpga_sim/ui/nixie.py` (U46), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
 - `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U34 ✅ **replaced it with the headless bridge** (no pygame; streams state over `sim_link`; the pre-U34 pygame-testbench notes U5/U7/U21 ✅ are history — those UI surfaces now live in `ui/simulation_screen.py`), U9 ✅ (child-side duty sampling + the U38 pause-instant sample); U22 ✅ needed no testbench change (the native wrapper adapts scan below the boundary)
