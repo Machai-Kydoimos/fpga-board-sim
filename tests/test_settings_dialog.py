@@ -198,6 +198,47 @@ class TestActions:
         dlg._click(dlg._autoopen_rect.center)
         assert load_session()["waveform_open"] is False
 
+    def test_led_pwm_toggle_off(self, screen, session_file, restore_pwm_display):
+        """U47: default (on) -> click turns PWM off, live and persisted."""
+        from fpga_sim.ui.components import pwm_display_enabled
+
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._pwm_rect is not None
+        assert dlg._click(dlg._pwm_rect.center) is False
+        assert load_session()["led_pwm"] is False
+        assert pwm_display_enabled() is False  # applied live, like the theme row
+
+    def test_led_pwm_toggle_back_on(self, screen, session_file, restore_pwm_display):
+        from fpga_sim.ui.components import pwm_display_enabled, set_pwm_display
+
+        update_session(led_pwm=False)
+        set_pwm_display(False)
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._pwm_rect is not None
+        dlg._click(dlg._pwm_rect.center)
+        assert load_session()["led_pwm"] is True
+        assert pwm_display_enabled() is True
+
+    def test_led_pwm_row_defaults_to_on_with_no_saved_key(self, screen, session_file):
+        """Inverted strictness: a missing key reads On, unlike the other toggles."""
+        dlg = SettingsDialog(screen)
+        assert dlg._led_pwm() is True
+        assert "led_pwm" not in load_session()
+
+    def test_led_pwm_row_and_duty_bars_rects_are_distinct(self, screen, session_file):
+        """The rects are unpacked positionally from the row list -- pin the order.
+
+        Inserting a row above another and forgetting the unpack would silently
+        wire each row to its neighbor's action.
+        """
+        dlg = SettingsDialog(screen)
+        dlg._draw()
+        assert dlg._pwm_rect is not None and dlg._debug_rect is not None
+        assert dlg._pwm_rect != dlg._debug_rect
+        assert dlg._pwm_rect.y < dlg._debug_rect.y, "LED PWM sits above Duty bars"
+
     def test_duty_bars_toggle_on(self, screen, session_file, restore_debug_view):
         """U38: default (off) -> click turns the debug duty-bar view on, live."""
         from fpga_sim.ui.components import debug_view_enabled

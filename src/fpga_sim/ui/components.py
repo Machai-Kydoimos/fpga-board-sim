@@ -176,6 +176,34 @@ def debug_view_enabled() -> bool:
     return _DEBUG_VIEW
 
 
+# ── LED PWM display (U47) ─────────────────────────────────────────────────────
+#
+# Whether LEDs render continuous PWM brightness or plain on/off, mirroring the
+# debug-view global above: mutated via set_pwm_display() and read at draw time.
+# Unlike the other display preferences this defaults to **On**, because On is
+# what the simulator has always done -- the session key is only ever written to
+# turn it off.
+#
+# The flag is read at the *source* of the display pipeline
+# (``SimulationScreen._apply_state``), not applied to the smoothed output: an
+# exponential never reaches zero, so thresholding the persistence-of-vision EMA
+# would latch an LED on forever.  Taking the binary bits unsmoothed means that
+# subtlety cannot arise.
+
+_PWM_DISPLAY = True
+
+
+def set_pwm_display(enabled: bool) -> None:
+    """Switch LED rendering between PWM brightness (True) and plain on/off."""
+    global _PWM_DISPLAY
+    _PWM_DISPLAY = bool(enabled)
+
+
+def pwm_display_enabled() -> bool:
+    """Whether LEDs currently render continuous PWM brightness."""
+    return _PWM_DISPLAY
+
+
 def _bar_track_color() -> tuple[int, int, int]:
     """Debug-bar track: the theme's LED-off color pulled hard toward black.
 

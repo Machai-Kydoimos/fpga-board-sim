@@ -6,6 +6,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **LED PWM display toggle in the Settings dialog** (U47,
+  [#385](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/385)). LEDs
+  and 7-segment digits normally render continuous brightness measured from the
+  design's real duty cycle; the new **LED PWM** row renders them plain on/off
+  instead, and the choice persists across sessions.
+  - It is also the **largest speed control the simulator offers**, because
+    measuring duty splices an integrator into the generated wrapper once per
+    output channel — so the cost scales with channel count. Measured on the
+    product's own benchmark path over three runs: `counter_7seg` on a DE10-Lite
+    (6 digits, 48 segment channels) runs **4.7x–5.5x faster** with PWM off
+    (0.00117x → 0.00548x through 0.00123x → 0.00676x real-time; the spread is
+    machine load, not the setting), while `rgb_rainbow` on an Arty A7 (16
+    channels) gains ~1.1x.
+  - **Two states, not three.** `sim_bridge` has carried `DutyMode` values
+    `"off"`, `"color"` and `"full"` since U9, but `"off"` and `"color"` are
+    behaviorally identical — both take the `mode != "full"` branch in
+    `_duty_channels` and the `else "led"` branch for `led_sig`, and nothing else
+    reads the mode. `"color"` stays an env-only synonym rather than becoming a
+    third radio button that does nothing.
+  - The flag is read at the **source** of the display pipeline, not applied to
+    its output: the persistence-of-vision filter is an exponential, which never
+    reaches zero, so thresholding its result would leave an LED that turned off
+    faintly — then permanently — lit. Taking the binary bits unsmoothed means
+    that case cannot arise, and a test asserts an LED reaches exactly 0.0.
+  - The preference resolves inside `resolve_duty_mode()` rather than being
+    threaded from the launcher, keeping the existing invariant that every
+    wrapper-generating path funnels through one place; `FPGA_SIM_DUTY` still
+    overrides it for scripted runs. Changing the row re-analyzes on the next
+    launch — which works because the wrapper comparison shipped in v0.22.0
+    ([#386](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/386));
+    without it the row would have been silently inert.
+  - `--benchmark --screenshots` honors the preference too. It exits before the
+    launcher's other session restores, so the captured frames would otherwise
+    have shown PWM brightness for a run whose wrapper measured no duty at all —
+    found by pixel-sampling the captured frames, where PWM off now yields
+    exactly **two** distinct LED brightness values against 51 with it on.
+
 ### Fixed
 
 - **`generate-board-images`' SVG output now matches its own PNG.** The SVG
@@ -28,6 +67,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     243 are byte-identical, including every board with RGB pucks (a dark puck's
     fill is `max(led_off, 0)`, which is `led_off`) and every 7-segment digit (an
     unlit segment interpolates to `seg_off` exactly).
+
+### Internal
+
+- **Session-file isolation is now suite-wide** (`tests/conftest.py`). Test
+  modules have redirected `SESSION_FILE` since U5, but only the ones building a
+  controller or dialog. U47 made that insufficient: with the `led_pwm`
+  preference read inside `resolve_duty_mode()`, any test generating a wrapper
+  would otherwise resolve its duty mode from the developer's real
+  `~/.fpga_simulator/session.json`.
 
 ## [0.22.0] - 2026-09-04
 

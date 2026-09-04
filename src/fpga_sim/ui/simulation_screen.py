@@ -28,7 +28,7 @@ from fpga_sim.session_config import update_session
 from fpga_sim.sim_link import drain, send
 from fpga_sim.sim_session_log import save_session_stats
 from fpga_sim.ui.board_display import BoardInputs, FPGABoard
-from fpga_sim.ui.components import debug_view_enabled, set_debug_view
+from fpga_sim.ui.components import debug_view_enabled, pwm_display_enabled, set_debug_view
 from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.error_dialog import ErrorDialog
 from fpga_sim.ui.help_dialog import HelpDialog
@@ -410,6 +410,13 @@ class SimulationScreen:
         Uses the measured per-channel duty cycles (U9) when the run is
         measuring, and falls back to the binary bits when it is not — so an
         Off/Color-only run renders exactly as it always did.
+
+        With PWM display turned off (U47) the binary bits are taken **and
+        returned unsmoothed**.  The flag is read here, at the source, rather
+        than applied to the smoothed output: the persistence-of-vision filter is
+        an exponential, which never reaches zero, so thresholding its result
+        would latch an LED on forever.  Cutting before the filter means that
+        case cannot arise.
         """
         now = time.monotonic()
         dt_s = now - self._ema_t
@@ -422,16 +429,21 @@ class SimulationScreen:
         # component.
         chan_map = self._led_chan_map
         n_chan = len(chan_map)
-        if led_duty:
-            targets = [float(led_duty[i]) if i < len(led_duty) else 0.0 for i in range(n_chan)]
-            if self.panel.paused:
-                self._pause_follow_binary(targets, led)
+        pwm = pwm_display_enabled()
+        if not pwm:
+            led_levels: list[float] = [float(bool(led & (1 << i))) for i in range(n_chan)]
         else:
-            targets = [float(bool(led & (1 << i))) for i in range(n_chan)]
-        # Smooth in the channel domain (each channel is an independent measured
-        # duty), then route: mono channels drive their widget's level, RGB
-        # channels drive one color channel of their site's RGBLED puck (U37).
-        for ch, level in enumerate(self._smooth("led", targets, dt_s)):
+            if led_duty:
+                targets = [float(led_duty[i]) if i < len(led_duty) else 0.0 for i in range(n_chan)]
+                if self.panel.paused:
+                    self._pause_follow_binary(targets, led)
+            else:
+                targets = [float(bool(led & (1 << i))) for i in range(n_chan)]
+            led_levels = self._smooth("led", targets, dt_s)
+        # Route in the channel domain (each channel is an independent measured
+        # duty): mono channels drive their widget's level, RGB channels drive
+        # one color channel of their site's RGBLED puck (U37).
+        for ch, level in enumerate(led_levels):
             comp = chan_map[ch]
             role = self._led_chan_roles[ch]
             if role == "mono":
@@ -443,7 +455,7 @@ class SimulationScreen:
         if seg is None:
             return
         seg_duty = self._last_state.get("seg_duty")
-        if seg_duty:
+        if seg_duty and pwm:
             seg_targets = [
                 float(seg_duty[i]) if i < len(seg_duty) else 0.0
                 for i in range(8 * self._seg_digits)

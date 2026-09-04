@@ -38,7 +38,7 @@ import math
 import pygame
 
 from fpga_sim.session_config import load_session, update_session
-from fpga_sim.ui.components import set_debug_view
+from fpga_sim.ui.components import set_debug_view, set_pwm_display
 from fpga_sim.ui.constants import _ui_scale, get_font
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 from fpga_sim.ui.theme import THEME, THEME_LABELS, THEME_NAMES, current_theme_name, set_theme
@@ -148,6 +148,7 @@ class SettingsDialog:
         self._waveform_rect: pygame.Rect | None = None
         self._memories_rect: pygame.Rect | None = None
         self._autoopen_rect: pygame.Rect | None = None
+        self._pwm_rect: pygame.Rect | None = None
         self._debug_rect: pygame.Rect | None = None
         self._clear_rect: pygame.Rect | None = None
 
@@ -182,6 +183,15 @@ class SettingsDialog:
     def _debug_view(self) -> bool:
         """Whether the U38 debug duty-bar view is on (strict: only a real ``true``)."""
         return self._session.get("debug_view") is True
+
+    def _led_pwm(self) -> bool:
+        """Whether LEDs render PWM brightness (U47).
+
+        Inverted strictness from the rows above: this one defaults to **on**,
+        because PWM is what the simulator has always done, so only an explicit
+        ``false`` turns it off.
+        """
+        return self._session.get("led_pwm") is not False
 
     def _can_cycle_theme(self) -> bool:
         return len(THEME_NAMES) > 1
@@ -248,6 +258,16 @@ class SettingsDialog:
             update_session(waveform_open=not self._waveform_open())
             self._session = load_session()
             return False
+        if self._pwm_rect and self._pwm_rect.collidepoint(pos):
+            # Two effects, one switch: the render mode is a global read at draw
+            # time (like Duty bars), *and* the next analysis drops the U9
+            # integrator from the wrapper -- which is why this row needs #386's
+            # artifact comparison to re-analyze, or it would look inert.
+            enabled = not self._led_pwm()
+            set_pwm_display(enabled)
+            update_session(led_pwm=enabled)
+            self._session = load_session()
+            return False
         if self._debug_rect and self._debug_rect.collidepoint(pos):
             # Apply live (like the theme row): the render mode is a global the
             # LED widgets read at draw time.
@@ -280,6 +300,7 @@ class SettingsDialog:
             ("Waveform", _WAVEFORM_LABELS[self._waveform_mode()], "Change", True),
             ("Memories", "On" if self._waveform_memories() else "Off", "Toggle", True),
             ("Auto-open", "On" if self._waveform_open() else "Off", "Toggle", True),
+            ("LED PWM", "On" if self._led_pwm() else "Off", "Toggle", True),
             ("Duty bars", "On" if self._debug_view() else "Off", "Toggle", True),
             (
                 "Recent files",
@@ -344,6 +365,7 @@ class SettingsDialog:
             self._waveform_rect,
             self._memories_rect,
             self._autoopen_rect,
+            self._pwm_rect,  # must track the `rows` order above -- positional unpack
             self._debug_rect,
             self._clear_rect,
         ) = action_rects

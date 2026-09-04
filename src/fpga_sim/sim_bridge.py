@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any, Literal
 
 from fpga_sim.platform_open import open_with_default_app
+from fpga_sim.session_config import load_session
 from fpga_sim.sim_link import SimLinkHost, send
 
 if TYPE_CHECKING:
@@ -91,18 +92,34 @@ def resolve_duty_algo() -> str:
 
 
 def resolve_duty_mode(mode: DutyMode | None = None) -> DutyMode:
-    """Resolve the duty-measurement mode for a run: env var, else *mode*, else default.
+    """Resolve the duty mode: env var, else *mode*, else the session, else default.
 
     Every wrapper-generating path funnels through here so the wrapper analyzed
     by :func:`analyze_vhdl` and the one elaborated by :func:`_prepare_simulation`
     can never disagree — a mismatch would leave the run reading duty ports that
     the elaborated design does not have.  An unrecognized env value is ignored
     rather than fatal (a typo should not stop a simulation from running).
+
+    The session's ``led_pwm`` preference (U47) is consulted **here**, rather than
+    threaded as an argument from the launcher, precisely to keep that funnel
+    intact: a future wrapper-generating path that forgot the argument would
+    silently disagree with the rest, which is the failure
+    :func:`wrapper_is_stale` exists to make impossible. Env still wins, so a
+    benchmark or CI run pins the mode without touching the user's session, and
+    an explicit *mode* still beats the preference so a caller that means "full"
+    gets it.
     """
     raw = os.environ.get(DUTY_ENV, "").strip().lower()
     if raw in ("off", "color", "full"):
         return raw  # type: ignore[return-value]  # narrowed by the membership test
-    return mode or DEFAULT_DUTY_MODE
+    if mode is not None:
+        return mode
+    # Only ``false`` turns it off; a missing key means PWM, the historical
+    # behavior.  Reading the session is best-effort — load_session() already
+    # swallows a missing or corrupt file and returns {}.
+    if load_session().get("led_pwm") is False:
+        return "off"
+    return DEFAULT_DUTY_MODE
 
 
 @dataclass(frozen=True)

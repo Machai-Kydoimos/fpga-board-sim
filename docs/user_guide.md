@@ -289,9 +289,37 @@ Open it with the **gear button** in the board preview. It can:
 - **reset** the remembered sim speed;
 - toggle **waveform capture** (off / VCD / FST);
 - toggle **Auto-open** of the waveform viewer after a run;
+- toggle **LED PWM** — see [LED PWM and speed](#led-pwm-and-speed) below;
 - toggle **Duty bars** — the [debug duty-bar view](#debug-duty-bar-view), same
   as the in-sim **D** key;
 - **clear** the recent-files list.
+
+### LED PWM and speed
+
+LEDs and 7-segment digits normally render **continuous brightness**, measured
+from the design's real duty cycle — a half-lit LED is a signal that is high half
+the time. Turning **LED PWM** off in the Settings dialog renders them plain
+on/off instead.
+
+It is worth knowing that this is also the biggest **speed** control the
+simulator offers, because measuring duty is not free: it splices an integrator
+into the generated wrapper, once per output channel. The cost therefore scales
+with how many channels a board has, and a many-digit 7-segment display has a
+lot of them (8 per digit):
+
+| Design / board | Speed-up with PWM off |
+|---|---|
+| `counter_7seg` / DE10-Lite (6 digits, 48 segment channels) | **4.7x–5.5x** |
+| `rgb_rainbow` / Arty A7 (16 LED channels) | ~1.1x |
+
+(Measured over several runs on one machine; the spread is background load rather
+than the setting. Your own numbers come from `--benchmark`.)
+
+So on a board with a big display, turning PWM off buys back most of the run
+speed; on a board with a handful of LEDs it changes little. The choice is
+remembered between sessions, and changing it re-analyzes on the next launch
+(the wrapper itself differs). `FPGA_SIM_DUTY=off` pins the same thing for a
+scripted run without touching the saved preference.
 
 ### Themes
 
@@ -339,6 +367,12 @@ capture:
 | `FPGA_SIM_WAVEFORM_OPEN=1` | Auto-open a viewer after the run |
 | `FPGA_SIM_WAVEFORM_VIEWER=<cmd>` | Viewer command template (`{dump}` / `{gtkw}`) |
 | `FPGA_SIM_WAVEFORM_MEMORIES=1` | Also dump nested arrays/memories (the embedded-core RAM/ROM/registers); off by default because arrays add size |
+
+And one for LED rendering:
+
+| Variable | Effect |
+|----------|--------|
+| `FPGA_SIM_DUTY=off\|color\|full` | Duty measurement: `full` (default) renders PWM brightness; `off` renders plain on/off and skips the integrator. Overrides the Settings **LED PWM** row for that run |
 
 ### Session logs
 
