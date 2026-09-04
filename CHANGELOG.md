@@ -70,6 +70,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **The LED halo is drawn by one shared helper** (`_draw_glow`). `LED.draw` and
+  `RGBLED.draw` carried byte-identical copies of the translucent-surface blit —
+  the same duplication that let the SVG renderer drift from the raster one. Pure
+  refactor: verified **pixel-identical across all 285 boards** with mono LEDs,
+  RGB pucks and 7-segment digits all driven to varied levels.
+  - The helper exists to make the halo's radius policy a one-line change, and it
+    is written so that policy **cannot move the LED**: the halo surface is sized
+    from its own radius and blitted at `center - radius`, so it is symmetric
+    about the LED's center by construction and can only grow and shrink
+    concentrically. The body, ring and label take their geometry from `rect`
+    alone and never read the level.
+  - New `tests/test_led_glow.py` pins that end to end — a mono LED's and an RGB
+    puck's ring-and-label bounding box must be identical at every brightness,
+    and the painted halo must stay concentric and circular across four radii and
+    three brightnesses. Verified against three mutants: a level-dependent body
+    radius, an off-center halo blit, and the duplication creeping back.
+
 - **Session-file isolation is now suite-wide** (`tests/conftest.py`). Test
   modules have redirected `SESSION_FILE` since U5, but only the ones building a
   controller or dialog. U47 made that insufficient: with the `led_pwm`
