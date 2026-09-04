@@ -204,6 +204,61 @@ def pwm_display_enabled() -> bool:
     return _PWM_DISPLAY
 
 
+#: Peak alpha of a lit LED's halo, at full brightness.  Scaled by *k*.
+GLOW_ALPHA: int = 50
+
+
+def glow_radius(led_radius: int, k: float) -> int:
+    """Halo radius for an LED of body radius *led_radius* at brightness *k*.
+
+    The one source of truth for the halo's *size*, as ``display_colors()`` is
+    for its color: ``_draw_glow`` and ``generate_board_images``'s SVG path both
+    call this, so the second renderer cannot drift from the first (which is
+    exactly how the two disagreed about ``THEME.led_off`` before #396).
+
+    **The policy: radius is linear in the perceptual brightness.**  Real halos
+    are scattered light -- the CIE disability-glare equations put the veil a
+    bright source lays over the retina at ~1/theta^2, under which the visible
+    glare *area* is proportional to source luminance.  That is the target, but
+    our halo is a flat disc rather than a kernel with tails, and its alpha
+    *already* scales with *k*, so the quantity to hold proportional to luminance
+    is alpha x area, not area::
+
+        alpha . r^2  ~  k . (2.r_led.k)^2  ==  4.r_led^2 . k^3  ==  4.r_led^2 . d
+
+    -- exactly linear in the duty cycle.  "Scale by area" and "scale linearly in
+    k" are therefore the same policy here, once the alpha channel is credited
+    with half the work.  A fixed radius (what this was before) instead holds the
+    halo's light proportional to *perceived* brightness, which is why ten LEDs
+    at 30% duty washed the PCB green from (34,139,34) to (88,120,38): at a 60px
+    pitch a fixed 42px halo still covers the 30px midpoint between neighbors,
+    where 2.r_led.k = 28px clears it.
+
+    Do **not** compose another compressive curve on top: ``k`` is already
+    ``d ** (1/3)`` (:data:`GAMMA` = 3.0), which is *more* compressive than a
+    square root.  A further ``sqrt(k)`` is ``d ** (1/6)`` -- at 30% duty it
+    moves the radius 42 -> 38px, still washing the midpoint; ``k ** 2``
+    overshoots the other way and strips mid-duty LEDs of a halo their bodies
+    still show.
+
+    **Do not floor this at ``led_radius``** either, however tempting: below
+    ``led_radius`` the halo is entirely hidden under the opaque body circle, so
+    a floor looks like it is protecting visibility, but it multiplies the ink at
+    10% duty by 2.5x over the area law above and leaves the midpoint washed at
+    every duty.  There is nothing to protect -- the visible rim is
+    ``r_led.(2k - 1)``, which shrinks *continuously* to zero at k=0.5 (d=0.125)
+    while the alpha is on its own way to zero, so the halo fades out rather than
+    popping.  The only floor is 1px, which keeps a lit LED painting something
+    (``_draw_glow``'s contract) and keeps the scratch surface non-degenerate for
+    a small LED at a low level.
+
+    At k=1 this returns ``2 * led_radius`` exactly -- byte-identical to the
+    fixed radius it replaces, so full-brightness output, and every screenshot
+    taken of it, are unchanged.
+    """
+    return max(1, round(2 * led_radius * max(0.0, min(1.0, k))))
+
+
 def _draw_glow(
     surface: pygame.Surface,
     center: tuple[int, int],
@@ -214,8 +269,11 @@ def _draw_glow(
     """Blit a lit LED's soft halo, centered on *center*.
 
     Shared by :meth:`LED.draw` and :meth:`RGBLED.draw`, which carried
-    byte-identical copies of it.  *k* is the perceptual brightness: it sets the
-    halo's alpha, so a dim LED gets a faint wash rather than the old fixed one.
+    byte-identical copies of it.  *k* is the perceptual brightness: it sets both
+    the halo's alpha and, via :func:`glow_radius`, its size, so a dim LED gets a
+    small faint wash rather than the old full-size fixed one.  Below k=0.5 the
+    halo is smaller than the body and so hidden behind it; that is the intended
+    fade-out, not a case to special-case away -- see :func:`glow_radius`.
 
     **The halo cannot move the LED.**  Its surface is sized from the halo radius
     and blitted at ``center - radius``, so the blit is symmetric about *center*
@@ -223,10 +281,14 @@ def _draw_glow(
     radius policy is used.  The LED's body, ring and label take their geometry
     from ``rect`` alone and never consult the level.  ``test_led_geometry_is_
     brightness_invariant`` pins that end to end.
+
+    Sizing the scratch surface from ``gr`` rather than from a fixed maximum is
+    what makes the shrink *free*: a dim LED allocates and blits a smaller
+    surface, so the cheaper case is also the smaller one.
     """
-    gr = led_radius * 2
+    gr = glow_radius(led_radius, k)
     glow = pygame.Surface((gr * 2, gr * 2), pygame.SRCALPHA)
-    pygame.draw.circle(glow, (*color, round(50 * k)), (gr, gr), gr)
+    pygame.draw.circle(glow, (*color, round(GLOW_ALPHA * k)), (gr, gr), gr)
     surface.blit(glow, (center[0] - gr, center[1] - gr))
 
 

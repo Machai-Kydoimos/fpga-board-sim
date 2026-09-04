@@ -47,6 +47,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A dim LED's halo now shrinks with it, instead of washing the whole board.**
+  The halo's radius was fixed at twice the LED body whatever the brightness —
+  only its alpha tracked duty — so on a DE10-Lite, whose 21px LEDs sit on a 60px
+  pitch, a 42px halo reached across the 30px midpoint between neighbors at
+  *every* level. A row of ten LEDs at 30% duty turned the PCB green from
+  `(34,139,34)` to `(88,120,38)`; it now measures `(34,139,34)` exactly, while
+  full brightness is byte-identical to before.
+  - The radius is **linear in the perceptual brightness `k`**, which is the
+    *area* law rather than a coincidence: the alpha already scales with `k`, so
+    `alpha x area ~ k.(2.r.k)^2 == k^3`, and `k` is `duty ** (1/3)` — the halo's
+    painted light comes out exactly proportional to the LED's real duty cycle.
+    That mirrors how scattered light actually behaves (the CIE disability-glare
+    equations put the veil a bright source lays on the retina at ~`1/theta^2`,
+    under which visible glare *area* is proportional to source luminance).
+  - **No second compressive curve, and no floor at the body radius.** `k` is
+    already `duty ** (1/3)`, so a further `sqrt` would leave the midpoint washed;
+    and a floor — which looks like it protects a halo that has shrunk behind the
+    opaque LED body — multiplies the painted light at 10% duty by 2.5x over the
+    area law and re-washes the board at every level. Both wrong policies are
+    pinned by their own regression tests.
+  - Free where nothing changes and cheaper where it does: identical draw time at
+    full brightness (+0.1%), **7–8% faster** on a whole-board draw at low duty,
+    because the halo's scratch surface is sized from the radius.
+  - `generate-board-images`' SVG path takes the radius from the same
+    `glow_radius()` the renderer uses, rather than restating `radius * 2` — the
+    drift that made the two renderers disagree before #396 — and its parity test
+    is now parametrized over brightness.
+
 - **`generate-board-images`' SVG output now matches its own PNG.** The SVG
   renderer hardcoded `THEME.led_off` for every LED and `THEME.seg_off` for every
   segment, so it could not show a lit board — but the more immediate problem was
