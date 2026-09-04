@@ -38,7 +38,7 @@ src/fpga_sim/              Installable Python package (src layout)
   session_config.py        Session persistence, merge-on-write (~/.fpga_simulator/session.json)
   generate_board_images.py Renders static board previews (used for documentation/thumbnails)
   ui/                      pygame UI subpackage
-    constants.py           Base neutral colors, get_font cache, _ui_scale helper
+    constants.py           Base neutral colors, get_font + render_text caches, _ui_scale helper
     theme.py               Theme dataclass + THEME instance — the semantic color roles
     components.py          UIComponent base + FPGAChip, LED, Switch, Button — low-level board components
     board_selector.py      Board picker screen
