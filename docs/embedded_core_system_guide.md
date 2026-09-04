@@ -531,7 +531,7 @@ detector (any `sw`/`btn` edge, caught in hardware — the "additional circuitry"
 needs). Each source has an enable bit (**IER**, `$E011`) and a flag bit (**IFR**, `$E012`,
 write-1-to-clear); `irq` is the OR of enabled+pending flags, and the ISR **reads IFR to learn which
 source fired** and dispatches — the real "which peripheral interrupted?" pattern (like a disk
-controller signalling "data ready"). The adapter routes the normalized active-high `cpu_irq_req` to
+controller signaling "data ready"). The adapter routes the normalized active-high `cpu_irq_req` to
 the core's line (`not cpu_irq_req` for both the 6502's and the Z80's active-low inputs). Firmware:
 enable the source in the peripheral (IER) *and* enable the CPU (`CLI` / `EI`), then ack in the ISR.
 

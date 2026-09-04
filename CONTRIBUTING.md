@@ -232,6 +232,11 @@ Three conventions here; only the last one is enforced automatically:
     `docs/port_convention_sources/` is a **verbatim string matched against the
     fetched source**, so translating one would break verify-or-omit. Keep the
     original there and put the translation in the row's `notes`.
+  - Enforced repo-wide by `tests/test_us_spelling.py`, which sweeps every tracked
+    file for an exact-word list of British spellings. Exemptions are registered
+    as **line text**, not whole files, so a document that quotes one as a
+    counterexample (this one) stays covered everywhere else. `CHANGELOG.md` and
+    the two citation registries are the only whole-file exemptions.
 - **VHDL files must be plain ASCII, or UTF-8 without a BOM**, and free of
   decorative Unicode. Some simulator/toolchain front-ends choke on a byte-order
   mark or stray non-ASCII bytes in HDL source, so the launcher's
@@ -727,6 +732,6 @@ The architecture reference now lives in
 [docs/architecture.md](docs/architecture.md) — the single-window process model (U34),
 project layout, board loading, the pygame UI, the simulation pipeline, the simulator
 backends, and how board-native VHDL is matched and adapted. It also carries the
-contributor notes that used to sit here: `SimExit` sim → launcher signalling,
+contributor notes that used to sit here: `SimExit` sim → launcher signaling,
 `SimPanel` scaling, hover overlays, the sync-script parsers, and session-state
 ownership.

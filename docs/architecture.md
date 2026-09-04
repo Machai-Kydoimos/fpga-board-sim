@@ -282,7 +282,7 @@ costs multiples, which is why measurement is also a per-run policy:
 `FPGA_SIM_DUTY` selects `full` (default — integrator spliced), `color` or `off`
 (no integrator at all; the generated wrapper is byte-identical to the pre-U9 one).
 
-**Sim → launcher signalling.** The child streams `state` messages (led / seg / sim
+**Sim → launcher signaling.** The child streams `state` messages (led / seg / sim
 progress) and a final `bye` over the link; `SimulationScreen.run()` returns a `SimExit`
 describing *why the run ended* — **[Back to Boards]** / **[Change VHDL]** / **[Reload
 VHDL]** (toolbar), `STOPPED` (ESC / **[■ Stop]**), or `QUIT` (window X → quit the app).

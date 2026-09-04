@@ -11,7 +11,7 @@ pygame rendering is **not** thread-safe, so the contract is strict: the worker
 callable must not touch pygame (``analyze_vhdl`` only spawns subprocesses and
 reads files); all drawing stays here on the calling thread.
 
-Modelled on :class:`~fpga_sim.ui.error_dialog.ErrorDialog`'s snapshot → dim →
+Modeled on :class:`~fpga_sim.ui.error_dialog.ErrorDialog`'s snapshot → dim →
 centered-panel structure, minus the event-driven controls — there is nothing to
 click, and the overlay lives exactly as long as the work does.
 """

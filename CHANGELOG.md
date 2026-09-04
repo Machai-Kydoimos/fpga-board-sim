@@ -95,6 +95,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     checked. Anything unreadable — a missing wrapper, a deleted design file, a
     vanished work dir — reports stale, failing toward re-analysis.
 
+### Internal
+
+- **The tree is now checked for US spelling**
+  ([#387](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/387)).
+  CONTRIBUTING has required US English since the project started with nothing
+  enforcing it, so 24 British spellings had accumulated across 20 files — all
+  prose in comments, docstrings and docs, no identifier and no behavior. Nine
+  were one word in `cpu_ram.vhd.tmpl` copied into the eight generated
+  embedded-core designs, fixed at the template and regenerated. The new
+  `tests/test_us_spelling.py` sweeps every tracked file; it is suite-level
+  rather than a pre-commit hook because hooks see only staged files, its word
+  list is exact words rather than prefixes (`analysis` / `analyses` are correct
+  US English), and its exemptions are registered as line text rather than whole
+  files — blanket-skipping `CONTRIBUTING.md` for its own counterexamples would
+  have hidden a real violation further down the same file.
+
 ## [0.21.0] - 2026-08-25
 
 ### Added

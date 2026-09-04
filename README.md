@@ -96,7 +96,7 @@ uv run pytest
 3. **Preview** the board — click switches, hold buttons, hover any component for its
    net name and pin.
 4. **Load VHDL File** and pick [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), then click
-   **Start Simulation** (it stays greyed until a file is loaded).
+   **Start Simulation** (it stays grayed until a file is loaded).
 5. **Interact:** **BTN0** reverses the snake, **BTN1** lights every segment, **SW0**
    speeds it up — exactly as in the demo above.
 
