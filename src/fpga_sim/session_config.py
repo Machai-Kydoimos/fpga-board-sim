@@ -30,6 +30,13 @@ Schema (every key is optional; readers fall back to defaults):
 - ``waveform_open`` — ``true`` / ``false``: after a capture run, launch a viewer
   on the dump (the Settings dialog's Auto-open row writes it; the launcher passes
   it to the sim run subprocess) (U29)
+- ``led_pwm`` — ``true`` / ``false``: render LEDs with continuous PWM
+  brightness, or as plain on/off (U47).  **Defaults to true**, unlike the other
+  display toggles, because PWM is what the simulator has always done — so the
+  key is only ever written to turn it off.  It is more than a display
+  preference: turning it off also drops the U9 duty integrator from the
+  generated wrapper (see :func:`~fpga_sim.sim_bridge.resolve_duty_mode`), worth
+  ~4.8x throughput on a 6-digit 7-segment board
 - ``recent`` — the last :data:`RECENT_MAX` (board, VHDL) picks, newest first,
   as ``{"board_class", "board_source", "vhdl_path"}`` dicts (U18 surfaces
   them in the file picker)

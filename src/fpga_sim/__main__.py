@@ -37,7 +37,7 @@ from fpga_sim.sim_bridge import (
     discover_simulators,
 )
 from fpga_sim.ui import FPGABoard
-from fpga_sim.ui.components import set_debug_view
+from fpga_sim.ui.components import set_debug_view, set_pwm_display
 from fpga_sim.ui.constants import get_font
 from fpga_sim.ui.theme import THEME_NAMES, set_theme
 
@@ -500,6 +500,15 @@ def _restore_session_debug_view(session: dict[str, Any]) -> None:
     set_debug_view(session.get("debug_view") is True)
 
 
+def _restore_session_pwm_display(session: dict[str, Any]) -> None:
+    """Apply the saved U47 LED PWM display mode.
+
+    Inverted strictness from the toggles above: PWM is the historical behavior,
+    so only an explicit ``false`` turns it off.
+    """
+    set_pwm_display(session.get("led_pwm") is not False)
+
+
 def _initial_window_size(session: dict[str, Any], desktop: tuple[int, int]) -> tuple[int, int]:
     """Pick the launcher window size: the saved one, else ~80% of the desktop.
 
@@ -612,6 +621,16 @@ def main() -> None:
     # keeps the launcher usable with nothing installed — the missing-simulator
     # error then surfaces at analysis time, as before.
     discovered = discover_simulators(_session_extra_sims()) or [_fallback_ghdl()]
+
+    # The LED PWM preference (U47) is restored *before* the benchmark branch,
+    # unlike the theme and debug-view ones below.  It has to be: it already
+    # reaches the benchmark's wrapper through `resolve_duty_mode`, so leaving
+    # the display half behind would render `--screenshots` frames with PWM
+    # brightness for a run whose wrapper measured no duty at all — the capture
+    # would show something the product never displays.  Theme and debug view
+    # deliberately stay launcher-only, so the committed asset pipeline keeps
+    # capturing in the default look whatever a developer has saved.
+    _restore_session_pwm_display(load_session())
 
     if args.benchmark is not None:
         sys.exit(_run_benchmark(args, discovered))

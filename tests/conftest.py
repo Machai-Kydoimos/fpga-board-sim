@@ -45,6 +45,24 @@ def _isolate_waveform_env(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv(var, raising=False)
 
 
+@pytest.fixture(autouse=True)
+def _isolate_session_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Point ``SESSION_FILE`` at a per-test temp path, for the whole suite.
+
+    Individual test modules have redirected it since U5, but only the ones that
+    build a controller or a dialog.  U47 made that insufficient: the session's
+    ``led_pwm`` preference is now read inside
+    :func:`~fpga_sim.sim_bridge.resolve_duty_mode`, so *any* test that generates
+    a wrapper would otherwise resolve its duty mode from the developer's real
+    ``~/.fpga_simulator/session.json`` -- green or red depending on whose
+    machine it ran on.  Same reasoning as ``_isolate_waveform_env`` above, for
+    the file rather than the environment.
+
+    Module-level redirects still work: they run after this one and win.
+    """
+    monkeypatch.setattr("fpga_sim.session_config.SESSION_FILE", tmp_path / "session.json")
+
+
 @pytest.fixture(scope="session")
 def headless_pygame() -> Iterator[ModuleType]:
     """Initialize pygame once per session with the dummy SDL drivers.
@@ -156,6 +174,20 @@ def restore_debug_view() -> Iterator[None]:
 
     yield
     set_debug_view(False)
+
+
+@pytest.fixture
+def restore_pwm_display() -> Iterator[None]:
+    """Reset the U47 LED PWM display global after a test that toggles it.
+
+    Same reasoning as ``restore_debug_view``: it is a module-level render mode,
+    so leaking "off" would silently un-brighten later brightness tests.  Note
+    its default is **on**, unlike the debug view's.
+    """
+    from fpga_sim.ui.components import set_pwm_display
+
+    yield
+    set_pwm_display(True)
 
 
 def _7seg_board() -> BoardDef:
