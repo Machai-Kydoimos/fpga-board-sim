@@ -402,7 +402,7 @@ class ScreenController:
         """Pick a VHDL file and validate it (encoding → contract → analysis).
 
         Loops on [Try Another File]; a validation dialog's [Back to Boards]
-        bails out to the selector; cancelling the picker returns to the
+        bails out to the selector; canceling the picker returns to the
         preview with the previously-loaded VHDL untouched.
         """
         assert self.board is not None
@@ -428,7 +428,7 @@ class ScreenController:
             picked = picker.run(self.clock)
 
             if picked is None:
-                # Cancelled → back to the preview, keeping the existing VHDL.
+                # Canceled → back to the preview, keeping the existing VHDL.
                 return NextScreen.PREVIEW
 
             # Stage 1+2: encoding and contract checks; stage 3: analysis.

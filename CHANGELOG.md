@@ -67,6 +67,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   combination — `--benchmark --screenshots --no-ui`, asking to capture rendered
   frames while suppressing rendering — exits 2 with a one-line reason.
 
+### Fixed
+
+- **US-spelling regressions across the tree, and a guard so they stay fixed**
+  ([#387](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/387)).
+  CONTRIBUTING has required US English since the project started, but nothing
+  enforced it, so the tree drifted to **24 British spellings across 20 files** —
+  `initialised` x9, `signalling` x5, `greyed` x4, plus `behaviour`, `analysed`,
+  `cancelled`, `centre`, `colour`, `modelled` and `standardise`. All are prose
+  in comments, docstrings and docs; no identifier or behavior changed.
+  - Nine of them were **one word in one template**
+    (`scripts/embedded_core/templates/cpu_ram.vhd.tmpl`) copied into the eight
+    generated `hdl/{mx65,t80}_*.vhd` designs, so the fix is the template plus
+    `regen_embedded_cores.py --write`. The regen tool flagged all eight as
+    drifted before the rewrite and clean after it, which is also the proof that
+    the template really is their source.
+  - New suite-level guard `tests/test_us_spelling.py`. **Suite-level, not a
+    pre-commit hook**, per the #348 lesson: hooks fire only on staged files, so
+    a hook would miss a British spelling arriving in a file the committer never
+    staged — a regenerated design, for instance.
+  - The word list is **exact words, never prefixes**: `analysis` and `analyses`
+    are correct US English (the tree uses `analyses` three times), and a naive
+    `analys*` pattern reports about 19 false positives in `controller.py` alone.
+  - Exceptions are registered as **line text rather than whole files**.
+    Blanket-skipping `CONTRIBUTING.md` because it quotes `colour` as a
+    counterexample would have hidden a real `signalling` further down that same
+    file — which is what the first survey did. `CHANGELOG.md` is exempt (release
+    history is never rewritten), as are the citation registries under
+    `docs/port_convention_sources/` and `docs/led_color_sources/`, whose
+    `evidence[]` strings must match a fetched source byte-for-byte —
+    CONTRIBUTING's one declared exception to the rule.
+
 ## [0.21.0] - 2026-08-25
 
 ### Added

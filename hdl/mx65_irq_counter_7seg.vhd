@@ -1477,7 +1477,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 -- RAM: combinational read, registered write (latched on the clock edge when the
--- CPU drives rw='0').  Array initialised to zero so a read-before-write returns
+-- CPU drives rw='0').  Array initialized to zero so a read-before-write returns
 -- x"00" rather than 'U' (sim-only metavalue hygiene).
 entity cpu_ram is
   generic (RAM_BITS : positive := 11);

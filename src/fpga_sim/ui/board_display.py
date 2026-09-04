@@ -7,11 +7,11 @@ Footer buttons
 --------------
 * [Select Board]     — always enabled; ESC also triggers this action.
 * [Load VHDL File]   — always enabled; opens the VHDL file picker.
-* [Start Simulation] — greyed out until a VHDL file has been validated and
+* [Start Simulation] — grayed out until a VHDL file has been validated and
                        loaded via the [Load VHDL File] button.
 * [SIM: …]          — simulator toggle: cycles the installed simulators
                        (each shown by its short label, e.g. ``SIM: GHDL-JIT``);
-                       greyed when only one is installed.
+                       grayed when only one is installed.
 
 The VHDL filename is shown above the buttons once a file is loaded.
 

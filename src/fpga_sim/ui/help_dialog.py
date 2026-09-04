@@ -1,6 +1,6 @@
 """HelpDialog: modal help / about overlay (F1 · ``?`` · the ``(?)`` button).
 
-A single blocking overlay — modelled on :class:`~fpga_sim.ui.error_dialog.ErrorDialog`'s
+A single blocking overlay — modeled on :class:`~fpga_sim.ui.error_dialog.ErrorDialog`'s
 snapshot-dim-centered-panel structure — that teaches the workflow, lists the
 keyboard shortcuts, and summarizes the VHDL design contract.  It runs its own
 event loop so no keystroke leaks into the screen beneath it.

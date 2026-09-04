@@ -697,14 +697,14 @@ class Button(UIComponent):
 
     #: Corner padlock size as a fraction of the button, and its inset.  The
     #: icon annotates the widget from a corner rather than filling it, leaving
-    #: the centre for the key badge.
+    #: the center for the key badge.
     _LATCH_ICON_SCALE = 0.34
     _LATCH_ICON_PAD = 4
 
     def _draw_latch_marker(self, surface: pygame.Surface) -> None:
         """Mark the button as latched: a corner padlock, else an inset ring.
 
-        Colour alone would not carry the state -- it has to survive a
+        Color alone would not carry the state -- it has to survive a
         screenshot, the reduced high-contrast palette, and a viewer who cannot
         separate the two hues.  The padlock says *locked* rather than merely
         *different*, so it is preferred; the ring is the fallback for whenever
