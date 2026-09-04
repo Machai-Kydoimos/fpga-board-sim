@@ -2,7 +2,8 @@
 
 **Status:** **APPROVED 2026-08-05** (Rick; drafted 2026-07-27, committed 2026-07-28 — the
 architecture decisions below were locked 2026-07-27). Queued **after the U44 multi-input arc** →
-target release **v0.22.0**. Roadmap card filed 2026-08-05 (`improvement_roadmap.md` → Current
+target release **v0.23.0** (was v0.22.0; that number went to the 2026-09-04 screenshots +
+preview-input-carry release). Roadmap card filed 2026-08-05 (`improvement_roadmap.md` → Current
 focus + Part 1 / Tier 4). Not started; milestone and issues are opened just-in-time at arc
 start. The phase ledger in §13 is the status source of truth once execution begins.
 
@@ -585,9 +586,9 @@ guardrail.
 | 7 | Soft-core firmware drives the LCD | M | — | not started |
 | 8 | HPS-side device as attachable module | XS–S | — | not started |
 
-Comparable to the U21 arc (9 phases) and the LED-complete arc. Target release **v0.22.0**
-(updated 2026-08-05: v0.20.0 shipped 2026-07-28, and the U44 multi-input arc → v0.21.0 precedes
-this one in the queue).
+Comparable to the U21 arc (9 phases) and the LED-complete arc. Target release **v0.23.0**
+(updated 2026-09-04: U44 → v0.21.0 and the screenshots + preview-input-carry release → v0.22.0
+both precede this one; it is now the live next arc).
 
 | ID | Scope | Trigger |
 |---|---|---|
