@@ -122,7 +122,7 @@ P25–P30 ([u39_peripherals_plan.md](u39_peripherals_plan.md) §13); U45 + P31�
 
 ## Context
 
-The simulator is mature: ~13,100 LOC across 34 Python modules (≈15,000 incl. `sim/`), 83 test files (2350 tests), multi-platform CI (Linux x64/arm64 · Windows · macOS arm64), two simulator engines surfaced as four selectable backends (GHDL mcode/LLVM/JIT + NVC, U35), 7-segment support including physical scan displays shipped, embedded CPU core systems (6502/Z80) shipped, 285 board definitions from four sources, three UI themes with exact duty-cycle brightness and RGB rendering, performance profiled and tuned (PR #31 / U25 / U34), **v0.21.0 released (2026-08-25)** — the input release. *(Counts refreshed 2026-08-31.)*
+The simulator is mature: ~13,300 LOC across 34 Python modules (≈15,100 incl. `sim/`), 83 test files (2350 tests), multi-platform CI (Linux x64/arm64 · Windows · macOS arm64), two simulator engines surfaced as four selectable backends (GHDL mcode/LLVM/JIT + NVC, U35), 7-segment support including physical scan displays shipped, embedded CPU core systems (6502/Z80) shipped, 285 board definitions from four sources, three UI themes with exact duty-cycle brightness and RGB rendering, performance profiled and tuned (PR #31 / U25 / U34), **v0.22.0 released (2026-09-04)** — the capture & carry release. *(Counts refreshed 2026-09-04.)*
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
