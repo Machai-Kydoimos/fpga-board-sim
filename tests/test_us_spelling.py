@@ -108,6 +108,11 @@ _EXEMPT_FILES: dict[str, str] = {
     # A record of what shipped, quoted as it was written; correcting it would
     # rewrite history rather than fix a document anyone reads for style.
     "CHANGELOG.md": "release history is never rewritten",
+    # The one file that must contain the words it bans: they are its word list
+    # and its fixtures.  Found by CI rather than locally, because `git ls-files`
+    # cannot see a new test file until it is committed -- so the first local run
+    # of a guard like this is green for a reason that expires at `git add`.
+    "tests/test_us_spelling.py": "the guard's own word list and fixtures",
 }
 
 #: Directories holding verbatim citation strings matched byte-for-byte against
@@ -219,6 +224,19 @@ def test_exempt_line_must_match_exactly():
     assert findings_in(exempt.replace("Use", "Prefer"), "CONTRIBUTING.md")
     # ...and it never applied to any other file.
     assert findings_in(exempt, "README.md")
+
+
+def test_the_guard_exempts_itself_for_a_real_reason():
+    """The self-exemption is not a hole: this file *must* carry British spellings.
+
+    If the word list and fixtures ever moved out of here, the exemption would
+    start hiding real prose instead of the data it was written for.
+    """
+    own = Path(__file__).read_text(encoding="utf-8")
+    assert findings_in(own, "elsewhere.py"), (
+        "no British spellings left in this file -- the self-exemption is now a hole"
+    )
+    assert "tests/test_us_spelling.py" in _EXEMPT_FILES
 
 
 def test_word_list_is_sorted_and_unique():

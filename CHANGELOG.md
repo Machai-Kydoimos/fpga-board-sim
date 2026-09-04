@@ -96,7 +96,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     history is never rewritten), as are the citation registries under
     `docs/port_convention_sources/` and `docs/led_color_sources/`, whose
     `evidence[]` strings must match a fetched source byte-for-byte —
-    CONTRIBUTING's one declared exception to the rule.
+    CONTRIBUTING's one declared exception to the rule — and the guard's own
+    file, which must contain the words it bans. A test asserts that last
+    exemption still has a reason to exist, so it cannot quietly become a hole.
 
 ## [0.21.0] - 2026-08-25
 
