@@ -44,6 +44,7 @@ from fpga_sim.sim_bridge import (
     finish_waveform,
     resolve_simulator_arg,
     start_simulation,
+    wrapper_is_stale,
 )
 from fpga_sim.ui import (
     BoardInputs,
@@ -163,15 +164,39 @@ class SessionState:
     # picking a different board clears it — see on_board_selected.
     inputs: BoardInputs = field(default_factory=BoardInputs)
 
-    def needs_reanalysis(self) -> bool:
-        """Report whether ``work_dir`` is stale for the current simulator install.
+    def needs_reanalysis(self, board: BoardDef) -> bool:
+        """Report whether ``work_dir`` is stale for the launch about to happen.
 
-        Keys on both engine and resolved path: switching between two GHDL code
-        generators (same engine, different binary) must re-analyze because a
-        compiled backend's ``work_dir`` executable is backend-specific.
+        Two independent reasons, either of which forces re-analysis:
+
+        * **The simulator install changed.**  Keys on both engine and resolved
+          path: switching between two GHDL code generators (same engine,
+          different binary) must re-analyze because a compiled backend's
+          ``work_dir`` executable is backend-specific.
+        * **The wrapper would come out different.**  ``sim_wrapper.vhd`` is a
+          deterministic function of the toplevel, *board*, the native match,
+          the design's ``seg`` / ``NUM_RGB_LEDS`` declarations and the U9 duty
+          mode — so rather than re-listing those here (where each new one is a
+          thing someone must remember to add), re-render the wrapper and diff
+          it against the one in ``work_dir``.  See
+          :func:`~fpga_sim.sim_bridge.wrapper_is_stale` (#386).
+
+        The board is passed in rather than read from state because a
+        ``SessionState`` does not own one: the controller holds the live
+        ``BoardDef``, and the wrapper is generated against *that*.
         """
         w = self.work_dir_sim
-        return w is None or (w.engine, w.path) != (self.sim.engine, self.sim.path)
+        if w is None or (w.engine, w.path) != (self.sim.engine, self.sim.path):
+            return True
+        if self.work_dir is None or self.vhdl_path is None:
+            return True
+        return wrapper_is_stale(
+            self.work_dir,
+            Path(self.vhdl_path).stem,
+            vhdl_path=self.vhdl_path,
+            board_def=board,
+            match=self.convention,
+        )
 
     def clear_analysis(self) -> None:
         """Drop the analysis products so the next launch re-analyzes."""
@@ -544,7 +569,7 @@ class ScreenController:
 
         # Re-analyze if the work dir is missing / from a different simulator —
         # the same guard (and mandatory contract re-check) as on_simulate.
-        if s.needs_reanalysis():
+        if s.needs_reanalysis(board):
             example = example_vhdl_for(board)
             res = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
             s.convention = res.match

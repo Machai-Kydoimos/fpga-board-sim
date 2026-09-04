@@ -67,6 +67,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   combination — `--benchmark --screenshots --no-ui`, asking to capture rendered
   frames while suppressing rendering — exits 2 with a one-line reason.
 
+### Fixed
+
+- **A stale `sim_wrapper.vhd` can no longer be re-run after its inputs change**
+  ([#386](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/386)).
+  `SessionState.needs_reanalysis()` decided a work dir was fresh by comparing
+  **the simulator engine and path only**, but the work dir's validity depends on
+  everything `_generate_wrapper()` consumes: the toplevel, the board, the
+  board-native match, whether the design declares `seg` / `NUM_RGB_LEDS`, and
+  the U9 duty mode and integrator algorithm. Every new wrapper-affecting input
+  was one more thing somebody had to remember to add there — a trap by
+  construction rather than a fact about the problem.
+  - It now **compares the artifact, not the inputs**: the wrapper is re-rendered
+    from today's inputs and diffed against the one in the work dir, which is
+    exact for any input including ones nobody has invented yet, and cannot drift
+    because the thing compared is the thing used. The simulator check stays
+    alongside it — a compiled work dir is backend-specific even when the VHDL is
+    identical.
+  - Latent until now: with no in-session way to change the duty mode, the gap
+    was unreachable, and the board input is separately covered by `on_back()`
+    clearing the analysis on the route to the selector. It becomes reachable the
+    moment a Settings row can change a wrapper input mid-session
+    ([#385](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/385)),
+    where the symptom would have been a setting that silently does nothing.
+  - `_generate_wrapper()` is now a thin writer over a pure `_render_wrapper()`,
+    so the same text can be produced without clobbering the work dir being
+    checked. Anything unreadable — a missing wrapper, a deleted design file, a
+    vanished work dir — reports stale, failing toward re-analysis.
+
 ## [0.21.0] - 2026-08-25
 
 ### Added
