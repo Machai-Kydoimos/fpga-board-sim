@@ -23,46 +23,54 @@ decided. Update it when an arc starts, ships, or changes order.*
 > why card IDs were being reserved by cross-references between plan docs. This rule and the
 > ID-allocation note below close that gap.)
 
-### Now — Docs & Assets round 2, PRs 1–2 → then peripherals
+### Now — U39–U41 board peripherals
 
-**U44 multi-input shipped 2026-08-25** (six PRs, milestone closed, #353 fixed) and is queued for
-release as **v0.21.0, "the input release"** — see the ✅ card in Part 1 / Tier 2 and the full
-record in [roadmap_delivered.md](roadmap_delivered.md). Next up is the Docs & Assets round-2
-split described below.
+**U44 multi-input shipped 2026-08-25** and was released as **v0.21.0, "the input release"** —
+see the ✅ card in Part 1 / Tier 2 and the full record in
+[roadmap_delivered.md](roadmap_delivered.md). Its follow-on **U45** ✅ merged 2026-08-25, and
+**Docs & Assets round 2 PRs 1–2** ✅ both merged (2026-08-25 / 2026-08-31), which clears the
+early half of the queue. **v0.22.0** cuts those (`--screenshots` + the preview-input carry)
+2026-09-04, so the peripherals arc now targets **v0.23.0** and D16 moves to **v0.24.0**.
+
+Next up is the peripherals arc itself — the plan is approved and unstarted; open its milestone
+and issues at arc start.
 
 ### Next — in order
 
-1. **Docs & Assets round 2, PRs 1–2 only** ([plan](docs_assets_improvement_plan_v2.md)) — the
-   count-drift fix + guard test, and `--screenshots` on the benchmark path
-   ([#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129)). Both small and
-   independent. PR 2 is also the peripherals arc's Phase-5 visual-review enabler.
-2. **U39–U41 board peripherals** → v0.22.0 ([plan](u39_peripherals_plan.md)) — plan **approved
+1. ~~**Docs & Assets round 2, PRs 1–2 only**~~ ✅ **both done** — the count-drift fix + guard
+   test ([#382](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/382), 2026-08-25) and
+   `--screenshots` on the benchmark path
+   ([#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129) →
+   [#389](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/389), 2026-08-31). PR 2 is
+   also the peripherals arc's Phase-5 visual-review enabler.
+2. **U39–U41 board peripherals** → v0.23.0 ([plan](u39_peripherals_plan.md)) — plan **approved
    2026-08-05** (its architecture decisions were locked 2026-07-27). Full card: U39–U41 in
-   Part 1 / Tier 4.
+   Part 1 / Tier 4. **The live next item.**
 3. **Docs & Assets round 2, PRs 3–6** — one asset refresh that captures U44 *and* the
    peripherals ("shine with the latest" once, not twice); then make the
    [#354](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/354) GHDL-Cosim offer on top
    of the refreshed docs. Decisions resolved 2026-08-05: **A2 · B as recommended (RGB mixing +
    scan display + PWM brightness → README; themes + debug duty bars → user-guide stills) · C
    (re-capture the same hero storyboard)**.
-4. **D7 → D16 sandbox** → v0.23.0, "the trust release" — priority raised by the 2026-07-30 NVC
+4. **D7 → D16 sandbox** → v0.24.0, "the trust release" — priority raised by the 2026-07-30 NVC
    wontfix (see the D16 card in Part 2 / Tier 2); the interim README/user-guide warning shipped
    2026-08-05.
 
-**Between-arc filler:** the Tier-3 usability sweep — U14 pause key · U16 minimum window size ·
-U18 recent files · U19 metrics toggle. **Later:** U20 Verilog (the headline candidate once this
+**Between-arc filler:** U47 LED PWM toggle (unblocked by #386, and a measured ~4.8x throughput
+lever on many-digit 7-seg boards) · the Tier-3 usability sweep — U14 pause key · U16 minimum
+window size · U18 recent files · U19 metrics toggle. **Later:** U20 Verilog (the headline candidate once this
 queue clears) · U8 splash · U27 user JSON themes · U46 retro display skin (unscheduled,
 mood-driven) · Icebox items as their triggers fire.
 
 ### Plan documents index
 
-The three live plans, then executed history (each file carries its own detailed status header).
+The two live plans, then executed history (each file carries its own detailed status header).
 `u25_ghdl_perf_profile.md` is a measurement report, not a plan.
 
 | Plan document | Status |
 |---|---|
-| [u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md) | **LIVE — active arc**; decisions resolved 2026-08-05 → v0.21.0 |
-| [u39_peripherals_plan.md](u39_peripherals_plan.md) | **LIVE — approved 2026-08-05**; queued second → v0.22.0 |
+| [u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md) | executed → v0.21.0 |
+| [u39_peripherals_plan.md](u39_peripherals_plan.md) | **LIVE — approved 2026-08-05**; the live next arc → v0.23.0 |
 | [docs_assets_improvement_plan_v2.md](docs_assets_improvement_plan_v2.md) | **LIVE — decisions resolved 2026-08-05**; split execution: PRs 1–2 early, PRs 3–6 after the peripherals arc |
 | [u22_7seg_scan_plan.md](u22_7seg_scan_plan.md) | executed → v0.19.0 |
 | [u9_led_complete_plan.md](u9_led_complete_plan.md) | executed → v0.17.0 + v0.18.0 |
@@ -77,10 +85,20 @@ The three live plans, then executed history (each file carries its own detailed 
 
 ### ID allocation
 
-**Next free: U47 · D17 · P34.** (U45 and P31–P33 were filed 2026-08-25 at U44's closeout; U46 was filed 2026-09-01 as the retro display skin.) Reserved by the live plans, to be filed as full cards / Icebox
+**Next free: U48 · D17 · P34.** (U45 and P31–P33 were filed 2026-08-25 at U44's closeout; U46 was filed 2026-09-01 as the retro display skin; U47 was filed 2026-09-04 as the LED PWM display toggle, [#385](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/385).) Reserved by the live plans, to be filed as full cards / Icebox
 rows at each arc's closeout (until then the plan doc is their source of truth): U42/U43 +
 P25–P30 ([u39_peripherals_plan.md](u39_peripherals_plan.md) §13); U45 + P31–P33
 ([u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md) §9).
+
+> **Corollary (2026-09-04): an ID is taken the moment it is *used* anywhere — an issue
+> title counts.** U46 was allocated twice: issue
+> [#385](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/385) claimed it on
+> 2026-08-31, and the retro-skin card took it again on 2026-09-01, because the claim
+> lived only in the issue and this note never learned of it. #385 is renumbered **U47**:
+> the roadmap card is already cross-referenced from four critical-files rows and the
+> new-files line, so it is the cheaper of the two to leave in place. The standing rule
+> above gates *execution* on having a card; this one gates the *number* on being written
+> down here — record it when you use it, not at the arc's closeout.
 
 ### Loose threads
 
@@ -337,6 +355,46 @@ This document inventories all viable improvements and ranks them by impact.
   **pixel-identical** (the established byte-diff check); `--benchmark` shows no regression with the
   skin active.
 
+#### U47. LED PWM display toggle — plain on/off LEDs, and a throughput lever
+
+- **Status:** filed 2026-09-04 from
+  [#385](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/385) (renumbered from U46,
+  which the retro-skin card took). Effort **S–M**. Unblocked by
+  [#386](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/386) ✅.
+- **Why:** two reasons, and the second is the stronger one. Some users simply want plain on/off
+  LEDs rather than PWM brightness emulation. But duty measurement is also the single largest
+  throughput lever the user can pull — measured, reproducible:
+
+  | Design / board | `full` | `off` | |
+  |---|---|---|---|
+  | `counter_7seg` / DE10-Lite (6 digits, 48 seg channels) | 0.00142x | 0.00714x | **~4.8x faster** |
+  | `rgb_rainbow` / Arty A7 (16 LED channels) | 0.000529x | 0.000580x | ~1.1x |
+
+  The cost scales with channel count, so a many-digit 7-segment board pays roughly 80% of its
+  throughput for the integrator — and today there is no way to decline that from the GUI.
+- **What:** a **two-state** Settings row (`LED PWM: On / Off`), not three. `sim_bridge` already has
+  `DutyMode = "off" | "color" | "full"` with a `FPGA_SIM_DUTY` override, and `_apply_state`
+  already falls back to binary bits when `led_duty` is absent, so **no new render path is needed**.
+  - **`"off"` and `"color"` are behaviorally identical** — both take the `mode != "full"` branch in
+    `_duty_channels` and the `else "led"` branch for `led_sig`, and nothing else in the tree reads
+    the mode. Three names, two behaviors: keep `"color"` as an env-only synonym and say so in the
+    `DutyMode` comment rather than offering a third radio button that does nothing.
+  - **Read the flag at the source.** In `_apply_state`, when PWM display is off take the binary
+    bits and return them *unsmoothed*. Thresholding the POV EMA instead would latch an LED on
+    forever, since an exponential never reaches zero — cutting at the source means that subtlety
+    cannot arise.
+  - Follows the U38 `set_debug_view` pattern: module global, session key, Settings row, startup
+    restore.
+- **Files:** `ui/settings_dialog.py` · `ui/simulation_screen.py` (`_apply_state`) · `sim_bridge.py`
+  (`DutyMode` comment) · `session_config.py` (persisted key) · `controller.py` (startup restore).
+- ⚠ **Carried-forward:** without
+  [#386](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/386) ✅ this row would be
+  **silently inert** — preview → Settings → change PWM → Start reused a work dir whose wrapper
+  carried the old duty mode. That is exactly the case #386's artifact comparison now catches, and
+  it is why this card could not ship first.
+- **Done when:** the row toggles PWM brightness live, the choice persists and is restored at
+  startup, changing it re-analyzes, and the 7-segment speedup is reproducible from the GUI.
+
 ### Tier 3 — Quick wins (ship anytime)
 
 | ID | Item | Files | Effort |
@@ -371,7 +429,7 @@ This document inventories all viable improvements and ranks them by impact.
 #### U39–U41. Simulated board peripherals — framework + character LCD + SPI OLED (QUEUED)
 
 - **Status:** plan **approved 2026-08-05** (Rick; its architecture decisions were locked
-  2026-07-27) — queued after U44 → target v0.22.0 (see [Current focus](#current-focus)).
+  2026-07-27) — the live next arc → target v0.23.0 (see [Current focus](#current-focus)).
   Milestone and issues open at arc start.
 - **Why:** the board model stops at LEDs / switches / buttons / 7-seg, but on real hardware the
   lesson after "blink an LED" is "drive the LCD" — and today a design driving LCD ports
@@ -614,7 +672,7 @@ See also **P1** (NVC elaborate-once / run-many) in the [Icebox](#icebox).
 
 #### D16. Sandbox the simulation subprocess (untrusted-VHDL isolation)
 
-- **Why:** A user-supplied `.vhd` is *executed*, not just parsed — the tool analyzes, elaborates, and **runs** it — so a downloaded design is a code-execution vector. On the **default GHDL** backend a design can read/write any file the user can via `std.textio` (enough to exfiltrate `~/.ssh/id_rsa` or overwrite `~/.bashrc`); on any **native-codegen** backend — NVC *and* GHDL-LLVM/JIT/GCC; only GHDL mcode blocks the route (scope corrected 2026-07-30; the earlier NVC-only framing was wrong) — it escalates to full native code execution: a `VHPIDIRECT` foreign binding resolves arbitrary libc symbols (`system`/`execve`/`socket`), empirically verified on NVC with a bare `.vhd` calling `getpid`/`geteuid`. It runs with the invoking user's privileges (not root — so not a direct kernel rootkit, but ample for data theft, tampering, a reverse shell, or fetching a second stage). Board **JSON is not a risk** (pure `json.loads` + typed coercion; values reach VHDL only as single `-g` argv elements — no shell, no injection). Reported to NVC via private disclosure (2026-07-04); **this card is the local mitigation and does not depend on an NVC fix** — it also closes the GHDL file-I/O vector that exists on the default backend. **Update 2026-07-30 → priority raised:** NVC closed the disclosure as intended behavior (wontfix), so this card is the **only** mitigation. Scheduled as v0.23.0, "the trust release" (see [Current focus](#current-focus)); the interim README/user-guide warning that a design executes with the user's privileges shipped 2026-08-05.
+- **Why:** A user-supplied `.vhd` is *executed*, not just parsed — the tool analyzes, elaborates, and **runs** it — so a downloaded design is a code-execution vector. On the **default GHDL** backend a design can read/write any file the user can via `std.textio` (enough to exfiltrate `~/.ssh/id_rsa` or overwrite `~/.bashrc`); on any **native-codegen** backend — NVC *and* GHDL-LLVM/JIT/GCC; only GHDL mcode blocks the route (scope corrected 2026-07-30; the earlier NVC-only framing was wrong) — it escalates to full native code execution: a `VHPIDIRECT` foreign binding resolves arbitrary libc symbols (`system`/`execve`/`socket`), empirically verified on NVC with a bare `.vhd` calling `getpid`/`geteuid`. It runs with the invoking user's privileges (not root — so not a direct kernel rootkit, but ample for data theft, tampering, a reverse shell, or fetching a second stage). Board **JSON is not a risk** (pure `json.loads` + typed coercion; values reach VHDL only as single `-g` argv elements — no shell, no injection). Reported to NVC via private disclosure (2026-07-04); **this card is the local mitigation and does not depend on an NVC fix** — it also closes the GHDL file-I/O vector that exists on the default backend. **Update 2026-07-30 → priority raised:** NVC closed the disclosure as intended behavior (wontfix), so this card is the **only** mitigation. Scheduled as v0.24.0, "the trust release" (see [Current focus](#current-focus)); the interim README/user-guide warning that a design executes with the user's privileges shipped 2026-08-05.
 - **What:** A new `sandbox.py` that wraps the sim **run** subprocess in **bubblewrap (`bwrap`)** when available. Policy: **auto-on when `bwrap` + unprivileged user namespaces are present; warn-and-continue otherwise** — encourage, never mandate (mandating breaks Windows/macOS, hardened-kernel Linux, and adoption). Override via `FPGA_SIM_SANDBOX=auto|off|require|bwrap` (and a toggle in the **U5 ✅** Settings dialog). The sim legitimately needs **zero network**, so `--unshare-net` is a zero-cost, high-value control that kills the NVC exfil path outright.
 - **Verified bind set** — *prototyped against `bwrap` 2026-07-04: a real headless `blinky` GHDL+cocotb run behaved identically sandboxed vs. unsandboxed (same `TESTS=4 PASS=3 FAIL=1`, VPI loaded); `pygame`+`cocotb`+`fpga_sim` imported fine inside; an in-sandbox network connect was blocked; a planted `$HOME` secret was hidden:*
   - **Strategy A (recommended default — robust, distro-agnostic):** `--ro-bind / /`, then *subtract* — `--dev /dev`, `--proc /proc`, `--tmpfs /tmp`, `--bind <work_dir> <work_dir>` (rw) + `--chdir <work_dir>`, `--tmpfs $HOME` (hides personal files), then re-expose **read-only** the two paths under `$HOME` the sim needs: the **project root** (`src/`, `sim/`, `.venv` incl. cocotb libs, `hdl/`) and the **uv interpreter root** `~/.local/share/uv/python` (venv-symlink target + libpython). Plus `--unshare-net --die-with-parent --new-session`.

@@ -69,36 +69,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **US-spelling regressions across the tree, and a guard so they stay fixed**
+- **A stale `sim_wrapper.vhd` can no longer be re-run after its inputs change**
+  ([#386](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/386)).
+  `SessionState.needs_reanalysis()` decided a work dir was fresh by comparing
+  **the simulator engine and path only**, but the work dir's validity depends on
+  everything `_generate_wrapper()` consumes: the toplevel, the board, the
+  board-native match, whether the design declares `seg` / `NUM_RGB_LEDS`, and
+  the U9 duty mode and integrator algorithm. Every new wrapper-affecting input
+  was one more thing somebody had to remember to add there — a trap by
+  construction rather than a fact about the problem.
+  - It now **compares the artifact, not the inputs**: the wrapper is re-rendered
+    from today's inputs and diffed against the one in the work dir, which is
+    exact for any input including ones nobody has invented yet, and cannot drift
+    because the thing compared is the thing used. The simulator check stays
+    alongside it — a compiled work dir is backend-specific even when the VHDL is
+    identical.
+  - Latent until now: with no in-session way to change the duty mode, the gap
+    was unreachable, and the board input is separately covered by `on_back()`
+    clearing the analysis on the route to the selector. It becomes reachable the
+    moment a Settings row can change a wrapper input mid-session
+    ([#385](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/385)),
+    where the symptom would have been a setting that silently does nothing.
+  - `_generate_wrapper()` is now a thin writer over a pure `_render_wrapper()`,
+    so the same text can be produced without clobbering the work dir being
+    checked. Anything unreadable — a missing wrapper, a deleted design file, a
+    vanished work dir — reports stale, failing toward re-analysis.
+
+### Internal
+
+- **The tree is now checked for US spelling**
   ([#387](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/387)).
-  CONTRIBUTING has required US English since the project started, but nothing
-  enforced it, so the tree drifted to **24 British spellings across 20 files** —
-  `initialised` x9, `signalling` x5, `greyed` x4, plus `behaviour`, `analysed`,
-  `cancelled`, `centre`, `colour`, `modelled` and `standardise`. All are prose
-  in comments, docstrings and docs; no identifier or behavior changed.
-  - Nine of them were **one word in one template**
-    (`scripts/embedded_core/templates/cpu_ram.vhd.tmpl`) copied into the eight
-    generated `hdl/{mx65,t80}_*.vhd` designs, so the fix is the template plus
-    `regen_embedded_cores.py --write`. The regen tool flagged all eight as
-    drifted before the rewrite and clean after it, which is also the proof that
-    the template really is their source.
-  - New suite-level guard `tests/test_us_spelling.py`. **Suite-level, not a
-    pre-commit hook**, per the #348 lesson: hooks fire only on staged files, so
-    a hook would miss a British spelling arriving in a file the committer never
-    staged — a regenerated design, for instance.
-  - The word list is **exact words, never prefixes**: `analysis` and `analyses`
-    are correct US English (the tree uses `analyses` three times), and a naive
-    `analys*` pattern reports about 19 false positives in `controller.py` alone.
-  - Exceptions are registered as **line text rather than whole files**.
-    Blanket-skipping `CONTRIBUTING.md` because it quotes `colour` as a
-    counterexample would have hidden a real `signalling` further down that same
-    file — which is what the first survey did. `CHANGELOG.md` is exempt (release
-    history is never rewritten), as are the citation registries under
-    `docs/port_convention_sources/` and `docs/led_color_sources/`, whose
-    `evidence[]` strings must match a fetched source byte-for-byte —
-    CONTRIBUTING's one declared exception to the rule — and the guard's own
-    file, which must contain the words it bans. A test asserts that last
-    exemption still has a reason to exist, so it cannot quietly become a hole.
+  CONTRIBUTING has required US English since the project started with nothing
+  enforcing it, so 24 British spellings had accumulated across 20 files — all
+  prose in comments, docstrings and docs, no identifier and no behavior. Nine
+  were one word in `cpu_ram.vhd.tmpl` copied into the eight generated
+  embedded-core designs, fixed at the template and regenerated. The new
+  `tests/test_us_spelling.py` sweeps every tracked file; it is suite-level
+  rather than a pre-commit hook because hooks see only staged files, its word
+  list is exact words rather than prefixes (`analysis` / `analyses` are correct
+  US English), and its exemptions are registered as line text rather than whole
+  files — blanket-skipping `CONTRIBUTING.md` for its own counterexamples would
+  have hidden a real violation further down the same file.
 
 ## [0.21.0] - 2026-08-25
 
