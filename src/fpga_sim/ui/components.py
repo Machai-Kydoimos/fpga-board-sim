@@ -9,7 +9,7 @@ from collections.abc import Callable, Sequence
 import pygame
 
 from fpga_sim.board_loader import ComponentInfo
-from fpga_sim.ui.constants import GRAY, WHITE, lerp_rgb
+from fpga_sim.ui.constants import GRAY, WHITE, lerp_rgb, render_text
 from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.icons import latch_icon
 from fpga_sim.ui.keymap import badge_for
@@ -77,7 +77,7 @@ class FPGAChip:
         active = [(t, c) for t, c in lines if t]
         offset = -(len(active) - 1) / 2 * line_h
         for text, color in active:
-            s = font.render(text, True, color)
+            s = render_text(font, text, color)
             surface.blit(s, s.get_rect(centerx=cx, centery=cy + offset))
             offset += line_h
 
@@ -468,7 +468,7 @@ class LED(UIComponent):
             # short to host it), stacked: digits with a smaller % sign below.
             _blit_circle_pct(surface, self.level, cx, cy, r)
 
-        lbl = font.render(self.label, True, WHITE)
+        lbl = render_text(font, self.label, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
 
     @property
@@ -543,7 +543,7 @@ class RGBLED(LED):
 
         pygame.draw.circle(surface, WHITE, (cx, cy), r, 1)
 
-        lbl = font.render(self.label, True, WHITE)
+        lbl = render_text(font, self.label, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
 
     def _draw_debug_bars(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
@@ -561,7 +561,7 @@ class RGBLED(LED):
             _draw_duty_bar(surface, track, lv, _LED_COLOR_RGB[_CHANNEL_COLOR[ch]], with_text=True)
             y += bar_h + gap
 
-        lbl = font.render(self.label, True, WHITE)
+        lbl = render_text(font, self.label, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 1))
 
     @property
@@ -595,7 +595,7 @@ class Switch(UIComponent):
         knob = pygame.Rect(self.rect.x + 3, knob_y, self.rect.width - 6, knob_h)
         pygame.draw.rect(surface, WHITE if self.state else GRAY, knob, border_radius=3)
 
-        lbl = font.render(self.label, True, WHITE)
+        lbl = render_text(font, self.label, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
 
     @property
@@ -838,7 +838,7 @@ class Button(UIComponent):
         size = _badge_font_size(budget, budget)
         if size is None:
             return
-        glyph = _get_font(size, bold=True).render(text, True, ink)
+        glyph = render_text(_get_font(size, bold=True), text, ink)
         # Center the glyph's INK, not its surface.  ``render`` reserves room for
         # descenders that digits and capitals never use, so centering the surface
         # floats the visible mark above the middle -- by 3 px at the sizes a
@@ -863,7 +863,7 @@ class Button(UIComponent):
         self._draw_badge(surface, THEME.badge_ink)
         pygame.draw.rect(surface, WHITE, self.rect, 2, border_radius=6)
 
-        lbl = font.render(self.label, True, WHITE)
+        lbl = render_text(font, self.label, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 2))
 
     def handle_press(self, pos: tuple[int, int], source: str = DIRECT_SOURCE) -> bool:
@@ -1011,5 +1011,5 @@ class SevenSeg:
             pygame.draw.circle(surface, color("dp"), (x0 + dw + r + 2, y0 + dh - r - 2), r)
 
         lbl_sz = max(8, int(dh * 0.18))
-        lbl = _get_font(lbl_sz).render(str(self.index), True, THEME.seg_digit_label)
+        lbl = render_text(_get_font(lbl_sz), str(self.index), THEME.seg_digit_label)
         surface.blit(lbl, (x0 + dw // 2 - lbl.get_width() // 2, y0 + dh + 2))

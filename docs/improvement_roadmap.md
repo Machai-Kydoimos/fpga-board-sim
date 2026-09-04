@@ -272,7 +272,8 @@ This document inventories all viable improvements and ranks them by impact.
   - **Glow.** Neon orange, brightness driven by the same `_perceptual()` ramp the LEDs and segments
     already use, plus a cheap bloom (downscale → `smoothscale` up → additive blit) and the mesh
     anode's fine screen texture laid over it.
-  - **Cache** by `(glyph, duty bucket, size, theme)` — the `ui/icons.py` `lru_cache` pattern. That
+  - **Cache** by `(glyph, duty bucket, size, theme)` — the `ui/icons.py` `lru_cache` pattern, and the same
+    one `render_text` uses for labels (whose shared-Surface rule applies here too: blit, never mutate). That
     is what keeps a glow-heavy digit off the per-frame budget; U23's dirty-flag loop does the rest.
 - **Open design questions — the ones that actually shape it:**
   1. **The fallback is the load-bearing decision.** Today's display is *segment-faithful*: a design
@@ -405,7 +406,7 @@ This document inventories all viable improvements and ranks them by impact.
 | U14 | `P` key to pause/resume simulation; pause indicator in SimPanel | `ui/simulation_screen.py`, `ui/sim_panel.py` | S |
 | U15 | Compact mode for `SimPanel` (toggle via existing `S` shortcut family) | `ui/sim_panel.py` | S |
 | U16 | Enforce minimum window size (800x600) with friendly warning | `__main__.py` | XS |
-| U17 | Pre-allocate common font sizes at startup (eliminates LRU eviction churn) | `ui/constants.py` | XS |
+| U17 | Pre-allocate common font sizes at startup (eliminates LRU eviction churn). **Note:** `ui/constants.py` now holds a *second* LRU — `render_text`, the cached widget-label renderer (maxsize 512) — whose entries are keyed on the font, so priming `get_font` alone no longer primes everything a first frame needs | `ui/constants.py` | XS |
 | U18 | Recent-files section in `VHDLFilePicker` (consumes `recent[]` from U5 ✅) | `ui/vhdl_picker.py` | S |
 | U19 | Metrics-enable checkbox surfacing `FPGA_SIM_METRICS` env var | `ui/sim_panel.py` or Settings dialog | XS |
 | ~~U28~~ | ~~Auto-emit a `<design>.gtkw` GTKWave save file beside the dump (preload clk/sw/btn/led/seg)~~ ✅ | `sim_bridge.py` (`_write_gtkw`) | S |
@@ -871,7 +872,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/sim_bridge.py` — U4 ✅ (parsed contract checks + `add_error_hints`), U5 ✅ (`speed_factor` → `FPGA_SIM_SPEED`), U7 ✅ (`SimExit` enum + exit-intent sidecar; `launch_simulation()` returns it), U10 ✅, U21 ✅ (convention matcher + native `_render_native_wrapper`; native `.gtkw` preselection), D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`), D16 (wrap the run subprocess), U34 ✅ (`SimChild` + `start_simulation` + `finish_waveform`; `launch_simulation` and the exit-intent file removed — `SimExit` now lives in `ui/results.py`), U35 ✅ (simulator discovery/identity + stage-3 runtime-elab probe)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅, U21 ✅ (B1: `BoardDef.port_conventions` + serialization)
 - `src/fpga_sim/session_config.py` — U5 ✅ (merge-on-write; new `update_session` / `push_recent`), U18, D9 ✅, D14 ✅, D16 (sandbox toggle), U35 ✅ (`extra_simulators` + `simulator_path`), U46 (persisted display-skin toggle)
-- `src/fpga_sim/ui/constants.py` — D15 ✅ (now base neutrals only), U17
+- `src/fpga_sim/ui/constants.py` — D15 ✅ (base neutrals), U17 (and the `get_font` / `render_text` LRU caches)
 - `src/fpga_sim/ui/theme.py` — D15 ✅ (new: `Theme` dataclass + `THEME`), U2 ✅ (`spinner_arc` / `spinner_track` roles), U5 ✅ (`THEME_NAMES` / `THEME_LABELS` + settings button styles), U6 ✅ (`dark` / `high-contrast` instances + `set_theme` / `current_theme_name`), U27 (dynamic registry + JSON loader), U46 (glass / socket / glow roles)
 - `src/fpga_sim/ui/components.py` — U3 ✅, U9/U36–U38 ✅ (`LED.level` brightness, colored banks, `RGBLED` puck, debug duty bars), D3 ✅, D15, U46 (a Nixie sibling renderer beside `SevenSeg`)
 - `src/fpga_sim/ui/board_display.py` — U1 ✅, U3 ✅, U5 ✅ (gear trigger), U11, U16, D3 ✅, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15, U35 ✅ (`[SIM:…]` cycles labeled backend variants), U46 (digit geometry for the taller tube)
@@ -892,6 +893,10 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 - `ErrorDialog` modal pattern (`ui/error_dialog.py`) -> reuse layout for help / settings / tooltip dialogs.
 - `get_font()` LRU cache (`ui/constants.py`) -> already used everywhere; pre-allocation in U17 just primes it.
+- `render_text()` LRU cache (`ui/constants.py`) -> every widget label, the FPGA chip's text lines and the
+  button key badges go through it, keyed on `(font, text, color)`; ~9-15% of a board draw. Any new
+  per-frame text with **constant** content belongs here rather than calling `font.render` directly (a test
+  registers the remaining direct calls). **The Surface it returns is shared — blit it, never mutate it.**
 - `_generate_wrapper()` (`sim_bridge.py`) -> unified template substitution with conditional 7-seg splicing (D1 ✅).
 - `_SimBackend` ABC (`sim_bridge.py`) — D2 ✅ made it an ABC sharing `find()` / `available()` / `lib_dir()` / `sim_bin_lib()` as classmethods; a third backend (U20) overrides only `NAME` + the command builders.
 - `session_config.save_session` / `load_session` / `update_session` / `push_recent` (`session_config.py`) -> U5 ✅ extended the schema with merge-on-write; U18 consumes `recent[]`, U6 ✅ writes `theme`, U10/U19 write their keys via `update_session`.
