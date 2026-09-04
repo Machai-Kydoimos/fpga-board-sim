@@ -46,7 +46,7 @@ from pathlib import Path
 import pygame
 
 from fpga_sim.board_loader import BoardDef, discover_boards, get_default_boards_path
-from fpga_sim.ui import LED, Button, FPGABoard, FPGAChip, Switch
+from fpga_sim.ui import LED, Button, FPGABoard, FPGAChip, SevenSeg, Switch
 from fpga_sim.ui.constants import GRAY, WHITE, _ui_scale
 from fpga_sim.ui.theme import THEME, THEME_LABELS, THEME_NAMES, set_theme
 
@@ -249,8 +249,14 @@ def _svg_draw_seg_polygon(
     gap: int,
     *,
     seg: str,
+    fill: tuple[int, int, int],
 ) -> None:
-    """Emit one segment polygon (OFF/ghost color) using the same geometry as SevenSeg.draw()."""
+    """Emit one segment polygon in *fill*, using the same geometry as SevenSeg.draw().
+
+    The color is passed in (from ``SevenSeg.segment_color``) rather than fixed at
+    ``THEME.seg_off``: segments are LEDs and carry the same continuous levels, so
+    a lit digit renders at its real brightness here too.
+    """
     inner = max(1, dw - 2 * gap - 2 * thick)
     half = dh // 2
     ax = x0 + gap + thick
@@ -285,17 +291,19 @@ def _svg_draw_seg_polygon(
     ET.SubElement(
         parent,
         "polygon",
-        {"points": " ".join(f"{px},{py}" for px, py in pts), "fill": _svg_color(THEME.seg_off)},
+        {"points": " ".join(f"{px},{py}" for px, py in pts), "fill": _svg_color(fill)},
     )
 
 
-def _svg_draw_7seg(
-    parent: ET.Element,
-    seg_rect: pygame.Rect,
-    digit_index: int,
-    has_dp: bool,
-) -> None:
-    """Draw a single 7-segment digit outline (all segments OFF) as SVG elements."""
+def _svg_draw_7seg(parent: ET.Element, digit: SevenSeg) -> None:
+    """Draw one 7-segment digit as SVG, each segment at its own drawn color.
+
+    Takes the widget rather than a bare rect so it can ask
+    ``SevenSeg.segment_color`` for the same colors ``SevenSeg.draw`` paints.  In
+    the reset state every level is 0.0, so every segment resolves to
+    ``THEME.seg_off`` and the output is unchanged from when that was hardcoded.
+    """
+    seg_rect, digit_index, has_dp = digit.rect, digit.index, digit.has_dp
     dw, dh = seg_rect.width, seg_rect.height
     thick = max(3, int(dw * 0.12))
     gap = max(2, int(dw * 0.06))
@@ -316,7 +324,9 @@ def _svg_draw_7seg(
         },
     )
     for seg_name in ("a", "b", "c", "d", "e", "f", "g"):
-        _svg_draw_seg_polygon(parent, x0, y0, dw, dh, thick, gap, seg=seg_name)
+        _svg_draw_seg_polygon(
+            parent, x0, y0, dw, dh, thick, gap, seg=seg_name, fill=digit.segment_color(seg_name)
+        )
 
     if has_dp:
         r = max(2, thick // 2)
@@ -327,7 +337,7 @@ def _svg_draw_7seg(
                 "cx": str(x0 + dw + r + 2),
                 "cy": str(y0 + dh - r - 2),
                 "r": str(r),
-                "fill": _svg_color(THEME.seg_off),
+                "fill": _svg_color(digit.segment_color("dp")),
             },
         )
 
@@ -423,12 +433,35 @@ def _svg_draw_led(
 ) -> None:
     """Draw a single LED as an SVG circle with a white border ring and label.
 
-    Replicates LED.draw() from fpga_sim/ui/components.py.  Always renders in the OFF
-    state (dark red fill) since board images show the default/reset state.
-    The radius formula is identical to the pygame version.
+    Mirrors ``LED.draw()`` / ``RGBLED.draw()`` from ``fpga_sim/ui/components.py``,
+    taking its colors from the widget's own ``display_colors()`` rather than
+    recomputing them — the two renderers previously disagreed precisely because
+    this one hardcoded ``THEME.led_off``.
+
+    Board images are generated in the reset state, so in practice every level is
+    0.0 and every LED is dark; the point is that a lit one would now render as
+    the simulator draws it, including the faint halo, instead of silently coming
+    out flat.  The radius formula is identical to the pygame version.
     """
     cx, cy = led.rect.center
     radius = max(4, min(led.rect.width, led.rect.height) // 2 - 2)
+    fill, glow_color, k = led.display_colors()
+
+    # Halo first, so the LED body paints over it (SVG has no blit order beyond
+    # document order).  ``k`` is exactly 0 for a dark LED, so an all-off board
+    # emits no glow elements at all and its SVG is unchanged.
+    if k > 0.0:
+        ET.SubElement(
+            parent,
+            "circle",
+            {
+                "cx": str(cx),
+                "cy": str(cy),
+                "r": str(radius * 2),
+                "fill": _svg_color(glow_color),
+                "fill-opacity": f"{round(50 * k) / 255:.4f}",
+            },
+        )
 
     ET.SubElement(
         parent,
@@ -437,7 +470,7 @@ def _svg_draw_led(
             "cx": str(cx),
             "cy": str(cy),
             "r": str(radius),
-            "fill": _svg_color(THEME.led_off),
+            "fill": _svg_color(fill),
             "stroke": _svg_color(WHITE),
             "stroke-width": "1",
         },
@@ -597,7 +630,7 @@ def build_svg(board: FPGABoard, width: int, height: int) -> str:
             baseline="hanging",
         )
         for _seg_w in board._seven_segs:
-            _svg_draw_7seg(svg, _seg_w.rect, _seg_w.index, _seg_w.has_dp)
+            _svg_draw_7seg(svg, _seg_w)
 
     # LEDs section — weight 3, gets the most vertical space
     if board.leds:
