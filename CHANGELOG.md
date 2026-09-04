@@ -16,9 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - It is also the **largest speed control the simulator offers**, because
     measuring duty splices an integrator into the generated wrapper once per
     output channel — so the cost scales with channel count. Measured on the
-    product's own benchmark path: `counter_7seg` on a DE10-Lite (6 digits, 48
-    segment channels) runs **0.00117x → 0.00548x real-time, ~4.7x faster** with
-    PWM off, while `rgb_rainbow` on an Arty A7 (16 channels) gains ~1.1x.
+    product's own benchmark path over three runs: `counter_7seg` on a DE10-Lite
+    (6 digits, 48 segment channels) runs **4.7x–5.5x faster** with PWM off
+    (0.00117x → 0.00548x through 0.00123x → 0.00676x real-time; the spread is
+    machine load, not the setting), while `rgb_rainbow` on an Arty A7 (16
+    channels) gains ~1.1x.
   - **Two states, not three.** `sim_bridge` has carried `DutyMode` values
     `"off"`, `"color"` and `"full"` since U9, but `"off"` and `"color"` are
     behaviorally identical — both take the `mode != "full"` branch in

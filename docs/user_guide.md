@@ -307,10 +307,13 @@ into the generated wrapper, once per output channel. The cost therefore scales
 with how many channels a board has, and a many-digit 7-segment display has a
 lot of them (8 per digit):
 
-| Design / board | PWM on | PWM off | |
-|---|---|---|---|
-| `counter_7seg` / DE10-Lite (6 digits, 48 segment channels) | 0.00117x | 0.00548x | **~4.7x faster** |
-| `rgb_rainbow` / Arty A7 (16 LED channels) | 0.000529x | 0.000580x | ~1.1x |
+| Design / board | Speed-up with PWM off |
+|---|---|
+| `counter_7seg` / DE10-Lite (6 digits, 48 segment channels) | **4.7x–5.5x** |
+| `rgb_rainbow` / Arty A7 (16 LED channels) | ~1.1x |
+
+(Measured over several runs on one machine; the spread is background load rather
+than the setting. Your own numbers come from `--benchmark`.)
 
 So on a board with a big display, turning PWM off buys back most of the run
 speed; on a board with a handful of LEDs it changes little. The choice is

@@ -356,7 +356,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### U47. LED PWM display toggle — plain on/off LEDs, and a throughput lever ✅
 
-- **Status:** ✅ **done 2026-09-04** (measured ~4.7x on the DE10-Lite case, reproduced from the
+- **Status:** ✅ **done 2026-09-04** (measured 4.7x–5.5x on the DE10-Lite case, reproduced from the
   Settings preference alone). Filed 2026-09-04 from
   [#385](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/385) (renumbered from U46,
   which the retro-skin card took). Effort **S–M**. Unblocked by
@@ -367,7 +367,7 @@ This document inventories all viable improvements and ranks them by impact.
 
   | Design / board | `full` | `off` | |
   |---|---|---|---|
-  | `counter_7seg` / DE10-Lite (6 digits, 48 seg channels) | 0.00142x | 0.00714x | **~4.8x faster** |
+  | `counter_7seg` / DE10-Lite (6 digits, 48 seg channels) | 0.00142x | 0.00714x | **~4.8x faster** (card estimate; shipped runs measured 4.7x–5.5x) |
   | `rgb_rainbow` / Arty A7 (16 LED channels) | 0.000529x | 0.000580x | ~1.1x |
 
   The cost scales with channel count, so a many-digit 7-segment board pays roughly 80% of its
