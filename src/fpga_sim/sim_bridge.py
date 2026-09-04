@@ -2089,16 +2089,15 @@ def _render_native_wrapper(
     return "\n".join(lines)
 
 
-def _generate_wrapper(
+def _render_wrapper(
     toplevel: str,
-    work_dir: str,
     board_def: BoardDef | None = None,
     design_has_seg: bool = False,
     match: ConventionMatch | None = None,
     duty: DutyMode | None = None,
     design_has_rgb: bool = False,
-) -> Path:
-    """Write ``sim_wrapper.vhd`` to *work_dir* with placeholders substituted.
+) -> str:
+    """Render the ``sim_wrapper.vhd`` text for these inputs, writing nothing.
 
     When both *board_def* has a seven_seg display and the design declares a
     ``seg`` output port, the generated wrapper includes the ``NUM_SEGS``
@@ -2115,14 +2114,16 @@ def _generate_wrapper(
     *duty* selects the U9 measurement mode (default: :func:`resolve_duty_mode`).
     In Off and Color-only mode both paths emit exactly what they emitted before
     U9 — byte-for-byte — so measurement is a cost only when it is asked for.
+
+    Split out from :func:`_generate_wrapper` so the same text can be produced
+    *without* clobbering a work dir's existing wrapper, which is what lets
+    :func:`wrapper_is_stale` compare the artifact instead of enumerating the
+    inputs that feed it (#386).  It is deliberately pure: same inputs, same
+    bytes, no I/O beyond reading the fixed templates.
     """
-    out = Path(work_dir) / "sim_wrapper.vhd"
     mode = resolve_duty_mode(duty)
     if match is not None:
-        out.write_text(
-            _render_native_wrapper(toplevel, match, board_def, duty=mode), encoding="utf-8"
-        )
-        return out
+        return _render_native_wrapper(toplevel, match, board_def, duty=mode)
 
     use_seg = board_def is not None and board_def.seven_seg is not None and design_has_seg
     splice = _duty_splice(_duty_channels(mode, has_seg=use_seg))
@@ -2155,8 +2156,80 @@ def _generate_wrapper(
         led_sig=led_sig,
         **splice,
     )
-    out.write_text(content, encoding="utf-8")
+    return content
+
+
+def _generate_wrapper(
+    toplevel: str,
+    work_dir: str,
+    board_def: BoardDef | None = None,
+    design_has_seg: bool = False,
+    match: ConventionMatch | None = None,
+    duty: DutyMode | None = None,
+    design_has_rgb: bool = False,
+) -> Path:
+    """Write :func:`_render_wrapper`'s output to ``work_dir/sim_wrapper.vhd``."""
+    out = Path(work_dir) / "sim_wrapper.vhd"
+    out.write_text(
+        _render_wrapper(
+            toplevel,
+            board_def=board_def,
+            design_has_seg=design_has_seg,
+            match=match,
+            duty=duty,
+            design_has_rgb=design_has_rgb,
+        ),
+        encoding="utf-8",
+    )
     return out
+
+
+def wrapper_is_stale(
+    work_dir: str | Path,
+    toplevel: str,
+    *,
+    vhdl_path: str | Path,
+    board_def: BoardDef | None = None,
+    match: ConventionMatch | None = None,
+    duty: DutyMode | None = None,
+) -> bool:
+    """Report whether *work_dir*'s ``sim_wrapper.vhd`` differs from today's render.
+
+    Compares the **artifact**, not the inputs that produce it.  The wrapper is a
+    deterministic function of the toplevel, the board, the native match, whether
+    the design declares ``seg`` / ``NUM_RGB_LEDS``, and the U9 duty mode and
+    algorithm.  Enumerating those at the call site would make every future
+    wrapper-affecting input one more thing somebody must remember to add there —
+    a trap by construction.  Re-rendering and diffing covers all of them at
+    once, including inputs nobody has invented yet, and cannot drift: the thing
+    compared is the thing used (#386).
+
+    ``design_has_seg`` / ``design_has_rgb`` are re-derived from *vhdl_path*
+    exactly as :func:`analyze_vhdl` derives them, so an edit that adds or drops
+    a ``seg`` port counts as staleness too.
+
+    Anything unreadable — no wrapper, a missing design file, an undecodable work
+    dir — reports stale, failing toward re-analysis rather than toward running a
+    wrapper we cannot vouch for.
+
+    The user's own analyzed ``.vhd`` is deliberately *not* covered: its object
+    code shares this work dir, but noticing edits to it belongs to the
+    [Reload VHDL] path, not here.
+    """
+    try:
+        current = (Path(work_dir) / "sim_wrapper.vhd").read_text(encoding="utf-8")
+        vhdl_text = Path(vhdl_path).read_text(encoding="utf-8", errors="ignore")
+        expected = _render_wrapper(
+            toplevel,
+            board_def=board_def,
+            design_has_seg=_has_seg_port(vhdl_text),
+            match=match,
+            duty=duty,
+            design_has_rgb=_has_rgb_generic(vhdl_text),
+        )
+    except (OSError, UnicodeDecodeError):
+        return True
+    return current != expected
 
 
 def _name_bound_check_port(message: str, work_dir: str) -> str:

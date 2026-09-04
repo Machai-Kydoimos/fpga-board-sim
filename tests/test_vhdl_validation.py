@@ -11,10 +11,12 @@ import pytest
 from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
 from fpga_sim.sim_bridge import (
     _generate_wrapper,
+    _render_wrapper,
     add_error_hints,
     analyze_vhdl,
     check_vhdl_contract,
     check_vhdl_encoding,
+    wrapper_is_stale,
 )
 from tests.conftest import _7seg_board, _plain_board
 
@@ -803,3 +805,129 @@ def test_wrapper_includes_rgb_generic_when_design_declares_it(tmp_path):
 def test_wrapper_omits_rgb_generic_by_default(tmp_path):
     out = _generate_wrapper("blinky", str(tmp_path), board_def=_rgb_board())
     assert "NUM_RGB_LEDS" not in out.read_text(encoding="utf-8")
+
+
+# ── wrapper_is_stale (#386) ──────────────────────────────────────────────────
+#
+# The staleness check compares the *artifact*: it re-renders sim_wrapper.vhd and
+# diffs it against the work dir's copy, so it covers every input the wrapper is
+# built from without anyone having to enumerate them — including the ones added
+# after this test was written.
+
+
+def _7seg_design(name: str) -> str:
+    """A contract-correct design that also declares the 7-segment port."""
+    return _design(
+        name,
+        generics=(
+            "    NUM_SWITCHES : positive := 4;\n"
+            "    NUM_BUTTONS  : positive := 4;\n"
+            "    NUM_LEDS     : positive := 4;\n"
+            "    NUM_SEGS     : positive := 4;\n"
+            "    COUNTER_BITS : positive := 24"
+        ),
+        ports=(
+            "    clk : in  std_logic;\n"
+            "    sw  : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);\n"
+            "    btn : in  std_logic_vector(NUM_BUTTONS - 1 downto 0);\n"
+            "    led : out std_logic_vector(NUM_LEDS - 1 downto 0);\n"
+            "    seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)"
+        ),
+    )
+
+
+def _blinky(tmp_path):
+    """A minimal design file whose text carries no seg port and no RGB generic."""
+    f = tmp_path / "blinky.vhd"
+    f.write_text(_design("blinky"), encoding="utf-8")
+    return f
+
+
+def test_render_wrapper_is_pure(tmp_path):
+    """The oracle property: same inputs → same bytes, and nothing is written."""
+    a = _render_wrapper("blinky", board_def=_plain_board())
+    b = _render_wrapper("blinky", board_def=_plain_board())
+    assert a == b
+    assert list(tmp_path.iterdir()) == [], "_render_wrapper must not touch the disk"
+
+
+def test_render_wrapper_produces_exactly_what_generate_writes(tmp_path):
+    written = _generate_wrapper(
+        "counter_7seg", str(tmp_path), board_def=_7seg_board(), design_has_seg=True
+    ).read_text(encoding="utf-8")
+    assert written == _render_wrapper("counter_7seg", board_def=_7seg_board(), design_has_seg=True)
+
+
+def test_wrapper_is_fresh_right_after_generating_it(tmp_path):
+    """Baseline: an untouched work dir is not stale — otherwise every launch re-analyzes."""
+    design = _blinky(tmp_path)
+    work = tmp_path / "wd"
+    work.mkdir()
+    _generate_wrapper("blinky", str(work), board_def=_plain_board())
+    assert not wrapper_is_stale(work, "blinky", vhdl_path=design, board_def=_plain_board())
+
+
+def test_wrapper_is_stale_when_the_duty_mode_changes(tmp_path, monkeypatch):
+    design = _blinky(tmp_path)
+    work = tmp_path / "wd"
+    work.mkdir()
+    monkeypatch.setenv("FPGA_SIM_DUTY", "off")
+    _generate_wrapper("blinky", str(work), board_def=_plain_board())
+    assert not wrapper_is_stale(work, "blinky", vhdl_path=design, board_def=_plain_board())
+
+    monkeypatch.setenv("FPGA_SIM_DUTY", "full")
+    assert wrapper_is_stale(work, "blinky", vhdl_path=design, board_def=_plain_board())
+
+
+def test_wrapper_is_stale_when_the_board_gains_a_display(tmp_path):
+    """A board input: the same design on a 7-seg board grows NUM_SEGS + seg."""
+    design = tmp_path / "counter_7seg.vhd"
+    design.write_text(
+        _7seg_design("counter_7seg"),
+        encoding="utf-8",
+    )
+    work = tmp_path / "wd"
+    work.mkdir()
+    _generate_wrapper("counter_7seg", str(work), board_def=_plain_board())
+    assert not wrapper_is_stale(work, "counter_7seg", vhdl_path=design, board_def=_plain_board())
+    assert wrapper_is_stale(work, "counter_7seg", vhdl_path=design, board_def=_7seg_board())
+
+
+def test_wrapper_is_stale_when_the_design_drops_its_seg_port(tmp_path):
+    """A *design* input, re-derived from the file — not remembered from last time."""
+    design = tmp_path / "counter_7seg.vhd"
+    design.write_text(
+        _7seg_design("counter_7seg"),
+        encoding="utf-8",
+    )
+    work = tmp_path / "wd"
+    work.mkdir()
+    _generate_wrapper("counter_7seg", str(work), board_def=_7seg_board(), design_has_seg=True)
+    assert not wrapper_is_stale(work, "counter_7seg", vhdl_path=design, board_def=_7seg_board())
+
+    design.write_text(_design("counter_7seg"), encoding="utf-8")  # seg port removed
+    assert wrapper_is_stale(work, "counter_7seg", vhdl_path=design, board_def=_7seg_board())
+
+
+def test_wrapper_is_stale_when_the_toplevel_changes(tmp_path):
+    design = _blinky(tmp_path)
+    work = tmp_path / "wd"
+    work.mkdir()
+    _generate_wrapper("blinky", str(work), board_def=_plain_board())
+    assert wrapper_is_stale(work, "other", vhdl_path=design, board_def=_plain_board())
+
+
+@pytest.mark.parametrize("missing", ["wrapper", "design", "work_dir"])
+def test_wrapper_is_stale_when_something_is_unreadable(tmp_path, missing):
+    """Fail toward re-analysis: never run a wrapper we cannot vouch for."""
+    design = _blinky(tmp_path)
+    work = tmp_path / "wd"
+    work.mkdir()
+    _generate_wrapper("blinky", str(work), board_def=_plain_board())
+    if missing == "wrapper":
+        (work / "sim_wrapper.vhd").unlink()
+    elif missing == "design":
+        design.unlink()
+    else:
+        work = tmp_path / "nonexistent"
+    assert wrapper_is_stale(work, "blinky", vhdl_path=design, board_def=_plain_board())

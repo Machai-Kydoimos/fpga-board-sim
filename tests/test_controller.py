@@ -13,6 +13,7 @@ entirely under the session-scoped ``headless_pygame`` fixture.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -26,13 +27,15 @@ from fpga_sim.controller import (
     build_generics,
     example_vhdl_for,
 )
-from fpga_sim.sim_bridge import ContractResult, SimulatorInfo
+from fpga_sim.sim_bridge import ContractResult, SimulatorInfo, _generate_wrapper
 from fpga_sim.ui import BoardInputs, DialogResult, ScreenResult, SimExit
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
+from tests.conftest import _7seg_board, _plain_board
 
 if TYPE_CHECKING:
-    from pathlib import Path
     from types import ModuleType
+
+HDL = Path(__file__).resolve().parent.parent / "hdl"
 
 
 def _sim(
@@ -205,15 +208,82 @@ def test_clear_vhdl_drops_everything():
     assert s.last_vhdl_path == "a.vhd"  # sticky: still seeds the picker start dir
 
 
-def test_needs_reanalysis_on_engine_or_path_change():
-    s = SessionState(sim=_sim("ghdl"), work_dir="wd", work_dir_sim=_sim("ghdl"))
-    assert not s.needs_reanalysis()  # same install → work dir is valid
+def _analyzed(tmp_path, board, *, vhdl=None, duty=None, has_seg=False, sim=None):
+    """A SessionState whose work dir holds the wrapper *board* + *vhdl* generate.
+
+    Mirrors what ``analyze_vhdl`` leaves behind, so ``needs_reanalysis`` should
+    say "no" until one of the wrapper's inputs actually moves.
+    """
+    vhdl = vhdl or HDL / "blinky.vhd"
+    _generate_wrapper(vhdl.stem, str(tmp_path), board_def=board, design_has_seg=has_seg, duty=duty)
+    sim = sim or _sim("ghdl")
+    return SessionState(sim=sim, vhdl_path=str(vhdl), work_dir=str(tmp_path), work_dir_sim=sim)
+
+
+def test_needs_reanalysis_on_engine_or_path_change(tmp_path):
+    board = _board()
+    s = _analyzed(tmp_path, board)
+    assert not s.needs_reanalysis(board)  # same install, same wrapper → valid
     s.sim = _sim("nvc")  # engine change
-    assert s.needs_reanalysis()
+    assert s.needs_reanalysis(board)
     # same engine, different backend/path (mcode → llvm) must also re-analyze
     s.work_dir_sim = _sim("ghdl", backend="mcode", path="/a/ghdl")
     s.sim = _sim("ghdl", backend="llvm", path="/b/ghdl")
-    assert s.needs_reanalysis()
+    assert s.needs_reanalysis(board)
+
+
+def test_needs_reanalysis_when_the_duty_mode_changes(tmp_path, monkeypatch):
+    """#386's headline case: the U46/U47 Settings row must not be silently inert.
+
+    Same simulator, same board, same design — only the U9 duty mode moved, which
+    the old engine/path-only check could not see, so the stale Off-mode wrapper
+    would have been re-run with PWM display "on".
+    """
+    board = _board()
+    monkeypatch.setenv("FPGA_SIM_DUTY", "off")
+    s = _analyzed(tmp_path, board, duty="off")
+    assert not s.needs_reanalysis(board)
+
+    monkeypatch.setenv("FPGA_SIM_DUTY", "full")
+    assert s.needs_reanalysis(board), "a duty-mode flip must re-analyze"
+
+
+def test_needs_reanalysis_when_the_duty_algorithm_changes(tmp_path, monkeypatch):
+    """An input nobody listed: the swappable U9 integrator fragment (#386)."""
+    board = _board()
+    monkeypatch.setenv("FPGA_SIM_DUTY", "full")
+    monkeypatch.setenv("FPGA_SIM_DUTY_ALGO", "fix_ns_1p")
+    s = _analyzed(tmp_path, board, duty="full")
+    assert not s.needs_reanalysis(board)
+
+    monkeypatch.setenv("FPGA_SIM_DUTY_ALGO", "fix_ns_pc")
+    assert s.needs_reanalysis(board)
+
+
+def test_needs_reanalysis_when_the_board_gains_a_display(tmp_path):
+    """A 7-seg board + a seg-declaring design generate a different wrapper."""
+    seg_design = HDL / "counter_7seg.vhd"
+    s = _analyzed(tmp_path, _plain_board(), vhdl=seg_design, has_seg=False)
+    assert not s.needs_reanalysis(_plain_board())
+    assert s.needs_reanalysis(_7seg_board()), "NUM_SEGS/seg appear → stale"
+
+
+def test_needs_reanalysis_when_the_wrapper_is_missing(tmp_path):
+    """An empty work dir (deleted $TMP, restored session) fails toward re-analysis."""
+    board = _board()
+    s = _analyzed(tmp_path, board)
+    (tmp_path / "sim_wrapper.vhd").unlink()
+    assert s.needs_reanalysis(board)
+
+
+def test_needs_reanalysis_without_a_work_dir_or_vhdl(tmp_path):
+    board = _board()
+    s = _analyzed(tmp_path, board)
+    s.work_dir = None
+    assert s.needs_reanalysis(board)
+    s = _analyzed(tmp_path, board)
+    s.vhdl_path = None
+    assert s.needs_reanalysis(board)
 
 
 # ── _resolve_sim ─────────────────────────────────────────────────────────────
@@ -746,8 +816,9 @@ def _attached_harness(
     """Controller wired for the attached path (the U34 default), with fake start/screen/finish.
 
     With ``analyzed=True`` the state looks freshly analyzed by the current
-    simulator (the re-analysis branch is skipped and the contract check is fenced
-    off so any unexpected call fails the test); pass ``analyzed=False`` to exercise
+    simulator *and* carries the wrapper that simulator would emit (the
+    re-analysis branch is skipped and the contract check is fenced off so any
+    unexpected call fails the test); pass ``analyzed=False`` to exercise
     the re-analyze / contract preamble.  *sim_exits* scripts what each successive
     ``SimulationScreen.run()`` returns (exhausted → ``SimExit.STOPPED``).
     """
@@ -757,7 +828,13 @@ def _attached_harness(
     ctrl.on_board_selected(_board())
     ctrl.state.vhdl_path = str(vhdl)
     if analyzed:
-        ctrl.state.work_dir = "wd"
+        # A real work dir holding the wrapper this board + design generate: since
+        # #386 "freshly analyzed" means the artifact matches, not just that the
+        # simulator did.
+        work = tmp_path / "wd"
+        work.mkdir()
+        _generate_wrapper(vhdl.stem, str(work), board_def=_board())
+        ctrl.state.work_dir = str(work)
         ctrl.state.work_dir_sim = ctrl.state.sim
         monkeypatch.setattr(
             controller_mod, "check_vhdl_contract", _fail_if_called("contract check")
@@ -808,7 +885,7 @@ def test_attached_stopped_routes_to_preview(headless_pygame, monkeypatch, tmp_pa
     assert start["vhdl_path"] == ctrl.state.vhdl_path
     assert start["toplevel"] == "blinky"
     assert start["generics"] == build_generics(board)
-    assert start["work_dir"] == "wd"
+    assert start["work_dir"] == ctrl.state.work_dir
     assert start["simulator"] == "ghdl"
     assert start["sim_path"] == "/usr/bin/ghdl"  # U35: resolved binary threaded through
     assert start["board_def"] is board
