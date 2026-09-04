@@ -396,6 +396,26 @@ class LED(UIComponent):
     def state(self, value: bool) -> None:
         self.level = 1.0 if value else 0.0
 
+    def display_colors(self) -> tuple[tuple[int, int, int], tuple[int, int, int], float]:
+        """Return ``(fill, glow_color, k)`` for the current :attr:`level`.
+
+        The single source of truth for what a lit LED *looks* like, so a second
+        renderer cannot drift from :meth:`draw`.  ``generate_board_images``'s SVG
+        path is that second renderer: it used to hardcode ``THEME.led_off``,
+        which silently disagreed with the raster output for every colored LED
+        (U36) even with everything switched off.
+
+        ``k`` is the perceptual brightness in [0, 1]; it is 0 exactly when the
+        LED is dark, which is the caller's cue to omit the glow entirely.
+        THEME is read here, at draw time, never captured at import (U6).
+        """
+        on_color = self._on_color or THEME.led_on
+        # A colored LED tints its dark epoxy faintly toward its own hue (the
+        # "colored lens" look); an uncolored one keeps the plain theme off-color.
+        off_color = lerp_rgb(THEME.led_off, on_color, 0.12) if self._on_color else THEME.led_off
+        k = _perceptual(self.level)
+        return lerp_rgb(off_color, on_color, k), on_color, k
+
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         """Draw the LED at its current brightness, with a matching glow and label."""
         cx, cy = self.rect.center
@@ -404,28 +424,22 @@ class LED(UIComponent):
         bar_h = max(3, self.rect.height // 8) if _DEBUG_VIEW else 0
         r = max(4, min(self.rect.width, self.rect.height - 2 * bar_h) // 2 - 2)
 
-        # Resolved LED color (U36) or the theme default; THEME is read here, at
-        # draw time, never captured at import (U6).
-        on_color = self._on_color or THEME.led_on
-        # A colored LED tints its dark epoxy faintly toward its own hue (the
-        # "colored lens" look); an uncolored one keeps the plain theme off-color.
-        off_color = lerp_rgb(THEME.led_off, on_color, 0.12) if self._on_color else THEME.led_off
-        k = _perceptual(self.level)
+        fill, glow_color, k = self.display_colors()
 
         if k > 0.0 and not _DEBUG_VIEW:
             # Glow takes the LED's own color at an alpha that tracks brightness,
             # so a dim LED gets a faint halo instead of the old fixed red one.
             # Debug view skips the halo: it is an analytic display.
             glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
-            pygame.draw.circle(glow, (*on_color, round(50 * k)), (r * 2, r * 2), r * 2)
+            pygame.draw.circle(glow, (*glow_color, round(50 * k)), (r * 2, r * 2), r * 2)
             surface.blit(glow, (cx - r * 2, cy - r * 2))
-        pygame.draw.circle(surface, lerp_rgb(off_color, on_color, k), (cx, cy), r)
+        pygame.draw.circle(surface, fill, (cx, cy), r)
 
         pygame.draw.circle(surface, WHITE, (cx, cy), r, 1)
 
         if _DEBUG_VIEW:
             track = pygame.Rect(self.rect.left, self.rect.bottom - bar_h, self.rect.width, bar_h)
-            _draw_duty_bar(surface, track, self.level, on_color)
+            _draw_duty_bar(surface, track, self.level, glow_color)
             # The exact duty sits in the circle itself (the thin bar is too
             # short to host it), stacked: digits with a smaller % sign below.
             _blit_circle_pct(surface, self.level, cx, cy, r)
@@ -477,6 +491,18 @@ class RGBLED(LED):
         """Set one channel's linear duty (``channel`` in ``"r" / "g" / "b"``)."""
         self.levels[self._CHANNELS.index(channel)] = float(level)
 
+    def display_colors(self) -> tuple[tuple[int, int, int], tuple[int, int, int], float]:
+        """Return ``(fill, glow_color, k)`` for the three channel duties.
+
+        Overrides :meth:`LED.display_colors`: a puck mixes its own channels
+        rather than fading one hue, so the fill floors each component at the
+        theme's off color instead of interpolating from it.
+        """
+        px = tuple(round(255 * _perceptual(lv)) for lv in self.levels)
+        off = THEME.led_off  # THEME read at draw time, never captured (U6)
+        shown = (max(off[0], px[0]), max(off[1], px[1]), max(off[2], px[2]))
+        return shown, (px[0], px[1], px[2]), _perceptual(self.level)
+
     def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
         """Draw the puck at its mixed color, with a matching glow and label."""
         if _DEBUG_VIEW:
@@ -485,10 +511,7 @@ class RGBLED(LED):
         cx, cy = self.rect.center
         r = max(4, min(self.rect.width, self.rect.height) // 2 - 2)
 
-        px = tuple(round(255 * _perceptual(lv)) for lv in self.levels)
-        off = THEME.led_off  # THEME read at draw time, never captured (U6)
-        shown = (max(off[0], px[0]), max(off[1], px[1]), max(off[2], px[2]))
-        k = _perceptual(self.level)
+        shown, px, k = self.display_colors()
 
         if k > 0.0:
             glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
@@ -904,6 +927,16 @@ class SevenSeg:
         """Return True when the named segment is lit at all."""
         return self.levels[self._BIT[name]] > 0.0
 
+    def segment_color(self, name: str) -> tuple[int, int, int]:
+        """Return the drawn color of segment *name* (``"a"``-``"g"`` / ``"dp"``).
+
+        Shared with ``generate_board_images``'s SVG renderer so the two cannot
+        drift; segments are LEDs, so this is the same perceptual ramp
+        :meth:`LED.display_colors` uses.  THEME is read here, at draw time,
+        never captured at import (U6).
+        """
+        return lerp_rgb(THEME.seg_off, THEME.seg_on, _perceptual(self.levels[self._BIT[name]]))
+
     def draw(self, surface: pygame.Surface) -> None:
         """Draw the digit onto *surface* using the current bit pattern."""
         dw, dh = self.rect.width, self.rect.height
@@ -916,9 +949,7 @@ class SevenSeg:
         pygame.draw.rect(surface, THEME.seg_bg, self.rect, border_radius=3)
         pygame.draw.rect(surface, THEME.seg_bezel, self.rect, width=1, border_radius=3)
 
-        def color(n: str) -> tuple[int, int, int]:
-            # THEME read at draw time (U6); same perceptual ramp as the LEDs.
-            return lerp_rgb(THEME.seg_off, THEME.seg_on, _perceptual(self.levels[self._BIT[n]]))
+        color = self.segment_color
 
         def hrect(x: int, y: int, w: int, h: int, n: str) -> None:
             c = color(n)

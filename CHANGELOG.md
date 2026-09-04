@@ -43,6 +43,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     found by pixel-sampling the captured frames, where PWM off now yields
     exactly **two** distinct LED brightness values against 51 with it on.
 
+### Fixed
+
+- **`generate-board-images`' SVG output now matches its own PNG.** The SVG
+  renderer hardcoded `THEME.led_off` for every LED and `THEME.seg_off` for every
+  segment, so it could not show a lit board — but the more immediate problem was
+  that it already **disagreed with the PNG of the same board**: a colored LED
+  (U36) tints its dark epoxy 12% toward its own hue, which the raster draws and
+  the SVG did not. On a DE10-Lite an unlit LEDR is `#650707` in the PNG and was
+  `#500000` in the SVG.
+  - Both renderers now take their colors from one place — new
+    `LED.display_colors()` / `RGBLED.display_colors()` / `SevenSeg.segment_color()`,
+    which `draw()` already used internally and now returns. Duplicating the
+    formula is what let the two drift apart, so the fix removes the duplicate
+    rather than adding a third copy. A lit LED also gets its halo in SVG.
+  - **Board images are still generated with everything off** — no new flag, no
+    behavior change to the generator. This only makes the SVG correct *if*
+    levels are ever set.
+  - Output impact across the fleet: **42 of 285 boards change**, exactly those
+    carrying a named LED color, and each moves to match its own PNG. The other
+    243 are byte-identical, including every board with RGB pucks (a dark puck's
+    fill is `max(led_off, 0)`, which is `led_off`) and every 7-segment digit (an
+    unlit segment interpolates to `seg_off` exactly).
+
 ### Internal
 
 - **Session-file isolation is now suite-wide** (`tests/conftest.py`). Test
