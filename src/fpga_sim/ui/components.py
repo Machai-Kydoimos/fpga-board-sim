@@ -204,6 +204,32 @@ def pwm_display_enabled() -> bool:
     return _PWM_DISPLAY
 
 
+def _draw_glow(
+    surface: pygame.Surface,
+    center: tuple[int, int],
+    led_radius: int,
+    color: tuple[int, int, int],
+    k: float,
+) -> None:
+    """Blit a lit LED's soft halo, centered on *center*.
+
+    Shared by :meth:`LED.draw` and :meth:`RGBLED.draw`, which carried
+    byte-identical copies of it.  *k* is the perceptual brightness: it sets the
+    halo's alpha, so a dim LED gets a faint wash rather than the old fixed one.
+
+    **The halo cannot move the LED.**  Its surface is sized from the halo radius
+    and blitted at ``center - radius``, so the blit is symmetric about *center*
+    by construction — the halo can only grow and shrink concentrically, whatever
+    radius policy is used.  The LED's body, ring and label take their geometry
+    from ``rect`` alone and never consult the level.  ``test_led_geometry_is_
+    brightness_invariant`` pins that end to end.
+    """
+    gr = led_radius * 2
+    glow = pygame.Surface((gr * 2, gr * 2), pygame.SRCALPHA)
+    pygame.draw.circle(glow, (*color, round(50 * k)), (gr, gr), gr)
+    surface.blit(glow, (center[0] - gr, center[1] - gr))
+
+
 def _bar_track_color() -> tuple[int, int, int]:
     """Debug-bar track: the theme's LED-off color pulled hard toward black.
 
@@ -430,9 +456,7 @@ class LED(UIComponent):
             # Glow takes the LED's own color at an alpha that tracks brightness,
             # so a dim LED gets a faint halo instead of the old fixed red one.
             # Debug view skips the halo: it is an analytic display.
-            glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
-            pygame.draw.circle(glow, (*glow_color, round(50 * k)), (r * 2, r * 2), r * 2)
-            surface.blit(glow, (cx - r * 2, cy - r * 2))
+            _draw_glow(surface, (cx, cy), r, glow_color, k)
         pygame.draw.circle(surface, fill, (cx, cy), r)
 
         pygame.draw.circle(surface, WHITE, (cx, cy), r, 1)
@@ -514,9 +538,7 @@ class RGBLED(LED):
         shown, px, k = self.display_colors()
 
         if k > 0.0:
-            glow = pygame.Surface((r * 4, r * 4), pygame.SRCALPHA)
-            pygame.draw.circle(glow, (*px, round(50 * k)), (r * 2, r * 2), r * 2)
-            surface.blit(glow, (cx - r * 2, cy - r * 2))
+            _draw_glow(surface, (cx, cy), r, px, k)
         pygame.draw.circle(surface, shown, (cx, cy), r)
 
         pygame.draw.circle(surface, WHITE, (cx, cy), r, 1)
