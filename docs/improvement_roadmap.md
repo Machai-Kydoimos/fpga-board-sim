@@ -77,10 +77,20 @@ The three live plans, then executed history (each file carries its own detailed 
 
 ### ID allocation
 
-**Next free: U47 · D17 · P34.** (U45 and P31–P33 were filed 2026-08-25 at U44's closeout; U46 was filed 2026-09-01 as the retro display skin.) Reserved by the live plans, to be filed as full cards / Icebox
+**Next free: U48 · D17 · P34.** (U45 and P31–P33 were filed 2026-08-25 at U44's closeout; U46 was filed 2026-09-01 as the retro display skin; U47 is the LED PWM display toggle, [#385](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/385) — filed as an issue, card to follow if it is ever scheduled.) Reserved by the live plans, to be filed as full cards / Icebox
 rows at each arc's closeout (until then the plan doc is their source of truth): U42/U43 +
 P25–P30 ([u39_peripherals_plan.md](u39_peripherals_plan.md) §13); U45 + P31–P33
 ([u44_multi_input_plan_v1.md](u44_multi_input_plan_v1.md) §9).
+
+> **Corollary (2026-09-04): an ID is taken the moment it is *used* anywhere — an issue
+> title counts.** U46 was allocated twice: issue
+> [#385](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/385) claimed it on
+> 2026-08-31, and the retro-skin card took it again on 2026-09-01, because the claim
+> lived only in the issue and this note never learned of it. #385 is renumbered **U47**:
+> the roadmap card is already cross-referenced from four critical-files rows and the
+> new-files line, so it is the cheaper of the two to leave in place. The standing rule
+> above gates *execution* on having a card; this one gates the *number* on being written
+> down here — record it when you use it, not at the arc's closeout.
 
 ### Loose threads
 
