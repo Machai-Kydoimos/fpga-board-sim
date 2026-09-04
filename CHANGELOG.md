@@ -70,6 +70,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **Widget labels are rendered once and cached** (`render_text`). Every `LED`,
+  `RGBLED`, `Switch`, `Button` and `SevenSeg` re-rendered its label from the
+  font on **every frame**, for a string that never changes — 28 renders per
+  frame on a DE10-Lite, 45 on a Sword. Measured whole-board draw:
+  **546.8 → 495.3 µs (9.4% faster)** on the DE10-Lite and
+  **563.3 → 480.5 µs (14.7% faster)** on the Sword. Verified
+  **pixel-identical across all 285 boards**.
+  - Cached by `(font, text, color)` — the same trick `get_font` plays one level
+    down — and it needs no quantization, because the text is constant. Color is
+    part of the key, so a theme switch re-renders rather than serving the old
+    palette. The FPGA chip's vendor/device/package lines and the button key
+    badges are cached too; the debug view's duty percentages are not, being
+    genuinely dynamic.
+  - The risk a cache adds is **sharing**, not speed: one Surface handed to many
+    callers, where a single `fill` or `set_alpha` would change what every other
+    widget sees. Guarded two ways — a unit test that snapshots each surface the
+    real draw path asks for and requires it untouched afterwards, and an
+    end-to-end test that runs a **real NVC simulation** of `counter_7seg` on a
+    DE10-Lite, in an idle variant and one that drag-paints the switch bank,
+    holds and latches buttons, presses a key and hovers a component, then
+    requires both a warm-cache frame to match a cold-cache one *and* every
+    shared surface to be pristine. Both checks are needed: a mutation reapplied
+    identically on the cold pass cancels out of the frame comparison.
+  - The keys under test are **discovered from the draw path, not predicted** —
+    the first version of the guard assumed labels render at font size 12 when
+    the board draws them at 13, inspected an entry no draw had ever touched, and
+    let a deliberately corrupting mutation pass. Both guards are now verified
+    against `fill` and `set_alpha` mutants.
+
 - **The LED halo is drawn by one shared helper** (`_draw_glow`). `LED.draw` and
   `RGBLED.draw` carried byte-identical copies of the translucent-surface blit —
   the same duplication that let the SVG renderer drift from the raster one. Pure

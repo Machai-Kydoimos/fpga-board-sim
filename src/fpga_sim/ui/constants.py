@@ -59,3 +59,34 @@ def get_font(size: int, bold: bool = False) -> pygame.font.Font:
     being resized.
     """
     return pygame.font.SysFont("consolas", size, bold=bold)
+
+
+@functools.lru_cache(maxsize=512)
+def render_text(font: pygame.font.Font, text: str, color: tuple[int, int, int]) -> pygame.Surface:
+    """Return a cached antialiased render of *text* in *color*.
+
+    Every board widget re-rendered its label from the font on **every frame**,
+    for a string that never changes: 28 renders per frame on a DE10-Lite, 45 on
+    a Sword.  Measured at ~2.0 us each against ~0.24 us to blit a cached
+    surface, that is ~52 us and ~83 us of avoidable work per frame -- more than
+    the LED halos cost.  Caching by ``(font, text, color)`` is the same trick
+    :func:`get_font` plays one level down, and needs no quantization because the
+    text is constant.
+
+    Antialiasing is not a parameter: every caller in the tree renders
+    antialiased, and a flag nobody varies is a key nobody needs.
+
+    **The returned Surface is shared -- blit it, never mutate it.**  A caller
+    that filled it, or set its alpha or colorkey, would change what every other
+    widget drawing the same label sees.  Reading (``get_rect`` /
+    ``get_bounding_rect``) is fine, which is all any caller does today, and
+    ``test_drawing_a_board_does_not_mutate_the_cached_label`` fails the moment
+    one does not.
+
+    The color is part of the key, so a theme switch renders afresh rather than
+    serving the old palette -- callers still read ``THEME`` at draw time (U6).
+    Like ``get_font``'s, this cache holds objects that a ``pygame.quit()``
+    invalidates; nothing in the app quits before exit, and the test suite keeps
+    pygame alive for the session for exactly that reason.
+    """
+    return font.render(text, True, color)
