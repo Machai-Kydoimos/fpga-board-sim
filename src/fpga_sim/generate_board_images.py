@@ -46,6 +46,7 @@ from pathlib import Path
 import pygame
 
 from fpga_sim.board_loader import BoardDef, discover_boards, get_default_boards_path
+from fpga_sim.paths import REPO_ROOT
 from fpga_sim.ui import LED, Button, FPGABoard, FPGAChip, SevenSeg, Switch
 from fpga_sim.ui.components import GLOW_ALPHA, glow_radius
 from fpga_sim.ui.constants import GRAY, WHITE, _ui_scale
@@ -820,7 +821,7 @@ def main() -> None:
         "--output-dir",
         metavar="PATH",
         type=Path,
-        default=Path(__file__).parent.parent.parent / "board_images",
+        default=REPO_ROOT / "board_images",
         help="Destination directory for generated images",
     )
     parser.add_argument(

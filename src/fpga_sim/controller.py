@@ -34,6 +34,7 @@ from typing import Any
 import pygame
 
 from fpga_sim.board_loader import BoardDef, find_board
+from fpga_sim.paths import HDL_DIR
 from fpga_sim.session_config import load_session, push_recent, save_session
 from fpga_sim.sim_bridge import (
     ConventionMatch,
@@ -62,8 +63,6 @@ from fpga_sim.ui import (
 from fpga_sim.ui.constants import get_font
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 
-_HDL_DIR = Path(__file__).parent.parent.parent / "hdl"
-
 
 def example_vhdl_for(board: BoardDef | None) -> Path:
     """Return the bundled example design that satisfies the contract for *board*.
@@ -72,7 +71,7 @@ def example_vhdl_for(board: BoardDef | None) -> Path:
     for boards with a 7-segment display, ``blinky.vhd`` otherwise.
     """
     has_7seg = board is not None and board.seven_seg is not None
-    return _HDL_DIR / ("counter_7seg.vhd" if has_7seg else "blinky.vhd")
+    return HDL_DIR / ("counter_7seg.vhd" if has_7seg else "blinky.vhd")
 
 
 # COUNTER_BITS floor for plain-LED generic designs, per simulator engine.  The
@@ -543,7 +542,7 @@ class ScreenController:
             ref = Path(s.vhdl_path)
         elif s.last_vhdl_path:
             ref = Path(s.last_vhdl_path)
-        start_dir = ref.parent if (ref is not None and ref.exists()) else _HDL_DIR
+        start_dir = ref.parent if (ref is not None and ref.exists()) else HDL_DIR
         preselect = ref.name if (ref is not None and ref.exists()) else ""
         first_pick = True
 
@@ -552,7 +551,7 @@ class ScreenController:
             if first_pick:
                 picker = VHDLFilePicker(self.screen, start_dir=start_dir, preselect_name=preselect)
             else:
-                picker = VHDLFilePicker(self.screen, start_dir=_HDL_DIR)
+                picker = VHDLFilePicker(self.screen, start_dir=HDL_DIR)
             first_pick = False
             picked = picker.run(self.clock)
 

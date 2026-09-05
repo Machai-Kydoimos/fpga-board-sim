@@ -27,6 +27,7 @@ from fpga_sim.controller import (
     build_generics,
     example_vhdl_for,
 )
+from fpga_sim.paths import HDL_DIR
 from fpga_sim.sim_bridge import ContractResult, SimulatorInfo, _generate_wrapper
 from fpga_sim.ui import BoardInputs, DialogResult, ScreenResult, SimExit
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
@@ -719,7 +720,7 @@ def test_picker_retry_reopens_at_hdl_dir(headless_pygame, monkeypatch, tmp_path)
     assert ctrl._run_vhdl_picker() is NextScreen.PREVIEW
     first, second = _FakePicker.ctor_kwargs
     assert first == {"start_dir": tmp_path, "preselect_name": "mine.vhd"}
-    assert second == {"start_dir": controller_mod._HDL_DIR}  # retry: no preselect
+    assert second == {"start_dir": HDL_DIR}  # retry: no preselect
 
 
 def test_picker_analysis_failure_shows_simulator_error(headless_pygame, monkeypatch):
@@ -762,7 +763,7 @@ def test_picker_error_dialog_gets_example_path(headless_pygame, monkeypatch):
     monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (False, "bad"))
     dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
     ctrl._run_vhdl_picker()
-    assert dialog.example_paths == [controller_mod._HDL_DIR / "blinky.vhd"]
+    assert dialog.example_paths == [HDL_DIR / "blinky.vhd"]
 
 
 def test_picker_error_dialog_gets_7seg_example(headless_pygame, monkeypatch):
@@ -772,7 +773,7 @@ def test_picker_error_dialog_gets_7seg_example(headless_pygame, monkeypatch):
     monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (False, "bad"))
     dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
     ctrl._run_vhdl_picker()
-    assert dialog.example_paths == [controller_mod._HDL_DIR / "counter_7seg.vhd"]
+    assert dialog.example_paths == [HDL_DIR / "counter_7seg.vhd"]
 
 
 # ── on_simulate: single-window attached path (U34, the default) ──────────────

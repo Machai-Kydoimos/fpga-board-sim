@@ -32,7 +32,17 @@ src/fpga_sim/              Installable Python package (src layout)
   __main__.py              Entry point — arg parsing, window setup/restore, --benchmark CLI, --sim flag
   controller.py            ScreenController + SessionState — drives the launcher screen flow
   board_loader.py          Loads board definitions from JSON into BoardDef objects
-  sim_bridge.py            GHDL/NVC analysis + cocotb simulation launcher; _SimBackend ABC + _GHDLBackend/_NVCBackend
+  paths.py                 REPO_ROOT + the project's trees — derived once, never re-counted
+  sim_bridge.py            Re-export shim over the nine modules below; its docstring is the map
+  sim_config.py            Simulator / WaveFormat / DutyMode types, WaveConfig, duty policy
+  sim_backends.py          _SimBackend ABC + _GHDLBackend / _NVCBackend — one class per engine
+  sim_discovery.py         Which simulator installs exist here, and how to tell them apart (U35)
+  vhdl_interface.py        Parses a design's toplevel ports and generics; judges nothing
+  conventions.py           Board-native matcher — a design's own port names vs. the board's (U21)
+  vhdl_contract.py         Whether a design can run here, and the message when it cannot
+  wrapper.py               Generates sim_wrapper (generic / native / duty-integrator) + analyze_vhdl
+  waveform.py              VCD / FST capture, the .gtkw sidecar, opening a viewer
+  sim_runner.py            The child's environment, start_simulation → SimChild, finish_waveform
   sim_session_log.py       Writes per-session JSON summaries to ~/.fpga_simulator/sessions/
   sim_metrics.py           Optional per-frame CSV metrics (set FPGA_SIM_METRICS=<path> to enable)
   session_config.py        Session persistence, merge-on-write (~/.fpga_simulator/session.json)
@@ -292,9 +302,17 @@ simulators own their exit codes, which are unreliable on a clean stop, so failur
 never inferred from the return code alone. To add a sim-screen action, add a `SimExit`
 member (in `ui/results.py`), a toolbar button, and a routing arm.
 
-## Simulator backends (`fpga_sim/sim_bridge.py`)
+## Simulator backends (`fpga_sim/sim_backends.py`)
 
-`sim_bridge.py` defines a `_SimBackend` ABC with two private subclasses
+> **Where the pipeline lives (D17).** `sim_bridge.py` was 3,067 lines and nine
+> concerns; it is now a re-export shim whose docstring maps every name to the
+> module that owns it. Imports through `sim_bridge` still work — about
+> thirty-five files use them — but new code should name the owning module. The
+> one thing the shim cannot forward is **monkeypatching a module global**: a test
+> that fakes `shutil.which`, `subprocess.run` or `WAVEFORM_DIR` must patch
+> `sim_discovery`, `waveform` or `sim_runner` directly.
+
+`sim_backends.py` defines a `_SimBackend` ABC with two private subclasses
 (`_GHDLBackend`, `_NVCBackend`) that encapsulate all simulator-specific details:
 
 | | `_GHDLBackend` | `_NVCBackend` |
@@ -324,7 +342,7 @@ required (the Windows Store build cannot be embedded).
 A design usually satisfies the generic `clk/sw/btn/led[/seg]` contract with `NUM_*`
 generics. It can instead use a **board's own** port names and fixed widths (Terasic
 `CLOCK_50`/`SW`/`KEY`/`LEDR`/`HEX0…`, litex `clk100`/`user_led`/`user_sw`/`user_btn`,
-etc.). Recognizing and adapting that is contained entirely in `sim_bridge.py` and the
+etc.). Recognizing and adapting that is contained entirely in `conventions.py` / `wrapper.py` and the
 board JSON — the cocotb testbench boundary never changes.
 
 1. **Contract check.** `check_vhdl_contract()` first tries the generic contract. If

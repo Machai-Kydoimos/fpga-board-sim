@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from fpga_sim.paths import BOARDS_DIR
+
 _FALLBACK_CLOCK_HZ: float = 12e6  # most common across 80 surveyed boards
 
 
@@ -380,7 +382,7 @@ def discover_boards(boards_dir: str | Path) -> list[BoardDef]:
 
 def get_default_boards_path() -> Path:
     """Path to the ``boards/`` directory containing JSON board definitions."""
-    return Path(__file__).parent.parent.parent / "boards"
+    return BOARDS_DIR
 
 
 def find_board(boards: list[BoardDef], wanted: str) -> BoardDef | None:

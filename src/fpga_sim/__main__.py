@@ -30,6 +30,7 @@ import pygame
 
 from fpga_sim.board_loader import discover_boards, find_board, get_default_boards_path
 from fpga_sim.controller import ScreenController, build_generics
+from fpga_sim.paths import HDL_DIR
 from fpga_sim.session_config import load_session, update_session
 from fpga_sim.sim_bridge import (
     _fallback_ghdl,
@@ -208,8 +209,7 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
         chosen = boards[0]
 
     # VHDL file selection
-    hdl_dir = Path(__file__).parent.parent.parent / "hdl"
-    vhdl_path = Path(args.vhdl) if args.vhdl else hdl_dir / "blinky.vhd"
+    vhdl_path = Path(args.vhdl) if args.vhdl else HDL_DIR / "blinky.vhd"
     if not vhdl_path.exists():
         print(f"[benchmark] VHDL file not found: {vhdl_path}", file=sys.stderr)
         return 1

@@ -327,7 +327,7 @@ def test_normalize_wave(value, expected):
 
 def test_waveform_path_is_timestamped_under_waveform_dir(monkeypatch, tmp_path):
     """<entity>_<timestamp>.<ext> under the (redirectable) default dir."""
-    monkeypatch.setattr("fpga_sim.sim_bridge.WAVEFORM_DIR", tmp_path)
+    monkeypatch.setattr("fpga_sim.waveform.WAVEFORM_DIR", tmp_path)
     monkeypatch.delenv("FPGA_SIM_WAVEFORM_DIR", raising=False)
     when = datetime(2026, 7, 9, 14, 30, 5)
     assert _waveform_path("blinky", "vcd", now=when) == tmp_path / "blinky_2026-07-09_14-30-05.vcd"
@@ -339,7 +339,7 @@ def test_waveform_path_is_timestamped_under_waveform_dir(monkeypatch, tmp_path):
 
 def test_waveform_dir_env_override(monkeypatch, tmp_path):
     """FPGA_SIM_WAVEFORM_DIR relocates output; a blank value falls back to the default."""
-    monkeypatch.setattr("fpga_sim.sim_bridge.WAVEFORM_DIR", tmp_path / "default")
+    monkeypatch.setattr("fpga_sim.waveform.WAVEFORM_DIR", tmp_path / "default")
     proj = tmp_path / "proj" / "waves"
     monkeypatch.setenv("FPGA_SIM_WAVEFORM_DIR", str(proj))
     p = _waveform_path("blinky", "vcd")
@@ -459,10 +459,8 @@ def test_open_waveform_launches_configured_viewer(monkeypatch, tmp_path):
     """When the viewer's program is on PATH, launch it with the built argv."""
     calls: list[list[str]] = []
     monkeypatch.setenv("FPGA_SIM_WAVEFORM_VIEWER", "surfer {dump}")
-    monkeypatch.setattr("fpga_sim.sim_bridge.shutil.which", lambda exe: "/usr/bin/" + exe)
-    monkeypatch.setattr(
-        "fpga_sim.sim_bridge.subprocess.Popen", lambda argv, **kw: calls.append(argv)
-    )
+    monkeypatch.setattr("fpga_sim.waveform.shutil.which", lambda exe: "/usr/bin/" + exe)
+    monkeypatch.setattr("fpga_sim.waveform.subprocess.Popen", lambda argv, **kw: calls.append(argv))
     dump, gtkw = tmp_path / "b.vcd", tmp_path / "b.gtkw"
     _open_waveform(dump, gtkw)
     assert calls == [["surfer", str(dump)]]
@@ -471,8 +469,8 @@ def test_open_waveform_launches_configured_viewer(monkeypatch, tmp_path):
 def test_open_waveform_falls_back_when_viewer_missing(monkeypatch, tmp_path):
     """Program not on PATH → hand the raw dump to the OS default handler."""
     opened: list[Path] = []
-    monkeypatch.setattr("fpga_sim.sim_bridge.shutil.which", lambda exe: None)
-    monkeypatch.setattr("fpga_sim.sim_bridge.open_with_default_app", opened.append)
+    monkeypatch.setattr("fpga_sim.waveform.shutil.which", lambda exe: None)
+    monkeypatch.setattr("fpga_sim.waveform.open_with_default_app", opened.append)
     dump, gtkw = tmp_path / "b.vcd", tmp_path / "b.gtkw"
     _open_waveform(dump, gtkw)
     assert opened == [dump]

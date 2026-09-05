@@ -5,7 +5,7 @@ nothing here touches the network. `REGISTRY_DIR`/`BOARDS_DIR` are
 monkeypatched to `tmp_path` wherever a test needs real files on disk
 (registry TOML / board JSON), matching the repo's existing pattern for
 redirecting module-level path constants in tests (see e.g.
-`sim_bridge.WAVEFORM_DIR`).
+`waveform.WAVEFORM_DIR`).
 """
 
 from __future__ import annotations
