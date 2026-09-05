@@ -30,7 +30,12 @@ WORKFLOW: list[tuple[str, str]] = [
         "Preview — click switches and buttons, pick the simulator (GHDL/NVC), "
         "then Load a VHDL file.",
     ),
-    ("3", "Pick a VHDL file — choose a .vhd/.vhdl design (start with hdl/blinky.vhd)."),
+    (
+        "3",
+        "Pick a VHDL file — browse to a .vhd/.vhdl design, or just drop one on "
+        "the window from wherever you keep it. The board's own example is "
+        "already loaded, so you can skip this and run it.",
+    ),
     (
         "4",
         "Run — switches and buttons drive the inputs; LEDs and 7-seg show live "
@@ -48,6 +53,7 @@ SHORTCUTS: list[tuple[str, str]] = [
     ("Enter", "Select board · open folder · pick file · start sim"),
     ("Type", "Filter the board list"),
     ("Wheel", "Scroll the board & file lists"),
+    ("Drop a file", "Load a .vhd dropped on the preview or the file picker"),
     ("0-9  A B C", "Hold the button at that index — several at once (numpad too)"),
     ("Right-click", "Latch a button down / release it (preview & sim)"),
     ("R", "Reset switches & buttons, including latches (preview & sim)"),

@@ -55,18 +55,18 @@ def test_good_blinky_encoding_pass(filename):
 
 
 def test_bad_encoding_fails_stage1():
-    ok, msg = check_vhdl_encoding(HDL / "bad_encoding_blinky.vhdl")
+    ok, msg = check_vhdl_encoding(FIXTURES / "bad_encoding_blinky.vhdl")
     assert not ok, "Expected encoding check to fail on BOM file"
     assert "BOM" in msg
 
 
 def test_bad_contract_passes_stage1():
-    ok, msg = check_vhdl_encoding(HDL / "bad_contract_blinky.vhdl")
+    ok, msg = check_vhdl_encoding(FIXTURES / "bad_contract_blinky.vhdl")
     assert ok, f"Unexpected encoding failure: {msg}"
 
 
 def test_bad_semantic_passes_stage1():
-    ok, msg = check_vhdl_encoding(HDL / "bad_semantic_blinky.vhdl")
+    ok, msg = check_vhdl_encoding(FIXTURES / "bad_semantic_blinky.vhdl")
     assert ok, f"Unexpected encoding failure: {msg}"
 
 
@@ -80,13 +80,13 @@ def test_good_blinky_contract_pass(filename):
 
 
 def test_bad_contract_fails_stage2():
-    ok, msg = _contract(HDL / "bad_contract_blinky.vhdl")
+    ok, msg = _contract(FIXTURES / "bad_contract_blinky.vhdl")
     assert not ok, "Expected contract check to fail on mismatched entity"
     assert "mismatch" in msg.lower()
 
 
 def test_bad_semantic_passes_stage2():
-    ok, msg = _contract(HDL / "bad_semantic_blinky.vhdl")
+    ok, msg = _contract(FIXTURES / "bad_semantic_blinky.vhdl")
     assert ok, f"Unexpected contract failure: {msg}"
 
 
@@ -103,7 +103,7 @@ def test_good_blinky_ghdl_pass(filename, ghdl):
 
 @pytest.mark.slow
 def test_bad_semantic_fails_stage3(ghdl):
-    f = HDL / "bad_semantic_blinky.vhdl"
+    f = FIXTURES / "bad_semantic_blinky.vhdl"
     ok, detail = analyze_vhdl(f, toplevel=f.stem)
     assert not ok, "Expected GHDL analysis to fail on bad_semantic_blinky.vhdl"
     assert "unsigned" in detail.lower()
@@ -114,27 +114,27 @@ def test_bad_semantic_fails_stage3(ghdl):
 
 def test_bad_encoding_error_names_the_bom():
     """The BOM error must tell the user exactly what was detected."""
-    _, msg = check_vhdl_encoding(HDL / "bad_encoding_blinky.vhdl")
+    _, msg = check_vhdl_encoding(FIXTURES / "bad_encoding_blinky.vhdl")
     assert "BOM" in msg
 
 
 def test_bad_contract_error_names_found_entity():
     """Mismatch error must include the entity name that was found in the file."""
-    _, msg = _contract(HDL / "bad_contract_blinky.vhdl")
+    _, msg = _contract(FIXTURES / "bad_contract_blinky.vhdl")
     # entity is 'blinky'; error must say so
     assert "blinky" in msg
 
 
 def test_bad_contract_error_names_expected_stem():
     """Mismatch error must include the filename stem so the user knows the fix."""
-    _, msg = _contract(HDL / "bad_contract_blinky.vhdl")
+    _, msg = _contract(FIXTURES / "bad_contract_blinky.vhdl")
     assert "bad_contract_blinky" in msg
 
 
 @pytest.mark.slow
 def test_analyze_semantic_error_is_nonempty(ghdl):
     """GHDL analysis error for bad_semantic_blinky.vhdl must not be blank."""
-    f = HDL / "bad_semantic_blinky.vhdl"
+    f = FIXTURES / "bad_semantic_blinky.vhdl"
     _, detail = analyze_vhdl(f, toplevel=f.stem)
     assert detail.strip()  # non-empty, human-readable error
 
@@ -144,13 +144,13 @@ def test_analyze_semantic_error_is_nonempty(ghdl):
 
 def test_bad_7seg_missing_seg_passes_stage1():
     """bad_contract_7seg_missing_seg.vhdl must be clean ASCII (encoding passes)."""
-    ok, msg = check_vhdl_encoding(HDL / "bad_contract_7seg_missing_seg.vhdl")
+    ok, msg = check_vhdl_encoding(FIXTURES / "bad_contract_7seg_missing_seg.vhdl")
     assert ok, f"Unexpected encoding failure: {msg}"
 
 
 def test_bad_7seg_missing_seg_fails_stage2():
     """NUM_SEGS generic without a seg port must be rejected by the contract checker."""
-    ok, msg = _contract(HDL / "bad_contract_7seg_missing_seg.vhdl")
+    ok, msg = _contract(FIXTURES / "bad_contract_7seg_missing_seg.vhdl")
     assert not ok, "Expected contract check to fail: NUM_SEGS declared but no seg port"
     assert "NUM_SEGS" in msg
     assert "seg" in msg.lower()
@@ -158,26 +158,26 @@ def test_bad_7seg_missing_seg_fails_stage2():
 
 def test_bad_7seg_missing_seg_error_names_fix():
     """The missing-seg error must suggest the correct port declaration."""
-    _, msg = _contract(HDL / "bad_contract_7seg_missing_seg.vhdl")
+    _, msg = _contract(FIXTURES / "bad_contract_7seg_missing_seg.vhdl")
     assert "8 * NUM_SEGS" in msg
 
 
 def test_bad_7seg_extra_seg_passes_stage1():
     """bad_contract_7seg_extra_seg.vhdl must be clean ASCII (encoding passes)."""
-    ok, msg = check_vhdl_encoding(HDL / "bad_contract_7seg_extra_seg.vhdl")
+    ok, msg = check_vhdl_encoding(FIXTURES / "bad_contract_7seg_extra_seg.vhdl")
     assert ok, f"Unexpected encoding failure: {msg}"
 
 
 def test_bad_7seg_extra_seg_passes_stage2():
     """bad_contract_7seg_extra_seg.vhdl must pass the contract check (seg port present)."""
-    ok, msg = _contract(HDL / "bad_contract_7seg_extra_seg.vhdl")
+    ok, msg = _contract(FIXTURES / "bad_contract_7seg_extra_seg.vhdl")
     assert ok, f"Unexpected contract rejection: {msg}"
 
 
 @pytest.mark.slow
 def test_bad_7seg_extra_seg_fails_stage3_on_7seg_board(ghdl):
     """Wrong seg port width must cause GHDL elaboration failure on a 7-seg board."""
-    f = HDL / "bad_contract_7seg_extra_seg.vhdl"
+    f = FIXTURES / "bad_contract_7seg_extra_seg.vhdl"
     ok, detail = analyze_vhdl(f, toplevel=f.stem, board_def=_7seg_board())
     assert not ok, "Expected GHDL to fail: seg port width mismatch in 7-seg wrapper"
     assert detail.strip(), "Error detail must be non-empty"
@@ -186,7 +186,7 @@ def test_bad_7seg_extra_seg_fails_stage3_on_7seg_board(ghdl):
 @pytest.mark.slow
 def test_bad_7seg_extra_seg_passes_stage3_on_plain_board(ghdl):
     """Wrong seg port width must not cause failure on a non-7-seg board (seg left open)."""
-    f = HDL / "bad_contract_7seg_extra_seg.vhdl"
+    f = FIXTURES / "bad_contract_7seg_extra_seg.vhdl"
     ok, detail = analyze_vhdl(f, toplevel=f.stem, board_def=_plain_board())
     assert ok, f"Unexpected GHDL failure on plain board: {detail}"
 
@@ -194,7 +194,7 @@ def test_bad_7seg_extra_seg_passes_stage3_on_plain_board(ghdl):
 @pytest.mark.slow
 def test_bad_7seg_extra_seg_fails_stage3_on_7seg_board_nvc(nvc):
     """Wrong seg port width must cause NVC elaboration failure during analyze_vhdl."""
-    f = HDL / "bad_contract_7seg_extra_seg.vhdl"
+    f = FIXTURES / "bad_contract_7seg_extra_seg.vhdl"
     ok, detail = analyze_vhdl(f, toplevel=f.stem, board_def=_7seg_board(), simulator="nvc")
     assert not ok, "Expected NVC to fail: seg port width mismatch in 7-seg wrapper"
     assert detail.strip(), "Error detail must be non-empty"
@@ -203,7 +203,7 @@ def test_bad_7seg_extra_seg_fails_stage3_on_7seg_board_nvc(nvc):
 @pytest.mark.slow
 def test_bad_7seg_extra_seg_passes_stage3_on_plain_board_nvc(nvc):
     """Wrong seg port width must not cause NVC failure on a non-7-seg board."""
-    f = HDL / "bad_contract_7seg_extra_seg.vhdl"
+    f = FIXTURES / "bad_contract_7seg_extra_seg.vhdl"
     ok, detail = analyze_vhdl(f, toplevel=f.stem, board_def=_plain_board(), simulator="nvc")
     assert ok, f"Unexpected NVC failure on plain board: {detail}"
 
@@ -333,12 +333,12 @@ def _write(tmp_path: Path, name: str, text: str) -> Path:
 
 
 def test_fixed_width_fixture_encoding_clean():
-    ok, msg = check_vhdl_encoding(HDL / "bad_contract_fixed_width.vhdl")
+    ok, msg = check_vhdl_encoding(FIXTURES / "bad_contract_fixed_width.vhdl")
     assert ok, f"Unexpected encoding failure: {msg}"
 
 
 def test_fixed_width_fixture_fails_stage2_with_board():
-    ok, msg = _contract(HDL / "bad_contract_fixed_width.vhdl", board_def=_plain_board())
+    ok, msg = _contract(FIXTURES / "bad_contract_fixed_width.vhdl", board_def=_plain_board())
     assert not ok, "Expected contract check to reject fixed 16-bit led with a board selected"
     assert "led" in msg
     assert "16" in msg
@@ -347,13 +347,13 @@ def test_fixed_width_fixture_fails_stage2_with_board():
 
 def test_fixed_width_fixture_passes_stage2_without_board():
     """Without a board the fixed width cannot be judged at stage 2."""
-    ok, msg = _contract(HDL / "bad_contract_fixed_width.vhdl")
+    ok, msg = _contract(FIXTURES / "bad_contract_fixed_width.vhdl")
     assert ok, f"Unexpected rejection: {msg}"
 
 
 def test_fixed_width_mismatch_message_names_board_and_count():
     """The flagship U4 message: board name, its LED count, and the generic fix."""
-    _, msg = _contract(HDL / "bad_contract_fixed_width.vhdl", board_def=_rich_7seg_board())
+    _, msg = _contract(FIXTURES / "bad_contract_fixed_width.vhdl", board_def=_rich_7seg_board())
     assert "DE10-Lite" in msg
     assert "10 LEDs" in msg
     assert "NUM_LEDS=10" in msg
@@ -437,13 +437,13 @@ def test_fixed_seg_width_ignored_on_plain_board(tmp_path):
 
 
 def test_wrong_direction_fixture_encoding_clean():
-    ok, msg = check_vhdl_encoding(HDL / "bad_contract_wrong_direction.vhdl")
+    ok, msg = check_vhdl_encoding(FIXTURES / "bad_contract_wrong_direction.vhdl")
     assert ok, f"Unexpected encoding failure: {msg}"
 
 
 def test_wrong_direction_fixture_fails_stage2():
     """led : in must be rejected — GHDL/NVC accept it silently, so this is the only guard."""
-    ok, msg = _contract(HDL / "bad_contract_wrong_direction.vhdl")
+    ok, msg = _contract(FIXTURES / "bad_contract_wrong_direction.vhdl")
     assert not ok, "Expected contract check to reject led with mode IN"
     assert "OUT" in msg
     assert "led : out std_logic_vector(NUM_LEDS - 1 downto 0)" in msg
@@ -717,7 +717,7 @@ class TestAddErrorHints:
 @pytest.mark.slow
 def test_fixed_width_fixture_stage3_hint_ghdl(ghdl):
     """Without a board the fixture reaches GHDL elaboration; the error gains a hint."""
-    f = HDL / "bad_contract_fixed_width.vhdl"
+    f = FIXTURES / "bad_contract_fixed_width.vhdl"
     ok, detail = analyze_vhdl(f, toplevel=f.stem)
     assert not ok
     assert "Hint:" in detail
@@ -726,7 +726,7 @@ def test_fixed_width_fixture_stage3_hint_ghdl(ghdl):
 
 @pytest.mark.slow
 def test_fixed_width_fixture_stage3_hint_nvc(nvc):
-    f = HDL / "bad_contract_fixed_width.vhdl"
+    f = FIXTURES / "bad_contract_fixed_width.vhdl"
     ok, detail = analyze_vhdl(f, toplevel=f.stem, simulator="nvc")
     assert not ok
     assert "Hint:" in detail
@@ -736,7 +736,7 @@ def test_fixed_width_fixture_stage3_hint_nvc(nvc):
 @pytest.mark.slow
 def test_extra_seg_stage3_hint_names_seg_ghdl(ghdl):
     """The 9*NUM_SEGS fixture (regex-invisible) gets the seg-specific hint from stderr."""
-    f = HDL / "bad_contract_7seg_extra_seg.vhdl"
+    f = FIXTURES / "bad_contract_7seg_extra_seg.vhdl"
     ok, detail = analyze_vhdl(f, toplevel=f.stem, board_def=_7seg_board())
     assert not ok
     assert "Hint:" in detail
@@ -969,7 +969,7 @@ def test_the_dialect_rides_on_the_contract_result():
 
 def test_the_advisory_never_changes_the_verdict():
     """A Synopsys design that fails the contract fails for the contract's reason."""
-    res = check_vhdl_contract(HDL / "bad_contract_blinky.vhdl", board_def=_plain_board())
+    res = check_vhdl_contract(FIXTURES / "bad_contract_blinky.vhdl", board_def=_plain_board())
     assert not res.ok
     assert "Entity name mismatch" in res.message
 

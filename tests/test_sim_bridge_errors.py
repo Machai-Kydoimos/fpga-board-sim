@@ -16,6 +16,10 @@ from fpga_sim.board_loader import BoardDef
 from fpga_sim.sim_bridge import analyze_vhdl, check_vhdl_contract, check_vhdl_encoding
 
 HDL = Path(__file__).resolve().parent.parent / "hdl"
+#: Deliberately-broken designs live under tests/, not hdl/: they are negative
+#: test fixtures, and sorted() used to put all seven above blinky.vhd in the
+#: file picker a new user meets first (U49).
+FIXTURES = Path(__file__).resolve().parent / "fixtures" / "hdl"
 
 
 def _contract(path: str | Path, board_def: BoardDef | None = None) -> tuple[bool, str]:
@@ -149,13 +153,13 @@ def test_contract_missing_sw_message_names_sw(tmp_path):
 
 def test_bad_contract_message_names_mismatched_entity():
     """bad_contract_blinky.vhdl has entity 'blinky'; error must mention it."""
-    _, msg = _contract(HDL / "bad_contract_blinky.vhdl")
+    _, msg = _contract(FIXTURES / "bad_contract_blinky.vhdl")
     assert "blinky" in msg
 
 
 def test_bad_contract_message_names_expected_filename_stem():
     """bad_contract_blinky.vhdl error must mention 'bad_contract_blinky'."""
-    _, msg = _contract(HDL / "bad_contract_blinky.vhdl")
+    _, msg = _contract(FIXTURES / "bad_contract_blinky.vhdl")
     assert "bad_contract_blinky" in msg
 
 

@@ -23,6 +23,10 @@ pytestmark = pytest.mark.slow
 
 PROJECT = Path(__file__).resolve().parent.parent
 HDL = PROJECT / "hdl"
+#: Deliberately-broken designs live under tests/, not hdl/: they are negative
+#: test fixtures, and sorted() used to put all seven above blinky.vhd in the
+#: file picker a new user meets first (U49).
+FIXTURES = Path(__file__).resolve().parent / "fixtures" / "hdl"
 
 
 # ── Availability ──────────────────────────────────────────────────────────────
@@ -87,7 +91,7 @@ def test_good_blinky_analyzes_with_nvc(nvc, filename):
 
 def test_bad_semantic_fails_nvc_analysis(nvc):
     """A file with a missing library import must also fail NVC analysis."""
-    f = PROJECT / "hdl" / "bad_semantic_blinky.vhdl"
+    f = FIXTURES / "bad_semantic_blinky.vhdl"
     ok, detail = analyze_vhdl(f, toplevel=f.stem, simulator="nvc")
     assert not ok, "Expected NVC analysis to fail on bad_semantic_blinky.vhdl"
 

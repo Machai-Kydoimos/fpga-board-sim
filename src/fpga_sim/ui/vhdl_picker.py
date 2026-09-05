@@ -5,7 +5,7 @@ from pathlib import Path
 import pygame
 
 from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
-from fpga_sim.ui.help_dialog import HelpDialog
+from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
 from fpga_sim.ui.theme import THEME
 
 
@@ -26,6 +26,8 @@ class VHDLFilePicker:
         self.current_dir = Path(start_dir or Path.cwd())
         # Set by F1 / ?; consumed by run() to open the help overlay.
         self._help_requested = False
+        #: Hit-rect of the (?) trigger, set at draw time (None before the first frame).
+        self._help_rect: pygame.Rect | None = None
         self._scan()
 
         if preselect_name:
@@ -68,13 +70,23 @@ class VHDLFilePicker:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
                     return None
+                elif ev.type == pygame.DROPFILE:
+                    dropped = self._accept_drop(ev.file)
+                    if dropped is not None:
+                        return dropped
                 elif ev.type == pygame.WINDOWRESIZED:
                     self.width, self.height = ev.x, ev.y
                     self.scroll = 0
                 elif ev.type == pygame.MOUSEMOTION:
                     self._hover(ev.pos)
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
-                    if ev.button == 1:
+                    if (
+                        ev.button == 1
+                        and self._help_rect is not None
+                        and (self._help_rect.collidepoint(ev.pos))
+                    ):
+                        self._help_requested = True
+                    elif ev.button == 1:
                         result = self._activate()
                         if result is not None:
                             return result
@@ -178,11 +190,35 @@ class VHDLFilePicker:
     def _hover(self, pos: tuple[int, int]) -> None:
         hdr = self._hdr
         _, y = pos
+        if self._help_rect is not None and self._help_rect.collidepoint(pos):
+            self.hovered = -1
+            return
         if y < hdr:
             self.hovered = -1
             return
         idx = (y - hdr + self.scroll) // self.row_h
         self.hovered = idx if 0 <= idx < len(self.entries) else -1
+
+    def _accept_drop(self, path: str) -> str | None:
+        """Handle a file dropped on the window: pick it, or browse to its folder.
+
+        A dropped ``.vhd`` / ``.vhdl`` is *the pick* -- it goes through the same
+        encoding, contract and analysis chain a clicked row does, because the
+        gesture means the same thing.  A dropped **directory** browses there
+        instead, which is the other useful thing to drag, and anything else is
+        ignored rather than rejected: dropping a `.qsf` on the file picker is a
+        misunderstanding, not an error worth a dialog.
+        """
+        dropped = Path(path)
+        if dropped.is_dir():
+            self.current_dir = dropped
+            self._scan()
+            self.scroll = 0
+            self.hovered = -1
+            return None
+        if dropped.is_file() and dropped.suffix.lower() in (".vhd", ".vhdl"):
+            return str(dropped)
+        return None
 
     def _click(self) -> str | None:
         if 0 <= self.hovered < len(self.entries):
@@ -225,5 +261,20 @@ class VHDLFilePicker:
         self.screen.blit(title, (20, 10))
         pd = path_f.render(str(self.current_dir), True, THEME.muted_text)
         self.screen.blit(pd, (20, 10 + title_f.get_height() + 4))
+
+        # The picker is where someone arrives with a file of their own, so it is
+        # where dropping one has to be discoverable -- otherwise the feature is
+        # only found by people who already guessed it exists.
+        hint = path_f.render("or drop a .vhd file on this window", True, THEME.muted_text)
+        self.screen.blit(hint, (20, 10 + title_f.get_height() + 4 + path_f.get_height() + 2))
+
+        help_size = max(22, round(28 * s))
+        self._help_rect = draw_help_button(
+            self.screen,
+            right=self.width - 20,
+            top=8,
+            size=help_size,
+            mouse=pygame.mouse.get_pos(),
+        )
 
         pygame.display.flip()

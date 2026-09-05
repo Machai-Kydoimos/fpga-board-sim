@@ -162,3 +162,38 @@ class TestPickerHelpResizeReconcile:
         p._sync_to_surface()
         assert (p.width, p.height) == (1024, 700)
         assert p.scroll == 90
+
+
+# ── Drag-and-drop (U49) ──────────────────────────────────────────────────────
+
+
+def test_dropping_a_design_picks_it(screen, tmp_path):
+    """Students will not move their files under this repository; dropping is the way in."""
+    vhdl = tmp_path / "top.vhd"
+    vhdl.write_text("-- design", encoding="utf-8")
+    picker = VHDLFilePicker(screen, start_dir=tmp_path)
+    assert picker._accept_drop(str(vhdl)) == str(vhdl)
+
+
+def test_dropping_a_directory_browses_into_it(screen, tmp_path):
+    lab = tmp_path / "lab3"
+    lab.mkdir()
+    (lab / "counter.vhd").write_text("-- design", encoding="utf-8")
+    picker = VHDLFilePicker(screen, start_dir=tmp_path)
+    assert picker._accept_drop(str(lab)) is None  # not a pick...
+    assert picker.current_dir == lab  # ...it navigated
+    assert any(name == "counter.vhd" for name, _p, _d in picker.entries)
+
+
+def test_dropping_something_else_is_ignored_quietly(screen, tmp_path):
+    """A .qsf on the file picker is a misunderstanding, not an error to shout about."""
+    qsf = tmp_path / "top.qsf"
+    qsf.write_text("set_location_assignment PIN_W5 -to clk", encoding="utf-8")
+    picker = VHDLFilePicker(screen, start_dir=tmp_path)
+    assert picker._accept_drop(str(qsf)) is None
+    assert picker.current_dir == tmp_path  # and nothing moved
+
+
+def test_dropping_a_path_that_is_gone_is_ignored(screen, tmp_path):
+    picker = VHDLFilePicker(screen, start_dir=tmp_path)
+    assert picker._accept_drop(str(tmp_path / "vanished.vhd")) is None
