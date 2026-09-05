@@ -11,7 +11,6 @@ Works on both Windows and Linux.
 
 from __future__ import annotations
 
-import glob
 import json
 import os
 import re
@@ -22,581 +21,98 @@ import sys
 import tempfile
 import threading
 import time
-from abc import ABC, abstractmethod
 from collections import deque
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any, Literal
+from typing import IO, TYPE_CHECKING, Any
 
 from fpga_sim.paths import REPO_ROOT, SIM_DIR, VENV_DIR
 from fpga_sim.platform_open import open_with_default_app
-from fpga_sim.session_config import load_session
 from fpga_sim.sim_link import SimLinkHost, send
 
 if TYPE_CHECKING:
     from fpga_sim.board_loader import BoardDef
 
-IS_WINDOWS = sys.platform == "win32"
+from fpga_sim.sim_backends import (
+    _NVC_HEAP,
+    _backend,
+    _GHDLBackend,
+    _NVCBackend,
+    _SimBackend,
+)
+from fpga_sim.sim_config import (
+    DEFAULT_DUTY_ALGO,
+    DEFAULT_DUTY_MODE,
+    DUTY_ALGO_ENV,
+    DUTY_ALGOS,
+    DUTY_ENV,
+    IS_WINDOWS,
+    DutyMode,
+    Simulator,
+    WaveConfig,
+    WaveFormat,
+    resolve_duty_algo,
+    resolve_duty_mode,
+)
+from fpga_sim.sim_discovery import (
+    _BACKEND_LABEL,
+    _GHDL_VARIANT_GLOBS,
+    _SIM_SLUG_BACKEND,
+    EXTRA_SIMS_ENV,
+    SimulatorInfo,
+    _disambiguate_labels,
+    _fallback_ghdl,
+    _find_ghdl,
+    _probe_simulator,
+    detect_simulators,
+    discover_simulators,
+    resolve_simulator_arg,
+)
 
-# Supported simulator backend identifiers.  Using a Literal (rather than a bare
-# ``str``) lets mypy reject typos such as ``_backend("gdhl")`` at type-check
-# time and gives the simulator domain a single source of truth.  Extend this
-# with ``"iverilog"`` when Verilog support (U20) lands.
-Simulator = Literal["ghdl", "nvc"]
-
-# Waveform-capture formats the sim run subprocess can dump natively.  ``None``
-# (off) is the default throughout; the Settings dialog persists a tri-state
-# ``waveform`` session key — ``"off"`` / ``"vcd"`` / ``"fst"`` — which
-# ``start_simulation`` normalizes via :func:`_normalize_wave`.
-WaveFormat = Literal["vcd", "fst"]
-
-# Duty-cycle measurement modes (U9).  Measurement is a per-run policy, not a
-# fixed cost, because an exact integrator is only free when LED channels are
-# sparse (see :func:`_duty_splice`):
-#   "off"    no integrator -- the pre-U9 binary path, byte-identical wrapper
-#   "color"  no integrator either: LED colors (U36/U37) need no duty, so
-#            "colors but no dimming" stays a zero-measurement path
-#   "full"   integrator spliced -> brightness + PWM color mixing
-# ``FPGA_SIM_DUTY`` overrides the caller's choice, so a benchmark or a CI run
-# can pin a mode without touching the session (mirrors ``FPGA_SIM_WAVEFORM``).
-DutyMode = Literal["off", "color", "full"]
-DUTY_ENV = "FPGA_SIM_DUTY"
-DEFAULT_DUTY_MODE: DutyMode = "full"
-
-#: Splice fragments live one file per splice point (``<algo>.ports`` /
-#: ``<algo>.body``), so an algorithm is swapped by name rather than by
-#: re-plumbing.  Both shipped algorithms export the identical accumulator
-#: contract (48-bit ``acc``/``tch`` per channel), so the host math is unchanged
-#: either way; they differ only in how the integrator is woken:
-#:
-#:   ``fix_ns_pc``  one process per channel -- wakes once per channel transition
-#:   ``fix_ns_1p``  one process per vector  -- wakes once per instant, rescans N
-#:
-#: Which is cheaper is a property of the design (see the fragment headers), so
-#: ``FPGA_SIM_DUTY_ALGO`` selects it per run and the default below is set from
-#: the measured design set.
-DUTY_ALGOS = ("fix_ns_pc", "fix_ns_1p")
-DEFAULT_DUTY_ALGO = "fix_ns_1p"
-DUTY_ALGO_ENV = "FPGA_SIM_DUTY_ALGO"
+#: Swappable duty-integrator fragments, one file per splice point per algorithm.
 _DUTY_FRAGMENT_DIR: Path = SIM_DIR / "duty"
 
-
-def resolve_duty_algo() -> str:
-    """Resolve which integrator to splice: ``FPGA_SIM_DUTY_ALGO``, else the default.
-
-    An unrecognized name falls back rather than failing the run, matching
-    :func:`resolve_duty_mode` -- a typo should not stop a simulation.
-    """
-    raw = os.environ.get(DUTY_ALGO_ENV, "").strip().lower()
-    return raw if raw in DUTY_ALGOS else DEFAULT_DUTY_ALGO
-
-
-def resolve_duty_mode(mode: DutyMode | None = None) -> DutyMode:
-    """Resolve the duty mode: env var, else *mode*, else the session, else default.
-
-    Every wrapper-generating path funnels through here so the wrapper analyzed
-    by :func:`analyze_vhdl` and the one elaborated by :func:`_prepare_simulation`
-    can never disagree — a mismatch would leave the run reading duty ports that
-    the elaborated design does not have.  An unrecognized env value is ignored
-    rather than fatal (a typo should not stop a simulation from running).
-
-    The session's ``led_pwm`` preference (U47) is consulted **here**, rather than
-    threaded as an argument from the launcher, precisely to keep that funnel
-    intact: a future wrapper-generating path that forgot the argument would
-    silently disagree with the rest, which is the failure
-    :func:`wrapper_is_stale` exists to make impossible. Env still wins, so a
-    benchmark or CI run pins the mode without touching the user's session, and
-    an explicit *mode* still beats the preference so a caller that means "full"
-    gets it.
-    """
-    raw = os.environ.get(DUTY_ENV, "").strip().lower()
-    if raw in ("off", "color", "full"):
-        return raw  # type: ignore[return-value]  # narrowed by the membership test
-    if mode is not None:
-        return mode
-    # Only ``false`` turns it off; a missing key means PWM, the historical
-    # behavior.  Reading the session is best-effort — load_session() already
-    # swallows a missing or corrupt file and returns {}.
-    if load_session().get("led_pwm") is False:
-        return "off"
-    return DEFAULT_DUTY_MODE
-
-
-@dataclass(frozen=True)
-class WaveConfig:
-    """A resolved waveform-capture request: output path + format + array depth.
-
-    Handed to a backend's ``run_cmd`` when the user enabled capture.  GHDL and
-    NVC spell the flags differently (``--vcd=`` / ``--fst=`` after the toplevel
-    vs. ``--wave=`` + ``--format=`` before it), so only the abstract format is
-    stored here and each backend renders its own flags.
-
-    *dump_arrays* is the U30 "include memories" depth: when set, nested arrays
-    and memories (the embedded-core designs' RAM/ROM/registers) are captured
-    too.  It is **NVC-only**: NVC skips nested arrays in every format (VCD and
-    FST) unless given ``--dump-arrays``, whereas GHDL's FST/GHW writers include
-    them by default — so ``_GHDLBackend.run_cmd`` ignores the field.  (GHDL's
-    *VCD* writer omits memories with or without a flag; a VCD *can* hold one,
-    flattened to a vector var per element, which NVC's VCD writer emits under
-    ``--dump-arrays`` but GHDL's does not.)  Off by default, since arrays add
-    significant size (see roadmap P13).
-    """
-
-    path: str
-    fmt: WaveFormat
-    dump_arrays: bool = False
-
-
-# ── Simulator backend classes ─────────────────────────────────────────────────
-
-
-class _SimBackend(ABC):
-    """Abstract base for simulator backends.
-
-    The four discovery helpers (``find`` / ``available`` / ``lib_dir`` /
-    ``sim_bin_lib``) are shared here: they read ``cls.NAME`` and call
-    ``cls.find()``, which works for any backend whose executable name equals its
-    ``NAME``.  Subclasses override only ``NAME`` plus the per-simulator command
-    builders (``plugin_lib_name`` / ``analyze_cmd`` / ``elaborate_cmd`` /
-    ``run_cmd``).  Backends are used as classes, never instantiated.
-    """
-
-    NAME: Simulator
-
-    # Shared discovery — the executable name equals NAME for every backend.
-    @classmethod
-    def find(cls) -> str:
-        return shutil.which(cls.NAME) or cls.NAME
-
-    @classmethod
-    def available(cls) -> bool:
-        return bool(shutil.which(cls.NAME))
-
-    @classmethod
-    def lib_dir(cls, binary: str | None = None) -> str:
-        bin_path = Path(binary or cls.find()).resolve().parent
-        lib_dir = bin_path.parent / "lib"
-        return str(lib_dir) if lib_dir.is_dir() else str(bin_path)
-
-    @classmethod
-    def sim_bin_lib(cls, binary: str | None = None) -> tuple[str, str]:
-        """Return (bin_dir, lib_dir) for environment setup.
-
-        *binary* is the selected install's resolved path (U35); when omitted it
-        falls back to ``cls.find()`` (the PATH default), so a caller that has not
-        chosen a specific install still works.
-        """
-        return str(Path(binary or cls.find()).resolve().parent), cls.lib_dir(binary)
-
-    # Per-simulator specifics — subclasses must override.  The command builders
-    # take *binary* (U35): the resolved argv[0] of the selected install, so a
-    # non-PATH backend (a specific GHDL code generator) runs from its own path
-    # instead of whatever ``find()`` resolves.  ``binary=None`` falls back to
-    # ``find()`` for callers that never pick a specific install.
-    @staticmethod
-    @abstractmethod
-    def plugin_lib_name() -> str: ...
-
-    @staticmethod
-    @abstractmethod
-    def analyze_cmd(vhdl_path: Path, work_dir: str, binary: str | None = None) -> list[str]: ...
-
-    @staticmethod
-    @abstractmethod
-    def elaborate_cmd(
-        toplevel: str, generics: dict[str, str], work_dir: str, binary: str | None = None
-    ) -> list[str]: ...
-
-    @staticmethod
-    @abstractmethod
-    def run_cmd(
-        toplevel: str,
-        generics: dict[str, str],
-        plugin_lib: str,
-        work_dir: str,
-        wave: WaveConfig | None = None,
-        binary: str | None = None,
-    ) -> list[str]: ...
-
-
-class _GHDLBackend(_SimBackend):
-    """GHDL simulator backend – uses the VPI interface."""
-
-    NAME: Simulator = "ghdl"
-
-    @staticmethod
-    def plugin_lib_name() -> str:
-        return "cocotbvpi_ghdl.dll" if IS_WINDOWS else "libcocotbvpi_ghdl.so"
-
-    @staticmethod
-    def analyze_cmd(vhdl_path: Path, work_dir: str, binary: str | None = None) -> list[str]:
-        # -O2 speeds the llvm (AOT) backend +8-12% on design-bound workloads and
-        # is a measured no-op on mcode/llvm-jit, at negligible analyze/elab cost
-        # (docs/u25_ghdl_perf_profile.md), so it is passed unconditionally.
-        ghdl = binary or _GHDLBackend.find()
-        return [ghdl, "-a", "-O2", "--std=08", f"--workdir={work_dir}", str(vhdl_path)]
-
-    @staticmethod
-    def elaborate_cmd(
-        toplevel: str, generics: dict[str, str], work_dir: str, binary: str | None = None
-    ) -> list[str]:
-        # GHDL takes no generics at -e (the compiled backends reject -g here);
-        # they are simulation options, passed after the unit at run (-r) time.
-        # -O2: same rationale as analyze_cmd.
-        ghdl = binary or _GHDLBackend.find()
-        return [ghdl, "-e", "-O2", "--std=08", f"--workdir={work_dir}", toplevel]
-
-    @staticmethod
-    def run_cmd(
-        toplevel: str,
-        generics: dict[str, str],
-        plugin_lib: str,
-        work_dir: str,
-        wave: WaveConfig | None = None,
-        binary: str | None = None,
-    ) -> list[str]:
-        cmd = [binary or _GHDLBackend.find(), "-r", "--std=08", f"--workdir={work_dir}"]
-        cmd.append(toplevel)
-        # -g is a *simulation* option: documented (and only reliable) AFTER the
-        # unit name ("ghdl -r --std=08 my_unit -gDEPTH=12").  mcode/llvm-jit
-        # happen to honor a pre-unit -g too, but the compiled llvm/gcc driver
-        # silently drops it there — the design then runs with default generics.
-        for k, v in (generics or {}).items():
-            cmd.append(f"-g{k}={v}")
-        # Silence IEEE assertion noise from the t=0 deltas only (metavalue
-        # warnings while cocotb's first input deposits land); anything a
-        # design does after time zero still warns normally.
-        cmd.append("--asserts=disable-at-0")
-        cmd.append(f"--vpi={plugin_lib}")
-        if wave is not None:
-            # GHDL simulation options follow the toplevel (like --vpi); the dump
-            # format is chosen by the flag name itself (--vcd= / --fst=).
-            cmd.append(f"--{wave.fmt}={wave.path}")
-            # wave.dump_arrays (U30) needs no flag here: GHDL's FST/GHW writers
-            # dump nested arrays/memories by default (its VCD writer omits them,
-            # with or without a flag).  The opt-in is NVC-only.
-        return cmd
-
-
-# NVC's global heap defaults to 16 MB, which large designs (deep hierarchies,
-# many instances) exhaust mid-elaboration — aborting with a cryptic
-# ``** Fatal: (init): out of memory ... increase with the -H option``.  ``-H``
-# raises the cap for the design-building phases (``-e`` / ``-r``).  It is a
-# ceiling the heap grows into on demand, not an up-front reservation: measured
-# peak RSS for a trivial design is unchanged within ~1 MB (only page-table
-# metadata scales with the cap).  512m clears NVC's GC high-water mark even for
-# very large designs (a synthetic 64-hart RISC-V array needed only ~256m); past
-# this the *design-unit* heap (``-M``) limit dominates, so a larger ``-H`` alone
-# would not help.  GHDL has no equivalent limit.
-_NVC_HEAP = "512m"
-
-
-class _NVCBackend(_SimBackend):
-    """NVC VHDL simulator backend – uses the VHPI interface.
-
-    Key differences from GHDL:
-      - Uses ``--work=work:<path>`` instead of ``--workdir=<path>``
-      - Uses ``--std=2008`` instead of ``--std=08``
-      - Generics are passed at elaboration (``-e``) time, not at run (``-r``) time
-      - Plugin loaded via ``--load=<lib>`` (VHPI) instead of ``--vpi=<lib>``
-      - Raises the elaboration/run heap cap via ``-H`` (see :data:`_NVC_HEAP`)
-    """
-
-    NAME: Simulator = "nvc"
-
-    @staticmethod
-    def plugin_lib_name() -> str:
-        return "cocotbvhpi_nvc.dll" if IS_WINDOWS else "libcocotbvhpi_nvc.so"
-
-    @staticmethod
-    def analyze_cmd(vhdl_path: Path, work_dir: str, binary: str | None = None) -> list[str]:
-        nvc = binary or _NVCBackend.find()
-        return [nvc, f"--work=work:{work_dir}", "--std=2008", "-a", str(vhdl_path)]
-
-    @staticmethod
-    def elaborate_cmd(
-        toplevel: str, generics: dict[str, str], work_dir: str, binary: str | None = None
-    ) -> list[str]:
-        """Elaborate with generics (NVC requires generics at elaboration time)."""
-        nvc = binary or _NVCBackend.find()
-        cmd = [nvc, f"--work=work:{work_dir}", "--std=2008", "-H", _NVC_HEAP, "-e"]
-        for k, v in (generics or {}).items():
-            cmd.extend(["-g", f"{k}={v}"])
-        cmd.append(toplevel)
-        return cmd
-
-    @staticmethod
-    def run_cmd(
-        toplevel: str,
-        generics: dict[str, str],
-        plugin_lib: str,
-        work_dir: str,
-        wave: WaveConfig | None = None,
-        binary: str | None = None,
-    ) -> list[str]:
-        # generics were baked in at elaboration (-e); ignored here
-        cmd = [
-            binary or _NVCBackend.find(),
-            f"--work=work:{work_dir}",
-            "--std=2008",
-            "-H",
-            _NVC_HEAP,
-            "-r",
-            # Silence IEEE assertion noise from the t=0 deltas only (metavalue
-            # warnings while cocotb's first input deposits land); anything a
-            # design does after time zero still warns normally.
-            "--ieee-warnings=off-at-0",
-            f"--load={plugin_lib}",
-        ]
-        if wave is not None:
-            # NVC run options precede the toplevel; format is an explicit flag.
-            cmd += [f"--wave={wave.path}", f"--format={wave.fmt}"]
-            if wave.dump_arrays:
-                # U30: NVC skips nested arrays/memories by default; opt them in so
-                # the embedded-core designs' RAM/ROM/registers land in the trace.
-                cmd.append("--dump-arrays")
-        cmd.append(toplevel)
-        return cmd
-
-
-def _backend(simulator: Simulator) -> type[_SimBackend]:
-    """Return the backend class for the given simulator name."""
-    return _NVCBackend if simulator == "nvc" else _GHDLBackend
-
-
-# ── Public discovery ──────────────────────────────────────────────────────────
-
-
-def _find_ghdl() -> str:
-    """Locate the ghdl executable (kept for backward compatibility)."""
-    return _GHDLBackend.find()
-
-
-def detect_simulators() -> list[Simulator]:
-    """Return a list of installed simulator names, e.g. ['ghdl', 'nvc'].
-
-    Always returns at least one entry; falls back to ['ghdl'] even when
-    no simulator is found so the error surfaces at analysis time.
-    """
-    available: list[Simulator] = []
-    if _GHDLBackend.available():
-        available.append("ghdl")
-    if _NVCBackend.available():
-        available.append("nvc")
-    return available or ["ghdl"]
-
-
-# ── Simulator discovery / identity (U35) ──────────────────────────────────────
-#
-# ``detect_simulators`` answers "which *engines* are on PATH"; U35 needs finer
-# grain — GHDL ships three interchangeable code generators (mcode / llvm /
-# llvm-jit) that differ ~2-6x in speed, and a machine can have several installed
-# side by side.  ``SimulatorInfo`` names one concrete install (engine + binary +
-# labeled backend); ``discover_simulators`` finds every usable one.  The
-# ``Simulator`` engine literal still selects the command builder — this layer
-# only adds the *which install* dimension on top.
-
-
-@dataclass(frozen=True)
-class SimulatorInfo:
-    """One discovered simulator: an engine plus the concrete binary behind it.
-
-    * ``engine``  — the command-builder selector, ``"ghdl"`` or ``"nvc"`` (feeds
-      :func:`_backend`).
-    * ``path``    — the resolved absolute path to the binary.
-    * ``backend`` — the code generator, parsed from ``--version``:
-      ``"mcode"`` / ``"llvm"`` / ``"llvm-jit"`` / ``"nvc"``.
-    * ``label``   — short display name (``"GHDL"`` / ``"GHDL-LLVM"`` /
-      ``"GHDL-JIT"`` / ``"NVC"``); the preview toggle shows ``SIM: <label>``.
-      Duplicates (a backend installed at two paths) get a numeric suffix.
-    * ``version`` — the first ``--version`` banner line (shown by ``--list-sims``).
-    """
-
-    engine: Simulator
-    path: str
-    backend: str
-    label: str
-    version: str
-
-
-#: Short display label per detected backend (:attr:`SimulatorInfo.label`).  An
-#: unrecognized GHDL code generator falls back to the plain ``"GHDL"`` label.
-_BACKEND_LABEL: dict[str, str] = {
-    "mcode": "GHDL",
-    "llvm": "GHDL-LLVM",
-    "llvm-jit": "GHDL-JIT",
-    "nvc": "NVC",
-}
-
-#: Glob patterns for sibling-prefix GHDL installs (``/usr/local/ghdl-llvm`` …).
-#: A module attribute so discovery tests can neutralize it; finds nothing on a
-#: machine (or OS) without such a layout.
-_GHDL_VARIANT_GLOBS: tuple[str, ...] = ("/usr/local/ghdl-*/bin/ghdl",)
-
-#: Env var listing extra simulator binaries (``os.pathsep``-separated), merged
-#: into discovery for one-off runs — additive to the session ``extra_simulators``.
-EXTRA_SIMS_ENV = "FPGA_SIM_EXTRA_SIMS"
-
-
-def _probe_simulator(path: str) -> SimulatorInfo | None:
-    """Probe a candidate binary's ``--version`` and label its backend.
-
-    Returns a :class:`SimulatorInfo` for a recognized GHDL or NVC binary, else
-    ``None`` — a missing, broken, hanging (capped at 5 s), or unrecognized
-    binary must never block discovery, so *any* exception means "not a
-    simulator" (mirrors ``sim_testbench._simulator_version``).
-
-    GHDL prints its code generator on the third ``--version`` line.  The mcode
-    line reads ``"static elaboration, mcode JIT code generator"`` — it contains
-    "JIT" too — so ``"mcode"`` is matched *before* ``"LLVM JIT"``, or every
-    mcode install is mislabeled as llvm-jit.
-    """
-    try:
-        result = subprocess.run(
-            [path, "--version"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            encoding="utf-8",
-            errors="replace",
-        )
-    except Exception:  # noqa: BLE001 - a missing/hung/broken binary is simply "not a simulator"
-        return None
-    out = f"{result.stdout or ''}\n{result.stderr or ''}"
-    lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
-    if not lines:
-        return None
-    banner = lines[0]
-    resolved = str(Path(path).resolve())
-    low = out.lower()
-    if banner.lower().startswith("nvc"):
-        return SimulatorInfo("nvc", resolved, "nvc", _BACKEND_LABEL["nvc"], banner)
-    if banner.lower().startswith("ghdl"):
-        if "mcode" in low:
-            backend = "mcode"
-        elif "llvm jit" in low:
-            backend = "llvm-jit"
-        elif "llvm" in low and "code generator" in low:
-            backend = "llvm"
-        else:
-            backend = "ghdl"  # unrecognized GHDL codegen (e.g. gcc); still usable
-        return SimulatorInfo("ghdl", resolved, backend, _BACKEND_LABEL.get(backend, "GHDL"), banner)
-    return None
-
-
-def _disambiguate_labels(infos: list[SimulatorInfo]) -> list[SimulatorInfo]:
-    """Append ``-N`` to labels shared by several entries (a backend at two paths).
-
-    A label carried by exactly one entry is left bare; only genuine collisions
-    are suffixed, so the common single-install-per-backend case reads cleanly.
-    """
-    counts: dict[str, int] = {}
-    for info in infos:
-        counts[info.label] = counts.get(info.label, 0) + 1
-    used: dict[str, int] = {}
-    result: list[SimulatorInfo] = []
-    for info in infos:
-        if counts[info.label] > 1:
-            used[info.label] = used.get(info.label, 0) + 1
-            result.append(replace(info, label=f"{info.label}-{used[info.label]}"))
-        else:
-            result.append(info)
-    return result
-
-
-def discover_simulators(extra: list[str] | None = None) -> list[SimulatorInfo]:
-    """Discover every usable simulator: PATH defaults, GHDL variants, extras.
-
-    Probes, in order: ``ghdl`` then ``nvc`` on PATH; the distro-named variants
-    ``ghdl-mcode`` / ``ghdl-llvm`` / ``ghdl-llvm-jit`` on PATH; sibling-prefix
-    installs matching :data:`_GHDL_VARIANT_GLOBS`; then the registered *extra*
-    paths (the session's ``extra_simulators``) and any listed in
-    :data:`EXTRA_SIMS_ENV`.  Candidates are de-duplicated by
-    :func:`os.path.realpath` (first occurrence wins), so the same binary reached
-    by two names appears once; unrecognized / broken candidates are skipped
-    silently.  Duplicate short labels get a numeric suffix.
-
-    The order is stable — PATH ghdl, PATH nvc, variants, extras — so the default
-    engine (whatever ``ghdl`` resolves to on PATH) stays first.
-    """
-    candidates: list[str] = []
-    for name in ("ghdl", "nvc", "ghdl-mcode", "ghdl-llvm", "ghdl-llvm-jit"):
-        found = shutil.which(name)
-        if found:
-            candidates.append(found)
-    for pattern in _GHDL_VARIANT_GLOBS:
-        candidates.extend(sorted(glob.glob(pattern)))
-    candidates.extend(extra or [])
-    env_extra = os.environ.get(EXTRA_SIMS_ENV, "").strip()
-    if env_extra:
-        candidates.extend(p for p in env_extra.split(os.pathsep) if p)
-
-    seen: set[str] = set()
-    infos: list[SimulatorInfo] = []
-    for cand in candidates:
-        real = os.path.realpath(cand)
-        if real in seen:
-            continue
-        seen.add(real)  # mark before probing: a broken realpath is not retried
-        info = _probe_simulator(cand)
-        if info is not None:
-            infos.append(info)
-    return _disambiguate_labels(infos)
-
-
-#: CLI ``--sim`` slug → the GHDL code generator it selects (U35).  The bare
-#: engine slugs ``ghdl`` / ``nvc`` keep their old meaning ("that engine via
-#: PATH") and are handled separately.
-_SIM_SLUG_BACKEND: dict[str, str] = {
-    "ghdl-mcode": "mcode",
-    "ghdl-llvm": "llvm",
-    "ghdl-jit": "llvm-jit",
-    "ghdl-llvm-jit": "llvm-jit",  # accepted alias for ghdl-jit
-}
-
-
-def resolve_simulator_arg(arg: str | None, discovered: list[SimulatorInfo]) -> SimulatorInfo | None:
-    """Resolve a ``--sim`` value (or UI choice) against the *discovered* list.
-
-    Shared by the CLI (``--sim``) and the launcher so both accept the same
-    spellings:
-
-    * ``None`` → the default (first discovered = the PATH engine).
-    * ``"ghdl"`` / ``"nvc"`` → that engine via PATH (back-compat): the first
-      discovered install of the engine (discovery lists the PATH one first).
-    * ``"ghdl-mcode"`` / ``"ghdl-llvm"`` / ``"ghdl-jit"`` → the discovered GHDL
-      install with that code generator.
-    * an absolute path → probe it directly (need not be in *discovered*).
-
-    Returns the matching :class:`SimulatorInfo`, or ``None`` when nothing
-    matches (no such engine/variant installed, or the path is not a simulator) —
-    the caller formats the error, listing *discovered* as appropriate.
-    """
-    if not discovered:
-        return None
-    if not arg:
-        return discovered[0]
-    if arg in ("ghdl", "nvc"):
-        return next((i for i in discovered if i.engine == arg), None)
-    if arg in _SIM_SLUG_BACKEND:
-        want = _SIM_SLUG_BACKEND[arg]
-        return next((i for i in discovered if i.backend == want), None)
-    if os.sep in arg or (os.altsep and os.altsep in arg):
-        return _probe_simulator(arg)  # a path (absolute or relative)
-    return None  # an unknown bare token
-
-
-def _fallback_ghdl() -> SimulatorInfo:
-    """Return a placeholder GHDL entry for when discovery finds nothing installed.
-
-    Mirrors :func:`detect_simulators`'s ``["ghdl"]`` fallback: the launcher still
-    starts and the missing-simulator error surfaces at analysis time (argv[0]
-    ``"ghdl"`` fails with the install hint) rather than blocking startup.
-    """
-    return SimulatorInfo("ghdl", "ghdl", "ghdl", "GHDL", "GHDL (not found on PATH)")
-
-
+#: Names this module re-exports for the ~35 files that import from it.  It is an
+#: explicit list rather than a star-import because mypy's strict mode does not
+#: treat an imported name as exported unless it is named here -- and because the
+#: list is the module's contract with its callers, which is worth writing down.
+__all__ = [
+    "DEFAULT_DUTY_ALGO",
+    "DEFAULT_DUTY_MODE",
+    "DUTY_ALGOS",
+    "DUTY_ALGO_ENV",
+    "DUTY_ENV",
+    "IS_WINDOWS",
+    "DutyMode",
+    "Simulator",
+    "WaveConfig",
+    "WaveFormat",
+    "resolve_duty_algo",
+    "resolve_duty_mode",
+    # backends
+    "_GHDLBackend",
+    "_NVCBackend",
+    "_SimBackend",
+    "_backend",
+    "_NVC_HEAP",
+    # discovery
+    "EXTRA_SIMS_ENV",
+    "SimulatorInfo",
+    "_BACKEND_LABEL",
+    "_GHDL_VARIANT_GLOBS",
+    "_SIM_SLUG_BACKEND",
+    "_disambiguate_labels",
+    "_fallback_ghdl",
+    "_find_ghdl",
+    "_probe_simulator",
+    "detect_simulators",
+    "discover_simulators",
+    "resolve_simulator_arg",
+]
+
+
+# >>> moved to fpga_sim.sim_discovery <<<
 # ── Shared helpers ────────────────────────────────────────────────────────────
 
 

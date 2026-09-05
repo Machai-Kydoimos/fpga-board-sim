@@ -15,8 +15,8 @@ from collections.abc import Callable
 import pytest
 
 import fpga_sim.__main__ as main_mod
-import fpga_sim.sim_bridge as sim_bridge
-from fpga_sim.sim_bridge import SimulatorInfo, _fallback_ghdl, resolve_simulator_arg
+import fpga_sim.sim_discovery as sim_discovery
+from fpga_sim.sim_discovery import SimulatorInfo, _fallback_ghdl, resolve_simulator_arg
 
 # ── Real --version banners (see docs/plans/u35_simulator_picker_plan.md §2) ─────────
 
@@ -77,8 +77,8 @@ def _fake_run(outputs: dict[str, object]) -> Callable[..., subprocess.CompletedP
     ],
 )
 def test_probe_labels_each_backend(monkeypatch, banner, engine, backend, label):
-    monkeypatch.setattr("fpga_sim.sim_bridge.subprocess.run", _fake_run({"/x/sim": banner}))
-    info = sim_bridge._probe_simulator("/x/sim")
+    monkeypatch.setattr("fpga_sim.sim_discovery.subprocess.run", _fake_run({"/x/sim": banner}))
+    info = sim_discovery._probe_simulator("/x/sim")
     assert info is not None
     assert (info.engine, info.backend, info.label) == (engine, backend, label)
 
@@ -86,49 +86,49 @@ def test_probe_labels_each_backend(monkeypatch, banner, engine, backend, label):
 def test_probe_mcode_not_mislabeled_as_jit(monkeypatch):
     """mcode's banner contains 'JIT' ('mcode JIT ...'); it must still label mcode."""
     assert "JIT" in MCODE  # guard: the fixture really carries the trap
-    monkeypatch.setattr("fpga_sim.sim_bridge.subprocess.run", _fake_run({"/x/ghdl": MCODE}))
-    info = sim_bridge._probe_simulator("/x/ghdl")
+    monkeypatch.setattr("fpga_sim.sim_discovery.subprocess.run", _fake_run({"/x/ghdl": MCODE}))
+    info = sim_discovery._probe_simulator("/x/ghdl")
     assert info is not None
     assert info.backend == "mcode"
 
 
 def test_probe_version_is_first_banner_line(monkeypatch):
-    monkeypatch.setattr("fpga_sim.sim_bridge.subprocess.run", _fake_run({"/x/nvc": NVC}))
-    info = sim_bridge._probe_simulator("/x/nvc")
+    monkeypatch.setattr("fpga_sim.sim_discovery.subprocess.run", _fake_run({"/x/nvc": NVC}))
+    info = sim_discovery._probe_simulator("/x/nvc")
     assert info is not None
     assert info.version == "nvc 1.22-devel (1.21.0.r96.gd83462263) (Using LLVM 21.1.8)"
 
 
 def test_probe_resolves_relative_path(monkeypatch):
-    monkeypatch.setattr("fpga_sim.sim_bridge.subprocess.run", _fake_run({"ghdl": MCODE}))
-    info = sim_bridge._probe_simulator("ghdl")
+    monkeypatch.setattr("fpga_sim.sim_discovery.subprocess.run", _fake_run({"ghdl": MCODE}))
+    info = sim_discovery._probe_simulator("ghdl")
     assert info is not None
     assert os.path.isabs(info.path)
 
 
 def test_probe_garbage_returns_none(monkeypatch):
     monkeypatch.setattr(
-        "fpga_sim.sim_bridge.subprocess.run", _fake_run({"/x/foo": "randomtool 1.0\n"})
+        "fpga_sim.sim_discovery.subprocess.run", _fake_run({"/x/foo": "randomtool 1.0\n"})
     )
-    assert sim_bridge._probe_simulator("/x/foo") is None
+    assert sim_discovery._probe_simulator("/x/foo") is None
 
 
 def test_probe_empty_output_returns_none(monkeypatch):
-    monkeypatch.setattr("fpga_sim.sim_bridge.subprocess.run", _fake_run({"/x/foo": "\n  \n"}))
-    assert sim_bridge._probe_simulator("/x/foo") is None
+    monkeypatch.setattr("fpga_sim.sim_discovery.subprocess.run", _fake_run({"/x/foo": "\n  \n"}))
+    assert sim_discovery._probe_simulator("/x/foo") is None
 
 
 def test_probe_timeout_returns_none(monkeypatch):
     monkeypatch.setattr(
-        "fpga_sim.sim_bridge.subprocess.run",
+        "fpga_sim.sim_discovery.subprocess.run",
         _fake_run({"/x/ghdl": subprocess.TimeoutExpired(["/x/ghdl"], 5)}),
     )
-    assert sim_bridge._probe_simulator("/x/ghdl") is None
+    assert sim_discovery._probe_simulator("/x/ghdl") is None
 
 
 def test_probe_missing_binary_returns_none(monkeypatch):
-    monkeypatch.setattr("fpga_sim.sim_bridge.subprocess.run", _fake_run({}))
-    assert sim_bridge._probe_simulator("/nope/ghdl") is None
+    monkeypatch.setattr("fpga_sim.sim_discovery.subprocess.run", _fake_run({}))
+    assert sim_discovery._probe_simulator("/nope/ghdl") is None
 
 
 # ── discover_simulators: discovery set, order, de-dup, extras ─────────────────
@@ -137,15 +137,15 @@ def test_probe_missing_binary_returns_none(monkeypatch):
 def test_discover_order_and_labels(monkeypatch):
     """PATH ghdl, PATH nvc, then variants — each truthfully labeled."""
     which_map = {"ghdl": "/usr/bin/ghdl", "nvc": "/usr/bin/nvc"}
-    monkeypatch.setattr("fpga_sim.sim_bridge.shutil.which", lambda name: which_map.get(name))
-    monkeypatch.setattr(sim_bridge, "_GHDL_VARIANT_GLOBS", ("/opt/ghdl-*/bin/ghdl",))
-    monkeypatch.setattr("fpga_sim.sim_bridge.glob.glob", lambda pat: ["/opt/ghdl-llvm/bin/ghdl"])
+    monkeypatch.setattr("fpga_sim.sim_discovery.shutil.which", lambda name: which_map.get(name))
+    monkeypatch.setattr(sim_discovery, "_GHDL_VARIANT_GLOBS", ("/opt/ghdl-*/bin/ghdl",))
+    monkeypatch.setattr("fpga_sim.sim_discovery.glob.glob", lambda pat: ["/opt/ghdl-llvm/bin/ghdl"])
     monkeypatch.setattr(
-        "fpga_sim.sim_bridge.subprocess.run",
+        "fpga_sim.sim_discovery.subprocess.run",
         _fake_run({"/usr/bin/ghdl": MCODE, "/usr/bin/nvc": NVC, "/opt/ghdl-llvm/bin/ghdl": LLVM}),
     )
     monkeypatch.delenv("FPGA_SIM_EXTRA_SIMS", raising=False)
-    infos = sim_bridge.discover_simulators()
+    infos = sim_discovery.discover_simulators()
     assert [i.label for i in infos] == ["GHDL", "NVC", "GHDL-LLVM"]
     assert [i.engine for i in infos] == ["ghdl", "nvc", "ghdl"]
     assert [i.backend for i in infos] == ["mcode", "nvc", "llvm"]
@@ -164,12 +164,12 @@ def test_discover_dedups_by_realpath(tmp_path, monkeypatch):
             return SimulatorInfo("ghdl", real_rp, "mcode", "GHDL", "GHDL x")
         return None
 
-    monkeypatch.setattr(sim_bridge, "_probe_simulator", fake_probe)
-    monkeypatch.setattr("fpga_sim.sim_bridge.shutil.which", lambda name: None)
-    monkeypatch.setattr(sim_bridge, "_GHDL_VARIANT_GLOBS", ())
+    monkeypatch.setattr(sim_discovery, "_probe_simulator", fake_probe)
+    monkeypatch.setattr("fpga_sim.sim_discovery.shutil.which", lambda name: None)
+    monkeypatch.setattr(sim_discovery, "_GHDL_VARIANT_GLOBS", ())
     monkeypatch.delenv("FPGA_SIM_EXTRA_SIMS", raising=False)
 
-    infos = sim_bridge.discover_simulators([str(real), str(link)])
+    infos = sim_discovery.discover_simulators([str(real), str(link)])
     assert len(infos) == 1
     assert infos[0].path == real_rp
 
@@ -182,12 +182,12 @@ def test_discover_merges_env_and_file_extras(monkeypatch):
         probed.append(path)
         return SimulatorInfo("ghdl", os.path.realpath(path), "mcode", "GHDL", "v")
 
-    monkeypatch.setattr(sim_bridge, "_probe_simulator", fake_probe)
-    monkeypatch.setattr("fpga_sim.sim_bridge.shutil.which", lambda name: None)
-    monkeypatch.setattr(sim_bridge, "_GHDL_VARIANT_GLOBS", ())
+    monkeypatch.setattr(sim_discovery, "_probe_simulator", fake_probe)
+    monkeypatch.setattr("fpga_sim.sim_discovery.shutil.which", lambda name: None)
+    monkeypatch.setattr(sim_discovery, "_GHDL_VARIANT_GLOBS", ())
     monkeypatch.setenv("FPGA_SIM_EXTRA_SIMS", os.pathsep.join(["/env/a", "/env/b"]))
 
-    infos = sim_bridge.discover_simulators(["/file/x"])
+    infos = sim_discovery.discover_simulators(["/file/x"])
     paths = {i.path for i in infos}
     assert os.path.realpath("/file/x") in paths
     assert os.path.realpath("/env/a") in paths
@@ -197,23 +197,23 @@ def test_discover_merges_env_and_file_extras(monkeypatch):
 
 def test_discover_disambiguates_duplicate_labels(monkeypatch):
     """Two installs of the same backend at different paths get numeric suffixes."""
-    monkeypatch.setattr("fpga_sim.sim_bridge.shutil.which", lambda name: None)
-    monkeypatch.setattr(sim_bridge, "_GHDL_VARIANT_GLOBS", ())
+    monkeypatch.setattr("fpga_sim.sim_discovery.shutil.which", lambda name: None)
+    monkeypatch.setattr(sim_discovery, "_GHDL_VARIANT_GLOBS", ())
     monkeypatch.delenv("FPGA_SIM_EXTRA_SIMS", raising=False)
     monkeypatch.setattr(
-        "fpga_sim.sim_bridge.subprocess.run", _fake_run({"/a/ghdl": LLVM, "/b/ghdl": LLVM})
+        "fpga_sim.sim_discovery.subprocess.run", _fake_run({"/a/ghdl": LLVM, "/b/ghdl": LLVM})
     )
-    infos = sim_bridge.discover_simulators(["/a/ghdl", "/b/ghdl"])
+    infos = sim_discovery.discover_simulators(["/a/ghdl", "/b/ghdl"])
     assert [i.label for i in infos] == ["GHDL-LLVM-1", "GHDL-LLVM-2"]
 
 
 def test_discover_skips_broken_candidates(monkeypatch):
     """An unprobeable candidate is dropped, not surfaced."""
-    monkeypatch.setattr("fpga_sim.sim_bridge.shutil.which", lambda name: None)
-    monkeypatch.setattr(sim_bridge, "_GHDL_VARIANT_GLOBS", ())
+    monkeypatch.setattr("fpga_sim.sim_discovery.shutil.which", lambda name: None)
+    monkeypatch.setattr(sim_discovery, "_GHDL_VARIANT_GLOBS", ())
     monkeypatch.delenv("FPGA_SIM_EXTRA_SIMS", raising=False)
-    monkeypatch.setattr("fpga_sim.sim_bridge.subprocess.run", _fake_run({"/good/ghdl": MCODE}))
-    infos = sim_bridge.discover_simulators(["/good/ghdl", "/broken/thing"])
+    monkeypatch.setattr("fpga_sim.sim_discovery.subprocess.run", _fake_run({"/good/ghdl": MCODE}))
+    infos = sim_discovery.discover_simulators(["/good/ghdl", "/broken/thing"])
     assert [i.path for i in infos] == [os.path.realpath("/good/ghdl")]
 
 
@@ -334,14 +334,14 @@ def test_resolve_arg_empty_discovered_returns_none():
 
 
 def test_resolve_arg_path_probes(monkeypatch):
-    monkeypatch.setattr("fpga_sim.sim_bridge.subprocess.run", _fake_run({"/opt/x/ghdl": LLVM}))
+    monkeypatch.setattr("fpga_sim.sim_discovery.subprocess.run", _fake_run({"/opt/x/ghdl": LLVM}))
     got = resolve_simulator_arg("/opt/x/ghdl", _DISCOVERED)
     assert got is not None
     assert (got.engine, got.backend) == ("ghdl", "llvm")
 
 
 def test_resolve_arg_bad_path_returns_none(monkeypatch):
-    monkeypatch.setattr("fpga_sim.sim_bridge.subprocess.run", _fake_run({}))
+    monkeypatch.setattr("fpga_sim.sim_discovery.subprocess.run", _fake_run({}))
     assert resolve_simulator_arg("/no/such/ghdl", _DISCOVERED) is None
 
 
