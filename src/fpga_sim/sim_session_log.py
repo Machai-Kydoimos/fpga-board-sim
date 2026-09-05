@@ -59,6 +59,7 @@ def save_session_stats(
     clock_hz: float,
     mode: str = "generic",
     convention: str | None = None,
+    synopsys: tuple[str, ...] | None = None,
     simulator_backend: str = "",
     simulator_path: str = "",
 ) -> Path:
@@ -93,6 +94,11 @@ def save_session_stats(
     convention:
         The matched convention slug (e.g. ``"terasic"``) for a native run,
         else ``None``.
+    synopsys:
+        Pre-standard Synopsys packages the design imported (U50), e.g.
+        ``("std_logic_arith", "std_logic_unsigned")``.  Recorded because it is
+        the kind of thing worth knowing when a later run behaves oddly on real
+        hardware, and because it says which dialect a course's material uses.
     simulator_backend:
         The simulator's code generator (U35): ``"mcode"`` / ``"llvm"`` /
         ``"llvm-jit"`` / ``"nvc"``.  Empty when unknown (older callers).
@@ -129,6 +135,7 @@ def save_session_stats(
         "clock_hz": clock_hz,
         "mode": mode,
         "convention": convention,
+        "synopsys": list(synopsys or ()),
     }
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     print(f"[session] Stats saved → {path}")

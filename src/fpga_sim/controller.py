@@ -64,6 +64,24 @@ from fpga_sim.ui.constants import get_font
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 
 
+def _synopsys_note(packages: tuple[str, ...]) -> str | None:
+    """One line about a design's pre-standard Synopsys imports, or ``None``.
+
+    Deliberately not a warning.  These packages predate ``ieee.numeric_std``
+    and are not part of any VHDL standard, but they are what a great deal of
+    course material is written with -- so the design runs here exactly as it
+    does in Quartus, and the note says what a student would otherwise only
+    discover from a tool that refuses it.
+    """
+    if not packages:
+        return None
+    names = " / ".join(packages)
+    return (
+        f"Uses the non-standard Synopsys packages {names} "
+        "\u2013 modern VHDL prefers ieee.numeric_std"
+    )
+
+
 def example_vhdl_for(board: BoardDef | None) -> Path:
     """Return the bundled example design that satisfies the contract for *board*.
 
@@ -152,6 +170,11 @@ class SessionState:
     # U21 B3: set when the loaded VHDL is board-native (its port names match the
     # selected board's convention); drives native wrapper generation + the badge.
     convention: ConventionMatch | None = None
+    # Pre-standard Synopsys packages the loaded design imports (U50).  Advisory
+    # only -- it changes nothing about the run, and exists so the preview can
+    # mention the dialect once instead of leaving the user to find out on real
+    # hardware.  Cleared with the file, like `convention`.
+    synopsys: tuple[str, ...] = ()
     last_vhdl_path: str = ""
     board_class: str = ""
     board_source: str = ""
@@ -207,6 +230,7 @@ class SessionState:
         """Drop the loaded VHDL file and its analysis products."""
         self.vhdl_path = None
         self.convention = None
+        self.synopsys = ()
         self.clear_analysis()
 
 
@@ -420,6 +444,7 @@ class ScreenController:
         if ok:
             res = check_vhdl_contract(path, board_def=self.board)
             self.state.convention = res.match
+            self.state.synopsys = res.synopsys
             ok, detail = res.ok, res.message
             title = "VHDL Error"
             if ok:
@@ -495,6 +520,7 @@ class ScreenController:
             sim=self.state.sim,
             available_sims=self.available_sims,
             vhdl_path=self.state.vhdl_path,
+            vhdl_note=_synopsys_note(self.state.synopsys),
         )
         preview.restore_inputs(self.state.inputs)
         result = preview.run()
@@ -571,6 +597,7 @@ class ScreenController:
                 res = check_vhdl_contract(picked, board_def=self.board)
                 ok, detail = res.ok, res.message
                 s.convention = res.match  # board-native (U21 B3) when set, else None
+                s.synopsys = res.synopsys
                 if not ok:
                     intent = ErrorDialog(
                         self.screen, "VHDL Error", detail, example_path=example
@@ -676,6 +703,7 @@ class ScreenController:
             example = example_vhdl_for(board)
             res = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
             s.convention = res.match
+            s.synopsys = res.synopsys
             if not res.ok:
                 ErrorDialog(self.screen, "VHDL Error", res.message, example_path=example).run(
                     self.clock
@@ -737,6 +765,7 @@ class ScreenController:
                 match=s.convention,
                 vhdl_path=s.vhdl_path,
                 sim=s.sim,
+                synopsys=s.synopsys,
                 initial_inputs=s.inputs,
             )
             sim_exit = sim_screen.run()
@@ -792,6 +821,7 @@ class ScreenController:
             res = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
             ok, detail = res.ok, res.message
             s.convention = res.match  # board-native (U21 B3) when set, else None
+            s.synopsys = res.synopsys
         title = "VHDL Error"
         if ok:
             title = f"{s.sim.label} Error"

@@ -111,6 +111,7 @@ class SimulationScreen:
         match: ConventionMatch | None,
         vhdl_path: str | Path,
         sim: SimulatorInfo,
+        synopsys: tuple[str, ...] = (),
         show_toolbar: bool = True,
         screenshot_dir: str | Path | None = None,
         initial_inputs: BoardInputs | None = None,
@@ -122,6 +123,9 @@ class SimulationScreen:
         self.child = child
         self.match = match
         self.sim = sim
+        # Advisory only (U50): recorded in the session log so a run's dialect is
+        # part of its record, never acted on here.
+        self.synopsys = synopsys
         self._vhdl_name = Path(vhdl_path).name
         self._show_toolbar = show_toolbar
         # --screenshots (#129): PNGs of this very surface, gated on visible
@@ -813,5 +817,6 @@ class SimulationScreen:
                 clock_hz=self.panel.current_clock_hz,
                 mode="native" if self.match else "generic",
                 convention=self.match.maker if self.match else None,
+                synopsys=self.synopsys,
             )
         print(f"Simulation stopped ({exit_intent.value}).")

@@ -136,6 +136,39 @@ channel duties.
   `uart_rx : in std_logic := '1'`). A default-less unmapped input is rejected — it
   would elaborate to an unbound signal.
 
+### The Synopsys packages are accepted
+
+A great deal of teaching and vendor example code opens with
+
+```vhdl
+use ieee.std_logic_arith.all;
+use ieee.std_logic_unsigned.all;
+```
+
+These predate `ieee.numeric_std` and are **not part of any VHDL standard** — they
+are Synopsys extensions that IEEE never adopted. GHDL refuses them outright unless
+told otherwise (*"use of synopsys package `std_logic_arith` needs the -fsynopsys
+option"*); NVC accepts them silently.
+
+**The simulator passes that flag for you**, on analysis, elaboration *and* the run
+(GHDL's mcode backend elaborates inside `-r`, so all three need it). A design
+written this way runs here exactly as it does in Quartus or Vivado, unmodified.
+The preview shows one line naming the packages, and the session log records them —
+a note, not a warning: nothing is blocked and nothing behaves differently.
+
+For **new** designs prefer `ieee.numeric_std`, which is the standard and is what
+every example in this repository uses:
+
+| Synopsys | `numeric_std` equivalent |
+|---|---|
+| `conv_integer(v)` | `to_integer(unsigned(v))` |
+| `conv_std_logic_vector(i, n)` | `std_logic_vector(to_unsigned(i, n))` |
+| `v + 1` on a `std_logic_vector` | `std_logic_vector(unsigned(v) + 1)` |
+
+Mixing `std_logic_unsigned` with `numeric_std` in one file is the one combination
+to avoid: both define arithmetic on the same types, and the ambiguity is a
+compile error rather than a silent wrong answer.
+
 ## Embedded CPU systems
 
 A design can instead be a **single self-contained file that embeds a soft CPU core**

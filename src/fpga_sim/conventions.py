@@ -133,11 +133,17 @@ class ContractResult:
     ``ok``/``message`` mirror the former ``(bool, str)`` tuple; ``match`` is the
     board-native recognition (U21) when the design uses a board's native port
     convention — populated even while ``ok`` is False (native execution is B3).
+
+    ``synopsys`` names any pre-standard Synopsys packages the design imports.
+    It is **advisory and never fatal**: the design runs either way, and the
+    field exists so the launcher can mention it once rather than staying silent
+    about a dialect choice the user may not know they made.
     """
 
     ok: bool
     message: str = ""
     match: ConventionMatch | None = None
+    synopsys: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
