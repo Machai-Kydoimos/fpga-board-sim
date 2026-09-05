@@ -375,7 +375,7 @@ and amaranth parsers auto-build with `framework_conventions.py` (stamped
 across many boards). The canonical registry sources live under
 [`docs/port_convention_sources/`](port_convention_sources/README.md); the design
 rationale and history are in
-[`docs/u21_board_native_vhdl_plan.md`](u21_board_native_vhdl_plan.md).
+[`docs/plans/u21_board_native_vhdl_plan.md`](plans/u21_board_native_vhdl_plan.md).
 
 ## The blinky design (`hdl/blinky.vhd`)
 

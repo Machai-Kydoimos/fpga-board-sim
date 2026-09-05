@@ -10,7 +10,7 @@ focus + Part 1 / Tier 4). Not started; milestone and issues are opened just-in-t
 start. The phase ledger in §13 is the status source of truth once execution begins.
 
 **Card IDs:** U39/U40/U41 and P25–P30 are the next free numbers — **verified against
-[`improvement_roadmap.md`](improvement_roadmap.md) 2026-07-28** (highest allocated: U38, D16, P24).
+[`improvement_roadmap.md`](../improvement_roadmap.md) 2026-07-28** (highest allocated: U38, D16, P24).
 Re-verify before opening issues if this sits unstarted through another arc. **2026-08-05: the
 U39–U41 card is now filed and the roadmap's ID-allocation note records every reservation (next
 free: U46 · D17 · P34).**

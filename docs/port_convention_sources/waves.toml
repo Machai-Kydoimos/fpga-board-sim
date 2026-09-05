@@ -17,7 +17,7 @@
 
 [[wave]]
 number = 1
-description = "Teaching / 7-seg first (docs/u21_board_native_vhdl_plan.md Part A, A4, Wave 1). Realized scope: 5 boards populate -- DE0-CV, DE1-SoC, DE0-Nano, DE0 via cited canonical-naming trust (DE0 also needed the A2 split HEXn_D/_DP classifier extension), and DE10-Lite via a cited overlay resource-name override (the A4 System-CD follow-up); the other 5 stay listed but are held back by the gate or the width cross-check for the per-board reasons noted below (each auto-includes itself once its blocker is resolved)."
+description = "Teaching / 7-seg first (docs/plans/u21_board_native_vhdl_plan.md Part A, A4, Wave 1). Realized scope: 5 boards populate -- DE0-CV, DE1-SoC, DE0-Nano, DE0 via cited canonical-naming trust (DE0 also needed the A2 split HEXn_D/_DP classifier extension), and DE10-Lite via a cited overlay resource-name override (the A4 System-CD follow-up); the other 5 stay listed but are held back by the gate or the width cross-check for the per-board reasons noted below (each auto-includes itself once its blocker is resolved)."
 boards = [
   # -- Populated in A4 Wave 1 (cited canonical-naming trust; see terasic.toml naming_cite + overlay.toml):
   "DE0 CV",

@@ -1,6 +1,6 @@
 # Embedded Core Systems — Implementation Plan
 
-> **Companion:** [`embedded_core_system_guide.md`](embedded_core_system_guide.md) — the user-facing
+> **Companion:** [`embedded_core_system_guide.md`](../embedded_core_system_guide.md) — the user-facing
 > development guide for building these systems.
 > **Status:** approved 2026-06-29. This plan and the guide were split from the approved planning
 > doc and are intended to be executed without re-deriving anything.
@@ -146,7 +146,7 @@ Reuse existing patterns — prefer cloning over new infra.
 **Sequence (vertical slice first):**
 
 > **Status (2026-07-02):** Stages 0–5 are complete and shipped (`feat/embedded-core-system`, #135;
-> per-stage log in [`embedded_core_build_notes.md`](embedded_core_build_notes.md)) — the IRQ-driven
+> per-stage log in [`embedded_core_build_notes.md`](../embedded_core_build_notes.md)) — the IRQ-driven
 > variant, T80 (Z80) as a second core, both Z80 feature axes (IM 2 vectored interrupts, port-mapped
 > IO), and the capstone design combining them are all done. Remaining Stage-5 ideas (a true third
 > core; the `customasm` path) are parked as roadmap **P8**, tracked by the active follow-up arc
@@ -161,7 +161,7 @@ Reuse existing patterns — prefer cloning over new infra.
 - **Stage 5** ✅ — IRQ-driven variant (mx65 polled / simple / vectored IRQ); Z80 (T80) as a second
   core, exercising both feature axes (interrupt mode, port-mapped IO) plus a capstone design
   combining them. *(Originally scoped as "T65 as a second core"; delivered as T80/Z80 instead — a
-  broader core-agnosticism proof — see [`embedded_core_build_notes.md`](embedded_core_build_notes.md).)*
+  broader core-agnosticism proof — see [`embedded_core_build_notes.md`](../embedded_core_build_notes.md).)*
   A true third core and the `customasm` path remain parked — roadmap **P8** /
   [`embedded_core_improvement_plan.md`](embedded_core_improvement_plan.md).
 

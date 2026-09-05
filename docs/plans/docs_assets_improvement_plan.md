@@ -409,13 +409,13 @@ a bug.
   ```markdown
   *Above — the same virtual board, but nothing here is hand-written RTL: a **6502 soft CPU**
   (the vendored mx65 core) executes
-  [`firmware/mx65_walking_counter_7seg.s`](firmware/mx65_walking_counter_7seg.s) from an
+  [`firmware/mx65_walking_counter_7seg.s`](../../firmware/mx65_walking_counter_7seg.s) from an
   embedded ROM, reading the switches and buttons and driving the LEDs and digits through
   memory-mapped IO. **BTN0** makes the firmware count down and reverse the bouncing LED,
   **BTN1** is a lamp test, and **SW0** doubles the step rate. The CPU free-runs at full
   simulation speed — a hardware prescaler divides the visible update rate, exactly as it
   would on real silicon. Captured headlessly via
-  [`scripts/capture_demo.py`](scripts/capture_demo.py).*
+  [`scripts/capture_demo.py`](../../scripts/capture_demo.py).*
   ```
 
 - README hero-GIF caption/alt: extend with the new ending ("…and finally the inputs are

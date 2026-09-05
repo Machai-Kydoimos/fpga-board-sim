@@ -219,6 +219,9 @@ full pipeline, the GHDL/NVC backends, and the board-native matcher are documente
 - **[docs/architecture.md](docs/architecture.md)** — how the simulator is built (process model, pipeline, board-native internals).
 - **[docs/embedded_core_system_guide.md](docs/embedded_core_system_guide.md)** — building and extending the soft-CPU systems.
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — dev setup, quality standards, release process.
+- **[docs/README.md](docs/README.md)** — the map of everything above, plus
+  [`docs/plans/`](docs/plans/): the execution plan behind each shipped arc, kept as the
+  project's engineering history.
 
 ## Dependencies
 

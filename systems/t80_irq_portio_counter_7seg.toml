@@ -24,7 +24,7 @@ ISRs via the I:vector table at $0100, and every IO access uses IN/OUT.  Visible
 behavior matches the other designs: a one-hot LED bounces across the LEDs while a
 decimal odometer advances; btn(0) reverses both directions, btn(1) is a lamp test,
 and each active switch steps faster.  The Z80 boots at $0000, so ROM is at the
-bottom of the memory map.  See docs/embedded_core_system_plan.md."""
+bottom of the memory map.  See docs/embedded_core_system_guide.md."""
 
 # VHDL generic defaults (board sizes are overridden at elaboration).
 [generics]

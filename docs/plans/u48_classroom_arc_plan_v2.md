@@ -1,11 +1,11 @@
 # Pre-semester "classroom" arc — U48–U54 + D17 → v0.23.0 (v2)
 
 *v2 · Revised 2026-09-05 after Rick's review of the v1 draft and inspection of the real course lab
-material · Status: **EXECUTING** — approved 2026-09-05; **PR 0 is this commit**: cards U48–U54 +
-D17 + P34 filed in the roadmap, the release queue renumbered (peripherals → v0.24.0, D16 →
-v0.25.0), this plan committed. **Next: PR 0b, then Gate A.** No other PR started · Supersedes
+material · Status: **EXECUTING** — approved 2026-09-05; PR 0 ✅ (cards U48–U54 + D17 + P34
+filed, the queue renumbered — peripherals → v0.24.0, D16 → v0.25.0 — and this plan committed);
+PR 0b ✅ (the plans moved here, `docs/README.md` written). **Next: Gate A.** No other PR started · Supersedes
 [u48_classroom_arc_plan.md](u48_classroom_arc_plan.md) (v1, kept as the record of how the arc was
-first framed) · Companion to [improvement_roadmap.md](improvement_roadmap.md)*
+first framed) · Companion to [improvement_roadmap.md](../improvement_roadmap.md)*
 
 > **How to use this document.** It is written to be executable from cold by a later session. §1.1
 > is the ground truth about the course's files — read it before anything else. §2 records decisions
@@ -55,7 +55,7 @@ docs must explain why the simulator is slower than the hardware and by how much 
 That reframes the work away from *features* and toward **self-service**: it must install, it must
 load *their* file **from wherever they keep it**, it must say what is wrong when it does not, and it
 must not look sloppy. The queued U39–U41 peripherals arc serves none of that and nothing has a hard
-dependency on it ([dependency table](improvement_roadmap.md#dependency-table)), so it is postponed by
+dependency on it ([dependency table](../improvement_roadmap.md#dependency-table)), so it is postponed by
 one release. Docs & Assets round 2 PRs 3–6 were deferred *specifically* so the asset re-capture
 happened once, after peripherals; postponing peripherals removes that reason, and round-2 PR 2 (#389)
 already put `--screenshots` on the product renderer, so true-brightness stills exist today — the
@@ -486,7 +486,7 @@ everywhere; record the ID allocation (next free U55 · D18 · P35); add the *Pla
 *Done when:* the roadmap describes the arc about to run and `grep -rn "v0.23.0" docs/` refers only
 to this arc.
 
-**PR 0b — plan documents → `docs/plans/`.** 0.25 d · low risk (D-12)
+**PR 0b — plan documents → `docs/plans/`.** ✅ **landed 2026-09-06** · 0.25 d → 0.5 d · low risk (D-12)
 `git mv` the 13 completed/live plans (`7seg_display_plan_v2`, `board_native_release_plan`,
 `docs_assets_improvement_plan`, `docs_assets_improvement_plan_v2`, `embedded_core_improvement_plan`,
 `embedded_core_system_plan`, `u9_led_complete_plan`, `u21_board_native_vhdl_plan`,
@@ -903,6 +903,17 @@ Arc-level, end to end:
 - **v1 — 2026-09-05 (draft).** Framed the arc around U21 board-native mode ("Terasic lab files are
   board-native"), a runtime frozen-board advisory, multi-file in-arc, and a docs refresh; excluded
   Digilent boards.
+- **PR 0b — 2026-09-06.** The move cost 0.5 d rather than 0.25, for one reason worth carrying
+  forward: `docs/embedded_core_system_plan.md` is cited from **seven generated `hdl/*.vhd`
+  designs** (through six `systems/*.toml` descriptions), the **vendored** `cores/mx65.vhd`
+  provenance header, and a test docstring — none of which §7's file list named. Chasing a moved
+  plan through generated files is the wrong fix, so those pointers now name
+  `docs/embedded_core_system_guide.md`, the reader-facing doc that stays in `docs/` — one
+  `regen_embedded_cores.py --write` pass, ten comment lines across eight designs. The rule applied:
+  a reference to a *plan concept* ("Stage 0", "Decision 3", "§2") still points at the plan, now
+  under `docs/plans/`; a generic "learn more" pointer points at the guide. Two link targets in
+  `docs_assets_improvement_plan.md` were already broken before the move and are fixed. Contrary to
+  §7, `docs/install.md` and the `sim_bridge.py` docstring cite no plan at all.
 - **PR 0 — 2026-09-05.** Executed as written, with three things worth recording. (1) The
   roadmap's *Next — in order* dropped its completed item 1 (Docs & Assets PRs 1–2) rather than
   keeping a struck-through row — the fact lives in *Loose threads* and in item 3's text. (2) Two

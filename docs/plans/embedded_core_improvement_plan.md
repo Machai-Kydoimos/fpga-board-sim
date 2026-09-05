@@ -3,10 +3,10 @@
 > **Origin:** full review of the embedded-core work (generator, docs, firmware, tests, shipped
 > designs, and roadmap items P7/P8) performed 2026-07-02, after #135 landed. This plan turns every
 > review finding into ordered, executable work.
-> **Companions:** [`embedded_core_system_guide.md`](embedded_core_system_guide.md) (user-facing
+> **Companions:** [`embedded_core_system_guide.md`](../embedded_core_system_guide.md) (user-facing
 > guide), [`embedded_core_system_plan.md`](embedded_core_system_plan.md) (original build plan),
-> [`embedded_core_build_notes.md`](embedded_core_build_notes.md) (per-stage log),
-> [`improvement_roadmap.md`](improvement_roadmap.md) (strategy source of truth; P7 = VSG, P8 =
+> [`embedded_core_build_notes.md`](../embedded_core_build_notes.md) (per-stage log),
+> [`improvement_roadmap.md`](../improvement_roadmap.md) (strategy source of truth; P7 = VSG, P8 =
 > RISC-V third core).
 > **Executor:** written to be followed by Claude (Sonnet/Opus/Fable) or a human in a later session
 > with no other context. Line numbers cited here drift — always re-grep the quoted anchor text.

@@ -1,6 +1,6 @@
 # Embedded Core Systems — Build Notes
 
-> Working log captured while implementing [`embedded_core_system_plan.md`](embedded_core_system_plan.md).
+> Working log captured while implementing [`embedded_core_system_plan.md`](plans/embedded_core_system_plan.md).
 > Purpose: record concrete facts, gotchas, and working commands as each stage lands, so the
 > [development guide](embedded_core_system_guide.md) can be finalized against reality at Stage 4.
 > Not user-facing — fold the durable parts into the guide, then trim.

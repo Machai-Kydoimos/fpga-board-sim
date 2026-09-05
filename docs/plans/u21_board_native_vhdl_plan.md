@@ -3,9 +3,9 @@
 **Status:** ✅ COMPLETE (2026-07-13). Part A: A0 (#209), A1 (#210), A2 (#211), A3 (#212) merged; schema-symmetry follow-up (#213) and `boards/custom/`-trust gate follow-up (#214) merged; A4 Wave 1 (#215) + DE10-Lite (#218) and DE0 (#219) rescues merged. Part B: B1 (#216), B2 (#217), B3a (#220), B3b (#221) merged; B4 (docs + closeout) is the PR carrying this update. See the [status ledger](#status-ledger) and [lessons learned](#lessons-learned). The board-native done-when is met: a Terasic-native file (`CLOCK_50` / `KEY` / `LEDR` / `SW` / `HEX0`-`HEX5`) simulates unmodified.
 **Decided 2026-07-12 (Rick):** the port-conventions population pipeline is **folded into the
 U21 arc** as its opening phases (Part A), rather than run as a separate arc.
-**Source data:** [`docs/port_convention_sources/`](port_convention_sources/) (PR #198) — ranked,
+**Source data:** [`docs/port_convention_sources/`](../port_convention_sources/) (PR #198) — ranked,
 fetch-verified pointers for all 278 board files; see its README for schema and status semantics.
-**Roadmap card:** U21 in [`improvement_roadmap.md`](improvement_roadmap.md) (strategy stays there;
+**Roadmap card:** U21 in [`improvement_roadmap.md`](../improvement_roadmap.md) (strategy stays there;
 this doc is the execution plan, per the hybrid backlog model).
 
 This plan is written to be executed phase-by-phase by a capable model (Sonnet/Opus class)

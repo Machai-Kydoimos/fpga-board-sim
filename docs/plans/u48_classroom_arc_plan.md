@@ -7,7 +7,7 @@
 > from this file.
 
 *Drafted 2026-09-05 · Status: **DRAFT — superseded by v2 the same day**; not started, no cards filed,
-no issues opened · Companion to [improvement_roadmap.md](improvement_roadmap.md)*
+no issues opened · Companion to [improvement_roadmap.md](../improvement_roadmap.md)*
 
 > **How to use this document.** It is written to be executable from cold. §2 records decisions
 > already made so they are not relitigated; §4 is the evidence map, every claim carrying a
@@ -38,7 +38,7 @@ Linux).
 That reframes the work away from *features* and toward **self-service**: it must install, it
 must load *their* file, it must say what is wrong when it does not, and it must not look sloppy.
 The queued U39–U41 peripherals arc (9 phases, one L-risk phase) serves none of that, and nothing
-has a hard dependency on it ([dependency table](improvement_roadmap.md#dependency-table)), so it
+has a hard dependency on it ([dependency table](../improvement_roadmap.md#dependency-table)), so it
 is postponed by one release.
 
 **Postponement bonus.** Docs & Assets round 2 PRs 3–6 were deferred *specifically* so the asset

@@ -22,7 +22,7 @@ buttons / config and writes LEDs / segments with IN/OUT (I/O space) rather than
 loads/stores.  Visible behavior is identical: a one-hot LED bounces across the
 LEDs while a decimal odometer advances; btn(0) reverses both directions, btn(1)
 is a lamp test, and each active switch steps faster.  The Z80 boots at $0000, so
-ROM is at the bottom of the memory map.  See docs/embedded_core_system_plan.md."""
+ROM is at the bottom of the memory map.  See docs/embedded_core_system_guide.md."""
 
 # VHDL generic defaults (board sizes are overridden at elaboration).
 [generics]

@@ -1,6 +1,6 @@
 # Embedded Core System Development Guide
 
-> **Companion:** [`embedded_core_system_plan.md`](embedded_core_system_plan.md) — the implementation
+> **Companion:** [`embedded_core_system_plan.md`](plans/embedded_core_system_plan.md) — the implementation
 > plan, staging, and risk register.
 >
 > *A guide to building a single-file VHDL design that runs an assembled program on a soft-core CPU,
