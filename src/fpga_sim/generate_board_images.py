@@ -47,6 +47,7 @@ import pygame
 
 from fpga_sim.board_loader import BoardDef, discover_boards, get_default_boards_path
 from fpga_sim.ui import LED, Button, FPGABoard, FPGAChip, SevenSeg, Switch
+from fpga_sim.ui.components import GLOW_ALPHA, glow_radius
 from fpga_sim.ui.constants import GRAY, WHITE, _ui_scale
 from fpga_sim.ui.theme import THEME, THEME_LABELS, THEME_NAMES, set_theme
 
@@ -441,7 +442,10 @@ def _svg_draw_led(
     Board images are generated in the reset state, so in practice every level is
     0.0 and every LED is dark; the point is that a lit one would now render as
     the simulator draws it, including the faint halo, instead of silently coming
-    out flat.  The radius formula is identical to the pygame version.
+    out flat.  The halo's size and peak alpha come from ``glow_radius`` and
+    ``GLOW_ALPHA`` — the same two the pygame path uses — rather than being
+    restated here, so a change to the halo policy cannot land in one renderer
+    and not the other.
     """
     cx, cy = led.rect.center
     radius = max(4, min(led.rect.width, led.rect.height) // 2 - 2)
@@ -457,9 +461,9 @@ def _svg_draw_led(
             {
                 "cx": str(cx),
                 "cy": str(cy),
-                "r": str(radius * 2),
+                "r": str(glow_radius(radius, k)),
                 "fill": _svg_color(glow_color),
-                "fill-opacity": f"{round(50 * k) / 255:.4f}",
+                "fill-opacity": f"{round(GLOW_ALPHA * k) / 255:.4f}",
             },
         )
 

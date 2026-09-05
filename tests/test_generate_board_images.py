@@ -213,11 +213,22 @@ def test_svg_emits_no_glow_when_every_led_is_dark(headless_pygame):
     assert "fill-opacity" not in build_svg(board, 1024, 700)
 
 
-def test_svg_glow_appears_when_lit_and_is_drawn_under_the_led(headless_pygame):
+@pytest.mark.parametrize("level", [1.0, 0.3, 0.05])
+def test_svg_glow_appears_when_lit_and_is_drawn_under_the_led(headless_pygame, level):
+    """Halo geometry must come from the shared policy, not be restated here.
+
+    Parametrized over brightness because the radius is no longer a constant
+    multiple of the body: a dim LED's halo shrinks, and this renderer has to
+    shrink with it.  Asserting against ``glow_radius`` rather than against
+    ``2 * body_r`` is what makes this a parity check instead of a second copy
+    of the formula -- the drift that made the two renderers disagree about
+    ``THEME.led_off`` before #396.
+    """
     from fpga_sim.generate_board_images import build_svg
+    from fpga_sim.ui.components import glow_radius
 
     board = _board(headless_pygame, "DE10LitePlatform")
-    board.set_led_level(0, 1.0)
+    board.set_led_level(0, level)
     svg = build_svg(board, 1024, 700)
     cx, cy = board.leds[0].rect.center
     assert svg.count("fill-opacity") == 1, "one halo, for the one lit LED"
@@ -226,7 +237,8 @@ def test_svg_glow_appears_when_lit_and_is_drawn_under_the_led(headless_pygame):
     glow_r, glow_attrs = circles[0]
     body_r, _ = circles[1]
     assert "fill-opacity" in glow_attrs, "the halo must come first, or it covers the LED"
-    assert int(glow_r) == 2 * int(body_r), "halo radius matches LED.draw()"
+    _, _, k = board.leds[0].display_colors()
+    assert int(glow_r) == glow_radius(int(body_r), k), "halo radius matches LED.draw()"
 
 
 def test_svg_rgb_puck_mixes_its_channels(headless_pygame):

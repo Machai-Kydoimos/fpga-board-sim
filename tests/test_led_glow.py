@@ -17,7 +17,7 @@ from __future__ import annotations
 import pygame
 import pytest
 
-from fpga_sim.ui.components import LED, RGBLED, _draw_glow
+from fpga_sim.ui.components import LED, RGBLED, _draw_glow, _perceptual, glow_radius
 from fpga_sim.ui.constants import WHITE
 from fpga_sim.ui.theme import THEME
 
@@ -137,3 +137,102 @@ def test_both_led_kinds_share_one_glow_implementation():
     )
     for method in (LED.draw, RGBLED.draw):
         assert "_draw_glow" in inspect.getsource(method)
+
+
+# ── The radius policy (glow_radius) ───────────────────────────────────────────
+#
+# The halo's size is the one thing about it that carries brightness information
+# beyond alpha, and the policy is load-bearing for how a dim board reads.  These
+# pin the policy itself; the invariants above pin that no policy can move an LED.
+
+
+@pytest.mark.parametrize("led_radius", [4, 11, 21, 40])
+def test_halo_is_unchanged_at_full_brightness(headless_pygame, led_radius):
+    """The compatibility pin: k=1 must reproduce the fixed radius this replaced.
+
+    Every board screenshot and every visual review of a fully-lit LED predates
+    the dynamic radius; if this drifts, all of them silently become wrong.
+    """
+    assert glow_radius(led_radius, 1.0) == 2 * led_radius
+
+
+@pytest.mark.parametrize("led_radius", [4, 11, 21, 40])
+def test_halo_shrinks_monotonically_as_the_led_dims(headless_pygame, led_radius):
+    radii = [glow_radius(led_radius, _perceptual(d)) for d in (1.0, 0.5, 0.3, 0.1, 0.01)]
+    assert radii == sorted(radii, reverse=True), f"halo must shrink as duty falls: {radii}"
+    assert radii[0] > radii[-1]
+
+
+def test_halo_radius_tracks_perceptual_brightness_linearly(headless_pygame):
+    """Radius is linear in k -- which is what makes alpha x area linear in duty.
+
+    Both halves scale with k, so the painted light goes as ``k * r^2 == k^3``,
+    and k is ``d ** (1/3)``: the halo's total ink is exactly proportional to the
+    LED's real duty cycle.  Asserting the ratio rather than the ink keeps the
+    check exact (integer rounding aside) instead of chasing a tolerance.
+    """
+    for d in (1.0, 0.75, 0.5, 0.3, 0.1):
+        k = _perceptual(d)
+        assert glow_radius(200, k) / 400 == pytest.approx(k, abs=0.005)
+
+
+def test_halo_is_not_floored_at_the_led_body(headless_pygame):
+    """A floor at the body radius is the tempting mistake -- it must stay out.
+
+    It reads as protecting the halo's visibility, but below k=0.5 there is
+    nothing to protect: the halo is behind the opaque body either way.  What a
+    floor actually does is hold the halo at full size while it is invisible,
+    which keeps a dim board's PCB washed -- the defect this policy exists to
+    fix (see ``test_dim_leds_leave_the_board_between_them_unwashed``).
+    """
+    for d in (0.1, 0.03, 0.01):
+        assert glow_radius(21, _perceptual(d)) < 21
+
+
+@pytest.mark.parametrize("led_radius", [1, 4, 40])
+@pytest.mark.parametrize("k", [0.001, 0.05, 0.2])
+def test_a_lit_led_always_paints_a_halo(headless_pygame, led_radius, k):
+    """The 1px floor: never a zero radius, which would mean a 0x0 scratch surface.
+
+    ``_draw_glow`` promises a lit LED paints *something*; a small LED at a low
+    level is where that promise and the shrinking radius meet.
+    """
+    assert glow_radius(led_radius, k) >= 1
+
+
+def test_dim_leds_leave_the_board_between_them_unwashed(headless_pygame):
+    """The defect this policy fixes, measured on a real board.
+
+    A DE10-Lite's LEDs sit on a 60px pitch with a 21px body, so the midpoint
+    between two neighbors is 30px from each.  The old fixed 42px halo covered it
+    from both sides at *any* brightness, so a whole row at 30% duty turned the
+    PCB green from (34,139,34) into (88,120,38) -- a board-wide wash the design
+    never asked for.  A radius that tracks brightness clears the midpoint the
+    moment the LEDs are meaningfully dim, while full brightness still glows.
+    """
+    from fpga_sim.board_loader import discover_boards, get_default_boards_path
+    from fpga_sim.generate_board_images import render_board_raster
+    from fpga_sim.ui import FPGABoard
+
+    bd = next(
+        b for b in discover_boards(get_default_boards_path()) if b.class_name == "DE10LitePlatform"
+    )
+
+    def midpoints(duty: float) -> list[tuple[int, ...]]:
+        board = FPGABoard(board_def=bd, width=1024, height=700)
+        for i in range(len(board.leds)):
+            board.set_led_level(i, duty)
+        surface = render_board_raster(board)
+        centers = [led.rect.center for led in board.leds]
+        return [
+            surface.get_at(((a[0] + b[0]) // 2, (a[1] + b[1]) // 2))[:3]
+            for a, b in zip(centers, centers[1:], strict=False)  # pairwise: one short
+        ]
+
+    pcb = tuple(THEME.pcb_bg)
+    for duty in (0.3, 0.1):
+        assert all(px == pcb for px in midpoints(duty)), (
+            f"LEDs at {duty:.0%} duty washed the board between them: {midpoints(duty)[:3]}"
+        )
+    # ...and the halo has not simply been deleted: at full drive it still meets.
+    assert all(px != pcb for px in midpoints(1.0))
