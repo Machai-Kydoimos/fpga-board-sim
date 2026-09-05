@@ -16,7 +16,7 @@ The stored JSON caught up with the corrected ``seven_seg`` reading in U22
 Phase D: both this pipeline and ``scripts/digilent_parser.py`` now classify
 Basys3's display as ``"scan"`` (a shared 7-bit ``seg`` vector multiplexed by
 a 4-bit ``an`` digit-enable, both present in the source below -- Locked
-Decision 3 in ``docs/u21_board_native_vhdl_plan.md``).  The stored block is
+Decision 3 in ``docs/plans/u21_board_native_vhdl_plan.md``).  The stored block is
 additionally *enriched* beyond what ``classify`` derives: ``dp`` (the shared
 decimal-point scalar, name-excluded from classify's seg interest) and the
 cited ``active_low`` polarity (overlay/RM territory, never name-derived).

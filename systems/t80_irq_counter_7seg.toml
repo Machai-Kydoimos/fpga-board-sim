@@ -22,7 +22,7 @@ the hardware routes the timer source (vector $00) and the sw/btn-change source
 matches the polled design: a one-hot LED bounces across the LEDs while a decimal
 odometer advances; btn(0) reverses both directions, btn(1) is a lamp test, and
 each active switch steps faster.  The Z80 boots at $0000, so ROM is at the bottom
-of the memory map.  See docs/embedded_core_system_plan.md."""
+of the memory map.  See docs/embedded_core_system_guide.md."""
 
 # VHDL generic defaults (board sizes are overridden at elaboration).
 [generics]

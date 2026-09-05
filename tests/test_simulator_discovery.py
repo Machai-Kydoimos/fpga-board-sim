@@ -18,7 +18,7 @@ import fpga_sim.__main__ as main_mod
 import fpga_sim.sim_bridge as sim_bridge
 from fpga_sim.sim_bridge import SimulatorInfo, _fallback_ghdl, resolve_simulator_arg
 
-# ── Real --version banners (see docs/u35_simulator_picker_plan.md §2) ─────────
+# ── Real --version banners (see docs/plans/u35_simulator_picker_plan.md §2) ─────────
 
 MCODE = (
     "GHDL 7.0.0-dev (6.0.0.r205.ge8653994f) [Dunoon edition]\n"

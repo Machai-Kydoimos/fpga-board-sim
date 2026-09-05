@@ -17,7 +17,7 @@ a Z80: a single lit LED bounces across the LEDs while a decimal odometer advance
 on the 7-segment digits; btn(0) reverses both directions, btn(1) is a lamp test,
 and each active switch steps faster.  The Z80 boots at $0000, so ROM is at the
 bottom of the memory map; the firmware polls the prescaler tick at $E010.
-See docs/embedded_core_system_plan.md."""
+See docs/embedded_core_system_guide.md."""
 
 # VHDL generic defaults (board sizes are overridden at elaboration).
 [generics]

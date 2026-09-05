@@ -18,7 +18,7 @@ the files. It exists so that:
 The simulator does **not** read these files at runtime; they are maintainer
 data for the `scripts/sync_port_conventions.py` generator (U21 Phase A3 ✅)
 and human reference. See `docs/improvement_roadmap.md` (U21 ✅, Icebox P2/P5)
-and `docs/u21_board_native_vhdl_plan.md`.
+and `docs/plans/u21_board_native_vhdl_plan.md`.
 
 **How population consumes this (U21 Phase A3 ✅).**
 `scripts/sync_port_conventions.py` turns a registry row into a board JSON's

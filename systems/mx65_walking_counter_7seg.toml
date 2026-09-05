@@ -19,7 +19,7 @@ in software: a single lit LED bounces across the LEDs while a decimal odometer
 advances on the 7-segment digits; btn(0) reverses both directions, btn(1) is a
 lamp test, and each active switch steps faster.  A free-running prescaler tick
 (polled read-to-clear at $E010) decouples the visible rate from raw CPU speed.
-See docs/embedded_core_system_plan.md."""
+See docs/embedded_core_system_guide.md."""
 
 # VHDL generic defaults (board sizes are overridden at elaboration).
 [generics]

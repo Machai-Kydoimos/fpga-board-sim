@@ -1,6 +1,6 @@
 """Tests for embedded-core systems.
 
-Stage 0 (see docs/embedded_core_system_plan.md): the vendored mx65 CPU core is
+Stage 0 (see docs/plans/embedded_core_system_plan.md): the vendored mx65 CPU core is
 analyzed *alone* under both simulators to confirm it is self-contained and
 standard-IEEE clean (no Synopsys packages, no vendor primitives) before any
 system is built around it.  Later stages add ROM/generator/integration tests.

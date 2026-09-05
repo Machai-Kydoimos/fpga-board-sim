@@ -20,7 +20,7 @@ change -- acknowledges it with a write-1-to-clear, and does the same work as the
 polled design: a one-hot LED bounces across the LEDs while a decimal odometer
 advances; btn(0) reverses both directions, btn(1) is a lamp test, and each active
 switch steps faster.  Behavior matches hdl/mx65_walking_counter_7seg.
-See docs/embedded_core_system_plan.md."""
+See docs/embedded_core_system_guide.md."""
 
 # VHDL generic defaults (board sizes are overridden at elaboration).
 [generics]

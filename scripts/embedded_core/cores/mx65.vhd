@@ -6,7 +6,7 @@
 --   License: MIT (Copyright (c) 2022 Steve Teal)
 --
 -- Unmodified copy of the upstream 6502 core, used as the CPU for the
--- simulator's embedded-core systems (see docs/embedded_core_system_plan.md).
+-- simulator's embedded-core systems (see docs/embedded_core_system_guide.md).
 -- To update, re-vendor from a new pinned commit; never hand-edit the core text.
 --
 -- MIT License

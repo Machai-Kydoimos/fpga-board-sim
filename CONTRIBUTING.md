@@ -511,7 +511,7 @@ pipeline instead:
   the drift job proves the pair is consistent.
 
 `docs/architecture.md` covers the sync pipeline's structure;
-`docs/u21_board_native_vhdl_plan.md` and `docs/u22_7seg_scan_plan.md` are the
+`docs/plans/u21_board_native_vhdl_plan.md` and `docs/plans/u22_7seg_scan_plan.md` are the
 deep references for conventions.
 
 ---
