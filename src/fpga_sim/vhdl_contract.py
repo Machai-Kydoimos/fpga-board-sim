@@ -1,0 +1,390 @@
+"""Deciding whether a design can run on a board, and saying why not (D17).
+
+The policy layer over :mod:`fpga_sim.vhdl_interface`'s parse.  A file reaches
+:func:`check_vhdl_contract` and leaves as a :class:`ContractResult` that either
+runs -- through the generic contract, or through a board-native convention
+match (:mod:`fpga_sim.conventions`) -- or carries the message the user will
+read.
+
+Those messages are the module's real output.  A rejected design is the normal
+case for someone learning, so the failure paths get more care than the success
+one: a near-miss names the port that differed rather than reprinting the whole
+contract, a width mismatch quotes the board's own count, and
+:func:`add_error_hints` annotates the simulator's raw stderr without ever
+replacing it -- the compiler's exact words stay, because they are what a search
+engine and a lab neighbor both recognize.
+"""
+
+from __future__ import annotations
+
+import re
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from fpga_sim.conventions import (
+    ContractResult,
+    _best_convention_attempt,
+    _native_convention_message,
+    _near_miss_convention_message,
+)
+from fpga_sim.vhdl_interface import (
+    _CONTRACT_PORTS,
+    _PORT_GENERIC,
+    _PORT_MODES,
+    _PORT_SNIPPETS,
+    _REQUIRED_GENERICS,
+    _REQUIRED_PORTS,
+    _WRAPPER_DEFAULT_WIDTHS,
+    _board_port_widths,
+    _has_seg_port,
+    _IfaceDecl,
+    _parse_toplevel_interface,
+    _plural,
+)
+
+if TYPE_CHECKING:
+    from fpga_sim.board_loader import BoardDef
+
+
+def _check_parsed_contract(
+    filename: str,
+    ports: list[_IfaceDecl],
+    generics: list[_IfaceDecl],
+    board_def: BoardDef | None,
+) -> tuple[bool, str]:
+    """Contract rules over a parsed toplevel interface (helper of check_vhdl_contract)."""
+    port_by_name = {n: d for d in ports for n in d.names}
+    generic_names = {n for d in generics for n in d.names}
+    has_seg = "seg" in port_by_name
+    board_7seg = board_def is not None and board_def.seven_seg is not None
+
+    # Required ports
+    missing_ports = [p for p in _REQUIRED_PORTS if p not in port_by_name]
+    if missing_ports:
+        snippet = "\n".join(f"  {_PORT_SNIPPETS[p]};" for p in _REQUIRED_PORTS)
+        return False, (
+            f"Missing required port(s) in '{filename}': {', '.join(missing_ports)}.\n"
+            "The top-level entity must declare:\n"
+            f"{snippet}\n"
+            "(plus  seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)  to drive a "
+            "7-segment display)."
+        )
+
+    # Port directions.  Both GHDL and NVC silently accept a wrong-direction
+    # contract port (the wrapper's output is simply never driven), so this
+    # textual check is the only guard against e.g. `led : in ...`.
+    for name in _CONTRACT_PORTS:
+        decl = port_by_name.get(name)
+        if decl is not None and decl.mode != _PORT_MODES[name]:
+            return False, (
+                f"Port '{name}' must be mode {_PORT_MODES[name].upper()} but is declared "
+                f"{decl.mode.upper()} in '{filename}'.\n"
+                f"Declare it as:  {_PORT_SNIPPETS[name]}\n"
+                "The board drives clk/sw/btn into the design; led/seg are outputs it displays."
+            )
+
+    # NUM_SEGS without a seg port is a contract error: the generic is meaningless alone
+    if "num_segs" in generic_names and not has_seg:
+        return False, (
+            f"'{filename}' declares NUM_SEGS generic but has no 'seg' output port.\n"
+            "Add:  seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)"
+        )
+
+    # NUM_RGB_LEDS must be natural: most boards have no RGB LEDs, so the
+    # simulator passes 0 — a `positive` declaration would fail elaboration
+    # everywhere except the RGB boards it was presumably written on (U37).
+    for decl in generics:
+        if "num_rgb_leds" in decl.names and decl.type_text == "positive":
+            return False, (
+                f"Generic NUM_RGB_LEDS must be declared 'natural', not 'positive', in "
+                f"'{filename}'.\n"
+                "Boards without RGB LEDs pass NUM_RGB_LEDS=0, which a positive rejects. "
+                "Declare it as:\n"
+                "  NUM_RGB_LEDS : natural := 0"
+            )
+
+    # seg port without NUM_SEGS: fatal on 7-seg boards (the 7-seg wrapper maps it)
+    if has_seg and board_7seg and "num_segs" not in generic_names:
+        assert board_def is not None and board_def.seven_seg is not None
+        digits = board_def.seven_seg.num_digits
+        return False, (
+            f"'{filename}' has a 'seg' port but no NUM_SEGS generic, which "
+            f"{board_def.name}'s 7-segment display requires.\n"
+            "Add to the generic clause:  NUM_SEGS : positive := 4\n"
+            f"(the simulator sets NUM_SEGS={digits} for this board at launch)."
+        )
+
+    # Required generics.  The wrapper maps all four unconditionally, so a
+    # missing one always fails analysis with a cryptic sim_wrapper.vhd error —
+    # report it here with the fix instead.
+    missing_generics = [g for g in _REQUIRED_GENERICS if g.lower() not in generic_names]
+    if missing_generics:
+        lines = [
+            "  generic (",
+            "    NUM_SWITCHES : positive := 4;",
+            "    NUM_BUTTONS  : positive := 4;",
+            "    NUM_LEDS     : positive := 4;",
+        ]
+        if has_seg:
+            lines.append("    NUM_SEGS     : positive := 4;")
+        lines += ["    COUNTER_BITS : positive := 24", "  );"]
+        return False, (
+            f"Missing required generic(s) in '{filename}': {', '.join(missing_generics)}.\n"
+            "The simulator sizes the design to the board by overriding these at launch, "
+            "so the entity must declare them all:\n" + "\n".join(lines)
+        )
+
+    # Extra inputs the simulator cannot drive, and generics it will not set:
+    # both need a default value or the wrapper instantiation fails.
+    for decl in ports:
+        for name in decl.names:
+            if name in _CONTRACT_PORTS or decl.mode not in ("in", "inout") or decl.has_default:
+                continue
+            return False, (
+                f"Port '{name}' in '{filename}' is not part of the simulator contract "
+                "(clk, sw, btn, led, seg), so nothing drives it.\n"
+                f"Give it a default value — e.g.  {name} : in std_logic := '0'  — "
+                "or remove it."
+            )
+    known_generics = {g.lower() for g in _REQUIRED_GENERICS} | {"num_segs", "num_rgb_leds"}
+    for decl in generics:
+        for name in decl.names:
+            if name not in known_generics and not decl.has_default:
+                return False, (
+                    f"Generic '{name}' in '{filename}' is not set by the simulator "
+                    "(it sets only NUM_SWITCHES, NUM_BUTTONS, NUM_LEDS, NUM_SEGS, "
+                    "NUM_RGB_LEDS and COUNTER_BITS).\n"
+                    f"Give it a default value, e.g.  {name} : positive := 1"
+                )
+
+    # Fixed-literal port widths, judged against this board's resources
+    widths = _board_port_widths(board_def)
+    for name in ("sw", "btn", "led", "seg"):
+        decl = port_by_name.get(name)
+        if decl is None or decl.literal_width is None or name not in widths:
+            continue  # generic-sized, absent, no board, or seg on a board without 7-seg
+        expected = widths[name]
+        found = decl.literal_width
+        assert board_def is not None
+        if name == "seg":
+            assert board_def.seven_seg is not None
+            digits = board_def.seven_seg.num_digits
+            have = f"a {digits}-digit 7-segment display (8 * {digits} = {expected} bits)"
+            generic_ref = f"NUM_SEGS={digits}"
+        elif name == "led" and board_def.num_rgb_leds:
+            # Spell out the channel math: an RGB LED is three boundary bits.
+            mono = len(board_def.leds) - board_def.num_rgb_leds
+            have = (
+                f"{expected} LED channels ({_plural(mono, 'mono LED')} + 3 x "
+                f"{board_def.num_rgb_leds} RGB)"
+            )
+            generic_ref = f"NUM_LEDS={expected}"
+        else:
+            noun = {"sw": "switch", "btn": "button", "led": "LED"}[name]
+            have = _plural(expected, noun)
+            generic_ref = f"{_PORT_GENERIC[name]}={expected}"
+        if found != expected:
+            return False, (
+                f"Port '{name}' is a fixed {found} bits wide, but {board_def.name} has "
+                f"{have}.\n"
+                f"The simulator sets {generic_ref} for this board — declare the port as\n"
+                f"  {_PORT_SNIPPETS[name]}\n"
+                "so the design fits any board."
+            )
+        if found != _WRAPPER_DEFAULT_WIDTHS[name]:
+            # Matches this board, but the pre-launch elaboration check runs with
+            # the generic defaults (4 / 4 / 4 / 8*4), so a fixed width ≠ default
+            # still fails validation — and would break on any other board.
+            return False, (
+                f"Port '{name}' is a fixed {found} bits wide. That matches "
+                f"{board_def.name} ({have}), but fixed-width ports fail the simulator's "
+                "validation and break on other boards.\n"
+                f"Declare the port as\n  {_PORT_SNIPPETS[name]}"
+            )
+
+    return True, ""
+
+
+# >>> moved to fpga_sim.conventions <<<
+def check_vhdl_contract(
+    path: str | Path,
+    board_def: BoardDef | None = None,
+) -> ContractResult:
+    """Stage 2: contract validation (text-based, no simulator needed).
+
+    Parses the toplevel entity's port/generic clauses and checks them against
+    the design contract — board-aware when *board_def* is given (fixed widths
+    are compared to the board's resource counts).  Falls back to the legacy
+    whole-text scan when the interface cannot be parsed, so exotic-but-valid
+    formatting is never rejected on parser limitations alone.
+
+    When the generic contract fails, the design is checked against the board's
+    board-native port conventions (U21): a full native match returns ``ok=True``
+    with a precise message and the :class:`ConventionMatch` on the result (the
+    native wrapper adapts its ports onto the sw/btn/led[/seg] boundary at run
+    time), while a partial match is rejected with a near-miss message naming the
+    convention.
+
+    Returns a :class:`ContractResult`.
+    """
+    path = Path(path)
+    stem = path.stem.lower()
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as e:
+        return ContractResult(False, f"Cannot read file: {e}")
+
+    # Check entity name matches filename
+    entities = re.findall(r"entity\s+(\w+)\s+is", text, re.IGNORECASE)
+    if not entities:
+        return ContractResult(
+            False,
+            f"No entity declaration found in '{path.name}'.\n"
+            "The file must contain: entity <name> is ... end entity;",
+        )
+    entity_names_lower = [e.lower() for e in entities]
+    if stem not in entity_names_lower:
+        found = ", ".join(f"'{e}'" for e in entities)
+        return ContractResult(
+            False,
+            f"Entity name mismatch: found {found} but filename is '{path.name}'.\n"
+            f"Rename the file to '{entities[0]}{path.suffix}' or rename the entity to '{stem}'.",
+        )
+
+    parsed = _parse_toplevel_interface(text, stem)
+    if parsed is not None:
+        ok, msg = _check_parsed_contract(path.name, parsed[0], parsed[1], board_def)
+        if ok:
+            return ContractResult(True)
+        # Generic contract failed -- is this instead a board-native design?
+        attempt = _best_convention_attempt(parsed[0], parsed[1], board_def)
+        if attempt is not None and attempt.match is not None:
+            # U21 B3: a full native match runs -- the native wrapper adapts the
+            # board's own port names to the sw/btn/led/seg boundary.
+            return ContractResult(
+                True, _native_convention_message(attempt.match, path.name), attempt.match
+            )
+        if attempt is not None and len(attempt.matched_roles) >= 2:
+            return ContractResult(False, _near_miss_convention_message(attempt, path.name))
+        return ContractResult(False, msg)
+
+    # ── Legacy whole-text fallback (interface not parseable) ──────────────
+
+    # Check required ports
+    missing_ports = [
+        p for p in _REQUIRED_PORTS if not re.search(r"\b" + p + r"\b", text, re.IGNORECASE)
+    ]
+    if missing_ports:
+        return ContractResult(
+            False,
+            f"Missing required port(s) in '{path.name}': {', '.join(missing_ports)}.\n"
+            "The top-level entity must have ports: clk, sw, btn, led.",
+        )
+
+    # NUM_SEGS without a seg port is a contract error: the generic is meaningless alone
+    if re.search(r"\bNUM_SEGS\b", text, re.IGNORECASE) and not _has_seg_port(text):
+        return ContractResult(
+            False,
+            f"'{path.name}' declares NUM_SEGS generic but has no 'seg' output port.\n"
+            "Add:  seg : out std_logic_vector(8 * NUM_SEGS - 1 downto 0)",
+        )
+
+    # Warn (non-fatal) about missing generics
+    missing_generics = [
+        g for g in _REQUIRED_GENERICS if not re.search(r"\b" + g + r"\b", text, re.IGNORECASE)
+    ]
+    if missing_generics:
+        print(f"[warn] Missing generics (will use VHDL defaults): {', '.join(missing_generics)}")
+
+    return ContractResult(True)
+
+
+def add_error_hints(message: str, board_def: BoardDef | None = None) -> str:
+    """Append actionable "Hint:" lines to a simulator analysis/elaboration error.
+
+    Recognizes the GHDL and NVC wordings of the failure modes a contract-
+    violating design produces (missing IEEE header, unmapped generics, extra
+    unconnected ports, vector-length mismatches) and explains the fix in terms
+    of the design contract — with the board's real resource counts when
+    *board_def* is given.  Unrecognized messages pass through unchanged.
+    """
+    if not message.strip():
+        return message
+    hints: list[str] = []
+
+    # GHDL: no declaration for "std_logic" / NVC: no visible declaration for STD_LOGIC
+    if re.search(r"no (?:visible )?declaration for \"?std_logic", message, re.IGNORECASE):
+        hints.append(
+            "Add the IEEE library header at the top of the file:\n"
+            "  library ieee;\n"
+            "  use ieee.std_logic_1164.all;"
+        )
+
+    # GHDL: generic "NUM_LEDS" is not an interface name
+    # NVC:  NUM_LEDS is not a formal generic of WORK.FOO
+    m = re.search(
+        r"generic \"(\w+)\" is not an interface name|(\w+) is not a formal generic",
+        message,
+        re.IGNORECASE,
+    )
+    if m:
+        name = (m.group(1) or m.group(2)).upper()
+        hints.append(
+            f"The simulator sets the generic {name} at launch, so the top-level entity "
+            "must declare it (with a default value). The standard generics are "
+            "NUM_SWITCHES, NUM_BUTTONS, NUM_LEDS and COUNTER_BITS, plus NUM_SEGS for "
+            "designs that drive a 7-segment display and NUM_RGB_LEDS for designs that "
+            "aim at RGB LED channels."
+        )
+
+    # GHDL: port "rst" of mode IN must be connected
+    # NVC:  missing actual for port RST of mode IN without a default expression
+    m = re.search(
+        r"port \"(\w+)\" of mode IN must be connected"
+        r"|missing actual for port (\w+) of mode IN",
+        message,
+        re.IGNORECASE,
+    )
+    if m:
+        name = (m.group(1) or m.group(2)).lower()
+        hints.append(
+            f"The simulator drives only the contract ports (clk, sw, btn, led, seg), so "
+            f"the extra input port '{name}' is left unconnected. Give it a default value "
+            f"— e.g.  {name} : in std_logic := '0'  — or remove it."
+        )
+
+    # GHDL mcode: mismatching vector length; got 4, expect 10
+    # NVC:        actual length 10 does not match formal length 4
+    # GHDL llvm/gcc: bound check failure at sim_wrapper.vhd:NN (the U35 probe
+    #   appends the offending "port => port" association so the port is named)
+    if re.search(
+        r"mismatching vector length|actual length \d+ does not match formal length"
+        r"|bound check failure",
+        message,
+        re.IGNORECASE,
+    ):
+        # The simulator echoes the failing wrapper association (e.g. "led => led").
+        pm = re.search(r"\b(sw|btn|led|seg)\s*=>", message)
+        port = pm.group(1) if pm else None
+        widths = _board_port_widths(board_def)
+        lines = ["Port widths must come from the generics"]
+        if port:
+            lines[0] += f" — the mismatch is on port '{port}'"
+        lines[0] += "."
+        if board_def is not None and widths:
+            parts = [f"{_PORT_GENERIC[p]}={widths[p]}" for p in ("sw", "btn", "led")]
+            if "seg" in widths:
+                assert board_def.seven_seg is not None
+                digits = board_def.seven_seg.num_digits
+                parts.append(f"NUM_SEGS={digits} (seg is 8 * {digits} = {widths['seg']} bits)")
+            lines.append(f"{board_def.name} provides {', '.join(parts)}.")
+        lines.append(f"Declare the port with its generic:  {_PORT_SNIPPETS[port or 'led']}")
+        lines.append(
+            "(This validation step elaborates with the generic defaults, so the lengths "
+            "reported above can differ from the board's.)"
+        )
+        hints.append("\n".join(lines))
+
+    if not hints:
+        return message
+    return message + "".join(f"\n\nHint: {h}" for h in hints)
