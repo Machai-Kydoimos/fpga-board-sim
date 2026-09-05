@@ -8,6 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`--board` and `--vhdl` now start the interactive launcher, not just the
+  benchmark** (U49). `fpga-sim --board DE10-Standard --vhdl lab1/top.vhd` opens
+  the preview with the board selected and the file loaded, validated and
+  analyzed — the state you would otherwise reach by walking three screens. Both
+  flags existed before and were *ignored* outside `--benchmark`, with a warning
+  saying so; the launcher now seeds itself through the same
+  `on_board_selected()` / `on_vhdl_loaded()` transitions a hand-driven session
+  uses, so a seeded run is indistinguishable from there on.
+  - `--board` accepts either spelling a user has actually seen — the name on
+    screen (`DE10-Standard`) or the class name (`DE10StandardPlatform`) — and
+    ignores case and separators, because the two spellings disagree about
+    punctuation and neither can reasonably be required. The benchmark path now
+    resolves its `--board` through the same function, so the two cannot drift.
+  - `--vhdl` resolves relative paths against the directory you ran the command
+    from: student designs stay where the student keeps them.
+  - **Neither flag can strand a launch.** An unknown board name opens the
+    selector and a missing or invalid file opens the preview with nothing
+    loaded, each with one line on stderr *and* — for a validation failure — the
+    same dialog the file picker would have shown, because the run may have come
+    from a desktop shortcut with no terminal attached, or from a terminal with
+    nobody watching the window.
+  - `--vhdl` without `--board` only preloads the path, exactly as a restored
+    session does: the contract check is board-aware, so there is nothing to
+    validate against until a board is chosen.
+  - `--pinmap PATH` and `--generic NAME=VALUE` (repeatable) are accepted and
+    carried but not yet consumed — they belong to the project pin map (U53) and
+    the generic override (U48). Reserving them now keeps the flag set from
+    changing shape between releases; a malformed `--generic` is rejected at
+    parse time.
+
 - **LED PWM display toggle in the Settings dialog** (U47,
   [#385](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/385)). LEDs
   and 7-segment digits normally render continuous brightness measured from the

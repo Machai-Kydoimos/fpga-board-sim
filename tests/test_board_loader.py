@@ -7,6 +7,7 @@ from fpga_sim.board_loader import (
     BoardDef,
     ComponentInfo,
     discover_boards,
+    find_board,
     get_default_boards_path,
 )
 
@@ -554,3 +555,51 @@ def test_num_led_channels_arty_shape():
         name="B", class_name="B", leds=[_mono(i) for i in range(4)] + [_rgb(i) for i in range(4)]
     )
     assert board.num_led_channels == 16
+
+
+# ── find_board: resolving a --board argument (U49) ───────────────────────────
+
+
+def _named(name: str, class_name: str) -> BoardDef:
+    return BoardDef(name=name, class_name=class_name)
+
+
+def _fleet() -> list[BoardDef]:
+    return [
+        _named("DE10-Standard", "DE10StandardPlatform"),
+        _named("Basys 3", "Basys3Platform"),
+        _named("Arty A7-35", "ArtyA7_35Platform"),
+    ]
+
+
+def _found(wanted: str) -> BoardDef:
+    """find_board is Optional by design; every hit test wants the board itself."""
+    board = find_board(_fleet(), wanted)
+    assert board is not None, wanted
+    return board
+
+
+def test_find_board_matches_the_class_name():
+    assert _found("DE10StandardPlatform").name == "DE10-Standard"
+
+
+def test_find_board_matches_the_name_shown_in_the_selector():
+    """The screen says "DE10-Standard"; the docs say the class name. Both work."""
+    assert _found("DE10-Standard").class_name == "DE10StandardPlatform"
+
+
+def test_find_board_ignores_case_and_separators():
+    """The two spellings disagree about punctuation, so neither can be required."""
+    for spelling in ("de10-standard", "DE10 Standard", "de10standard", "DE10_Standard"):
+        assert _found(spelling).class_name == "DE10StandardPlatform", spelling
+
+
+def test_find_board_makes_the_platform_suffix_optional():
+    assert _found("Basys3").class_name == "Basys3Platform"
+    assert _found("ArtyA7_35").class_name == "ArtyA7_35Platform"
+
+
+def test_find_board_returns_none_for_a_miss():
+    assert find_board(_fleet(), "NoSuchBoard") is None
+    assert find_board(_fleet(), "") is None
+    assert find_board([], "DE10-Standard") is None

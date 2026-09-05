@@ -255,21 +255,30 @@ def test_a_due_shot_forces_a_frame_u23_would_skip(
 def _args(**kw: Any) -> Any:
     import argparse
 
-    base = {"benchmark": None, "no_ui": False, "screenshots": None, "board": None, "vhdl": None}
+    base = {
+        "benchmark": None,
+        "no_ui": False,
+        "screenshots": None,
+        "board": None,
+        "vhdl": None,
+        "pinmap": None,
+        "generic": None,
+    }
     return argparse.Namespace(**{**base, **kw})
 
 
 def test_benchmark_only_flags_warn_rather_than_fail() -> None:
     """A flag that is merely inapplicable must not kill a working invocation.
 
-    All four are benchmark-only; ``--board`` / ``--vhdl`` have been ignored
-    outside benchmark mode since it existed, so one rule covers them all.
+    Only the two measurement flags are benchmark-only now: U49 made ``--board``
+    and ``--vhdl`` seed the interactive launcher, so they are applicable
+    everywhere and must no longer be named here.
     """
     from fpga_sim.__main__ import _inapplicable_flags, _validate_args
 
     args = _args(board="X", vhdl="a.vhd", no_ui=True, screenshots="/tmp/x")
     assert _validate_args(args) is None  # not fatal
-    assert _inapplicable_flags(args) == ["--board", "--vhdl", "--no-ui", "--screenshots"]
+    assert _inapplicable_flags(args) == ["--no-ui", "--screenshots"]
 
 
 def test_only_the_flags_actually_given_are_named() -> None:
@@ -285,6 +294,17 @@ def test_nothing_is_inapplicable_in_benchmark_mode() -> None:
 
     args = _args(benchmark=5, board="X", vhdl="a.vhd", screenshots="/tmp/x")
     assert _inapplicable_flags(args) == []
+
+
+def test_generic_wants_name_equals_value() -> None:
+    """A malformed --generic is a contradiction, not a redundancy, so it is fatal."""
+    from fpga_sim.__main__ import _validate_args
+
+    assert _validate_args(_args(generic=["CNTR_LEN=4"])) is None
+    assert _validate_args(_args(generic=["CNTR_LEN=4", "N=2"])) is None
+    for bad in ("CNTR_LEN", "=4", "CNTR_LEN=", " =4"):
+        err = _validate_args(_args(generic=[bad]))
+        assert err is not None and "NAME=VALUE" in err, bad
 
 
 def test_screenshots_with_no_ui_is_rejected() -> None:

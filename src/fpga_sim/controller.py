@@ -24,6 +24,7 @@ ever created or destroyed between launcher start and app exit (see
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import partial
@@ -32,7 +33,7 @@ from typing import Any
 
 import pygame
 
-from fpga_sim.board_loader import BoardDef
+from fpga_sim.board_loader import BoardDef, find_board
 from fpga_sim.session_config import load_session, push_recent, save_session
 from fpga_sim.sim_bridge import (
     ConventionMatch,
@@ -227,14 +228,25 @@ class ScreenController:
         *,
         session: dict[str, Any],
         cli_simulator: str | None = None,
+        cli_board: str | None = None,
+        cli_vhdl: str | None = None,
+        cli_pinmap: str | None = None,
+        cli_generics: list[str] | None = None,
     ) -> None:
-        """Seed the controller from the saved *session* dict and CLI override.
+        """Seed the controller from the saved *session* dict and the CLI flags.
 
         *session* is the (possibly empty) dict from ``load_session()``;
         *cli_simulator* is the raw ``--sim`` argument, which overrides the
         session's saved simulator when it names an available one.
         *available_sims* is the discovered install list (non-empty; the caller
         supplies a fallback entry when nothing is installed).
+
+        *cli_board* and *cli_vhdl* start the session on a chosen board with a
+        chosen file instead of at the selector -- see :meth:`_seed_from_cli`.
+        *cli_pinmap* and *cli_generics* are carried but not yet consumed: they
+        belong to U53 (the project pin map) and U48 (the generic override), and
+        are accepted here so the flag set stops changing shape between
+        releases.
         """
         self.boards = boards
         self.screen = screen
@@ -255,6 +267,10 @@ class ScreenController:
             component_filters=session.get("component_filters", []),
             vendor_filters=session.get("vendor_filters", []),
         )
+        self._cli_board = cli_board
+        self._cli_vhdl = cli_vhdl
+        self.cli_pinmap = cli_pinmap
+        self.cli_generics: tuple[str, ...] = tuple(cli_generics or ())
 
     @staticmethod
     def _resolve_sim(
@@ -321,7 +337,7 @@ class ScreenController:
 
     def run(self) -> None:
         """Drive the screen flow until the user quits, then shut pygame down."""
-        nxt = NextScreen.SELECTOR
+        nxt = self._seed_from_cli()
         while nxt is not NextScreen.QUIT:
             nxt = self._run_selector() if nxt is NextScreen.SELECTOR else self._run_preview()
         # Quit-time save: keep the final window size and any sort/filter/
@@ -329,6 +345,94 @@ class ScreenController:
         self._save_session(window_size=self.screen.get_size())
         get_font.cache_clear()
         pygame.quit()
+
+    # ── Step 0: what the command line asked for ───────────────────────────
+
+    def _seed_from_cli(self) -> NextScreen:
+        """Apply ``--board`` / ``--vhdl`` and return the screen to start on.
+
+        Both flags existed before this, but only inside ``--benchmark``: the
+        launcher always opened at the selector and merely *warned* that they
+        had been ignored.  A student practicing at home re-walks the same two
+        screens on every attempt, and a lab machine cannot offer a one-click
+        shortcut to a board.  Seeding costs nothing at the flow's edges,
+        because both flags are applied through the ordinary transition methods
+        -- ``on_board_selected`` / ``on_vhdl_loaded`` -- so a seeded session is
+        indistinguishable from a hand-driven one from there on.
+
+        **A bad flag never blocks the launch.**  An unknown board or an
+        unreadable file writes one line to stderr and falls back to the screen
+        that lets the user fix it, rather than exiting: the flags are a
+        shortcut, not a contract, and a desktop shortcut that dies on a moved
+        file is worse than one that opens the picker.
+
+        ``--vhdl`` is validated here only when a board is known, since the
+        contract check is board-aware.  On its own it merely preloads the path
+        the way a saved session does, and the existing on-demand analysis at
+        [Start Simulation] takes it from there.
+        """
+        if self._cli_board is None and self._cli_vhdl is None:
+            return NextScreen.SELECTOR
+
+        nxt = NextScreen.SELECTOR
+        if self._cli_board is not None:
+            board = find_board(self.boards, self._cli_board)
+            if board is None:
+                examples = ", ".join(b.class_name for b in self.boards[:4])
+                print(
+                    f"[fpga-sim] no board matches --board {self._cli_board!r}; "
+                    f"opening the board selector. Examples: {examples}…",
+                    file=sys.stderr,
+                )
+            else:
+                nxt = self.on_board_selected(board)
+
+        if self._cli_vhdl is not None:
+            path = Path(self._cli_vhdl).expanduser()
+            if not path.is_file():
+                print(
+                    f"[fpga-sim] --vhdl file not found: {path}",
+                    file=sys.stderr,
+                )
+            elif self.board is None:
+                # No board yet, so no contract to check against: preload the
+                # path exactly as a restored session does.
+                self.state.vhdl_path = str(path.resolve())
+                self.state.last_vhdl_path = self.state.vhdl_path
+            else:
+                self._seed_vhdl(path.resolve())
+
+        return nxt
+
+    def _seed_vhdl(self, path: Path) -> None:
+        """Validate and analyze a ``--vhdl`` file against the seeded board.
+
+        Runs the picker's three stages -- encoding, contract, analysis -- so
+        the preview opens on a file that is known to work, not merely named.
+        A failure is reported **twice**: through the same error dialog the
+        picker would show, because the run may have been started from a
+        desktop shortcut with no terminal attached, and on stderr, because it
+        may not have been.  Either way the preview opens with no file loaded,
+        which is the state the [Load VHDL File] button is for.
+        """
+        assert self.board is not None
+        example = example_vhdl_for(self.board)
+        ok, detail = check_vhdl_encoding(str(path))
+        if ok:
+            res = check_vhdl_contract(path, board_def=self.board)
+            self.state.convention = res.match
+            ok, detail = res.ok, res.message
+            title = "VHDL Error"
+            if ok:
+                ok, detail = self._analyze_with_spinner(str(path))
+                title = f"{self.state.sim.label} Error"
+        else:
+            title = "VHDL Error"
+        if ok:
+            self.on_vhdl_loaded(str(path), detail)
+            return
+        print(f"[fpga-sim] --vhdl {path}: {detail}", file=sys.stderr)
+        ErrorDialog(self.screen, title, detail, example_path=example).run(self.clock)
 
     # ── Step 1: pick a board ──────────────────────────────────────────────
 
