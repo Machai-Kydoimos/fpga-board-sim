@@ -387,6 +387,100 @@ insert in the root `conftest.py`; no `py.typed`; an unsorted `__all__` with `RGB
 
 ---
 
+## 4.1 Gate A soak findings (2026-09-06)
+
+**These supersede §4 where they disagree.**
+
+Gate A's first half ran on 2026-09-05 by reading the course's own files (§1.1). Its second half ran
+on 2026-09-06: a **thirteen-case corpus** in the course's shape — five lab-shaped solutions (the
+Lab-1 combinational display, the Lab-2a `CNTR_LEN` running light, and Tasks 3a/3b/3c) and eight
+student-style wrong ones (off-by-one LED width, a missing `use` clause, an `integer` top-level port,
+inverted segment polarity, a reserved-word signal, an entity/filename mismatch, a testbench picked
+as the design, and a `.qsf` naming another board) — pushed through **the app's own three stages**,
+`check_vhdl_encoding` → `check_vhdl_contract` → `analyze_vhdl`, on DE10-Standard and Basys 3.
+
+The corpus lives at `/tmp/arc/gate_a/`, with a durable copy plus its generator and the soak
+harness staged at **`~/.claude/arc/`** (`mkcorpus.py`, `soak.py`, `gate_a_corpus/`) — `/tmp` is
+tmpfs and does not survive a reboot. It is *lab-shaped*, never a copy of the course's own
+solutions; **PR 6 promotes the parts it needs into `tests/fixtures/pinmap/`** as **tool** fixtures,
+which is where it should live permanently. Gate B re-runs exactly these files.
+
+**G6 — the headline, and it is a measurement rather than an opinion.** Twelve of the thirteen cases
+fail at the *same* wall with the *same* words: `Missing required port(s) in 'test_entity.vhd': clk,
+btn, led`, followed by the generic contract. A correct Lab-1 design, a correct combinational
+Task 3a, an off-by-one LED width, a missing `numeric_std`, an illegal `integer` port, inverted
+segment polarity, a `.qsf` for another board, and a *testbench picked by mistake* are today
+**indistinguishable to the student**. Only the entity/filename mismatch produces a specific,
+actionable message (and that one is genuinely good). Nothing in the tool can currently tell a
+student whether they have the wrong file, the wrong board, or the wrong tool. This confirms the §9
+never-cut set rather than changing it.
+
+**G5 — why, exactly; and the near-miss path is *right* to stay silent.** `_best_convention_attempt`
+scores every course file at **one** matched role — `sw` happens to be the Terasic bank's name too —
+and `check_vhdl_contract` requires `>= 2` matched roles before it reports a convention near-miss, so
+each file falls back to the generic-contract message. That threshold is correct: telling a student
+"you nearly wrote a Terasic-native design" would be false. It is precisely why nothing short of
+**U53** fixes this, and it means the pin map must produce its *own* diagnostics — falling back to
+this message when a pin map is present but incomplete would waste the mechanism.
+
+### Changes to U53's specification (PR 6)
+
+**G1 — a real course file has an input port with no pin assignment at all.** Lab 1 declares
+`button : in std_logic_vector(2 downto 0)` with no default, and **none of the three course `.qsf`
+files assigns `BUTTON`** — they assign `KEY[0..2]`, which is what Lab 2a renamed the port to.
+Quartus places an unassigned pin automatically, so the project still builds and the student never
+finds out. Under §7 PR 6's rule as written — *"an unassigned input without a default → error naming
+it"* — **the pin map would reject the first file of the first lab.** Revised rule: tie an unassigned
+input **off** and keep the design running, with one non-blocking line saying so (the shape U31 ✅
+already uses for an absent bank, and closer to the truth than either rejecting or silence). An
+unassigned *output* is still left `open`, as planned.
+
+**G2 — the constraint file is the vendor's entire pin file, not the design's.** The course `.qsf`
+carries **422** `set_location_assignment` lines: SDRAM, VGA, TV decoder, audio, HPS, both the
+golden-top names (`KEY[0..2]`, `HEX4`/`HEX5`, `LEDR[0]`, `CLOCK2_50`…) *and* the instructor's. The
+design declares six ports. So the map is built **from the design's ports outward**, and every
+assignment no declared port claims is ignored — in particular, "a pin the board does not know" may
+only be an error for a pin some *declared* port claims, or `DRAM_ADDR[0]` alone would sink every
+project.
+
+**G3 — a pin-mapped design may legitimately drive only part of the display.** DE10-Standard has
+**six** digits; the course's `hex(27 downto 0)` is four digits of seven segments, **with no decimal
+point**. U22's rule that declaring a strict subset of a board's display ports is a near-miss must
+**not** apply on the pin-map path: there the constraint file *is* the declaration, and digits 4–5
+stay dark exactly as they do on the student's own board.
+
+### New work for U50 (PR 9), found by soaking rather than by reading
+
+**G4 — a picked testbench is a distinct, trivially-detectable case.** `_parse_toplevel_interface`
+returns **`ports = []`** for a testbench, so a zero-port entity is unambiguous — yet the student
+gets the same "Missing required port(s)" message as everything else. It deserves its own: *"this
+file declares an entity with no ports, which is what a testbench looks like — pick the design it
+tests; the simulator supplies the stimulus itself."*
+
+**G7 — `units` is a VHDL reserved word, and GHDL will not say so.** Writing
+`signal units : integer range 0 to 9` for a countdown's ones digit — the obvious name in Task 3c,
+and the author of this corpus did it without thinking — fails with *"an identifier is expected
+instead of 'units'"*. `units` is reserved for physical type declarations (`type time is range …
+units … end units`), which is nowhere in a student's mental model. A hint naming the reserved word
+costs one pattern.
+
+**G8 — what a broken testbench actually says *first*.** Analyzed on its own, which is the state a
+student is in, the course's seven-actuals testbench fails with
+`unit "test_entity" not found in library "work"` — **not** "too many actuals", which appears only
+once the design has been analyzed into the same library. So of §4 F4's two candidates the
+entity-not-found hint is the *more* common, and both belong in PR 9. The "too many actuals"
+diagnostic also demonstrates F5 exactly: its caret sits at **column 45**, under `open`, and the
+error dialog strips it to column 0.
+
+### Still outstanding — the half that needs hardware
+
+**The clean-machine install rehearsal has not run.** It needs a Windows laptop and a macOS laptop
+with clean profiles, following `docs/install.md` verbatim, and the `winget install
+ghdl.ghdl.ucrt64.mcode` pre-flight (F23) — *now, not the week of the lab*. **PR 10 (`--doctor`) is
+gated on it**, per §7. Everything else in the arc can proceed meanwhile.
+
+---
+
 ## 5. Cards to file
 
 Standing rules: an arc does not start without a card; **an ID is taken the moment it is used
@@ -440,6 +534,10 @@ Ordering choices worth stating:
 **Tag the release ≥ 4 days before lab 1.** The tag is what surfaces the last problems.
 
 ### Gate A — soak-0 and install rehearsal (day 0–1, no PR)
+
+> **Status 2026-09-06: the soak half is done — findings in [§4.1](#41-gate-a-soak-findings-2026-09-06),
+> which supersedes §4 where they disagree. The clean-machine install half has not run and
+> needs hardware; PR 10 stays gated on it.**
 
 1. **Real files (half done).** The three course projects were run through both backends on
    2026-09-05 (§1.1). Remaining: write **lab-shaped solutions** to Tasks 1, 2, 3a, 3b, 3c *and*
@@ -903,6 +1001,14 @@ Arc-level, end to end:
 - **v1 — 2026-09-05 (draft).** Framed the arc around U21 board-native mode ("Terasic lab files are
   board-native"), a runtime frozen-board advisory, multi-file in-arc, and a docs refresh; excluded
   Digilent boards.
+- **Gate A (soak half) — 2026-09-06.** Thirteen course-shaped files through the app's own three
+  stages on both target boards; findings recorded as §4.1, which supersedes §4 where they disagree.
+  Three of them change **U53**'s specification (an unassigned input with no default is real and must
+  tie off, not reject; the constraint file is the vendor's whole 422-line pin file so the map runs
+  design-outward; a pin-mapped design may drive only part of the display), two add work to **U50**
+  (a picked testbench is a zero-port entity and deserves its own message; `units` is a reserved
+  word), and one measures the thesis: twelve of thirteen files, right and wrong alike, fail with the
+  same sentence. The install half still needs a Windows and a macOS machine.
 - **PR 0b — 2026-09-06.** The move cost 0.5 d rather than 0.25, for one reason worth carrying
   forward: `docs/embedded_core_system_plan.md` is cited from **seven generated `hdl/*.vhd`
   designs** (through six `systems/*.toml` descriptions), the **vendored** `cores/mx65.vhd`
