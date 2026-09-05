@@ -69,7 +69,7 @@ Two supported environments — pick one and use it consistently:
   NVC-related tests may run instead of skipping — confirm they pass or note
   the gap in your PR. If NVC is absent, those tests skip automatically
   (`SKIPPED (NVC is not installed)`) which is expected and does not block a merge.
-- `src/fpga_sim/sim_bridge.py` owns all Windows-specific environment setup (PATH, PYTHONHOME, DLL
+- `src/fpga_sim/sim_runner.py` owns all Windows-specific environment setup (PATH, PYTHONHOME, DLL
   discovery). If you add simulator support or change how the subprocess env is built,
   test it on Windows or note the gap in your PR.
 
@@ -312,7 +312,7 @@ led_val = int(dut.led.value)  # type: ignore[attr-defined]
 
 Do not remove these ignores; they will cause mypy errors.
 
-### Backend dispatch design (`sim_bridge.py`)
+### Backend dispatch design (`sim_backends.py`)
 
 `_GHDLBackend` and `_NVCBackend` subclass the `_SimBackend` ABC. The four
 discovery helpers (`find`, `available`, `lib_dir`, `sim_bin_lib`) live once on the
@@ -606,7 +606,7 @@ Windows + GHDL, macOS + GHDL-LLVM / GHDL-LLVM-JIT / NVC), the macOS and
 ubuntu-24.04-arm test-matrix entries, and the Board-data drift job are not
 required checks — they surface regressions but do not block merge on their
 own. If you touch
-`sim_bridge.py` or the simulator backends, confirm the simulator jobs are green
+the simulator modules (`sim_backends.py`, `wrapper.py`, `sim_runner.py`, …), confirm the simulator jobs are green
 before merging; if you touch anything under `boards/`, `scripts/*parser*`, the
 sync scripts, or the convention/color registries, confirm Board-data drift is
 green.

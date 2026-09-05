@@ -15,12 +15,12 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-import fpga_sim.sim_bridge as sim_bridge
+import fpga_sim.sim_runner as sim_runner
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from fpga_sim.sim_bridge import SimChild
+    from fpga_sim.sim_runner import SimChild
 
 
 class _FakeProc:
@@ -68,8 +68,8 @@ def start(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> Callable[..., _Star
     vhdl.write_text("entity blinky is end;", encoding="utf-8")
     work_dir = tmp_path / "wd"
     work_dir.mkdir()
-    monkeypatch.setattr(sim_bridge, "_build_sim_env", lambda **kw: ({}, "plugin.so"))
-    monkeypatch.setattr(sim_bridge, "WAVEFORM_DIR", tmp_path / "waveforms")
+    monkeypatch.setattr(sim_runner, "_build_sim_env", lambda **kw: ({}, "plugin.so"))
+    monkeypatch.setattr("fpga_sim.waveform.WAVEFORM_DIR", tmp_path / "waveforms")
     captured: dict[str, Any] = {}
     elab_calls: list[tuple[list[str], dict[str, Any]]] = []
     captured["elab_calls"] = elab_calls
@@ -92,7 +92,7 @@ def start(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> Callable[..., _Star
         monkeypatch.setattr(subprocess, "Popen", fake_popen)
         kwargs.setdefault("work_dir", str(work_dir))
         kwargs.setdefault("simulator", "ghdl")
-        child = sim_bridge.start_simulation("", vhdl, "blinky", {}, **kwargs)
+        child = sim_runner.start_simulation("", vhdl, "blinky", {}, **kwargs)
         return child, captured, fake
 
     return _start
@@ -178,7 +178,7 @@ def test_child_exposes_wave_and_stderr_tail_fields(start: Callable[..., _Started
     child, _captured, _ = start()
     assert child.wave_cfg is None  # capture off by default
     assert child.match is None
-    assert child.stderr_tail.maxlen == sim_bridge._STDERR_TAIL_LINES
+    assert child.stderr_tail.maxlen == sim_runner._STDERR_TAIL_LINES
     child.link.close()
 
 

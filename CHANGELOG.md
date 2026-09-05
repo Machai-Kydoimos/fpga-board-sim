@@ -6,6 +6,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`sim_bridge.py` is now nine modules and a shim** (D17). It was 3,067 lines
+  and nine unrelated concerns — 2.5x the next-largest file in the project and
+  22% of `src/` — and it is where the two largest pieces of the current work
+  would otherwise have landed. It already carried section banners, and those
+  banners were the seams: `sim_config` (the domain's types and duty policy) ·
+  `sim_backends` (one class per engine) · `sim_discovery` (which installs exist,
+  U35) · `vhdl_interface` (parse a toplevel; judge nothing) · `conventions` (the
+  board-native matcher) · `vhdl_contract` (the decision, and the message) ·
+  `wrapper` (generate `sim_wrapper`, `analyze_vhdl`) · `waveform` (capture and
+  open) · `sim_runner` (the child's environment and `SimChild`). No module now
+  exceeds 710 lines.
+  - **Nothing moved except which file each function sits in.** `sim_bridge`
+    remains as a re-export shim whose docstring is the map, so the ~35 modules
+    and tests that import from it by name keep working; `__all__` is explicit
+    because mypy's strict mode requires it and because the list is the module's
+    written contract.
+  - **The one thing a re-export cannot forward is a monkeypatched module
+    global.** Tests that faked `shutil.which`, `subprocess.run`, `glob.glob`,
+    `WAVEFORM_DIR` or `_build_sim_env` through `fpga_sim.sim_bridge` now name the
+    module that reads them. The suite said so itself: before they were
+    repointed, the discovery tests silently measured this machine's real GHDL
+    installs instead of their fakes.
+- **The repository root is derived in one place** (`fpga_sim.paths`). Eight
+  `Path(__file__).parent.parent.parent` chains across five modules counted
+  directories between themselves and the root, so each was correct only at one
+  depth and would have broken *silently* in the split above — two of them sat on
+  the path a user's VHDL travels. `tests/test_paths.py` walks the AST of every
+  module in the package to keep the pattern from coming back.
+
 ### Added
 
 - **`--board` and `--vhdl` now start the interactive launcher, not just the
