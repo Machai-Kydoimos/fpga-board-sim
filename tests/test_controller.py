@@ -66,17 +66,20 @@ def _make_controller(
     session: dict[str, Any] | None = None,
     cli_simulator: str | None = None,
     available: list[SimulatorInfo] | None = None,
+    boards: list[BoardDef] | None = None,
+    **cli: Any,
 ) -> ScreenController:
     screen = headless_pygame.display.set_mode((1024, 700))
     clock = headless_pygame.time.Clock()
     sims: list[SimulatorInfo] = available if available is not None else [_sim("ghdl"), _sim("nvc")]
     return ScreenController(
-        [_board()],
+        boards if boards is not None else [_board()],
         screen,
         clock,
         sims,
         session=session or {},
         cli_simulator=cli_simulator,
+        **cli,
     )
 
 
@@ -1109,3 +1112,129 @@ def test_attached_reload_revalidation_bail_returns_that_screen(
     monkeypatch.setattr(ctrl, "_revalidate_for_reload", lambda: NextScreen.SELECTOR)
     assert ctrl.on_simulate() is NextScreen.SELECTOR
     assert len(starts) == 1  # the first launch happened; no relaunch after the bail
+
+
+# ── CLI seeding (U49) ────────────────────────────────────────────────────────
+
+
+def test_no_cli_flags_start_at_the_selector(headless_pygame):
+    """The regression that matters: an unflagged launch is unchanged.
+
+    Every other test in this section moves the starting screen, so this one
+    pins the default the whole launcher has always had.
+    """
+    ctrl = _make_controller(headless_pygame)
+    assert ctrl._seed_from_cli() is NextScreen.SELECTOR
+    assert ctrl.board is None
+    assert ctrl.state.vhdl_path is None
+
+
+def test_cli_board_opens_the_preview(headless_pygame):
+    ctrl = _make_controller(headless_pygame, cli_board="ArtyA7_35Platform")
+    assert ctrl._seed_from_cli() is NextScreen.PREVIEW
+    assert ctrl.board is not None and ctrl.board.class_name == "ArtyA7_35Platform"
+
+
+def test_cli_board_accepts_the_name_shown_on_screen(headless_pygame):
+    """The selector shows "Arty A7-35"; nobody should have to know the class name."""
+    ctrl = _make_controller(headless_pygame, cli_board="arty a7-35")
+    assert ctrl._seed_from_cli() is NextScreen.PREVIEW
+    assert ctrl.board is not None and ctrl.board.name == "Arty A7-35"
+
+
+def test_unknown_cli_board_warns_and_still_launches(headless_pygame, capsys):
+    """A shortcut with a stale board name must open the selector, not die."""
+    ctrl = _make_controller(headless_pygame, cli_board="NoSuchBoard")
+    assert ctrl._seed_from_cli() is NextScreen.SELECTOR
+    assert ctrl.board is None
+    err = capsys.readouterr().err
+    assert "NoSuchBoard" in err and "selector" in err
+
+
+def test_cli_vhdl_without_a_board_only_preloads_the_path(headless_pygame, monkeypatch, tmp_path):
+    """No board means no contract to check against, so validation waits.
+
+    This is exactly what a restored session does with its saved path.
+    """
+    vhdl = tmp_path / "mine.vhd"
+    vhdl.write_text("-- design", encoding="utf-8")
+    monkeypatch.setattr(controller_mod, "check_vhdl_contract", _fail_if_called("contract check"))
+    ctrl = _make_controller(headless_pygame, cli_vhdl=str(vhdl))
+    assert ctrl._seed_from_cli() is NextScreen.SELECTOR
+    assert ctrl.state.vhdl_path == str(vhdl.resolve())
+    assert ctrl.state.last_vhdl_path == str(vhdl.resolve())
+
+
+def test_cli_board_and_vhdl_validate_and_load(headless_pygame, monkeypatch, tmp_path):
+    vhdl = tmp_path / "good.vhd"
+    vhdl.write_text("-- design", encoding="utf-8")
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
+    monkeypatch.setattr(
+        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
+    )
+    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
+    monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "/work/dir"))
+    ctrl = _make_controller(headless_pygame, cli_board="ArtyA7_35Platform", cli_vhdl=str(vhdl))
+    assert ctrl._seed_from_cli() is NextScreen.PREVIEW
+    s = ctrl.state
+    assert s.vhdl_path == str(vhdl.resolve())
+    assert s.work_dir == "/work/dir"
+    assert s.work_dir_sim == s.sim
+
+
+def test_cli_vhdl_relative_path_resolves_against_the_cwd(headless_pygame, monkeypatch, tmp_path):
+    vhdl = tmp_path / "rel.vhd"
+    vhdl.write_text("-- design", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
+    monkeypatch.setattr(
+        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
+    )
+    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
+    monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "/work/dir"))
+    ctrl = _make_controller(headless_pygame, cli_board="ArtyA7_35Platform", cli_vhdl="rel.vhd")
+    assert ctrl._seed_from_cli() is NextScreen.PREVIEW
+    assert ctrl.state.vhdl_path == str(vhdl.resolve())
+
+
+def test_cli_vhdl_contract_failure_is_reported_twice(
+    headless_pygame, monkeypatch, capsys, tmp_path
+):
+    """A shortcut may have no terminal; a terminal may have no dialog.
+
+    So a seeded file that fails validation says so in both places, and the
+    preview opens empty rather than claiming a file it could not load.
+    """
+    vhdl = tmp_path / "bad.vhd"
+    vhdl.write_text("-- design", encoding="utf-8")
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
+    monkeypatch.setattr(
+        controller_mod,
+        "check_vhdl_contract",
+        lambda p, board_def: ContractResult(False, "Missing required port(s): clk"),
+    )
+    monkeypatch.setattr(controller_mod, "analyze_vhdl", _fail_if_called("analysis"))
+    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
+    ctrl = _make_controller(headless_pygame, cli_board="ArtyA7_35Platform", cli_vhdl=str(vhdl))
+    assert ctrl._seed_from_cli() is NextScreen.PREVIEW
+    assert ctrl.state.vhdl_path is None
+    assert dialog.shown == [("VHDL Error", "Missing required port(s): clk")]
+    assert "Missing required port(s): clk" in capsys.readouterr().err
+
+
+def test_missing_cli_vhdl_file_warns_and_launches_anyway(headless_pygame, capsys):
+    ctrl = _make_controller(
+        headless_pygame, cli_board="ArtyA7_35Platform", cli_vhdl="/nope/absent.vhd"
+    )
+    assert ctrl._seed_from_cli() is NextScreen.PREVIEW
+    assert ctrl.state.vhdl_path is None
+    assert "absent.vhd" in capsys.readouterr().err
+
+
+def test_reserved_cli_flags_are_carried_not_dropped(headless_pygame):
+    """U53 and U48 consume these; PR 1 only guarantees they survive the trip."""
+    ctrl = _make_controller(
+        headless_pygame, cli_pinmap="top.qsf", cli_generics=["CNTR_LEN=4", "N=2"]
+    )
+    assert ctrl.cli_pinmap == "top.qsf"
+    assert ctrl.cli_generics == ("CNTR_LEN=4", "N=2")

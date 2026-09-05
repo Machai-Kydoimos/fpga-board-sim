@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, Any
 
 import pygame
 
-from fpga_sim.board_loader import discover_boards, get_default_boards_path
+from fpga_sim.board_loader import discover_boards, find_board, get_default_boards_path
 from fpga_sim.controller import ScreenController, build_generics
 from fpga_sim.session_config import load_session, update_session
 from fpga_sim.sim_bridge import (
@@ -63,15 +63,32 @@ def _parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--board",
-        metavar="CLASSNAME",
+        metavar="BOARD",
         default=None,
-        help="Board class name to use in benchmark mode (default: first available)",
+        help="Board to open on: class name or display name, e.g. "
+        "DE10StandardPlatform or 'DE10-Standard' (benchmark default: first available)",
     )
     p.add_argument(
         "--vhdl",
         metavar="PATH",
         default=None,
-        help="VHDL file to simulate in benchmark mode (default: hdl/blinky.vhd)",
+        help="VHDL file to load, relative to the current directory "
+        "(benchmark default: hdl/blinky.vhd)",
+    )
+    p.add_argument(
+        "--pinmap",
+        metavar="PATH",
+        default=None,
+        help="Constraint file (.qsf/.xdc/...) mapping the design's ports to board pins "
+        "[reserved: not yet consumed]",
+    )
+    p.add_argument(
+        "--generic",
+        metavar="NAME=VALUE",
+        action="append",
+        default=None,
+        help="Override a generic on the design's top level; repeatable "
+        "[reserved: not yet consumed]",
     )
     p.add_argument(
         "--no-ui",
@@ -109,32 +126,32 @@ def _validate_args(args: argparse.Namespace) -> str | None:
     """
     if args.benchmark is not None and args.screenshots is not None and args.no_ui:
         return "--screenshots captures rendered frames, which --no-ui does not draw; drop one."
+    for item in args.generic or ():
+        name, sep, value = item.partition("=")
+        if not sep or not name.strip() or not value.strip():
+            return f"--generic wants NAME=VALUE, got {item!r}."
     return None
 
 
 def _inapplicable_flags(args: argparse.Namespace) -> list[str]:
     """Name the benchmark-only flags given without ``--benchmark`` (a warning, not an error).
 
-    Four flags only mean anything in benchmark mode, and all four were silently
-    ignored outside it — so a flag the user deliberately typed did nothing and
-    said nothing.  Warning is the fix; erroring is not, for two reasons.
+    Two flags measure a benchmark run and mean nothing outside one, and both
+    were silently ignored there — so a flag the user deliberately typed did
+    nothing and said nothing.  Warning is the fix; erroring is not, because
+    ``--no-ui`` has shipped since v0.15.0 and a wrapper script that passes it
+    unconditionally works today and has no reason to stop.  Nothing is lost by
+    continuing — the launcher does exactly what it would have done — so a
+    warning says what happened without turning a harmless redundancy into a
+    failure.  Genuine contradictions stay fatal (:func:`_validate_args`).
 
-    **One rule for all four.**  ``--board`` and ``--vhdl`` have been ignored
-    this way since the benchmark existed, so singling out the newer flags would
-    make the CLI less consistent, not more.
-
-    **Erroring would break working invocations.**  ``--no-ui`` has shipped since
-    v0.15.0; a wrapper script that passes it unconditionally works today and has
-    no reason to stop.  Nothing is lost by continuing — the launcher does exactly
-    what it would have done — so a warning tells the user what happened without
-    turning a harmless redundancy into a failure.  Genuine contradictions stay
-    fatal (:func:`_validate_args`).
+    ``--board`` and ``--vhdl`` used to be on this list and no longer are: they
+    now seed the interactive launcher too (U49), which is the whole point of
+    letting a student say what they want on one line.
     """
     if args.benchmark is not None:
         return []
     given = (
-        ("--board", args.board is not None),
-        ("--vhdl", args.vhdl is not None),
         ("--no-ui", args.no_ui),
         ("--screenshots", args.screenshots is not None),
     )
@@ -180,10 +197,7 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
 
     # Board selection
     if args.board:
-        chosen = next(
-            (b for b in boards if b.class_name == args.board or b.name == args.board),
-            None,
-        )
+        chosen = find_board(boards, args.board)
         if chosen is None:
             names = ", ".join(b.class_name for b in boards[:6])
             print(
@@ -664,6 +678,10 @@ def main() -> None:
         discovered,
         session=session,
         cli_simulator=args.sim,
+        cli_board=args.board,
+        cli_vhdl=args.vhdl,
+        cli_pinmap=args.pinmap,
+        cli_generics=args.generic,
     ).run()
 
 

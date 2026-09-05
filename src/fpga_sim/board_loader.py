@@ -381,3 +381,36 @@ def discover_boards(boards_dir: str | Path) -> list[BoardDef]:
 def get_default_boards_path() -> Path:
     """Path to the ``boards/`` directory containing JSON board definitions."""
     return Path(__file__).parent.parent.parent / "boards"
+
+
+def find_board(boards: list[BoardDef], wanted: str) -> BoardDef | None:
+    """Resolve a ``--board`` argument against *boards* by class name or name.
+
+    Both spellings are accepted because both are visible to the user: the
+    selector shows ``name`` ("DE10-Standard") while the session file and every
+    example in the docs use ``class_name`` ("DE10StandardPlatform").  The match
+    is case-insensitive and ignores the separators the two spellings disagree
+    about, so ``de10-standard``, ``DE10 Standard`` and ``DE10StandardPlatform``
+    all find the same board -- a student typing a board name from the screen
+    should not have to guess its punctuation.
+
+    Returns ``None`` when nothing matches; the caller decides whether that is
+    fatal (the benchmark) or a warning (the launcher, which falls back to the
+    selector).
+    """
+
+    def key(text: str) -> str:
+        return "".join(ch for ch in text.lower() if ch.isalnum())
+
+    target = key(wanted)
+    if not target:
+        return None
+    for board in boards:
+        if key(board.class_name) == target or key(board.name) == target:
+            return board
+    # Second pass: the class names all end in "Platform", so let the suffix be
+    # optional rather than making it a thing to remember.
+    for board in boards:
+        if key(board.class_name) == key(wanted + "Platform"):
+            return board
+    return None

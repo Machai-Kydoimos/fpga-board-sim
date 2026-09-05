@@ -6,6 +6,34 @@ preferences, waveforms, and session logs are stored. For installation see
 [docs/install.md](install.md); for writing your own designs see
 [docs/writing_designs.md](writing_designs.md). Back to the [README](../README.md).
 
+## Starting from the command line
+
+`fpga-sim` with no arguments opens at the board selector, which is the tour. Once you
+know what you want, two flags skip straight to it:
+
+```bash
+fpga-sim --board DE10-Standard --vhdl lab1/test_entity.vhd
+```
+
+That opens the preview with the board selected and the file already loaded, validated
+and analyzed — the same state you would reach by walking the first three screens. It
+is worth a desktop shortcut on a machine you use for one board, and it saves a lot of
+clicking while you iterate on a design.
+
+| Flag | What it does |
+|---|---|
+| `--board BOARD` | Open on this board. Either spelling works — the name on screen (`DE10-Standard`) or the class name (`DE10StandardPlatform`) — and case and punctuation are ignored, so `de10 standard` finds it too. |
+| `--vhdl PATH` | Load this design. Relative paths are resolved against the directory you ran the command from, so your files stay wherever you keep them. |
+| `--sim NAME` | Use a particular simulator for this run (see [Simulator](#2-preview-the-board)). |
+| `--list-sims` · `--add-sim PATH` | List the simulators found, or register one that is not on `PATH`. |
+| `--benchmark N` | Run headless for N seconds and print a performance report instead of opening the launcher. |
+
+Neither flag can strand you. An unknown board name opens the selector, and a file that
+is missing or fails validation opens the preview with nothing loaded — with the reason
+both on the terminal and in a dialog, since a shortcut may have no terminal attached.
+`--vhdl` on its own (no `--board`) simply preloads the path: the design cannot be
+checked until there is a board to check it against.
+
 ## Launcher screens
 
 The launcher walks through four screens in order: board selector → board preview →

@@ -74,6 +74,16 @@ uv run fpga-sim                # launch (--sim ghdl|nvc|ghdl-llvm|… forces a b
                                #  --list-sims shows every install it found)
 ```
 
+Already know what you want to run? Skip the first three screens:
+
+```bash
+uv run fpga-sim --board DE10-Standard --vhdl lab1/test_entity.vhd
+```
+
+`--vhdl` takes a path relative to wherever you are, so your designs can live anywhere;
+both flags are described in the
+[user guide](docs/user_guide.md#starting-from-the-command-line).
+
 > `fpga-sim` opens a desktop window, so it needs a graphical display — not a bare SSH
 > session. On a headless machine, use `uv run pytest` or the headless
 > `uv run fpga-sim --benchmark 10`.
