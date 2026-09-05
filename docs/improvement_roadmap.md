@@ -272,6 +272,17 @@ This document inventories all viable improvements and ranks them by impact.
   - **Glow.** Neon orange, brightness driven by the same `_perceptual()` ramp the LEDs and segments
     already use, plus a cheap bloom (downscale → `smoothscale` up → additive blit) and the mesh
     anode's fine screen texture laid over it.
+  - **Halo size comes from `glow_radius()`** (#399) — the single source of truth for a lit
+    element's halo *radius*, as `display_colors()` is for its color. Reuse it; do not restate
+    `2 * r`. Its constraint transfers to the tube: with a **flat-alpha disc**, "visible outside
+    the body" and "washes the neighbor" are the *same knob*, because the only usable radii lie
+    between the body and the half-pitch. On the fleet's common 21px body / 60px pitch layout
+    that window is 9px wide, so a disc-shaped halo is visible *and* clean only for duty
+    12.5%–36%, and vanishes behind the body below 12.5%. A Nixie's bloom instead wants a
+    **falloff** — alpha decaying with distance, ~`1/theta^2` per the CIE glare model — which
+    decouples the two: wide and soft against the cathode, nothing at the neighbor. That is the
+    same change that would let a dim *LED* keep a halo, so it is worth building once for both
+    rather than twice.
   - **Cache** by `(glyph, duty bucket, size, theme)` — the `ui/icons.py` `lru_cache` pattern, and the same
     one `render_text` uses for labels (whose shared-Surface rule applies here too: blit, never mutate). That
     is what keeps a glow-heavy digit off the per-frame budget; U23's dirty-flag loop does the rest.
