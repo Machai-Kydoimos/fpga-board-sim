@@ -4,12 +4,13 @@ from pathlib import Path
 
 import pygame
 
+from fpga_sim.ui._scroll import RowCursorMixin
 from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
 from fpga_sim.ui.theme import THEME
 
 
-class VHDLFilePicker:
+class VHDLFilePicker(RowCursorMixin):
     """Simple file picker for .vhd/.vhdl files.  Returns path or None."""
 
     def __init__(
@@ -156,37 +157,6 @@ class VHDLFilePicker:
                 return True, result
         return False, None
 
-    def _page_rows(self) -> int:
-        """Return the number of fully visible rows — the Page Up/Down jump distance."""
-        viewport_h = self.height - self._hdr
-        return max(1, viewport_h // self.row_h)
-
-    def _ensure_visible(self, idx: int) -> None:
-        """Scroll the minimum amount needed to bring row ``idx`` fully into view."""
-        viewport_h = self.height - self._hdr
-        top = idx * self.row_h
-        if top < self.scroll:
-            self.scroll = top
-        elif top + self.row_h > self.scroll + viewport_h:
-            self.scroll = top + self.row_h - viewport_h
-        self.scroll = max(0, self.scroll)
-
-    def _move_cursor(self, delta: int) -> None:
-        """Move the keyboard cursor ``delta`` rows over the entry list.
-
-        Clamps to the list bounds and auto-scrolls to keep the cursor visible.
-        With no current selection, Down enters at the top and Up at the bottom.
-        """
-        n = len(self.entries)
-        if n == 0:
-            self.hovered = -1
-            return
-        if self.hovered < 0:
-            self.hovered = 0 if delta > 0 else n - 1
-        else:
-            self.hovered = max(0, min(n - 1, self.hovered + delta))
-        self._ensure_visible(self.hovered)
-
     def _hover(self, pos: tuple[int, int]) -> None:
         hdr = self._hdr
         _, y = pos
@@ -229,6 +199,10 @@ class VHDLFilePicker:
                 return "rescan"
             return str(path)
         return None
+
+    def _row_count(self) -> int:
+        """Rows the cursor moves over: the directory listing."""
+        return len(self.entries)
 
     def _draw(self) -> None:
         self.screen.fill(THEME.sel_bg)
