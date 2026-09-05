@@ -29,6 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any, Literal
 
+from fpga_sim.paths import REPO_ROOT, SIM_DIR, VENV_DIR
 from fpga_sim.platform_open import open_with_default_app
 from fpga_sim.session_config import load_session
 from fpga_sim.sim_link import SimLinkHost, send
@@ -78,7 +79,7 @@ DEFAULT_DUTY_MODE: DutyMode = "full"
 DUTY_ALGOS = ("fix_ns_pc", "fix_ns_1p")
 DEFAULT_DUTY_ALGO = "fix_ns_1p"
 DUTY_ALGO_ENV = "FPGA_SIM_DUTY_ALGO"
-_DUTY_FRAGMENT_DIR: Path = Path(__file__).parent.parent.parent / "sim" / "duty"
+_DUTY_FRAGMENT_DIR: Path = SIM_DIR / "duty"
 
 
 def resolve_duty_algo() -> str:
@@ -1770,7 +1771,7 @@ def add_error_hints(message: str, board_def: BoardDef | None = None) -> str:
 
 # ── Simulation infrastructure ─────────────────────────────────────────────────
 
-_WRAPPER_TEMPLATE: Path = Path(__file__).parent.parent.parent / "sim" / "sim_wrapper_template.vhd"
+_WRAPPER_TEMPLATE: Path = SIM_DIR / "sim_wrapper_template.vhd"
 
 #: Placeholder names the duty splice fills in; all empty outside Full mode.
 _DUTY_PLACEHOLDERS = ("numeric_use", "duty_ports", "duty_decls", "duty_body")
@@ -2440,7 +2441,7 @@ def _build_sim_env(
     are derived from it so a non-PATH backend loads its own shared libraries.
     Returns (env_dict, plugin_lib_path).
     """
-    venv_dir = Path(venv_dir or (Path(__file__).parent.parent.parent / ".venv"))
+    venv_dir = Path(venv_dir or VENV_DIR)
     venv_scripts, venv_site, venv_python = _venv_dirs(venv_dir)
     cocotb_libs = venv_site / "cocotb" / "libs"
 
@@ -2456,9 +2457,8 @@ def _build_sim_env(
     sim_bin, sim_lib = be.sim_bin_lib(sim_path)
     plugin_lib = str(cocotb_libs / be.plugin_lib_name())
 
-    _root = Path(__file__).resolve().parent.parent.parent
-    _src_dir = str(_root / "src")
-    _sim_dir = str(_root / "sim")
+    _src_dir = str(REPO_ROOT / "src")
+    _sim_dir = str(SIM_DIR)
 
     env = os.environ.copy()
 
