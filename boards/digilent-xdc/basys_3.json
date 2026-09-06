@@ -522,13 +522,33 @@
     "has_dp": true,
     "is_multiplexed": true,
     "inverted": true,
-    "select_inverted": true
+    "select_inverted": true,
+    "segment_pins": [
+      [
+        "W7",
+        "W6",
+        "U8",
+        "V8",
+        "U5",
+        "V5",
+        "U7"
+      ]
+    ],
+    "digit_enable_pins": [
+      "U2",
+      "U4",
+      "V4",
+      "W4"
+    ],
+    "dp_pins": [
+      "V7"
+    ]
   },
   "source": {
     "origin": "digilent-xdc",
     "upstream_file": "Basys-3-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-07-23T13:29:42.645560+00:00"
+    "sync_timestamp": "2026-09-06T01:42:51.058549+00:00"
   },
   "port_conventions": {
     "digilent": {

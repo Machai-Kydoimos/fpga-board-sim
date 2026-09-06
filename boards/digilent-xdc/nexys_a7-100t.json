@@ -565,13 +565,37 @@
     "has_dp": true,
     "is_multiplexed": true,
     "inverted": true,
-    "select_inverted": true
+    "select_inverted": true,
+    "segment_pins": [
+      [
+        "T10",
+        "R10",
+        "K16",
+        "K13",
+        "P15",
+        "T11",
+        "L18"
+      ]
+    ],
+    "digit_enable_pins": [
+      "J17",
+      "J18",
+      "T9",
+      "J14",
+      "P14",
+      "T14",
+      "K2",
+      "U13"
+    ],
+    "dp_pins": [
+      "H15"
+    ]
   },
   "source": {
     "origin": "digilent-xdc",
     "upstream_file": "Nexys-A7-100T-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-07-23T13:29:42.650339+00:00"
+    "sync_timestamp": "2026-09-06T01:42:51.065454+00:00"
   },
   "port_conventions": {
     "digilent": {

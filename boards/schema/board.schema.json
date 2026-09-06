@@ -4,7 +4,17 @@
   "title": "FPGA Board Definition",
   "description": "Board definition for the Virtual FPGA Board Simulator",
   "type": "object",
-  "required": ["name", "class_name", "vendor", "device", "clocks", "default_clock_hz", "leds", "buttons", "switches"],
+  "required": [
+    "name",
+    "class_name",
+    "vendor",
+    "device",
+    "clocks",
+    "default_clock_hz",
+    "leds",
+    "buttons",
+    "switches"
+  ],
   "properties": {
     "$schema": {
       "type": "string",
@@ -33,11 +43,15 @@
     },
     "clocks": {
       "type": "array",
-      "description": "Clock sources — either flat Hz values or richer objects",
+      "description": "Clock sources \u2014 either flat Hz values or richer objects",
       "items": {
         "oneOf": [
-          { "type": "number" },
-          { "$ref": "#/$defs/clock_object" }
+          {
+            "type": "number"
+          },
+          {
+            "$ref": "#/$defs/clock_object"
+          }
         ]
       }
     },
@@ -47,23 +61,33 @@
     },
     "leds": {
       "type": "array",
-      "items": { "$ref": "#/$defs/component" },
+      "items": {
+        "$ref": "#/$defs/component"
+      },
       "description": "LED components on the board"
     },
     "buttons": {
       "type": "array",
-      "items": { "$ref": "#/$defs/component" },
+      "items": {
+        "$ref": "#/$defs/component"
+      },
       "description": "Button components on the board"
     },
     "switches": {
       "type": "array",
-      "items": { "$ref": "#/$defs/component" },
+      "items": {
+        "$ref": "#/$defs/component"
+      },
       "description": "Switch components on the board"
     },
     "seven_seg": {
       "oneOf": [
-        { "$ref": "#/$defs/seven_seg" },
-        { "type": "null" }
+        {
+          "$ref": "#/$defs/seven_seg"
+        },
+        {
+          "type": "null"
+        }
       ],
       "default": null,
       "description": "7-segment display definition, or null if absent"
@@ -74,13 +98,17 @@
     },
     "peripherals": {
       "type": "array",
-      "items": { "$ref": "#/$defs/peripheral" },
+      "items": {
+        "$ref": "#/$defs/peripheral"
+      },
       "default": [],
       "description": "Future: typed peripheral definitions (VGA, audio, ADC, etc.)"
     },
     "port_conventions": {
       "type": "object",
-      "additionalProperties": { "$ref": "#/$defs/port_convention" },
+      "additionalProperties": {
+        "$ref": "#/$defs/port_convention"
+      },
       "default": {},
       "description": "Future: named presets mapping generic ports to vendor-specific port names"
     }
@@ -89,7 +117,9 @@
   "$defs": {
     "clock_object": {
       "type": "object",
-      "required": ["hz"],
+      "required": [
+        "hz"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -113,7 +143,10 @@
     },
     "component": {
       "type": "object",
-      "required": ["name", "number"],
+      "required": [
+        "name",
+        "number"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -125,7 +158,9 @@
         },
         "pins": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [],
           "description": "FPGA pin assignments"
         },
@@ -143,12 +178,21 @@
           "oneOf": [
             {
               "type": "array",
-              "prefixItems": [{ "type": "string" }, { "type": "integer" }],
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ],
               "items": false,
               "minItems": 2,
               "maxItems": 2
             },
-            { "type": "null" }
+            {
+              "type": "null"
+            }
           ],
           "default": null,
           "description": "Connector reference as [name, number], or null"
@@ -156,7 +200,14 @@
         "attrs": {
           "type": "object",
           "additionalProperties": {
-            "oneOf": [{ "type": "string" }, { "type": "integer" }]
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
           },
           "default": {},
           "description": "IO standard and other attributes"
@@ -164,8 +215,22 @@
         "color": {
           "description": "LED color when known -- a named color or a #RRGGBB hex string. Absent means unknown, and the renderer falls back to the theme default. On generated boards it flows from sync-time LED-name heuristics or the cited color registry; custom boards may set it directly (U36).",
           "oneOf": [
-            { "type": "string", "enum": ["red", "green", "blue", "yellow", "orange", "amber", "white"] },
-            { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" }
+            {
+              "type": "string",
+              "enum": [
+                "red",
+                "green",
+                "blue",
+                "yellow",
+                "orange",
+                "amber",
+                "white"
+              ]
+            },
+            {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$"
+            }
           ]
         }
       },
@@ -173,15 +238,59 @@
     },
     "seven_seg": {
       "type": "object",
-      "required": ["num_digits", "has_dp", "is_multiplexed"],
+      "required": [
+        "num_digits",
+        "has_dp",
+        "is_multiplexed"
+      ],
       "properties": {
-        "num_digits": { "type": "integer", "minimum": 1 },
-        "has_dp": { "type": "boolean" },
-        "is_multiplexed": { "type": "boolean" },
-        "inverted": { "type": "boolean", "default": false },
-        "select_inverted": { "type": "boolean", "default": false }
+        "num_digits": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "has_dp": {
+          "type": "boolean"
+        },
+        "is_multiplexed": {
+          "type": "boolean"
+        },
+        "inverted": {
+          "type": "boolean",
+          "default": false
+        },
+        "select_inverted": {
+          "type": "boolean",
+          "default": false
+        },
+        "segment_pins": {
+          "type": "array",
+          "description": "Segment pins in a..g (then dp, if the board wires it here) order. One inner list per digit on a directly-driven display; exactly ONE inner list on a scanned display, whose segment lines are shared across digits and selected by digit_enable_pins.",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "minItems": 1
+        },
+        "dp_pins": {
+          "type": "array",
+          "description": "Decimal-point pins, one per digit on a directly-driven display or a single shared pin on a scanned one. Omitted when has_dp is false.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "digit_enable_pins": {
+          "type": "array",
+          "description": "Digit-select pins, one per digit, in digit order (0 = rightmost). Present only on a scanned display -- its presence is what says the shared segment_pins are multiplexed.",
+          "items": {
+            "type": "string"
+          }
+        }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "A 7-segment display. The three *_pins fields are optional and exist for the pin map (U53), which binds a design's ports to board resources by pin rather than by name; a board without them simply cannot be targeted that way."
     },
     "source": {
       "type": "object",
@@ -239,7 +348,9 @@
     },
     "peripheral": {
       "type": "object",
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
         "type": {
           "type": "string",
@@ -260,18 +371,28 @@
           "type": "string",
           "description": "Human-readable description of this convention"
         },
-        "clk": { "type": "string" },
-        "leds": { "$ref": "#/$defs/port_mapping" },
-        "buttons": { "$ref": "#/$defs/port_mapping" },
-        "switches": { "$ref": "#/$defs/port_mapping" },
-        "seven_seg": { "$ref": "#/$defs/seg_port_mapping" },
+        "clk": {
+          "type": "string"
+        },
+        "leds": {
+          "$ref": "#/$defs/port_mapping"
+        },
+        "buttons": {
+          "$ref": "#/$defs/port_mapping"
+        },
+        "switches": {
+          "$ref": "#/$defs/port_mapping"
+        },
+        "seven_seg": {
+          "$ref": "#/$defs/seg_port_mapping"
+        },
         "leds_green": {
           "$ref": "#/$defs/port_mapping",
           "description": "Secondary (e.g. green) LED bank on boards with two-color LED rows, such as Terasic DE2-115's LEDG"
         },
         "leds_rgb": {
           "$ref": "#/$defs/port_mapping",
-          "description": "3-pin RGB LED channels as a bank of distinct scalar ports ('names', in (r,g,b) order per LED site, sites ascending — matching the boundary channel layout led(MONO + 3i + c)), e.g. Arty's led0_r/led0_g/led0_b/led1_r/... . 'active_low' covers the whole bank; a board whose RGB polarity is unverified or mixed omits this mapping (verify-or-omit)."
+          "description": "3-pin RGB LED channels as a bank of distinct scalar ports ('names', in (r,g,b) order per LED site, sites ascending \u2014 matching the boundary channel layout led(MONO + 3i + c)), e.g. Arty's led0_r/led0_g/led0_b/led1_r/... . 'active_low' covers the whole bank; a board whose RGB polarity is unverified or mixed omits this mapping (verify-or-omit)."
         },
         "source": {
           "$ref": "#/$defs/convention_source",
@@ -279,7 +400,11 @@
         },
         "naming": {
           "type": "string",
-          "enum": ["canonical", "project-derived", "framework-derived"],
+          "enum": [
+            "canonical",
+            "project-derived",
+            "framework-derived"
+          ],
           "description": "'canonical': port names come from the vendor/official source; 'project-derived': names were renamed by a downstream project; 'framework-derived': names come from an HDL-framework platform file (litex/amaranth) auto-derived by the sync parsers (U32). Absent means canonical (the default for existing hand-authored blocks)."
         }
       }
@@ -287,14 +412,23 @@
     "port_mapping": {
       "type": "object",
       "properties": {
-        "name": { "type": "string" },
-        "width": { "type": "integer" },
+        "name": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer"
+        },
         "names": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Distinct scalar port names, for boards where this resource isn't one shared vector port (e.g. Nandland Go's o_LED_1..o_LED_4, each a separate std_logic port). When present, alongside or instead of 'name'/'width' (width is redundant with len(names) but may still be set for convenience)."
         },
-        "active_low": { "type": "boolean", "default": false }
+        "active_low": {
+          "type": "boolean",
+          "default": false
+        }
       }
     },
     "seg_port_mapping": {
@@ -302,16 +436,31 @@
       "properties": {
         "style": {
           "type": "string",
-          "enum": ["packed_vector", "individual", "per_segment_scalars", "scan", "serial"],
-          "description": "'packed_vector': one vector spanning all digits; 'individual': one port per digit, e.g. HEX0..n; 'per_segment_scalars': one scalar port per segment per digit, e.g. o_Segment1_A; 'scan': shared segment lines multiplexed via digit_enable — for this style 'name'/'names' describe the SEGMENT side (one shared vector, e.g. Basys 3's seg[6:0], or per-segment scalars, e.g. Nexys 4 DDR's CA..CG) and the digit count is digit_enable.width, unlike 'individual' where names are per-digit ports (U22); 'serial': shift-register driven"
+          "enum": [
+            "packed_vector",
+            "individual",
+            "per_segment_scalars",
+            "scan",
+            "serial"
+          ],
+          "description": "'packed_vector': one vector spanning all digits; 'individual': one port per digit, e.g. HEX0..n; 'per_segment_scalars': one scalar port per segment per digit, e.g. o_Segment1_A; 'scan': shared segment lines multiplexed via digit_enable \u2014 for this style 'name'/'names' describe the SEGMENT side (one shared vector, e.g. Basys 3's seg[6:0], or per-segment scalars, e.g. Nexys 4 DDR's CA..CG) and the digit count is digit_enable.width, unlike 'individual' where names are per-digit ports (U22); 'serial': shift-register driven"
         },
-        "name": { "type": "string" },
+        "name": {
+          "type": "string"
+        },
         "names": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "width_per_digit": { "type": "integer" },
-        "active_low": { "type": "boolean", "default": false },
+        "width_per_digit": {
+          "type": "integer"
+        },
+        "active_low": {
+          "type": "boolean",
+          "default": false
+        },
         "dp": {
           "type": "string",
           "description": "Shared decimal-point scalar port for the 'scan' style (e.g. Basys 3's 'dp', Nexys 4 DDR's 'DP'); same drive polarity as the segments (active_low). Absent when the source lists no shared dp line."

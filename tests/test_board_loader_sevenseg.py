@@ -8,6 +8,8 @@ import pytest
 from amaranth_parser import load_board_from_source
 
 from fpga_sim.board_loader import (
+    BoardDef,
+    SevenSegDef,
     discover_boards,
     get_default_boards_path,
 )
@@ -202,3 +204,85 @@ def test_arty_has_no_sevenseg(all_boards):
     if arty is None:
         pytest.skip("Arty not in submodule")
     assert arty.seven_seg is None
+
+
+# ── Pin data for the pin map (U53) ───────────────────────────────────────────
+
+_BOARDS = discover_boards(get_default_boards_path())
+
+
+def _board_named(name: str) -> BoardDef:
+    match = [b for b in _BOARDS if b.name == name]
+    assert len(match) == 1, f"{name}: {len(match)} matches"
+    return match[0]
+
+
+def test_clock_pins_survive_the_loader():
+    """They used to be narrowed to bare Hz on the way in and lost."""
+    board = _board_named("DE10-Standard")
+    assert board.clock_defs[0].pin == "AF14"
+    assert board.clock_defs[0].hz == 50_000_000
+    assert board.clocks[0] == 50_000_000  # the Hz-only view its consumers use
+
+
+def test_clock_pins_survive_a_round_trip():
+    """to_dict() used to write floats back, erasing the pins it had dropped."""
+    board = _board_named("Basys 3")
+    again = BoardDef.from_json(board.to_json())
+    assert again.clock_defs == board.clock_defs
+    assert again.clock_defs[0].pin == "W5"
+
+
+def test_a_directly_driven_display_has_one_pin_row_per_digit():
+    seg = _board_named("DE10-Standard").seven_seg
+    assert seg is not None and seg.has_pin_data and not seg.is_scan
+    assert len(seg.segment_pins) == seg.num_digits == 6
+    assert all(len(row) == 7 for row in seg.segment_pins)
+    assert seg.segment_pins[0] == ("W17", "V18", "AG17", "AG16", "AH17", "AG18", "AH18")
+
+
+def test_a_scanned_display_has_one_shared_row_and_an_enable_per_digit():
+    """The enables are what say the single row is shared, not a one-digit board."""
+    seg = _board_named("Basys 3").seven_seg
+    assert seg is not None and seg.is_scan
+    assert len(seg.segment_pins) == 1
+    assert seg.segment_pins[0] == ("W7", "W6", "U8", "V8", "U5", "V5", "U7")
+    assert seg.digit_enable_pins == ("U2", "U4", "V4", "W4")
+    assert len(seg.digit_enable_pins) == seg.num_digits
+    assert seg.dp_pins == ("V7",)
+
+
+def test_pin_data_is_optional_and_absent_boards_still_load():
+    without = [b for b in _BOARDS if b.seven_seg and not b.seven_seg.has_pin_data]
+    assert without, "expected boards with a display but no pin data"
+    assert all(b.seven_seg is not None and b.seven_seg.num_digits > 0 for b in without)
+
+
+def test_boards_with_pin_data_are_internally_consistent():
+    """Whatever the shape, the pin counts must match what the board claims."""
+    for board in _BOARDS:
+        seg = board.seven_seg
+        if seg is None or not seg.has_pin_data:
+            continue
+        widths = {len(row) for row in seg.segment_pins}
+        assert widths == {7} or widths == {8}, f"{board.name}: segment widths {widths}"
+        if seg.is_scan:
+            assert len(seg.segment_pins) == 1, board.name
+            assert len(seg.digit_enable_pins) == seg.num_digits, board.name
+        else:
+            assert len(seg.segment_pins) == seg.num_digits, board.name
+
+
+def test_malformed_pin_data_degrades_instead_of_raising():
+    """Board JSON is external data; a bad pin list must not take the board out."""
+    seg = SevenSegDef.from_dict(
+        {
+            "num_digits": 2,
+            "has_dp": False,
+            "is_multiplexed": False,
+            "segment_pins": "not-a-list",
+            "digit_enable_pins": {"nope": 1},
+        }
+    )
+    assert seg.segment_pins == () and seg.digit_enable_pins == ()
+    assert not seg.has_pin_data and seg.num_digits == 2

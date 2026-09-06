@@ -47,7 +47,15 @@
     "has_dp": false,
     "is_multiplexed": false,
     "inverted": true,
-    "select_inverted": false
+    "select_inverted": false,
+    "segment_pins": [
+      ["W17", "V18", "AG17", "AG16", "AH17", "AG18", "AH18"],
+      ["AF16", "V16", "AE16", "AD17", "AE18", "AE17", "V17"],
+      ["AA21", "AB17", "AA18", "Y17", "Y18", "AF18", "W16"],
+      ["Y19", "W19", "AD19", "AA20", "AC20", "AA19", "AD20"],
+      ["AD21", "AG22", "AE22", "AE23", "AG23", "AF23", "AH22"],
+      ["AF21", "AG21", "AF20", "AG20", "AE19", "AF19", "AB21"]
+    ]
   },
   "source": {
     "origin": "custom",
