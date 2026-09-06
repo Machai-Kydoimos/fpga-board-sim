@@ -655,13 +655,17 @@ class SimulationScreen:
             time.monotonic(),
             paused=self.panel.paused,
             inputs=self._input_signature(),
+            clock_hz=self.panel.current_clock_hz,
         )
         if showing and not self._stall_showing:
             facts = self._stall.facts(
                 sim_ns,
                 time.monotonic(),
+                # What is actually being simulated (the user can change it) and
+                # what the silicon would run at.  Not the same number, and the
+                # message needs both.
+                self.panel.current_clock_hz,
                 self.board_def.default_clock_hz if self.board_def else 0.0,
-                self.panel.effective_hz,
             )
             # A board with controls that nobody has touched is likelier to be
             # waiting than stalled -- a design that lights an LED while a button

@@ -53,17 +53,40 @@ DEFAULT_THRESHOLD_S = 10.0
 
 @dataclass(frozen=True)
 class StallFacts:
-    """What was measured when the advisory fired. Every number, no constants."""
+    """What was measured while the advisory's window was open.
+
+    Four inputs, and only two of them are measurements -- the rest of the
+    arithmetic is derived here so that no caller can supply a number from
+    somewhere else and have it read as though it came from this window.
+
+    The two clocks are deliberately separate.  ``sim_clock_hz`` is what is
+    *actually being simulated*, which the user can change at run time from the
+    panel; ``board_hz`` is what the silicon would run at.  Using the board's
+    figure for both was worth a **50x** error in the headline cycle count for
+    anyone who had touched the clock preset.
+    """
 
     quiet_s: float  # wall seconds since any LED or digit last changed
     sim_ns: int  # simulated nanoseconds elapsed in that window
-    board_hz: float  # the board's own clock
-    effective_hz: float  # simulated cycles per wall second, measured here
+    sim_clock_hz: float  # the clock actually being simulated, right now
+    board_hz: float  # what the real board's clock would be
 
     @property
     def cycles(self) -> float:
-        """Board clock cycles simulated during the quiet window."""
-        return self.sim_ns * 1e-9 * self.board_hz
+        """Clock cycles simulated during the quiet window."""
+        return self.sim_ns * 1e-9 * self.sim_clock_hz
+
+    @property
+    def effective_hz(self) -> float:
+        """Simulated cycles per wall second, over this window and nothing else.
+
+        Derived rather than taken from the stats panel, whose reading is an
+        exponential moving average: that is the right number for a live readout
+        and the wrong one here, because it carries throughput from *before* the
+        board went quiet.  Cycles-in-the-window over seconds-in-the-window is
+        the rate this machine actually just demonstrated.
+        """
+        return self.cycles / self.quiet_s if self.quiet_s > 0 else 0.0
 
     def seconds_here(self, cycles: float) -> float:
         """Wall seconds this machine needs to simulate *cycles* clocks."""
@@ -97,6 +120,7 @@ class StallWatch:
         #: input-driven design the likelier reading of a still board.
         self.inputs_used = False
         self._first_inputs: object = None
+        self._clock_hz: float | None = None
 
     def reset(self) -> None:
         """Forget the current quiet spell (the outputs moved, or the run did)."""
@@ -111,6 +135,7 @@ class StallWatch:
         *,
         paused: bool = False,
         inputs: object = None,
+        clock_hz: float | None = None,
     ) -> bool:
         """Record one frame; return whether the advisory should be showing.
 
@@ -125,6 +150,17 @@ class StallWatch:
         the advisory.  All it does is set :attr:`inputs_used`, which decides
         which explanation the message leads with.
         """
+        if clock_hz is not None and clock_hz != self._clock_hz:
+            # The virtual clock is the basis of every figure in the message, so
+            # a window that straddles a change to it would report cycles that
+            # were never run at one rate.  Start again instead.
+            restart = self._clock_hz is not None
+            self._clock_hz = clock_hz
+            if restart:
+                self._quiet_since = now
+                self._sim_ns_at_quiet = sim_ns
+                self.fired = False
+                return False
         if self._first_inputs is None:
             self._first_inputs = inputs
         elif inputs != self._first_inputs:
@@ -154,14 +190,20 @@ class StallWatch:
         self.fired = True
         return True
 
-    def facts(self, sim_ns: int, now: float, board_hz: float, effective_hz: float) -> StallFacts:
-        """Snapshot the numbers behind the current spell, for the message."""
+    def facts(self, sim_ns: int, now: float, sim_clock_hz: float, board_hz: float) -> StallFacts:
+        """Snapshot the numbers behind the current spell, for the message.
+
+        Both figures are differences taken across *this* window -- the wall
+        clock since the outputs last moved, and the simulated time the child
+        reported over the same span -- so the arithmetic downstream describes
+        this machine, this backend and these ten seconds, and nothing else.
+        """
         quiet = now - self._quiet_since if self._quiet_since is not None else 0.0
         return StallFacts(
             quiet_s=quiet,
             sim_ns=max(0, sim_ns - self._sim_ns_at_quiet),
+            sim_clock_hz=sim_clock_hz,
             board_hz=board_hz,
-            effective_hz=effective_hz,
         )
 
 
@@ -234,9 +276,18 @@ def stall_message(
     alternative.  Getting this order wrong is how the advisory told a student
     their working combinational lab might be broken.
     """
+    # Name the clock the cycles were actually counted at.  When the user has
+    # moved the preset off the board's own frequency, saying "the board's
+    # 50 MHz" would be describing a run that did not happen.
+    slowed = facts.board_hz > 0 and abs(facts.sim_clock_hz - facts.board_hz) > 1.0
+    at_clock = (
+        f"the {facts.sim_clock_hz / 1e6:.3g} MHz you selected"
+        if slowed
+        else f"the board's {facts.sim_clock_hz / 1e6:.3g} MHz"
+    )
     counted = (
         f"this machine simulated {_count(facts.cycles)} clock cycles"
-        f" = {_sim_time(facts.sim_ns)} of the board's {facts.board_hz / 1e6:.3g} MHz"
+        f" = {_sim_time(facts.sim_ns)} of {at_clock}"
     )
     if waiting_for_input:
         lines = [

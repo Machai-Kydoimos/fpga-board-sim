@@ -57,9 +57,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     it is working. The control is phrased as the student's own question so it
     self-selects: whoever already knows why the board is still ignores it.
   - **Every number is measured during the quiet spell that just happened.**
-    Nothing is a constant, so GHDL-mcode and NVC give different figures and both
-    are right; a number that is wrong about the user's machine would teach them
-    to ignore the box.
+    Cycles are counted at the clock *actually being simulated* — the user can
+    move that preset, and counting at the board's nominal frequency instead
+    overstated the headline figure by the whole ratio (50x for a 50 MHz board
+    dropped to 1 MHz). Changing the clock restarts the measurement rather than
+    mixing two rates. The "here" throughput is the window's own (cycles ÷
+    seconds), not the stats panel's moving average, which would carry
+    throughput from before the board went quiet. So GHDL-mcode and NVC give
+    different figures and both are right; a number that is wrong about the
+    user's machine would teach them to ignore the box.
   - **It never fires when simulated time has stopped.** A slow design and a dead
     child look identical on screen, and blaming a student's divider for our
     crash is worse than saying nothing. Both clauses must hold.

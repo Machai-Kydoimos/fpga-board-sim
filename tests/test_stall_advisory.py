@@ -147,8 +147,57 @@ def test_a_board_that_has_been_used_gets_the_direct_claim(facts):
 
 @pytest.fixture
 def facts():
-    # 10 s of wall clock bought 38 ms of a 50 MHz board = 1.9 M cycles.
-    return StallFacts(quiet_s=10.0, sim_ns=38_000_000, board_hz=50e6, effective_hz=190_000)
+    # 10 s of wall clock bought 38 ms of a 50 MHz board = 1.9 M cycles,
+    # so this machine managed 190 k simulated cycles per wall second.
+    return StallFacts(quiet_s=10.0, sim_ns=38_000_000, sim_clock_hz=50e6, board_hz=50e6)
+
+
+# ── Every number describes THIS window, on THIS machine ──────────────────────
+
+
+def test_cycles_are_counted_at_the_clock_actually_being_simulated():
+    """The user can move the clock preset, and the arithmetic has to follow.
+
+    Counting at the board's nominal frequency instead overstated the headline
+    number by the whole ratio -- 50x for anyone who had dropped a 50 MHz board
+    to 1 MHz to watch something happen.
+    """
+    slowed = StallFacts(quiet_s=10.0, sim_ns=10_000_000, sim_clock_hz=1e6, board_hz=50e6)
+    assert slowed.cycles == pytest.approx(10_000)
+    text = " ".join(stall_message(slowed, divider_bits=24))
+    assert "10 k clock cycles" in text
+    assert "1 MHz you selected" in text
+    assert "the board's" not in text.split("cycles")[1].split(".")[0]
+
+
+def test_the_real_board_comparison_still_uses_the_real_board():
+    """Slowing the *simulation* does not slow the silicon it is compared against."""
+    slowed = StallFacts(quiet_s=10.0, sim_ns=10_000_000, sim_clock_hz=1e6, board_hz=50e6)
+    assert slowed.seconds_on_board(2**24) == pytest.approx(2**24 / 50e6)
+    assert "336 ms on the real board" in " ".join(stall_message(slowed, divider_bits=24))
+
+
+def test_the_rate_is_this_window_not_a_running_average(facts):
+    """Derived from the window so it cannot inherit throughput from before it.
+
+    The stats panel's reading is an exponential moving average -- right for a
+    live readout, wrong here, because the interesting question is what the
+    machine managed *while the board was quiet*.
+    """
+    assert facts.effective_hz == pytest.approx(facts.cycles / facts.quiet_s)
+    assert facts.effective_hz == pytest.approx(190_000)
+
+
+def test_a_clock_change_restarts_the_window():
+    """A window spanning two clock rates would report cycles nobody ran."""
+    w = StallWatch()
+    quiet = ((0,) * 4, ())
+    w.sample(quiet, 1_000_000, 0.0, clock_hz=50e6)
+    assert w.sample(quiet, 9_000_000, _T + 1, clock_hz=50e6)
+    # the student drops the preset: measurement starts again from here
+    assert not w.sample(quiet, 10_000_000, _T + 2, clock_hz=1e6)
+    assert not w.sample(quiet, 11_000_000, _T + 3, clock_hz=1e6)
+    assert w.sample(quiet, 20_000_000, _T * 2 + 4, clock_hz=1e6)
 
 
 def test_the_cycle_count_is_derived_not_assumed(facts):
@@ -179,13 +228,13 @@ def test_without_a_divider_it_explains_rather_than_guesses(facts):
 
 def test_a_faster_machine_gets_a_smaller_number():
     """Nothing here is a constant; NVC on the same design says something else."""
-    slow = StallFacts(quiet_s=10.0, sim_ns=38_000_000, board_hz=50e6, effective_hz=190_000)
-    fast = StallFacts(quiet_s=10.0, sim_ns=300_000_000, board_hz=50e6, effective_hz=1_500_000)
+    slow = StallFacts(quiet_s=10.0, sim_ns=38_000_000, sim_clock_hz=50e6, board_hz=50e6)
+    fast = StallFacts(quiet_s=10.0, sim_ns=300_000_000, sim_clock_hz=50e6, board_hz=50e6)
     assert slow.seconds_here(2**24) > fast.seconds_here(2**24)
     assert "11 s here" in " ".join(stall_message(fast, divider_bits=24))
 
 
 def test_a_dead_measurement_does_not_divide_by_zero():
-    dead = StallFacts(quiet_s=10.0, sim_ns=0, board_hz=50e6, effective_hz=0.0)
+    dead = StallFacts(quiet_s=10.0, sim_ns=0, sim_clock_hz=50e6, board_hz=50e6)
     assert dead.seconds_here(2**24) == float("inf")
     assert "forever" in " ".join(stall_message(dead, divider_bits=24))

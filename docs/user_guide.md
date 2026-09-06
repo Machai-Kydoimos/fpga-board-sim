@@ -67,8 +67,15 @@ Lower it for the simulator and your file keeps its hardware value.
 ```
 
 Every number is measured on **your** machine during the quiet spell that just
-happened — none of them is a constant, so the figure for GHDL's mcode backend and
-the figure for NVC are different, and both are right.
+happened. The cycle count is the simulated time your simulator actually reported
+over those ten seconds, counted at the clock **you** have selected — change the
+clock preset and the measurement restarts rather than mixing two rates. The "here"
+figure is that window's own throughput (cycles ÷ seconds), not a running average,
+so it describes this laptop, this OS and this backend at that moment: the figure
+for GHDL's mcode and the figure for NVC are different, and both are right.
+
+The only number that is *not* measured is the real board's — that one is your
+board's own clock, which is the point of the comparison.
 
 #### If you have not touched the controls, it says that instead
 
