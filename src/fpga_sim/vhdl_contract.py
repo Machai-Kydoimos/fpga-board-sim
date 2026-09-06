@@ -28,6 +28,13 @@ from fpga_sim.conventions import (
     _native_convention_message,
     _near_miss_convention_message,
 )
+from fpga_sim.pinmap import (
+    PinMapMatch,
+    PinMapProblem,
+    build_pin_map,
+    discover_pinmap,
+    read_pinmap,
+)
 from fpga_sim.vhdl_interface import (
     _CONTRACT_PORTS,
     _PORT_GENERIC,
@@ -250,9 +257,91 @@ def uses_synopsys_packages(text: str) -> tuple[str, ...]:
     return tuple(found)
 
 
+def _try_pinmap(
+    path: Path,
+    board_def: BoardDef | None,
+    explicit: str | Path | None,
+) -> ContractResult | None:
+    """Try to bind *path* to *board_def* through a constraint file (U53).
+
+    Returns ``None`` when there is nothing to try -- no board, no constraint
+    file beside the design and none named -- which is the ordinary case and
+    leaves the name-based paths to run exactly as before.
+
+    A constraint file that *is* present takes precedence over both the
+    convention matcher and the generic contract, because it is the only one of
+    the three that carries the user's own statement of intent.  When it is
+    present and does not work, that is the answer: falling back would answer a
+    question about pins with a message about names.
+    """
+    if board_def is None:
+        return None
+    source: Path
+    if explicit is not None:
+        source = Path(explicit)
+        if not source.is_file():
+            return ContractResult(False, f"--pinmap file not found: {source}")
+    else:
+        found = discover_pinmap(path)
+        if found is None:
+            return None
+        if isinstance(found, PinMapProblem):
+            return ContractResult(False, found.message)
+        source = found
+
+    table = read_pinmap(source)
+    if isinstance(table, PinMapProblem):
+        return ContractResult(False, table.message)
+
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError as e:
+        return ContractResult(False, f"Cannot read file: {e}")
+    parsed = _parse_toplevel_interface(text, path.stem.lower())
+    if parsed is None:
+        return None  # unparseable interface: let the legacy scan explain it
+
+    result = build_pin_map(
+        parsed[0],
+        table,
+        board_def,
+        source=source.name,
+        device=_declared_device(source),
+    )
+    if isinstance(result, PinMapProblem):
+        return ContractResult(False, result.message)
+    return ContractResult(True, _pinmap_message(result), pinmap=result)
+
+
+#: ``set_global_assignment -name DEVICE 5CSXFC6D6F31C6`` -- Quartus states the
+#: part in the same file as the pins, which makes "wrong board" answerable.
+_DEVICE = re.compile(r"-name\s+DEVICE\s+(\S+)", re.IGNORECASE)
+
+
+def _declared_device(source: Path) -> str:
+    """Return the device a constraint file names, when its dialect states one."""
+    try:
+        m = _DEVICE.search(source.read_text(encoding="utf-8", errors="replace"))
+    except OSError:
+        return ""
+    return m.group(1) if m else ""
+
+
+def _pinmap_message(match: PinMapMatch) -> str:
+    """Build the one-line note the preview shows for a pin-mapped design."""
+    lines = [
+        f"Pin map: {match.source} -> {match.board_name}. "
+        f"{len(match.outputs)} output bit(s) and {len(match.inputs)} input bit(s) "
+        "bound by pin, so this design's own port names are not used."
+    ]
+    lines.extend(match.notes)
+    return "\n".join(lines)
+
+
 def check_vhdl_contract(
     path: str | Path,
     board_def: BoardDef | None = None,
+    pinmap: str | Path | None = None,
 ) -> ContractResult:
     """Stage 2: contract validation, plus the advisory that rides along with it.
 
@@ -263,7 +352,7 @@ def check_vhdl_contract(
     rejected for its own reason, not for its dialect.
     """
     path = Path(path)
-    result = _check_contract(path, board_def)
+    result = _try_pinmap(path, board_def, pinmap) or _check_contract(path, board_def)
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:

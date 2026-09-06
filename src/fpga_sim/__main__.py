@@ -44,6 +44,7 @@ from fpga_sim.ui.theme import THEME_NAMES, set_theme
 
 if TYPE_CHECKING:
     from fpga_sim.board_loader import BoardDef
+    from fpga_sim.pinmap import PinMapMatch
     from fpga_sim.sim_bridge import ConventionMatch, SimulatorInfo
 
 
@@ -220,7 +221,7 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
         print(f"[benchmark] VHDL encoding error: {msg}", file=sys.stderr)
         return 1
     toplevel_name = vhdl_path.stem
-    res = check_vhdl_contract(vhdl_path, board_def=chosen)
+    res = check_vhdl_contract(vhdl_path, board_def=chosen, pinmap=args.pinmap)
     ok, msg = res.ok, res.message
     if not ok:
         print(f"[benchmark] VHDL contract error: {msg}", file=sys.stderr)
@@ -229,6 +230,8 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
     mode = "simulator only" if args.no_ui else "full system"
     print(f"[benchmark] Board:    {chosen.name}")
     print(f"[benchmark] VHDL:     {vhdl_path.name}")
+    if res.pinmap is not None:
+        print(f"[benchmark] Pin map:  {res.pinmap.source} -> {res.pinmap.board_name}")
     print(f"[benchmark] Sim:      {sim.label}  ({sim.backend})")
     print(f"[benchmark] Duration: {args.benchmark}s  (headless, {mode})")
     if args.screenshots is not None:
@@ -243,6 +246,7 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
         sim_path=sim.path,
         board_def=chosen,
         match=res.match,
+        pinmap=res.pinmap,
     )
     if not ok:
         print(f"[benchmark] VHDL analysis failed: {work_dir}", file=sys.stderr)
@@ -265,6 +269,7 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
         res.match,
         args.benchmark,
         screenshots=args.screenshots,
+        pinmap=res.pinmap,
     )
 
 
@@ -279,6 +284,7 @@ def _benchmark_full_system(
     secs: int,
     *,
     screenshots: str | None = None,
+    pinmap: PinMapMatch | None = None,
 ) -> int:
     """Benchmark the whole app headless: the real SimulationScreen + a free-running child.
 
@@ -327,6 +333,7 @@ def _benchmark_full_system(
             child,
             speed_factor=speed,
             match=match,
+            pinmap=pinmap,
             vhdl_path=vhdl_path,
             sim=sim,
             show_toolbar=False,

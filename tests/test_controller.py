@@ -687,7 +687,9 @@ def test_picker_success_records_state(headless_pygame, monkeypatch, tmp_path):
     _install_picker(monkeypatch, [str(vhdl)])
     monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
     monkeypatch.setattr(
-        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
+        controller_mod,
+        "check_vhdl_contract",
+        lambda p, board_def, pinmap=None: ContractResult(True, ""),
     )
     monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
     monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "/work/dir"))
@@ -758,7 +760,9 @@ def test_picker_analysis_failure_shows_simulator_error(headless_pygame, monkeypa
     _install_picker(monkeypatch, ["a.vhd", None])
     monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
     monkeypatch.setattr(
-        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
+        controller_mod,
+        "check_vhdl_contract",
+        lambda p, board_def, pinmap=None: ContractResult(True, ""),
     )
     monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
     monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (False, "elab failed"))
@@ -1069,7 +1073,9 @@ def test_attached_reanalyzes_when_simulator_changed(headless_pygame, monkeypatch
     ctrl.state.work_dir = "old-wd"
     ctrl.state.work_dir_sim = _sim("nvc")  # produced by the other simulator
     monkeypatch.setattr(
-        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
+        controller_mod,
+        "check_vhdl_contract",
+        lambda p, board_def, pinmap=None: ContractResult(True, ""),
     )
     monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
     monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "new-wd"))
@@ -1089,7 +1095,9 @@ def test_attached_reanalysis_failure_keeps_state_and_skips_launch(
     ctrl.state.work_dir = "old-wd"
     ctrl.state.work_dir_sim = _sim("nvc")
     monkeypatch.setattr(
-        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
+        controller_mod,
+        "check_vhdl_contract",
+        lambda p, board_def, pinmap=None: ContractResult(True, ""),
     )
     monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
     monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (False, "no such entity"))
@@ -1108,7 +1116,7 @@ def test_attached_stale_session_contract_failure_drops_vhdl(headless_pygame, mon
     monkeypatch.setattr(
         controller_mod,
         "check_vhdl_contract",
-        lambda p, board_def: ContractResult(False, "port mismatch"),
+        lambda p, board_def, pinmap=None: ContractResult(False, "port mismatch"),
     )
     dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])  # intent ignored here
     assert ctrl.on_simulate() is NextScreen.PREVIEW
@@ -1200,7 +1208,9 @@ def test_cli_board_and_vhdl_validate_and_load(headless_pygame, monkeypatch, tmp_
     vhdl.write_text("-- design", encoding="utf-8")
     monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
     monkeypatch.setattr(
-        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
+        controller_mod,
+        "check_vhdl_contract",
+        lambda p, board_def, pinmap=None: ContractResult(True, ""),
     )
     monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
     monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "/work/dir"))
@@ -1218,7 +1228,9 @@ def test_cli_vhdl_relative_path_resolves_against_the_cwd(headless_pygame, monkey
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
     monkeypatch.setattr(
-        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
+        controller_mod,
+        "check_vhdl_contract",
+        lambda p, board_def, pinmap=None: ContractResult(True, ""),
     )
     monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
     monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "/work/dir"))
@@ -1241,7 +1253,7 @@ def test_cli_vhdl_contract_failure_is_reported_twice(
     monkeypatch.setattr(
         controller_mod,
         "check_vhdl_contract",
-        lambda p, board_def: ContractResult(False, "Missing required port(s): clk"),
+        lambda p, board_def, pinmap=None: ContractResult(False, "Missing required port(s): clk"),
     )
     monkeypatch.setattr(controller_mod, "analyze_vhdl", _fail_if_called("analysis"))
     dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
@@ -1328,7 +1340,9 @@ def test_a_dropped_design_skips_the_picker(headless_pygame, monkeypatch, tmp_pat
     monkeypatch.setattr(ctrl, "_run_vhdl_picker", _fail_if_called("the file picker"))
     monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
     monkeypatch.setattr(
-        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
+        controller_mod,
+        "check_vhdl_contract",
+        lambda p, board_def, pinmap=None: ContractResult(True, ""),
     )
     monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
     monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "/work/dir"))

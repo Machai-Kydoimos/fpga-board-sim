@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 
 from fpga_sim.conventions import ConventionMatch, NativePort
 from fpga_sim.paths import SIM_DIR
+from fpga_sim.pinmap import PinMapMatch
 from fpga_sim.sim_backends import _backend
 from fpga_sim.sim_config import (
     IS_WINDOWS,
@@ -394,6 +395,7 @@ def _render_wrapper(
     match: ConventionMatch | None = None,
     duty: DutyMode | None = None,
     design_has_rgb: bool = False,
+    pinmap: PinMapMatch | None = None,
 ) -> str:
     """Render the ``sim_wrapper.vhd`` text for these inputs, writing nothing.
 
@@ -420,6 +422,8 @@ def _render_wrapper(
     bytes, no I/O beyond reading the fixed templates.
     """
     mode = resolve_duty_mode(duty)
+    if pinmap is not None:
+        return _render_pinmap_wrapper(toplevel, pinmap, board_def, duty=mode)
     if match is not None:
         return _render_native_wrapper(toplevel, match, board_def, duty=mode)
 
@@ -465,6 +469,7 @@ def _generate_wrapper(
     match: ConventionMatch | None = None,
     duty: DutyMode | None = None,
     design_has_rgb: bool = False,
+    pinmap: PinMapMatch | None = None,
 ) -> Path:
     """Write :func:`_render_wrapper`'s output to ``work_dir/sim_wrapper.vhd``."""
     out = Path(work_dir) / "sim_wrapper.vhd"
@@ -476,6 +481,7 @@ def _generate_wrapper(
             match=match,
             duty=duty,
             design_has_rgb=design_has_rgb,
+            pinmap=pinmap,
         ),
         encoding="utf-8",
     )
@@ -490,6 +496,7 @@ def wrapper_is_stale(
     board_def: BoardDef | None = None,
     match: ConventionMatch | None = None,
     duty: DutyMode | None = None,
+    pinmap: PinMapMatch | None = None,
 ) -> bool:
     """Report whether *work_dir*'s ``sim_wrapper.vhd`` differs from today's render.
 
@@ -524,6 +531,7 @@ def wrapper_is_stale(
             match=match,
             duty=duty,
             design_has_rgb=_has_rgb_generic(vhdl_text),
+            pinmap=pinmap,
         )
     except (OSError, UnicodeDecodeError):
         return True
@@ -602,6 +610,7 @@ def analyze_vhdl(
     match: ConventionMatch | None = None,
     sim_path: str | None = None,
     duty: DutyMode | None = None,
+    pinmap: PinMapMatch | None = None,
 ) -> tuple[bool, str]:
     """Analyze the user's VHDL and the generated sim_wrapper.
 
@@ -656,6 +665,7 @@ def analyze_vhdl(
             match=match,
             duty=duty,
             design_has_rgb=_has_rgb_generic(_vhdl_text),
+            pinmap=pinmap,
         )
         result2 = subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir, binary=sim_path),
@@ -708,3 +718,205 @@ def analyze_vhdl(
             return False, f"NVC not found. Install: {hint}"
     except subprocess.TimeoutExpired:
         return False, f"{simulator.upper()} analysis timed out."
+
+
+def _render_pinmap_wrapper(
+    toplevel: str,
+    match: PinMapMatch,
+    board_def: BoardDef | None = None,
+    duty: DutyMode = "off",
+) -> str:
+    """Render a ``sim_wrapper`` for a design mapped through its constraint file (U53).
+
+    The same entity, generics, boundary ports and clock process as the other two
+    wrappers -- so the cocotb testbench, the waveform writer and the run
+    mechanics are untouched -- with an architecture body built from the pin map
+    instead of from names.  Every association is already decided by then, so the
+    body is a list of single-bit assignments rather than bank logic:
+
+    * an input bit reads its switch or button, inverted where the *board* says
+      that resource is active-low;
+    * an output bit drives its LED channel, or the ``{dp, g..a}`` byte position
+      of its digit;
+    * a scanned display is demultiplexed combinationally, as U22 does -- digit
+      *d*'s byte shows the shared segment lines only while its enable is
+      asserted, unlatched, so Full duty measures the honest 1/N brightness;
+    * a port nothing binds is tied low (an input) or left ``open`` (an output).
+
+    Every boundary bit is driven explicitly, including the ones this design
+    never touches.  It makes the wrapper long and the reasoning short: a bit
+    with no design behind it is dark because a line says so, not because
+    nothing assigned it.
+    """
+    widths = match.port_widths
+    board_leds = board_def.num_led_channels if board_def is not None else 0
+    seg_def = board_def.seven_seg if board_def is not None else None
+    digits = seg_def.num_digits if seg_def is not None else 0
+
+    decls: list[str] = []
+    assigns: list[str] = []
+    pmap: list[str] = []
+
+    duty_channels = _duty_channels(duty, has_seg=digits > 0)
+    splice = _duty_splice(duty_channels)
+    measured = {port for port, _ in duty_channels}
+    led_out = "led_int" if "led" in measured else "led"
+    seg_out = "seg_int" if "seg" in measured else "seg"
+
+    def signal_of(port: str) -> str:
+        return f"{port}_uut"
+
+    # One signal per design port, at the width the design declared.
+    driven_ports = {b.port for b in match.inputs} | {b.port for b in match.outputs}
+    for port, width in match.widths:
+        if port == match.clock_port:
+            pmap.append(f"{port} => clk")
+            continue
+        if port in match.open_outputs:
+            pmap.append(f"{port} => open")
+            continue
+        if port not in driven_ports and port not in match.tied_inputs:
+            continue  # an input carrying its own default: leave it to the design
+        sig = signal_of(port)
+        decls.append(
+            f"  signal {sig} : std_logic;"
+            if width is None
+            else f"  signal {sig} : std_logic_vector({width} - 1 downto 0);"
+        )
+        pmap.append(f"{port} => {sig}")
+
+    def bit_of(port: str, bit: int | None) -> str:
+        return signal_of(port) if bit is None else f"{signal_of(port)}({bit})"
+
+    # Inputs: read the board resource, inverted where the board is active-low.
+    for binding in match.inputs:
+        source = f"{binding.role.kind}({binding.role.index})"
+        inv = "not " if binding.role.active_low else ""
+        assigns.append(f"  {bit_of(binding.port, binding.bit)} <= {inv}{source};")
+    for port in match.tied_inputs:
+        width = widths.get(port)
+        value = "'0'" if width is None else "(others => '0')"
+        assigns.append(f"  {signal_of(port)} <= {value};  -- no pin assignment")
+
+    # Outputs: LED channels first, one line per boundary channel.
+    led_source: dict[int, str] = {}
+    for binding in match.outputs:
+        if binding.role.kind == "led":
+            inv = "not " if binding.role.active_low else ""
+            led_source[binding.role.index] = f"{inv}{bit_of(binding.port, binding.bit)}"
+    dark = "'0'"
+    for channel in range(max(board_leds, 1)):
+        assigns.append(f"  {led_out}({channel}) <= {led_source.get(channel, dark)};")
+
+    # The display.  A directly-driven digit takes its segment straight; a
+    # scanned one shows the shared lines only while its own enable is asserted.
+    if digits:
+        enables: dict[int, str] = {}
+        for binding in match.outputs:
+            if binding.role.kind == "digit_enable":
+                active = "= '0'" if binding.role.active_low else "= '1'"
+                enables[binding.role.index] = f"{bit_of(binding.port, binding.bit)} {active}"
+        shared: dict[int, str] = {}
+        per_digit: dict[tuple[int, int], str] = {}
+        dp_shared = ""
+        dp_digit: dict[int, str] = {}
+        for binding in match.outputs:
+            role = binding.role
+            inv = "not " if role.active_low else ""
+            expr = f"{inv}{bit_of(binding.port, binding.bit)}"
+            if role.kind == "seg" and role.segment is not None:
+                if role.digit is None:
+                    shared[role.segment] = expr
+                else:
+                    per_digit[(role.digit, role.segment)] = expr
+            elif role.kind == "dp":
+                if role.digit is None:
+                    dp_shared = expr
+                else:
+                    dp_digit[role.digit] = expr
+        off = "'0'"
+        for digit in range(digits):
+            for segment in range(7):
+                bit = 8 * digit + segment
+                if shared:
+                    gate = enables.get(digit)
+                    src = shared.get(segment, off)
+                    expr = f"{src} when {gate} else {off}" if gate else off
+                else:
+                    expr = per_digit.get((digit, segment), off)
+                assigns.append(f"  {seg_out}({bit}) <= {expr};")
+            dp_bit = 8 * digit + 7
+            if shared:
+                gate = enables.get(digit)
+                expr = f"{dp_shared} when {gate} else {off}" if (dp_shared and gate) else off
+            else:
+                expr = dp_digit.get(digit, off)
+            assigns.append(f"  {seg_out}({dp_bit}) <= {expr};")
+
+    num_sw = max(1, len(board_def.switches) if board_def is not None else 1)
+    num_btn = max(1, len(board_def.buttons) if board_def is not None else 1)
+    num_led = max(1, board_leds)
+    seg_generic = [f"    NUM_SEGS         : positive := {digits};"] if digits else []
+    seg_port = (
+        ["    seg         : out std_logic_vector(8 * NUM_SEGS - 1 downto 0);"] if digits else []
+    )
+
+    lines = [
+        "-- sim_wrapper.vhd (pin map, generated by fpga_sim.wrapper -- U53)",
+        f"-- Design '{toplevel}' is bound to {match.board_name} by {match.source},",
+        "-- so its own port names carry no meaning here: every association below",
+        "-- comes from a pin the constraint file named and the board recognized.",
+        "",
+        "library ieee;",
+        "use ieee.std_logic_1164.all;",
+        # Not used by the assignments below, which are all single bits -- but the
+        # U9 duty integrator spliced in for Full measurement is written in
+        # numeric_std, and it is spliced into *this* design unit.  The user's
+        # design has its own context clause and is unaffected either way.
+        "use ieee.numeric_std.all;",
+        "",
+        "entity sim_wrapper is",
+        "  generic (",
+        f"    NUM_SWITCHES     : positive := {num_sw};",
+        f"    NUM_BUTTONS      : positive := {num_btn};",
+        f"    NUM_LEDS         : positive := {num_led};",
+        *seg_generic,
+        "    COUNTER_BITS     : positive := 24;",
+        "    CLK_HALF_NS_INIT : positive := 20",
+        "  );",
+        "  port (",
+        "    sw          : in  std_logic_vector(NUM_SWITCHES - 1 downto 0) := (others => '0');",
+        "    btn         : in  std_logic_vector(NUM_BUTTONS  - 1 downto 0) := (others => '0');",
+        "    led         : out std_logic_vector(NUM_LEDS     - 1 downto 0);",
+        *seg_port,
+        *splice["duty_ports"].splitlines(),
+        "    clk_half_ns : in  natural := CLK_HALF_NS_INIT",
+        "  );",
+        "end entity;",
+        "",
+        "architecture rtl of sim_wrapper is",
+        "  signal clk : std_logic := '0';",
+        *decls,
+        *splice["duty_decls"].splitlines(),
+        "begin",
+        "",
+        "  clk_proc : process",
+        "  begin",
+        "    clk <= '0';",
+        "    wait for clk_half_ns * 1 ns;",
+        "    clk <= '1';",
+        "    wait for clk_half_ns * 1 ns;",
+        "  end process;",
+        "",
+        *assigns,
+        *splice["duty_body"].splitlines(),
+        "",
+        f"  uut : entity work.{toplevel}",
+        "    port map (",
+        "      " + ",\n      ".join(pmap),
+        "    );",
+        "",
+        "end architecture;",
+        "",
+    ]
+    return "\n".join(lines)
