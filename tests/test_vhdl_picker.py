@@ -197,3 +197,18 @@ def test_dropping_something_else_is_ignored_quietly(screen, tmp_path):
 def test_dropping_a_path_that_is_gone_is_ignored(screen, tmp_path):
     picker = VHDLFilePicker(screen, start_dir=tmp_path)
     assert picker._accept_drop(str(tmp_path / "vanished.vhd")) is None
+
+
+# ── One scrolling implementation for both list screens (F15) ─────────────────
+
+
+def test_both_list_screens_share_one_cursor_implementation():
+    """The helpers were byte-identical copies; a third copy is the failure mode."""
+    from fpga_sim.ui._scroll import RowCursorMixin
+    from fpga_sim.ui.board_selector import BoardSelector
+
+    assert issubclass(VHDLFilePicker, RowCursorMixin)
+    assert issubclass(BoardSelector, RowCursorMixin)
+    for name in ("_page_rows", "_ensure_visible", "_move_cursor"):
+        assert name not in vars(VHDLFilePicker), f"{name} re-defined on the picker"
+        assert name not in vars(BoardSelector), f"{name} re-defined on the selector"

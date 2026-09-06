@@ -45,7 +45,20 @@ help overlay covering the workflow, keyboard shortcuts, and the VHDL design cont
 
 ### 1. Select a board
 
-A list of 285 FPGA boards appears. Type to filter, click to select.
+A list of 285 FPGA boards appears, **sorted by name**. Type to filter, click or
+press **Enter** to select — the cursor starts on the first row, so the keyboard
+alone works from the first frame.
+
+**What the filter searches**, per board: its name, its class name, its silicon
+vendor (Intel, Xilinx, Lattice, Gowin, …) and its **manufacturer**. That last one
+is worth knowing about — the board data has no maker field, so it is taken from
+the board's canonical port-convention name. Typing `terasic` finds the DE-series
+boards even though their vendor field says "Intel", and `digilent` finds the
+Arty/Basys/Nexys fleet. (`litex` and `amaranth` are toolchains rather than
+manufacturers, so they do not match this way.)
+
+The **Sort** dropdown and the component / vendor chips narrow the list further;
+both, and the filter text, persist across sessions.
 
 ### 2. Preview the board
 

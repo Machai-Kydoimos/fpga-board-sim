@@ -3,6 +3,7 @@
 import pygame
 
 from fpga_sim.board_loader import BoardDef
+from fpga_sim.ui._scroll import RowCursorMixin
 from fpga_sim.ui.constants import GRAY, WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
 from fpga_sim.ui.theme import THEME
@@ -28,7 +29,34 @@ _COMPONENT_CHIPS: list[tuple[str, str]] = [
 _VENDOR_CHIP_THRESHOLD = 3
 
 
-class BoardSelector:
+def _search_text(board: BoardDef) -> str:
+    """Everything the filter box searches, lowercased, for one board.
+
+    The name and class name are the obvious two.  The **vendor** is the third
+    because it is printed on every row and is a filter chip of its own, so
+    typing what the row says and getting nothing was the list contradicting its
+    own display.
+
+    The fourth is less obvious and is the one that makes the box useful: a
+    board's **canonical port-convention slug is its manufacturer**.  Nothing
+    else in the board data records who made the board -- ``vendor`` is the
+    *silicon* vendor, so every Terasic board says "Intel" and searching for
+    "terasic" found nothing at all.  A canonical convention is written to a
+    named vendor's own port names, so its slug is exactly that name.
+    Framework-derived blocks are skipped deliberately: ``litex`` and
+    ``amaranth`` name a toolchain rather than a manufacturer, and matching them
+    would return a third of the fleet for a word nobody typed as a maker.
+    """
+    conventions = board.port_conventions or {}
+    makers = [
+        slug
+        for slug, block in conventions.items()
+        if isinstance(block, dict) and block.get("naming", "canonical") != "framework-derived"
+    ]
+    return " ".join([board.name, board.class_name, board.vendor or "", *makers]).lower()
+
+
+class BoardSelector(RowCursorMixin):
     """Full-screen picker.  Returns the chosen BoardDef, or None on quit."""
 
     def __init__(
@@ -96,6 +124,19 @@ class BoardSelector:
                 self.hovered = idx
                 viewport_h = self.height - self._hdr
                 self.scroll = max(0, idx * self.row_h - viewport_h // 2 + self.row_h // 2)
+        if self.hovered < 0:
+            self.hovered = self._default_cursor()
+
+    def _default_cursor(self) -> int:
+        """Row the cursor rests on when nothing else has claimed it.
+
+        The first row, or -1 when the list is empty.  It used to be -1
+        unconditionally, and Enter requires ``0 <= hovered`` -- so on a fresh
+        profile **Enter did nothing at all**, and typing a filter that narrowed
+        the list to a single board made Enter stop working again, which is
+        exactly when someone reaches for it.
+        """
+        return 0 if self._filtered() else -1
 
     @property
     def sort_key(self) -> str:
@@ -133,7 +174,7 @@ class BoardSelector:
 
         if self.filter_text:
             ft = self.filter_text.lower()
-            boards = [b for b in boards if ft in b.name.lower() or ft in b.class_name.lower()]
+            boards = [b for b in boards if ft in _search_text(b)]
 
         if "has_leds" in self._component_filters:
             boards = [b for b in boards if b.leds]
@@ -153,7 +194,12 @@ class BoardSelector:
                 or ("Other" in self._vendor_filters and (b.vendor or "Other") not in named)
             ]
 
-        if self._sort_key == "vendor":
+        if self._sort_key == "name":
+            # Without this branch the default sort silently returned discovery
+            # order -- source directory, then filename -- while the header said
+            # "Name".  Case-folded, so "de10" and "DE10" sort together.
+            boards = sorted(boards, key=lambda b: b.name.lower())
+        elif self._sort_key == "vendor":
             boards = sorted(boards, key=lambda b: (b.vendor or "zzz", b.name))
         elif self._sort_key == "leds":
             boards = sorted(boards, key=lambda b: len(b.leds), reverse=True)
@@ -257,7 +303,7 @@ class BoardSelector:
             self._sort_open = False
             self.filter_text = self.filter_text[:-1]
             self.scroll = 0
-            self.hovered = -1
+            self.hovered = self._default_cursor()
         elif ev.key in (pygame.K_UP, pygame.K_DOWN):
             self._move_cursor(-1 if ev.key == pygame.K_UP else 1)
         elif ev.key in (pygame.K_PAGEUP, pygame.K_PAGEDOWN):
@@ -271,39 +317,8 @@ class BoardSelector:
             self._sort_open = False
             self.filter_text += ev.unicode
             self.scroll = 0
-            self.hovered = -1
+            self.hovered = self._default_cursor()
         return False, None
-
-    def _page_rows(self) -> int:
-        """Return the number of fully visible rows — the Page Up/Down jump distance."""
-        viewport_h = self.height - self._hdr
-        return max(1, viewport_h // self.row_h)
-
-    def _ensure_visible(self, idx: int) -> None:
-        """Scroll the minimum amount needed to bring row ``idx`` fully into view."""
-        viewport_h = self.height - self._hdr
-        top = idx * self.row_h
-        if top < self.scroll:
-            self.scroll = top
-        elif top + self.row_h > self.scroll + viewport_h:
-            self.scroll = top + self.row_h - viewport_h
-        self.scroll = max(0, self.scroll)
-
-    def _move_cursor(self, delta: int) -> None:
-        """Move the keyboard cursor ``delta`` rows over the filtered list.
-
-        Clamps to the list bounds and auto-scrolls to keep the cursor visible.
-        With no current selection, Down enters at the top and Up at the bottom.
-        """
-        n = len(self._filtered())
-        if n == 0:
-            self.hovered = -1
-            return
-        if self.hovered < 0:
-            self.hovered = 0 if delta > 0 else n - 1
-        else:
-            self.hovered = max(0, min(n - 1, self.hovered + delta))
-        self._ensure_visible(self.hovered)
 
     def _move_sort_cursor(self, delta: int) -> None:
         """Move the highlight within the open sort dropdown, wrapping at the ends.
@@ -377,7 +392,7 @@ class BoardSelector:
                 else:
                     target.add(key)
                 self.scroll = 0
-                self.hovered = -1
+                self.hovered = self._default_cursor()
                 return None
 
         if self._sort_rect.collidepoint(pos):
@@ -408,6 +423,10 @@ class BoardSelector:
         pygame.draw.rect(self.screen, bg, rect, border_radius=3)
         self.screen.blit(text_surf, (x + 6, y + (chip_h - text_surf.get_height()) // 2))
         return rect
+
+    def _row_count(self) -> int:
+        """Rows the cursor moves over: the boards left after the filters."""
+        return len(self._filtered())
 
     def _draw(self) -> None:
         self.screen.fill(THEME.sel_bg)

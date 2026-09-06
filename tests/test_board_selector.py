@@ -198,10 +198,11 @@ class TestVendorFiltering:
 
 
 class TestSorting:
-    def test_default_preserves_input_order(self, screen, boards):
+    def test_default_sort_is_actually_by_name(self, screen, boards):
+        """The header says "Name"; it used to return discovery order instead."""
         sel = BoardSelector(boards, screen)
         names = [b.name for b in sel._filtered()]
-        assert names == [b.name for b in boards]
+        assert names == sorted(names, key=str.lower)
 
     def test_sort_leds(self, screen, boards):
         sel = BoardSelector(boards, screen, initial_sort="leds")
@@ -326,17 +327,20 @@ class TestPreselectWithFilters:
         assert sel.scroll == 0
 
     def test_preselect_without_filters(self, screen, boards):
+        """Assert the board under the cursor, not its index: the default sort is
+        by name now, so an index would only be re-pinning the fixture's order."""
         sel = BoardSelector(boards, screen, preselect_class="DeltaPlatform")
-        assert sel.hovered == 3
+        assert sel._filtered()[sel.hovered].class_name == "DeltaPlatform"
 
-    def test_preselect_not_in_filtered_list(self, screen, boards):
+    def test_preselect_not_in_filtered_list_falls_back_to_the_first_row(self, screen, boards):
+        """An unreachable preselection is not a reason to leave Enter inert."""
         sel = BoardSelector(
             boards,
             screen,
             preselect_class="AlphaPlatform",
             initial_component_filters=["has_7seg"],
         )
-        assert sel.hovered == -1
+        assert sel.hovered == 0
         assert sel.scroll == 0
 
 
@@ -438,20 +442,23 @@ class TestKeyboardNav:
         assert result is sel._filtered()[2]
         assert result.name in {"Beta", "Epsilon", "Zeta"}
 
-    def test_typing_appends_and_resets_cursor(self, headless_pygame, screen, boards):
+    def test_typing_appends_and_rehomes_the_cursor(self, headless_pygame, screen, boards):
+        """Narrowing the list must leave Enter working, not disarm it."""
         sel = BoardSelector(boards, screen)
         sel.hovered = 3
         sel._handle_keydown(_key(headless_pygame, headless_pygame.K_g, unicode="g"))
         assert sel.filter_text == "g"
-        assert sel.hovered == -1
+        assert sel.hovered == 0
+        exit_loop, result = sel._handle_keydown(_key(headless_pygame, headless_pygame.K_RETURN))
+        assert exit_loop is True and result is sel._filtered()[0]
 
-    def test_backspace_edits_filter_and_resets_cursor(self, headless_pygame, screen, boards):
+    def test_backspace_edits_filter_and_rehomes_the_cursor(self, headless_pygame, screen, boards):
         sel = BoardSelector(boards, screen)
         sel.filter_text = "ab"
         sel.hovered = 2
         sel._handle_keydown(_key(headless_pygame, headless_pygame.K_BACKSPACE))
         assert sel.filter_text == "a"
-        assert sel.hovered == -1
+        assert sel.hovered == 0
 
     def test_pagedown_moves_by_a_page(self, headless_pygame, screen, boards):
         sel = BoardSelector(boards, screen)
@@ -583,3 +590,69 @@ class TestHelpResizeReconcile:
         sel._sync_to_surface()  # surface unchanged (1024x700)
         assert (sel.width, sel.height) == (1024, 700)
         assert sel.scroll == 120
+
+
+# ── Finding a board (U49) ────────────────────────────────────────────────────
+
+
+class TestFindingABoard:
+    def test_the_vendor_is_searchable(self, screen, boards):
+        """The vendor is printed on every row; typing it used to return nothing."""
+        sel = BoardSelector(boards, screen)
+        sel.filter_text = "xilinx"
+        found = sel._filtered()
+        assert found and all(b.vendor == "Xilinx" for b in found)
+
+    def test_the_filter_is_case_insensitive_across_every_field(self, screen, boards):
+        for text in ("XILINX", "alpha", "AlphaPlatform"):
+            sel = BoardSelector(boards, screen)
+            sel.filter_text = text
+            assert sel._filtered(), text
+
+    def test_a_canonical_convention_slug_is_searchable_as_the_maker(self, screen):
+        """Nothing else in the board data records who *made* the board.
+
+        ``vendor`` is the silicon vendor, so every Terasic board says "Intel"
+        and searching for "terasic" found nothing at all.  A canonical
+        convention is written to a named vendor's own port names, so its slug
+        is that name.
+        """
+        made_by_terasic = BoardDef(
+            name="DE10-Standard",
+            class_name="DE10StandardPlatform",
+            vendor="Intel",
+            leds=_leds(10),
+            port_conventions={"terasic": {"clock": {"name": "CLOCK_50"}}},
+        )
+        other = BoardDef(name="Arty", class_name="ArtyPlatform", vendor="Xilinx", leds=_leds(4))
+        sel = BoardSelector([made_by_terasic, other], screen)
+        sel.filter_text = "terasic"
+        assert [b.name for b in sel._filtered()] == ["DE10-Standard"]
+
+    def test_a_framework_slug_is_not_a_maker(self, screen):
+        """litex and amaranth name a toolchain; matching them would return a
+        third of the fleet for a word nobody typed as a manufacturer."""
+        board = BoardDef(
+            name="Some Board",
+            class_name="SomeBoardPlatform",
+            leds=_leds(4),
+            port_conventions={"litex": {"naming": "framework-derived"}},
+        )
+        sel = BoardSelector([board], screen)
+        sel.filter_text = "litex"
+        assert sel._filtered() == []
+
+    def test_a_fresh_selector_can_be_driven_by_the_keyboard_alone(
+        self, headless_pygame, screen, boards
+    ):
+        """Enter on the very first frame: the fresh-profile path, start to finish."""
+        sel = BoardSelector(boards, screen)
+        exit_loop, result = sel._handle_keydown(_key(headless_pygame, headless_pygame.K_RETURN))
+        assert exit_loop is True
+        assert result is sel._filtered()[0]
+
+    def test_an_empty_result_leaves_the_cursor_off_the_list(self, screen, boards):
+        sel = BoardSelector(boards, screen)
+        sel.filter_text = "no-such-board"
+        assert sel._filtered() == []
+        assert sel._default_cursor() == -1

@@ -39,6 +39,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The board selector finds boards** (U49). Three defects in the screen every
+  session starts on:
+  - **"Name" now sorts by name.** `_filtered()` had branches for vendor, LEDs,
+    switches, buttons, 7-seg and total — but none for `name`, so the *default*
+    sort silently returned discovery order (source directory, then filename)
+    while the header said otherwise.
+  - **The filter searches the manufacturer.** It matched only the name and class
+    name, so typing `terasic` returned **zero** boards. Vendor is now matched
+    too — it is printed on every row — and so is the board's **canonical
+    port-convention slug**, which is the only place the board data records who
+    *made* the board: `vendor` is the *silicon* vendor, so every Terasic board
+    says "Intel". `terasic` now finds 17 boards and `digilent` 49.
+    Framework-derived slugs (`litex`, `amaranth`) are deliberately excluded —
+    they name a toolchain, and matching them would return a third of the fleet.
+  - **Enter works on the first frame.** The cursor started at `-1` and Enter
+    requires `0 <= hovered`, so on a fresh profile Enter did nothing — and
+    typing a filter reset it to `-1` again, disarming Enter at exactly the
+    moment someone has narrowed the list to the board they want. The cursor now
+    rests on the first row whenever the list is non-empty.
+  - Ride-along: the two list screens' `_page_rows` / `_ensure_visible` /
+    `_move_cursor` were byte-identical copies (`_move_cursor` differed only in
+    where it asked for the row count). They are now one `RowCursorMixin` in
+    `ui/_scroll.py` with a single `_row_count()` hook, and a test asserts
+    neither screen re-defines them.
+
 - **The first run stops being an obstacle course** (U49).
   - **The seven deliberately-broken fixtures are out of `hdl/`.** They are
     negative-test fixtures (`bad_contract_*`, `bad_semantic_*`,
