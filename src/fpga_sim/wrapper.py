@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -601,6 +602,121 @@ def _bound_check_probe(work_dir: str) -> str | None:
     return _name_bound_check_port(output, work_dir)
 
 
+#: What counts as a design file beside the picked one.
+_VHDL_SUFFIXES = (".vhd", ".vhdl")
+
+#: Ceilings on the sibling sweep.  A lab folder holds a handful of files; a
+#: directory holding sixty is not a lab folder, and grinding through it one
+#: subprocess at a time would look exactly like a hang.
+_MAX_SIBLINGS = 60
+_ANALYZE_TIMEOUT_S = 30
+
+#: Total wall-clock the sibling sweep may spend before it gives up and lets the
+#: design speak for itself.  Measured on the worst folder that ships here --
+#: `hdl/`, 18 files and 29k lines including the embedded cores -- the sweep is
+#: 0.22 s on GHDL mcode and 0.38 s on NVC, against the 5-10 s the whole
+#: analysis takes.  This is three orders of magnitude of headroom, and exists
+#: only so that a pathological folder degrades into "your design did not
+#: compile" instead of into a hang.
+_SWEEP_BUDGET_S = 45
+
+
+def find_siblings(vhdl_path: str | Path) -> list[Path]:
+    """List the other VHDL files in the picked design's folder, in a stable order.
+
+    One folder is one project (see ``docs/writing_designs.md``), so everything
+    beside the design is available to it.  Nothing is parsed here: which of
+    these the design actually needs is decided by the analyzer, not by us.
+    """
+    design = Path(vhdl_path)
+    folder = design.parent
+    if not folder.is_dir():
+        return []
+    try:
+        entries = sorted(folder.iterdir())
+    except OSError:
+        return []
+    out = [
+        p
+        for p in entries
+        if p.is_file() and p.suffix.lower() in _VHDL_SUFFIXES and p.resolve() != design.resolve()
+    ]
+    return out[:_MAX_SIBLINGS]
+
+
+def analyze_siblings(
+    vhdl_path: str | Path,
+    work_dir: str,
+    simulator: Simulator = "ghdl",
+    sim_path: str | None = None,
+) -> tuple[list[Path], dict[Path, str]]:
+    """Analyze the design's neighbors into the same library, to a fixpoint (U51).
+
+    Real work is not one file.  The course's Lab 3 ships ``counter.vhd`` as a
+    separate sub-entity, every lab folder holds a ``testbench.vhd``, and the
+    second course's student projects are nine sources and five testbenches.
+
+    Two decisions carry this function.
+
+    **Order is discovered by retrying, not by parsing.**  A VHDL file must be
+    analyzed after everything it depends on, and working that out properly
+    means understanding ``use`` clauses, component declarations, configurations
+    and library aliases.  Retrying until a pass adds nothing reaches the same
+    answer with none of that: each round analyzes what is left, and anything
+    whose dependencies just landed now succeeds.  Worst case is one round per
+    dependency level, which for a lab folder is two or three.
+
+    **A neighbor that will not compile is irrelevant, not fatal.**  Two of the
+    three course testbenches do not compile as shipped, and they sit right
+    beside the design they test.  Refusing to run the student's design because
+    the *instructor's* testbench is broken would be indefensible, so a failing
+    sibling is recorded and dropped.  If the picked design actually needed it,
+    the design's own analysis fails next and reports its own error -- which is
+    the message that helps.
+
+    Returns ``(analyzed, failures)``: the siblings that compiled, in the order
+    they compiled, and a ``path -> stderr`` map for those that never did.
+    """
+    be = _backend(simulator)
+    pending = find_siblings(vhdl_path)
+    analyzed: list[Path] = []
+    errors: dict[Path, str] = {}
+    deadline = time.monotonic() + _SWEEP_BUDGET_S
+    while pending:
+        progressed: list[Path] = []
+        still: list[Path] = []
+        for sibling in pending:
+            if time.monotonic() > deadline:
+                still.append(sibling)
+                continue
+            try:
+                result = subprocess.run(
+                    be.analyze_cmd(sibling, work_dir, binary=sim_path),
+                    capture_output=True,
+                    text=True,
+                    timeout=_ANALYZE_TIMEOUT_S,
+                    encoding="utf-8",
+                    errors="replace",
+                )
+            except (OSError, subprocess.SubprocessError) as e:
+                errors[sibling] = str(e)
+                continue
+            if result.returncode == 0:
+                progressed.append(sibling)
+            else:
+                errors[sibling] = result.stderr.strip()
+                still.append(sibling)
+        if not progressed:
+            break  # fixpoint: nothing left can be made to compile
+        if time.monotonic() > deadline:
+            break
+        analyzed.extend(progressed)
+        for done in progressed:
+            errors.pop(done, None)
+        pending = still
+    return analyzed, errors
+
+
 def analyze_vhdl(
     vhdl_path: str | Path,
     work_dir: str | None = None,
@@ -615,6 +731,8 @@ def analyze_vhdl(
     """Analyze the user's VHDL and the generated sim_wrapper.
 
     Steps:
+      0. Analyze the other VHDL files in the design's folder (U51), to a
+         fixpoint, treating any that will not compile as irrelevant.
       1. Analyze the user's VHDL file (``-a``).
       2. Generate ``sim_wrapper.vhd`` and analyze it.
       3. Elaborate ``sim_wrapper`` with VHDL-default generics as an early
@@ -642,6 +760,14 @@ def analyze_vhdl(
     if toplevel is None:
         toplevel = Path(vhdl_path).stem
     try:
+        # Step 0 (U51): the design's neighbors, so a design split across a
+        # folder analyzes.  Before the design itself, because that is the
+        # direction dependencies run -- a top level instantiates a sub-entity,
+        # never the reverse.  Failures here are deliberately dropped: if the
+        # design needed one, step 1 fails next with a message about the
+        # *design*, which is the one worth reading.
+        analyze_siblings(vhdl_path, work_dir, simulator=simulator, sim_path=sim_path)
+
         # Step 1: analyze user's VHDL
         result = subprocess.run(
             be.analyze_cmd(Path(vhdl_path), work_dir, binary=sim_path),

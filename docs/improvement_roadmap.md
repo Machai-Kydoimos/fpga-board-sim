@@ -664,7 +664,7 @@ This document inventories all viable improvements and ranks them by impact.
 - **Done when:** the row toggles PWM brightness live, the choice persists and is restored at
   startup, changing it re-analyzes, and the 7-segment speedup is reproducible from the GUI.
 
-#### U51. Multi-file designs — sibling analysis with non-fatal neighbors
+#### U51. Multi-file designs — sibling analysis with non-fatal neighbors ✅
 
 - **Why:** `analyze_vhdl()` runs exactly one `analyze_cmd(vhdl_path, …)`, so a design is one file.
   Multiple design *units within one file* already work (the contract checks the picked stem against

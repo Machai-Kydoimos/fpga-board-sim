@@ -39,6 +39,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A design can be split across several files** (U51). `analyze_vhdl` ran
+  exactly one `-a`, so a design was one file — but the course's Lab 3 ships
+  `counter.vhd` as a separate sub-entity, every lab folder holds a
+  `testbench.vhd`, and the second course's student projects are nine sources and
+  five testbenches apiece. Everything else in the picked design's folder is now
+  analyzed into the same library first.
+  - **Dependency order is discovered by retrying, not by parsing.** Each round
+    analyzes whatever is left and anything whose dependencies just landed now
+    succeeds; the sweep stops when a round adds nothing. Getting the order
+    "properly" would mean understanding `use` clauses, component declarations,
+    configurations and library aliases — this reaches the same answer with none
+    of that, and cannot be wrong about a construct it has never seen.
+  - **A neighbor that will not compile is irrelevant, not fatal.** Two of the
+    three course testbenches do not build as shipped and sit right beside the
+    design they test; refusing to run a student's design because the
+    *instructor's* testbench is broken would be indefensible. If the design
+    really did need that file, its own analysis fails next and reports its own
+    error — which is the message worth reading.
+  - Only the picked file is simulated; the rest are compiled so that it can be.
+
 - **A design can now run through its own constraint file** (U53) — the pin map.
   Board-native mode recognizes a design by its port *names*, which covers
   designs written to a vendor's published naming and nothing else. Real course
