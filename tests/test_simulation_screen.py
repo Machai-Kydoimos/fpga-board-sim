@@ -1118,6 +1118,34 @@ def test_the_offer_can_be_opened_and_read_while_paused(headless_pygame, fake_chi
     assert screen._stall_rect is not None, "and it renders, paused"
 
 
+def test_a_non_interactive_run_never_offers_anything(headless_pygame, fake_child, monkeypatch):
+    """`--benchmark` drives this screen with nobody at the keyboard.
+
+    An offer nobody can accept is not help -- it is a control painted into every
+    `--screenshots` capture of a design that is legitimately static, which is
+    how this project's board stills are made.  Verified end to end against
+    `hdl/mx65_hello_7seg.vhd`, which never changes by design.
+    """
+    child, _client = fake_child
+    surface = headless_pygame.display.set_mode((1024, 700))
+    screen = SimulationScreen(
+        surface,
+        headless_pygame.time.Clock(),
+        _sample_board(),
+        child,
+        speed_factor=0.1,
+        match=None,
+        vhdl_path="blinky.vhd",
+        sim=_sim("ghdl"),
+        interactive=False,
+    )
+    screen._connected = True
+    assert not _run_quiet(screen, monkeypatch, seconds=60.0)
+    screen._render_frame()
+    assert screen._stall_hint_rect is None
+    assert not screen._stall_lines
+
+
 def test_pausing_alone_never_raises_the_offer(headless_pygame, fake_child, monkeypatch):
     child, _client = fake_child
     screen = _make_screen(headless_pygame, child)

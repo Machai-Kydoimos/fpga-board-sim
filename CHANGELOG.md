@@ -91,6 +91,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     never closed by the design at all: only [ Close ] closes it.
   - Opening it **re-measures**, so somebody who watched for a minute before
     asking is told about the minute rather than about the first ten seconds.
+  - **`--benchmark` never offers it.** That path drives the same screen with
+    nobody at the keyboard, and an offer nobody can accept is not help — it is a
+    control painted into every `--screenshots` capture of a design that is
+    legitimately static, which is how this project's board stills are made.
   - **It counts time it actually observed.** Every clock accumulates the gap
     between consecutive samples, clamped to one second, so wall time in which
     the run loop was not running at all — the F1 help modal, an error dialog, a

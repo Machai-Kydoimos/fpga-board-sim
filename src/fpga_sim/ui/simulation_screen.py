@@ -116,6 +116,7 @@ class SimulationScreen:
         synopsys: tuple[str, ...] = (),
         pinmap: PinMapMatch | None = None,
         show_toolbar: bool = True,
+        interactive: bool = True,
         screenshot_dir: str | Path | None = None,
         initial_inputs: BoardInputs | None = None,
     ) -> None:
@@ -132,6 +133,12 @@ class SimulationScreen:
         self.pinmap = pinmap
         self._vhdl_name = Path(vhdl_path).name
         self._show_toolbar = show_toolbar
+        # Whether a person is actually watching.  `--benchmark` drives this same
+        # screen with nobody at the keyboard, and the stall advisory is an
+        # *offer* -- an offer nobody can accept is not help, it is a control
+        # painted into every `--screenshots` capture of a design that happens to
+        # be static, which is how this project's board stills are made.
+        self._interactive = interactive
         # --screenshots (#129): PNGs of this very surface, gated on visible
         # change. Benchmark-path only; None everywhere else, so the interactive
         # loop pays one `is not None` per frame and nothing else.
@@ -667,6 +674,8 @@ class SimulationScreen:
         reset the timer that was about to tell them.
         """
         sim_ns = int(self._last_state.get("sim_ns", 0))
+        if not self._interactive:
+            return
         showing = self._stall.sample(
             self.board.output_signature(),
             sim_ns,
@@ -955,7 +964,7 @@ class SimulationScreen:
         # words and clicks.  A design that is merely waiting for input is the
         # commonest first design there is, and it must not be interrupted.
         self._stall_hint_rect = None
-        if self._stall_showing and not self._stall_expanded:
+        if self._stall_showing and self._interactive and not self._stall_expanded:
             hint_label = "Why is nothing happening?"
             icon_d = max(9, ov_font.get_height() - 3)
             icon_gap = max(3, ov_pad_x // 2)
