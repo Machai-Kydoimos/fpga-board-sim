@@ -8,7 +8,7 @@
 # for the same field. `clk` overrides the whole clk name directly; `buttons`/
 # `leds`/`switches`/`seven_seg` override just their `active_low` (classify()
 # only ever derives that from a literal `_N`/`_n` name suffix -- see
-# port_convention_parsers/classify.py's module docstring -- so most real
+# fpga_sim/constraints/classify.py's module docstring -- so most real
 # boards need it stated here instead).
 #
 # Board names must match a docs/port_convention_sources/*.toml row's `name`

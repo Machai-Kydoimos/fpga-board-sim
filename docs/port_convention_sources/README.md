@@ -24,7 +24,7 @@ and `docs/plans/u21_board_native_vhdl_plan.md`.
 `scripts/sync_port_conventions.py` turns a registry row into a board JSON's
 `port_conventions.<maker-slug>` block: it resolves the row's rank-1 source to a
 commit-pinned raw URL, fetches it, parses it with the matching A2 dialect module
-under `scripts/port_convention_parsers/` (`qsf.py` / `xdc.py` / `ucf.py` /
+under `src/fpga_sim/constraints/` (`qsf.py` / `xdc.py` / `ucf.py` /
 `pcf.py` / `lpf.py` / `cst.py` / `ccf.py` / `boardstore_xml.py`) through the
 shared `classify()`, applies any `overlay.toml` overrides (citations,
 name-overrides), cross-checks widths against each target file's own resource

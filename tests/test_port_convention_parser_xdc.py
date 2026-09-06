@@ -1,12 +1,12 @@
-"""Tests for the XDC parser (scripts/port_convention_parsers/xdc.py).
+"""Tests for the XDC parser (src/fpga_sim/constraints/xdc.py).
 
 Fixtures are trimmed, real excerpts from two fetch-verified registry sources
 (docs/port_convention_sources/digilent.toml, maker-xilinx.toml). The full
 Basys3 master XDC (same family as the first fixture here) is exercised
-end-to-end in test_port_convention_parsers_golden.py. Hermetic: no network.
+end-to-end in test_fpga_sim.constraints_golden.py. Hermetic: no network.
 """
 
-from port_convention_parsers.xdc import parse
+from fpga_sim.constraints.xdc import parse
 
 # Trimmed from Digilent's published Basys-3-Master.xdc (commit 00a3404, see
 # boards/digilent-xdc/basys_3.json's source block). Digilent's master files

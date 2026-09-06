@@ -45,7 +45,7 @@ import re
 from collections.abc import Callable
 from typing import Any
 
-from port_convention_parsers.types import PortTable
+from fpga_sim.constraints.types import PortTable
 
 _RE_BRACKET_INDEX = re.compile(r"^(.*?)[\[(<](\d+)[\])>]$")
 _RE_BARE_DIGIT = re.compile(r"^(.*?)(\d+)$")

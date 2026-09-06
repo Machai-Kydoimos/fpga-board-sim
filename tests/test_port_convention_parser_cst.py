@@ -1,10 +1,10 @@
-"""Tests for the Gowin CST parser (scripts/port_convention_parsers/cst.py).
+"""Tests for the Gowin CST parser (src/fpga_sim/constraints/cst.py).
 
 Fixture is a trimmed, real excerpt from a fetch-verified registry source
 (docs/port_convention_sources/gowin.toml). Hermetic: no network.
 """
 
-from port_convention_parsers.cst import parse
+from fpga_sim.constraints.cst import parse
 
 # Trimmed from https://raw.githubusercontent.com/sipeed/TangNano-9K-example/
 # master/led/src/9K_LED_project.cst -- IO_LOC/IO_PORT split (IO_PORT carries

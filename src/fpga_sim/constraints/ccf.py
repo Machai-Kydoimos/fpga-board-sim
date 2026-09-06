@@ -5,7 +5,7 @@ Matches ``Net "name" Loc = "pin";`` and the directional forms ``Pin_in``/
 comment documents pipe-separated attributes such as ``SCHMITT_TRIGGER``,
 ``PULLUP``, ``PULLDOWN`` after the location — ignored here the same way UCF's
 pipe-separated attributes are). No clock-frequency statement was found in any
-fetched GateMate file, so :attr:`~port_convention_parsers.types.PortTable.clocks`
+fetched GateMate file, so :attr:`~fpga_sim.constraints.types.PortTable.clocks`
 is always empty.
 """
 
@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import re
 
-from port_convention_parsers.types import PinEntry, PortTable
+from fpga_sim.constraints.types import PinEntry, PortTable
 
 _RE_PIN = re.compile(
     r'(?:Net|Pin_in|Pin_out|Pin_inout)\s+"([^"]+)"\s+Loc\s*=\s*"([^"]+)"', re.IGNORECASE

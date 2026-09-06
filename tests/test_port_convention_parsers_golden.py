@@ -26,8 +26,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from port_convention_parsers.classify import classify
-from port_convention_parsers.xdc import parse
+from fpga_sim.constraints.classify import classify
+from fpga_sim.constraints.xdc import parse
 
 BOARDS_DIR = Path(__file__).parent.parent / "boards"
 

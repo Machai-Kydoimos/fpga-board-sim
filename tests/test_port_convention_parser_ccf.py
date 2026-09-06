@@ -1,4 +1,4 @@
-"""Tests for the GateMate CCF parser (scripts/port_convention_parsers/ccf.py).
+"""Tests for the GateMate CCF parser (src/fpga_sim/constraints/ccf.py).
 
 Fixture combines two real ``Net`` lines fetched from a registry source
 (docs/port_convention_sources/intel-gatemate-misc.toml) with one ``Pin_in``
@@ -9,7 +9,7 @@ keywords; the fetched example board just never happens to use them). Hermetic:
 no network.
 """
 
-from port_convention_parsers.ccf import parse
+from fpga_sim.constraints.ccf import parse
 
 # First two lines fetched verbatim from https://raw.githubusercontent.com/
 # chili-chips-ba/openCologne/main/1.Blinky--Verilog-VHDL-Python.Amaranth/

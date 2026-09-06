@@ -1,11 +1,11 @@
-"""Tests for the BoardStore XML parser (scripts/port_convention_parsers/boardstore_xml.py).
+"""Tests for the BoardStore XML parser (src/fpga_sim/constraints/boardstore_xml.py).
 
 Fixture is a trimmed, real excerpt from a fetch-verified registry source
 (docs/port_convention_sources/xilinx-official.toml). Hermetic: no network.
 """
 
-from port_convention_parsers.boardstore_xml import parse
-from port_convention_parsers.types import PortTable
+from fpga_sim.constraints.boardstore_xml import parse
+from fpga_sim.constraints.types import PortTable
 
 # Trimmed from https://raw.githubusercontent.com/Xilinx/XilinxBoardStore/2022.2/
 # boards/Xilinx/kc705/1.6/part0_pins.xml (Apache-2.0) -- note the space before

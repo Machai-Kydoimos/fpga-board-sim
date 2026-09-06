@@ -5,14 +5,14 @@ pin IDs, not ball/site letters), which the generic ``\w+`` capture handles
 the same as any other dialect's pin token. The companion ``IO_PORT "name"
 PULL_MODE=... DRIVE=...;`` lines carry no location and are simply not
 matched. CST has no clock-frequency statement, so
-:attr:`~port_convention_parsers.types.PortTable.clocks` is always empty.
+:attr:`~fpga_sim.constraints.types.PortTable.clocks` is always empty.
 """
 
 from __future__ import annotations
 
 import re
 
-from port_convention_parsers.types import PinEntry, PortTable
+from fpga_sim.constraints.types import PinEntry, PortTable
 
 _RE_IO_LOC = re.compile(r'IO_LOC\s+"([^"]+)"\s+(\w+)')
 

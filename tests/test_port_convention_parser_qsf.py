@@ -1,4 +1,4 @@
-"""Tests for the QSF parser (scripts/port_convention_parsers/qsf.py).
+"""Tests for the QSF parser (src/fpga_sim/constraints/qsf.py).
 
 Fixtures are trimmed, real excerpts from two fetch-verified registry sources
 (docs/port_convention_sources/terasic.toml): a community course file that
@@ -7,7 +7,7 @@ gotcha), and a clean file with canonical names plus the DEVICE line gotcha.
 Hermetic: no network.
 """
 
-from port_convention_parsers.qsf import parse
+from fpga_sim.constraints.qsf import parse
 
 # Trimmed from https://raw.githubusercontent.com/AllenHeartcore/ECE385_UIUC23sp/main/de10_pin_assignment.qsf
 # (DE10-Lite course material) -- note LEDR renamed to plain LED; no DEVICE line.

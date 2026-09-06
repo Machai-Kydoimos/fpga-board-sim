@@ -12,7 +12,7 @@ naive ``name="([^"]+)"`` regex would miss it, but ``Element.get("name")``
 handles it transparently.
 
 No clock-frequency data appears in this format (it is pure pin-location
-data), so :attr:`~port_convention_parsers.types.PortTable.clocks` is always
+data), so :attr:`~fpga_sim.constraints.types.PortTable.clocks` is always
 empty.
 """
 
@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from xml.etree import ElementTree
 
-from port_convention_parsers.types import PinEntry, PortTable
+from fpga_sim.constraints.types import PinEntry, PortTable
 
 
 def parse(text: str) -> PortTable:
