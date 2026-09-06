@@ -27,6 +27,18 @@ which is worse than silence.  The two clauses separate "your design is slow" fro
 telling us anything about the design, so the signature this watches is LEDs and
 segments alone.  A student wiggling switches to see whether anything is alive
 must not reset the timer that would have told them.
+
+**And the fourth, learned the hard way: the trigger cannot tell a slow divider
+from an idle input-follower.**  A design that lights an LED while a button is
+held is *correct* to show nothing when nobody is pressing anything -- and on the
+wire that is identical to a stalled divider: static inputs, static outputs,
+simulated time advancing.  There is no observation that separates them, and the
+first version of this module asserted "your design may just be slow" to a
+student whose combinational lab was working perfectly.  So the advisory reports
+what it can actually see and offers *both* explanations, leading with the one
+the evidence favors: if the controls have never been touched this run, "try a
+switch" comes first, because a design waiting for input is the likelier reading
+of a board nobody has touched.
 """
 
 from __future__ import annotations
@@ -79,6 +91,12 @@ class StallWatch:
         self._sim_ns_at_quiet: int = 0
         self._dismissed = False
         self.fired = False
+        #: Set once any switch or button has moved since the run began, and never
+        #: cleared.  It does not gate the advisory -- it chooses which
+        #: explanation leads, because "nobody has touched anything" makes an
+        #: input-driven design the likelier reading of a still board.
+        self.inputs_used = False
+        self._first_inputs: object = None
 
     def reset(self) -> None:
         """Forget the current quiet spell (the outputs moved, or the run did)."""
@@ -98,6 +116,7 @@ class StallWatch:
         now: float,
         *,
         paused: bool = False,
+        inputs: object = None,
     ) -> bool:
         """Record one frame; return whether the advisory should be showing.
 
@@ -105,7 +124,17 @@ class StallWatch:
         *sim_ns* is the child's running total of simulated nanoseconds, which is
         how "the simulator is still working" is told from "the simulator
         stopped".
+
+        *inputs* is the switch/button state.  It is **recorded, never acted on**:
+        it does not reset the quiet timer (a student poking at the board must not
+        silence the thing that was about to explain it) and it does not suppress
+        the advisory.  All it does is set :attr:`inputs_used`, which decides
+        which explanation the message leads with.
         """
+        if self._first_inputs is None:
+            self._first_inputs = inputs
+        elif inputs != self._first_inputs:
+            self.inputs_used = True
         if signature != self._signature:
             self._signature = signature
             self._quiet_since = now
@@ -173,7 +202,28 @@ def _sim_time(ns: float) -> str:
     return f"{ns / 1e9:.3g} s"
 
 
-def stall_message(facts: StallFacts, divider_bits: int | None = None) -> list[str]:
+def stall_heading(*, waiting_for_input: bool) -> str:
+    """Build the advisory's title, which is a claim and so must match the evidence."""
+    if waiting_for_input:
+        return "Nothing has changed on the board"
+    return "This design may just be slow, not broken"
+
+
+def _divider_clause(facts: StallFacts, divider_bits: int) -> str:
+    step = float(2**divider_bits)
+    return (
+        f"A {divider_bits}-bit divider means {_count(step)} cycles per step:"
+        f" about {_duration(facts.seconds_here(step))} here,"
+        f" {_duration(facts.seconds_on_board(step))} on the real board."
+    )
+
+
+def stall_message(
+    facts: StallFacts,
+    divider_bits: int | None = None,
+    *,
+    waiting_for_input: bool = False,
+) -> list[str]:
     """Build the advisory, in the student's terms and in measured numbers (D-15).
 
     Every figure comes from the live run: what the machine actually managed in
@@ -183,20 +233,36 @@ def stall_message(facts: StallFacts, divider_bits: int | None = None) -> list[st
     *divider_bits*, when the design declares a plausible divider generic, turns
     the general complaint into the specific one -- how long one step of *this*
     design takes here, and how long it takes on the board.
+
+    *waiting_for_input* says the board has controls and nobody has touched one
+    since the run began.  That does not mean the design is fine -- it means the
+    likeliest reading of a still board is that it is waiting, so the suggestion
+    to try a switch leads and the divider arithmetic follows it as the
+    alternative.  Getting this order wrong is how the advisory told a student
+    their working combinational lab might be broken.
     """
-    lines = [
-        f"No LED or digit has changed in {_duration(facts.quiet_s)} of wall-clock time.",
-        f"In that time this machine simulated {_count(facts.cycles)} clock cycles"
-        f" = {_sim_time(facts.sim_ns)} of the board's"
-        f" {facts.board_hz / 1e6:.3g} MHz.",
-    ]
+    counted = (
+        f"this machine simulated {_count(facts.cycles)} clock cycles"
+        f" = {_sim_time(facts.sim_ns)} of the board's {facts.board_hz / 1e6:.3g} MHz"
+    )
+    if waiting_for_input:
+        lines = [
+            f"No LED or digit has changed in {_duration(facts.quiet_s)},"
+            " and no switch or button has been touched.",
+            "If your design follows the switches or buttons, try one:"
+            " a design that is waiting for input is right to show nothing.",
+        ]
+    else:
+        lines = [
+            f"No LED or digit has changed in {_duration(facts.quiet_s)} of wall-clock time.",
+        ]
+    if waiting_for_input:
+        tail = f"If instead it counts, it may just be slow here: in that time {counted}."
+    else:
+        tail = f"In that time {counted}."
+    lines.append(tail)
     if divider_bits is not None and divider_bits > 0:
-        step = float(2**divider_bits)
-        lines.append(
-            f"A {divider_bits}-bit divider means {_count(step)} cycles per step:"
-            f" about {_duration(facts.seconds_here(step))} here,"
-            f" {_duration(facts.seconds_on_board(step))} on the real board."
-        )
+        lines.append(_divider_clause(facts, divider_bits))
         lines.append("Lower it for the simulator and your file keeps its hardware value.")
     else:
         lines.append(

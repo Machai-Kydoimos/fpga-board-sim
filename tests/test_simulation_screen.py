@@ -995,9 +995,55 @@ def test_the_numbers_are_measured_not_constant(headless_pygame, fake_child, monk
     screen = _make_screen(headless_pygame, child)
     _run_quiet(screen, monkeypatch, seconds=30.0)
     text = " ".join(screen._stall_lines)
-    assert "wall-clock" in text
     assert "clock cycles" in text
     assert "MHz" in text
+
+
+def test_an_untouched_board_is_not_accused_of_being_slow(headless_pygame, fake_child, monkeypatch):
+    """A design that lights an LED while a button is held is *correct* to be dark.
+
+    On the wire that is identical to a stalled divider, so the advisory still
+    appears -- but it must lead with the reading the evidence favors, not
+    accuse a working combinational lab of being broken.
+    """
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    assert screen._stall_heading == "Nothing has changed on the board"
+    assert "no switch or button has been touched" in screen._stall_lines[0]
+    assert "try one" in screen._stall_lines[1]
+
+
+def test_once_the_controls_have_been_used_the_claim_is_direct(
+    headless_pygame, fake_child, monkeypatch
+):
+    """Used the switches and the board *still* never moves: now it is fair to say so."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    t = [1000.0]
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: t[0])
+    sim_ns = 0
+    for i in range(6):
+        if i == 2:  # mid-run: the user flips a switch and nothing happens
+            screen.board.switches[0].state = not screen.board.switches[0].state
+        sim_ns += 2_000_000
+        screen._last_state = {"sim_ns": sim_ns}
+        screen._sample_stall()
+        t[0] += 6.0
+    assert screen._stall_showing
+    assert screen._stall.inputs_used
+    assert screen._stall_heading == "This design may just be slow, not broken"
+    assert "switch or button" not in " ".join(screen._stall_lines)
+
+
+def test_a_board_with_no_controls_never_suggests_using_them(
+    headless_pygame, fake_child, monkeypatch
+):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._has_inputs = False
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    assert screen._stall_heading == "This design may just be slow, not broken"
 
 
 def test_a_design_whose_file_cannot_be_read_still_gets_the_general_advice(

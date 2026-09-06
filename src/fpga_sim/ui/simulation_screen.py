@@ -27,7 +27,7 @@ import pygame
 from fpga_sim.session_config import update_session
 from fpga_sim.sim_link import drain, send
 from fpga_sim.sim_session_log import save_session_stats
-from fpga_sim.stall import StallWatch, divider_bits, stall_message
+from fpga_sim.stall import StallWatch, divider_bits, stall_heading, stall_message
 from fpga_sim.ui.board_display import BoardInputs, FPGABoard
 from fpga_sim.ui.components import debug_view_enabled, pwm_display_enabled, set_debug_view
 from fpga_sim.ui.constants import get_font as _get_font
@@ -142,6 +142,7 @@ class SimulationScreen:
         # is exactly why the message has to be measured rather than predicted.
         self._stall = StallWatch()
         self._stall_showing = False
+        self._stall_heading = ""
         self._stall_lines: list[str] = []
         self._stall_rect: pygame.Rect | None = None
         try:
@@ -176,6 +177,9 @@ class SimulationScreen:
             # when the sim starts — the overlays live in that strip (U34).
             reserve_footer_space=True,
         )
+        # A board with no controls at all can never be "waiting for input", so
+        # the advisory's alternative reading does not apply to it (U48).
+        self._has_inputs = bool(self.board.switches or self.board.buttons)
         # Boundary-channel -> widget map + per-channel role (U37): constant per
         # board, cached. Without a board_def (generic run) the widgets map 1:1.
         if board_def is not None:
@@ -612,6 +616,17 @@ class SimulationScreen:
         coarse = self.board.visual_signature(quantize=COARSE_LEVELS)
         return (coarse if self.shots.due(coarse, now) else None), now
 
+    def _input_signature(self) -> tuple[object, ...]:
+        """Switch and button state, for "has anyone touched this board?".
+
+        Deliberately *not* fed to the quiet timer -- see :meth:`_sample_stall`.
+        Latched buttons count: a latch is somebody having used the board.
+        """
+        return (
+            tuple(sw.state for sw in self.board.switches),
+            tuple((b.pressed, b.latched) for b in self.board.buttons),
+        )
+
     def _sample_stall(self) -> None:
         """Ask the stall watch whether the board has gone quiet (U48).
 
@@ -625,6 +640,7 @@ class SimulationScreen:
             sim_ns,
             time.monotonic(),
             paused=self.panel.paused,
+            inputs=self._input_signature(),
         )
         if showing and not self._stall_showing:
             facts = self._stall.facts(
@@ -633,7 +649,13 @@ class SimulationScreen:
                 self.board_def.default_clock_hz if self.board_def else 0.0,
                 self.panel.effective_hz,
             )
-            self._stall_lines = stall_message(facts, self._divider_bits)
+            # A board with controls that nobody has touched is likelier to be
+            # waiting than stalled -- a design that lights an LED while a button
+            # is held is *correct* to show nothing.  Say that first.
+            waiting = self._has_inputs and not self._stall.inputs_used
+            self._stall_heading = stall_heading(waiting_for_input=waiting)
+            self._stall_lines = stall_message(facts, self._divider_bits, waiting_for_input=waiting)
+            print(f"[fpga-sim] {self._stall_heading}", flush=True)
             for line in self._stall_lines:
                 print(f"[fpga-sim] {line}", flush=True)
         if not showing:
@@ -648,7 +670,7 @@ class SimulationScreen:
         body = _get_font(max(9, round(12 * scale)))
         pad = max(8, round(12 * scale))
 
-        head = font.render("This design may just be slow, not broken", True, THEME.sim_info)
+        head = font.render(self._stall_heading, True, THEME.sim_info)
         lines = [body.render(t, True, THEME.sim_info) for t in self._stall_lines]
         close = body.render("[ Dismiss ]", True, THEME.sim_hint)
 
@@ -707,7 +729,7 @@ class SimulationScreen:
             self._connected,
             self.panel.paused,
             self._stall_showing,
-            tuple(self._stall_lines) if self._stall_showing else (),
+            (self._stall_heading, tuple(self._stall_lines)) if self._stall_showing else (),
             self.board.visual_signature(),
         )
         # A screenshot that is due forces the draw it will capture: on a static

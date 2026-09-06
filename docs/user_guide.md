@@ -54,15 +54,40 @@ Every number is measured on **your** machine during the quiet spell that just
 happened — none of them is a constant, so the figure for GHDL's mcode backend and
 the figure for NVC are different, and both are right.
 
+#### If you have not touched the controls, it says that instead
+
+A design that lights an LED while a button is held is **correct** to show nothing
+when nobody is pressing anything — and from the outside that is identical to a
+divider that is quietly counting: the inputs are still, the outputs are still, and
+simulated time is running. Nothing the simulator can observe separates them.
+
+So when the board has switches or buttons and none has been touched since the run
+began, the advisory leads with the likelier reading and keeps the arithmetic as the
+alternative:
+
+```text
+Nothing has changed on the board
+No LED or digit has changed in 10 s, and no switch or button has been touched.
+If your design follows the switches or buttons, try one: a design that is waiting
+  for input is right to show nothing.
+If instead it counts, it may just be slow here: in that time this machine simulated
+  500 k clock cycles = 10 ms of the board's 50 MHz.
+A 24-bit divider means 16.8 M cycles per step: about 87 s here, 336 ms on the real board.
+```
+
+Use a control — even once, even putting it straight back — and the simulator stops
+offering that explanation for the rest of the run.
+
 Two things it deliberately does **not** do:
 
 - **It never fires when simulated time has stopped.** A design that is merely slow
   and a simulator that has died look identical on screen, and blaming your divider
   for our crash would be worse than silence. Both conditions must hold.
-- **It ignores your switches and buttons.** Flipping a switch to see whether
-  anything is alive changes the picture without telling the simulator anything
-  about your design — so only LEDs and digits reset the timer, and poking at the
-  board while you wonder will not silence the thing that was about to explain it.
+- **It ignores your switches and buttons *for the timer*.** Flipping a switch to
+  see whether anything is alive changes the picture without telling the simulator
+  anything about your design — so only LEDs and digits reset the timer, and poking
+  at the board while you wonder will not silence the thing that was about to
+  explain it. Your inputs are noted only to decide which explanation leads.
 
 **[ Dismiss ]** hides it for this quiet spell. If the design produces output and
 then goes quiet again, it comes back — that second silence is worth a word too.

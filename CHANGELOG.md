@@ -59,6 +59,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     from a dead one will flip switches to find out — which is exactly when the
     timer needs to keep counting. `BoardDisplay.output_signature()` is the
     output-only companion to the redraw gate's `visual_signature()`.
+  - **It does not accuse a design that is simply waiting for input.** A design
+    that lights an LED while a button is held is *correct* to show nothing when
+    nobody is pressing anything — and from outside that is identical to a
+    divider quietly counting: still inputs, still outputs, simulated time
+    running. Nothing observable separates them, so when the board has controls
+    and none has been touched this run, the advisory leads with "try a switch"
+    and keeps the divider arithmetic as the alternative. The first version
+    asserted "your design may just be slow" and would have said it to a working
+    combinational lab.
   - Dismissible per quiet spell; a design that produces output and goes quiet
     again gets a second word.
 

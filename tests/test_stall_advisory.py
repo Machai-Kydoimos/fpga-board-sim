@@ -8,7 +8,13 @@ stopped, and losing the timer because they touched a switch.
 
 import pytest
 
-from fpga_sim.stall import DEFAULT_THRESHOLD_S, StallFacts, StallWatch, stall_message
+from fpga_sim.stall import (
+    DEFAULT_THRESHOLD_S,
+    StallFacts,
+    StallWatch,
+    stall_heading,
+    stall_message,
+)
 
 _T = DEFAULT_THRESHOLD_S
 
@@ -81,6 +87,70 @@ def test_dismissal_lasts_until_something_actually_changes():
     assert not w.sample("a", 4_000_000, _T + 90)
     w.sample("b", 5_000_000, _T + 91)  # the design moved
     assert w.sample("b", 6_000_000, _T + 91 + _T + 1)  # and it may speak again
+
+
+# ── A design that is merely waiting for input ────────────────────────────────
+#
+# The false positive this module was shipped with.  A design that lights an LED
+# while a button is held is *correct* to show nothing when nobody is pressing
+# anything -- and on the wire that is indistinguishable from a stalled divider:
+# static inputs, static outputs, simulated time advancing.  The trigger cannot
+# separate them, so the message must carry both readings.
+
+
+def test_an_idle_input_follower_still_trips_the_watch():
+    """It has to: there is no observation that separates it from a slow divider."""
+    w = StallWatch()
+    leds_all_off = ((0,) * 10, ())
+    nobody_touching = (("off",) * 10, ())
+    w.sample(leds_all_off, 1_000_000, 0.0, inputs=nobody_touching)
+    assert w.sample(leds_all_off, 9_000_000, _T + 1, inputs=nobody_touching)
+
+
+def test_untouched_controls_are_remembered():
+    w = StallWatch()
+    quiet = ((0,) * 10, ())
+    w.sample(quiet, 1_000_000, 0.0, inputs=("a",))
+    w.sample(quiet, 2_000_000, 1.0, inputs=("a",))
+    assert not w.inputs_used
+
+
+def test_a_touched_control_is_remembered_even_after_it_is_put_back():
+    w = StallWatch()
+    quiet = ((0,) * 10, ())
+    w.sample(quiet, 1_000_000, 0.0, inputs=("a",))
+    w.sample(quiet, 2_000_000, 1.0, inputs=("b",))
+    w.sample(quiet, 3_000_000, 2.0, inputs=("a",))
+    assert w.inputs_used, "flipping a switch back is still having used the board"
+
+
+def test_using_a_control_does_not_reset_the_quiet_timer():
+    """The original rule survives: poking the board must not silence the advice."""
+    w = StallWatch()
+    quiet = ((0,) * 10, ())
+    w.sample(quiet, 1_000_000, 0.0, inputs=("a",))
+    assert w.sample(quiet, 9_000_000, _T + 1, inputs=("b",))
+
+
+def test_an_untouched_board_is_told_to_try_a_switch_first(facts):
+    """The fix for the false positive: the likelier reading leads."""
+    head = stall_heading(waiting_for_input=True)
+    lines = stall_message(facts, divider_bits=24, waiting_for_input=True)
+    assert head == "Nothing has changed on the board"
+    assert "may just be slow" not in head
+    assert "no switch or button has been touched" in lines[0]
+    assert "try one" in lines[1]
+    # ...and the divider arithmetic is still there, as the alternative
+    assert any("16.8 M cycles per step" in line for line in lines)
+    assert any("If instead it counts" in line for line in lines)
+
+
+def test_a_board_that_has_been_used_gets_the_direct_claim(facts):
+    head = stall_heading(waiting_for_input=False)
+    lines = stall_message(facts, divider_bits=24, waiting_for_input=False)
+    assert head == "This design may just be slow, not broken"
+    assert "switch or button" not in " ".join(lines)
+    assert "wall-clock" in lines[0]
 
 
 # ── The arithmetic ───────────────────────────────────────────────────────────
