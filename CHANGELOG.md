@@ -154,6 +154,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     load yet.
   - The file picker gains the **(?)** help button the other screens already had.
 
+- **A weekly CI tripwire on the install documentation.** `ci.yml` installs every
+  simulator from a version-pinned release asset with a checked sha256, because a
+  required check must not go red when a package index has a bad afternoon — which
+  is right for a gate and useless as a rehearsal: it proves the pinned zip works,
+  never that `winget install ghdl.ghdl.ucrt64.mcode` still resolves to anything.
+  The new `install-docs.yml` asks that question instead, running the commands a
+  reader actually types — README's quick start and `docs/install.md`'s per-OS
+  matrix — verbatim on Linux, macOS and Windows, and ending where the docs end,
+  at `uv run pytest`. Weekly, on demand, and on pull requests that touch the
+  install docs; **never a required check**, because it fails for reasons a
+  contributor did not cause and cannot fix, and that is the signal.
+  - `tests/test_install_docs_workflow.py` keeps the two from drifting in the
+    direction that rots: every command the workflow runs *as documentation* must
+    still appear in the document it came from.
+  - It also verifies package identifiers against the winget manifest repository
+    directly, so the "does this package still exist?" half reports even on runner
+    images where winget itself is absent.
+  - **It found a live defect on its first run.** `brew install ghdl` — the macOS
+    instruction in `docs/install.md` — has been broken since **2026-09-01**:
+    GHDL's Homebrew *cask* was disabled for failing the macOS Gatekeeper check,
+    and there is no formula to fall back to. macOS GHDL is now documented as the
+    official release tarball, fetched with `curl` (a browser download carries the
+    quarantine attribute and Gatekeeper blocks it the same way), and NVC is
+    recommended as the shorter macOS path. It also confirmed the other open
+    question: `winget install ghdl.ghdl.ucrt64.mcode` still resolves and installs.
+  - **And a second one, on every platform.** `uv sync` — the one command the
+    install docs tell a reader to run — died inside a setuptools traceback on any
+    machine whose newest Python is 3.14: cocotb 2.0.1 refuses to build there, and
+    `requires-python = ">=3.10"` let uv pick 3.14 anyway. Now `>=3.10,<3.14`, so
+    uv selects (or downloads) an interpreter that works. The CI test matrix could
+    not have caught this — every job in it pins its own `python-version`, which is
+    exactly what a student does not do.
+
 - **The pre-standard Synopsys packages now work** (U50). `std_logic_arith`,
   `std_logic_unsigned` and their siblings predate `ieee.numeric_std` and are not
   part of any VHDL standard, so GHDL refuses them outright — *"use of synopsys

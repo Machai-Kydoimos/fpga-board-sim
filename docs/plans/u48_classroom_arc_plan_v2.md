@@ -3,7 +3,11 @@
 *v2 · Revised 2026-09-05 after Rick's review of the v1 draft and inspection of the real course lab
 material · Status: **EXECUTING** — approved 2026-09-05; PR 0 ✅ (cards U48–U54 + D17 + P34
 filed, the queue renumbered — peripherals → v0.24.0, D16 → v0.25.0 — and this plan committed);
-PR 0b ✅ (the plans moved here, `docs/README.md` written). **Next: Gate A.** No other PR started · Supersedes
+PR 0b ✅ (the plans moved here, `docs/README.md` written); Gate A soak half ✅ (§4.1);
+PRs 1–6c ✅ merged 2026-09-06 — U50 Synopsys acceptance, U49 first-run and board-selector repair,
+D17 split + `paths.py`, and **U53, the pin map, working end to end**. **Next: the folder contract
+(§2 D-16), the DE2-115/VEEK-MT2 display pins, `install-docs.yml` (§2 D-19), then PR 8** ·
+Supersedes
 [u48_classroom_arc_plan.md](u48_classroom_arc_plan.md) (v1, kept as the record of how the arc was
 first framed) · Companion to [improvement_roadmap.md](../improvement_roadmap.md)*
 
@@ -136,7 +140,7 @@ carry (F18).
 | D-2 | Target boards | **DE10-Standard and Basys 3 first**, then DE10-Lite, DE0-CV, DE1-SoC, DE2-115, iCEstick, Tang Nano 9K, ULX3S (revised 2026-09-05 in review; v1 excluded Digilent) |
 | D-3 | Where lab material lives | **Outside this project** — no `labs/`, no exercises, no verbatim solutions. **Refined 2026-09-05:** *lab-shaped* reference designs (same skills as Labs 1–3, different specifics) and a tool tutorial written in the labs' shape **are** in scope; they double as Gate A's soak material |
 | D-4 | Install path | **Both** lab machines and students' own laptops |
-| D-5 | Multi-file designs | **Revised 2026-09-05:** *not* shipped this arc — the documented one-file rule instead ("paste sub-entities above your top level"); **U51** stays carded for v0.24.0 and is the **first item to pull back in** if time appears (§9). Rick traded it for D-6 |
+| D-5 | Multi-file designs | **Reversed 2026-09-06 — U51 is back in this arc.** v2 deferred it to v0.24.0, traded for D-6, with U51 named the first item to pull back in. The trigger arrived: a *second* course (BI-PNO, Basys 3 + Vivado) whose student projects are multi-file to the core — nine sources plus five testbenches in one, six plus one in the other — and which is organized around testbenches rather than board I/O. The one-file rule ("paste sub-entities above your top level") does not survive contact with that material, and D-16 below makes the sibling set explicit anyway |
 | D-6 | `sim_bridge.py` split | **Do the full split now**, PR 2 (reaffirmed 2026-09-05 with the trade above) |
 | D-7 | The two `.adoc` talk decks | **Leave untouched this arc** |
 | D-8 | How the pin map finds the constraint file | **Auto-detect** the single `.qsf`/`.xdc`/`.pcf`/`.cst`/`.lpf` beside the picked `.vhd`, show it on the preview, **plus `--pinmap PATH`** for the explicit case; fall back to the existing name matching when none is present |
@@ -147,6 +151,14 @@ carry (F18).
 | D-13 | Spelling | **US English everywhere**, identifiers included; extend the guard's word list as new forms appear |
 | D-14 | Waveform format | **FST is the default whenever capture is enabled**; VCD stays selectable; docs state sizes per simulated millisecond and where files go |
 | D-15 | Time vocabulary | Every number the UI or docs show is labeled **simulated time** or **wall-clock time**; the stall advisory and the tutorial explain the ratio, measured on this machine |
+| D-16 | Where the simulator reads a project from | **Our own folder contract — *one folder = one project* — instead of learning each EDA suite's layout.** Copy the design files and the `.qsf`/`.xdc` into one directory, pick the top level, and everything beside it is available to it. Rick's reasoning, and it is decisive: Vivado's layout is user-configurable and version-dependent, so chasing it is a losing game that we would lose again on the next release. The Vivado-specific discovery path drafted on 2026-09-06 is **withdrawn**. This is already what `discover_pinmap` does; the work is *documenting* it, plus saying so when a constraint file exists **nearby but not in the folder** — a teaching moment, never a guess |
+| D-17 | Two more course boards | **DE2-115 and VEEK-MT2** join D-2's list (Rick, 2026-09-06). **VEEK-MT2 is electrically a DE2-115** — same EP4CE115, same Y2 clock, same LED/switch/button pins, eight digits — so one cited HEX source covers both. Both need `seven_seg.segment_pins` hand-authored before the pin map can target them |
+| D-18 | The BI-PNO course's projects | **Not a gap to close in this arc.** Neither project was ever wired to a board: no source declares an LED, switch or segment port, no `.runs/` directory exists, and project 1's `.xdc` is untouched Digilent boilerplate binding names that appear in no design file. They need a student to write a board top level — a design exercise, not a tool feature. What they *do* need from us is **U51** (D-5) and, later, **U54**. Project 2 additionally wants PS/2, which is unmodelled |
+| D-19 | How the install docs get verified | **A scheduled CI workflow, not a clean-machine rehearsal** (Rick, 2026-09-06). `.github/workflows/install-docs.yml` runs the *documented* commands verbatim on all three operating systems — including the F23 unknown, whether `winget install ghdl.ghdl.ucrt64.mcode` still resolves, which `ci.yml`'s pinned-zip job deliberately sidesteps. Non-blocking by design and never a required check. **This un-gates PR 10 (`--doctor`).** Known limit: a hosted runner is a clean *machine*, not a messy student's machine, and has no display — the troubleshooting half of `docs/install.md` stays a human job |
+
+> **`D-n` is a decision in this table; `Dn` is a roadmap card.** The hyphen is the whole
+> difference, and D-16/D-17 above now sit beside cards **D16** (simulator sandbox → v0.25.0) and
+> **D17** (the `sim_bridge.py` split, shipped as PR 2). Read the hyphen.
 
 D-3 (refined) and D-8/D-9 are the consequential ones: they are why this plan has a pin map and a
 generics dialog instead of a curriculum, and why the example work (PR 11) is lab-*shaped* rather
@@ -472,12 +484,18 @@ entity-not-found hint is the *more* common, and both belong in PR 9. The "too ma
 diagnostic also demonstrates F5 exactly: its caret sits at **column 45**, under `open`, and the
 error dialog strips it to column 0.
 
-### Still outstanding — the half that needs hardware
+### Still outstanding — the half that needed hardware
 
-**The clean-machine install rehearsal has not run.** It needs a Windows laptop and a macOS laptop
-with clean profiles, following `docs/install.md` verbatim, and the `winget install
-ghdl.ghdl.ucrt64.mcode` pre-flight (F23) — *now, not the week of the lab*. **PR 10 (`--doctor`) is
-gated on it**, per §7. Everything else in the arc can proceed meanwhile.
+**Resolved 2026-09-06 by D-19: CI does it instead.** The original plan was a clean-machine
+rehearsal on a Windows laptop and a macOS laptop, following `docs/install.md` verbatim, with the
+`winget install ghdl.ghdl.ucrt64.mcode` pre-flight (F23) — and **PR 10 (`--doctor`) was gated on
+it**. Rick's observation is that a hosted runner already *is* a clean machine, and unlike a laptop
+it re-runs every week and catches the rot as it happens. `.github/workflows/install-docs.yml`
+covers it; **PR 10 is un-gated**.
+
+What the substitution does not buy: a runner has no display, no prior Python, no Store Python, no
+half-installed MSYS2 and no group policy, so it exercises the install matrix and not the
+troubleshooting section. Those paths stay unrehearsed until someone runs them on a real profile.
 
 ---
 
@@ -491,7 +509,7 @@ anywhere** (2026-09-04 corollary). Next free before this arc is **U48 · D17 · 
 | **U48** | "It looks frozen" — runtime stall advisory **+ opt-in generic override** (graduates **P17**) | 1 | shipped (PRs 7, 8) |
 | **U49** | Self-service first run — direct launch, picker/selector defects, drag-and-drop, board-name repair | 1 | shipped (PRs 1, 4, 5, 13) |
 | **U50** | Student-error diagnostics — Synopsys acceptance + note, hint coverage, caret preservation, `--doctor` | 1 | shipped (PRs 3, 9, 10) |
-| **U51** | Multi-file designs — sibling analysis to a fixpoint, non-fatal neighbors; acceptance test = the split T80 system (F3) | 2 | **carded, deferred → v0.24.0** (D-5); first pull-back candidate |
+| **U51** | Multi-file designs — sibling analysis to a fixpoint, non-fatal neighbors; acceptance test = the split T80 system (F3) | 2 | **pulled back into this arc 2026-09-06** (D-5 reversed); the folder contract (D-16) is its other half |
 | **U52** | Learn-by-example — lab-shaped references + target-board native references (graduates **P11**) | 3 | shipped (PR 11) |
 | **U53** | **Project pin map** — run a design through its own `.qsf`/`.xdc`/… constraint file; 7-segment pin data for the target boards | 1 | shipped (PR 6) — the centerpiece |
 | **U54** | Testbench runner — analyze the folder, elaborate the testbench, capture FST, open the viewer | 2 | **carded → v0.24.0** (D-11); manual recipe documented in PR 12 |
@@ -998,6 +1016,22 @@ Arc-level, end to end:
 
 ## 12. Revision log
 
+- **Stack merge + four decisions — 2026-09-06.** PRs 1–6c merged (U50 Synopsys acceptance, U49
+  first run + board selector, D17 split, U53 pin map). Rick then supplied material that moved four
+  things, recorded as **D-16…D-19** and a reversal of **D-5**. The reversal is the substantive one:
+  a second course (BI-PNO — Basys 3, Vivado, Czech) whose student projects are multi-file and
+  testbench-organized makes the one-file rule untenable, so **U51 comes back into this arc**. D-16
+  replaces "teach the tool each EDA layout" with our own *one folder = one project* contract, after
+  Rick pointed out that Vivado's layout is user-configurable and version-dependent — a Vivado
+  discovery path had been drafted and is withdrawn. D-19 replaces the clean-machine install
+  rehearsal with a weekly CI workflow and **un-gates PR 10**. D-18 records what the BI-PNO projects
+  actually are, so the question is not reopened: never wired to a board, never synthesized, and
+  blocked on a design exercise rather than on us.
+  Two mechanical lessons from the merge itself, both worth carrying: GitHub **closes** a stacked PR
+  rather than retargeting it when its base branch is deleted by a merge, and the PR cannot be
+  reopened until that branch exists again — so merge **without** `--delete-branch`, rebase and
+  retarget the next PR, and delete the branches at the end. And a squash merge makes every
+  descendant branch need `git rebase --onto main <old-base>` before its diff means anything.
 - **v1 — 2026-09-05 (draft).** Framed the arc around U21 board-native mode ("Terasic lab files are
   board-native"), a runtime frozen-board advisory, multi-file in-arc, and a docs refresh; excluded
   Digilent boards.

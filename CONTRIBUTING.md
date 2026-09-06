@@ -577,6 +577,35 @@ Every push and pull request runs the following jobs:
 | Test macOS + NVC | macos-latest | `nickg/setup-nvc` action (Homebrew) | full suite |
 | Board-data drift | ubuntu-latest | none (network + `GITHUB_TOKEN`) | n/a — re-syncs every generated `boards/` source at its recorded pin and requires zero diff, then chains `sync_port_conventions --check` + `sync_led_colors --check` |
 
+### The install-docs tripwire (`install-docs.yml`, weekly)
+
+`ci.yml` installs every simulator from a version-pinned release asset with a
+checked sha256, because a required check must not go red when a package index
+has a bad afternoon. That is right for a gate and useless as a rehearsal: it
+proves the pinned zip works, never that `winget install ghdl.ghdl.ucrt64.mcode`
+still resolves to anything.
+
+`.github/workflows/install-docs.yml` asks the other question. It runs the
+commands a reader actually types — README.md's quick start and
+`docs/install.md`'s per-OS matrix — verbatim on Linux, macOS and Windows, and
+ends where the docs end, at `uv run pytest`. It runs weekly, on
+`workflow_dispatch`, and on PRs that touch the install docs themselves.
+
+**It must never become a required check.** It fails for reasons a contributor
+did not cause and cannot fix in their PR — a Homebrew formula renamed, a winget
+manifest withdrawn, an apt mirror behind — and that is exactly the signal it
+exists to raise. When it goes red, the fix is usually a documentation edit.
+
+`tests/test_install_docs_workflow.py` keeps the two honest in the direction that
+rots: every command the workflow runs *as documentation* must still appear in
+the document it came from. Change a command in `docs/install.md` and the test
+fails until the workflow follows. It deliberately does not check the reverse —
+the docs carry per-distro and from-source paths no hosted runner can rehearse.
+
+A hosted runner is not a messy student machine: no prior Python, no Store
+Python, no half-installed MSYS2, no display, no group policy. The
+troubleshooting half of `docs/install.md` stays a human job.
+
 ### The `slow` marker
 
 Tests that invoke a real simulator subprocess are marked `@pytest.mark.slow`
