@@ -122,6 +122,7 @@ class StallWatch:
         self.threshold_s = threshold_s
         self.linger_s = threshold_s * _LINGER_FACTOR
         self._last_quiet_at: float | None = None
+        self._last_now: float | None = None
         self._signature: object = None
         self._quiet_since: float | None = None
         self._sim_ns_at_quiet: int = 0
@@ -139,6 +140,7 @@ class StallWatch:
         self._quiet_since = None
         self.fired = False
         self._last_quiet_at = None
+        self._last_now = None
 
     def sample(
         self,
@@ -157,12 +159,17 @@ class StallWatch:
         how "the simulator is still working" is told from "the simulator
         stopped".
 
+        *paused* freezes the whole thing: no quiet time accrues while the user
+        has stopped the run, and none is lost either.
+
         *inputs* is the switch/button state.  It is **recorded, never acted on**:
         it does not reset the quiet timer (a student poking at the board must not
         silence the thing that was about to explain it) and it does not suppress
         the advisory.  All it does is set :attr:`inputs_used`, which decides
         which explanation the message leads with.
         """
+        delta = now - self._last_now if self._last_now is not None else 0.0
+        self._last_now = now
         if clock_hz is not None and clock_hz != self._clock_hz:
             # The virtual clock is the basis of every figure in the message, so
             # a window that straddles a change to it would report cycles that
@@ -185,15 +192,22 @@ class StallWatch:
             self.fired = False
             return self._lingering(now)
         if paused:
-            # A paused run advances no simulated time, so the "still working"
-            # clause could never be satisfied -- but say it explicitly rather
-            # than relying on that, because a pause is not a symptom.  The
-            # linger does not apply either: the user stopped it on purpose.
-            self._quiet_since = now
-            self._sim_ns_at_quiet = sim_ns
-            self.fired = False
-            self._last_quiet_at = None
-            return False
+            # A pause is not the board doing something, so it neither starts a
+            # quiet spell nor ends one: both clocks are shifted forward by the
+            # elapsed wall time, which leaves everything exactly as still as it
+            # was, and whatever was being offered stays on offer.
+            #
+            # Freezing rather than resetting matters at both ends.  Resetting
+            # would make paused wall-clock time look like evidence of a stall
+            # (it is not -- no simulated time passes either); *clearing* would
+            # take the offer away at the worst possible moment, since pausing to
+            # read it carefully is the obvious thing to do with a board that
+            # will not move.
+            if self._quiet_since is not None:
+                self._quiet_since += delta
+            if self._last_quiet_at is not None:
+                self._last_quiet_at += delta
+            return self.fired or self._lingering(now)
         if self._quiet_since is None:
             self._quiet_since = now
             self._sim_ns_at_quiet = sim_ns

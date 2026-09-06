@@ -51,6 +51,13 @@ appears, and if your design is a button that lights an LED and you simply were n
 pressing it, you can ignore the whole thing — touch a control and it withdraws by
 itself.
 
+**Pausing changes nothing about it.** Wall-clock time spent paused is not evidence
+of a stall — no simulated time passes either — so a pause never raises the offer,
+and it never takes one away: stopping the run to read the numbers carefully is the
+obvious thing to do with a board that will not move, and it works. Time already
+spent waiting is kept, not discarded, so a board that was eight seconds into a
+silence when you paused is two seconds away from the offer when you resume.
+
 **One step does not make it go away.** A design that toggles an LED once every
 thirty seconds is exactly what this is for, so a single blink after a long silence
 leaves the offer where it is: that blink is evidence the design *is* just slow, not

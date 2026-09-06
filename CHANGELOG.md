@@ -91,6 +91,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     never closed by the design at all: only [ Close ] closes it.
   - Opening it **re-measures**, so somebody who watched for a minute before
     asking is told about the minute rather than about the first ten seconds.
+  - **A pause freezes it rather than resetting or clearing it.** Paused
+    wall-clock time is not evidence of a stall (no simulated time passes
+    either), so a pause never raises the offer — and it never withdraws one,
+    because pausing to read the numbers carefully is the obvious thing to do
+    with a board that will not move. Waiting already done is kept: a board eight
+    seconds into a silence when it was paused is two seconds from the offer when
+    it resumes.
 
 - **A design can be split across several files** (U51). `analyze_vhdl` ran
   exactly one `-a`, so a design was one file — but the course's Lab 3 ships

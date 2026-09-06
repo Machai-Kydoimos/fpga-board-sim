@@ -52,11 +52,38 @@ def test_a_stopped_simulator_is_never_blamed_on_the_design():
 
 
 def test_a_paused_run_is_not_a_symptom():
+    """Wall-clock time spent paused is not evidence of anything."""
     w = StallWatch()
     w.sample("same", 1_000_000, 0.0)
-    assert not w.sample("same", 1_000_000, _T + 5, paused=True)
-    # and un-pausing starts the clock again rather than firing instantly
-    assert not w.sample("same", 2_000_000, _T + 6)
+    for t in (_T + 5, _T * 5, _T * 20):
+        assert not w.sample("same", 1_000_000, t, paused=True)
+
+
+def test_pausing_does_not_take_an_offer_away():
+    """Pausing to read the thing carefully is the obvious move; do not punish it."""
+    w = StallWatch()
+    w.sample("same", 1_000_000, 0.0)
+    assert w.sample("same", 9_000_000, _T + 1)
+    for t in (_T + 2, _T + 40, _T + 400):
+        assert w.sample("same", 9_000_000, t, paused=True), "the offer must survive a pause"
+
+
+def test_a_pause_freezes_the_quiet_clock_without_losing_it():
+    """Neither accrue time while paused nor throw away the time already earned."""
+    w = StallWatch()
+    sim = 0
+    for t in (0.0, 4.0, 8.0):
+        sim += 4_000_000
+        w.sample("same", sim, t)
+    assert w.facts(sim, 8.0, 50e6, 50e6).quiet_s == pytest.approx(8.0)
+
+    for t in (20.0, 60.0, 108.0):
+        w.sample("same", sim, t, paused=True)
+    assert w.facts(sim, 108.0, 50e6, 50e6).quiet_s == pytest.approx(8.0), "frozen"
+
+    sim += 2_000_000
+    assert w.sample("same", sim, 110.0), "the 8 s already earned still counts"
+    assert w.facts(sim, 110.0, 50e6, 50e6).quiet_s == pytest.approx(10.0)
 
 
 def test_a_switch_flip_must_not_reset_the_timer():

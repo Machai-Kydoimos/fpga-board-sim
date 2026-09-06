@@ -1081,6 +1081,39 @@ def test_a_click_on_the_indicator_does_not_reach_the_board(
     assert screen._chrome_press(ev)
 
 
+def test_the_offer_can_be_opened_and_read_while_paused(headless_pygame, fake_child, monkeypatch):
+    """Pause, then click: stopping the run to read carefully has to work."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+
+    screen.panel.paused = True
+    screen._sample_stall()
+    assert screen._stall_showing, "pausing must not withdraw the offer"
+
+    screen._render_frame()
+    assert screen._stall_hint_rect is not None
+    headless_pygame.event.post(
+        headless_pygame.event.Event(
+            headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_hint_rect.center
+        )
+    )
+    assert screen._pump_events() is None
+    assert screen._stall_expanded
+    assert screen._stall_lines
+    screen._render_frame()
+    assert screen._stall_rect is not None, "and it renders, paused"
+
+
+def test_pausing_alone_never_raises_the_offer(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    assert not _run_quiet(screen, monkeypatch, seconds=120.0, paused=True)
+    assert screen._stall_hint_rect is None
+
+
 def test_the_numbers_are_measured_not_constant(headless_pygame, fake_child, monkeypatch):
     child, _client = fake_child
     screen = _make_screen(headless_pygame, child)
