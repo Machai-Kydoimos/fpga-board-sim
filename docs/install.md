@@ -7,8 +7,11 @@ is the complete matrix, including from-source builds and the Windows specifics.
 
 ## Prerequisites
 
-- **Python 3.10+**, installed as a **standalone** interpreter (not the Windows
+- **Python 3.10–3.13**, installed as a **standalone** interpreter (not the Windows
   Store build — see [Set up the Python environment](#set-up-the-python-environment)).
+  The upper bound is cocotb's: it refuses to build on 3.14. You do not have to do
+  anything about it — `uv` reads the bound from `pyproject.toml` and fetches a
+  suitable interpreter itself, even if the only Python on your machine is newer.
 - **One VHDL simulator**, either [GHDL](#ghdl) or [NVC](#nvc). Both can coexist;
   the active one is chosen by the in-app `SIM:` toggle or the `--sim` flag.
 - **git**, to clone the repository.

@@ -2,7 +2,14 @@
 name = "fpga-simulator"
 version = "0.22.0"
 description = "Interactive FPGA board simulator with GHDL-backed VHDL simulation"
-requires-python = ">=3.10"
+# Upper bound is cocotb's, not ours: cocotb 2.0.1 refuses to build on 3.14
+# ("only supports a maximum Python version of 3.13").  Without the bound, uv
+# picks the newest interpreter it can find and `uv sync` -- the one command the
+# install docs tell a reader to run -- dies inside a setuptools traceback.  Found
+# by the install-docs workflow on a runner whose default python3 is 3.14; the CI
+# test matrix could not have found it, because every job there pins its own
+# python-version.  Lift this when cocotb supports 3.14 (roadmap P4).
+requires-python = ">=3.10,<3.14"
 license = {text = "MIT"}
 authors = [
     {name = "Richard Graham", email = "rickhg12hs@users.noreply.github.com"},

@@ -179,6 +179,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     quarantine attribute and Gatekeeper blocks it the same way), and NVC is
     recommended as the shorter macOS path. It also confirmed the other open
     question: `winget install ghdl.ghdl.ucrt64.mcode` still resolves and installs.
+  - **And a second one, on every platform.** `uv sync` — the one command the
+    install docs tell a reader to run — died inside a setuptools traceback on any
+    machine whose newest Python is 3.14: cocotb 2.0.1 refuses to build there, and
+    `requires-python = ">=3.10"` let uv pick 3.14 anyway. Now `>=3.10,<3.14`, so
+    uv selects (or downloads) an interpreter that works. The CI test matrix could
+    not have caught this — every job in it pins its own `python-version`, which is
+    exactly what a student does not do.
 
 - **The pre-standard Synopsys packages now work** (U50). `std_logic_arith`,
   `std_logic_unsigned` and their siblings predate `ieee.numeric_std` and are not
