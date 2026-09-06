@@ -33,6 +33,7 @@ from fpga_sim.pinmap import (
     PinMapProblem,
     build_pin_map,
     discover_pinmap,
+    nearby_pinmaps,
     read_pinmap,
 )
 from fpga_sim.vhdl_interface import (
@@ -338,6 +339,36 @@ def _pinmap_message(match: PinMapMatch) -> str:
     return "\n".join(lines)
 
 
+def _folder_contract_hint(path: Path) -> str:
+    """Say that a constraint file exists in this project but not in this folder.
+
+    The one message the folder contract owes a user.  Silence here is read as
+    "this tool cannot do pin maps", when the truth is one copy away -- and the
+    student least able to tell those apart is the one who opened a Vivado
+    project and landed three directories from their own ``.xdc``.
+
+    Returns ``""`` when there is nothing to say, which is the common case.
+    """
+    found = nearby_pinmaps(path)
+    if not found:
+        return ""
+    lines = [
+        f"There is no constraint file in {path.parent}, so this design was checked "
+        "by port name instead of by pin.",
+        "",
+        "This project has one elsewhere:",
+    ]
+    lines.extend(f"    {p}" for p in found)
+    lines.append("")
+    lines.append(
+        f"Copy the one that describes {path.name} into the same folder as the design "
+        "and the simulator will map the design through it. One folder is one project: "
+        "the simulator reads the design, its neighbors and its constraint file from a "
+        "single directory, and never guesses at files outside it."
+    )
+    return "\n".join(lines)
+
+
 def check_vhdl_contract(
     path: str | Path,
     board_def: BoardDef | None = None,
@@ -353,6 +384,13 @@ def check_vhdl_contract(
     """
     path = Path(path)
     result = _try_pinmap(path, board_def, pinmap) or _check_contract(path, board_def)
+    # Only on a rejection, and only when no constraint file was in play at all:
+    # a design that ran needs no advice, and one the pin map already judged has
+    # been told about the file it used.
+    if not result.ok and result.pinmap is None and pinmap is None and discover_pinmap(path) is None:
+        hint = _folder_contract_hint(path)
+        if hint:
+            result = replace(result, message=f"{result.message}\n\n{hint}")
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:

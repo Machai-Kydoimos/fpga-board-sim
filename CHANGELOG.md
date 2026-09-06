@@ -61,6 +61,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     Full duty measures the honest 1/N brightness.
   - The preview badge and the session log say `pin map: <file>` rather than
     `generic`, and the wrapper names the constraint file it was built from.
+  - **One folder is one project.** The design, whatever it instantiates, and one
+    constraint file go in a single directory, and the simulator reads that
+    directory and nothing else. It deliberately does not learn Quartus's or
+    Vivado's project layout: Vivado's is user-configurable and
+    version-dependent, so a tool that chased it would be right today and wrong
+    after the next release — and wrong here means a design silently wired to the
+    wrong pins. Documented in `writing_designs.md` and `user_guide.md`.
+  - **A design still inside a tool's project tree is told where its constraint
+    file is**, rather than failing quietly. Vivado keeps sources in
+    `x.srcs/sources_1/new` and constraints in `constrs_1/new`, and silence there
+    reads as "this tool cannot do pin maps" when the truth is one copy away. The
+    search is anchored on the enclosing *project root*, so it can never reach
+    into the lab next door, and what it finds is used **for the message only** —
+    a file the user did not put beside the design is a guess about their intent,
+    and a wrong pin map is worse than no pin map.
   - The eight constraint-file parsers move from `scripts/` into the package as
     `fpga_sim.constraints`; they were importable only through a `sys.path`
     insert in the test suite.
