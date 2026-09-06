@@ -222,6 +222,7 @@ def _prepare_simulation(
     waveform: str | None,
     waveform_memories: bool | None,
     sim_path: str | None = None,
+    generic_overrides: dict[str, str] | None = None,
 ) -> _SimPrep:
     """Analyze (if needed), elaborate (NVC), resolve waveform, build the run cmd.
 
@@ -274,6 +275,7 @@ def _prepare_simulation(
             design_has_seg=_design_has_seg,
             match=match,
             design_has_rgb=_design_has_rgb,
+            generic_overrides=generic_overrides,
         )
         subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir, binary=sim_path),
@@ -425,6 +427,7 @@ def start_simulation(
     match: ConventionMatch | None = None,
     benchmark_secs: float | None = None,
     sim_path: str | None = None,
+    generic_overrides: dict[str, str] | None = None,
 ) -> SimChild:
     """Start a headless simulation child for single-window mode (U34).
 
@@ -452,6 +455,7 @@ def start_simulation(
         waveform,
         waveform_memories,
         sim_path=sim_path,
+        generic_overrides=generic_overrides,
     )
     env = prep.env
 

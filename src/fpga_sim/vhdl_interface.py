@@ -100,6 +100,11 @@ class _IfaceDecl:
     has_default: bool
     literal_width: int | None  # std_logic_vector with pure-literal bounds, else None
     type_text: str = ""  # lowercased declared type ("positive", "natural", ...)
+    #: The default expression as written, case preserved ("24", "'1'", "x\"FF\"").
+    #: Kept verbatim rather than evaluated: the generic override (U48) shows it
+    #: to the user and hands it back to the simulator, and neither wants our
+    #: interpretation of an expression VHDL is better at reading than we are.
+    default_text: str = ""
 
 
 def _strip_vhdl_comments(text: str) -> str:
@@ -183,7 +188,17 @@ def _parse_decls(body: str, *, ports: bool) -> list[_IfaceDecl] | None:
             span = a - b if kw == "downto" else b - a
             if span >= 0:
                 literal_width = span + 1
-        decls.append(_IfaceDecl(names, mode, ":=" in rest, literal_width, type_text.lower()))
+        _, _, default_text = rest.partition(":=")
+        decls.append(
+            _IfaceDecl(
+                names,
+                mode,
+                ":=" in rest,
+                literal_width,
+                type_text.lower(),
+                default_text.strip(),
+            )
+        )
     return decls
 
 

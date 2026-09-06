@@ -34,6 +34,7 @@ from typing import Any
 import pygame
 
 from fpga_sim.board_loader import BoardDef, find_board
+from fpga_sim.generics import design_generics, parse_cli_override, resolve
 from fpga_sim.paths import HDL_DIR
 from fpga_sim.pinmap import PinMapMatch
 from fpga_sim.session_config import load_session, push_recent, save_session
@@ -180,6 +181,13 @@ class SessionState:
     # mention the dialect once instead of leaving the user to find out on real
     # hardware.  Cleared with the file, like `convention`.
     synopsys: tuple[str, ...] = ()
+    # U48/D-9: generic values the user chose for this design, name -> literal.
+    # Empty is the normal state and means "run the design's own defaults" --
+    # the override is opt-in on purpose, because silently rewriting somebody's
+    # constant would make the simulator disagree with their hardware without
+    # saying so.  Travels with `vhdl_path` and is cleared with it: they belong
+    # to one file, and carrying them onto the next would be a trap.
+    generic_overrides: dict[str, str] = field(default_factory=dict)
     # True while ``vhdl_path`` is the board's bundled example rather than
     # something the user chose (U49).  A fresh profile starts on one so the
     # preview has something to run, and a board change re-points it -- the right
@@ -231,6 +239,7 @@ class SessionState:
             board_def=board,
             match=self.convention,
             pinmap=self.pinmap,
+            generic_overrides=self.generic_overrides,
         )
 
     def clear_analysis(self) -> None:
@@ -280,10 +289,11 @@ class ScreenController:
 
         *cli_board* and *cli_vhdl* start the session on a chosen board with a
         chosen file instead of at the selector -- see :meth:`_seed_from_cli`.
-        *cli_pinmap* and *cli_generics* are carried but not yet consumed: they
-        belong to U53 (the project pin map) and U48 (the generic override), and
-        are accepted here so the flag set stops changing shape between
-        releases.
+        *cli_pinmap* names the constraint file to bind the design through
+        (U53).  *cli_generics* are raw ``NAME=VALUE`` strings from ``--generic``
+        (U48); they are parsed here but only *resolved* once a design is loaded,
+        because whether ``CNTR_LEN`` is a real generic is a question about that
+        design and nobody else.
         """
         self.boards = boards
         self.screen = screen
@@ -308,6 +318,35 @@ class ScreenController:
         self._cli_vhdl = cli_vhdl
         self.cli_pinmap = cli_pinmap
         self.cli_generics: tuple[str, ...] = tuple(cli_generics or ())
+        self._cli_generic_pairs: dict[str, str] = {}
+        for raw in self.cli_generics:
+            parsed = parse_cli_override(raw)
+            if isinstance(parsed, str):
+                print(f"[fpga-sim] {parsed}", flush=True)
+            else:
+                self._cli_generic_pairs[parsed[0]] = parsed[1]
+
+    def _apply_cli_generics(self, vhdl_path: str | Path) -> dict[str, str]:
+        """Resolve ``--generic`` against the design that was just loaded.
+
+        Deferred to here rather than done at startup because "is CNTR_LEN a
+        generic of this design?" is a question about the design, and there is
+        no design at startup.  A name that does not resolve is *reported* --
+        on the CLI it is almost always a typo, and running the design unchanged
+        would look exactly like the flag not working.
+        """
+        if not self._cli_generic_pairs:
+            return {}
+        try:
+            text = Path(vhdl_path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return {}
+        accepted, problems = resolve(
+            design_generics(text, Path(vhdl_path).stem), self._cli_generic_pairs
+        )
+        for problem in problems:
+            print(f"[fpga-sim] {problem}", flush=True)
+        return accepted
 
     @staticmethod
     def _resolve_sim(
@@ -465,6 +504,7 @@ class ScreenController:
             res = check_vhdl_contract(path, board_def=self.board, pinmap=self.cli_pinmap)
             self.state.convention = res.match
             self.state.pinmap = res.pinmap
+            self.state.generic_overrides = self._apply_cli_generics(path)
             self.state.synopsys = res.synopsys
             ok, detail = res.ok, res.message
             title = "VHDL Error"
@@ -644,6 +684,7 @@ class ScreenController:
                 ok, detail = res.ok, res.message
                 s.convention = res.match
                 s.pinmap = res.pinmap
+                s.generic_overrides = self._apply_cli_generics(picked)
                 s.synopsys = res.synopsys
                 if not ok:
                     intent = ErrorDialog(
@@ -731,6 +772,7 @@ class ScreenController:
                 board_def=self.board,
                 match=_conv,
                 pinmap=self.state.pinmap,
+                generic_overrides=self.state.generic_overrides,
             ),
             detail=_detail,
         )
@@ -759,6 +801,7 @@ class ScreenController:
             res = check_vhdl_contract(Path(s.vhdl_path), board_def=board, pinmap=self.cli_pinmap)
             s.convention = res.match
             s.pinmap = res.pinmap
+            s.generic_overrides = self._apply_cli_generics(s.vhdl_path or "")
             s.synopsys = res.synopsys
             if not res.ok:
                 ErrorDialog(self.screen, "VHDL Error", res.message, example_path=example).run(
@@ -807,6 +850,7 @@ class ScreenController:
                     waveform_open=sess.get("waveform_open"),
                     waveform_memories=sess.get("waveform_memories"),
                     match=s.convention,
+                    generic_overrides=s.generic_overrides,
                 )
             except Exception as e:  # noqa: BLE001 - surface any launch failure in a dialog
                 sim_error = str(e)
@@ -879,6 +923,7 @@ class ScreenController:
             ok, detail = res.ok, res.message
             s.convention = res.match
             s.pinmap = res.pinmap
+            s.generic_overrides = self._apply_cli_generics(s.vhdl_path or "")
             s.synopsys = res.synopsys
         title = "VHDL Error"
         if ok:

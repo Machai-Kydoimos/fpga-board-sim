@@ -131,6 +131,7 @@ def _render_native_wrapper(
     match: ConventionMatch,
     board_def: BoardDef | None = None,
     duty: DutyMode = "off",
+    generic_overrides: dict[str, str] | None = None,
 ) -> str:
     """Render a ``sim_wrapper`` that runs a board-native design (U21 B3).
 
@@ -379,6 +380,7 @@ def _render_native_wrapper(
         *splice["duty_body"].splitlines(),
         "",
         f"  uut : entity work.{toplevel}",
+        *_generic_map_clause(generic_overrides),
         "    port map (",
         "      " + ",\n      ".join(pmap),
         "    );",
@@ -389,11 +391,48 @@ def _render_native_wrapper(
     return "\n".join(lines)
 
 
+def _generic_map_clause(overrides: dict[str, str] | None) -> list[str]:
+    """Build the ``generic map`` lines for a wrapper that otherwise has none.
+
+    The native (U21) and pin-map (U53) wrappers instantiate the design by its
+    own port names and pass it no generics -- those designs have none to pass,
+    by definition.  A user override is the one thing that gives them any, so
+    the clause appears only when there is something to put in it.
+    """
+    if not overrides:
+        return []
+    body = _generic_map_lines(overrides).rstrip(",\n")
+    return ["    generic map (", body, "    )"]
+
+
+def _generic_map_lines(overrides: dict[str, str]) -> str:
+    """Render overridden design generics as ``NAME => value,`` lines.
+
+    The value is written into the wrapper as a **literal**, rather than passed
+    as ``-gNAME=VALUE`` at run time the way the contract generics are.  Three
+    reasons, and the last one decides it:
+
+    * the design's generics are not the *wrapper's* generics, so forwarding
+      them would mean declaring a wrapper generic per design generic and
+      keeping the two lists in step;
+    * GHDL applies ``-g`` at ``-r`` while NVC bakes it at elaboration, and a
+      literal behaves identically on both;
+    * ``wrapper_is_stale`` compares the rendered wrapper, so a changed override
+      re-analyzes for free -- and a *bad* value becomes an analysis error the
+      user sees while they are still looking at the dialog, instead of a launch
+      failure a minute later.
+    """
+    return "".join(
+        f"      {name.upper()} => {value},\n" for name, value in sorted(overrides.items())
+    )
+
+
 def _render_wrapper(
     toplevel: str,
     board_def: BoardDef | None = None,
     design_has_seg: bool = False,
     match: ConventionMatch | None = None,
+    generic_overrides: dict[str, str] | None = None,
     duty: DutyMode | None = None,
     design_has_rgb: bool = False,
     pinmap: PinMapMatch | None = None,
@@ -424,9 +463,13 @@ def _render_wrapper(
     """
     mode = resolve_duty_mode(duty)
     if pinmap is not None:
-        return _render_pinmap_wrapper(toplevel, pinmap, board_def, duty=mode)
+        return _render_pinmap_wrapper(
+            toplevel, pinmap, board_def, duty=mode, generic_overrides=generic_overrides
+        )
     if match is not None:
-        return _render_native_wrapper(toplevel, match, board_def, duty=mode)
+        return _render_native_wrapper(
+            toplevel, match, board_def, duty=mode, generic_overrides=generic_overrides
+        )
 
     use_seg = board_def is not None and board_def.seven_seg is not None and design_has_seg
     splice = _duty_splice(_duty_channels(mode, has_seg=use_seg))
@@ -448,8 +491,15 @@ def _render_wrapper(
         rgb_generic = ""
         rgb_generic_map = ""
 
+    overrides = dict(generic_overrides or {})
+    # COUNTER_BITS is the one contract generic a user may override (U48): it is
+    # already forced below the design's own default, so an override replaces
+    # that forcing rather than sitting beside it.
+    counter_bits_actual = overrides.pop("counter_bits", None) or "COUNTER_BITS"
     content = _WRAPPER_TEMPLATE.read_text(encoding="utf-8").format(
         toplevel=toplevel,
+        extra_generic_map=_generic_map_lines(overrides),
+        counter_bits_actual=counter_bits_actual,
         seg_generic=seg_generic,
         seg_port=seg_port,
         seg_generic_map=seg_generic_map,
@@ -471,6 +521,7 @@ def _generate_wrapper(
     duty: DutyMode | None = None,
     design_has_rgb: bool = False,
     pinmap: PinMapMatch | None = None,
+    generic_overrides: dict[str, str] | None = None,
 ) -> Path:
     """Write :func:`_render_wrapper`'s output to ``work_dir/sim_wrapper.vhd``."""
     out = Path(work_dir) / "sim_wrapper.vhd"
@@ -483,6 +534,7 @@ def _generate_wrapper(
             duty=duty,
             design_has_rgb=design_has_rgb,
             pinmap=pinmap,
+            generic_overrides=generic_overrides,
         ),
         encoding="utf-8",
     )
@@ -498,6 +550,7 @@ def wrapper_is_stale(
     match: ConventionMatch | None = None,
     duty: DutyMode | None = None,
     pinmap: PinMapMatch | None = None,
+    generic_overrides: dict[str, str] | None = None,
 ) -> bool:
     """Report whether *work_dir*'s ``sim_wrapper.vhd`` differs from today's render.
 
@@ -533,6 +586,7 @@ def wrapper_is_stale(
             duty=duty,
             design_has_rgb=_has_rgb_generic(vhdl_text),
             pinmap=pinmap,
+            generic_overrides=generic_overrides,
         )
     except (OSError, UnicodeDecodeError):
         return True
@@ -727,6 +781,7 @@ def analyze_vhdl(
     sim_path: str | None = None,
     duty: DutyMode | None = None,
     pinmap: PinMapMatch | None = None,
+    generic_overrides: dict[str, str] | None = None,
 ) -> tuple[bool, str]:
     """Analyze the user's VHDL and the generated sim_wrapper.
 
@@ -812,6 +867,7 @@ def analyze_vhdl(
             duty=duty,
             design_has_rgb=_has_rgb_generic(_vhdl_text),
             pinmap=pinmap,
+            generic_overrides=generic_overrides,
         )
         result2 = subprocess.run(
             be.analyze_cmd(wrapper_path, work_dir, binary=sim_path),
@@ -880,6 +936,7 @@ def _render_pinmap_wrapper(
     match: PinMapMatch,
     board_def: BoardDef | None = None,
     duty: DutyMode = "off",
+    generic_overrides: dict[str, str] | None = None,
 ) -> str:
     """Render a ``sim_wrapper`` for a design mapped through its constraint file (U53).
 
@@ -1067,6 +1124,7 @@ def _render_pinmap_wrapper(
         *splice["duty_body"].splitlines(),
         "",
         f"  uut : entity work.{toplevel}",
+        *_generic_map_clause(generic_overrides),
         "    port map (",
         "      " + ",\n      ".join(pmap),
         "    );",

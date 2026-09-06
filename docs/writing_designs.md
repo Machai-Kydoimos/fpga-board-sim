@@ -264,6 +264,36 @@ channel duties.
   `uart_rx : in std_logic := '1'`). A default-less unmapped input is rejected — it
   would elaborate to an unbound signal.
 
+### Put your divider width in a generic
+
+The single most useful thing you can do to make a design of your own pleasant to
+simulate is to name its clock divider:
+
+```vhdl
+entity running_light is
+  generic (
+    CNTR_LEN : positive := 24        -- the hardware value; leave it alone
+  );
+  ...
+  signal count : unsigned(CNTR_LEN - 1 downto 0);
+```
+
+On the board, `CNTR_LEN = 24` at 50 MHz steps about three times a second. Here, the
+same design steps about once every minute and a half — indistinguishable, on screen,
+from a design that does not work.
+
+With the width in a generic you can turn it down for the simulator and leave the
+hardware value in the file, where it belongs:
+
+```bash
+fpga-sim --vhdl running_light.vhd --generic CNTR_LEN=4
+```
+
+Hard-coding `24` in the architecture works exactly as well on the bench and leaves you
+no lever here. See
+[generic overrides](user_guide.md#when-the-board-looks-frozen-generic-overrides) for
+which types can be overridden.
+
 ### The Synopsys packages are accepted
 
 A great deal of teaching and vendor example code opens with
