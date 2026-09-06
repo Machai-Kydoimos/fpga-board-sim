@@ -32,6 +32,7 @@ Three rules earned from real files rather than from the design sketch:
 
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -194,6 +195,167 @@ def discover_pinmap(vhdl_path: str | Path) -> Path | PinMapProblem | None:
             "Pass the one you mean with --pinmap <file>."
         )
     return found[0]
+
+
+#: Directories a nearby-search never descends into.  The first group is
+#: generic noise; the rest are the build trees Vivado and Quartus write beside
+#: a project, which are both enormous and full of *copies* -- a constraint file
+#: found inside one is a build artifact, not the project's own statement of
+#: intent.  ``.srcs`` is deliberately absent: that is where Vivado keeps the
+#: real sources and the real constraints, in sibling subdirectories.
+_SKIP_DIRS = frozenset(
+    {
+        ".git",
+        ".hg",
+        ".svn",
+        ".venv",
+        "venv",
+        "__pycache__",
+        ".Xil",
+        "node_modules",
+        "db",
+        "incremental_db",
+        "simulation",
+        "output_files",
+        "greybox_tmp",
+    }
+)
+_SKIP_SUFFIXES = (".runs", ".cache", ".hw", ".sim", ".ip_user_files", ".gen", ".data")
+
+#: What a *nearby* search will offer, which is narrower than what
+#: :func:`discover_pinmap` will read.  ``.xml`` is the difference: BoardStore
+#: writes one, and so does half the software ever shipped, so an ``.xml`` two
+#: directories away is far more likely to be somebody's project metadata than a
+#: pin file.  Beside the design it is the user's own deliberate choice and is
+#: honored; found by a search it would be a guess with a plausible-looking name
+#: attached, which is the worst kind.
+_NEARBY_SUFFIXES = frozenset(_DIALECTS) - {".xml"}
+
+
+def _searchable(name: str) -> bool:
+    return name not in _SKIP_DIRS and not name.startswith(".") and not name.endswith(_SKIP_SUFFIXES)
+
+
+#: A file whose suffix says "an EDA tool owns this directory".  Their whole job
+#: is to identify the *project root*, so a nearby-search can never wander into
+#: the lab next door: two labs side by side each have their own.
+_PROJECT_FILES = frozenset({".xpr", ".qpf", ".qsf", ".xise", ".ppr", ".prj"})
+
+#: Vivado puts the ``.xpr`` nowhere useful relative to sources, but it always
+#: writes these directories beside it, so their *parent* is the project root.
+_PROJECT_DIR_SUFFIXES = (".srcs", ".runs", ".cache", ".gen")
+
+
+def _is_project_root(path: Path) -> bool:
+    """Report whether an EDA tool owns this directory."""
+    try:
+        entries = list(path.iterdir())
+    except OSError:
+        return False
+    for entry in entries:
+        try:
+            if entry.is_file() and entry.suffix.lower() in _PROJECT_FILES:
+                return True
+            if entry.is_dir() and entry.name.endswith(_PROJECT_DIR_SUFFIXES):
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def _project_root(folder: Path, levels: int) -> Path | None:
+    """Find the nearest ancestor of *folder* that an EDA tool clearly owns.
+
+    Anchoring on a project root rather than on "a few directories up" is what
+    keeps the search honest.  A student with ``~/fpga/lab1`` and ``~/fpga/lab2``
+    beside each other must never be told that lab 1's ``.qsf`` describes the
+    design open from lab 2 -- and a plain upward search says exactly that,
+    confidently, with a real path attached.  Each lab has its own root, so the
+    search cannot reach across.
+
+    Ascent also stops at the filesystem root, the user's home directory, and a
+    directory holding a ``.git``: all three mean the boundary has been passed.
+    """
+    try:
+        home = Path.home().resolve()
+    except (OSError, RuntimeError):  # no home on this platform/profile
+        home = None
+    node = folder
+    for _ in range(levels):
+        if node.parent == node:
+            return None
+        node = node.parent
+        if node == home or node == Path(node.anchor):
+            return None
+        if _is_project_root(node):
+            return node
+        if (node / ".git").exists():
+            return None
+    return None
+
+
+def nearby_pinmaps(
+    vhdl_path: str | Path,
+    *,
+    levels: int = 4,
+    depth: int = 4,
+    limit: int = 3,
+    max_dirs: int = 300,
+) -> tuple[Path, ...]:
+    """Constraint files inside this design's project but not in its folder.
+
+    The simulator's contract is that one folder is one project (see
+    ``docs/writing_designs.md``): the design, its siblings and its constraint
+    file live together, and :func:`discover_pinmap` looks nowhere else.  That
+    is a deliberate refusal to learn each EDA suite's directory layout --
+    Vivado's is user-configurable and version-dependent, so a tool that chased
+    it would be wrong again on the next release.
+
+    The refusal has one cost worth paying off.  A student who points the
+    simulator straight into a Vivado project lands in ``x.srcs/sources_1/new``
+    while the ``.xdc`` sits two directories sideways in ``constrs_1/new``, and
+    silence there reads as "this tool cannot do pin maps" rather than "move one
+    file".  So this finds those, **for a message only**: nothing found here is
+    ever used to build a map, because a file the user did not put beside the
+    design is a guess about their intent, and a wrong pin map is worse than no
+    pin map.
+
+    Scoped to one project root and bounded on every axis -- ``depth``
+    directories below it, ``max_dirs`` scanned, ``limit`` results -- because
+    the starting point is wherever the user's file happened to be.  It runs
+    only where a design has *already* failed, never on the way to a run.
+    """
+    design = Path(vhdl_path)
+    folder = design.parent
+    if not folder.is_dir():
+        return ()
+    try:
+        folder = folder.resolve()
+    except OSError:
+        return ()
+
+    root = _project_root(folder, levels)
+    if root is None:
+        return ()
+
+    found: list[Path] = []
+    seen_dirs = 0
+    for dirpath, dirnames, filenames in os.walk(root):
+        here = Path(dirpath)
+        if len(here.relative_to(root).parts) >= depth:
+            dirnames[:] = []
+        else:
+            dirnames[:] = sorted(d for d in dirnames if _searchable(d))
+        seen_dirs += 1
+        if here != folder:
+            for name in sorted(filenames):
+                if Path(name).suffix.lower() in _NEARBY_SUFFIXES:
+                    found.append(here / name)
+                    if len(found) >= limit:
+                        return tuple(found)
+        if seen_dirs >= max_dirs:
+            break
+    return tuple(found)
 
 
 def read_pinmap(path: str | Path) -> PortTable | PinMapProblem:

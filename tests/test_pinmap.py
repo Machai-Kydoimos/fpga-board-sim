@@ -12,16 +12,19 @@ import pytest
 
 from fpga_sim.board_loader import BoardDef, discover_boards, find_board, get_default_boards_path
 from fpga_sim.constraints import qsf, xdc
+from fpga_sim.paths import HDL_DIR
 from fpga_sim.pinmap import (
     PinMapMatch,
     PinMapProblem,
     board_pin_index,
     build_pin_map,
     discover_pinmap,
+    nearby_pinmaps,
     normalize_pin,
     read_pinmap,
     split_port,
 )
+from fpga_sim.vhdl_contract import check_vhdl_contract
 from fpga_sim.vhdl_interface import _parse_toplevel_interface
 
 _BOARDS = discover_boards(get_default_boards_path())
@@ -115,6 +118,122 @@ def test_two_constraint_files_ask_rather_than_guess(tmp_path):
     assert isinstance(problem, PinMapProblem)
     assert "top.qsf" in problem.message and "top.xdc" in problem.message
     assert "--pinmap" in problem.message
+
+
+# ── The folder contract, and the one thing it owes the user ──────────────────
+#
+# One folder is one project.  discover_pinmap looks in exactly one directory
+# and nowhere else, deliberately: Vivado's layout is user-configurable and
+# version-dependent, so a tool that learned it would be wrong again on the next
+# release.  What that costs is a student who opens a Vivado project and lands
+# three directories from their own .xdc -- so nearby_pinmaps finds it, **for a
+# message only**, and never to build a map from.
+
+
+def _vivado_project(root):
+    """Lay out a Vivado project the way Vivado lays one out."""
+    srcs = root / "counter" / "counter.srcs"
+    (srcs / "sources_1" / "new").mkdir(parents=True)
+    (srcs / "constrs_1" / "new").mkdir(parents=True)
+    design = srcs / "sources_1" / "new" / "top.vhd"
+    design.write_text("-- design", encoding="utf-8")
+    xdc_file = srcs / "constrs_1" / "new" / "Basys3_Master.xdc"
+    xdc_file.write_text("# constraints", encoding="utf-8")
+    return design, xdc_file
+
+
+def test_a_constraint_file_sideways_in_a_vivado_project_is_found(tmp_path):
+    design, xdc_file = _vivado_project(tmp_path)
+    assert discover_pinmap(design) is None  # not in the folder, so not used
+    assert nearby_pinmaps(design) == (xdc_file,)
+
+
+def test_a_build_artifact_is_never_offered(tmp_path):
+    """`.runs` holds copies; a hit there would be output, not intent."""
+    design, xdc_file = _vivado_project(tmp_path)
+    runs = tmp_path / "counter" / "counter.runs" / "impl_1"
+    runs.mkdir(parents=True)
+    (runs / "decoy.xdc").write_text("# artifact", encoding="utf-8")
+    assert nearby_pinmaps(design) == (xdc_file,)
+
+
+def test_the_search_never_reaches_into_the_lab_next_door(tmp_path):
+    """The whole reason it anchors on a project root rather than on depth."""
+    for lab in ("lab1", "lab2"):
+        (tmp_path / lab / "rtl").mkdir(parents=True)
+        (tmp_path / lab / f"{lab}.qsf").write_text("# qsf", encoding="utf-8")
+        (tmp_path / lab / "rtl" / "top.vhd").write_text("-- design", encoding="utf-8")
+    found = nearby_pinmaps(tmp_path / "lab2" / "rtl" / "top.vhd")
+    assert found == (tmp_path / "lab2" / "lab2.qsf",)
+
+
+def test_a_loose_folder_with_no_project_around_it_says_nothing(tmp_path):
+    """No project root means no claim about what belongs to this design."""
+    (tmp_path / "loose").mkdir()
+    design = tmp_path / "loose" / "top.vhd"
+    design.write_text("-- design", encoding="utf-8")
+    (tmp_path / "somewhere.xdc").write_text("# not ours", encoding="utf-8")
+    assert nearby_pinmaps(design) == ()
+
+
+def test_xml_is_read_beside_a_design_but_never_guessed_at(tmp_path):
+    """BoardStore writes .xml, and so does half the software ever shipped."""
+    proj = tmp_path / "proj"
+    (proj / "rtl").mkdir(parents=True)
+    (proj / "proj.qpf").write_text("# quartus project", encoding="utf-8")
+    design = proj / "rtl" / "top.vhd"
+    design.write_text("-- design", encoding="utf-8")
+    (proj / "settings.xml").write_text("<xml/>", encoding="utf-8")
+    assert nearby_pinmaps(design) == ()
+
+    beside = proj / "rtl" / "board.xml"
+    beside.write_text("<xml/>", encoding="utf-8")
+    assert discover_pinmap(design) == beside  # deliberate, so honored
+
+
+def test_the_design_own_folder_is_not_nearby(tmp_path):
+    """That is discover_pinmap's job, and it reports differently."""
+    proj = tmp_path / "proj"
+    (proj / "rtl").mkdir(parents=True)
+    (proj / "proj.qpf").write_text("# quartus project", encoding="utf-8")
+    design = proj / "rtl" / "top.vhd"
+    design.write_text("-- design", encoding="utf-8")
+    own = proj / "rtl" / "own.qsf"
+    own.write_text("# qsf", encoding="utf-8")
+    assert own not in nearby_pinmaps(design)
+
+
+def test_a_rejected_design_is_told_where_its_constraint_file_is(tmp_path):
+    """The message is the entire point of the search."""
+    design, xdc_file = _vivado_project(tmp_path)
+    design.write_text(
+        "library ieee;\nuse ieee.std_logic_1164.all;\n"
+        "entity top is port (clkin : in std_logic; lamps : out std_logic_vector(3 downto 0));"
+        "\nend entity;\narchitecture rtl of top is begin lamps <= (others => '0'); end;\n",
+        encoding="utf-8",
+    )
+    result = check_vhdl_contract(design, _board("Basys 3"))
+    assert not result.ok
+    assert str(xdc_file) in result.message
+    assert "One folder is one project" in result.message
+    # the original diagnosis is kept, not replaced
+    assert "clk" in result.message
+
+
+def test_a_design_that_runs_is_never_nagged(tmp_path):
+    """Advice on a working design is noise, however true it is."""
+    proj = tmp_path / "proj"
+    (proj / "rtl").mkdir(parents=True)
+    (proj / "proj.qpf").write_text("# quartus project", encoding="utf-8")
+    (proj / "board.xdc").write_text("# constraints", encoding="utf-8")
+    design = proj / "rtl" / "blinky.vhd"
+    design.write_text(
+        (HDL_DIR / "blinky.vhd").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    result = check_vhdl_contract(design, _board("Basys 3"))
+    assert result.ok
+    assert "One folder is one project" not in result.message
 
 
 def test_an_unreadable_dialect_is_reported_not_guessed(tmp_path):

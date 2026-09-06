@@ -2,18 +2,108 @@
 
 The VHDL author's reference: the port contract every design must satisfy, the
 7-segment byte layout, the single-file embedded-CPU systems, and — the headline —
-**board-native designs** written to a board's own port names. For installation see
-[docs/install.md](install.md); for using the app see
-[docs/user_guide.md](user_guide.md). Back to the [README](../README.md).
+**your own project's pin map** — the `.qsf` or `.xdc` you already wrote for your
+real board. For installation see [docs/install.md](install.md); for using the app
+see [docs/user_guide.md](user_guide.md). Back to the [README](../README.md).
 
-There are three ways to write a design:
+There are four ways to write a design:
 
-1. the **generic contract** — `clk`/`sw`/`btn`/`led`[`/seg`] with `NUM_*` generics,
+1. **your project's own pin map** — keep your own port names and let your
+   `.qsf`/`.xdc` say which pin each one is on. This is the one to reach for if you
+   already have a Quartus or Vivado project;
+2. the **generic contract** — `clk`/`sw`/`btn`/`led`[`/seg`] with `NUM_*` generics,
    which runs on *any* board (the examples in `hdl/` use it);
-2. a **single-file embedded-CPU system** — a soft 6502/Z80 core running firmware,
+3. a **single-file embedded-CPU system** — a soft 6502/Z80 core running firmware,
    still satisfying the generic contract;
-3. a **board-native design** — a board's *own* port names and fixed widths, no
+4. a **board-native design** — a board's *own* port names and fixed widths, no
    generics, which runs on the boards whose convention it matches.
+
+They are tried in that order. A constraint file beside your design wins, because it
+is the only one of the four that is a statement of *your* intent rather than a guess
+about your naming.
+
+## Your project's own pin map
+
+If you already have a Quartus or Vivado project, your design's ports are named
+whatever the assignment called them and your constraint file says which pin each one
+is on. The simulator reads that file and maps your design **by pin**, so your port
+names stop mattering:
+
+```vhdl
+entity test_entity is                       -- no board's naming anywhere
+  port (
+    clock  : in  std_logic;
+    reset  : in  std_logic;
+    sw     : in  std_logic_vector(9 downto 0);
+    led_r  : out std_logic_vector(9 downto 0);
+    hex    : out std_logic_vector(27 downto 0)
+  );
+end entity;
+```
+
+```tcl
+# test_entity.qsf -- your own project's file, unmodified
+set_location_assignment PIN_AF14 -to clock
+set_location_assignment PIN_AA14 -to reset      # KEY[3] on this board: active-low
+set_location_assignment PIN_W17  -to hex[0]     # HEX0 segment a
+...
+```
+
+`reset` lands on a button, `led_r` on the LEDs, and each `hex` bit on the digit and
+segment its pin belongs to. **Polarity comes from the board, not from your file** —
+if the pin you named is an active-low button, the simulator inverts it for you,
+exactly as the hardware does.
+
+### One folder is one project
+
+**Put the design and one constraint file in a single directory.** That is the whole
+contract:
+
+```text
+lab1/
+├── test_entity.vhd      ← the design you pick
+└── test_entity.qsf      ← the pin map
+```
+
+The simulator reads that directory and nothing else. It does **not** learn Quartus's
+or Vivado's project layout, and that is deliberate rather than lazy: Vivado's is
+user-configurable and version-dependent, so a tool that chased it would be right
+today and wrong after the next release — and wrong here means a design silently
+wired to the wrong pins.
+
+So if your files live inside a tool's project tree, **copy them out**. A Vivado
+project keeps sources and constraints in different places:
+
+```text
+counter/counter.srcs/sources_1/new/top.vhd          ← your design
+counter/counter.srcs/constrs_1/new/Basys3.xdc       ← your pins, three directories away
+```
+
+Copy both into one folder and pick the design there. If you point the simulator at a
+design inside a project like that, it will tell you where the constraint file is
+rather than leaving you to guess.
+
+To keep a constraint file somewhere else on purpose, name it:
+`fpga-sim --pinmap path/to/board.xdc --vhdl lab1/test_entity.vhd`.
+
+### What it reads, and what it ignores
+
+- **Formats:** `.qsf` (Quartus), `.xdc` (Vivado), `.ucf`, `.pcf`, `.cst`, `.lpf`,
+  `.ccf`, and BoardStore `.xml`. The suffix picks the dialect — there is no content
+  sniffing, because guessing wrong would produce a *wrong* map rather than no map.
+- **One file.** Two constraint files in one folder is a question only you can answer
+  (a project with both a `.qsf` and an `.xdc` is targeting two boards), so the
+  simulator asks instead of guessing. `--pinmap` settles it.
+- **The whole board file is fine.** A vendor pin file assigns hundreds of pins —
+  SDRAM, VGA, audio, HPS. The map is built outward from *your design's ports*, so an
+  assignment no declared port claims is simply not read.
+- **A port with no assignment is normal**, not an error. Quartus places such a pin
+  automatically and real projects are full of them: an unassigned input is tied off
+  with a note, and an unassigned output is left open.
+- **A design may drive part of a display.** Four digits of a six-digit board is a
+  normal thing to write; the rest stay dark, exactly as on the bench.
+- **Wrong board?** When the constraint file names a device (`.qsf` files do), a
+  mismatch with the selected board is reported by name rather than silently mapped.
 
 ## The generic contract
 

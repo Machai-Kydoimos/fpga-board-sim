@@ -158,6 +158,34 @@ When you pick a file, the simulator analyzes and elaborates it (a few seconds on
 large design); a spinner overlay keeps the window responsive while this runs and
 reports any contract or compile error.
 
+#### Bring your own project: one folder is one project
+
+You do not have to rename anything to match a contract. If a **constraint file** —
+your `.qsf` from Quartus, your `.xdc` from Vivado — sits in the same folder as the
+design you pick, the simulator maps your design onto the board **by pin**, and your
+own port names stop mattering. `reset` lands on whichever key its pin belongs to,
+each `hex` bit on its digit and segment, and polarity comes from the board, so an
+active-low button is inverted for you. The preview shows which file was used, and
+the run is badged with it.
+
+The contract is one directory: **the design, whatever it instantiates, and one
+constraint file, together.** The simulator reads that folder and nothing else — it
+does not learn Quartus's or Vivado's project layout, because Vivado's is
+user-configurable and version-dependent, and a tool that guessed wrong there would
+wire a design to the wrong pins without saying so.
+
+So if your files live inside a tool's project tree, copy them into one folder first.
+Vivado in particular keeps sources and constraints several directories apart. Point
+the simulator at a design still sitting in such a tree and it will **tell you where
+the constraint file is** instead of failing quietly. To keep one elsewhere on
+purpose, name it: `fpga-sim --pinmap path/to/board.xdc`.
+
+Two constraint files in one folder is a question only you can answer — a project
+with both a `.qsf` and an `.xdc` is targeting two boards — so the simulator asks
+rather than guessing. See
+[writing_designs.md](writing_designs.md#your-projects-own-pin-map) for the formats
+read, what happens to a port with no pin assignment, and the rest of the rules.
+
 ### 4. Run the simulation
 
 The selected simulator (GHDL or NVC) compiles and simulates the VHDL design via
