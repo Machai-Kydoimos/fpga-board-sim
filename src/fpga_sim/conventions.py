@@ -25,6 +25,7 @@ from fpga_sim.vhdl_interface import _IfaceDecl
 
 if TYPE_CHECKING:
     from fpga_sim.board_loader import BoardDef
+    from fpga_sim.pinmap import PinMapMatch
 
 # ── Board-native port-convention matcher (U21) ───────────────────────────────
 #
@@ -144,6 +145,12 @@ class ContractResult:
     message: str = ""
     match: ConventionMatch | None = None
     synopsys: tuple[str, ...] = ()
+    #: Set when the design was bound through its own constraint file (U53).
+    #: A separate field from ``match`` rather than a union with it: the two are
+    #: different mechanisms that produce different wrappers, and everything
+    #: downstream -- badge, session log, waveform names -- wants to know which
+    #: one ran.  At most one is ever set.
+    pinmap: PinMapMatch | None = None
 
 
 @dataclass(frozen=True)

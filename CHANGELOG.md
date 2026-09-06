@@ -39,6 +39,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A design can now run through its own constraint file** (U53) — the pin map.
+  Board-native mode recognizes a design by its port *names*, which covers
+  designs written to a vendor's published naming and nothing else. Real course
+  work names ports whatever the assignment says and lets the project's `.qsf` or
+  `.xdc` bind them to pins, so the simulator now maps by **the pin**: the
+  design's ports are looked up in the constraint file to get pins, and the pins
+  in the board to get resources. The design's own names stop mattering.
+  - Found automatically beside the picked file, or named with `--pinmap PATH`.
+    When one is present it is tried **before** the convention matcher and the
+    generic contract, because it is the only one of the three carrying the
+    user's own statement of intent.
+  - **Polarity comes from the board.** A design bound to an active-low button
+    gets the inversion whether or not it knows the board is active-low, and the
+    display is inverted per segment the same way.
+  - **An input the constraint file never binds is tied off with a note**, not
+    rejected — real lab top levels declare ports their own `.qsf` does not
+    assign, and Quartus places those pins automatically.
+  - **A design may drive part of a display**; the digits it does not reach are
+    explicitly dark. A scanned display is demultiplexed per digit, unlatched, so
+    Full duty measures the honest 1/N brightness.
+  - The preview badge and the session log say `pin map: <file>` rather than
+    `generic`, and the wrapper names the constraint file it was built from.
+  - The eight constraint-file parsers move from `scripts/` into the package as
+    `fpga_sim.constraints`; they were importable only through a `sys.path`
+    insert in the test suite.
+
 - **Board data now carries the pins the pin map needs** (U53, groundwork).
   - **Clock pins survive loading.** The board JSON has carried
     `{"name": "clk50", "hz": 50e6, "pin": "AF14"}` objects for 196 of the 274

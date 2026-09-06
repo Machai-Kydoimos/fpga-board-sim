@@ -35,6 +35,7 @@ import pygame
 
 from fpga_sim.board_loader import BoardDef, find_board
 from fpga_sim.paths import HDL_DIR
+from fpga_sim.pinmap import PinMapMatch
 from fpga_sim.session_config import load_session, push_recent, save_session
 from fpga_sim.sim_bridge import (
     ConventionMatch,
@@ -170,6 +171,10 @@ class SessionState:
     # U21 B3: set when the loaded VHDL is board-native (its port names match the
     # selected board's convention); drives native wrapper generation + the badge.
     convention: ConventionMatch | None = None
+    # U53: set when the loaded design was bound through its own constraint file.
+    # Mutually exclusive with `convention` -- they are two ways of recognizing a
+    # design and they generate different wrappers.
+    pinmap: PinMapMatch | None = None
     # Pre-standard Synopsys packages the loaded design imports (U50).  Advisory
     # only -- it changes nothing about the run, and exists so the preview can
     # mention the dialect once instead of leaving the user to find out on real
@@ -225,6 +230,7 @@ class SessionState:
             vhdl_path=self.vhdl_path,
             board_def=board,
             match=self.convention,
+            pinmap=self.pinmap,
         )
 
     def clear_analysis(self) -> None:
@@ -236,6 +242,7 @@ class SessionState:
         """Drop the loaded VHDL file and its analysis products."""
         self.vhdl_path = None
         self.convention = None
+        self.pinmap = None
         self.synopsys = ()
         self.vhdl_is_example = False
         self.clear_analysis()
@@ -455,8 +462,9 @@ class ScreenController:
         example = example_vhdl_for(self.board)
         ok, detail = check_vhdl_encoding(str(path))
         if ok:
-            res = check_vhdl_contract(path, board_def=self.board)
+            res = check_vhdl_contract(path, board_def=self.board, pinmap=self.cli_pinmap)
             self.state.convention = res.match
+            self.state.pinmap = res.pinmap
             self.state.synopsys = res.synopsys
             ok, detail = res.ok, res.message
             title = "VHDL Error"
@@ -632,9 +640,10 @@ class ScreenController:
                     self.clock
                 )
             else:
-                res = check_vhdl_contract(picked, board_def=self.board)
+                res = check_vhdl_contract(picked, board_def=self.board, pinmap=self.cli_pinmap)
                 ok, detail = res.ok, res.message
-                s.convention = res.match  # board-native (U21 B3) when set, else None
+                s.convention = res.match
+                s.pinmap = res.pinmap
                 s.synopsys = res.synopsys
                 if not ok:
                     intent = ErrorDialog(
@@ -721,6 +730,7 @@ class ScreenController:
                 sim_path=self.state.sim.path,
                 board_def=self.board,
                 match=_conv,
+                pinmap=self.state.pinmap,
             ),
             detail=_detail,
         )
@@ -746,8 +756,9 @@ class ScreenController:
         # the same guard (and mandatory contract re-check) as on_simulate.
         if s.needs_reanalysis(board):
             example = example_vhdl_for(board)
-            res = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
+            res = check_vhdl_contract(Path(s.vhdl_path), board_def=board, pinmap=self.cli_pinmap)
             s.convention = res.match
+            s.pinmap = res.pinmap
             s.synopsys = res.synopsys
             if not res.ok:
                 ErrorDialog(self.screen, "VHDL Error", res.message, example_path=example).run(
@@ -811,6 +822,7 @@ class ScreenController:
                 vhdl_path=s.vhdl_path,
                 sim=s.sim,
                 synopsys=s.synopsys,
+                pinmap=s.pinmap,
                 initial_inputs=s.inputs,
             )
             sim_exit = sim_screen.run()
@@ -863,9 +875,10 @@ class ScreenController:
 
         ok, detail = check_vhdl_encoding(s.vhdl_path)
         if ok:
-            res = check_vhdl_contract(Path(s.vhdl_path), board_def=board)
+            res = check_vhdl_contract(Path(s.vhdl_path), board_def=board, pinmap=self.cli_pinmap)
             ok, detail = res.ok, res.message
-            s.convention = res.match  # board-native (U21 B3) when set, else None
+            s.convention = res.match
+            s.pinmap = res.pinmap
             s.synopsys = res.synopsys
         title = "VHDL Error"
         if ok:

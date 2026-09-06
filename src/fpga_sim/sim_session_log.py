@@ -59,6 +59,7 @@ def save_session_stats(
     clock_hz: float,
     mode: str = "generic",
     convention: str | None = None,
+    pinmap: str | None = None,
     synopsys: tuple[str, ...] | None = None,
     simulator_backend: str = "",
     simulator_path: str = "",
@@ -94,6 +95,11 @@ def save_session_stats(
     convention:
         The matched convention slug (e.g. ``"terasic"``) for a native run,
         else ``None``.
+    pinmap:
+        The constraint file a pin-mapped run was bound through (U53), else
+        ``None``.  With ``mode="pinmap"`` it says the design's own port names
+        were not used at all -- worth knowing when reading back a run whose
+        board assignment came from somewhere other than the design.
     synopsys:
         Pre-standard Synopsys packages the design imported (U50), e.g.
         ``("std_logic_arith", "std_logic_unsigned")``.  Recorded because it is
@@ -135,6 +141,7 @@ def save_session_stats(
         "clock_hz": clock_hz,
         "mode": mode,
         "convention": convention,
+        "pinmap": pinmap,
         "synopsys": list(synopsys or ()),
     }
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

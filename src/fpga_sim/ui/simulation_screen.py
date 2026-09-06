@@ -41,6 +41,7 @@ from fpga_sim.ui.widgets import draw_button
 
 if TYPE_CHECKING:
     from fpga_sim.board_loader import BoardDef, ComponentInfo
+    from fpga_sim.pinmap import PinMapMatch
     from fpga_sim.sim_bridge import ConventionMatch, SimChild, SimulatorInfo
 
 #: Seconds to wait for the child's connection before giving up (NVC / Windows
@@ -112,6 +113,7 @@ class SimulationScreen:
         vhdl_path: str | Path,
         sim: SimulatorInfo,
         synopsys: tuple[str, ...] = (),
+        pinmap: PinMapMatch | None = None,
         show_toolbar: bool = True,
         screenshot_dir: str | Path | None = None,
         initial_inputs: BoardInputs | None = None,
@@ -126,6 +128,7 @@ class SimulationScreen:
         # Advisory only (U50): recorded in the session log so a run's dialect is
         # part of its record, never acted on here.
         self.synopsys = synopsys
+        self.pinmap = pinmap
         self._vhdl_name = Path(vhdl_path).name
         self._show_toolbar = show_toolbar
         # --screenshots (#129): PNGs of this very surface, gated on visible
@@ -168,7 +171,15 @@ class SimulationScreen:
         self._toolbar: SimToolbar | None = SimToolbar() if show_toolbar else None
 
         # Info-strip segments (board | vhdl (mode) | simulator), native tag accented.
-        self._mode_tag = f"(native: {match.maker})" if match else "(generic)"
+        # Which mechanism recognized this design.  The pin map wins the label
+        # when it ran, because it is the one the user can act on: it names the
+        # file they wrote, not a convention they may never have heard of.
+        if pinmap is not None:
+            self._mode_tag = f"(pin map: {pinmap.source})"
+        elif match is not None:
+            self._mode_tag = f"(native: {match.maker})"
+        else:
+            self._mode_tag = "(generic)"
         self._info_prefix = "  |  ".join(p for p in (self._board_name, self._vhdl_name) if p) + " "
         # U35: the info strip shows the backend's short label (e.g. GHDL-JIT), so
         # a chosen GHDL code generator is visible mid-run — not just the engine.
@@ -815,8 +826,9 @@ class SimulationScreen:
                 avg_draw_pct=stats.avg_draw_pct,
                 avg_idle_pct=stats.avg_idle_pct,
                 clock_hz=self.panel.current_clock_hz,
-                mode="native" if self.match else "generic",
+                mode=("pinmap" if self.pinmap else "native" if self.match else "generic"),
                 convention=self.match.maker if self.match else None,
                 synopsys=self.synopsys,
+                pinmap=self.pinmap.source if self.pinmap else None,
             )
         print(f"Simulation stopped ({exit_intent.value}).")

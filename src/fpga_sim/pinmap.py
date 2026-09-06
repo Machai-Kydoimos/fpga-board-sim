@@ -240,6 +240,15 @@ class PinMapMatch:
     open_outputs: tuple[str, ...] = ()
     tied_inputs: tuple[str, ...] = ()
     notes: tuple[str, ...] = field(default_factory=tuple)
+    #: Declared width of each design port, or ``None`` where it is a scalar.
+    #: The wrapper needs it to declare the signal it drives the port through,
+    #: including for a port nothing binds -- which has no bindings to infer from.
+    widths: tuple[tuple[str, int | None], ...] = ()
+
+    @property
+    def port_widths(self) -> dict[str, int | None]:
+        """The declared widths as a mapping, for the wrapper's convenience."""
+        return dict(self.widths)
 
 
 def _port_bits(decl: _IfaceDecl, name: str) -> list[int | None]:
@@ -284,10 +293,12 @@ def build_pin_map(
     notes: list[str] = []
     clock_port = ""
     unknown: list[str] = []
+    widths: list[tuple[str, int | None]] = []
 
     for decl in ports:
         for name in decl.names:
             bits = _port_bits(decl, name)
+            widths.append((name, decl.literal_width))
             bound: list[BitBinding] = []
             for bit in bits:
                 pin = assignments.get((name, bit))
@@ -358,4 +369,5 @@ def build_pin_map(
         open_outputs=tuple(open_outputs),
         tied_inputs=tuple(tied_inputs),
         notes=tuple(notes),
+        widths=tuple(widths),
     )
