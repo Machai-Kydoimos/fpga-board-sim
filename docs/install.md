@@ -45,16 +45,31 @@ sudo apt install ghdl
 sudo dnf install ghdl
 ```
 
-**macOS:**
+**macOS:** download the official release tarball.
 
 ```bash
-brew install ghdl
+ver=6.0.0
+curl -LO "https://github.com/ghdl/ghdl/releases/download/v$ver/ghdl-llvm-$ver-macos15-aarch64.tar.gz"
+mkdir -p ~/ghdl && tar -xzf "ghdl-llvm-$ver-macos15-aarch64.tar.gz" -C ~/ghdl
+echo 'export PATH="$HOME/ghdl/bin:$PATH"' >> ~/.zshrc && exec zsh
+ghdl --version
 ```
 
+> **Not `brew install ghdl`.** Homebrew's GHDL was a *cask*, and it was
+> **disabled on 2026-09-01** for failing the macOS Gatekeeper check
+> (`brew info --cask ghdl` still says so). There is no Homebrew formula for
+> GHDL, so the tarball above is the macOS path until that changes. Fetching it
+> with `curl` matters: a file downloaded through a browser carries the
+> quarantine attribute and Gatekeeper will block it the same way. If you do end
+> up with a quarantined copy, `xattr -dr com.apple.quarantine ~/ghdl` clears it.
+>
 > On Apple Silicon there is **no GHDL mcode** (its in-memory code generator is
-> x86-only) — Homebrew's GHDL uses the LLVM backend, and the official GHDL
-> release tarballs for macOS are LLVM / LLVM-JIT builds. Both flavors (and NVC)
-> are CI-tested on macOS arm64.
+> x86-only), so the release tarballs for macOS are LLVM / LLVM-JIT builds.
+> Both flavors (and NVC) are CI-tested on macOS arm64. On an Intel Mac,
+> substitute the `x86-64` asset from the same release.
+>
+> **`brew install nvc` still works**, and on macOS it is now the shorter path —
+> see [Which to install](#which-to-install--recommendations).
 
 ### NVC
 
@@ -145,6 +160,7 @@ built `--disable-checks`; the profile behind these numbers is
 | Fast **GHDL** specifically | Self-built GHDL **LLVM** with `--disable-checks` ([below](#building-ghdls-llvm-code-generators)) |
 | mcode's instant startup, some speed | Self-built GHDL **LLVM-JIT** with `--disable-checks` |
 | Windows | GHDL (the tested choice; NVC unverified there) |
+| **macOS** | **NVC** (`brew install nvc`) — GHDL's Homebrew cask was disabled on 2026-09-01 for failing the Gatekeeper check, so GHDL there means the [release tarball](#ghdl) |
 | The full picker | Install several — the `SIM:` toggle / `--sim` selects per run |
 
 > **Building GHDL yourself? Always pass `--disable-checks`.** GHDL's `configure`

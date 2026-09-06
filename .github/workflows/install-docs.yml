@@ -110,14 +110,24 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      # Verbatim from docs/install.md.  Both are installed because the document
-      # offers both and a student may follow either line; the suite skips the
-      # simulator it cannot find, so installing both also proves the pair
-      # coexists, which the document claims two sections earlier.
-      - name: brew install ghdl
-        run: brew install ghdl
+      # Both simulators, because the document offers both and a student may
+      # follow either line; the suite skips the one it cannot find, so
+      # installing both also proves the pair coexists, which the document
+      # claims two sections earlier.
       - name: brew install nvc
         run: brew install nvc
+
+      # GHDL on macOS is a tarball, not a brew cask.  The cask was disabled on
+      # 2026-09-01 for failing the Gatekeeper check -- found by this workflow's
+      # own first run, which is exactly what it is for.  `curl` rather than a
+      # browser download is part of the documented instruction: a browser sets
+      # the quarantine attribute and Gatekeeper blocks the result the same way.
+      - name: Install GHDL from the release tarball (docs/install.md)
+        run: |
+          ver=6.0.0
+          curl -LO "https://github.com/ghdl/ghdl/releases/download/v$ver/ghdl-llvm-$ver-macos15-aarch64.tar.gz"
+          mkdir -p ~/ghdl && tar -xzf "ghdl-llvm-$ver-macos15-aarch64.tar.gz" -C ~/ghdl
+          echo "$HOME/ghdl/bin" >> "$GITHUB_PATH"
 
       - name: Record versions
         run: |
@@ -125,7 +135,7 @@ jobs:
           nvc --version
           {
             echo "### macOS"
-            echo "- \`brew install ghdl\` -> \`$(ghdl --version | head -1)\`"
+            echo "- GHDL release tarball -> \`$(ghdl --version | head -1)\`"
             echo "- \`brew install nvc\` -> \`$(nvc --version | head -1)\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -217,6 +227,8 @@ jobs:
           $tick = [char]96
           "- ${tick}winget install ghdl.ghdl.ucrt64.mcode$tick -> installed at $tick$($exe.DirectoryName)$tick" >> $env:GITHUB_STEP_SUMMARY
 
+      # winget installs uv but a PATH entry an installer makes does not reach the
+      # next step, so uv has to be found and exported the same way ghdl was.
       - name: Install uv
         run: |
           if ($null -ne (Get-Command winget -ErrorAction SilentlyContinue)) {
@@ -227,8 +239,13 @@ jobs:
             # using uv's own installer.  Recorded above so the summary does not
             # imply the documented command was tested.
             irm https://astral.sh/uv/install.ps1 | iex
-            "$env:USERPROFILE\.local\bin" >> $env:GITHUB_PATH
           }
+          $uv = Get-ChildItem -Recurse -ErrorAction SilentlyContinue -Filter uv.exe `
+                  -Path "$env:LOCALAPPDATA\Microsoft\WinGet\Packages", "$env:USERPROFILE\.local\bin" |
+                Select-Object -First 1
+          if (-not $uv) { throw "uv.exe not found after install" }
+          $uv.DirectoryName >> $env:GITHUB_PATH
+          & $uv.FullName --version
 
       - name: uv sync
         run: uv sync

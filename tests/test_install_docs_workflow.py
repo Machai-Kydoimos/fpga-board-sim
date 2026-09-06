@@ -27,8 +27,13 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "install-docs.yml"
 #: own plumbing (checkout, PATH exports, summary lines) is not in scope.
 DOCUMENTED = {
     "sudo apt install ghdl": "docs/install.md",
-    "brew install ghdl": "docs/install.md",
     "brew install nvc": "docs/install.md",
+    # macOS GHDL is a tarball, not a brew cask: the cask was disabled on
+    # 2026-09-01 for failing the Gatekeeper check, which this very workflow
+    # found on its first run.  Pinning the URL shape keeps the two in step.
+    (
+        "https://github.com/ghdl/ghdl/releases/download/v$ver/ghdl-llvm-$ver-macos15-aarch64.tar.gz"
+    ): "docs/install.md",
     "winget install ghdl.ghdl.ucrt64.mcode": "docs/install.md",
     "uv sync": "docs/install.md",
     "uv run pytest": "docs/install.md",

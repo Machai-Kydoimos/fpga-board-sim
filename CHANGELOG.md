@@ -171,6 +171,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - It also verifies package identifiers against the winget manifest repository
     directly, so the "does this package still exist?" half reports even on runner
     images where winget itself is absent.
+  - **It found a live defect on its first run.** `brew install ghdl` — the macOS
+    instruction in `docs/install.md` — has been broken since **2026-09-01**:
+    GHDL's Homebrew *cask* was disabled for failing the macOS Gatekeeper check,
+    and there is no formula to fall back to. macOS GHDL is now documented as the
+    official release tarball, fetched with `curl` (a browser download carries the
+    quarantine attribute and Gatekeeper blocks it the same way), and NVC is
+    recommended as the shorter macOS path. It also confirmed the other open
+    question: `winget install ghdl.ghdl.ucrt64.mcode` still resolves and installs.
 
 - **The pre-standard Synopsys packages now work** (U50). `std_logic_arith`,
   `std_logic_unsigned` and their siblings predate `ieee.numeric_std` and are not
