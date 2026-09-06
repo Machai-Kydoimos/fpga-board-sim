@@ -146,8 +146,9 @@ class StallWatch:
         self._signature: object = None
         self._quiet_elapsed: float | None = None  # observed seconds of stillness
         self._linger_elapsed: float | None = None  # observed seconds since it fired
-        self._sim_ns_at_quiet: int = 0
+        self._sim_elapsed: int = 0  # simulated ns accrued over those seconds
         self._last_now: float | None = None
+        self._last_sim_ns: int | None = None
         self.fired = False
         #: Set once any switch or button has moved since the run began, and never
         #: cleared.  It does not gate the advisory -- it chooses which
@@ -161,7 +162,9 @@ class StallWatch:
         """Forget the current quiet spell (the outputs moved, or the run did)."""
         self._quiet_elapsed = None
         self._linger_elapsed = None
+        self._sim_elapsed = 0
         self._last_now = None
+        self._last_sim_ns = None
         self.fired = False
 
     def _observed(self, now: float, *, paused: bool) -> float:
@@ -174,10 +177,10 @@ class StallWatch:
             return 0.0
         return min(delta, MAX_OBSERVED_GAP_S)
 
-    def _restart_window(self, sim_ns: int) -> None:
+    def _restart_window(self) -> None:
         """Begin measuring again from here, without touching what is on offer."""
         self._quiet_elapsed = 0.0
-        self._sim_ns_at_quiet = sim_ns
+        self._sim_elapsed = 0
         self.fired = False
 
     def sample(
@@ -215,6 +218,15 @@ class StallWatch:
         still than it was a moment ago.
         """
         observed = self._observed(now, paused=paused)
+        # Simulated time is accumulated over the same frames as the wall clock,
+        # and only those.  A "paused" run does not actually stop simulated time
+        # -- the child shrinks its step to 1 ns rather than halting -- so a long
+        # pause quietly adds milliseconds of simulated time to a window that
+        # gained no wall time at all, and every figure derived from the pair
+        # comes out overstated.  Counting both on the same frames keeps the
+        # ratio honest by construction.
+        previous_sim, self._last_sim_ns = self._last_sim_ns, sim_ns
+        sim_delta = 0 if previous_sim is None or observed <= 0.0 else max(0, sim_ns - previous_sim)
         if self._linger_elapsed is not None:
             self._linger_elapsed += observed
 
@@ -226,22 +238,23 @@ class StallWatch:
         basis = (clock_hz or 0.0, speed_factor or 0.0)
         if self._basis is not None and basis != self._basis:
             self._basis = basis
-            self._restart_window(sim_ns)
+            self._restart_window()
             return self._lingering()
         self._basis = basis
 
         if signature != self._signature:
             self._signature = signature
-            self._restart_window(sim_ns)
+            self._restart_window()
             return self._lingering()
         if self._quiet_elapsed is None:
-            self._restart_window(sim_ns)
+            self._restart_window()
             return self._lingering()
 
         self._quiet_elapsed += observed
+        self._sim_elapsed += sim_delta
         if self._quiet_elapsed < self.threshold_s:
             return self._lingering()
-        if sim_ns <= self._sim_ns_at_quiet:
+        if self._sim_elapsed <= 0:
             # Nothing is advancing: a stopped sim, not a slow design.  Do not
             # linger over it either -- that is a different problem, and this
             # offer would be answering the wrong question.
@@ -266,7 +279,7 @@ class StallWatch:
         """
         return StallFacts(
             quiet_s=self._quiet_elapsed or 0.0,
-            sim_ns=max(0, sim_ns - self._sim_ns_at_quiet),
+            sim_ns=self._sim_elapsed,
             sim_clock_hz=sim_clock_hz,
             board_hz=board_hz,
         )

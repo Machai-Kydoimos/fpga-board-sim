@@ -101,6 +101,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Changing the clock preset or the speed slider restarts the measurement**
     without withdrawing an offer already made: a window straddling either would
     report a rate nobody ran at, but the board is no less still than it was.
+  - **A pause contributes no simulated time to the window either.** "Paused"
+    does not actually stop simulated time — the child shrinks its step to 1 ns
+    rather than halting — so a long pause added milliseconds of simulated time
+    to a window that gained no wall-clock time at all, overstating the rate by
+    11% for a 60-second pause. Both clocks now accumulate over the same frames,
+    which keeps the ratio honest by construction.
   - **A pause freezes it rather than resetting or clearing it.** Paused
     wall-clock time is not evidence of a stall (no simulated time passes
     either), so a pause never raises the offer — and it never withdraws one,

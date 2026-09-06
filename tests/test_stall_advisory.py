@@ -165,6 +165,27 @@ def test_a_pause_freezes_the_quiet_clock_without_losing_it():
     assert loop.run(2.5), "the time already earned still counts"
 
 
+def test_a_pause_adds_no_simulated_time_to_the_window():
+    """ "Paused" does not stop simulated time -- the child steps 1 ns instead.
+
+    So a long pause quietly adds milliseconds of simulated time to a window
+    that gained no wall time at all, and every figure derived from the pair
+    comes out overstated.  Measured before the fix: a 60 s pause added 3.6 ms
+    to a 31.8 ms window, an 11% overstatement of the rate.
+    """
+    loop = Loop(StallWatch())
+    loop.run(8)
+    before = loop.w.facts(loop.sim, loop.t, 50e6, 50e6)
+
+    # paused, but the child keeps creeping forward at 1 ns a step
+    loop.sim_per_frame = 3_000
+    loop.run(60, paused=True)
+    after = loop.w.facts(loop.sim, loop.t, 50e6, 50e6)
+
+    assert after.sim_ns == before.sim_ns
+    assert after.effective_hz == pytest.approx(before.effective_hz)
+
+
 # ── The basis every figure rests on ──────────────────────────────────────────
 
 
