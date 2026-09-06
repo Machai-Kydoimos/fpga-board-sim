@@ -90,9 +90,10 @@ To keep a constraint file somewhere else on purpose, name it:
 
 ### Designs split across several files
 
-Your design does not have to be one file. Everything else in the folder is analyzed
-into the same library **before** your design is, so a top level can instantiate a
-sub-entity or use a package that lives next door:
+Your design does not have to be one file. If it does not compile on its own, the
+other VHDL files in its folder are analyzed into the same library and it is tried
+again — so a top level can instantiate a sub-entity or use a package that lives
+next door:
 
 ```vhdl
 -- top.vhd
@@ -119,6 +120,9 @@ Two consequences worth knowing:
   manual recipe in the troubleshooting guide.
 - Keep the folder to one project. Sixty VHDL files in a directory is not a lab
   folder, and the sweep stops there.
+- **A design that compiles on its own costs nothing.** The folder is only read
+  when your design actually needs it, which matters on GHDL's compiled LLVM
+  backend, where analyzing a file means compiling it.
 
 ### What it reads, and what it ignores
 

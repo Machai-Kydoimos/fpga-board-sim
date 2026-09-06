@@ -12,6 +12,7 @@ compile is irrelevant rather than fatal.
 
 import pytest
 
+from fpga_sim import wrapper as wrapper_mod
 from fpga_sim.wrapper import analyze_siblings, analyze_vhdl, find_siblings
 
 # A top level split from its sub-entity, which is Lab 3's shape.
@@ -81,6 +82,70 @@ begin
 end architecture;
 """
 
+_SELF_CONTAINED = """\
+library ieee;
+use ieee.std_logic_1164.all;
+entity solo is
+  generic (
+    NUM_SWITCHES : positive := 4;
+    NUM_BUTTONS  : positive := 4;
+    NUM_LEDS     : positive := 4;
+    COUNTER_BITS : positive := 24
+  );
+  port (
+    clk : in  std_logic;
+    sw  : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);
+    btn : in  std_logic_vector(NUM_BUTTONS - 1 downto 0);
+    led : out std_logic_vector(NUM_LEDS - 1 downto 0)
+  );
+end entity;
+architecture rtl of solo is
+begin
+  led <= sw(NUM_LEDS - 1 downto 0);
+end architecture;
+"""
+
+_SUB_ENTITY = """\
+library ieee;
+use ieee.std_logic_1164.all;
+entity lamp is
+  port (d : in std_logic; q : out std_logic);
+end entity;
+architecture rtl of lamp is
+begin
+  q <= d;
+end architecture;
+"""
+
+# A *component* declaration with default binding: analyzes alone, binds only at
+# elaboration -- which is why the sweep cannot hang off the analysis step.
+_TOP_WITH_COMPONENT = """\
+library ieee;
+use ieee.std_logic_1164.all;
+entity top is
+  generic (
+    NUM_SWITCHES : positive := 4;
+    NUM_BUTTONS  : positive := 4;
+    NUM_LEDS     : positive := 4;
+    COUNTER_BITS : positive := 24
+  );
+  port (
+    clk : in  std_logic;
+    sw  : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);
+    btn : in  std_logic_vector(NUM_BUTTONS - 1 downto 0);
+    led : out std_logic_vector(NUM_LEDS - 1 downto 0)
+  );
+end entity;
+architecture rtl of top is
+  component lamp is
+    port (d : in std_logic; q : out std_logic);
+  end component;
+begin
+  u_lamp : lamp port map (d => sw(0), q => led(0));
+  led(NUM_LEDS - 1 downto 1) <= (others => '0');
+end architecture;
+"""
+
 # Neither compiles.  Two of the three course testbenches do not either.
 _BROKEN_TB = """\
 entity testbench is end entity;
@@ -126,6 +191,63 @@ def test_a_design_with_no_neighbors_is_not_a_special_case(tmp_path):
 
 
 # ── The analysis itself ──────────────────────────────────────────────────────
+
+
+# ── The sweep is lazy, and that is load-bearing ──────────────────────────────
+
+
+@pytest.mark.slow
+def test_a_self_contained_design_never_sweeps_its_folder(lab, ghdl, monkeypatch):
+    """The fast path must stay free -- this is a measured requirement, not taste.
+
+    An analyze on GHDL's AOT LLVM backend *compiles*, so sweeping a folder like
+    `hdl/` (18 files, 29.7k lines) took the CI job from 139 s to 663 s while
+    buying nothing at all for the single-file designs that are the overwhelming
+    majority.  A design that compiles alone must not pay for the feature.
+    """
+    calls = []
+    real = wrapper_mod.analyze_siblings
+
+    def _spy(*a, **kw):
+        calls.append(a[0])
+        return real(*a, **kw)
+
+    monkeypatch.setattr(wrapper_mod, "analyze_siblings", _spy)
+    solo = lab / "solo.vhd"
+    solo.write_text(_SELF_CONTAINED, encoding="utf-8")
+    ok, detail = analyze_vhdl(solo, toplevel="solo")
+    assert ok, detail
+    assert calls == [], "a design that compiles alone swept its folder anyway"
+
+
+@pytest.mark.slow
+def test_a_split_design_sweeps_exactly_once(lab, ghdl, monkeypatch):
+    """Once, not once per failing step: the second attempt reuses the first."""
+    calls = []
+    real = wrapper_mod.analyze_siblings
+
+    def _spy(*a, **kw):
+        calls.append(a[0])
+        return real(*a, **kw)
+
+    monkeypatch.setattr(wrapper_mod, "analyze_siblings", _spy)
+    ok, detail = analyze_vhdl(lab / "top.vhd", toplevel="top")
+    assert ok, detail
+    assert len(calls) == 1
+
+
+@pytest.mark.slow
+def test_a_component_binding_is_caught_at_elaboration(tmp_path, ghdl):
+    """The reason the sweep cannot simply hang off the analysis step.
+
+    A component instantiation with default binding analyzes perfectly well on
+    its own and only fails to bind at elaboration, so a sweep triggered by
+    analysis alone would never run for this shape.
+    """
+    (tmp_path / "sub.vhd").write_text(_SUB_ENTITY, encoding="utf-8")
+    (tmp_path / "top.vhd").write_text(_TOP_WITH_COMPONENT, encoding="utf-8")
+    ok, detail = analyze_vhdl(tmp_path / "top.vhd", toplevel="top")
+    assert ok, detail
 
 
 @pytest.mark.slow
