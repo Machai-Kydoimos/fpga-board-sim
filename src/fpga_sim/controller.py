@@ -175,6 +175,12 @@ class SessionState:
     # mention the dialect once instead of leaving the user to find out on real
     # hardware.  Cleared with the file, like `convention`.
     synopsys: tuple[str, ...] = ()
+    # True while ``vhdl_path`` is the board's bundled example rather than
+    # something the user chose (U49).  A fresh profile starts on one so the
+    # preview has something to run, and a board change re-points it -- the right
+    # example for a 7-segment board is not the right one for a plain board.  Any
+    # deliberate pick clears the flag and the file is then never replaced.
+    vhdl_is_example: bool = False
     last_vhdl_path: str = ""
     board_class: str = ""
     board_source: str = ""
@@ -231,6 +237,7 @@ class SessionState:
         self.vhdl_path = None
         self.convention = None
         self.synopsys = ()
+        self.vhdl_is_example = False
         self.clear_analysis()
 
 
@@ -421,22 +428,28 @@ class ScreenController:
                 # No board yet, so no contract to check against: preload the
                 # path exactly as a restored session does.
                 self.state.vhdl_path = str(path.resolve())
+                self.state.vhdl_is_example = False
                 self.state.last_vhdl_path = self.state.vhdl_path
             else:
-                self._seed_vhdl(path.resolve())
+                self._load_vhdl_file(path.resolve(), on_stderr=True)
 
         return nxt
 
-    def _seed_vhdl(self, path: Path) -> None:
-        """Validate and analyze a ``--vhdl`` file against the seeded board.
+    def _load_vhdl_file(self, path: Path, *, on_stderr: bool = False) -> bool:
+        """Validate and analyze one named file against the current board.
 
-        Runs the picker's three stages -- encoding, contract, analysis -- so
-        the preview opens on a file that is known to work, not merely named.
-        A failure is reported **twice**: through the same error dialog the
-        picker would show, because the run may have been started from a
-        desktop shortcut with no terminal attached, and on stderr, because it
-        may not have been.  Either way the preview opens with no file loaded,
-        which is the state the [Load VHDL File] button is for.
+        The shared tail of every way into the app that names a file rather than
+        picking one from a list -- ``--vhdl`` at launch, and a design dropped on
+        the window -- so all three routes fail identically and there is one
+        place to keep correct.  Runs the picker's three stages (encoding,
+        contract, analysis) so the preview opens on a file known to work rather
+        than merely named, and returns whether it loaded.
+
+        *on_stderr* also writes the failure to the terminal.  ``--vhdl`` sets it
+        because the run may have come from a desktop shortcut with nobody
+        watching the window, or from a terminal with nobody watching the
+        dialog; a drag-and-drop is a gesture at the window, so the dialog alone
+        is the right answer there.
         """
         assert self.board is not None
         example = example_vhdl_for(self.board)
@@ -454,9 +467,11 @@ class ScreenController:
             title = "VHDL Error"
         if ok:
             self.on_vhdl_loaded(str(path), detail)
-            return
-        print(f"[fpga-sim] --vhdl {path}: {detail}", file=sys.stderr)
+            return True
+        if on_stderr:
+            print(f"[fpga-sim] {path}: {detail}", file=sys.stderr)
         ErrorDialog(self.screen, title, detail, example_path=example).run(self.clock)
+        return False
 
     # ── Step 1: pick a board ──────────────────────────────────────────────
 
@@ -497,7 +512,30 @@ class ScreenController:
             # on the next -- so a new board starts from the board's own defaults.
             s.inputs = BoardInputs()
             self._save_session()
+        self._offer_example(board)
         return NextScreen.PREVIEW
+
+    def _offer_example(self, board: BoardDef) -> None:
+        """Put the board's bundled example in the preview when nothing else is.
+
+        A fresh profile used to land on "No VHDL file loaded" with [Start
+        Simulation] grayed out, so the first thing a new user meets is a screen
+        that cannot do anything -- and the file picker they are sent to opened
+        on seven deliberately-broken fixtures sorted above the real designs.
+        Offering the board's own example instead means the preview can always
+        run something, and the example is a *suggestion*: it is replaced when
+        the board changes (a 7-segment board wants a different one) and
+        forgotten the moment the user picks a file of their own.
+        """
+        s = self.state
+        if s.vhdl_path is not None and not s.vhdl_is_example:
+            return  # the user's own file, or one restored from their session
+        example = example_vhdl_for(board)
+        if not example.is_file():
+            return
+        s.vhdl_path = str(example)
+        s.vhdl_is_example = True
+        s.clear_analysis()
 
     # ── Step 2: board preview ─────────────────────────────────────────────
 
@@ -535,6 +573,11 @@ class ScreenController:
             case ScreenResult.BACK:
                 return self.on_back()
             case ScreenResult.LOAD_VHDL:
+                # A file dropped on the preview *is* the pick, so it skips the
+                # picker and goes straight through the same validation.
+                if preview.dropped_vhdl is not None:
+                    self._load_vhdl_file(Path(preview.dropped_vhdl))
+                    return NextScreen.PREVIEW
                 return self._run_vhdl_picker()
             case ScreenResult.SIMULATE:
                 return self.on_simulate()
@@ -570,15 +613,10 @@ class ScreenController:
             ref = Path(s.last_vhdl_path)
         start_dir = ref.parent if (ref is not None and ref.exists()) else HDL_DIR
         preselect = ref.name if (ref is not None and ref.exists()) else ""
-        first_pick = True
 
         while True:
             pygame.display.set_caption("FPGA Simulator \u2013 Select VHDL")
-            if first_pick:
-                picker = VHDLFilePicker(self.screen, start_dir=start_dir, preselect_name=preselect)
-            else:
-                picker = VHDLFilePicker(self.screen, start_dir=HDL_DIR)
-            first_pick = False
+            picker = VHDLFilePicker(self.screen, start_dir=start_dir, preselect_name=preselect)
             picked = picker.run(self.clock)
 
             if picked is None:
@@ -618,7 +656,13 @@ class ScreenController:
             if intent is DialogResult.BACK:
                 pygame.display.set_caption("FPGA Simulator")
                 return self.on_back()
-            # DialogResult.RETRY → pick again (starting back at hdl/)
+            # DialogResult.RETRY -> pick again, *where they were*.  The retry used
+            # to reopen at the bundled hdl/ directory, which is worst exactly when
+            # it happens most: iterating on a file of their own that will not load
+            # yet.  Their directory and the file they just tried are the two things
+            # they are most likely to want next.
+            start_dir = Path(picked).parent
+            preselect = Path(picked).name
 
     def on_vhdl_loaded(self, vhdl_path: str, work_dir: str) -> NextScreen:
         """Record a validated + analyzed VHDL file, then re-enter the preview.
@@ -630,6 +674,7 @@ class ScreenController:
         """
         s = self.state
         s.vhdl_path = vhdl_path
+        s.vhdl_is_example = False
         s.last_vhdl_path = vhdl_path
         s.work_dir = work_dir
         s.work_dir_sim = s.sim

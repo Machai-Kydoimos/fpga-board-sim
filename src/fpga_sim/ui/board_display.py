@@ -205,6 +205,10 @@ class FPGABoard:
         self._height_offset = height_offset
         self.vhdl_path: Path | None = Path(vhdl_path) if vhdl_path else None
         self.vhdl_note = vhdl_note
+        #: Path of a `.vhd` dropped on the window (U49).  The preview does not
+        #: validate it -- it exits with LOAD_VHDL and lets the controller run the
+        #: same encoding/contract/analysis chain a picked file goes through.
+        self.dropped_vhdl: str | None = None
         self._show_footer: bool = show_footer
         # The footer strip is reserved whenever it is drawn; the simulation
         # screen hides the footer but still fills that strip with its overlays,
@@ -465,6 +469,25 @@ class FPGABoard:
             self._draw()
             self.clock.tick(60)
         return self._result()
+
+    def _accept_drop(self, path: str) -> None:
+        """Take a design dropped on the preview and leave the loop to load it.
+
+        Dropping the file is the whole gesture a student wants: they have the
+        Quartus folder open, and the alternative is browsing to it through a
+        picker that starts somewhere else.  Anything that is not a `.vhd` /
+        `.vhdl` is ignored in silence -- dropping a datasheet on a board is a
+        misunderstanding, not an error worth a dialog.  Validation is the
+        controller's, so a dropped file and a picked one fail identically.
+        """
+        if not path:
+            return
+        dropped = Path(path)
+        if dropped.suffix.lower() not in (".vhd", ".vhdl") or not dropped.is_file():
+            return
+        self.dropped_vhdl = str(dropped)
+        self._load_vhdl = True
+        self.running = False
 
     def _result(self) -> ScreenResult:
         """Map the loop-exit flags (set by _handle_events) to a ScreenResult."""
@@ -727,6 +750,9 @@ class FPGABoard:
         for event in events if events is not None else pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
+
+            elif event.type == pygame.DROPFILE:
+                self._accept_drop(getattr(event, "file", ""))
 
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self._go_back = True

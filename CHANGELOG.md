@@ -39,6 +39,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The first run stops being an obstacle course** (U49).
+  - **The seven deliberately-broken fixtures are out of `hdl/`.** They are
+    negative-test fixtures (`bad_contract_*`, `bad_semantic_*`,
+    `bad_encoding_*`), and `sorted()` put every one of them **above**
+    `blinky.vhd` — so the first seven things a new user saw in the file picker
+    were files designed not to work. They now live in `tests/fixtures/hdl/`,
+    where they belong.
+  - **The preview starts on the board's own example** instead of "No VHDL file
+    loaded" with **Start Simulation** grayed out. It is a suggestion, not a
+    choice: changing the board changes the example (`counter_7seg.vhd` on a
+    7-segment board, `blinky.vhd` otherwise), and it is never replaced once you
+    load a file of your own.
+  - **Drag and drop a `.vhd` onto the window** — the picker or the board preview
+    — and it loads through exactly the same encoding → contract → analysis chain
+    a picked file does. Students will not move their designs under this
+    repository, so this and `--vhdl` are how the files stay where they are. A
+    dropped **directory** browses there; anything else is ignored in silence.
+  - **A failed validation re-opens the picker where you were**, on the file you
+    just tried, instead of jumping back to the bundled `hdl/` — which was worst
+    exactly when it happened most, while iterating on a design that does not
+    load yet.
+  - The file picker gains the **(?)** help button the other screens already had.
+
 - **The pre-standard Synopsys packages now work** (U50). `std_logic_arith`,
   `std_logic_unsigned` and their siblings predate `ieee.numeric_std` and are not
   part of any VHDL standard, so GHDL refuses them outright — *"use of synopsys

@@ -111,10 +111,28 @@ channels into one color.
 
 ### 3. Select a VHDL file
 
-Navigate to a `.vhd` / `.vhdl` file. The `hdl/` directory contains ready-to-run
-designs as starting points — LED blinkers, 7-segment counters, and the generated
-6502/Z80 embedded-core systems. See [docs/writing_designs.md](writing_designs.md) for
-the full catalog and the design contract.
+**Three ways in**, and they all end at the same three checks (encoding → contract
+→ analysis), so a design behaves identically however it arrived:
+
+- **Drop it on the window.** A `.vhd` or `.vhdl` dropped on the picker *or* on the
+  board preview is loaded straight away — your files can stay in the Quartus or
+  Vivado folder you already have open. Dropping a **directory** on the picker
+  browses there instead.
+- **Browse to it.** The picker opens where you last were, and after a file fails
+  to load it re-opens **in your directory on the file you tried**, not back at the
+  bundled examples.
+- **Name it on the command line** — `fpga-sim --vhdl lab1/top.vhd`, see
+  [above](#starting-from-the-command-line).
+
+Until you pick something, the preview offers the **board's own example** —
+`counter_7seg.vhd` on a 7-segment board, `blinky.vhd` otherwise — so there is
+always something to run. It is only a suggestion: changing the board changes the
+example, and the moment you load a file of your own it is never replaced.
+
+The `hdl/` directory holds those examples — LED blinkers, 7-segment counters, and
+the generated 6502/Z80 embedded-core systems. See
+[docs/writing_designs.md](writing_designs.md) for the full catalog and the design
+contract.
 
 > **⚠ Simulating a design executes it.** Analysis, elaboration, and the run itself
 > all happen with your user privileges: any design can read and write files through

@@ -530,11 +530,14 @@ class _FakePreview:
     final_inputs: BoardInputs | None = None
     #: Every snapshot the controller restored onto a preview, in order.
     restored: list[BoardInputs] = []
+    #: Path the scripted run() reports as dropped on the window (U49); None = none.
+    dropped: str | None = None
 
     def __init__(self, **kwargs: Any) -> None:
         type(self).last_kwargs = kwargs
         self.sim: SimulatorInfo = type(self).sim_info
         self.inputs = BoardInputs()
+        self.dropped_vhdl = type(self).dropped
 
     def restore_inputs(self, snap: BoardInputs) -> bool:
         type(self).restored.append(snap)
@@ -559,6 +562,7 @@ def _install_preview(
     _FakePreview.last_kwargs = {}
     _FakePreview.final_inputs = None
     _FakePreview.restored = []
+    _FakePreview.dropped = None
     monkeypatch.setattr(controller_mod, "FPGABoard", _FakePreview)
     return _FakePreview
 
@@ -706,10 +710,16 @@ def test_picker_validation_error_back_bails_to_selector(headless_pygame, monkeyp
     assert ctrl._run_vhdl_picker() is NextScreen.SELECTOR
     assert dialog.shown == [("VHDL Error", "not ASCII")]
     assert ctrl.state.work_dir is None  # on_back cleared the analysis
-    assert ctrl.state.vhdl_path is None  # nothing was loaded
+    assert ctrl.state.vhdl_path != "bad.vhd"  # the rejected file was not loaded
 
 
-def test_picker_retry_reopens_at_hdl_dir(headless_pygame, monkeypatch, tmp_path):
+def test_picker_retry_stays_in_the_students_directory(headless_pygame, monkeypatch, tmp_path):
+    """A failed validation must not throw the user back to the bundled hdl/.
+
+    This is the moment it matters most: they are iterating on a file of their
+    own that does not load yet, and every retry used to cost them the walk back
+    to their own folder.
+    """
     vhdl = tmp_path / "mine.vhd"
     vhdl.write_text("-- design", encoding="utf-8")
     ctrl = _make_controller(headless_pygame, session={"vhdl_path": str(vhdl)})
@@ -720,7 +730,26 @@ def test_picker_retry_reopens_at_hdl_dir(headless_pygame, monkeypatch, tmp_path)
     assert ctrl._run_vhdl_picker() is NextScreen.PREVIEW
     first, second = _FakePicker.ctor_kwargs
     assert first == {"start_dir": tmp_path, "preselect_name": "mine.vhd"}
-    assert second == {"start_dir": HDL_DIR}  # retry: no preselect
+    # ... and on the file they just tried, which is what they are fixing.
+    assert second == {"start_dir": tmp_path, "preselect_name": "mine.vhd"}
+
+
+def test_picker_retry_follows_the_user_into_another_directory(
+    headless_pygame, monkeypatch, tmp_path
+):
+    """The retry directory is where they *picked*, not where they started."""
+    elsewhere = tmp_path / "lab2"
+    elsewhere.mkdir()
+    other = elsewhere / "top.vhd"
+    other.write_text("-- design", encoding="utf-8")
+    ctrl = _make_controller(headless_pygame)
+    ctrl.on_board_selected(_board())
+    _install_picker(monkeypatch, [str(other), None])
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (False, "bad"))
+    _install_dialog(monkeypatch, [DialogResult.RETRY])
+    assert ctrl._run_vhdl_picker() is NextScreen.PREVIEW
+    _, second = _FakePicker.ctor_kwargs
+    assert second == {"start_dir": elsewhere, "preselect_name": "top.vhd"}
 
 
 def test_picker_analysis_failure_shows_simulator_error(headless_pygame, monkeypatch):
@@ -736,7 +765,7 @@ def test_picker_analysis_failure_shows_simulator_error(headless_pygame, monkeypa
     dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
     assert ctrl._run_vhdl_picker() is NextScreen.PREVIEW
     assert dialog.shown == [("GHDL Error", "elab failed")]
-    assert ctrl.state.vhdl_path is None
+    assert ctrl.state.vhdl_path != "a.vhd"  # the failing file was not adopted
 
 
 # ── example_vhdl_for / View-Example wiring (U4) ──────────────────────────────
@@ -1218,7 +1247,10 @@ def test_cli_vhdl_contract_failure_is_reported_twice(
     dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
     ctrl = _make_controller(headless_pygame, cli_board="ArtyA7_35Platform", cli_vhdl=str(vhdl))
     assert ctrl._seed_from_cli() is NextScreen.PREVIEW
-    assert ctrl.state.vhdl_path is None
+    # The file that failed is not loaded; the board's example stands in, so the
+    # preview still has something to run rather than nothing at all.
+    assert ctrl.state.vhdl_path != str(vhdl)
+    assert ctrl.state.vhdl_is_example
     assert dialog.shown == [("VHDL Error", "Missing required port(s): clk")]
     assert "Missing required port(s): clk" in capsys.readouterr().err
 
@@ -1228,7 +1260,8 @@ def test_missing_cli_vhdl_file_warns_and_launches_anyway(headless_pygame, capsys
         headless_pygame, cli_board="ArtyA7_35Platform", cli_vhdl="/nope/absent.vhd"
     )
     assert ctrl._seed_from_cli() is NextScreen.PREVIEW
-    assert ctrl.state.vhdl_path is None
+    assert ctrl.state.vhdl_path is not None and "absent.vhd" not in ctrl.state.vhdl_path
+    assert ctrl.state.vhdl_is_example
     assert "absent.vhd" in capsys.readouterr().err
 
 
@@ -1239,3 +1272,93 @@ def test_reserved_cli_flags_are_carried_not_dropped(headless_pygame):
     )
     assert ctrl.cli_pinmap == "top.qsf"
     assert ctrl.cli_generics == ("CNTR_LEN=4", "N=2")
+
+
+# ── First-run hygiene: preselection, drag-and-drop (U49) ─────────────────────
+
+
+def test_a_fresh_profile_lands_on_the_boards_example(headless_pygame):
+    """The preview must be able to run something before the user picks anything.
+
+    A fresh profile used to open on "No VHDL file loaded" with [Start
+    Simulation] grayed out -- a first screen that cannot do anything.
+    """
+    ctrl = _make_controller(headless_pygame)
+    ctrl.on_board_selected(_board())
+    assert ctrl.state.vhdl_path == str(HDL_DIR / "blinky.vhd")
+    assert ctrl.state.vhdl_is_example
+
+
+def test_the_example_follows_the_board(headless_pygame):
+    """A 7-segment board wants a different example, and it is only a suggestion."""
+    ctrl = _make_controller(headless_pygame)
+    ctrl.on_board_selected(_board())
+    ctrl.on_board_selected(_7seg_board())
+    assert ctrl.state.vhdl_path == str(HDL_DIR / "counter_7seg.vhd")
+
+
+def test_a_restored_session_file_is_never_replaced(headless_pygame, tmp_path):
+    vhdl = tmp_path / "mine.vhd"
+    vhdl.write_text("-- design", encoding="utf-8")
+    ctrl = _make_controller(headless_pygame, session={"vhdl_path": str(vhdl)})
+    ctrl.on_board_selected(_7seg_board())
+    assert ctrl.state.vhdl_path == str(vhdl)
+    assert not ctrl.state.vhdl_is_example
+
+
+def test_a_picked_file_is_never_replaced_by_a_board_change(headless_pygame, tmp_path):
+    vhdl = tmp_path / "mine.vhd"
+    vhdl.write_text("-- design", encoding="utf-8")
+    ctrl = _make_controller(headless_pygame)
+    ctrl.on_board_selected(_board())  # example offered
+    ctrl.on_vhdl_loaded(str(vhdl), "/work")  # user chooses their own
+    ctrl.on_board_selected(_7seg_board())  # ... and changes board
+    assert ctrl.state.vhdl_path == str(vhdl)
+    assert not ctrl.state.vhdl_is_example
+
+
+def test_a_dropped_design_skips_the_picker(headless_pygame, monkeypatch, tmp_path):
+    """Dropping a file *is* the pick, so it must not open a browser first."""
+    vhdl = tmp_path / "dropped.vhd"
+    vhdl.write_text("-- design", encoding="utf-8")
+    ctrl = _make_controller(headless_pygame)
+    ctrl.on_board_selected(_board())
+    _install_preview(monkeypatch, ScreenResult.LOAD_VHDL)
+    _FakePreview.dropped = str(vhdl)
+    monkeypatch.setattr(ctrl, "_run_vhdl_picker", _fail_if_called("the file picker"))
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (True, ""))
+    monkeypatch.setattr(
+        controller_mod, "check_vhdl_contract", lambda p, board_def: ContractResult(True, "")
+    )
+    monkeypatch.setattr(controller_mod, "run_with_spinner", _passthrough_spinner)
+    monkeypatch.setattr(controller_mod, "analyze_vhdl", lambda *a, **k: (True, "/work/dir"))
+    assert ctrl._run_preview() is NextScreen.PREVIEW
+    assert ctrl.state.vhdl_path == str(vhdl)
+    assert not ctrl.state.vhdl_is_example
+
+
+def test_a_dropped_design_fails_exactly_like_a_picked_one(
+    headless_pygame, monkeypatch, tmp_path, capsys
+):
+    """Same validation, same dialog -- and no stderr line, since it was a gesture."""
+    vhdl = tmp_path / "dropped.vhd"
+    vhdl.write_text("-- design", encoding="utf-8")
+    ctrl = _make_controller(headless_pygame)
+    ctrl.on_board_selected(_board())
+    _install_preview(monkeypatch, ScreenResult.LOAD_VHDL)
+    _FakePreview.dropped = str(vhdl)
+    monkeypatch.setattr(controller_mod, "check_vhdl_encoding", lambda p: (False, "has a BOM"))
+    dialog = _install_dialog(monkeypatch, [DialogResult.RETRY])
+    assert ctrl._run_preview() is NextScreen.PREVIEW
+    assert dialog.shown == [("VHDL Error", "has a BOM")]
+    assert ctrl.state.vhdl_path != str(vhdl)
+    assert capsys.readouterr().err == ""
+
+
+def test_the_load_vhdl_button_still_opens_the_picker(headless_pygame, monkeypatch):
+    """Nothing was dropped, so the button behaves as it always has."""
+    ctrl = _make_controller(headless_pygame)
+    ctrl.on_board_selected(_board())
+    _install_preview(monkeypatch, ScreenResult.LOAD_VHDL)
+    monkeypatch.setattr(ctrl, "_run_vhdl_picker", lambda: NextScreen.PREVIEW)
+    assert ctrl._run_preview() is NextScreen.PREVIEW
