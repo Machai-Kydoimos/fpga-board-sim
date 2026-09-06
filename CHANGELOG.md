@@ -154,6 +154,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     load yet.
   - The file picker gains the **(?)** help button the other screens already had.
 
+- **A weekly CI tripwire on the install documentation.** `ci.yml` installs every
+  simulator from a version-pinned release asset with a checked sha256, because a
+  required check must not go red when a package index has a bad afternoon — which
+  is right for a gate and useless as a rehearsal: it proves the pinned zip works,
+  never that `winget install ghdl.ghdl.ucrt64.mcode` still resolves to anything.
+  The new `install-docs.yml` asks that question instead, running the commands a
+  reader actually types — README's quick start and `docs/install.md`'s per-OS
+  matrix — verbatim on Linux, macOS and Windows, and ending where the docs end,
+  at `uv run pytest`. Weekly, on demand, and on pull requests that touch the
+  install docs; **never a required check**, because it fails for reasons a
+  contributor did not cause and cannot fix, and that is the signal.
+  - `tests/test_install_docs_workflow.py` keeps the two from drifting in the
+    direction that rots: every command the workflow runs *as documentation* must
+    still appear in the document it came from.
+  - It also verifies package identifiers against the winget manifest repository
+    directly, so the "does this package still exist?" half reports even on runner
+    images where winget itself is absent.
+
 - **The pre-standard Synopsys packages now work** (U50). `std_logic_arith`,
   `std_logic_unsigned` and their siblings predate `ieee.numeric_std` and are not
   part of any VHDL standard, so GHDL refuses them outright — *"use of synopsys

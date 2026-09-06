@@ -1,0 +1,236 @@
+# Does the install we *document* still work?
+#
+# ci.yml answers a different question.  Every simulator it installs comes from a
+# version-pinned release asset with a checked sha256, because a required check
+# must not go red when a package index has a bad afternoon.  That pinning is
+# right for a gate and useless as a rehearsal: it proves the pinned zip works,
+# never that `winget install ghdl.ghdl.ucrt64.mcode` still resolves to anything.
+#
+# So this workflow runs the commands a reader actually types, verbatim, on all
+# three operating systems -- README.md's quick start and docs/install.md's
+# per-OS matrix -- and ends where the docs end, at `uv run pytest`.  A student
+# following the docs on a clean machine is the scenario; the runner is the
+# closest thing to one that can be automated.
+#
+# **Never make this a required check.**  It fails for reasons a contributor did
+# not cause and cannot fix in their PR -- a Homebrew formula renamed, a winget
+# manifest withdrawn, an apt mirror behind -- and that is precisely the signal
+# it exists to raise.  Weekly, and on PRs that touch the install docs
+# themselves, is enough.
+#
+# What a runner is not: a messy student machine.  It has no prior Python, no
+# Store Python, no half-installed MSYS2, no display, and no group policy.  The
+# troubleshooting half of docs/install.md is therefore out of scope here and
+# stays a human job.
+name: Install docs
+
+on:
+  schedule:
+    # Mondays, offset off the hour to miss the top-of-hour scheduling crowd.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - docs/install.md
+      - README.md
+      - .github/workflows/install-docs.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Linux: `sudo apt install ghdl`, exactly as docs/install.md prints it ────
+  linux-apt:
+    name: Linux — documented apt install
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      # Verbatim from docs/install.md "GHDL / Linux (Ubuntu/Debian)".  It is
+      # deliberately NOT preceded by `apt-get update`: if the documented command
+      # needs one to work on a clean machine, the document is what is wrong, and
+      # this job going red is how we find out.
+      - name: sudo apt install ghdl
+        run: sudo apt install ghdl
+
+      - name: ghdl --version
+        run: |
+          ghdl --version
+          {
+            echo "### Linux"
+            echo "- \`sudo apt install ghdl\` -> \`$(ghdl --version | head -1)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # From README.md's prerequisites.  docs/install.md never says how to get
+      # uv, which is a gap this step exists to keep honest: the command below is
+      # the only published one, so it is the one under test.
+      - name: Install uv (README quick start)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: uv sync
+        run: uv sync
+
+      # docs/install.md: "To confirm the install works, run the test suite -- it
+      # needs no display".  Run it with no display variables set, because that
+      # claim is part of what is being verified (tests/conftest.py sets the
+      # dummy SDL drivers itself, via setdefault).
+      - name: uv run pytest
+        run: uv run pytest
+
+  # ── Linux: the NVC from-source *dependency list* ───────────────────────────
+  # The build itself is minutes of compile that tests nickg/nvc, not us.  What
+  # rots in a from-source recipe is the package list -- a renamed or dropped
+  # dev package -- and that is one apt call away.
+  linux-nvc-build-deps:
+    name: Linux — NVC build dependencies resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Install build dependencies (docs/install.md, Debian/Ubuntu)
+        run: |
+          sudo apt install build-essential automake autoconf flex check \
+            llvm-dev pkg-config zlib1g-dev libdw-dev libffi-dev libzstd-dev
+      - name: Record
+        run: |
+          echo "- NVC Debian/Ubuntu build dependencies: all resolved" >> "$GITHUB_STEP_SUMMARY"
+
+  # ── macOS: `brew install ghdl` / `brew install nvc` ────────────────────────
+  macos-brew:
+    name: macOS — documented brew install
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      # Verbatim from docs/install.md.  Both are installed because the document
+      # offers both and a student may follow either line; the suite skips the
+      # simulator it cannot find, so installing both also proves the pair
+      # coexists, which the document claims two sections earlier.
+      - name: brew install ghdl
+        run: brew install ghdl
+      - name: brew install nvc
+        run: brew install nvc
+
+      - name: Record versions
+        run: |
+          ghdl --version
+          nvc --version
+          {
+            echo "### macOS"
+            echo "- \`brew install ghdl\` -> \`$(ghdl --version | head -1)\`"
+            echo "- \`brew install nvc\` -> \`$(nvc --version | head -1)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install uv (README quick start)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: uv sync
+        run: uv sync
+      - name: uv run pytest
+        run: uv run pytest
+
+  # ── Windows: does `winget install ghdl.ghdl.ucrt64.mcode` still resolve? ───
+  # This is the arc's F23, and the one question ci.yml's pinned-zip job is
+  # built to avoid asking.  Two things can be true independently: the package
+  # identifier still exists in the community repository, and the install runs.
+  # winget is an App Installer component and is not dependably present on a
+  # hosted runner, so the identifier is checked against the manifest repository
+  # first -- that half always runs -- and the install is attempted when the
+  # tool is actually there.
+  windows-winget:
+    name: Windows — documented winget install
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Package identifiers still exist in winget-pkgs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A winget id maps to a manifest path by splitting on '.' and
+          # prefixing the first letter, lowercased:
+          #   ghdl.ghdl.ucrt64.mcode -> manifests/g/ghdl/ghdl/ucrt64/mcode
+          $tick = [char]96   # a markdown backtick; PowerShell's own escape char
+          $ids = @('ghdl.ghdl.ucrt64.mcode', 'NickGasson.NVC', 'astral-sh.uv')
+          $bad = @()
+          foreach ($id in $ids) {
+            $parts  = $id.Split('.')
+            $letter = $parts[0].Substring(0,1).ToLower()
+            $path   = "manifests/$letter/" + ($parts -join '/')
+            $url    = "repos/microsoft/winget-pkgs/contents/$path"
+            gh api $url --jq '.[].name' > $null 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "OK      $id -> $path"
+              "- $tick$id$tick resolves ($tick$path$tick)" >> $env:GITHUB_STEP_SUMMARY
+            } else {
+              Write-Host "MISSING $id -> $path"
+              "- **$tick$id$tick NOT FOUND** at $tick$path$tick — docs/install.md is stale" >> $env:GITHUB_STEP_SUMMARY
+              $bad += $id
+            }
+          }
+          if ($bad.Count -gt 0) { throw "winget identifiers no longer published: $($bad -join ', ')" }
+
+      - name: Is winget present on this runner?
+        id: winget
+        run: |
+          $have = $null -ne (Get-Command winget -ErrorAction SilentlyContinue)
+          "present=$($have.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          if (-not $have) {
+            "- _winget is not installed on this runner image; the install commands could not be exercised (runner limitation, not a docs defect)._" >> $env:GITHUB_STEP_SUMMARY
+          }
+
+      # Verbatim from docs/install.md, plus only the flags a non-interactive
+      # shell requires -- winget prompts for source and package agreements on
+      # first use and there is nobody to answer.
+      - name: winget install ghdl.ghdl.ucrt64.mcode
+        if: steps.winget.outputs.present == 'true'
+        run: |
+          winget install ghdl.ghdl.ucrt64.mcode `
+            --accept-source-agreements --accept-package-agreements --disable-interactivity
+          if ($LASTEXITCODE -ne 0) { throw "winget install failed with $LASTEXITCODE" }
+
+      # docs/install.md's own troubleshooting says winget's GHDL may not land on
+      # PATH for the current session; the documented remedy is to add it, so
+      # that remedy is what runs here.
+      - name: Add GHDL to PATH and verify
+        if: steps.winget.outputs.present == 'true'
+        run: |
+          $exe = Get-ChildItem -Recurse -ErrorAction SilentlyContinue `
+                   -Path "$env:LOCALAPPDATA\Microsoft\WinGet", "$env:ProgramFiles", "${env:ProgramFiles(x86)}" `
+                   -Filter ghdl.exe | Select-Object -First 1
+          if (-not $exe) { throw "ghdl.exe not found after winget install" }
+          $exe.DirectoryName >> $env:GITHUB_PATH
+          & $exe.FullName --version
+          $tick = [char]96
+          "- ${tick}winget install ghdl.ghdl.ucrt64.mcode$tick -> installed at $tick$($exe.DirectoryName)$tick" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Install uv
+        run: |
+          if ($null -ne (Get-Command winget -ErrorAction SilentlyContinue)) {
+            winget install --id=astral-sh.uv -e `
+              --accept-source-agreements --accept-package-agreements --disable-interactivity
+          } else {
+            # Runner limitation only: keep the rest of the job meaningful by
+            # using uv's own installer.  Recorded above so the summary does not
+            # imply the documented command was tested.
+            irm https://astral.sh/uv/install.ps1 | iex
+            "$env:USERPROFILE\.local\bin" >> $env:GITHUB_PATH
+          }
+
+      - name: uv sync
+        run: uv sync
+      - name: uv run pytest
+        run: uv run pytest

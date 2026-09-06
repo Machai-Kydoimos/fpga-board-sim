@@ -52,14 +52,15 @@ tagged ≥ 4 days before the first lab. Milestone and issues open per PR as the 
 
 1. **U48–U54 + D17 — the classroom arc** → v0.23.0, "the classroom release"
    ([plan](plans/u48_classroom_arc_plan_v2.md)) — **the live arc**, approved 2026-09-05. Cards: U48 ·
-   U49 · U50 · U53 in Tier 1, U52 in Tier 3, **D17** in Part 2 / Tier 2. **U51** (multi-file) and
-   **U54** (testbench runner) are carded but deliberately *not* in this arc (decisions D-5 /
-   D-11) — they ride the next release. Graduates Icebox **P17** (into U48) and **P11** (into
-   U52), and resolves **P13** / **P14** in its docs PR.
+   U49 · U50 · U53 in Tier 1, U52 in Tier 3, **D17** in Part 2 / Tier 2. **U51** (multi-file) was
+   pulled **back into** this arc on 2026-09-06 (decision D-5 reversed — a second course's projects
+   are multi-file to the core); **U54** (testbench runner) stays out (D-11) and rides the next
+   release. Graduates Icebox **P17** (into U48) and **P11** (into U52), and resolves **P13** /
+   **P14** in its docs PR.
 2. **U39–U41 board peripherals** → v0.24.0 ([plan](plans/u39_peripherals_plan.md)) — plan **approved
    2026-08-05** (its architecture decisions were locked 2026-07-27); displaced one release by the
-   arc above, unstarted either way. Full card: U39–U41 in Part 1 / Tier 4. **U51** and **U54**
-   ride this release.
+   arc above, unstarted either way. Full card: U39–U41 in Part 1 / Tier 4. **U54** rides this
+   release (**U51** moved back to v0.23.0 on 2026-09-06).
 3. **Docs & Assets round 2, PRs 3–6** — PRs 1–2 ✅ merged (2026-08-25 / 2026-08-31); 3–6 were
    deferred *specifically* so the asset re-capture happened once, after peripherals, so they stay
    with peripherals. The classroom arc needs none of them: round-2 PR 2 already put
@@ -671,8 +672,12 @@ This document inventories all viable improvements and ranks them by impact.
   folders are not: the course's Lab 3 ships `counter.vhd` as a separate sub-entity, and **every**
   lab folder holds a `testbench.vhd`. Deferred out of the classroom arc by decision D-5 — traded to
   keep the **D17** split — in favor of a documented one-file rule ("paste sub-entities above your
-  top level"), which is honest but is that arc's weakest answer, so this is its **first pull-back
-  candidate** if time appears.
+  top level"), which is honest but is that arc's weakest answer, so it was named that arc's
+  **first pull-back candidate**. **Pulled back in on 2026-09-06** (D-5 reversed) → **v0.23.0**: a
+  second course's student projects (BI-PNO — Basys 3, Vivado) are multi-file to the core, nine
+  sources plus five testbenches in one of them, and are organized around testbenches rather than
+  board I/O. It is also the other half of the folder contract (plan D-16): *one folder = one
+  project* is the same sentence read from the other side.
 - **What:** analyze the picked design's siblings to a **fixpoint** (dependency order discovered by
   retrying, not parsed), treat a **failing sibling as irrelevant to the picked design** rather than
   fatal — two of the three course testbenches do not compile as shipped and sit right beside the
@@ -748,7 +753,8 @@ This document inventories all viable improvements and ranks them by impact.
   2026-07-27) — target **v0.24.0**, displaced one release on 2026-09-05 by the pre-semester
   classroom arc (see [Current focus](#current-focus)), which has a fixed external date and no
   dependency on this work. Unstarted either way; milestone and issues open at arc start.
-  **U51** (multi-file designs) and **U54** (testbench runner) ride this release alongside it.
+  **U54** (testbench runner) rides this release alongside it; **U51** (multi-file designs) moved
+  back to the classroom arc on 2026-09-06.
 - **Why:** the board model stops at LEDs / switches / buttons / 7-seg, but on real hardware the
   lesson after "blink an LED" is "drive the LCD" — and today a design driving LCD ports
   analyzes, elaborates, runs, and is silently dark (extra `out` ports already pass the
@@ -1150,7 +1156,7 @@ U6 (theme system) ✅ — U27 is now unblocked
 
 D6a (screen-result enum) ✅ — D6b (ScreenController) ✅ — both shipped
 
-U51 (multi-file designs)      # deferred out of the classroom arc by decision D-5
+U51 (multi-file designs)      # back in the classroom arc 2026-09-06 (D-5 reversed)
  └──> U54 (testbench runner)
 ```
 
