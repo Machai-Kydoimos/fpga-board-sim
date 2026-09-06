@@ -39,6 +39,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A design can be split across several files** (U51). `analyze_vhdl` ran
+  exactly one `-a`, so a design was one file — but the course's Lab 3 ships
+  `counter.vhd` as a separate sub-entity, every lab folder holds a
+  `testbench.vhd`, and the second course's student projects are nine sources and
+  five testbenches apiece. When a design does not compile on its own, the other
+  VHDL files in its folder are analyzed into the same library and it is tried
+  again.
+  - **Dependency order is discovered by retrying, not by parsing.** Each round
+    analyzes whatever is left and anything whose dependencies just landed now
+    succeeds; the sweep stops when a round adds nothing. Getting the order
+    "properly" would mean understanding `use` clauses, component declarations,
+    configurations and library aliases — this reaches the same answer with none
+    of that, and cannot be wrong about a construct it has never seen.
+  - **A neighbor that will not compile is irrelevant, not fatal.** Two of the
+    three course testbenches do not build as shipped and sit right beside the
+    design they test; refusing to run a student's design because the
+    *instructor's* testbench is broken would be indefensible. If the design
+    really did need that file, its own analysis fails next and reports its own
+    error — which is the message worth reading.
+  - Only the picked file is simulated; the rest are compiled so that it can be.
+  - **The sweep is lazy, and that is measured rather than tasteful.** An eager
+    version — sweep first, always — is free on GHDL's mcode backend and on NVC
+    (0.22 s and 0.38 s over `hdl/`, 18 files and 29.7k lines) and *five times*
+    the cost on GHDL's AOT LLVM backend, where analyzing a file means compiling
+    it: the CI job went from 139 s to 663 s while buying nothing for the
+    single-file designs that are the overwhelming majority. A design that
+    compiles alone now never reads its folder, and there is a test that says so.
+  - The retry hangs off **both** failure paths, because a missing neighbor
+    surfaces in two places: a direct `entity work.x` instantiation fails at
+    analysis, while a *component* declaration with default binding analyzes
+    perfectly well alone and only fails to bind at elaboration.
+
 - **A design can now run through its own constraint file** (U53) — the pin map.
   Board-native mode recognizes a design by its port *names*, which covers
   designs written to a vendor's published naming and nothing else. Real course

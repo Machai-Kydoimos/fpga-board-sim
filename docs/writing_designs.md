@@ -56,12 +56,14 @@ exactly as the hardware does.
 
 ### One folder is one project
 
-**Put the design and one constraint file in a single directory.** That is the whole
-contract:
+**Put the design, everything it needs, and one constraint file in a single
+directory.** That is the whole contract:
 
 ```text
 lab1/
 ├── test_entity.vhd      ← the design you pick
+├── counter.vhd          ← a sub-entity it instantiates
+├── testbench.vhd        ← ignored; it does not have to compile
 └── test_entity.qsf      ← the pin map
 ```
 
@@ -85,6 +87,42 @@ rather than leaving you to guess.
 
 To keep a constraint file somewhere else on purpose, name it:
 `fpga-sim --pinmap path/to/board.xdc --vhdl lab1/test_entity.vhd`.
+
+### Designs split across several files
+
+Your design does not have to be one file. If it does not compile on its own, the
+other VHDL files in its folder are analyzed into the same library and it is tried
+again — so a top level can instantiate a sub-entity or use a package that lives
+next door:
+
+```vhdl
+-- top.vhd
+u_counter : entity work.counter          -- counter.vhd, beside this file
+  generic map (WIDTH => 8)
+  port map (clk => clk, q => q);
+```
+
+You do not have to say what depends on what, and the files can be named anything:
+the order is worked out by trying, and retrying whatever did not compile yet, until
+nothing more can be added. A file that needs a package compiles on the round after
+the package does.
+
+**A neighbor that does not compile is ignored, not fatal.** Testbenches shipped with
+an assignment often do not build as given, and they sit right beside the design they
+test — your design still runs. The one message you get is about *your* design: if it
+turns out to need a file that failed, the design's own analysis fails next, and that
+error is the one shown.
+
+Two consequences worth knowing:
+
+- **Only your picked file is simulated.** The others are compiled so that it can be;
+  the picker still runs the top level you chose. To run a testbench instead, see the
+  manual recipe in the troubleshooting guide.
+- Keep the folder to one project. Sixty VHDL files in a directory is not a lab
+  folder, and the sweep stops there.
+- **A design that compiles on its own costs nothing.** The folder is only read
+  when your design actually needs it, which matters on GHDL's compiled LLVM
+  backend, where analyzing a file means compiling it.
 
 ### What it reads, and what it ignores
 

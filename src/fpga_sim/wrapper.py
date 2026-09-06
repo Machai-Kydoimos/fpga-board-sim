@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -601,6 +602,121 @@ def _bound_check_probe(work_dir: str) -> str | None:
     return _name_bound_check_port(output, work_dir)
 
 
+#: What counts as a design file beside the picked one.
+_VHDL_SUFFIXES = (".vhd", ".vhdl")
+
+#: Ceilings on the sibling sweep.  A lab folder holds a handful of files; a
+#: directory holding sixty is not a lab folder, and grinding through it one
+#: subprocess at a time would look exactly like a hang.
+_MAX_SIBLINGS = 60
+_ANALYZE_TIMEOUT_S = 30
+
+#: Total wall-clock the sibling sweep may spend before it gives up and lets the
+#: design speak for itself.  Measured on the worst folder that ships here --
+#: `hdl/`, 18 files and 29k lines including the embedded cores -- the sweep is
+#: 0.22 s on GHDL mcode and 0.38 s on NVC, against the 5-10 s the whole
+#: analysis takes.  This is three orders of magnitude of headroom, and exists
+#: only so that a pathological folder degrades into "your design did not
+#: compile" instead of into a hang.
+_SWEEP_BUDGET_S = 45
+
+
+def find_siblings(vhdl_path: str | Path) -> list[Path]:
+    """List the other VHDL files in the picked design's folder, in a stable order.
+
+    One folder is one project (see ``docs/writing_designs.md``), so everything
+    beside the design is available to it.  Nothing is parsed here: which of
+    these the design actually needs is decided by the analyzer, not by us.
+    """
+    design = Path(vhdl_path)
+    folder = design.parent
+    if not folder.is_dir():
+        return []
+    try:
+        entries = sorted(folder.iterdir())
+    except OSError:
+        return []
+    out = [
+        p
+        for p in entries
+        if p.is_file() and p.suffix.lower() in _VHDL_SUFFIXES and p.resolve() != design.resolve()
+    ]
+    return out[:_MAX_SIBLINGS]
+
+
+def analyze_siblings(
+    vhdl_path: str | Path,
+    work_dir: str,
+    simulator: Simulator = "ghdl",
+    sim_path: str | None = None,
+) -> tuple[list[Path], dict[Path, str]]:
+    """Analyze the design's neighbors into the same library, to a fixpoint (U51).
+
+    Real work is not one file.  The course's Lab 3 ships ``counter.vhd`` as a
+    separate sub-entity, every lab folder holds a ``testbench.vhd``, and the
+    second course's student projects are nine sources and five testbenches.
+
+    Two decisions carry this function.
+
+    **Order is discovered by retrying, not by parsing.**  A VHDL file must be
+    analyzed after everything it depends on, and working that out properly
+    means understanding ``use`` clauses, component declarations, configurations
+    and library aliases.  Retrying until a pass adds nothing reaches the same
+    answer with none of that: each round analyzes what is left, and anything
+    whose dependencies just landed now succeeds.  Worst case is one round per
+    dependency level, which for a lab folder is two or three.
+
+    **A neighbor that will not compile is irrelevant, not fatal.**  Two of the
+    three course testbenches do not compile as shipped, and they sit right
+    beside the design they test.  Refusing to run the student's design because
+    the *instructor's* testbench is broken would be indefensible, so a failing
+    sibling is recorded and dropped.  If the picked design actually needed it,
+    the design's own analysis fails next and reports its own error -- which is
+    the message that helps.
+
+    Returns ``(analyzed, failures)``: the siblings that compiled, in the order
+    they compiled, and a ``path -> stderr`` map for those that never did.
+    """
+    be = _backend(simulator)
+    pending = find_siblings(vhdl_path)
+    analyzed: list[Path] = []
+    errors: dict[Path, str] = {}
+    deadline = time.monotonic() + _SWEEP_BUDGET_S
+    while pending:
+        progressed: list[Path] = []
+        still: list[Path] = []
+        for sibling in pending:
+            if time.monotonic() > deadline:
+                still.append(sibling)
+                continue
+            try:
+                result = subprocess.run(
+                    be.analyze_cmd(sibling, work_dir, binary=sim_path),
+                    capture_output=True,
+                    text=True,
+                    timeout=_ANALYZE_TIMEOUT_S,
+                    encoding="utf-8",
+                    errors="replace",
+                )
+            except (OSError, subprocess.SubprocessError) as e:
+                errors[sibling] = str(e)
+                continue
+            if result.returncode == 0:
+                progressed.append(sibling)
+            else:
+                errors[sibling] = result.stderr.strip()
+                still.append(sibling)
+        if not progressed:
+            break  # fixpoint: nothing left can be made to compile
+        if time.monotonic() > deadline:
+            break
+        analyzed.extend(progressed)
+        for done in progressed:
+            errors.pop(done, None)
+        pending = still
+    return analyzed, errors
+
+
 def analyze_vhdl(
     vhdl_path: str | Path,
     work_dir: str | None = None,
@@ -615,10 +731,15 @@ def analyze_vhdl(
     """Analyze the user's VHDL and the generated sim_wrapper.
 
     Steps:
-      1. Analyze the user's VHDL file (``-a``).
+      1. Analyze the user's VHDL file (``-a``).  If that fails, analyze the
+         other VHDL files in its folder (U51) to a fixpoint and try again --
+         lazily, because on a code-generating backend a sweep is expensive and
+         the overwhelming majority of designs are one file.
       2. Generate ``sim_wrapper.vhd`` and analyze it.
       3. Elaborate ``sim_wrapper`` with VHDL-default generics as an early
-         error check.  GHDL resolves generics at run time so the defaults
+         error check (retrying once after a sibling sweep, since a *component*
+         instantiation with default binding fails here rather than at step 1).
+         GHDL resolves generics at run time so the defaults
          used here are discarded.  NVC bakes generics into its elaboration
          artifact, so ``start_simulation()`` re-elaborates with the real
          board generics before running — but this early check still catches
@@ -642,15 +763,40 @@ def analyze_vhdl(
     if toplevel is None:
         toplevel = Path(vhdl_path).stem
     try:
-        # Step 1: analyze user's VHDL
-        result = subprocess.run(
-            be.analyze_cmd(Path(vhdl_path), work_dir, binary=sim_path),
-            capture_output=True,
-            text=True,
-            timeout=30,
-            encoding="utf-8",
-            errors="replace",
-        )
+        # Step 1: analyze the user's VHDL.  Alone first -- see _analyze_one.
+        swept = False
+
+        def _sweep() -> bool:
+            """Analyze the folder's other files, once. True if it had not run."""
+            nonlocal swept
+            if swept:
+                return False
+            swept = True
+            analyze_siblings(vhdl_path, work_dir, simulator=simulator, sim_path=sim_path)
+            return True
+
+        def _analyze_design() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                be.analyze_cmd(Path(vhdl_path), work_dir, binary=sim_path),
+                capture_output=True,
+                text=True,
+                timeout=_ANALYZE_TIMEOUT_S,
+                encoding="utf-8",
+                errors="replace",
+            )
+
+        result = _analyze_design()
+        if result.returncode != 0:
+            # It may be a multi-file design (U51).  Sweeping the folder is only
+            # worth doing *here*, on a path that has already failed: on GHDL's
+            # AOT LLVM backend an analyze compiles, so an unconditional sweep of
+            # a folder like `hdl/` (18 files, 29.7k lines) cost 139 s -> 663 s
+            # in CI while buying nothing for the single-file designs that are
+            # the overwhelming majority.  Measured, after an eager version was
+            # written and merged into a branch on the strength of the mcode and
+            # NVC numbers alone, where it is genuinely free.
+            if _sweep():
+                result = _analyze_design()
         if result.returncode != 0:
             return False, add_error_hints(result.stderr.strip(), board_def)
 
@@ -682,15 +828,24 @@ def analyze_vhdl(
 
         # Step 3: early elaboration check — VHDL defaults suffice for structural errors.
         # NVC will re-elaborate with real board generics in start_simulation().
-        elab = subprocess.run(
-            be.elaborate_cmd("sim_wrapper", {}, work_dir, binary=sim_path),
-            capture_output=True,
-            text=True,
-            timeout=30,
-            cwd=work_dir,
-            encoding="utf-8",
-            errors="replace",  # GHDL's compiled backends emit an executable here
-        )
+        def _elaborate() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                be.elaborate_cmd("sim_wrapper", {}, work_dir, binary=sim_path),
+                capture_output=True,
+                text=True,
+                timeout=_ANALYZE_TIMEOUT_S,
+                cwd=work_dir,
+                encoding="utf-8",
+                errors="replace",  # GHDL's compiled backends emit an executable here
+            )
+
+        elab = _elaborate()
+        if elab.returncode != 0 and _sweep():
+            # The second place a missing neighbor surfaces: a *component*
+            # instantiation with default binding analyzes fine on its own and
+            # only fails to bind here.  This is why the sweep cannot simply hang
+            # off step 1.
+            elab = _elaborate()
         if elab.returncode != 0:
             combined = (result2.stderr + elab.stderr).strip()
             if not combined:
