@@ -51,12 +51,21 @@ appears, and if your design is a button that lights an LED and you simply were n
 pressing it, you can ignore the whole thing — touch a control and it withdraws by
 itself.
 
+**One step does not make it go away.** A design that toggles an LED once every
+thirty seconds is exactly what this is for, so a single blink after a long silence
+leaves the offer where it is: that blink is evidence the design *is* just slow, not
+evidence that it isn't. The offer withdraws once the board has been genuinely
+active for a while — and if you have the panel open, nothing the design does closes
+it. Only **[ Close ]** does that.
+
 The simulator cannot tell those apart, and that is the honest reason for the light
 touch: a design waiting for input and a divider quietly counting look *identical*
 from outside — still inputs, still outputs, simulated time running. Guessing which
 one you have and announcing it would be wrong often enough to be worth nothing.
 
-Click it and you get the arithmetic:
+Click it and you get the arithmetic, measured at that moment — watch for a minute
+before asking and you are told about the minute, not about the first ten seconds
+of it:
 
 ```text
 This design may just be slow, not broken

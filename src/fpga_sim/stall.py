@@ -50,6 +50,16 @@ from dataclasses import dataclass
 #: the user is still wondering rather than after they have given up.
 DEFAULT_THRESHOLD_S = 10.0
 
+#: How long the offer stays up after the board starts moving again, as a
+#: multiple of the threshold.  It exists because **one step is evidence for the
+#: slow-divider reading, not against it**: a design that toggles an LED once
+#: every thirty seconds is precisely the case this feature is for, and hiding
+#: the offer at the instant that is confirmed -- then bringing it back ten
+#: seconds later, over and over -- is both wrong and a flicker.  Greater than 1
+#: so that a design which goes quiet again never leaves a gap; small enough
+#: that a design which is genuinely animating loses the offer and keeps it lost.
+_LINGER_FACTOR = 1.5
+
 
 @dataclass(frozen=True)
 class StallFacts:
@@ -110,6 +120,8 @@ class StallWatch:
     def __init__(self, *, threshold_s: float = DEFAULT_THRESHOLD_S) -> None:
         """Start watching, with *threshold_s* of quiet before the advisory fires."""
         self.threshold_s = threshold_s
+        self.linger_s = threshold_s * _LINGER_FACTOR
+        self._last_quiet_at: float | None = None
         self._signature: object = None
         self._quiet_since: float | None = None
         self._sim_ns_at_quiet: int = 0
@@ -126,6 +138,7 @@ class StallWatch:
         """Forget the current quiet spell (the outputs moved, or the run did)."""
         self._quiet_since = None
         self.fired = False
+        self._last_quiet_at = None
 
     def sample(
         self,
@@ -170,25 +183,38 @@ class StallWatch:
             self._quiet_since = now
             self._sim_ns_at_quiet = sim_ns
             self.fired = False
-            return False
+            return self._lingering(now)
         if paused:
             # A paused run advances no simulated time, so the "still working"
             # clause could never be satisfied -- but say it explicitly rather
-            # than relying on that, because a pause is not a symptom.
+            # than relying on that, because a pause is not a symptom.  The
+            # linger does not apply either: the user stopped it on purpose.
             self._quiet_since = now
             self._sim_ns_at_quiet = sim_ns
             self.fired = False
+            self._last_quiet_at = None
             return False
         if self._quiet_since is None:
             self._quiet_since = now
             self._sim_ns_at_quiet = sim_ns
-            return False
+            return self._lingering(now)
         if now - self._quiet_since < self.threshold_s:
-            return False
+            return self._lingering(now)
         if sim_ns <= self._sim_ns_at_quiet:
-            return False  # nothing is advancing: this is a stopped sim, not a slow design
+            # Nothing is advancing: a stopped sim, not a slow design.  Do not
+            # keep lingering over it either -- that is a different problem and
+            # this offer would answer the wrong question.
+            self._last_quiet_at = None
+            return False
         self.fired = True
+        self._last_quiet_at = now
         return True
+
+    def _lingering(self, now: float) -> bool:
+        """Report whether a recent quiet spell still justifies showing the offer."""
+        if self._last_quiet_at is None:
+            return False
+        return now - self._last_quiet_at < self.linger_s
 
     def facts(self, sim_ns: int, now: float, sim_clock_hz: float, board_hz: float) -> StallFacts:
         """Snapshot the numbers behind the current spell, for the message.

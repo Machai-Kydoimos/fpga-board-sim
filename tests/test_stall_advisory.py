@@ -70,12 +70,40 @@ def test_a_switch_flip_must_not_reset_the_timer():
     assert w.sample(("leds", 0), 9_000_000, _T + 0.1)
 
 
-def test_an_output_change_re_arms_it():
+def test_one_step_does_not_take_the_offer_away():
+    """The step is evidence *for* the slow-divider reading, not against it.
+
+    A design that toggles an LED once every thirty seconds is exactly the case
+    this exists for, and hiding the offer the instant that is confirmed -- then
+    bringing it back ten seconds later, forever -- would be both wrong and a
+    flicker.
+    """
     w = StallWatch()
     w.sample("a", 1_000_000, 0.0)
     assert w.sample("a", 2_000_000, _T + 1)
-    assert not w.sample("b", 3_000_000, _T + 2)  # something happened
-    assert not w.sample("b", 4_000_000, _T + 3)  # ...and the clock restarted
+    assert w.sample("b", 3_000_000, _T + 2), "one step must not withdraw it"
+    assert w.sample("b", 4_000_000, _T + 3)
+
+
+def test_a_board_that_really_is_running_loses_the_offer_and_keeps_it_lost():
+    w = StallWatch()
+    w.sample("a", 1_000_000, 0.0)
+    assert w.sample("a", 2_000_000, _T + 1)
+    # ...and now it animates continuously
+    for i in range(60):
+        showing = w.sample(f"f{i}", 3_000_000 + i * 100_000, _T + 2 + i)
+    assert not showing
+    assert not w.sample("done", 90_000_000, _T + 200)
+
+
+def test_the_quiet_timer_still_restarts_on_a_step():
+    """Lingering is only about what is *shown*; the measurement window resets."""
+    w = StallWatch()
+    w.sample("a", 1_000_000, 0.0)
+    w.sample("a", 2_000_000, _T + 1)
+    w.sample("b", 3_000_000, _T + 2)
+    facts = w.facts(3_500_000, _T + 3, 50e6, 50e6)
+    assert facts.quiet_s == pytest.approx(1.0), "measured from the step, not before it"
 
 
 # ── A design that is merely waiting for input ────────────────────────────────
@@ -194,9 +222,11 @@ def test_a_clock_change_restarts_the_window():
     quiet = ((0,) * 4, ())
     w.sample(quiet, 1_000_000, 0.0, clock_hz=50e6)
     assert w.sample(quiet, 9_000_000, _T + 1, clock_hz=50e6)
-    # the student drops the preset: measurement starts again from here
-    assert not w.sample(quiet, 10_000_000, _T + 2, clock_hz=1e6)
-    assert not w.sample(quiet, 11_000_000, _T + 3, clock_hz=1e6)
+    # The student drops the preset: the *measurement* starts again from here.
+    # The offer itself lingers, as it does after any change -- what must not
+    # happen is a window that mixes two clock rates.
+    w.sample(quiet, 10_000_000, _T + 2, clock_hz=1e6)
+    assert w.facts(11_000_000, _T + 3, 1e6, 50e6).quiet_s == pytest.approx(1.0)
     assert w.sample(quiet, 20_000_000, _T * 2 + 4, clock_hz=1e6)
 
 

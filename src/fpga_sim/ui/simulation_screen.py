@@ -552,6 +552,10 @@ class SimulationScreen:
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 if self._stall_hint_rect is not None and self._stall_hint_rect.collidepoint(ev.pos):
                     self._stall_expanded = True
+                    # Re-measure: somebody who watched for a minute before
+                    # asking should be told about that minute, not about the
+                    # first ten seconds of it.
+                    self._build_stall_message(int(self._last_state.get("sim_ns", 0)))
                     print(f"[fpga-sim] {self._stall_heading}", flush=True)
                     for line in self._stall_lines:
                         print(f"[fpga-sim] {line}", flush=True)
@@ -658,28 +662,32 @@ class SimulationScreen:
             clock_hz=self.panel.current_clock_hz,
         )
         if showing and not self._stall_showing:
-            facts = self._stall.facts(
-                sim_ns,
-                time.monotonic(),
-                # What is actually being simulated (the user can change it) and
-                # what the silicon would run at.  Not the same number, and the
-                # message needs both.
-                self.panel.current_clock_hz,
-                self.board_def.default_clock_hz if self.board_def else 0.0,
-            )
-            # A board with controls that nobody has touched is likelier to be
-            # waiting than stalled -- a design that lights an LED while a button
-            # is held is *correct* to show nothing.  Say that first.
-            waiting = self._has_inputs and not self._stall.inputs_used
-            self._stall_heading = stall_heading(waiting_for_input=waiting)
-            self._stall_lines = stall_message(facts, self._divider_bits, waiting_for_input=waiting)
-            # Not printed here: a working button-and-LED design would fill the
-            # terminal with an advisory nobody asked for.  It goes out when the
-            # user opens the panel, which is when it is actually wanted.
+            # Built now so `_stall_lines` is always current if asked for, and
+            # rebuilt on the click.  Not *printed* here: a working
+            # button-and-LED design would fill the terminal with an advisory
+            # nobody asked for.
+            self._build_stall_message(sim_ns)
         if not showing:
             self._stall_rect = None
-            self._stall_expanded = False
         self._stall_showing = showing
+
+    def _build_stall_message(self, sim_ns: int) -> None:
+        """Measure now, and phrase the advisory for what is true now."""
+        facts = self._stall.facts(
+            sim_ns,
+            time.monotonic(),
+            # What is actually being simulated (the user can change it) and what
+            # the silicon would run at.  Not the same number, and the message
+            # needs both.
+            self.panel.current_clock_hz,
+            self.board_def.default_clock_hz if self.board_def else 0.0,
+        )
+        # A board with controls that nobody has touched is likelier to be
+        # waiting than stalled -- a design that lights an LED while a button is
+        # held is *correct* to show nothing.  Say that first.
+        waiting = self._has_inputs and not self._stall.inputs_used
+        self._stall_heading = stall_heading(waiting_for_input=waiting)
+        self._stall_lines = stall_message(facts, self._divider_bits, waiting_for_input=waiting)
 
     def _draw_stall_hint(
         self,
@@ -807,7 +815,11 @@ class SimulationScreen:
                 self.panel.draw()
             if self._connected:
                 self._draw_overlays()
-                if self._stall_showing and self._stall_expanded:
+                if self._stall_expanded:
+                    # Deliberately not gated on `_stall_showing`: the reader
+                    # asked for this, and taking it away because an LED happened
+                    # to toggle mid-sentence would be the rudest possible moment
+                    # to do it.  Only [ Close ] closes it.
                     self._draw_stall_advisory()
             else:
                 self._draw_waiting()

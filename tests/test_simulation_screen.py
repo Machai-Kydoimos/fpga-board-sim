@@ -1013,9 +1013,8 @@ def test_clicking_the_indicator_opens_the_numbers(headless_pygame, fake_child, m
     assert screen._stall_showing
 
 
-def test_the_offer_withdraws_itself_when_the_design_speaks(
-    headless_pygame, fake_child, monkeypatch
-):
+def test_an_open_panel_is_never_taken_away_by_the_design(headless_pygame, fake_child, monkeypatch):
+    """The reader asked for it; an LED toggling mid-sentence must not close it."""
     child, _client = fake_child
     screen = _make_screen(headless_pygame, child)
     screen._connected = True
@@ -1030,11 +1029,41 @@ def test_the_offer_withdraws_itself_when_the_design_speaks(
     screen._pump_events()
     assert screen._stall_expanded
 
-    screen.board.set_led_level(0, 0.75)  # the design moved
+    screen.board.set_led_level(0, 0.75)  # the design steps, at last
     screen._last_state = {"sim_ns": 99_000_000}
     screen._sample_stall()
-    assert not screen._stall_showing
-    assert not screen._stall_expanded, "an open panel closes when it stops being true"
+    assert screen._stall_expanded, "only [ Close ] closes it"
+    screen._render_frame()
+    assert screen._stall_rect is not None
+
+
+def test_opening_it_late_reports_the_wait_that_actually_happened(
+    headless_pygame, fake_child, monkeypatch
+):
+    """Watch for a minute, then ask: you should be told about the minute."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    t = [1000.0]
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: t[0])
+    sim_ns = 0
+    for _ in range(12):
+        sim_ns += 2_000_000
+        screen._last_state = {"sim_ns": sim_ns}
+        screen._sample_stall()
+        t[0] += 6.0
+    first = screen._stall_lines[0]
+    assert "12 s" in first, first  # the spell that first tripped it
+    screen._render_frame()
+    assert screen._stall_hint_rect is not None
+    headless_pygame.event.post(
+        headless_pygame.event.Event(
+            headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_hint_rect.center
+        )
+    )
+    screen._pump_events()
+    assert screen._stall_lines[0] != first, "the numbers should be re-measured on the click"
+    assert "72 s" in screen._stall_lines[0], screen._stall_lines[0]
 
 
 def test_a_click_on_the_indicator_does_not_reach_the_board(

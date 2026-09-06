@@ -82,8 +82,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     and keeps the divider arithmetic as the alternative. The first version
     asserted "your design may just be slow" and would have said it to a working
     combinational lab.
-  - Dismissible per quiet spell; a design that produces output and goes quiet
-    again gets a second word.
+  - **A single step does not withdraw the offer**, because that step is evidence
+    *for* the slow-divider reading rather than against it: a design that toggles
+    an LED once every thirty seconds is the case this exists for, and hiding the
+    offer at the instant that is confirmed — then restoring it ten seconds later,
+    forever — was both wrong and a flicker. It withdraws once the board has been
+    genuinely active for longer than it was quiet, and an already-open panel is
+    never closed by the design at all: only [ Close ] closes it.
+  - Opening it **re-measures**, so somebody who watched for a minute before
+    asking is told about the minute rather than about the first ten seconds.
 
 - **A design can be split across several files** (U51). `analyze_vhdl` ran
   exactly one `-a`, so a design was one file — but the course's Lab 3 ships
