@@ -27,6 +27,7 @@ import pygame
 from fpga_sim.session_config import update_session
 from fpga_sim.sim_link import drain, send
 from fpga_sim.sim_session_log import save_session_stats
+from fpga_sim.stall import StallWatch, divider_bits, stall_message
 from fpga_sim.ui.board_display import BoardInputs, FPGABoard
 from fpga_sim.ui.components import debug_view_enabled, pwm_display_enabled, set_debug_view
 from fpga_sim.ui.constants import get_font as _get_font
@@ -135,6 +136,21 @@ class SimulationScreen:
         # change. Benchmark-path only; None everywhere else, so the interactive
         # loop pays one `is not None` per frame and nothing else.
         self.shots = ScreenshotRecorder(screenshot_dir) if screenshot_dir is not None else None
+
+        # U48: "it looks frozen".  A runtime observation, never a static lint --
+        # whether a divider is too wide depends on the machine it runs on, which
+        # is exactly why the message has to be measured rather than predicted.
+        self._stall = StallWatch()
+        self._stall_showing = False
+        self._stall_lines: list[str] = []
+        self._stall_rect: pygame.Rect | None = None
+        try:
+            self._divider_bits = divider_bits(
+                Path(vhdl_path).read_text(encoding="utf-8", errors="replace"),
+                Path(vhdl_path).stem,
+            )
+        except OSError:
+            self._divider_bits = None
 
         clk_hz = board_def.default_clock_hz if board_def else 0.0
         self._board_name = board_def.name if board_def else "Generic"
@@ -330,6 +346,7 @@ class SimulationScreen:
                     int(self._last_state.get("sim_ns", 0)),
                     bool(self._last_state.get("at_max", False)),
                 )
+                self._sample_stall()
             self._render_frame()
 
             if self.panel.stop_requested:
@@ -524,7 +541,14 @@ class SimulationScreen:
                 set_debug_view(enabled)
                 update_session(debug_view=enabled)
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                if self._stop_btn_rect is not None and self._stop_btn_rect.collidepoint(ev.pos):
+                if self._stall_rect is not None and self._stall_rect.collidepoint(ev.pos):
+                    # Dismissed for this quiet spell only; a real output change
+                    # re-arms it, so a design that starts working then stops
+                    # again is still worth a second word.
+                    self._stall.dismiss()
+                    self._stall_showing = False
+                    self._stall_rect = None
+                elif self._stop_btn_rect is not None and self._stop_btn_rect.collidepoint(ev.pos):
                     nav = SimExit.STOPPED
                 elif self._pause_btn_rect is not None and self._pause_btn_rect.collidepoint(ev.pos):
                     self.panel.paused = not self.panel.paused
@@ -546,7 +570,7 @@ class SimulationScreen:
         """Return True when *ev* is a mouse press landing on the sim overlay's chrome."""
         if ev.type != pygame.MOUSEBUTTONDOWN:
             return False
-        for rect in (self._stop_btn_rect, self._pause_btn_rect):
+        for rect in (self._stop_btn_rect, self._pause_btn_rect, self._stall_rect):
             if rect is not None and rect.collidepoint(ev.pos):
                 return True
         return self._toolbar is not None and self._toolbar.covers(ev.pos)
@@ -588,6 +612,79 @@ class SimulationScreen:
         coarse = self.board.visual_signature(quantize=COARSE_LEVELS)
         return (coarse if self.shots.due(coarse, now) else None), now
 
+    def _sample_stall(self) -> None:
+        """Ask the stall watch whether the board has gone quiet (U48).
+
+        Fed the **output-only** signature: a student who cannot tell a slow
+        design from a dead one will flip switches to find out, and that must not
+        reset the timer that was about to tell them.
+        """
+        sim_ns = int(self._last_state.get("sim_ns", 0))
+        showing = self._stall.sample(
+            self.board.output_signature(),
+            sim_ns,
+            time.monotonic(),
+            paused=self.panel.paused,
+        )
+        if showing and not self._stall_showing:
+            facts = self._stall.facts(
+                sim_ns,
+                time.monotonic(),
+                self.board_def.default_clock_hz if self.board_def else 0.0,
+                self.panel.effective_hz,
+            )
+            self._stall_lines = stall_message(facts, self._divider_bits)
+            for line in self._stall_lines:
+                print(f"[fpga-sim] {line}", flush=True)
+        if not showing:
+            self._stall_rect = None
+        self._stall_showing = showing
+
+    def _draw_stall_advisory(self) -> None:
+        """Draw the advisory as a dismissible banner across the top of the board."""
+        sw, sh = self.screen.get_size()
+        scale = min(sw / 1024, 1.4)
+        font = _get_font(max(10, round(13 * scale)), bold=True)
+        body = _get_font(max(9, round(12 * scale)))
+        pad = max(8, round(12 * scale))
+
+        head = font.render("This design may just be slow, not broken", True, THEME.sim_info)
+        lines = [body.render(t, True, THEME.sim_info) for t in self._stall_lines]
+        close = body.render("[ Dismiss ]", True, THEME.sim_hint)
+
+        width = min(
+            sw - 2 * pad,
+            max([head.get_width(), close.get_width()] + [line.get_width() for line in lines])
+            + 2 * pad,
+        )
+        height = head.get_height() + sum(line.get_height() for line in lines) + close.get_height()
+        height += pad * 2 + max(2, round(6 * scale)) * (len(lines) + 1)
+
+        # Along the bottom, not the top: a banner reading "no digit has changed"
+        # must not be sitting on top of the digits, which are the first thing
+        # somebody checks when they are wondering whether anything is happening.
+        # The strip above the toolbar is the one part of the board that carries
+        # nothing.
+        top = max(pad, sh - height - max(46, round(52 * scale)))
+        rect = pygame.Rect((sw - width) // 2, top, width, height)
+        panel = pygame.Surface(rect.size, pygame.SRCALPHA)
+        # Near-opaque: at 226 the switches behind it showed through the text.
+        # A message about not being able to see anything has to be legible.
+        panel.fill((10, 10, 14, 248))
+        pygame.draw.rect(panel, THEME.info_green, panel.get_rect(), width=1)
+        self.screen.blit(panel, rect.topleft)
+
+        gap = max(2, round(6 * scale))
+        y = rect.top + pad
+        self.screen.blit(head, (rect.left + pad, y))
+        y += head.get_height() + gap
+        for line in lines:
+            self.screen.blit(line, (rect.left + pad, y))
+            y += line.get_height() + gap
+        close_pos = (rect.right - close.get_width() - pad, y)
+        self.screen.blit(close, close_pos)
+        self._stall_rect = pygame.Rect(close_pos, close.get_size())
+
     def _render_frame(self) -> None:
         """Draw board + panel + overlays and flip — unless nothing changed (U23).
 
@@ -606,7 +703,13 @@ class SimulationScreen:
                 self.board.set_height_offset(cur_offset)
                 self._board_offset = cur_offset
 
-        sig = (self._connected, self.panel.paused, self.board.visual_signature())
+        sig = (
+            self._connected,
+            self.panel.paused,
+            self._stall_showing,
+            tuple(self._stall_lines) if self._stall_showing else (),
+            self.board.visual_signature(),
+        )
         # A screenshot that is due forces the draw it will capture: on a static
         # design the liveness shot lands on a frame U23 would otherwise skip,
         # and capturing before `flip` means the surface provably holds the
@@ -629,6 +732,8 @@ class SimulationScreen:
                 self.panel.draw()
             if self._connected:
                 self._draw_overlays()
+                if self._stall_showing:
+                    self._draw_stall_advisory()
             else:
                 self._draw_waiting()
             if shot_sig is not None and self.shots is not None:

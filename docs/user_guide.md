@@ -36,6 +36,40 @@ both on the terminal and in a dialog, since a shortcut may have no terminal atta
 `--vhdl` on its own (no `--board`) simply preloads the path: the design cannot be
 checked until there is a board to check it against.
 
+### "It looks frozen"
+
+The simulator watches for this and says so. If no LED or digit changes for ten
+seconds **while simulated time is still advancing**, a banner appears along the
+bottom of the board with the arithmetic:
+
+```text
+This design may just be slow, not broken
+No LED or digit has changed in 10 s of wall-clock time.
+In that time this machine simulated 500 k clock cycles = 10 ms of the board's 50 MHz.
+A 24-bit divider means 16.8 M cycles per step: about 87 s here, 336 ms on the real board.
+Lower it for the simulator and your file keeps its hardware value.
+```
+
+Every number is measured on **your** machine during the quiet spell that just
+happened — none of them is a constant, so the figure for GHDL's mcode backend and
+the figure for NVC are different, and both are right.
+
+Two things it deliberately does **not** do:
+
+- **It never fires when simulated time has stopped.** A design that is merely slow
+  and a simulator that has died look identical on screen, and blaming your divider
+  for our crash would be worse than silence. Both conditions must hold.
+- **It ignores your switches and buttons.** Flipping a switch to see whether
+  anything is alive changes the picture without telling the simulator anything
+  about your design — so only LEDs and digits reset the timer, and poking at the
+  board while you wonder will not silence the thing that was about to explain it.
+
+**[ Dismiss ]** hides it for this quiet spell. If the design produces output and
+then goes quiet again, it comes back — that second silence is worth a word too.
+
+Read it together with [generic overrides](#when-the-board-looks-frozen-generic-overrides),
+which is what to do about it.
+
 ### When the board looks frozen: generic overrides
 
 A design that gets its visible rate from the top bits of a clock divider is fine on

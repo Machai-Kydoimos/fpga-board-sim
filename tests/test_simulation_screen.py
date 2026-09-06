@@ -18,6 +18,7 @@ import pytest
 
 from fpga_sim import sim_link
 from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
+from fpga_sim.paths import HDL_DIR
 from fpga_sim.sim_bridge import SimChild, SimulatorInfo
 from fpga_sim.sim_link import drain, send
 from fpga_sim.ui.board_display import BoardInputs
@@ -875,6 +876,165 @@ def test_visual_signature_tracks_state(headless_pygame, fake_child):
     sig_seg = board.visual_signature()
     board.switches[0].state = True
     assert board.visual_signature() != sig_seg
+
+
+def test_output_signature_ignores_everything_the_user_touches(headless_pygame, fake_child):
+    """The stall advisory (U48) must not be reset by a student poking switches.
+
+    Someone who cannot tell a slow design from a dead one will flip switches to
+    find out -- which is exactly when the advisory needs to still be counting.
+    """
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child, seg=True)
+    board = screen.board
+
+    base = board.output_signature()
+    board.switches[0].state = not board.switches[0].state
+    board.buttons[0].pressed = True
+    assert board.output_signature() == base, "user input is not the design speaking"
+    assert board.visual_signature() != base, "...but the redraw gate still sees it"
+
+    board.set_led_level(0, 0.5)
+    assert board.output_signature() != base
+
+    after_led = board.output_signature()
+    board.set_seg_levels(0, [1.0, 0, 0, 0, 0, 0, 0, 0])
+    assert board.output_signature() != after_led
+
+
+# ── "It looks frozen" (U48) ──────────────────────────────────────────────────
+
+
+def _run_quiet(screen, monkeypatch, *, seconds, sim_ns_step=2_000_000, frames=4, paused=False):
+    """Hold the board still for *seconds* of wall clock, advancing sim time."""
+    t = [1000.0]
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: t[0])
+    screen.panel.paused = paused
+    sim_ns = 0
+    for _ in range(frames):
+        sim_ns += sim_ns_step
+        screen._last_state = {"sim_ns": sim_ns}
+        screen._sample_stall()
+        t[0] += seconds / max(1, frames - 1) if frames > 1 else seconds
+    return screen._stall_showing
+
+
+def test_a_quiet_board_raises_the_advisory(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    assert screen._stall_lines
+    assert "No LED or digit has changed" in screen._stall_lines[0]
+
+
+def test_a_board_that_keeps_changing_never_raises_it(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    t = [1000.0]
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: t[0])
+    for i in range(30):
+        screen.board.set_led_level(0, (i % 10) / 10)
+        screen._last_state = {"sim_ns": 2_000_000 * (i + 1)}
+        screen._sample_stall()
+        t[0] += 2.0
+        assert not screen._stall_showing
+
+
+def test_a_stopped_child_is_never_blamed_on_the_design(headless_pygame, fake_child, monkeypatch):
+    """Simulated time frozen means our problem, not theirs -- and no banner."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    assert not _run_quiet(screen, monkeypatch, seconds=60.0, sim_ns_step=0)
+
+
+def test_a_paused_run_is_not_a_symptom(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    assert not _run_quiet(screen, monkeypatch, seconds=60.0, paused=True)
+
+
+def test_the_advisory_forces_a_redraw(headless_pygame, fake_child, monkeypatch):
+    """It appears on a frame U23 would otherwise skip -- a still board is the case."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen._render_frame()
+    before = screen.run_stats.frames_drawn
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == before, "a still board should skip"
+    _run_quiet(screen, monkeypatch, seconds=30.0)
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == before + 1, "the banner must be drawn"
+
+
+def test_dismiss_hides_it_until_something_actually_changes(
+    headless_pygame, fake_child, monkeypatch
+):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    screen._render_frame()  # lays out the [ Dismiss ] hit box
+    assert screen._stall_rect is not None
+
+    headless_pygame.event.post(
+        headless_pygame.event.Event(
+            headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_rect.center
+        )
+    )
+    assert screen._pump_events() is None
+    assert not screen._stall_showing
+    assert not _run_quiet(screen, monkeypatch, seconds=60.0)
+
+    screen.board.set_led_level(0, 0.75)  # the design moved
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+
+
+def test_the_numbers_are_measured_not_constant(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    _run_quiet(screen, monkeypatch, seconds=30.0)
+    text = " ".join(screen._stall_lines)
+    assert "wall-clock" in text
+    assert "clock cycles" in text
+    assert "MHz" in text
+
+
+def test_a_design_whose_file_cannot_be_read_still_gets_the_general_advice(
+    headless_pygame, fake_child, monkeypatch
+):
+    """`_make_screen` passes a bare name, which is the unreadable case."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    assert screen._divider_bits is None
+    _run_quiet(screen, monkeypatch, seconds=30.0)
+    text = " ".join(screen._stall_lines)
+    assert "may simply be counting" in text
+    assert "cycles per step" not in text
+
+
+def test_a_declared_divider_turns_the_advice_into_a_number(
+    headless_pygame, fake_child, monkeypatch
+):
+    """blinky.vhd declares COUNTER_BITS := 24; the message should say so."""
+    child, _client = fake_child
+    surface = headless_pygame.display.set_mode((1024, 700))
+    screen = SimulationScreen(
+        surface,
+        headless_pygame.time.Clock(),
+        _sample_board(),
+        child,
+        speed_factor=0.1,
+        match=None,
+        vhdl_path=HDL_DIR / "blinky.vhd",
+        sim=_sim("ghdl"),
+    )
+    assert screen._divider_bits == 24
+    _run_quiet(screen, monkeypatch, seconds=30.0)
+    text = " ".join(screen._stall_lines)
+    assert "24-bit divider" in text
+    assert "16.8 M cycles per step" in text
+    assert "on the real board" in text
 
 
 # ── e2e against a real simulator (slow) ───────────────────────────────────────

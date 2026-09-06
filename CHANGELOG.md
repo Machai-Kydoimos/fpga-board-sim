@@ -39,6 +39,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The simulator now says when a design only *looks* frozen** (U48). A design
+  that gets its visible rate from the top bits of a clock divider is correct,
+  runs, and shows nothing: at the simulator's throughput a 24-bit divider steps
+  about once every ninety seconds, which on screen is indistinguishable from a
+  design that does not work. If no LED or digit changes for ten seconds **while
+  simulated time is still advancing**, a banner appears with the arithmetic —
+  cycles simulated, how much board time that was, and, when the design declares
+  a divider generic, how long one step takes here against how long it takes on
+  the bench.
+  - **Every number is measured during the quiet spell that just happened.**
+    Nothing is a constant, so GHDL-mcode and NVC give different figures and both
+    are right; a number that is wrong about the user's machine would teach them
+    to ignore the box.
+  - **It never fires when simulated time has stopped.** A slow design and a dead
+    child look identical on screen, and blaming a student's divider for our
+    crash is worse than saying nothing. Both clauses must hold.
+  - **It ignores switches and buttons.** Somebody who cannot tell a slow design
+    from a dead one will flip switches to find out — which is exactly when the
+    timer needs to keep counting. `BoardDisplay.output_signature()` is the
+    output-only companion to the redraw gate's `visual_signature()`.
+  - Dismissible per quiet spell; a design that produces output and goes quiet
+    again gets a second word.
+
 - **A design can be split across several files** (U51). `analyze_vhdl` ran
   exactly one `-a`, so a design was one file — but the course's Lab 3 ships
   `counter.vhd` as a separate sub-entity, every lab folder holds a

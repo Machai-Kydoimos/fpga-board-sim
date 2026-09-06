@@ -1033,6 +1033,30 @@ class FPGABoard:
 
     # ── redraw gating (U23) ──────────────────────────────────────────
 
+    def output_signature(self, *, quantize: int = 64) -> tuple[object, ...]:
+        """Fingerprint of what the *design* is driving: LEDs and digits only.
+
+        The stall advisory (U48) asks "has this design shown me anything
+        lately", and the answer must not depend on the user.  Flipping a switch
+        or holding a button changes :meth:`visual_signature` while saying
+        nothing about the design -- so a student wiggling switches to see
+        whether anything is alive would keep resetting the very timer that was
+        about to tell them.
+
+        Coarser than the redraw gate on purpose: at 1000 steps every frame of a
+        persistence-of-vision fade reads as a change, and a fading LED is the
+        picture of a board that has already stopped doing anything new.
+        """
+        q = quantize
+        leds = tuple(
+            tuple(round(lv * q) for lv in led.levels)
+            if isinstance(led, RGBLED)
+            else round(led.level * q)
+            for led in self.leds
+        )
+        segs = tuple(tuple(round(lv * q) for lv in seg.levels) for seg in self._seven_segs)
+        return (leds, segs)
+
     def visual_signature(self, *, quantize: int = 1000) -> tuple[object, ...]:
         """Return a hashable fingerprint of everything ``_draw`` renders that can vary.
 
