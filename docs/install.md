@@ -50,7 +50,10 @@ sudo dnf install ghdl
 ```bash
 ver=6.0.0
 curl -LO "https://github.com/ghdl/ghdl/releases/download/v$ver/ghdl-llvm-$ver-macos15-aarch64.tar.gz"
-mkdir -p ~/ghdl && tar -xzf "ghdl-llvm-$ver-macos15-aarch64.tar.gz" -C ~/ghdl
+# --strip-components=1: the tarball nests everything under
+# ghdl-llvm-$ver-macos15-aarch64/, and this puts bin/ straight in ~/ghdl.
+mkdir -p ~/ghdl
+tar -xzf "ghdl-llvm-$ver-macos15-aarch64.tar.gz" -C ~/ghdl --strip-components=1
 echo 'export PATH="$HOME/ghdl/bin:$PATH"' >> ~/.zshrc && exec zsh
 ghdl --version
 ```

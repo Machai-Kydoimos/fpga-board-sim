@@ -126,7 +126,10 @@ jobs:
         run: |
           ver=6.0.0
           curl -LO "https://github.com/ghdl/ghdl/releases/download/v$ver/ghdl-llvm-$ver-macos15-aarch64.tar.gz"
-          mkdir -p ~/ghdl && tar -xzf "ghdl-llvm-$ver-macos15-aarch64.tar.gz" -C ~/ghdl
+          mkdir -p ~/ghdl
+          # --strip-components=1: the tarball nests under
+          # ghdl-llvm-$ver-macos15-aarch64/, so this puts bin/ in ~/ghdl.
+          tar -xzf "ghdl-llvm-$ver-macos15-aarch64.tar.gz" -C ~/ghdl --strip-components=1
           echo "$HOME/ghdl/bin" >> "$GITHUB_PATH"
 
       - name: Record versions
