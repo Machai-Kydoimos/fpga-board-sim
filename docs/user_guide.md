@@ -38,9 +38,25 @@ checked until there is a board to check it against.
 
 ### "It looks frozen"
 
-The simulator watches for this and says so. If no LED or digit changes for ten
-seconds **while simulated time is still advancing**, a banner appears along the
-bottom of the board with the arithmetic:
+The simulator watches for this — but it does not interrupt you. If no LED or digit
+changes for ten seconds **while simulated time is still advancing**, a small
+control appears next to **[Pause]**:
+
+```text
+ⓘ Why is nothing happening?
+```
+
+That is all that happens until you click it. Nothing covers the board, no warning
+appears, and if your design is a button that lights an LED and you simply were not
+pressing it, you can ignore the whole thing — touch a control and it withdraws by
+itself.
+
+The simulator cannot tell those apart, and that is the honest reason for the light
+touch: a design waiting for input and a divider quietly counting look *identical*
+from outside — still inputs, still outputs, simulated time running. Guessing which
+one you have and announcing it would be wrong often enough to be worth nothing.
+
+Click it and you get the arithmetic:
 
 ```text
 This design may just be slow, not broken
@@ -56,13 +72,8 @@ the figure for NVC are different, and both are right.
 
 #### If you have not touched the controls, it says that instead
 
-A design that lights an LED while a button is held is **correct** to show nothing
-when nobody is pressing anything — and from the outside that is identical to a
-divider that is quietly counting: the inputs are still, the outputs are still, and
-simulated time is running. Nothing the simulator can observe separates them.
-
-So when the board has switches or buttons and none has been touched since the run
-began, the advisory leads with the likelier reading and keeps the arithmetic as the
+When the board has switches or buttons and none has been touched since the run
+began, the panel leads with the likelier reading and keeps the arithmetic as the
 alternative:
 
 ```text
@@ -78,11 +89,17 @@ A 24-bit divider means 16.8 M cycles per step: about 87 s here, 336 ms on the re
 Use a control — even once, even putting it straight back — and the simulator stops
 offering that explanation for the rest of the run.
 
-Two things it deliberately does **not** do:
+**[ Close ]** puts the panel away and leaves the small control where it was, so you
+can look again without waiting another ten seconds.
+
+Three things it deliberately does **not** do:
 
 - **It never fires when simulated time has stopped.** A design that is merely slow
   and a simulator that has died look identical on screen, and blaming your divider
   for our crash would be worse than silence. Both conditions must hold.
+- **It never interrupts.** The detection is not confident enough to earn a
+  banner, so it earns an offer instead — one small control you may click or
+  ignore. A first design that works is never talked over.
 - **It ignores your switches and buttons *for the timer*.** Flipping a switch to
   see whether anything is alive changes the picture without telling the simulator
   anything about your design — so only LEDs and digits reset the timer, and poking

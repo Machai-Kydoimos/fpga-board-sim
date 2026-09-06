@@ -145,6 +145,11 @@ class SimulationScreen:
         self._stall_heading = ""
         self._stall_lines: list[str] = []
         self._stall_rect: pygame.Rect | None = None
+        #: The quiet indicator's hit box, and whether the user has opened it.
+        #: Separate from `_stall_showing` on purpose: the *detection* being true
+        #: only ever earns an offer of help, never an interruption (U48).
+        self._stall_hint_rect: pygame.Rect | None = None
+        self._stall_expanded = False
         try:
             self._divider_bits = divider_bits(
                 Path(vhdl_path).read_text(encoding="utf-8", errors="replace"),
@@ -545,12 +550,16 @@ class SimulationScreen:
                 set_debug_view(enabled)
                 update_session(debug_view=enabled)
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                if self._stall_rect is not None and self._stall_rect.collidepoint(ev.pos):
-                    # Dismissed for this quiet spell only; a real output change
-                    # re-arms it, so a design that starts working then stops
-                    # again is still worth a second word.
-                    self._stall.dismiss()
-                    self._stall_showing = False
+                if self._stall_hint_rect is not None and self._stall_hint_rect.collidepoint(ev.pos):
+                    self._stall_expanded = True
+                    print(f"[fpga-sim] {self._stall_heading}", flush=True)
+                    for line in self._stall_lines:
+                        print(f"[fpga-sim] {line}", flush=True)
+                elif self._stall_rect is not None and self._stall_rect.collidepoint(ev.pos):
+                    # Close the panel back to the indicator rather than
+                    # dismissing outright: the reader has seen the numbers, and
+                    # the offer of help costs nothing sitting where it was.
+                    self._stall_expanded = False
                     self._stall_rect = None
                 elif self._stop_btn_rect is not None and self._stop_btn_rect.collidepoint(ev.pos):
                     nav = SimExit.STOPPED
@@ -574,7 +583,12 @@ class SimulationScreen:
         """Return True when *ev* is a mouse press landing on the sim overlay's chrome."""
         if ev.type != pygame.MOUSEBUTTONDOWN:
             return False
-        for rect in (self._stop_btn_rect, self._pause_btn_rect, self._stall_rect):
+        for rect in (
+            self._stop_btn_rect,
+            self._pause_btn_rect,
+            self._stall_rect,
+            self._stall_hint_rect,
+        ):
             if rect is not None and rect.collidepoint(ev.pos):
                 return True
         return self._toolbar is not None and self._toolbar.covers(ev.pos)
@@ -655,12 +669,46 @@ class SimulationScreen:
             waiting = self._has_inputs and not self._stall.inputs_used
             self._stall_heading = stall_heading(waiting_for_input=waiting)
             self._stall_lines = stall_message(facts, self._divider_bits, waiting_for_input=waiting)
-            print(f"[fpga-sim] {self._stall_heading}", flush=True)
-            for line in self._stall_lines:
-                print(f"[fpga-sim] {line}", flush=True)
+            # Not printed here: a working button-and-LED design would fill the
+            # terminal with an advisory nobody asked for.  It goes out when the
+            # user opens the panel, which is when it is actually wanted.
         if not showing:
             self._stall_rect = None
+            self._stall_expanded = False
         self._stall_showing = showing
+
+    def _draw_stall_hint(
+        self,
+        rect: pygame.Rect,
+        label: str,
+        font: pygame.font.Font,
+        icon_d: int,
+        icon_gap: int,
+    ) -> None:
+        """Draw the offer of help: an information dot, then the question.
+
+        The dot is *drawn*, not rendered from a glyph: the UI font has neither
+        U+24D8 (circled latin small letter i) nor U+2139 (information source),
+        and an unavailable glyph does not fail loudly -- it comes out as an
+        empty box, on the one control whose whole job is to look approachable.
+        """
+        style = THEME.btn_sim_pause
+        hovered = rect.collidepoint(pygame.mouse.get_pos())
+        bg, fg = (style.bg_hover if hovered else style.bg), style.fg
+        pygame.draw.rect(self.screen, bg, rect, border_radius=style.radius)
+        if style.border_width > 0:
+            pygame.draw.rect(
+                self.screen, style.border, rect, style.border_width, border_radius=style.radius
+            )
+
+        text = font.render(label, True, fg)
+        content_w = icon_d + icon_gap + text.get_width()
+        x = rect.centerx - content_w // 2
+        center = (x + icon_d // 2, rect.centery)
+        pygame.draw.circle(self.screen, fg, center, icon_d // 2, width=1)
+        dot = font.render("i", True, fg)
+        self.screen.blit(dot, dot.get_rect(center=center))
+        self.screen.blit(text, text.get_rect(midleft=(x + icon_d + icon_gap, rect.centery)))
 
     def _draw_stall_advisory(self) -> None:
         """Draw the advisory as a dismissible banner across the top of the board."""
@@ -672,7 +720,7 @@ class SimulationScreen:
 
         head = font.render(self._stall_heading, True, THEME.sim_info)
         lines = [body.render(t, True, THEME.sim_info) for t in self._stall_lines]
-        close = body.render("[ Dismiss ]", True, THEME.sim_hint)
+        close = body.render("[ Close ]", True, THEME.sim_hint)
 
         width = min(
             sw - 2 * pad,
@@ -729,7 +777,8 @@ class SimulationScreen:
             self._connected,
             self.panel.paused,
             self._stall_showing,
-            (self._stall_heading, tuple(self._stall_lines)) if self._stall_showing else (),
+            self._stall_expanded,
+            (self._stall_heading, tuple(self._stall_lines)) if self._stall_expanded else (),
             self.board.visual_signature(),
         )
         # A screenshot that is due forces the draw it will capture: on a static
@@ -754,7 +803,7 @@ class SimulationScreen:
                 self.panel.draw()
             if self._connected:
                 self._draw_overlays()
-                if self._stall_showing:
+                if self._stall_showing and self._stall_expanded:
                     self._draw_stall_advisory()
             else:
                 self._draw_waiting()
@@ -866,6 +915,23 @@ class SimulationScreen:
             pause_style,
             hovered=self._pause_btn_rect.collidepoint(pygame.mouse.get_pos()),
         )
+
+        # The stall indicator (U48), left of Pause.  It is phrased as the
+        # student's own question rather than as our diagnosis, and that is what
+        # makes it self-selecting: somebody whose button-and-LED design is
+        # working reads it, thinks "nothing is wrong, I know why", and ignores
+        # it; somebody staring at a board that will not move reads the same
+        # words and clicks.  A design that is merely waiting for input is the
+        # commonest first design there is, and it must not be interrupted.
+        self._stall_hint_rect = None
+        if self._stall_showing and not self._stall_expanded:
+            hint_label = "Why is nothing happening?"
+            icon_d = max(9, ov_font.get_height() - 3)
+            icon_gap = max(3, ov_pad_x // 2)
+            hint_bw = ov_font.size(hint_label)[0] + ov_pad_x * 2 + icon_d + icon_gap
+            hint_bx = pause_bx - ov_gap - hint_bw
+            self._stall_hint_rect = pygame.Rect(hint_bx, btn_py, hint_bw, btn_h)
+            self._draw_stall_hint(self._stall_hint_rect, hint_label, ov_font, icon_d, icon_gap)
 
         # Navigation toolbar (bottom-left, opposite Pause/Stop).
         toolbar_rect: pygame.Rect | None = None

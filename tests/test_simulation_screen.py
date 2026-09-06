@@ -953,7 +953,7 @@ def test_a_paused_run_is_not_a_symptom(headless_pygame, fake_child, monkeypatch)
     assert not _run_quiet(screen, monkeypatch, seconds=60.0, paused=True)
 
 
-def test_the_advisory_forces_a_redraw(headless_pygame, fake_child, monkeypatch):
+def test_the_indicator_forces_a_redraw(headless_pygame, fake_child, monkeypatch):
     """It appears on a frame U23 would otherwise skip -- a still board is the case."""
     child, _client = fake_child
     screen = _make_screen(headless_pygame, child)
@@ -964,30 +964,92 @@ def test_the_advisory_forces_a_redraw(headless_pygame, fake_child, monkeypatch):
     assert screen.run_stats.frames_drawn == before, "a still board should skip"
     _run_quiet(screen, monkeypatch, seconds=30.0)
     screen._render_frame()
-    assert screen.run_stats.frames_drawn == before + 1, "the banner must be drawn"
+    assert screen.run_stats.frames_drawn == before + 1, "the indicator must be drawn"
 
 
-def test_dismiss_hides_it_until_something_actually_changes(
-    headless_pygame, fake_child, monkeypatch
-):
+def test_nothing_is_interrupted_until_the_user_asks(headless_pygame, fake_child, monkeypatch):
+    """The whole point: a working button-and-LED design is never talked over.
+
+    Detecting a quiet board earns an *offer* -- a small control beside Pause --
+    and nothing else. The panel with the numbers appears only on a click.
+    """
     child, _client = fake_child
     screen = _make_screen(headless_pygame, child)
     screen._connected = True
     assert _run_quiet(screen, monkeypatch, seconds=30.0)
-    screen._render_frame()  # lays out the [ Dismiss ] hit box
-    assert screen._stall_rect is not None
+    screen._render_frame()
 
+    assert screen._stall_hint_rect is not None, "the offer should be on screen"
+    assert not screen._stall_expanded, "...and nothing should have opened itself"
+    assert screen._stall_rect is None, "no panel until asked"
+
+
+def test_clicking_the_indicator_opens_the_numbers(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    screen._render_frame()
+    assert screen._stall_hint_rect is not None
+
+    headless_pygame.event.post(
+        headless_pygame.event.Event(
+            headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_hint_rect.center
+        )
+    )
+    assert screen._pump_events() is None
+    assert screen._stall_expanded
+    screen._render_frame()
+    assert screen._stall_rect is not None, "the [ Close ] hit box"
+
+    # ...and closing it goes back to the offer, not to silence
     headless_pygame.event.post(
         headless_pygame.event.Event(
             headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_rect.center
         )
     )
     assert screen._pump_events() is None
-    assert not screen._stall_showing
-    assert not _run_quiet(screen, monkeypatch, seconds=60.0)
+    assert not screen._stall_expanded
+    assert screen._stall_showing
+
+
+def test_the_offer_withdraws_itself_when_the_design_speaks(
+    headless_pygame, fake_child, monkeypatch
+):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    screen._render_frame()
+    assert screen._stall_hint_rect is not None
+    headless_pygame.event.post(
+        headless_pygame.event.Event(
+            headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_hint_rect.center
+        )
+    )
+    screen._pump_events()
+    assert screen._stall_expanded
 
     screen.board.set_led_level(0, 0.75)  # the design moved
-    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    screen._last_state = {"sim_ns": 99_000_000}
+    screen._sample_stall()
+    assert not screen._stall_showing
+    assert not screen._stall_expanded, "an open panel closes when it stops being true"
+
+
+def test_a_click_on_the_indicator_does_not_reach_the_board(
+    headless_pygame, fake_child, monkeypatch
+):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    _run_quiet(screen, monkeypatch, seconds=30.0)
+    screen._render_frame()
+    assert screen._stall_hint_rect is not None
+    ev = headless_pygame.event.Event(
+        headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_hint_rect.center
+    )
+    assert screen._chrome_press(ev)
 
 
 def test_the_numbers_are_measured_not_constant(headless_pygame, fake_child, monkeypatch):

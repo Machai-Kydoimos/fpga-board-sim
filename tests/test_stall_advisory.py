@@ -78,17 +78,6 @@ def test_an_output_change_re_arms_it():
     assert not w.sample("b", 4_000_000, _T + 3)  # ...and the clock restarted
 
 
-def test_dismissal_lasts_until_something_actually_changes():
-    w = StallWatch()
-    w.sample("a", 1_000_000, 0.0)
-    assert w.sample("a", 2_000_000, _T + 1)
-    w.dismiss()
-    assert not w.sample("a", 3_000_000, _T + 2)
-    assert not w.sample("a", 4_000_000, _T + 90)
-    w.sample("b", 5_000_000, _T + 91)  # the design moved
-    assert w.sample("b", 6_000_000, _T + 91 + _T + 1)  # and it may speak again
-
-
 # ── A design that is merely waiting for input ────────────────────────────────
 #
 # The false positive this module was shipped with.  A design that lights an LED

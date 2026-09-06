@@ -77,10 +77,11 @@ class StallFacts:
 class StallWatch:
     """Track whether the board's outputs have gone quiet while the sim runs.
 
-    Feed it :meth:`sample` once per frame.  It is deliberately edge-triggered:
-    :attr:`fired` goes true once per quiet spell, so the caller shows one banner
-    rather than one per frame, and a dismissal lasts until something actually
-    changes.
+    Feed it :meth:`sample` once per frame.  What it reports is only ever that
+    the board *has* gone quiet -- what to do about that is the caller's, and in
+    this application the answer is to offer help rather than to interrupt:
+    the detection is not confident enough to be worth a banner (see the module
+    docstring), so it earns an indicator the user may click.
     """
 
     def __init__(self, *, threshold_s: float = DEFAULT_THRESHOLD_S) -> None:
@@ -89,7 +90,6 @@ class StallWatch:
         self._signature: object = None
         self._quiet_since: float | None = None
         self._sim_ns_at_quiet: int = 0
-        self._dismissed = False
         self.fired = False
         #: Set once any switch or button has moved since the run began, and never
         #: cleared.  It does not gate the advisory -- it chooses which
@@ -101,12 +101,6 @@ class StallWatch:
     def reset(self) -> None:
         """Forget the current quiet spell (the outputs moved, or the run did)."""
         self._quiet_since = None
-        self._dismissed = False
-        self.fired = False
-
-    def dismiss(self) -> None:
-        """Stop showing this spell's advisory; a real change re-arms it."""
-        self._dismissed = True
         self.fired = False
 
     def sample(
@@ -139,7 +133,6 @@ class StallWatch:
             self._signature = signature
             self._quiet_since = now
             self._sim_ns_at_quiet = sim_ns
-            self._dismissed = False
             self.fired = False
             return False
         if paused:
@@ -158,8 +151,8 @@ class StallWatch:
             return False
         if sim_ns <= self._sim_ns_at_quiet:
             return False  # nothing is advancing: this is a stopped sim, not a slow design
-        self.fired = not self._dismissed
-        return self.fired
+        self.fired = True
+        return True
 
     def facts(self, sim_ns: int, now: float, board_hz: float, effective_hz: float) -> StallFacts:
         """Snapshot the numbers behind the current spell, for the message."""

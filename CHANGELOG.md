@@ -39,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **The simulator now says when a design only *looks* frozen** (U48). A design
+- **The simulator now offers to explain when a design only *looks* frozen** (U48). A design
   that gets its visible rate from the top bits of a clock divider is correct,
   runs, and shows nothing: at the simulator's throughput a 24-bit divider steps
   about once every ninety seconds, which on screen is indistinguishable from a
@@ -48,6 +48,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cycles simulated, how much board time that was, and, when the design declares
   a divider generic, how long one step takes here against how long it takes on
   the bench.
+  - **It never interrupts.** All the detection earns is a small
+    `ⓘ Why is nothing happening?` control beside [Pause]; the panel with the
+    numbers opens only if the user clicks it. The detection cannot distinguish a
+    quietly counting divider from a design that is simply waiting for a button,
+    so it is not confident enough to be worth a banner — and the commonest first
+    design there is, press-a-button-light-an-LED, must not be talked over while
+    it is working. The control is phrased as the student's own question so it
+    self-selects: whoever already knows why the board is still ignores it.
   - **Every number is measured during the quiet spell that just happened.**
     Nothing is a constant, so GHDL-mcode and NVC give different figures and both
     are right; a number that is wrong about the user's machine would teach them
