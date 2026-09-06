@@ -39,6 +39,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The pre-standard Synopsys packages now work** (U50). `std_logic_arith`,
+  `std_logic_unsigned` and their siblings predate `ieee.numeric_std` and are not
+  part of any VHDL standard, so GHDL refuses them outright — *"use of synopsys
+  package `std_logic_arith` needs the -fsynopsys option"*. A great deal of
+  teaching and vendor example code is written with them, which meant a student
+  whose instructor's own file would not even **analyze** had no way to tell a
+  broken tool from a broken design. The simulator now passes `-fsynopsys` on
+  analysis, elaboration **and** the run (GHDL's mcode backend elaborates inside
+  `-r`, so a design analyzed with the flag still failed without it on the other
+  two); NVC accepts these packages unflagged and needed no change.
+  - The preview shows **one non-blocking line** naming the packages found, and
+    the session log records them. It is a note, not a warning: nothing is
+    blocked and nothing behaves differently. Refusing would tell a student their
+    instructor's file is wrong; saying nothing would leave them to discover the
+    dialect is non-standard on their own hardware.
+  - Detection reads the design's `use` clauses with comments stripped and the
+    `ieee.` qualifier required, so a package named only in a comment — or
+    somebody's own `work.std_logic_arith` — does not count. It rides on
+    `ContractResult`, so the file is read once and no caller has to look for it
+    separately.
+  - `docs/writing_designs.md` gains a section on why they are accepted, plus a
+    conversion table for authors of new designs.
+
 - **`--board` and `--vhdl` now start the interactive launcher, not just the
   benchmark** (U49). `fpga-sim --board DE10-Standard --vhdl lab1/top.vhd` opens
   the preview with the board selected and the file loaded, validated and

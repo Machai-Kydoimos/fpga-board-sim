@@ -18,6 +18,7 @@ from fpga_sim.sim_bridge import (
     check_vhdl_encoding,
     wrapper_is_stale,
 )
+from fpga_sim.vhdl_contract import uses_synopsys_packages
 from tests.conftest import _7seg_board, _plain_board
 
 HDL = Path(__file__).resolve().parent.parent / "hdl"
@@ -931,3 +932,61 @@ def test_wrapper_is_stale_when_something_is_unreadable(tmp_path, missing):
     else:
         work = tmp_path / "nonexistent"
     assert wrapper_is_stale(work, "blinky", vhdl_path=design, board_def=_plain_board())
+
+
+# ── Synopsys dialect: accepted, and mentioned once (U50) ─────────────────────
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures" / "hdl"
+SYNOPSYS = FIXTURES / "synopsys_blinky.vhd"
+
+
+def test_synopsys_packages_are_named_in_source_order():
+    found = uses_synopsys_packages(SYNOPSYS.read_text(encoding="utf-8"))
+    assert found == ("std_logic_arith", "std_logic_unsigned")
+
+
+def test_a_numeric_std_design_says_nothing():
+    """The note must be absent for the designs this project itself ships."""
+    assert uses_synopsys_packages((HDL / "blinky.vhd").read_text(encoding="utf-8")) == ()
+
+
+def test_a_package_named_only_in_a_comment_does_not_count():
+    text = "-- historically this used ieee.std_logic_arith\nentity x is end entity;"
+    assert uses_synopsys_packages(text) == ()
+
+
+def test_a_local_package_of_the_same_name_does_not_count():
+    """``work.std_logic_arith`` is somebody's own package, not the Synopsys one."""
+    assert uses_synopsys_packages("use work.std_logic_arith.all;") == ()
+
+
+def test_the_dialect_rides_on_the_contract_result():
+    """One read of the file, so no caller has to look for this separately."""
+    res = check_vhdl_contract(SYNOPSYS, board_def=_plain_board())
+    assert res.ok, res.message
+    assert res.synopsys == ("std_logic_arith", "std_logic_unsigned")
+
+
+def test_the_advisory_never_changes_the_verdict():
+    """A Synopsys design that fails the contract fails for the contract's reason."""
+    res = check_vhdl_contract(HDL / "bad_contract_blinky.vhdl", board_def=_plain_board())
+    assert not res.ok
+    assert "Entity name mismatch" in res.message
+
+
+@pytest.mark.slow
+def test_synopsys_design_analyzes_and_elaborates_on_ghdl(ghdl):
+    """The point of the flag: GHDL refuses these packages without -fsynopsys.
+
+    analyze_vhdl runs analysis *and* elaboration, and GHDL's mcode backend
+    elaborates inside -r, so this covers the flag on more than one command.
+    """
+    ok, detail = analyze_vhdl(SYNOPSYS, toplevel=SYNOPSYS.stem)
+    assert ok, f"GHDL rejected the Synopsys design: {detail}"
+
+
+@pytest.mark.slow
+def test_synopsys_design_analyzes_on_nvc(nvc):
+    """NVC accepts the packages unflagged; the design must not be GHDL-specific."""
+    ok, detail = analyze_vhdl(SYNOPSYS, toplevel=SYNOPSYS.stem, simulator="nvc")
+    assert ok, f"NVC rejected the Synopsys design: {detail}"

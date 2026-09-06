@@ -93,6 +93,22 @@ class _SimBackend(ABC):
     ) -> list[str]: ...
 
 
+#: ``-fsynopsys`` accepts the pre-standard Synopsys packages -- ``std_logic_arith``,
+#: ``std_logic_unsigned``, ``std_logic_signed`` -- that GHDL otherwise refuses
+#: outright ("use of synopsys package ... needs the -fsynopsys option").  They are
+#: non-standard and ``ieee.numeric_std`` is the right thing to teach, but a great
+#: deal of course material and vendor example code is written with them, and a
+#: student whose instructor's own file will not even *analyze* has no way to tell
+#: a broken tool from a broken design.  So the tool accepts them and says so once,
+#: gently, rather than refusing (see ``uses_synopsys_packages``).
+#:
+#: All three commands need it, not just analysis: GHDL's mcode backend elaborates
+#: inside ``-r``, so a design analyzed with the flag still fails at elaboration or
+#: run without it.  On the compiled backends the extra flag is harmless.
+#: NVC accepts these packages with no flag at all.
+_SYNOPSYS = ("-fsynopsys",)
+
+
 class _GHDLBackend(_SimBackend):
     """GHDL simulator backend – uses the VPI interface."""
 
@@ -108,7 +124,7 @@ class _GHDLBackend(_SimBackend):
         # is a measured no-op on mcode/llvm-jit, at negligible analyze/elab cost
         # (docs/u25_ghdl_perf_profile.md), so it is passed unconditionally.
         ghdl = binary or _GHDLBackend.find()
-        return [ghdl, "-a", "-O2", "--std=08", f"--workdir={work_dir}", str(vhdl_path)]
+        return [ghdl, "-a", "-O2", *_SYNOPSYS, "--std=08", f"--workdir={work_dir}", str(vhdl_path)]
 
     @staticmethod
     def elaborate_cmd(
@@ -118,7 +134,7 @@ class _GHDLBackend(_SimBackend):
         # they are simulation options, passed after the unit at run (-r) time.
         # -O2: same rationale as analyze_cmd.
         ghdl = binary or _GHDLBackend.find()
-        return [ghdl, "-e", "-O2", "--std=08", f"--workdir={work_dir}", toplevel]
+        return [ghdl, "-e", "-O2", *_SYNOPSYS, "--std=08", f"--workdir={work_dir}", toplevel]
 
     @staticmethod
     def run_cmd(
@@ -129,7 +145,7 @@ class _GHDLBackend(_SimBackend):
         wave: WaveConfig | None = None,
         binary: str | None = None,
     ) -> list[str]:
-        cmd = [binary or _GHDLBackend.find(), "-r", "--std=08", f"--workdir={work_dir}"]
+        cmd = [binary or _GHDLBackend.find(), "-r", *_SYNOPSYS, "--std=08", f"--workdir={work_dir}"]
         cmd.append(toplevel)
         # -g is a *simulation* option: documented (and only reliable) AFTER the
         # unit name ("ghdl -r --std=08 my_unit -gDEPTH=12").  mcode/llvm-jit

@@ -144,6 +144,7 @@ class FPGABoard:
         available_sims: list[SimulatorInfo] | None = None,
         height_offset: int = 0,
         vhdl_path: str | Path | None = None,
+        vhdl_note: str | None = None,
         show_footer: bool = True,
         reserve_footer_space: bool | None = None,
     ) -> None:
@@ -181,6 +182,11 @@ class FPGABoard:
         vhdl_path:
             Currently validated VHDL file path.  Shown in the footer;
             enables [Start Simulation] when not ``None``.
+        vhdl_note:
+            One non-blocking line about the loaded design, drawn just above the
+            VHDL status line (U50 uses it for the Synopsys-dialect advisory).
+            ``None`` draws nothing; the note never affects whether the design
+            runs.
         show_footer:
             When ``False`` the footer (buttons + VHDL status line) is not
             drawn.  Set to ``False`` in the simulation screen where the footer
@@ -198,6 +204,7 @@ class FPGABoard:
         self.board_def = board_def
         self._height_offset = height_offset
         self.vhdl_path: Path | None = Path(vhdl_path) if vhdl_path else None
+        self.vhdl_note = vhdl_note
         self._show_footer: bool = show_footer
         # The footer strip is reserved whenever it is drawn; the simulation
         # screen hides the footer but still fills that strip with its overlays,
@@ -1216,6 +1223,16 @@ class FPGABoard:
                 THEME.warning,
             )
         self.screen.blit(status_txt, (btn_margin_x, status_y))
+
+        # A non-blocking note about the loaded design (U50): today the Synopsys
+        # dialect advisory.  It sits *above* the status line because the button
+        # row is immediately below it, and in the info color rather than the
+        # warning one -- the design runs; this is something to know, not to fix.
+        if self.vhdl_note:
+            note_f = get_font(max(9, round(11 * s)))
+            note_y = status_y - note_f.get_linesize() - max(2, round(2 * s))
+            note_txt = note_f.render(self.vhdl_note, True, THEME.info_green)
+            self.screen.blit(note_txt, (btn_margin_x, note_y))
 
         self._draw_hover_tooltip()
         if flip:

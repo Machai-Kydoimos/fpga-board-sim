@@ -18,6 +18,7 @@ engine and a lab neighbor both recognize.
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -40,6 +41,7 @@ from fpga_sim.vhdl_interface import (
     _IfaceDecl,
     _parse_toplevel_interface,
     _plural,
+    _strip_vhdl_comments,
 )
 
 if TYPE_CHECKING:
@@ -206,8 +208,72 @@ def _check_parsed_contract(
 
 
 # >>> moved to fpga_sim.conventions <<<
+#: The pre-standard Synopsys packages, lowercased.  ``std_logic_arith`` and
+#: ``std_logic_unsigned`` are the pair the course material in front of this
+#: project uses; ``std_logic_signed`` and ``std_logic_textio`` complete the set
+#: GHDL gates behind ``-fsynopsys``.
+_SYNOPSYS_PACKAGES = (
+    "std_logic_arith",
+    "std_logic_signed",
+    "std_logic_textio",
+    "std_logic_unsigned",
+)
+
+#: ``use ieee.std_logic_arith.all;`` -- the library qualifier is required, so a
+#: design with its *own* package of that name is not mistaken for this one.
+_SYNOPSYS_USE = re.compile(
+    r"\buse\s+ieee\s*\.\s*(" + "|".join(_SYNOPSYS_PACKAGES) + r")\b",
+    re.IGNORECASE,
+)
+
+
+def uses_synopsys_packages(text: str) -> tuple[str, ...]:
+    """Name the pre-standard Synopsys packages *text* imports, in source order.
+
+    These predate ``ieee.numeric_std`` and are not part of any VHDL standard;
+    GHDL refuses them outright without ``-fsynopsys``, which the simulator now
+    passes (see :data:`fpga_sim.sim_backends._SYNOPSYS`).  NVC accepts them
+    unflagged.
+
+    The point of naming them is a *message*, not a decision: a great deal of
+    teaching material is written this way, so refusing would tell a student
+    their instructor's own file is wrong, while saying nothing would leave them
+    to discover on their own hardware that the dialect is non-standard.
+    Comments are stripped first, so a package named only in a ``--`` note does
+    not count.
+    """
+    found: list[str] = []
+    for match in _SYNOPSYS_USE.finditer(_strip_vhdl_comments(text)):
+        name = match.group(1).lower()
+        if name not in found:
+            found.append(name)
+    return tuple(found)
+
+
 def check_vhdl_contract(
     path: str | Path,
+    board_def: BoardDef | None = None,
+) -> ContractResult:
+    """Stage 2: contract validation, plus the advisory that rides along with it.
+
+    Thin wrapper over :func:`_check_contract`: it stamps every outcome with the
+    Synopsys packages the file imports, so the launcher can mention them once
+    without any caller having to re-read the file.  The advisory never changes
+    the verdict -- a design that runs still runs, and one that does not is
+    rejected for its own reason, not for its dialect.
+    """
+    path = Path(path)
+    result = _check_contract(path, board_def)
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return result
+    packages = uses_synopsys_packages(text)
+    return replace(result, synopsys=packages) if packages else result
+
+
+def _check_contract(
+    path: Path,
     board_def: BoardDef | None = None,
 ) -> ContractResult:
     """Stage 2: contract validation (text-based, no simulator needed).
