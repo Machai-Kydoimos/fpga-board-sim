@@ -274,9 +274,9 @@ notes = "Cyclone IV E (EP4CE115F29C7). Complete pinout including 8 7-segment dis
   leds = "LEDR[0..17]; LEDG[0..8] also present in this QSF \u2014 verified by direct fetch 2026-07-11"
   buttons = "KEY[0..3]"
   switches = "SW[0..17]"
-  seven_seg = "HEX0..HEX7, 7 bits per digit"
+  seven_seg = "HEX0..HEX7, 7 bits per digit \u2014 the segment a..g pins were taken from this source on 2026-09-06 into the board JSON's seven_seg.segment_pins for the pin map (U53), for BOTH custom/de2_115.json and custom/veek_mt2.json: digit 0 = G18 F22 E17 L26 L25 J22 H22, digit 7 = AD17 AE17 AG17 AH17 AF17 AG18 AA14. Re-verified by direct fetch 2026-09-06; the same file's CLOCK_50, LEDR[0..17], SW[0..17] and KEY[0..3] pins were confirmed to match both board JSONs pin-for-pin first, which is what makes the HEX rows from it trustworthy for both."
   active_low = "not visible in this source"
-  evidence = ["set_location_assignment PIN_G19 -to LEDR[0]", "set_location_assignment PIN_M23 -to KEY[0]", "set_location_assignment PIN_AB28 -to SW[0]", "56 HEX assignments for 8 displays"]
+  evidence = ["set_location_assignment PIN_G19 -to LEDR[0]", "set_location_assignment PIN_M23 -to KEY[0]", "set_location_assignment PIN_AB28 -to SW[0]", "56 HEX assignments for 8 displays", "set_location_assignment PIN_G18 -to HEX0[0]", "set_location_assignment PIN_AA14 -to HEX7[6]"]
 
   [[board.source]]
   rank = 2
@@ -629,7 +629,7 @@ name = "VEEK-MT2"
 files = ["custom/veek_mt2.json"]
 maker = "Terasic"
 status = "verified"
-notes = "Cyclone IV E (EP4CE115F29C7) on DE2-115 base + multimedia extensions. Resolved 2026-07-28 from the vendor System CD's own golden top (rank 1), which confirms the whole DE2-115-identical user-IO set pin-for-pin. | Polarity is NOT stated in this board's manual -- it inherits the DE2-115 base hardware, so the polarity citation is the DE2-115 row's manual (LEDs active high, KEY active low, HEX active low)."
+notes = "Cyclone IV E (EP4CE115F29C7) on DE2-115 base + multimedia extensions. Resolved 2026-07-28 from the vendor System CD's own golden top (rank 1), which confirms the whole DE2-115-identical user-IO set pin-for-pin. | Polarity is NOT stated in this board's manual -- it inherits the DE2-115 base hardware, so the polarity citation is the DE2-115 row's manual (LEDs active high, KEY active low, HEX active low). | 2026-09-06: seven_seg.segment_pins were added for the pin map (U53) and are the DE2-115 row's, because this board IS a DE2-115 electrically -- same EP4CE115F29C7, same Y2 CLOCK_50, and the LEDR/SW/KEY pins in both board JSONs were checked against the DE2-115 QSF and agree pin-for-pin. The rank-1 golden top here is inside a System CD zip with no addressable raw URL, so the *fetchable* citation of record for the HEX rows is the DE2-115 row's rank-1 QSF; one source, two boards."
 
   [[board.source]]
   rank = 1
@@ -644,7 +644,7 @@ notes = "Cyclone IV E (EP4CE115F29C7) on DE2-115 base + multimedia extensions. R
   leds = "LEDR[0..17] and LEDG[0..8]"
   buttons = "KEY[0..3]"
   switches = "SW[0..17]"
-  seven_seg = "HEX0..HEX7, 7 bits per digit"
+  seven_seg = "HEX0..HEX7, 7 bits per digit \u2014 the pins in seven_seg.segment_pins are the DE2-115's, per this row's board notes"
   active_low = "not derivable from a QSF; inherited from the DE2-115 base -- see the DE2-115 row"
   evidence = ["set_location_assignment PIN_G19 -to LEDR[0]", "set_location_assignment PIN_M23 -to KEY[0]"]
   notes = "format OTHER, not QSF: the file is Demonstrations/Golden_top/VEEK_MT2_GOLDEN_TOP.qsf inside VEEK-MT2_v.1.0.2_SystemCD.zip -- no addressable raw URL to pin, so the gate skips before any fetch. cite-not-copy."

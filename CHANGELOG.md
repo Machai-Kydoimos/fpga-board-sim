@@ -99,6 +99,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     QSF already in the registry, and its digits 0–3 were corroborated
     pin-for-pin by an unrelated Quartus project that binds the same physical
     pins through a differently-named port.
+  - **DE2-115 and VEEK-MT2** gained their eight digits from the same cited QSF,
+    one source for both boards: the VEEK-MT2 *is* a DE2-115 with a multimedia
+    kit attached — same EP4CE115F29C7, same `Y2` clock, and the LED, switch and
+    button pins in the two board files agree pin-for-pin, which was checked
+    against the source before the display rows were taken from it. Both are now
+    pin-map targets.
 
 - **The board selector finds boards** (U49). Three defects in the screen every
   session starts on:

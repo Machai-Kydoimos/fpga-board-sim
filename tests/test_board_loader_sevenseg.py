@@ -252,6 +252,31 @@ def test_a_scanned_display_has_one_shared_row_and_an_enable_per_digit():
     assert seg.dp_pins == ("V7",)
 
 
+def test_the_de2_115_display_is_eight_directly_driven_digits():
+    seg = _board_named("DE2-115").seven_seg
+    assert seg is not None and seg.has_pin_data and not seg.is_scan
+    assert len(seg.segment_pins) == seg.num_digits == 8
+    assert all(len(row) == 7 for row in seg.segment_pins)
+    assert seg.segment_pins[0] == ("G18", "F22", "E17", "L26", "L25", "J22", "H22")
+    assert seg.segment_pins[7] == ("AD17", "AE17", "AG17", "AH17", "AF17", "AG18", "AA14")
+
+
+def test_the_veek_mt2_is_a_de2_115_underneath():
+    """Not a copy-paste: the VEEK-MT2 *is* a DE2-115 with a screen bolted on.
+
+    Same EP4CE115, same Y2 clock, same user I/O pins -- which is why one cited
+    source covers both, and why the two must not be allowed to drift apart.
+    """
+    de2, veek = _board_named("DE2-115"), _board_named("VEEK-MT2")
+    assert de2.seven_seg is not None and veek.seven_seg is not None
+    assert veek.seven_seg.segment_pins == de2.seven_seg.segment_pins
+    assert veek.clock_defs[0].pin == de2.clock_defs[0].pin == "Y2"
+    for role in ("leds", "switches", "buttons"):
+        got = [c.pins for c in getattr(veek, role)]
+        want = [c.pins for c in getattr(de2, role)]
+        assert got == want, role
+
+
 def test_pin_data_is_optional_and_absent_boards_still_load():
     without = [b for b in _BOARDS if b.seven_seg and not b.seven_seg.has_pin_data]
     assert without, "expected boards with a display but no pin data"

@@ -299,6 +299,110 @@ def test_each_display_bit_lands_on_its_own_digit_and_segment():
         assert b.role.segment == b.bit % 7, b
 
 
+# ── The 8-digit Terasic pair (D-17) ──────────────────────────────────────────
+
+_DE2_VHDL = """
+library ieee;
+use ieee.std_logic_1164.all;
+entity lab is
+  port (
+    clock : in  std_logic;
+    sw    : in  std_logic_vector(17 downto 0);
+    ledr  : out std_logic_vector(17 downto 0);
+    hex   : out std_logic_vector(55 downto 0)
+  );
+end entity;
+"""
+
+#: Written in the shape a student's own project file has: their names, the
+#: board's pins.  Segment pins are the DE2-115's own, which is what makes this
+#: a check of the board data rather than of the matcher.
+_DE2_QSF_PINS = {
+    "clock": "Y2",
+    **{
+        f"sw[{i}]": p
+        for i, p in enumerate(
+            [
+                "AB28",
+                "AC28",
+                "AC27",
+                "AD27",
+                "AB27",
+                "AC26",
+                "AD26",
+                "AB26",
+                "AC25",
+                "AB25",
+                "AC24",
+                "AB24",
+                "AB23",
+                "AA24",
+                "AA23",
+                "AA22",
+                "Y24",
+                "Y23",
+            ]
+        )
+    },
+    **{
+        f"ledr[{i}]": p
+        for i, p in enumerate(
+            [
+                "G19",
+                "F19",
+                "E19",
+                "F21",
+                "F18",
+                "E18",
+                "J19",
+                "H19",
+                "J17",
+                "G17",
+                "J15",
+                "H16",
+                "J16",
+                "H17",
+                "F15",
+                "G15",
+                "G16",
+                "H15",
+            ]
+        )
+    },
+}
+_DE2_HEX = [
+    ["G18", "F22", "E17", "L26", "L25", "J22", "H22"],
+    ["M24", "Y22", "W21", "W22", "W25", "U23", "U24"],
+    ["AA25", "AA26", "Y25", "W26", "Y26", "W27", "W28"],
+    ["V21", "U21", "AB20", "AA21", "AD24", "AF23", "Y19"],
+    ["AB19", "AA19", "AG21", "AH21", "AE19", "AF19", "AE18"],
+    ["AD18", "AC18", "AB18", "AH19", "AG19", "AF18", "AH18"],
+    ["AA17", "AB16", "AA16", "AB17", "AB15", "AA15", "AC17"],
+    ["AD17", "AE17", "AG17", "AH17", "AF17", "AG18", "AA14"],
+]
+for _d, _row in enumerate(_DE2_HEX):
+    for _seg, _pin in enumerate(_row):
+        _DE2_QSF_PINS[f"hex[{_d * 7 + _seg}]"] = _pin
+
+_DE2_QSF = "\n".join(f"set_location_assignment PIN_{p} -to {n}" for n, p in _DE2_QSF_PINS.items())
+
+
+@pytest.mark.parametrize("board_name", ["DE2-115", "VEEK-MT2"])
+def test_an_eight_digit_terasic_design_maps_through_its_own_qsf(board_name):
+    """The same file, the same pins, both boards -- because they are one board."""
+    result = _map(_DE2_VHDL, "lab", _DE2_QSF, board_name, source="lab.qsf")
+    assert isinstance(result, PinMapMatch), getattr(result, "message", result)
+    assert result.clock_port == "clock"
+    assert len(result.inputs) == 18
+    segs = [b for b in result.outputs if b.role.kind == "seg"]
+    assert len(segs) == 56
+    for b in segs:
+        assert b.bit is not None
+        assert b.role.digit == b.bit // 7, b
+        assert b.role.segment == b.bit % 7, b
+    assert all(b.role.active_low for b in segs), "HEX is active-low on this board"
+
+
 def test_polarity_comes_from_the_board_not_the_design():
     """KEY[3] is active-low on this board; the design cannot say otherwise."""
     result = _map(_LAB_VHDL, "test_entity", _LAB_QSF, "DE10-Standard", source="q.qsf")
@@ -474,7 +578,7 @@ def test_a_scan_design_maps_through_an_xdc_with_names_of_its_own():
     assert all(b.role.digit is None for b in result.outputs if b.role.kind == "seg")
 
 
-@pytest.mark.parametrize("board_name", ["DE10-Standard", "Basys 3"])
+@pytest.mark.parametrize("board_name", ["DE10-Standard", "Basys 3", "DE2-115", "VEEK-MT2"])
 def test_every_target_board_can_be_indexed(board_name):
     index = board_pin_index(_board(board_name))
     kinds = {role.kind for role in index.values()}
