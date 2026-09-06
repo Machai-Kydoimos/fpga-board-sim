@@ -200,7 +200,7 @@ name = "DE10-Standard"
 files = ["custom/de10_standard.json"]
 maker = "Terasic"
 status = "verified"
-notes = "Cyclone V SoC (5CSXFC6D6F31C6). Verified from Quartus project in educational context."
+notes = "Cyclone V SoC (5CSXFC6D6F31C6). Verified from Quartus project in educational context. The HEX0..HEX5 segment pins added 2026-09-06 were corroborated pin-for-pin on digits 0-3 by a second, unrelated Quartus project for this board (a university lab assignment that binds the same physical pins through its own flat HEX[27..0] port); digits 4-5 rest on the rank-1 source alone, which carries them in the same golden-top form."
 
   [[board.source]]
   rank = 1
@@ -215,9 +215,9 @@ notes = "Cyclone V SoC (5CSXFC6D6F31C6). Verified from Quartus project in educat
   leds = "LEDR[0..9]"
   buttons = "KEY[0..3]"
   switches = "SW[0..9]"
-  seven_seg = "HEX0..HEX5, 7 bits per digit"
+  seven_seg = "HEX0..HEX5, 7 bits per digit \u2014 the segment a..g pins were taken from this source on 2026-09-06 into the board JSON's seven_seg.segment_pins for the pin map (U53): digit 0 = W17 V18 AG17 AG16 AH17 AG18 AH18, digit 5 = AF21 AG21 AF20 AG20 AE19 AF19 AB21."
   active_low = "not visible in this source"
-  evidence = ["set_location_assignment PIN_AA24 -to LEDR[0]", "set_location_assignment PIN_AJ4 -to KEY[0]", "set_location_assignment PIN_AB30 -to SW[0]", "HEX0..HEX5 fully mapped"]
+  evidence = ["set_location_assignment PIN_AA24 -to LEDR[0]", "set_location_assignment PIN_AJ4 -to KEY[0]", "set_location_assignment PIN_AB30 -to SW[0]", "HEX0..HEX5 fully mapped", "set_location_assignment PIN_W17 -to HEX0[0]", "set_location_assignment PIN_AB21 -to HEX5[6]"]
 
   [[board.source]]
   rank = 2

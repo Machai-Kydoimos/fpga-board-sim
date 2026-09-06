@@ -39,6 +39,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Board data now carries the pins the pin map needs** (U53, groundwork).
+  - **Clock pins survive loading.** The board JSON has carried
+    `{"name": "clk50", "hz": 50e6, "pin": "AF14"}` objects for 196 of the 274
+    boards, and `BoardDef` narrowed them to bare Hz on the way in *and wrote
+    floats back out* — so the pin was dropped at load and would have been
+    erased by any round-trip. `BoardDef.clock_defs` keeps the whole object;
+    `clocks` stays the Hz-only view its two consumers want.
+  - **7-segment displays can carry their pins**: `segment_pins` (one row per
+    digit when directly driven, one shared row when scanned), `dp_pins` and
+    `digit_enable_pins`, all optional. The presence of `digit_enable_pins` is
+    what distinguishes a scanned display from a one-digit board.
+  - The Digilent XDC parser now retains what it already saw, so **Basys 3,
+    Nexys 4, Nexys 4 DDR and both Nexys A7s** gained their pins from a re-sync
+    at the recorded `source_commit` (the board-data drift check was proven a
+    byte-identical no-op first, and is green after). **DE10-Standard** — the
+    hand-authored board the course targets — was written from the rank-1 cited
+    QSF already in the registry, and its digits 0–3 were corroborated
+    pin-for-pin by an unrelated Quartus project that binds the same physical
+    pins through a differently-named port.
+
 - **The board selector finds boards** (U49). Three defects in the screen every
   session starts on:
   - **"Name" now sorts by name.** `_filtered()` had branches for vendor, LEDs,

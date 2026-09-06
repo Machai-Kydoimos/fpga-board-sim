@@ -26,25 +26,83 @@ _FALLBACK_CLOCK_HZ: float = 12e6  # most common across 80 surveyed boards
 # ═══════════════════════════════════════════════════════════════════════
 
 
+def _pin_list(raw: object) -> tuple[str, ...]:
+    """Coerce a JSON pin array to a tuple of strings; anything else to empty.
+
+    Board JSON is external data, and a malformed pin list should cost the pin
+    map its ability to target that board -- not raise on the way in and take the
+    board out of the picker entirely.
+    """
+    if not isinstance(raw, list):
+        return ()
+    return tuple(str(pin) for pin in raw)
+
+
+def _pin_rows(raw: object) -> tuple[tuple[str, ...], ...]:
+    """Coerce a JSON array-of-pin-arrays, dropping any row that is not a list."""
+    if not isinstance(raw, list):
+        return ()
+    return tuple(_pin_list(row) for row in raw if isinstance(row, list))
+
+
 @dataclass
 class SevenSegDef:
-    """7-segment display capability extracted from a board definition."""
+    """7-segment display capability extracted from a board definition.
+
+    The three ``*_pins`` lists are optional and exist for the pin map (U53),
+    which binds a design's ports to board resources **by pin**.  Every other
+    consumer works from the counts and polarity above them, so a board without
+    pin data behaves exactly as it always has -- it simply cannot be targeted
+    through a constraint file.
+
+    ``segment_pins`` is one inner list per digit on a directly-driven display
+    (Terasic's ``HEX0``..``HEX5``), and exactly **one** inner list on a scanned
+    display, whose segment lines are shared and selected by
+    ``digit_enable_pins``.  The presence of ``digit_enable_pins`` is what
+    distinguishes the two, so a scanned board is never mistaken for a one-digit
+    one.
+    """
 
     num_digits: int
     has_dp: bool
     is_multiplexed: bool
     inverted: bool  # board hardware active-low (metadata; VHDL is active-high)
     select_inverted: bool  # mux select lines active-low (v2 use)
+    #: Segment pins in a..g order; per digit, or one shared list when scanned.
+    segment_pins: tuple[tuple[str, ...], ...] = ()
+    #: Decimal-point pins: one per digit, or a single shared pin when scanned.
+    dp_pins: tuple[str, ...] = ()
+    #: Digit-select pins, digit 0 first.  Non-empty only on a scanned display.
+    digit_enable_pins: tuple[str, ...] = ()
+
+    @property
+    def is_scan(self) -> bool:
+        """Whether the segment lines are shared and selected per digit."""
+        return bool(self.digit_enable_pins)
+
+    @property
+    def has_pin_data(self) -> bool:
+        """Whether this display can be targeted through a constraint file."""
+        return bool(self.segment_pins)
 
     def to_dict(self) -> dict[str, object]:
         """Serialize to a plain dict for inclusion in BoardDef JSON."""
-        return {
+        d: dict[str, object] = {
             "num_digits": self.num_digits,
             "has_dp": self.has_dp,
             "is_multiplexed": self.is_multiplexed,
             "inverted": self.inverted,
             "select_inverted": self.select_inverted,
         }
+        # Omitted rather than written empty, so a board with no pin data keeps
+        # the JSON it had and the drift check stays quiet.
+        if self.segment_pins:
+            d["segment_pins"] = [list(row) for row in self.segment_pins]
+        if self.dp_pins:
+            d["dp_pins"] = list(self.dp_pins)
+        if self.digit_enable_pins:
+            d["digit_enable_pins"] = list(self.digit_enable_pins)
+        return d
 
     @classmethod
     def from_dict(cls, d: dict[str, object]) -> "SevenSegDef":
@@ -55,7 +113,55 @@ class SevenSegDef:
             is_multiplexed=bool(d["is_multiplexed"]),  # strict: required field
             inverted=bool(d.get("inverted", False)),
             select_inverted=bool(d.get("select_inverted", False)),
+            segment_pins=_pin_rows(d.get("segment_pins")),
+            dp_pins=_pin_list(d.get("dp_pins")),
+            digit_enable_pins=_pin_list(d.get("digit_enable_pins")),
         )
+
+
+@dataclass(frozen=True)
+class ClockDef:
+    """One clock source, with the pin it arrives on when the board data says.
+
+    ``BoardDef.clocks`` has always been a list of plain Hz values, which is what
+    its two consumers want (the stats panel's clock presets and the board-image
+    renderer's caption).  The board JSON, though, carries richer objects --
+    ``{"name": "clk50", "hz": 50e6, "pin": "AF14", "is_default": true}`` -- for
+    196 of the 274 boards, and the loader used to narrow them to floats on the
+    way in and write floats back out, so **the pin was discarded at load and
+    would have been erased by any round-trip**.
+
+    The pin is what a project's constraint file binds a design's clock port to,
+    so the pin map (U53) cannot work without it.
+    """
+
+    hz: float
+    name: str = ""
+    pin: str = ""
+    is_default: bool = False
+
+    def to_dict(self) -> dict[str, object]:
+        """Serialize back to the board JSON's clock-object shape, pin included."""
+        d: dict[str, object] = {"hz": self.hz}
+        if self.name:
+            d["name"] = self.name
+        if self.pin:
+            d["pin"] = self.pin
+        if self.is_default:
+            d["is_default"] = True
+        return d
+
+    @classmethod
+    def from_raw(cls, raw: object) -> "ClockDef":
+        """Build from either JSON shape: a bare Hz number or a clock object."""
+        if isinstance(raw, dict):
+            return cls(
+                hz=float(raw.get("hz", 0.0)),
+                name=str(raw.get("name", "")),
+                pin=str(raw.get("pin", "")),
+                is_default=bool(raw.get("is_default", False)),
+            )
+        return cls(hz=float(raw))  # type: ignore[arg-type]
 
 
 @dataclass
@@ -125,6 +231,10 @@ class BoardDef:
     device: str = ""
     package: str = ""
     clocks: list[float] = field(default_factory=list)  # Hz, e.g. [25e6, 100e6]
+    #: The same clocks with their names and pins kept (U53).  ``clocks`` above
+    #: stays the Hz-only view its consumers want; this is the one the pin map
+    #: reads.  Empty for a board whose JSON lists bare numbers.
+    clock_defs: list[ClockDef] = field(default_factory=list)
     default_clock_hz: float = _FALLBACK_CLOCK_HZ  # Hz; drives cocotb Clock()
     leds: list[ComponentInfo] = field(default_factory=list)
     buttons: list[ComponentInfo] = field(default_factory=list)
@@ -281,7 +391,11 @@ class BoardDef:
                 "vendor": self.vendor,
                 "device": self.device,
                 "package": self.package,
-                "clocks": self.clocks,
+                # The rich form when we have it: a round-trip used to downgrade
+                # a board's clock objects to bare Hz and drop the pins.
+                "clocks": (
+                    [c.to_dict() for c in self.clock_defs] if self.clock_defs else self.clocks
+                ),
                 "default_clock_hz": self.default_clock_hz,
                 "leds": [_comp(c) for c in self.leds],
                 "buttons": [_comp(c) for c in self.buttons],
@@ -316,9 +430,8 @@ class BoardDef:
                 for c in items
             ]
 
-        raw_clocks = data.get("clocks", [])
-        if raw_clocks and isinstance(raw_clocks[0], dict):
-            raw_clocks = [c["hz"] for c in raw_clocks]
+        clock_defs = [ClockDef.from_raw(c) for c in data.get("clocks", [])]
+        raw_clocks = [c.hz for c in clock_defs]
 
         raw_7seg = data.get("seven_seg")
         return cls(
@@ -328,6 +441,7 @@ class BoardDef:
             device=data.get("device", ""),
             package=data.get("package", ""),
             clocks=raw_clocks,
+            clock_defs=clock_defs,
             default_clock_hz=data.get("default_clock_hz", _FALLBACK_CLOCK_HZ),
             leds=_make(data.get("leds", []), "led"),
             buttons=_make(data.get("buttons", []), "button"),

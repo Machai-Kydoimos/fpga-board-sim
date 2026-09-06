@@ -500,8 +500,36 @@ def _categorize_seg_ports(
     return segments, anodes, dp, other
 
 
+#: Segment order the schema stores pins in: a, b, c, d, e, f, g.
+_SEGMENT_ORDER = ("a", "b", "c", "d", "e", "f", "g")
+
+
+def _segment_sort_key(port: str) -> tuple[int, str]:
+    """Order segment ports as a..g, whichever idiom the board spells them in.
+
+    ``seg[0]``..``seg[6]`` sort by index; the ``CA``..``CG`` scalars sort by
+    their letter (``CA`` is segment a).  An unrecognized name sorts last rather
+    than raising -- it would then be pinned at the wrong segment, which is why
+    :func:`_categorize_seg_ports` only ever hands us these two shapes.
+    """
+    base, idx = _parse_port_name(port)
+    if idx is not None:
+        return (idx, "")
+    letter = base.lower().removeprefix("c")
+    if letter in _SEGMENT_ORDER:
+        return (_SEGMENT_ORDER.index(letter), "")
+    return (len(_SEGMENT_ORDER), port.lower())
+
+
 def _build_seven_seg(pin_entries: list[dict[str, Any]]) -> dict[str, Any] | None:
-    """Build seven_seg definition from parsed 7-segment XDC section."""
+    """Build seven_seg definition from parsed 7-segment XDC section.
+
+    The pins ride along with the counts (U53).  Every Digilent display in the
+    fleet is *scanned* -- shared segment lines plus one anode per digit -- so
+    ``segment_pins`` is a single shared list and ``digit_enable_pins`` carries
+    the anodes in digit order.  A section with segments but no anodes is a
+    single directly-driven digit, which is the same shape with no enables.
+    """
     if not pin_entries:
         return None
 
@@ -510,14 +538,29 @@ def _build_seven_seg(pin_entries: list[dict[str, Any]]) -> dict[str, Any] | None
     if not segments:
         return None
 
+    pin_of = {e["port"].strip(): e["pin"] for e in pin_entries if e.get("pin")}
     num_digits = max(len(anodes), 1)
-    return {
+    seven_seg: dict[str, Any] = {
         "num_digits": num_digits,
         "has_dp": dp is not None,
         "is_multiplexed": len(anodes) > 0,
         "inverted": True,
         "select_inverted": True,
     }
+
+    seg_pins = [pin_of[p] for p in sorted(segments, key=_segment_sort_key) if p in pin_of]
+    if len(seg_pins) == len(segments):
+        # All or nothing: a partial list would pin some segments at the wrong
+        # position, which is worse for the pin map than having no data at all.
+        seven_seg["segment_pins"] = [seg_pins]
+    anode_pins = [
+        pin_of[p] for p in sorted(anodes, key=lambda n: _parse_port_name(n)[1] or 0) if p in pin_of
+    ]
+    if anode_pins and len(anode_pins) == len(anodes):
+        seven_seg["digit_enable_pins"] = anode_pins
+    if dp is not None and dp in pin_of:
+        seven_seg["dp_pins"] = [pin_of[dp]]
+    return seven_seg
 
 
 # ═══════════════════════════════════════════════════════════════════════

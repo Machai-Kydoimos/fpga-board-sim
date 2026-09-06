@@ -399,6 +399,12 @@ def test_seg_scalar_scan_convention():
         "is_multiplexed": True,
         "inverted": True,
         "select_inverted": True,
+        # The pins ride along for the pin map (U53).  Segments come out in
+        # a..g order whichever idiom names them -- here the CA..CG scalars,
+        # sorted by letter rather than by the order the XDC happens to list.
+        "segment_pins": [["T10", "R10", "K16", "K13", "P15", "T11", "L18"]],
+        "digit_enable_pins": ["J17", "J18", "T9", "J14", "P14", "T14", "K2", "U13"],
+        "dp_pins": ["H15"],
     }
     assert board["port_conventions"]["digilent"]["seven_seg"] == {
         "style": "scan",
