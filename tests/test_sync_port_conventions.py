@@ -858,7 +858,7 @@ _BASYS3_EXCERPT = """
 def test_digilent_regression(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """New generic pipeline reproduces sync_digilent_xdc.py's existing output.
 
-    Reproduces this arc's A2 golden test (test_port_convention_parsers_golden.py)
+    Reproduces this arc's A2 golden test (test_fpga_sim.constraints_golden.py)
     through the full A3 generator instead of calling xdc.parse/classify
     directly -- same expected clk/leds/switches/buttons, and the same
     documented upgrade from the stored JSON's stale "packed_vector" to the
@@ -912,7 +912,7 @@ def test_digilent_regression(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
     conv = result.convention_by_file["digilent-xdc/basys_3.json"]["digilent"]
     # Matches boards/digilent-xdc/basys_3.json's existing port_conventions.digilent
     # on every field that stored block states (buttons.active_low excepted --
-    # see test_port_convention_parsers_golden.py for why that one is never derived).
+    # see test_fpga_sim.constraints_golden.py for why that one is never derived).
     assert conv["clk"] == "clk"
     assert conv["leds"] == {"name": "led", "width": 16}
     assert conv["switches"] == {"name": "sw", "width": 16}

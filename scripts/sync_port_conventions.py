@@ -51,9 +51,10 @@ else:  # pragma: no cover - exercised only on Python 3.10
 
 from check_registry_schema import check_cross_field, check_schemas
 from framework_conventions import reconcile_framework_polarity
-from port_convention_parsers import boardstore_xml, ccf, classify, cst, lpf, pcf, qsf, ucf, xdc
-from port_convention_parsers.types import PortTable
 from sync_common import fetch_url, resolve_commit_sha, validate_board_jsons
+
+from fpga_sim.constraints import boardstore_xml, ccf, classify, cst, lpf, pcf, qsf, ucf, xdc
+from fpga_sim.constraints.types import PortTable
 
 REGISTRY_DIR = Path(__file__).parent.parent / "docs" / "port_convention_sources"
 BOARDS_DIR = Path(__file__).parent.parent / "boards"

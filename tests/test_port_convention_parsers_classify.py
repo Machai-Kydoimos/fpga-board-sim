@@ -1,4 +1,4 @@
-"""Tests for the dialect-agnostic classifier (scripts/port_convention_parsers/classify.py).
+"""Tests for the dialect-agnostic classifier (src/fpga_sim/constraints/classify.py).
 
 Builds PortTable/PinEntry values directly (not via any dialect's parse())
 so these tests exercise classify()'s name-shape rules in isolation. Real
@@ -6,8 +6,8 @@ board names are used as the fixtures' vocabulary (cited per case) even
 though the tables themselves are hand-built. Hermetic: no network.
 """
 
-from port_convention_parsers.classify import classify
-from port_convention_parsers.types import ClockConstraint, PinEntry, PortTable
+from fpga_sim.constraints.classify import classify
+from fpga_sim.constraints.types import ClockConstraint, PinEntry, PortTable
 
 
 def _table(names_and_pins: dict[str, str], clocks: tuple[ClockConstraint, ...] = ()) -> PortTable:

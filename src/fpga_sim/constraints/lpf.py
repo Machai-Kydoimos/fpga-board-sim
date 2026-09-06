@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 
-from port_convention_parsers.types import ClockConstraint, PinEntry, PortTable
+from fpga_sim.constraints.types import ClockConstraint, PinEntry, PortTable
 
 _RE_LOCATE = re.compile(r'LOCATE\s+COMP\s+"([^"]+)"\s+SITE\s+"(\w+)"')
 _RE_FREQUENCY = re.compile(r'FREQUENCY\s+PORT\s+"([^"]+)"\s+([\d.]+)\s*MHZ', re.IGNORECASE)

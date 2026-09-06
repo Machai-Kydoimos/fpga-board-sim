@@ -6,14 +6,14 @@ DEVICE_FILTER_PACKAGE ...`` lines; neither uses ``set_location_assignment``, so
 they never collide with port extraction here (device identification is a
 board-metadata concern handled elsewhere, not this module's job). QSF files
 have no clock-frequency statement (that lives in a separate ``.sdc``), so
-:attr:`~port_convention_parsers.types.PortTable.clocks` is always empty.
+:attr:`~fpga_sim.constraints.types.PortTable.clocks` is always empty.
 """
 
 from __future__ import annotations
 
 import re
 
-from port_convention_parsers.types import PinEntry, PortTable
+from fpga_sim.constraints.types import PinEntry, PortTable
 
 _RE_LOCATION = re.compile(r"set_location_assignment\s+PIN_(\S+)\s+-to\s+(\S+)")
 

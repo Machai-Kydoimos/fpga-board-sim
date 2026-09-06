@@ -1,10 +1,10 @@
-"""Tests for the LPF parser (scripts/port_convention_parsers/lpf.py).
+"""Tests for the LPF parser (src/fpga_sim/constraints/lpf.py).
 
 Fixture is a trimmed, real excerpt from a fetch-verified registry source
 (docs/port_convention_sources/ulx3s-openhw.toml). Hermetic: no network.
 """
 
-from port_convention_parsers.lpf import parse
+from fpga_sim.constraints.lpf import parse
 
 # Trimmed from https://raw.githubusercontent.com/emard/ulx3s/master/doc/constraints/ulx3s_v20.lpf
 # -- LOCATE COMP/SITE pin binding, the companion IOBUF PORT attribute line

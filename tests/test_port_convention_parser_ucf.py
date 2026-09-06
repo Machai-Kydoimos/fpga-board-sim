@@ -1,4 +1,4 @@
-"""Tests for the UCF parser (scripts/port_convention_parsers/ucf.py).
+"""Tests for the UCF parser (src/fpga_sim/constraints/ucf.py).
 
 Fixtures are trimmed, real excerpts from three fetch-verified registry
 sources (docs/port_convention_sources/maker-xilinx.toml, cn-xilinx-misc.toml),
@@ -7,7 +7,7 @@ convention (well documented, but not present in any of this arc's fetched
 files, so it is not claimed as a live fetch). Hermetic: no network.
 """
 
-from port_convention_parsers.ucf import parse
+from fpga_sim.constraints.ucf import parse
 
 # Trimmed from https://raw.githubusercontent.com/Saanlima/Pipistrello/master/
 # Projects/Oberon_lpddr/src/Pipistrello.ucf -- covers: a bracketed vector name,

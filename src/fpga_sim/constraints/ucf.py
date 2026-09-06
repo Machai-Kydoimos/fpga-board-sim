@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import re
 
-from port_convention_parsers.types import ClockConstraint, PinEntry, PortTable
+from fpga_sim.constraints.types import ClockConstraint, PinEntry, PortTable
 
 _RE_NET_LOC = re.compile(r'NET\s+"([^"]+)"\s+LOC\s*=\s*"?(\w+)"?')
 _RE_PERIOD = re.compile(r'PERIOD\s+"([^"]+)"\s+([\d.]+)\s*MHz', re.IGNORECASE)

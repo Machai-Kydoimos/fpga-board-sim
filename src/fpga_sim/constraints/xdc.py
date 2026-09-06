@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import re
 
-from port_convention_parsers.types import ClockConstraint, PinEntry, PortTable
+from fpga_sim.constraints.types import ClockConstraint, PinEntry, PortTable
 
 _PIN = r'"?(\S+?)"?'
 _DICT_PREFIX = rf"set_property\s+-dict\s*\{{[^}}]*?PACKAGE_PIN\s+{_PIN}\s[^}}]*\}}\s*"

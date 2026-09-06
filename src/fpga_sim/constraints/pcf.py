@@ -3,7 +3,7 @@
 Matches ``set_io [-nowarn] name pin``, tab- or space-separated, with an
 optional trailing ``# comment`` (ignored — matching stops at the pin token).
 PCF has no clock-frequency statement, so
-:attr:`~port_convention_parsers.types.PortTable.clocks` is always empty.
+:attr:`~fpga_sim.constraints.types.PortTable.clocks` is always empty.
 
 No polarity keyword exists in the format itself, but some boards encode it in
 the port name: ICEBreaker's ``.pcf`` names active-low pins with a trailing
@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import re
 
-from port_convention_parsers.types import PinEntry, PortTable
+from fpga_sim.constraints.types import PinEntry, PortTable
 
 _RE_SET_IO = re.compile(r"set_io\s+(?:-nowarn\s+)?(\S+)\s+(\S+)")
 

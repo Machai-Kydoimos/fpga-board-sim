@@ -1,10 +1,10 @@
-"""Tests for the PCF parser (scripts/port_convention_parsers/pcf.py).
+"""Tests for the PCF parser (src/fpga_sim/constraints/pcf.py).
 
 Fixtures are trimmed, real excerpts from two fetch-verified registry sources
 (docs/port_convention_sources/ice40-hobbyist.toml). Hermetic: no network.
 """
 
-from port_convention_parsers.pcf import parse
+from fpga_sim.constraints.pcf import parse
 
 # Trimmed from https://raw.githubusercontent.com/im-tomu/fomu-workshop/master/pcf/fomu-hacker.pcf
 # -- tab-separated pin/comment, role hints in trailing comments.
