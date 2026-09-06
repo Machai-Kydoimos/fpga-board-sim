@@ -905,17 +905,29 @@ def test_output_signature_ignores_everything_the_user_touches(headless_pygame, f
 # ── "It looks frozen" (U48) ──────────────────────────────────────────────────
 
 
-def _run_quiet(screen, monkeypatch, *, seconds, sim_ns_step=2_000_000, frames=4, paused=False):
-    """Hold the board still for *seconds* of wall clock, advancing sim time."""
-    t = [1000.0]
+#: Wall clock shared across calls, so a second `_run_quiet` on the same screen
+#: moves time forward rather than backwards (the watch ignores a clock that
+#: goes back, which would silently stop the accumulation).
+_FAKE_CLOCK = [1000.0]
+
+
+def _run_quiet(screen, monkeypatch, *, seconds, sim_per_frame=200_000, paused=False, frame=0.05):
+    """Drive the screen the way the run loop does: one sample per frame.
+
+    Frame-sized steps matter -- the watch counts time it *observed*, and a test
+    that jumped ten seconds in one call would be handing it an interruption
+    rather than a wait (see `MAX_OBSERVED_GAP_S`).
+    """
+    t = _FAKE_CLOCK
     monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: t[0])
     screen.panel.paused = paused
-    sim_ns = 0
-    for _ in range(frames):
-        sim_ns += sim_ns_step
+    sim_ns = int(screen._last_state.get("sim_ns", 0))
+    for _ in range(max(1, round(seconds / frame))):
+        t[0] += frame
+        if not paused:
+            sim_ns += sim_per_frame
         screen._last_state = {"sim_ns": sim_ns}
         screen._sample_stall()
-        t[0] += seconds / max(1, frames - 1) if frames > 1 else seconds
     return screen._stall_showing
 
 
@@ -932,11 +944,11 @@ def test_a_board_that_keeps_changing_never_raises_it(headless_pygame, fake_child
     screen = _make_screen(headless_pygame, child)
     t = [1000.0]
     monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: t[0])
-    for i in range(30):
+    for i in range(600):  # 30 s of frames, the LED changing throughout
         screen.board.set_led_level(0, (i % 10) / 10)
-        screen._last_state = {"sim_ns": 2_000_000 * (i + 1)}
+        screen._last_state = {"sim_ns": 200_000 * (i + 1)}
         screen._sample_stall()
-        t[0] += 2.0
+        t[0] += 0.05
         assert not screen._stall_showing
 
 
@@ -944,7 +956,7 @@ def test_a_stopped_child_is_never_blamed_on_the_design(headless_pygame, fake_chi
     """Simulated time frozen means our problem, not theirs -- and no banner."""
     child, _client = fake_child
     screen = _make_screen(headless_pygame, child)
-    assert not _run_quiet(screen, monkeypatch, seconds=60.0, sim_ns_step=0)
+    assert not _run_quiet(screen, monkeypatch, seconds=60.0, sim_per_frame=0)
 
 
 def test_a_paused_run_is_not_a_symptom(headless_pygame, fake_child, monkeypatch):
@@ -1047,13 +1059,13 @@ def test_opening_it_late_reports_the_wait_that_actually_happened(
     t = [1000.0]
     monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: t[0])
     sim_ns = 0
-    for _ in range(12):
-        sim_ns += 2_000_000
+    for _ in range(1440):  # 72 s of frames, all of them still
+        sim_ns += 200_000
         screen._last_state = {"sim_ns": sim_ns}
         screen._sample_stall()
-        t[0] += 6.0
+        t[0] += 0.05
     first = screen._stall_lines[0]
-    assert "12 s" in first, first  # the spell that first tripped it
+    assert "10 s" in first, first  # the spell that first tripped it
     screen._render_frame()
     assert screen._stall_hint_rect is not None
     headless_pygame.event.post(
@@ -1147,13 +1159,13 @@ def test_once_the_controls_have_been_used_the_claim_is_direct(
     t = [1000.0]
     monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: t[0])
     sim_ns = 0
-    for i in range(6):
-        if i == 2:  # mid-run: the user flips a switch and nothing happens
+    for i in range(300):  # 15 s of frames
+        if i == 40:  # mid-run: the user flips a switch and nothing happens
             screen.board.switches[0].state = not screen.board.switches[0].state
-        sim_ns += 2_000_000
+        sim_ns += 200_000
         screen._last_state = {"sim_ns": sim_ns}
         screen._sample_stall()
-        t[0] += 6.0
+        t[0] += 0.05
     assert screen._stall_showing
     assert screen._stall.inputs_used
     assert screen._stall_heading == "This design may just be slow, not broken"

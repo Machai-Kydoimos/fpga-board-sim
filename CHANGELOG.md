@@ -91,6 +91,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     never closed by the design at all: only [ Close ] closes it.
   - Opening it **re-measures**, so somebody who watched for a minute before
     asking is told about the minute rather than about the first ten seconds.
+  - **It counts time it actually observed.** Every clock accumulates the gap
+    between consecutive samples, clamped to one second, so wall time in which
+    the run loop was not running at all — the F1 help modal, an error dialog, a
+    window drag, an alt-tab freeze — is not mistaken for the board being still.
+    Reading the help for thirty seconds used to raise the offer the instant the
+    dialog closed. Clamped rather than discarded so a genuinely slow machine,
+    whose user most needs to be told the board is not broken, keeps working.
+  - **Changing the clock preset or the speed slider restarts the measurement**
+    without withdrawing an offer already made: a window straddling either would
+    report a rate nobody ran at, but the board is no less still than it was.
   - **A pause freezes it rather than resetting or clearing it.** Paused
     wall-clock time is not evidence of a stall (no simulated time passes
     either), so a pause never raises the offer — and it never withdraws one,

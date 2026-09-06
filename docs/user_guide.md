@@ -51,6 +51,13 @@ appears, and if your design is a button that lights an LED and you simply were n
 pressing it, you can ignore the whole thing — touch a control and it withdraws by
 itself.
 
+**The simulation keeps running while you read it.** The panel is an overlay, not
+a modal — the board stays live behind it, and the step you are waiting for may
+well arrive while you are reading about it. Only **[Pause]** stops the simulator
+(and the **F1** help, which has to: it takes over the window, and a simulator
+nobody is listening to stalls anyway). **[Stop]**, **ESC** and closing the window
+end the run.
+
 **Pausing changes nothing about it.** Wall-clock time spent paused is not evidence
 of a stall — no simulated time passes either — so a pause never raises the offer,
 and it never takes one away: stopping the run to read the numbers carefully is the

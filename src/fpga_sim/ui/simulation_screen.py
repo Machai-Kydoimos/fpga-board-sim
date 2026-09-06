@@ -575,8 +575,22 @@ class SimulationScreen:
                         nav = intent
             self.panel.handle_event(ev)
 
-        # F1 / ? help: pause the child around the modal so sim time does not
-        # advance while it is open (today's semantics), then restore.
+        # F1 / ? help: pause the child around the modal, then restore.
+        #
+        # Not merely so that simulated time stands still while somebody reads.
+        # `HelpDialog.run()` takes over the event loop, so `_pump_link` stops
+        # draining the socket -- and the child streams state on a *blocking*
+        # send at up to 250/s.  With nobody reading, the buffer fills and the
+        # child blocks part-way through a send: it stalls regardless, just at an
+        # arbitrary point, and the host then drains a backlog of already-stale
+        # frames that the board fast-forwards through on resume.  Pausing makes
+        # the stall deliberate, keeps simulated time coherent, and resumes clean.
+        #
+        # The stall advisory's panel (U48) is the deliberate contrast: it is an
+        # overlay, not a modal, so the loop keeps running and the link keeps
+        # draining -- and it must *not* pause, because a design that is merely
+        # slow should go on making progress while its user reads about how slow
+        # it is.  The step they are waiting for may well land while they read.
         if self.board._help_requested:
             self.board._help_requested = False
             self._run_help_modal()
@@ -660,6 +674,7 @@ class SimulationScreen:
             paused=self.panel.paused,
             inputs=self._input_signature(),
             clock_hz=self.panel.current_clock_hz,
+            speed_factor=self.panel.speed_factor,
         )
         if showing and not self._stall_showing:
             # Built now so `_stall_lines` is always current if asked for, and

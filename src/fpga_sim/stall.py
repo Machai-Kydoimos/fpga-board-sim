@@ -60,6 +60,18 @@ DEFAULT_THRESHOLD_S = 10.0
 #: that a design which is genuinely animating loses the offer and keeps it lost.
 _LINGER_FACTOR = 1.5
 
+#: The most any single gap between samples may contribute.  A frame is about
+#: 16 ms, so this passes ordinary frames untouched while a thirty-second help
+#: modal contributes one second instead of thirty.
+#:
+#: Clamped rather than discarded, deliberately.  Throwing the whole gap away
+#: would be tidier against modals and would silently switch the feature *off*
+#: on a machine slow enough that every frame exceeds the cap -- which is
+#: precisely the machine whose user most needs to be told the board is not
+#: broken.  Clamping degrades in both directions instead: interruptions leak a
+#: bounded, negligible amount, and a slow machine keeps working.
+MAX_OBSERVED_GAP_S = 1.0
+
 
 @dataclass(frozen=True)
 class StallFacts:
@@ -112,20 +124,30 @@ class StallWatch:
 
     Feed it :meth:`sample` once per frame.  What it reports is only ever that
     the board *has* gone quiet -- what to do about that is the caller's, and in
-    this application the answer is to offer help rather than to interrupt:
-    the detection is not confident enough to be worth a banner (see the module
+    this application the answer is to offer help rather than to interrupt: the
+    detection is not confident enough to be worth a banner (see the module
     docstring), so it earns an indicator the user may click.
+
+    **It counts observed time, not elapsed time.**  Every clock here accumulates
+    the gap between consecutive samples, and only when that gap is small enough
+    to have been a frame.  Anything longer is wall time during which the loop
+    was not running at all -- the F1 help modal, an error dialog, a window drag,
+    an alt-tab freeze, somebody's debugger -- and that is not evidence about the
+    board.  Reading the help for thirty seconds used to make the offer appear
+    the instant the dialog closed, which is exactly the kind of surprise a tool
+    like this cannot afford; taking the gap out at the source fixes it for every
+    such interruption at once, including the ones not written yet.
     """
 
     def __init__(self, *, threshold_s: float = DEFAULT_THRESHOLD_S) -> None:
         """Start watching, with *threshold_s* of quiet before the advisory fires."""
         self.threshold_s = threshold_s
         self.linger_s = threshold_s * _LINGER_FACTOR
-        self._last_quiet_at: float | None = None
-        self._last_now: float | None = None
         self._signature: object = None
-        self._quiet_since: float | None = None
+        self._quiet_elapsed: float | None = None  # observed seconds of stillness
+        self._linger_elapsed: float | None = None  # observed seconds since it fired
         self._sim_ns_at_quiet: int = 0
+        self._last_now: float | None = None
         self.fired = False
         #: Set once any switch or button has moved since the run began, and never
         #: cleared.  It does not gate the advisory -- it chooses which
@@ -133,14 +155,30 @@ class StallWatch:
         #: input-driven design the likelier reading of a still board.
         self.inputs_used = False
         self._first_inputs: object = None
-        self._clock_hz: float | None = None
+        self._basis: tuple[float, float] | None = None
 
     def reset(self) -> None:
         """Forget the current quiet spell (the outputs moved, or the run did)."""
-        self._quiet_since = None
-        self.fired = False
-        self._last_quiet_at = None
+        self._quiet_elapsed = None
+        self._linger_elapsed = None
         self._last_now = None
+        self.fired = False
+
+    def _observed(self, now: float, *, paused: bool) -> float:
+        """Wall seconds since the previous sample that this watch may count."""
+        previous, self._last_now = self._last_now, now
+        if previous is None or paused:
+            return 0.0
+        delta = now - previous
+        if delta <= 0.0:  # a clock that went backwards observes nothing
+            return 0.0
+        return min(delta, MAX_OBSERVED_GAP_S)
+
+    def _restart_window(self, sim_ns: int) -> None:
+        """Begin measuring again from here, without touching what is on offer."""
+        self._quiet_elapsed = 0.0
+        self._sim_ns_at_quiet = sim_ns
+        self.fired = False
 
     def sample(
         self,
@@ -151,96 +189,83 @@ class StallWatch:
         paused: bool = False,
         inputs: object = None,
         clock_hz: float | None = None,
+        speed_factor: float | None = None,
     ) -> bool:
-        """Record one frame; return whether the advisory should be showing.
+        """Record one frame; return whether the offer should be showing.
 
         *signature* must cover **outputs only** -- see the module docstring.
         *sim_ns* is the child's running total of simulated nanoseconds, which is
         how "the simulator is still working" is told from "the simulator
         stopped".
 
-        *paused* freezes the whole thing: no quiet time accrues while the user
-        has stopped the run, and none is lost either.
+        *paused* contributes no observed time, so a pause neither starts a quiet
+        spell nor ends one, and the waiting already done is kept rather than
+        thrown away.
 
         *inputs* is the switch/button state.  It is **recorded, never acted on**:
         it does not reset the quiet timer (a student poking at the board must not
         silence the thing that was about to explain it) and it does not suppress
-        the advisory.  All it does is set :attr:`inputs_used`, which decides
-        which explanation the message leads with.
+        the offer.  All it does is set :attr:`inputs_used`, which decides which
+        explanation the message leads with.
+
+        *clock_hz* and *speed_factor* are the basis every figure in the message
+        rests on.  Changing either restarts the measurement -- a window that
+        straddled a change would report a rate nobody ever ran at -- but does
+        **not** withdraw an offer already made, because the board is no less
+        still than it was a moment ago.
         """
-        delta = now - self._last_now if self._last_now is not None else 0.0
-        self._last_now = now
-        if clock_hz is not None and clock_hz != self._clock_hz:
-            # The virtual clock is the basis of every figure in the message, so
-            # a window that straddles a change to it would report cycles that
-            # were never run at one rate.  Start again instead.
-            restart = self._clock_hz is not None
-            self._clock_hz = clock_hz
-            if restart:
-                self._quiet_since = now
-                self._sim_ns_at_quiet = sim_ns
-                self.fired = False
-                return False
+        observed = self._observed(now, paused=paused)
+        if self._linger_elapsed is not None:
+            self._linger_elapsed += observed
+
         if self._first_inputs is None:
             self._first_inputs = inputs
         elif inputs != self._first_inputs:
             self.inputs_used = True
+
+        basis = (clock_hz or 0.0, speed_factor or 0.0)
+        if self._basis is not None and basis != self._basis:
+            self._basis = basis
+            self._restart_window(sim_ns)
+            return self._lingering()
+        self._basis = basis
+
         if signature != self._signature:
             self._signature = signature
-            self._quiet_since = now
-            self._sim_ns_at_quiet = sim_ns
-            self.fired = False
-            return self._lingering(now)
-        if paused:
-            # A pause is not the board doing something, so it neither starts a
-            # quiet spell nor ends one: both clocks are shifted forward by the
-            # elapsed wall time, which leaves everything exactly as still as it
-            # was, and whatever was being offered stays on offer.
-            #
-            # Freezing rather than resetting matters at both ends.  Resetting
-            # would make paused wall-clock time look like evidence of a stall
-            # (it is not -- no simulated time passes either); *clearing* would
-            # take the offer away at the worst possible moment, since pausing to
-            # read it carefully is the obvious thing to do with a board that
-            # will not move.
-            if self._quiet_since is not None:
-                self._quiet_since += delta
-            if self._last_quiet_at is not None:
-                self._last_quiet_at += delta
-            return self.fired or self._lingering(now)
-        if self._quiet_since is None:
-            self._quiet_since = now
-            self._sim_ns_at_quiet = sim_ns
-            return self._lingering(now)
-        if now - self._quiet_since < self.threshold_s:
-            return self._lingering(now)
+            self._restart_window(sim_ns)
+            return self._lingering()
+        if self._quiet_elapsed is None:
+            self._restart_window(sim_ns)
+            return self._lingering()
+
+        self._quiet_elapsed += observed
+        if self._quiet_elapsed < self.threshold_s:
+            return self._lingering()
         if sim_ns <= self._sim_ns_at_quiet:
             # Nothing is advancing: a stopped sim, not a slow design.  Do not
-            # keep lingering over it either -- that is a different problem and
-            # this offer would answer the wrong question.
-            self._last_quiet_at = None
+            # linger over it either -- that is a different problem, and this
+            # offer would be answering the wrong question.
+            self._linger_elapsed = None
+            self.fired = False
             return False
         self.fired = True
-        self._last_quiet_at = now
+        self._linger_elapsed = 0.0
         return True
 
-    def _lingering(self, now: float) -> bool:
+    def _lingering(self) -> bool:
         """Report whether a recent quiet spell still justifies showing the offer."""
-        if self._last_quiet_at is None:
-            return False
-        return now - self._last_quiet_at < self.linger_s
+        return self._linger_elapsed is not None and self._linger_elapsed < self.linger_s
 
     def facts(self, sim_ns: int, now: float, sim_clock_hz: float, board_hz: float) -> StallFacts:
         """Snapshot the numbers behind the current spell, for the message.
 
-        Both figures are differences taken across *this* window -- the wall
-        clock since the outputs last moved, and the simulated time the child
+        Both figures are differences taken across *this* window -- the observed
+        wall time since the outputs last moved, and the simulated time the child
         reported over the same span -- so the arithmetic downstream describes
         this machine, this backend and these ten seconds, and nothing else.
         """
-        quiet = now - self._quiet_since if self._quiet_since is not None else 0.0
         return StallFacts(
-            quiet_s=quiet,
+            quiet_s=self._quiet_elapsed or 0.0,
             sim_ns=max(0, sim_ns - self._sim_ns_at_quiet),
             sim_clock_hz=sim_clock_hz,
             board_hz=board_hz,
