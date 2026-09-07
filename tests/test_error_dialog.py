@@ -341,6 +341,18 @@ class TestButtonRowFits:
     #: 1024x700: panel 683 wide, the fitter is handed panel_w - gap.
     REFERENCE = dict(base_size=20, pad=28, gap=16, avail=667)
 
+    @pytest.fixture(autouse=True)
+    def _font_module_is_up(self, headless_pygame):
+        """`_button_row_metrics` calls `get_font`, which needs `font.init()`.
+
+        Nothing else in this class touches pygame, so without this the tests
+        pass only when some *other* test happened to initialize it first --
+        which is a coin flip under `pytest-randomly`, and was green for two
+        weeks before a seed put this class first and CI failed with
+        `pygame.error: font not initialized`.  Requesting the fixture is the
+        same fix `TestScrolling` needed for `display.set_mode`.
+        """
+
     def _fit(self, monkeypatch, **kwargs):
         _use_fixed_metric_font(monkeypatch)
         args = {**self.REFERENCE, **kwargs}

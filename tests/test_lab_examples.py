@@ -48,6 +48,7 @@ _GENERICS = {
 # still prints FAIL=0, so the count is what makes the assertion mean anything.
 _HEX_DECODER_TESTS = 2
 _CODE_LOCK_TESTS = 3
+_GATES_MUX_TESTS = 2
 
 
 def _board(*, digits: int = 4, switches: int = 8, buttons: int = 4, leds: int = 8) -> BoardDef:
@@ -182,3 +183,13 @@ def test_code_lock_behaves_under_ghdl(ghdl):
 @pytest.mark.slow
 def test_code_lock_behaves_under_nvc(nvc):
     _run_cocotb("code_lock_fsm", "test_code_lock", "nvc", _CODE_LOCK_TESTS, 200_000, has_seg=False)
+
+
+@pytest.mark.slow
+def test_gates_mux_behaves_under_ghdl(ghdl):
+    _run_cocotb("gates_mux", "test_gates_mux", "ghdl", _GATES_MUX_TESTS, 200_000, has_seg=False)
+
+
+@pytest.mark.slow
+def test_gates_mux_behaves_under_nvc(nvc):
+    _run_cocotb("gates_mux", "test_gates_mux", "nvc", _GATES_MUX_TESTS, 200_000, has_seg=False)
