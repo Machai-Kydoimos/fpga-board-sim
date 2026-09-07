@@ -456,13 +456,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The advisory quoted the divider width from your *file*, not the one the run
+  was using.** The simulator floors `COUNTER_BITS` so a contract design blinks
+  visibly (17, or 20 on NVC, or `4 x digits` on a many-digit 7-segment board), so
+  a design declaring 24 was described as stepping every 16.8 M cycles while it
+  was really doing 131 k — **wrong by 128x**, and wrong in the direction that
+  invents a problem: it demanded a change that was not needed. On a 6-digit
+  DE10-Standard the floor lands on 24 and the two agreed, which is why this was
+  not visible in the stills; on a 4-digit Basys 3 it does not.
+  - Worse, and newer: a student who took the advisory's own advice and lowered
+    the generic in **[Generics…]** came back to it still quoting the value they
+    had replaced, recommending the change they had just made.
+  - `find_divider` now takes the wrapper's contract generics and the user's
+    overrides — kept apart, so the message can say **who** moved it ("you set
+    that here" vs "the simulator lowers it so a design blinks visibly here")
+    rather than hedging. The "your file is not touched: `COUNTER_BITS` stays 24"
+    promise still quotes the file, because that is the number in the editor.
+- **A brightness test raced the Windows clock.** It back-dated `_ema_t` by 50 ms
+  but `_apply_state` reads `time.monotonic()` again, so the interval was
+  `0.05 + however long two calls took`. On Linux that is microseconds; Windows'
+  monotonic clock advances in ~15.6 ms ticks, giving dt = 0.066 and a level of
+  0.483 against an expected 0.393. The clock is now frozen outright, so the
+  assertion is exact rather than tolerant of a tick.
 - **The README told macOS users to run `brew install ghdl`, which has not worked
   since 2026-09-01** — the cask was disabled for failing the Gatekeeper check.
   `docs/install.md` was corrected when the install-docs workflow (D-19) caught
   this; the README was not, and CI's macOS job follows `install.md`'s tarball
   path, so nothing re-caught it. The quick start now installs NVC there, with
   the tarball route noted.
-
 - **A dim LED's halo now shrinks with it, instead of washing the whole board.**
   The halo's radius was fixed at twice the LED body whatever the brightness —
   only its alpha tracked duty — so on a DE10-Lite, whose 21px LEDs sit on a 60px
@@ -490,7 +511,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `glow_radius()` the renderer uses, rather than restating `radius * 2` — the
     drift that made the two renderers disagree before #396 — and its parity test
     is now parametrized over brightness.
-
 - **`generate-board-images`' SVG output now matches its own PNG.** The SVG
   renderer hardcoded `THEME.led_off` for every LED and `THEME.seg_off` for every
   segment, so it could not show a lit board — but the more immediate problem was

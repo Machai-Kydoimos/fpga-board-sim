@@ -107,6 +107,23 @@ It gives no ratio — the ordering never varies, but the factor depends on your 
 and your machine, and this panel does not print numbers it has not measured. See
 [choosing a simulator](install.md#choosing-a-simulator) for the figures.
 
+**The width it quotes is the one your design is actually running with**, which is
+not always the one in your file. The simulator floors `COUNTER_BITS` so a contract
+design blinks visibly here — to 17, or 20 on NVC, or `4 × digits` on a many-digit
+7-segment board — and you may have set something else yourself through
+[Generics…]. When the run and the file differ the advisory says so and names which
+is which:
+
+```text
+COUNTER_BITS is running at 17, not the 24 in your file (the simulator lowers it so
+  a design blinks visibly here) — that is 131 k cycles per step: about 804 ms here,
+  1 ms on the real board.
+```
+
+The promise below it still quotes your file — *"COUNTER_BITS stays 24 for the real
+board"* — because that is the number you can see in your editor and the one your
+hardware will use.
+
 **The width it suggests is computed from the rate it just measured**, not picked in
 advance — a faster backend is told it can afford a wider divider, a slower one a
 narrower, and each suggestion is sized to step about twice a second on the machine

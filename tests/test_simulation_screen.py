@@ -74,6 +74,8 @@ def _make_screen(
     initial_inputs: BoardInputs | None = None,
     engine: str = "ghdl",
     available_sims: tuple[SimulatorInfo, ...] = (),
+    vhdl_path: str | Path = "blinky.vhd",
+    generic_overrides: dict[str, str] | None = None,
 ) -> SimulationScreen:
     surface = pygame.display.set_mode((1024, 700))
     return SimulationScreen(
@@ -83,12 +85,13 @@ def _make_screen(
         child,
         speed_factor=0.1,
         match=None,
-        vhdl_path="blinky.vhd",
+        vhdl_path=vhdl_path,
         sim=_sim(engine),
         show_toolbar=show_toolbar,
         screenshot_dir=screenshot_dir,
         initial_inputs=initial_inputs,
         available_sims=available_sims,
+        generic_overrides=generic_overrides,
     )
 
 
@@ -1397,3 +1400,51 @@ def test_e2e_run_loop_exits_stopped(headless_pygame, ghdl):
     assert result is SimExit.STOPPED
     assert screen.run_stats.frames > 0
     assert screen.run_stats.sim_ns > 0
+
+
+# ── The advisory must describe the run, not the file on disk ─────────────────
+
+
+def _divider_design(tmp_path: Path) -> Path:
+    src = tmp_path / "counter.vhd"
+    src.write_text(
+        "entity counter is\n"
+        "  generic (COUNTER_BITS : positive := 24);\n"
+        "  port (clk : in std_logic);\n"
+        "end entity;\n",
+        encoding="utf-8",
+    )
+    return src
+
+
+def test_the_screen_reads_the_contract_generics_the_child_was_given(
+    headless_pygame, fake_child, tmp_path
+):
+    """The seam. `find_divider` is unit-tested; this proves the screen feeds it.
+
+    `child.generics` carries the floored COUNTER_BITS, and the screen is the
+    only thing that knows to hand it over. A correct function nobody passes the
+    right arguments to is exactly how this shipped wrong the first time.
+    """
+    child, _client = fake_child
+    child.generics["COUNTER_BITS"] = "17"
+    screen = _make_screen(headless_pygame, child, vhdl_path=_divider_design(tmp_path))
+    assert screen._divider is not None
+    assert (screen._divider.bits, screen._divider.file_bits) == (17, 24)
+    assert screen._divider.source == "simulator"
+
+
+def test_the_screen_prefers_what_the_user_set_over_the_contract(
+    headless_pygame, fake_child, tmp_path
+):
+    """After [Generics…], the advisory must stop quoting the value they replaced."""
+    child, _client = fake_child
+    child.generics["COUNTER_BITS"] = "17"
+    screen = _make_screen(
+        headless_pygame,
+        child,
+        vhdl_path=_divider_design(tmp_path),
+        generic_overrides={"counter_bits": "15"},
+    )
+    assert screen._divider is not None
+    assert (screen._divider.bits, screen._divider.source) == (15, "user")

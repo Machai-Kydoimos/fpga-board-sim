@@ -41,7 +41,7 @@ from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
     from fpga_sim.board_loader import BoardDef, ComponentInfo
     from fpga_sim.pinmap import PinMapMatch
@@ -122,6 +122,7 @@ class SimulationScreen:
         screenshot_dir: str | Path | None = None,
         initial_inputs: BoardInputs | None = None,
         available_sims: Sequence[SimulatorInfo] = (),
+        generic_overrides: Mapping[str, str] | None = None,
     ) -> None:
         """Build the board/panel/toolbar and wire pygame input to link messages."""
         self.screen = screen
@@ -165,10 +166,19 @@ class SimulationScreen:
         #: only ever earns an offer of help, never an interruption (U48).
         self._stall_hint_rect: pygame.Rect | None = None
         self._stall_expanded = False
+        # What the design is *actually* elaborated with, not what its file says.
+        # `child.generics` is the wrapper's contract map -- and it carries the
+        # floored COUNTER_BITS (17, or 20 on NVC), which is well below the 24 a
+        # design declares; the overrides are whatever [Generics…] or --generic
+        # put on top.  Reading the file alone made the advisory quote a number
+        # the run was not using, and told a student who had just lowered the
+        # generic to lower it again.
         try:
             self._divider = find_divider(
                 Path(vhdl_path).read_text(encoding="utf-8", errors="replace"),
                 Path(vhdl_path).stem,
+                child.generics,
+                generic_overrides,
             )
         except OSError:
             self._divider = None

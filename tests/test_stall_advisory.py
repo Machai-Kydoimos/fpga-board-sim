@@ -515,3 +515,73 @@ def test_the_backend_line_never_predicts_a_ratio(facts):
 def test_the_offer_is_absent_by_default(facts):
     """Callers that do not know their backend get no speculation about it."""
     assert not any("SIM:" in line for line in stall_message(facts, Divider("cntr_len", 24)))
+
+
+# ── The number it quotes must be the number that is running ──────────────────
+
+_DIVIDER_VHDL = (
+    "entity b is generic (COUNTER_BITS : positive := 24); port (clk : in std_logic); end entity;"
+)
+
+
+def test_the_simulators_own_floor_is_what_gets_reported():
+    """The defect this fixes: the file said 24, the run used 17, 128x apart."""
+    d = find_divider(_DIVIDER_VHDL, "b", {"COUNTER_BITS": "17"})
+    assert d is not None
+    assert (d.bits, d.file_bits, d.source) == (17, 24, "simulator")
+    assert d.overridden
+
+
+def test_a_users_own_override_outranks_the_contract_floor():
+    d = find_divider(_DIVIDER_VHDL, "b", {"COUNTER_BITS": "17"}, {"counter_bits": "20"})
+    assert d is not None
+    assert (d.bits, d.file_bits, d.source) == (20, 24, "user")
+
+
+def test_an_untouched_generic_reports_the_file_and_claims_no_override():
+    d = find_divider(_DIVIDER_VHDL, "b")
+    assert d is not None
+    assert (d.bits, d.declared, d.source) == (24, None, "")
+    assert not d.overridden
+
+
+def test_a_generic_the_run_did_not_change_is_not_called_overridden():
+    """Same value from both sides is agreement, not an override."""
+    d = find_divider(_DIVIDER_VHDL, "b", {"COUNTER_BITS": "24"})
+    assert d is not None and not d.overridden and d.source == ""
+
+
+def test_an_unreadable_effective_value_falls_back_to_the_file():
+    d = find_divider(_DIVIDER_VHDL, "b", {"COUNTER_BITS": "not a number"})
+    assert d is not None
+    assert (d.bits, d.overridden) == (24, False)
+
+
+def test_the_message_says_who_moved_it(facts):
+    tool = " ".join(stall_message(facts, Divider("counter_bits", 17, 24, "simulator")))
+    assert "running at 17, not the 24 in your file" in tool
+    assert "the simulator lowers it" in tool
+
+    mine = " ".join(stall_message(facts, Divider("counter_bits", 20, 24, "user")))
+    assert "running at 20, not the 24 in your file" in mine
+    assert "you set that here" in mine
+
+
+def test_the_untouched_file_promise_quotes_the_file_not_the_run(facts):
+    """ "Your file is not touched: X stays N" has to be the N they can see."""
+    lines = stall_message(facts, Divider("counter_bits", 17, 24, "simulator"))
+    promise = next(line for line in lines if "is not touched" in line)
+    assert "stays 24" in promise, promise
+    assert "stays 17" not in promise
+
+
+def test_a_floored_generic_that_is_already_quick_here_is_left_alone():
+    """The old reading called a 17-bit run a 24-bit one and invented a problem."""
+    fast = StallFacts(quiet_s=10.0, sim_ns=2_000_000_000, sim_clock_hz=50e6, board_hz=50e6)
+    d = find_divider(_DIVIDER_VHDL, "b", {"COUNTER_BITS": "17"})
+    assert d is not None
+    assert suggested_bits(fast, d) is None, "131 k cycles is quick on this machine"
+    assert "already small" in " ".join(stall_message(fast, d))
+    # ...and read as the file's 24 it would have demanded a change that was
+    # never needed, which is the whole defect.
+    assert suggested_bits(fast, Divider("counter_bits", 24)) is not None
