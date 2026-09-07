@@ -7,9 +7,9 @@ is the complete matrix, including from-source builds and the Windows specifics.
 
 ## Prerequisites
 
-- **Python 3.10–3.13**, installed as a **standalone** interpreter (not the Windows
+- **Python 3.10–3.14**, installed as a **standalone** interpreter (not the Windows
   Store build — see [Set up the Python environment](#set-up-the-python-environment)).
-  The upper bound is cocotb's: it refuses to build on 3.14. You do not have to do
+  The upper bound is cocotb's: it has no 3.15 wheel yet. You do not have to do
   anything about it — `uv` reads the bound from `pyproject.toml` and fetches a
   suitable interpreter itself, even if the only Python on your machine is newer.
 - **One VHDL simulator**, either [GHDL](#ghdl) or [NVC](#nvc). Both can coexist;
@@ -253,7 +253,7 @@ compiling and elaborating `hdl/blinky.vhd` on **each** simulator it found:
 ```text
 fpga-sim doctor - Fedora Linux 43 - x86_64
 
-  [ ok ] Python         3.10.20 (CPython), within >=3.10,<3.14
+  [ ok ] Python         3.10.20 (CPython), within >=3.10,<3.15
   [ ok ] uv             uv 0.12.10
   [ ok ] pygame-ce      2.5.8 (SDL 2.32.10)
   [ ok ] cocotb         2.0.1

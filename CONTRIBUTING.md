@@ -575,7 +575,7 @@ Every push and pull request runs the following jobs:
 | Job | Runner | Simulators installed | Pytest filter |
 |-----|--------|----------------------|---------------|
 | Lint & type-check | ubuntu-latest | none | n/a |
-| Test (matrix) | ubuntu + windows + macos (Apple Silicon) + ubuntu-24.04-arm × py3.10 + py3.12 + py3.13 | none | `-m "not slow"` |
+| Test (matrix) | ubuntu + windows + macos (Apple Silicon) + ubuntu-24.04-arm × py3.10 + py3.11 + py3.12 + py3.13 + py3.14 | none | `-m "not slow"` |
 | Test Linux + GHDL | ubuntu-24.04 | GHDL mcode tarball from GitHub Releases (pinned v6.0.0) | full suite |
 | Test Linux + GHDL-LLVM / GHDL-LLVM-JIT | ubuntu-24.04 | the official `ghdl-llvm` / `ghdl-llvm-jit` release assets (sha256-pinned) | full + slow suites |
 | Test Linux + NVC | ubuntu-latest | `nickg/setup-nvc` action | full suite |

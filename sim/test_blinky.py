@@ -8,7 +8,11 @@ from cocotb.triggers import RisingEdge, Timer
 @cocotb.test()
 async def test_switches_drive_leds(dut):
     """Each switch should appear on the corresponding LED (modulo counter XOR)."""
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    # `Clock.start()` already drives the signal; cocotb documents its return as
+    # "an object which can be passed to cocotb.start_soon or ignored".  Wrapping
+    # it was redundant, and cocotb 2.1 types `start_soon` as taking an
+    # `Awaitable[Never]`, which its own `Task[None]` does not satisfy.
+    Clock(dut.clk, 10, unit="ns").start()
     dut.sw.value = 0
     dut.btn.value = 0
 
@@ -28,7 +32,7 @@ async def test_switches_drive_leds(dut):
 @cocotb.test()
 async def test_buttons_or_into_leds(dut):
     """Pressing buttons should OR into LED outputs."""
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    Clock(dut.clk, 10, unit="ns").start()
     dut.sw.value = 0
     dut.btn.value = 0
     await Timer(5, unit="ns")
@@ -44,7 +48,7 @@ async def test_buttons_or_into_leds(dut):
 @cocotb.test()
 async def test_counter_toggles_leds(dut):
     """After enough clock cycles the counter should flip LED bits."""
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    Clock(dut.clk, 10, unit="ns").start()
     dut.sw.value = 0b1111
     dut.btn.value = 0
 
@@ -65,7 +69,7 @@ async def test_counter_toggles_leds(dut):
 @cocotb.test()
 async def test_all_off(dut):
     """With no switches/buttons and counter near zero, LEDs should be 0."""
-    cocotb.start_soon(Clock(dut.clk, 10, unit="ns").start())
+    Clock(dut.clk, 10, unit="ns").start()
     dut.sw.value = 0
     dut.btn.value = 0
     # Note: counter doesn't reset between tests, so just verify that
