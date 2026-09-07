@@ -2,8 +2,9 @@
 
 A design whose visible rate comes from the top bits of a clock divider is
 correct, runs, and shows nothing.  ``CNTR_LEN = 24`` at 50 MHz steps about three
-times a second on the bench; here it steps about once every ninety seconds, and
-on screen that is indistinguishable from a design that does not work.  A student
+times a second on the bench; here it steps once every forty-five seconds to three
+minutes depending on the backend, and on screen that is indistinguishable from a
+design that does not work.  A student
 alone at 11 pm cannot tell those apart, and the tool has never helped.
 
 This module is the judgment and the arithmetic.  It holds no pygame: what it

@@ -86,10 +86,10 @@ This design may just be slow, not broken
 No LED or digit has changed in 10 s of wall-clock time.
 In that time this machine simulated 819 k clock cycles = 16.4 ms of the board's 50 MHz.
 Your CNTR_LEN = 24 means 16.8 M cycles per step: about 3 min here, 336 ms on the real board.
-To watch it here, restart the simulator with a smaller CNTR_LEN:
-    fpga-sim --generic CNTR_LEN=15
-That steps about every 402 ms instead. Your file is not touched: CNTR_LEN stays 24
-for the real board.
+To watch it here, set CNTR_LEN to about 15:
+    [Stop], then [Generics…] on the preview  —  or relaunch with  --generic CNTR_LEN=15
+That steps about every 400 ms instead. Your file is not touched: CNTR_LEN stays 24 for the
+  real board.
 ```
 
 **The width it suggests is computed from the rate it just measured**, not picked in
@@ -122,13 +122,15 @@ alternative:
 ```text
 Nothing has changed on the board
 No LED or digit has changed in 10 s, and no switch or button has been touched.
-If your design follows the switches or buttons, try one: a design that is waiting
-  for input is right to show nothing.
-If instead it counts, it may just be slow here: in that time this machine simulated
-  819 k clock cycles = 16.4 ms of the board's 50 MHz.
+If your design follows the switches or buttons, try one: a design that is waiting for input
+  is right to show nothing.
+If instead it counts, it may just be slow here: in that time this machine simulated 819 k
+  clock cycles = 16.4 ms of the board's 50 MHz.
 Your CNTR_LEN = 24 means 16.8 M cycles per step: about 3 min here, 336 ms on the real board.
-To watch it here, restart the simulator with a smaller CNTR_LEN:
-    fpga-sim --generic CNTR_LEN=15
+To watch it here, set CNTR_LEN to about 15:
+    [Stop], then [Generics…] on the preview  —  or relaunch with  --generic CNTR_LEN=15
+That steps about every 400 ms instead. Your file is not touched: CNTR_LEN stays 24 for the
+  real board.
 ```
 
 Use a control — even once, even putting it straight back — and the simulator stops
@@ -151,8 +153,11 @@ Three things it deliberately does **not** do:
   at the board while you wonder will not silence the thing that was about to
   explain it. Your inputs are noted only to decide which explanation leads.
 
-**[ Dismiss ]** hides it for this quiet spell. If the design produces output and
-then goes quiet again, it comes back — that second silence is worth a word too.
+The offer goes away by itself after fifteen seconds of the board genuinely
+animating. One blink is not enough — a design that steps once every thirty seconds
+is exactly the case this exists for, so a single step is evidence *for* the
+explanation rather than against it. If the board goes quiet again, the offer comes
+back: that second silence is worth a word too.
 
 Read it together with [generic overrides](#when-the-board-looks-frozen-generic-overrides),
 which is what to do about it.

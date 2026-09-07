@@ -42,12 +42,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The simulator now offers to explain when a design only *looks* frozen** (U48). A design
   that gets its visible rate from the top bits of a clock divider is correct,
   runs, and shows nothing: at the simulator's throughput a 24-bit divider steps
-  about once every ninety seconds, which on screen is indistinguishable from a
-  design that does not work. If no LED or digit changes for ten seconds **while
-  simulated time is still advancing**, a banner appears with the arithmetic —
-  cycles simulated, how much board time that was, and, when the design declares
-  a divider generic, how long one step takes here against how long it takes on
-  the bench.
+  once every forty-five seconds to three minutes depending on which simulator
+  you have, which on screen is indistinguishable from a design that does not
+  work. If no LED or digit changes for ten seconds **while simulated time is
+  still advancing**, the simulator offers to explain — and the panel, opened
+  only if you ask for it, carries the arithmetic: cycles simulated, how much
+  board time that was, and, when the design declares a divider generic, how long
+  one step takes here against how long it takes on the bench.
   - **It says what to type.** Naming the design's divider generic is what makes
     the advice actionable — "lower it for the simulator" is a diagnosis, not an
     instruction — so the message prints the flag:
@@ -93,9 +94,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     *for* the slow-divider reading rather than against it: a design that toggles
     an LED once every thirty seconds is the case this exists for, and hiding the
     offer at the instant that is confirmed — then restoring it ten seconds later,
-    forever — was both wrong and a flicker. It withdraws once the board has been
-    genuinely active for longer than it was quiet, and an already-open panel is
-    never closed by the design at all: only [ Close ] closes it.
+    forever — was both wrong and a flicker. It withdraws after fifteen seconds
+    (1.5x the threshold) of the board genuinely animating, and an already-open
+    panel is never closed by the design at all: only [ Close ] closes it.
   - Opening it **re-measures**, so somebody who watched for a minute before
     asking is told about the minute rather than about the first ten seconds.
   - **`--benchmark` never offers it.** That path drives the same screen with
@@ -165,11 +166,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to 0 is refused there, with the reason, rather than becoming a confusing
   analysis error a minute later — and re-analyzes on [Apply]. The preview then
   carries a line naming what is overridden, because an override is otherwise
-  invisible: the design on disk still says 24. A design that gets its visible rate from the top bits of
-  a clock divider is fine on hardware and looks dead here: `CNTR_LEN = 24` at
-  50 MHz steps three times a second on the bench and about once every ninety
-  seconds in simulation, which on screen is indistinguishable from a design that
-  does not work. Repeatable; values are checked before anything runs, and a name
+  invisible: the design on disk still says 24. A design that gets its visible
+  rate from the top bits of a clock divider is fine on hardware and looks dead
+  here: `CNTR_LEN = 24` at 50 MHz steps three times a second on the bench, and
+  once every forty-five seconds to three minutes in simulation depending on
+  which simulator you have — which on screen is indistinguishable from a design
+  that does not work. Repeatable; values are checked before anything runs, and a
+  name
   the design does not declare is reported together with the names it does.
   - **Never automatic.** Your file's own defaults run unless you ask for
     something else — silently rewriting somebody's constant would make the
