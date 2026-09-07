@@ -57,14 +57,33 @@ The happy path for **GHDL** (the default, fully tested everywhere):
 ```bash
 sudo apt install ghdl          # Linux (Ubuntu/Debian)
 sudo dnf install ghdl          # Linux (Fedora)
-brew install ghdl              # macOS
+brew install nvc               # macOS — see the note below
 winget install ghdl.ghdl.ucrt64.mcode   # Windows (PowerShell)
 ```
 
-GHDL is the default and installs from most package managers; NVC compiles designs to
-native machine code via LLVM and can be faster on complex designs. For **NVC**,
-from-source builds, AUR/Gentoo/FreeBSD packages, and the Windows/MSYS2 details, see
-**[docs/install.md](docs/install.md)**.
+**Which one, and does it matter?** Any installed simulator runs any design; they
+differ in speed and in how long a design takes to load. Roughly, against GHDL's
+mcode backend as 1x:
+
+| Simulator | Relative speed | Startup / reload |
+|---|---|---|
+| NVC | ~3.5–6x | fast |
+| GHDL mcode | 1x (the default; what most distros ship) | instant |
+| GHDL LLVM-JIT | ~1.2–1.4x | instant |
+| GHDL LLVM | ~2.3–4.3x | slower (compiles each launch) |
+
+Ratios, not absolute times — reproduce them on your own machine with
+`uv run fpga-sim --benchmark 10 --no-ui --sim <name>`. Install more than one and
+the preview's `SIM:` toggle switches between them per run. Full table, the
+measurement details, and a "which should I install" guide:
+**[choosing a simulator](docs/install.md#choosing-a-simulator)**.
+
+> **macOS:** GHDL's Homebrew cask was disabled on 2026-09-01 for failing the
+> Gatekeeper check, so `brew install ghdl` no longer works. Use NVC (above), or
+> install GHDL from its [release tarball](docs/install.md#ghdl).
+
+For from-source builds, AUR/Gentoo/FreeBSD packages, and the Windows/MSYS2
+details, see **[docs/install.md](docs/install.md)**.
 
 ### 3. Set up Python and run
 

@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The "it looks frozen" advisory now names a faster simulator when one is
+  already installed**, and points at the preview's `SIM:` toggle. There is
+  deliberately **no [Switch to NVC] button on the panel**: the simulator is
+  chosen in exactly one place and it stays that way. A second control would have
+  meant something different from the first — switching engines mid-run tears the
+  child down and restarts simulated time rather than continuing it, so a button
+  reading "go faster" would silently discard the three minutes of counting the
+  reader had just spent waiting. "[Stop], then the toggle" keeps one control and
+  is honest that a re-run is a re-run.
+  - **It gives no ratio.** The ordering (mcode → LLVM-JIT → LLVM → NVC) does not
+    vary between machines, so it is safe to state; the *factor* does — NVC is
+    ~3.5–6x mcode precisely because it depends on the design — and this panel
+    refuses to print a number about somebody's computer that was not measured on
+    it. The next run supplies the number.
+  - Nothing is said when there is nothing to switch to: one install, or already
+    on the fastest. A backend the ordering does not recognize is ignored rather
+    than guessed at, so a code generator added later cannot be called slower by
+    accident.
+- **The README's install step says which simulator to pick, with figures.** The
+  relative-speed table lived only in `docs/install.md`, which is read once,
+  before any of it means anything — two documents away from the person choosing.
+  The ratios are now where the choice is made, linked rather than duplicated.
 - **`sim_bridge.py` is now nine modules and a shim** (D17). It was 3,067 lines
   and nine unrelated concerns — 2.5x the next-largest file in the project and
   22% of `src/` — and it is where the two largest pieces of the current work
@@ -433,6 +455,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     exactly **two** distinct LED brightness values against 51 with it on.
 
 ### Fixed
+
+- **The README told macOS users to run `brew install ghdl`, which has not worked
+  since 2026-09-01** — the cask was disabled for failing the Gatekeeper check.
+  `docs/install.md` was corrected when the install-docs workflow (D-19) caught
+  this; the README was not, and CI's macOS job follows `install.md`'s tarball
+  path, so nothing re-caught it. The quick start now installs NVC there, with
+  the tarball route noted.
 
 - **A dim LED's halo now shrinks with it, instead of washing the whole board.**
   The halo's radius was fixed at twice the LED body whatever the brightness —

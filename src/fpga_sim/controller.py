@@ -934,6 +934,7 @@ class ScreenController:
                 synopsys=s.synopsys,
                 pinmap=s.pinmap,
                 initial_inputs=s.inputs,
+                available_sims=self.available_sims,
             )
             sim_exit = sim_screen.run()
             # Carry the run's switches/latches back out (U45), so [Stop] into

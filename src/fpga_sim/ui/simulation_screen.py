@@ -41,6 +41,8 @@ from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from fpga_sim.board_loader import BoardDef, ComponentInfo
     from fpga_sim.pinmap import PinMapMatch
     from fpga_sim.sim_bridge import ConventionMatch, SimChild, SimulatorInfo
@@ -119,6 +121,7 @@ class SimulationScreen:
         interactive: bool = True,
         screenshot_dir: str | Path | None = None,
         initial_inputs: BoardInputs | None = None,
+        available_sims: Sequence[SimulatorInfo] = (),
     ) -> None:
         """Build the board/panel/toolbar and wire pygame input to link messages."""
         self.screen = screen
@@ -127,6 +130,11 @@ class SimulationScreen:
         self.child = child
         self.match = match
         self.sim = sim
+        #: Backend names of every discovered install, so the advisory can point
+        #: at the preview's SIM: toggle when a faster engine is already there.
+        #: Names only -- `stall` is pygame-free and has no business holding UI
+        #: objects, and the ordering is all it needs.
+        self._available_backends = tuple(i.backend for i in available_sims)
         # Advisory only (U50): recorded in the session log so a run's dialect is
         # part of its record, never acted on here.
         self.synopsys = synopsys
@@ -711,7 +719,13 @@ class SimulationScreen:
         # held is *correct* to show nothing.  Say that first.
         waiting = self._has_inputs and not self._stall.inputs_used
         self._stall_heading = stall_heading(waiting_for_input=waiting)
-        self._stall_lines = stall_message(facts, self._divider, waiting_for_input=waiting)
+        self._stall_lines = stall_message(
+            facts,
+            self._divider,
+            waiting_for_input=waiting,
+            backend=self.sim.backend,
+            available_backends=self._available_backends,
+        )
 
     def _draw_stall_hint(
         self,

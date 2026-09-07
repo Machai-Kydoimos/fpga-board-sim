@@ -45,6 +45,7 @@ of a board nobody has touched.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 #: Wall seconds of unchanging output before the advisory appears.  Long enough
@@ -358,11 +359,72 @@ def _fix_clauses(facts: StallFacts, divider: Divider) -> list[str]:
     ]
 
 
+#: The backends this simulator can run, slowest first, keyed on
+#: :attr:`~fpga_sim.sim_discovery.SimulatorInfo.backend`.  The *order* is what
+#: matters here and it is stable across machines; the ratios behind it live in
+#: ``docs/install.md`` ("Choosing a simulator") and are deliberately **not**
+#: repeated in the message -- see :func:`faster_backend`.
+_BACKEND_SPEED_ORDER: tuple[str, ...] = ("mcode", "llvm-jit", "llvm", "nvc")
+
+
+def faster_backend(current: str, available: Iterable[str]) -> str | None:
+    """Name the fastest installed backend faster than *current*, or ``None``.
+
+    Order only, never a predicted ratio.  ``docs/install.md`` puts NVC at
+    ~3.5-6x mcode and GHDL-LLVM at ~2.3-4.3x, and a range that wide is a range
+    because the answer depends on the design and the machine -- so quoting a
+    figure here would be the one thing this module refuses to do everywhere
+    else, which is to tell somebody a number about their computer that was not
+    measured on it.  The *ordering* is safe: it does not vary.
+
+    Unknown backend names sort as unknown and are ignored rather than guessed
+    at, so a code generator added later cannot silently be called slower.
+    """
+    try:
+        here = _BACKEND_SPEED_ORDER.index(current)
+    except ValueError:
+        return None
+    faster = [b for b in available if b in _BACKEND_SPEED_ORDER[here + 1 :]]
+    return max(faster, key=_BACKEND_SPEED_ORDER.index) if faster else None
+
+
+def _backend_clause(current: str, faster: str) -> str:
+    """Point at the *existing* control rather than offering a second one.
+
+    The simulator is chosen in exactly one place -- the preview's ``SIM:``
+    toggle -- and it stays that way.  An in-run [Switch to NVC] button was
+    considered and dropped: it would have been a second selection point whose
+    meaning differed from the first, because switching engines mid-run restarts
+    simulated time rather than continuing it.  A student who has been waiting
+    three minutes would have lost the three minutes to a button that read like
+    "go faster".  Saying "[Stop], then the toggle" keeps one control and is
+    honest that a re-run is a re-run.
+    """
+    label = _BACKEND_LABELS.get(faster, faster)
+    return (
+        f"{label} is also installed here and is usually faster than"
+        f" {_BACKEND_LABELS.get(current, current)}:"
+        f" [Stop], then the SIM: toggle on the preview re-runs this design on it."
+    )
+
+
+#: Display names matching the preview toggle's own labels, so the message names
+#: the thing the user will actually see on the button.
+_BACKEND_LABELS: dict[str, str] = {
+    "mcode": "GHDL",
+    "llvm": "GHDL-LLVM",
+    "llvm-jit": "GHDL-JIT",
+    "nvc": "NVC",
+}
+
+
 def stall_message(
     facts: StallFacts,
     divider: Divider | None = None,
     *,
     waiting_for_input: bool = False,
+    backend: str = "",
+    available_backends: Iterable[str] = (),
 ) -> list[str]:
     """Build the advisory, in the student's terms and in measured numbers (D-15).
 
@@ -426,6 +488,12 @@ def stall_message(
             " `CNTR_LEN : positive := 24` -- and [Generics…] on the preview can"
             " lower it for the simulator without changing what your board uses."
         )
+    # Last, and only when it is actionable: the other thing that makes a step
+    # arrive sooner is a faster engine, and a student may already have one
+    # installed without knowing the toggle changes anything.
+    quicker = faster_backend(backend, available_backends) if backend else None
+    if quicker is not None:
+        lines.append(_backend_clause(backend, quicker))
     return lines
 
 

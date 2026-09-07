@@ -72,6 +72,8 @@ def _make_screen(
     show_toolbar: bool = True,
     screenshot_dir: str | Path | None = None,
     initial_inputs: BoardInputs | None = None,
+    engine: str = "ghdl",
+    available_sims: tuple[SimulatorInfo, ...] = (),
 ) -> SimulationScreen:
     surface = pygame.display.set_mode((1024, 700))
     return SimulationScreen(
@@ -82,10 +84,11 @@ def _make_screen(
         speed_factor=0.1,
         match=None,
         vhdl_path="blinky.vhd",
-        sim=_sim("ghdl"),
+        sim=_sim(engine),
         show_toolbar=show_toolbar,
         screenshot_dir=screenshot_dir,
         initial_inputs=initial_inputs,
+        available_sims=available_sims,
     )
 
 
@@ -937,6 +940,39 @@ def test_a_quiet_board_raises_the_advisory(headless_pygame, fake_child, monkeypa
     assert _run_quiet(screen, monkeypatch, seconds=30.0)
     assert screen._stall_lines
     assert "No LED or digit has changed" in screen._stall_lines[0]
+
+
+def test_the_advisory_names_a_faster_installed_engine(headless_pygame, fake_child, monkeypatch):
+    """The seam: the screen must actually hand `stall` what it discovered.
+
+    `stall.faster_backend` is unit-tested on its own, which proves the ordering
+    and proves nothing about whether this screen ever calls it with the real
+    install list.  That gap -- a correct function nobody passes the right
+    arguments to -- is the shape of every defect this feature has shipped.
+    """
+    child, _client = fake_child
+    screen = _make_screen(
+        headless_pygame, child, engine="ghdl", available_sims=(_sim("ghdl"), _sim("nvc"))
+    )
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    tail = screen._stall_lines[-1]
+    assert "NVC" in tail and "SIM:" in tail
+
+
+def test_it_names_no_engine_when_only_one_is_installed(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child, engine="ghdl", available_sims=(_sim("ghdl"),))
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    assert not any("SIM:" in line for line in screen._stall_lines)
+
+
+def test_it_names_no_engine_when_already_on_the_fastest(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(
+        headless_pygame, child, engine="nvc", available_sims=(_sim("ghdl"), _sim("nvc"))
+    )
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    assert not any("SIM:" in line for line in screen._stall_lines)
 
 
 def test_a_board_that_keeps_changing_never_raises_it(headless_pygame, fake_child, monkeypatch):
