@@ -49,6 +49,8 @@ _GENERICS = {
 _HEX_DECODER_TESTS = 2
 _CODE_LOCK_TESTS = 3
 _GATES_MUX_TESTS = 2
+_COUNTDOWN_TESTS = 2
+_RUNNING_LIGHT_TESTS = 1
 
 
 def _board(*, digits: int = 4, switches: int = 8, buttons: int = 4, leds: int = 8) -> BoardDef:
@@ -105,7 +107,15 @@ def test_it_elaborates_with_no_switches_and_no_buttons(stem, has_seg, ghdl):
 
 
 def _run_cocotb(
-    design: str, module: str, engine: str, expected: int, stop_ns: int, *, has_seg: bool
+    design: str,
+    module: str,
+    engine: str,
+    expected: int,
+    stop_ns: int,
+    *,
+    has_seg: bool,
+    generics: dict[str, str] | None = None,
+    overrides: dict[str, str] | None = None,
 ) -> None:
     """Analyze, elaborate and run *module* against *design*; require every test to pass.
 
@@ -115,9 +125,9 @@ def _run_cocotb(
     where NVC merely warns -- so passing it unconditionally would have made the
     two engines disagree about whether the test even ran.
     """
-    generics = dict(_GENERICS)
+    generics = dict(generics or _GENERICS)
     if not has_seg:
-        del generics["NUM_SEGS"]
+        generics.pop("NUM_SEGS", None)
     work_dir = tempfile.mkdtemp(prefix=f"{design}_{engine}_")
     ok, detail = analyze_vhdl(
         HDL / f"{design}.vhd",
@@ -125,6 +135,9 @@ def _run_cocotb(
         toplevel=design,
         simulator=engine,  # type: ignore[arg-type]
         board_def=_board(),
+        # A generic of the design's own is not a `-g` at run time: the wrapper
+        # bakes it in as a literal (U48), so it has to be set here.
+        generic_overrides=overrides,
     )
     assert ok, f"{engine} analyze failed: {detail}"
 
@@ -193,3 +206,41 @@ def test_gates_mux_behaves_under_ghdl(ghdl):
 @pytest.mark.slow
 def test_gates_mux_behaves_under_nvc(nvc):
     _run_cocotb("gates_mux", "test_gates_mux", "nvc", _GATES_MUX_TESTS, 200_000, has_seg=False)
+
+
+#: A prescaler small enough to watch a dozen ticks inside a short simulation.
+#: `countdown_7seg` caps its own divider at `minimum(COUNTER_BITS, 18)`, so
+#: lowering COUNTER_BITS here lowers the tick rate with it.
+_FAST_COUNTDOWN = {**_GENERICS, "COUNTER_BITS": "10"}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("engine", ["ghdl", "nvc"])
+def test_countdown_sequences_one_at_a_time(engine, request):
+    """A still shows a number; only this shows that it got there by counting."""
+    request.getfixturevalue(engine)
+    _run_cocotb(
+        "countdown_7seg",
+        "test_countdown",
+        engine,
+        _COUNTDOWN_TESTS,
+        4_000_000,
+        has_seg=True,
+        generics=_FAST_COUNTDOWN,
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("engine", ["ghdl", "nvc"])
+def test_running_light_walks_one_step_at_a_time(engine, request):
+    """One LED lit, advancing by exactly one, wrapping at the end."""
+    request.getfixturevalue(engine)
+    _run_cocotb(
+        "running_light",
+        "test_running_light",
+        engine,
+        _RUNNING_LIGHT_TESTS,
+        4_000_000,
+        has_seg=False,
+        overrides={"DIVIDER_BITS": "8"},
+    )
