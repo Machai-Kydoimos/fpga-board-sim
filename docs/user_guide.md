@@ -36,6 +36,127 @@ both on the terminal and in a dialog, since a shortcut may have no terminal atta
 `--vhdl` on its own (no `--board`) simply preloads the path: the design cannot be
 checked until there is a board to check it against.
 
+### "It looks frozen"
+
+The simulator watches for this — but it does not interrupt you. If no LED or digit
+changes for ten seconds **while simulated time is still advancing**, a small
+control appears next to **[Pause]**:
+
+```text
+ⓘ Why is nothing happening?
+```
+
+That is all that happens until you click it. Nothing covers the board, no warning
+appears, and if your design is a button that lights an LED and you simply were not
+pressing it, you can ignore the whole thing — touch a control and it withdraws by
+itself.
+
+**The simulation keeps running while you read it.** The panel is an overlay, not
+a modal — the board stays live behind it, and the step you are waiting for may
+well arrive while you are reading about it. Only **[Pause]** stops the simulator
+(and the **F1** help, which has to: it takes over the window, and a simulator
+nobody is listening to stalls anyway). **[Stop]**, **ESC** and closing the window
+end the run.
+
+**Pausing changes nothing about it.** Wall-clock time spent paused is not evidence
+of a stall — no simulated time passes either — so a pause never raises the offer,
+and it never takes one away: stopping the run to read the numbers carefully is the
+obvious thing to do with a board that will not move, and it works. Time already
+spent waiting is kept, not discarded, so a board that was eight seconds into a
+silence when you paused is two seconds away from the offer when you resume.
+
+**One step does not make it go away.** A design that toggles an LED once every
+thirty seconds is exactly what this is for, so a single blink after a long silence
+leaves the offer where it is: that blink is evidence the design *is* just slow, not
+evidence that it isn't. The offer withdraws once the board has been genuinely
+active for a while — and if you have the panel open, nothing the design does closes
+it. Only **[ Close ]** does that.
+
+The simulator cannot tell those apart, and that is the honest reason for the light
+touch: a design waiting for input and a divider quietly counting look *identical*
+from outside — still inputs, still outputs, simulated time running. Guessing which
+one you have and announcing it would be wrong often enough to be worth nothing.
+
+Click it and you get the arithmetic, measured at that moment — watch for a minute
+before asking and you are told about the minute, not about the first ten seconds
+of it:
+
+```text
+This design may just be slow, not broken
+No LED or digit has changed in 10 s of wall-clock time.
+In that time this machine simulated 819 k clock cycles = 16.4 ms of the board's 50 MHz.
+Your CNTR_LEN = 24 means 16.8 M cycles per step: about 3 min here, 336 ms on the real board.
+To watch it here, restart the simulator with a smaller CNTR_LEN:
+    fpga-sim --generic CNTR_LEN=15
+That steps about every 402 ms instead. Your file is not touched: CNTR_LEN stays 24
+for the real board.
+```
+
+**The width it suggests is computed from the rate it just measured**, not picked in
+advance — a faster backend is told it can afford a wider divider, a slower one a
+narrower, and each suggestion is sized to step about twice a second on the machine
+in front of you. If your divider is already small enough to be quick here, it says
+so and suggests nothing, because the cause is then somewhere else.
+
+If your design has no divider generic — the width is a constant in the
+architecture — it says how to make one, since that is the change that gives you the
+lever without touching what the board runs.
+
+Every number is measured on **your** machine during the quiet spell that just
+happened. The cycle count is the simulated time your simulator actually reported
+over those ten seconds, counted at the clock **you** have selected — change the
+clock preset and the measurement restarts rather than mixing two rates. The "here"
+figure is that window's own throughput (cycles ÷ seconds), not a running average,
+so it describes this laptop, this OS and this backend at that moment: the figure
+for GHDL's mcode and the figure for NVC are different, and both are right.
+
+The only number that is *not* measured is the real board's — that one is your
+board's own clock, which is the point of the comparison.
+
+#### If you have not touched the controls, it says that instead
+
+When the board has switches or buttons and none has been touched since the run
+began, the panel leads with the likelier reading and keeps the arithmetic as the
+alternative:
+
+```text
+Nothing has changed on the board
+No LED or digit has changed in 10 s, and no switch or button has been touched.
+If your design follows the switches or buttons, try one: a design that is waiting
+  for input is right to show nothing.
+If instead it counts, it may just be slow here: in that time this machine simulated
+  819 k clock cycles = 16.4 ms of the board's 50 MHz.
+Your CNTR_LEN = 24 means 16.8 M cycles per step: about 3 min here, 336 ms on the real board.
+To watch it here, restart the simulator with a smaller CNTR_LEN:
+    fpga-sim --generic CNTR_LEN=15
+```
+
+Use a control — even once, even putting it straight back — and the simulator stops
+offering that explanation for the rest of the run.
+
+**[ Close ]** puts the panel away and leaves the small control where it was, so you
+can look again without waiting another ten seconds.
+
+Three things it deliberately does **not** do:
+
+- **It never fires when simulated time has stopped.** A design that is merely slow
+  and a simulator that has died look identical on screen, and blaming your divider
+  for our crash would be worse than silence. Both conditions must hold.
+- **It never interrupts.** The detection is not confident enough to earn a
+  banner, so it earns an offer instead — one small control you may click or
+  ignore. A first design that works is never talked over.
+- **It ignores your switches and buttons *for the timer*.** Flipping a switch to
+  see whether anything is alive changes the picture without telling the simulator
+  anything about your design — so only LEDs and digits reset the timer, and poking
+  at the board while you wonder will not silence the thing that was about to
+  explain it. Your inputs are noted only to decide which explanation leads.
+
+**[ Dismiss ]** hides it for this quiet spell. If the design produces output and
+then goes quiet again, it comes back — that second silence is worth a word too.
+
+Read it together with [generic overrides](#when-the-board-looks-frozen-generic-overrides),
+which is what to do about it.
+
 ### When the board looks frozen: generic overrides
 
 A design that gets its visible rate from the top bits of a clock divider is fine on

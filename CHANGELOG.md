@@ -39,6 +39,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The simulator now offers to explain when a design only *looks* frozen** (U48). A design
+  that gets its visible rate from the top bits of a clock divider is correct,
+  runs, and shows nothing: at the simulator's throughput a 24-bit divider steps
+  about once every ninety seconds, which on screen is indistinguishable from a
+  design that does not work. If no LED or digit changes for ten seconds **while
+  simulated time is still advancing**, a banner appears with the arithmetic —
+  cycles simulated, how much board time that was, and, when the design declares
+  a divider generic, how long one step takes here against how long it takes on
+  the bench.
+  - **It says what to type.** Naming the design's divider generic is what makes
+    the advice actionable — "lower it for the simulator" is a diagnosis, not an
+    instruction — so the message prints the flag:
+    `fpga-sim --generic CNTR_LEN=15`, with the width **computed from the rate it
+    just measured** so the suggestion suits the machine in front of the reader
+    rather than the author's. A divider already quick enough here is left alone
+    and says so; a design with no divider generic is told how to add one.
+  - **It never interrupts.** All the detection earns is a small
+    `ⓘ Why is nothing happening?` control beside [Pause]; the panel with the
+    numbers opens only if the user clicks it. The detection cannot distinguish a
+    quietly counting divider from a design that is simply waiting for a button,
+    so it is not confident enough to be worth a banner — and the commonest first
+    design there is, press-a-button-light-an-LED, must not be talked over while
+    it is working. The control is phrased as the student's own question so it
+    self-selects: whoever already knows why the board is still ignores it.
+  - **Every number is measured during the quiet spell that just happened.**
+    Cycles are counted at the clock *actually being simulated* — the user can
+    move that preset, and counting at the board's nominal frequency instead
+    overstated the headline figure by the whole ratio (50x for a 50 MHz board
+    dropped to 1 MHz). Changing the clock restarts the measurement rather than
+    mixing two rates. The "here" throughput is the window's own (cycles ÷
+    seconds), not the stats panel's moving average, which would carry
+    throughput from before the board went quiet. So GHDL-mcode and NVC give
+    different figures and both are right; a number that is wrong about the
+    user's machine would teach them to ignore the box.
+  - **It never fires when simulated time has stopped.** A slow design and a dead
+    child look identical on screen, and blaming a student's divider for our
+    crash is worse than saying nothing. Both clauses must hold.
+  - **It ignores switches and buttons.** Somebody who cannot tell a slow design
+    from a dead one will flip switches to find out — which is exactly when the
+    timer needs to keep counting. `BoardDisplay.output_signature()` is the
+    output-only companion to the redraw gate's `visual_signature()`.
+  - **It does not accuse a design that is simply waiting for input.** A design
+    that lights an LED while a button is held is *correct* to show nothing when
+    nobody is pressing anything — and from outside that is identical to a
+    divider quietly counting: still inputs, still outputs, simulated time
+    running. Nothing observable separates them, so when the board has controls
+    and none has been touched this run, the advisory leads with "try a switch"
+    and keeps the divider arithmetic as the alternative. The first version
+    asserted "your design may just be slow" and would have said it to a working
+    combinational lab.
+  - **A single step does not withdraw the offer**, because that step is evidence
+    *for* the slow-divider reading rather than against it: a design that toggles
+    an LED once every thirty seconds is the case this exists for, and hiding the
+    offer at the instant that is confirmed — then restoring it ten seconds later,
+    forever — was both wrong and a flicker. It withdraws once the board has been
+    genuinely active for longer than it was quiet, and an already-open panel is
+    never closed by the design at all: only [ Close ] closes it.
+  - Opening it **re-measures**, so somebody who watched for a minute before
+    asking is told about the minute rather than about the first ten seconds.
+  - **`--benchmark` never offers it.** That path drives the same screen with
+    nobody at the keyboard, and an offer nobody can accept is not help — it is a
+    control painted into every `--screenshots` capture of a design that is
+    legitimately static, which is how this project's board stills are made.
+  - **It counts time it actually observed.** Every clock accumulates the gap
+    between consecutive samples, clamped to one second, so wall time in which
+    the run loop was not running at all — the F1 help modal, an error dialog, a
+    window drag, an alt-tab freeze — is not mistaken for the board being still.
+    Reading the help for thirty seconds used to raise the offer the instant the
+    dialog closed. Clamped rather than discarded so a genuinely slow machine,
+    whose user most needs to be told the board is not broken, keeps working.
+  - **Changing the clock preset or the speed slider restarts the measurement**
+    without withdrawing an offer already made: a window straddling either would
+    report a rate nobody ran at, but the board is no less still than it was.
+  - **A pause contributes no simulated time to the window either.** "Paused"
+    does not actually stop simulated time — the child shrinks its step to 1 ns
+    rather than halting — so a long pause added milliseconds of simulated time
+    to a window that gained no wall-clock time at all, overstating the rate by
+    11% for a 60-second pause. Both clocks now accumulate over the same frames,
+    which keeps the ratio honest by construction.
+  - **A pause freezes it rather than resetting or clearing it.** Paused
+    wall-clock time is not evidence of a stall (no simulated time passes
+    either), so a pause never raises the offer — and it never withdraws one,
+    because pausing to read the numbers carefully is the obvious thing to do
+    with a board that will not move. Waiting already done is kept: a board eight
+    seconds into a silence when it was paused is two seconds from the offer when
+    it resumes.
+
 - **A design can be split across several files** (U51). `analyze_vhdl` ran
   exactly one `-a`, so a design was one file — but the course's Lab 3 ships
   `counter.vhd` as a separate sub-entity, every lab folder holds a

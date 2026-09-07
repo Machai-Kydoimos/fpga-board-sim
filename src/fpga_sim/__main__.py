@@ -337,6 +337,10 @@ def _benchmark_full_system(
             vhdl_path=vhdl_path,
             sim=sim,
             show_toolbar=False,
+            # Nobody is watching a benchmark, so the stall advisory has no one
+            # to offer itself to -- and it would otherwise paint itself into
+            # every screenshot of a design that is legitimately static.
+            interactive=False,
             screenshot_dir=screenshots,
         )
         sim_screen.run()

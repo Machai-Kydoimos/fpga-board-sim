@@ -18,6 +18,7 @@ import pytest
 
 from fpga_sim import sim_link
 from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
+from fpga_sim.paths import HDL_DIR
 from fpga_sim.sim_bridge import SimChild, SimulatorInfo
 from fpga_sim.sim_link import drain, send
 from fpga_sim.ui.board_display import BoardInputs
@@ -875,6 +876,378 @@ def test_visual_signature_tracks_state(headless_pygame, fake_child):
     sig_seg = board.visual_signature()
     board.switches[0].state = True
     assert board.visual_signature() != sig_seg
+
+
+def test_output_signature_ignores_everything_the_user_touches(headless_pygame, fake_child):
+    """The stall advisory (U48) must not be reset by a student poking switches.
+
+    Someone who cannot tell a slow design from a dead one will flip switches to
+    find out -- which is exactly when the advisory needs to still be counting.
+    """
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child, seg=True)
+    board = screen.board
+
+    base = board.output_signature()
+    board.switches[0].state = not board.switches[0].state
+    board.buttons[0].pressed = True
+    assert board.output_signature() == base, "user input is not the design speaking"
+    assert board.visual_signature() != base, "...but the redraw gate still sees it"
+
+    board.set_led_level(0, 0.5)
+    assert board.output_signature() != base
+
+    after_led = board.output_signature()
+    board.set_seg_levels(0, [1.0, 0, 0, 0, 0, 0, 0, 0])
+    assert board.output_signature() != after_led
+
+
+# ── "It looks frozen" (U48) ──────────────────────────────────────────────────
+
+
+#: Wall clock shared across calls, so a second `_run_quiet` on the same screen
+#: moves time forward rather than backwards (the watch ignores a clock that
+#: goes back, which would silently stop the accumulation).
+_FAKE_CLOCK = [1000.0]
+
+
+def _run_quiet(screen, monkeypatch, *, seconds, sim_per_frame=200_000, paused=False, frame=0.05):
+    """Drive the screen the way the run loop does: one sample per frame.
+
+    Frame-sized steps matter -- the watch counts time it *observed*, and a test
+    that jumped ten seconds in one call would be handing it an interruption
+    rather than a wait (see `MAX_OBSERVED_GAP_S`).
+    """
+    t = _FAKE_CLOCK
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: t[0])
+    screen.panel.paused = paused
+    sim_ns = int(screen._last_state.get("sim_ns", 0))
+    for _ in range(max(1, round(seconds / frame))):
+        t[0] += frame
+        if not paused:
+            sim_ns += sim_per_frame
+        screen._last_state = {"sim_ns": sim_ns}
+        screen._sample_stall()
+    return screen._stall_showing
+
+
+def test_a_quiet_board_raises_the_advisory(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    assert screen._stall_lines
+    assert "No LED or digit has changed" in screen._stall_lines[0]
+
+
+def test_a_board_that_keeps_changing_never_raises_it(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    t = [1000.0]
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: t[0])
+    for i in range(600):  # 30 s of frames, the LED changing throughout
+        screen.board.set_led_level(0, (i % 10) / 10)
+        screen._last_state = {"sim_ns": 200_000 * (i + 1)}
+        screen._sample_stall()
+        t[0] += 0.05
+        assert not screen._stall_showing
+
+
+def test_a_stopped_child_is_never_blamed_on_the_design(headless_pygame, fake_child, monkeypatch):
+    """Simulated time frozen means our problem, not theirs -- and no banner."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    assert not _run_quiet(screen, monkeypatch, seconds=60.0, sim_per_frame=0)
+
+
+def test_a_paused_run_is_not_a_symptom(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    assert not _run_quiet(screen, monkeypatch, seconds=60.0, paused=True)
+
+
+def test_the_indicator_forces_a_redraw(headless_pygame, fake_child, monkeypatch):
+    """It appears on a frame U23 would otherwise skip -- a still board is the case."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    screen._render_frame()
+    before = screen.run_stats.frames_drawn
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == before, "a still board should skip"
+    _run_quiet(screen, monkeypatch, seconds=30.0)
+    screen._render_frame()
+    assert screen.run_stats.frames_drawn == before + 1, "the indicator must be drawn"
+
+
+def test_nothing_is_interrupted_until_the_user_asks(headless_pygame, fake_child, monkeypatch):
+    """The whole point: a working button-and-LED design is never talked over.
+
+    Detecting a quiet board earns an *offer* -- a small control beside Pause --
+    and nothing else. The panel with the numbers appears only on a click.
+    """
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    screen._render_frame()
+
+    assert screen._stall_hint_rect is not None, "the offer should be on screen"
+    assert not screen._stall_expanded, "...and nothing should have opened itself"
+    assert screen._stall_rect is None, "no panel until asked"
+
+
+def test_clicking_the_indicator_opens_the_numbers(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    screen._render_frame()
+    assert screen._stall_hint_rect is not None
+
+    headless_pygame.event.post(
+        headless_pygame.event.Event(
+            headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_hint_rect.center
+        )
+    )
+    assert screen._pump_events() is None
+    assert screen._stall_expanded
+    screen._render_frame()
+    assert screen._stall_rect is not None, "the [ Close ] hit box"
+
+    # ...and closing it goes back to the offer, not to silence
+    headless_pygame.event.post(
+        headless_pygame.event.Event(
+            headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_rect.center
+        )
+    )
+    assert screen._pump_events() is None
+    assert not screen._stall_expanded
+    assert screen._stall_showing
+
+
+def test_an_open_panel_is_never_taken_away_by_the_design(headless_pygame, fake_child, monkeypatch):
+    """The reader asked for it; an LED toggling mid-sentence must not close it."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    screen._render_frame()
+    assert screen._stall_hint_rect is not None
+    headless_pygame.event.post(
+        headless_pygame.event.Event(
+            headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_hint_rect.center
+        )
+    )
+    screen._pump_events()
+    assert screen._stall_expanded
+
+    screen.board.set_led_level(0, 0.75)  # the design steps, at last
+    screen._last_state = {"sim_ns": 99_000_000}
+    screen._sample_stall()
+    assert screen._stall_expanded, "only [ Close ] closes it"
+    screen._render_frame()
+    assert screen._stall_rect is not None
+
+
+def test_opening_it_late_reports_the_wait_that_actually_happened(
+    headless_pygame, fake_child, monkeypatch
+):
+    """Watch for a minute, then ask: you should be told about the minute."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    t = [1000.0]
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: t[0])
+    sim_ns = 0
+    for _ in range(1440):  # 72 s of frames, all of them still
+        sim_ns += 200_000
+        screen._last_state = {"sim_ns": sim_ns}
+        screen._sample_stall()
+        t[0] += 0.05
+    first = screen._stall_lines[0]
+    assert "10 s" in first, first  # the spell that first tripped it
+    screen._render_frame()
+    assert screen._stall_hint_rect is not None
+    headless_pygame.event.post(
+        headless_pygame.event.Event(
+            headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_hint_rect.center
+        )
+    )
+    screen._pump_events()
+    assert screen._stall_lines[0] != first, "the numbers should be re-measured on the click"
+    assert "72 s" in screen._stall_lines[0], screen._stall_lines[0]
+
+
+def test_a_click_on_the_indicator_does_not_reach_the_board(
+    headless_pygame, fake_child, monkeypatch
+):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    _run_quiet(screen, monkeypatch, seconds=30.0)
+    screen._render_frame()
+    assert screen._stall_hint_rect is not None
+    ev = headless_pygame.event.Event(
+        headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_hint_rect.center
+    )
+    assert screen._chrome_press(ev)
+
+
+def test_the_offer_can_be_opened_and_read_while_paused(headless_pygame, fake_child, monkeypatch):
+    """Pause, then click: stopping the run to read carefully has to work."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+
+    screen.panel.paused = True
+    screen._sample_stall()
+    assert screen._stall_showing, "pausing must not withdraw the offer"
+
+    screen._render_frame()
+    assert screen._stall_hint_rect is not None
+    headless_pygame.event.post(
+        headless_pygame.event.Event(
+            headless_pygame.MOUSEBUTTONDOWN, button=1, pos=screen._stall_hint_rect.center
+        )
+    )
+    assert screen._pump_events() is None
+    assert screen._stall_expanded
+    assert screen._stall_lines
+    screen._render_frame()
+    assert screen._stall_rect is not None, "and it renders, paused"
+
+
+def test_a_non_interactive_run_never_offers_anything(headless_pygame, fake_child, monkeypatch):
+    """`--benchmark` drives this screen with nobody at the keyboard.
+
+    An offer nobody can accept is not help -- it is a control painted into every
+    `--screenshots` capture of a design that is legitimately static, which is
+    how this project's board stills are made.  Verified end to end against
+    `hdl/mx65_hello_7seg.vhd`, which never changes by design.
+    """
+    child, _client = fake_child
+    surface = headless_pygame.display.set_mode((1024, 700))
+    screen = SimulationScreen(
+        surface,
+        headless_pygame.time.Clock(),
+        _sample_board(),
+        child,
+        speed_factor=0.1,
+        match=None,
+        vhdl_path="blinky.vhd",
+        sim=_sim("ghdl"),
+        interactive=False,
+    )
+    screen._connected = True
+    assert not _run_quiet(screen, monkeypatch, seconds=60.0)
+    screen._render_frame()
+    assert screen._stall_hint_rect is None
+    assert not screen._stall_lines
+
+
+def test_pausing_alone_never_raises_the_offer(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    assert not _run_quiet(screen, monkeypatch, seconds=120.0, paused=True)
+    assert screen._stall_hint_rect is None
+
+
+def test_the_numbers_are_measured_not_constant(headless_pygame, fake_child, monkeypatch):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    _run_quiet(screen, monkeypatch, seconds=30.0)
+    text = " ".join(screen._stall_lines)
+    assert "clock cycles" in text
+    assert "MHz" in text
+
+
+def test_an_untouched_board_is_not_accused_of_being_slow(headless_pygame, fake_child, monkeypatch):
+    """A design that lights an LED while a button is held is *correct* to be dark.
+
+    On the wire that is identical to a stalled divider, so the advisory still
+    appears -- but it must lead with the reading the evidence favors, not
+    accuse a working combinational lab of being broken.
+    """
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    assert screen._stall_heading == "Nothing has changed on the board"
+    assert "no switch or button has been touched" in screen._stall_lines[0]
+    assert "try one" in screen._stall_lines[1]
+
+
+def test_once_the_controls_have_been_used_the_claim_is_direct(
+    headless_pygame, fake_child, monkeypatch
+):
+    """Used the switches and the board *still* never moves: now it is fair to say so."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    t = [1000.0]
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: t[0])
+    sim_ns = 0
+    for i in range(300):  # 15 s of frames
+        if i == 40:  # mid-run: the user flips a switch and nothing happens
+            screen.board.switches[0].state = not screen.board.switches[0].state
+        sim_ns += 200_000
+        screen._last_state = {"sim_ns": sim_ns}
+        screen._sample_stall()
+        t[0] += 0.05
+    assert screen._stall_showing
+    assert screen._stall.inputs_used
+    assert screen._stall_heading == "This design may just be slow, not broken"
+    assert "switch or button" not in " ".join(screen._stall_lines)
+
+
+def test_a_board_with_no_controls_never_suggests_using_them(
+    headless_pygame, fake_child, monkeypatch
+):
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._has_inputs = False
+    assert _run_quiet(screen, monkeypatch, seconds=30.0)
+    assert screen._stall_heading == "This design may just be slow, not broken"
+
+
+def test_a_design_whose_file_cannot_be_read_still_gets_the_general_advice(
+    headless_pygame, fake_child, monkeypatch
+):
+    """`_make_screen` passes a bare name, which is the unreadable case."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    assert screen._divider is None
+    _run_quiet(screen, monkeypatch, seconds=30.0)
+    text = " ".join(screen._stall_lines)
+    assert "may simply be counting" in text
+    assert "cycles per step" not in text
+
+
+def test_a_declared_divider_turns_the_advice_into_a_number(
+    headless_pygame, fake_child, monkeypatch
+):
+    """blinky.vhd declares COUNTER_BITS := 24; the message should say so."""
+    child, _client = fake_child
+    surface = headless_pygame.display.set_mode((1024, 700))
+    screen = SimulationScreen(
+        surface,
+        headless_pygame.time.Clock(),
+        _sample_board(),
+        child,
+        speed_factor=0.1,
+        match=None,
+        vhdl_path=HDL_DIR / "blinky.vhd",
+        sim=_sim("ghdl"),
+    )
+    assert screen._divider is not None
+    assert (screen._divider.name, screen._divider.bits) == ("counter_bits", 24)
+    _run_quiet(screen, monkeypatch, seconds=30.0)
+    text = " ".join(screen._stall_lines)
+    assert "COUNTER_BITS = 24" in text
+    assert "16.8 M cycles per step" in text
+    assert "on the real board" in text
+    # ...and, crucially, the command to type
+    assert "fpga-sim --generic COUNTER_BITS=" in text
 
 
 # ── e2e against a real simulator (slow) ───────────────────────────────────────

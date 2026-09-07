@@ -5,9 +5,11 @@ material · Status: **EXECUTING** — approved 2026-09-05; PR 0 ✅ (cards U48�
 filed, the queue renumbered — peripherals → v0.24.0, D16 → v0.25.0 — and this plan committed);
 PR 0b ✅ (the plans moved here, `docs/README.md` written); Gate A soak half ✅ (§4.1);
 PRs 1–6c ✅ merged 2026-09-06 — U50 Synopsys acceptance, U49 first-run and board-selector repair,
-D17 split + `paths.py`, and **U53, the pin map, working end to end**. **Next: the folder contract
-(§2 D-16), the DE2-115/VEEK-MT2 display pins, `install-docs.yml` (§2 D-19), then PR 8** ·
-Supersedes
+D17 split + `paths.py`, and **U53, the pin map, working end to end**; then the folder contract
+(D-16) ✅, the DE2-115/VEEK-MT2 display pins (D-17) ✅, `install-docs.yml` (D-19) ✅ — which found
+`brew install ghdl` broken since 2026-09-01 and `uv sync` broken on Python 3.14 — and **U51** ✅
+(D-5 reversed). **PR 7 + PR 8 (U48) open for visual review. Next: PR 9** (hints/caret) ·
+**PR 10** (`--doctor`, un-gated by D-19) · PR 11 · PR 12 · PR 13 · PR 14 · Supersedes
 [u48_classroom_arc_plan.md](u48_classroom_arc_plan.md) (v1, kept as the record of how the arc was
 first framed) · Companion to [improvement_roadmap.md](../improvement_roadmap.md)*
 
@@ -1032,6 +1034,28 @@ Arc-level, end to end:
   reopened until that branch exists again — so merge **without** `--delete-branch`, rebase and
   retarget the next PR, and delete the branches at the end. And a squash merge makes every
   descendant branch need `git rebase --onto main <old-base>` before its diff means anything.
+- **PRs 7 and 8 (U48) — 2026-09-06.** Built in the order the cut list implies rather than the one
+  §7 numbers: **PR 7 in §9's reduced form** (`--generic` on the CLI, dialog deferred), because PR 8
+  is never-cut and needs a lever to point at, and the reduced lever exists sooner. Four findings.
+  (1) The plan's `-gNAME=VALUE` sketch was replaced by writing the override as a **literal into the
+  generated wrapper**: the design's generics are not the wrapper's, GHDL applies `-g` at `-r` while
+  NVC bakes it at elaboration, and a literal makes `wrapper_is_stale` re-analyze for free *and*
+  turns a bad value into an **analysis** error the user sees while still looking at what they typed.
+  (2) The advisory needed an output-only signature, which §7 named but did not motivate: a student
+  who cannot tell a slow design from a dead one flips switches to find out, and `visual_signature()`
+  would have reset the timer that was about to explain it. (3) The first banner render sat across
+  the top of the board, on the 7-segment digits, while saying "no digit has changed" — caught by
+  looking at the still, not by a test, and moved to the empty strip above the toolbar. (4) The third
+  lever, **[Switch to NVC]**, is *not* wired: the picker lives on the preview and switching engines
+  mid-run means tearing down and relaunching the child, which is its own PR.
+- **U51 — 2026-09-06, and the measurement lesson in it.** Shipped eagerly (sweep the folder, then
+  analyze) on the strength of two numbers: 0.22 s on GHDL mcode and 0.38 s on NVC over `hdl/`,
+  18 files and 29.7k lines. Both true, both unrepresentative — on GHDL's **AOT LLVM** backend an
+  analyze *compiles*, and CI put the job at **139 s → 663 s** (macOS 133 → 730). Rewritten to sweep
+  only after the design fails, which returned the job to 124 s. Two lessons worth the words: *two
+  green measurements on the cheap backends are not evidence about the expensive one*, and the
+  laziness has to hang off **both** failure paths — `entity work.x` fails at analysis, but a
+  `component` with default binding analyzes fine alone and only fails to bind at elaboration.
 - **v1 — 2026-09-05 (draft).** Framed the arc around U21 board-native mode ("Terasic lab files are
   board-native"), a runtime frozen-board advisory, multi-file in-arc, and a docs refresh; excluded
   Digilent boards.

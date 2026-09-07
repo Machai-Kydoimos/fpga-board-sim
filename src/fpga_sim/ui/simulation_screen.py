@@ -27,6 +27,7 @@ import pygame
 from fpga_sim.session_config import update_session
 from fpga_sim.sim_link import drain, send
 from fpga_sim.sim_session_log import save_session_stats
+from fpga_sim.stall import StallWatch, find_divider, stall_heading, stall_message
 from fpga_sim.ui.board_display import BoardInputs, FPGABoard
 from fpga_sim.ui.components import debug_view_enabled, pwm_display_enabled, set_debug_view
 from fpga_sim.ui.constants import get_font as _get_font
@@ -115,6 +116,7 @@ class SimulationScreen:
         synopsys: tuple[str, ...] = (),
         pinmap: PinMapMatch | None = None,
         show_toolbar: bool = True,
+        interactive: bool = True,
         screenshot_dir: str | Path | None = None,
         initial_inputs: BoardInputs | None = None,
     ) -> None:
@@ -131,10 +133,37 @@ class SimulationScreen:
         self.pinmap = pinmap
         self._vhdl_name = Path(vhdl_path).name
         self._show_toolbar = show_toolbar
+        # Whether a person is actually watching.  `--benchmark` drives this same
+        # screen with nobody at the keyboard, and the stall advisory is an
+        # *offer* -- an offer nobody can accept is not help, it is a control
+        # painted into every `--screenshots` capture of a design that happens to
+        # be static, which is how this project's board stills are made.
+        self._interactive = interactive
         # --screenshots (#129): PNGs of this very surface, gated on visible
         # change. Benchmark-path only; None everywhere else, so the interactive
         # loop pays one `is not None` per frame and nothing else.
         self.shots = ScreenshotRecorder(screenshot_dir) if screenshot_dir is not None else None
+
+        # U48: "it looks frozen".  A runtime observation, never a static lint --
+        # whether a divider is too wide depends on the machine it runs on, which
+        # is exactly why the message has to be measured rather than predicted.
+        self._stall = StallWatch()
+        self._stall_showing = False
+        self._stall_heading = ""
+        self._stall_lines: list[str] = []
+        self._stall_rect: pygame.Rect | None = None
+        #: The quiet indicator's hit box, and whether the user has opened it.
+        #: Separate from `_stall_showing` on purpose: the *detection* being true
+        #: only ever earns an offer of help, never an interruption (U48).
+        self._stall_hint_rect: pygame.Rect | None = None
+        self._stall_expanded = False
+        try:
+            self._divider = find_divider(
+                Path(vhdl_path).read_text(encoding="utf-8", errors="replace"),
+                Path(vhdl_path).stem,
+            )
+        except OSError:
+            self._divider = None
 
         clk_hz = board_def.default_clock_hz if board_def else 0.0
         self._board_name = board_def.name if board_def else "Generic"
@@ -160,6 +189,9 @@ class SimulationScreen:
             # when the sim starts — the overlays live in that strip (U34).
             reserve_footer_space=True,
         )
+        # A board with no controls at all can never be "waiting for input", so
+        # the advisory's alternative reading does not apply to it (U48).
+        self._has_inputs = bool(self.board.switches or self.board.buttons)
         # Boundary-channel -> widget map + per-channel role (U37): constant per
         # board, cached. Without a board_def (generic run) the widgets map 1:1.
         if board_def is not None:
@@ -330,6 +362,7 @@ class SimulationScreen:
                     int(self._last_state.get("sim_ns", 0)),
                     bool(self._last_state.get("at_max", False)),
                 )
+                self._sample_stall()
             self._render_frame()
 
             if self.panel.stop_requested:
@@ -524,7 +557,22 @@ class SimulationScreen:
                 set_debug_view(enabled)
                 update_session(debug_view=enabled)
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                if self._stop_btn_rect is not None and self._stop_btn_rect.collidepoint(ev.pos):
+                if self._stall_hint_rect is not None and self._stall_hint_rect.collidepoint(ev.pos):
+                    self._stall_expanded = True
+                    # Re-measure: somebody who watched for a minute before
+                    # asking should be told about that minute, not about the
+                    # first ten seconds of it.
+                    self._build_stall_message(int(self._last_state.get("sim_ns", 0)))
+                    print(f"[fpga-sim] {self._stall_heading}", flush=True)
+                    for line in self._stall_lines:
+                        print(f"[fpga-sim] {line}", flush=True)
+                elif self._stall_rect is not None and self._stall_rect.collidepoint(ev.pos):
+                    # Close the panel back to the indicator rather than
+                    # dismissing outright: the reader has seen the numbers, and
+                    # the offer of help costs nothing sitting where it was.
+                    self._stall_expanded = False
+                    self._stall_rect = None
+                elif self._stop_btn_rect is not None and self._stop_btn_rect.collidepoint(ev.pos):
                     nav = SimExit.STOPPED
                 elif self._pause_btn_rect is not None and self._pause_btn_rect.collidepoint(ev.pos):
                     self.panel.paused = not self.panel.paused
@@ -534,8 +582,22 @@ class SimulationScreen:
                         nav = intent
             self.panel.handle_event(ev)
 
-        # F1 / ? help: pause the child around the modal so sim time does not
-        # advance while it is open (today's semantics), then restore.
+        # F1 / ? help: pause the child around the modal, then restore.
+        #
+        # Not merely so that simulated time stands still while somebody reads.
+        # `HelpDialog.run()` takes over the event loop, so `_pump_link` stops
+        # draining the socket -- and the child streams state on a *blocking*
+        # send at up to 250/s.  With nobody reading, the buffer fills and the
+        # child blocks part-way through a send: it stalls regardless, just at an
+        # arbitrary point, and the host then drains a backlog of already-stale
+        # frames that the board fast-forwards through on resume.  Pausing makes
+        # the stall deliberate, keeps simulated time coherent, and resumes clean.
+        #
+        # The stall advisory's panel (U48) is the deliberate contrast: it is an
+        # overlay, not a modal, so the loop keeps running and the link keeps
+        # draining -- and it must *not* pause, because a design that is merely
+        # slow should go on making progress while its user reads about how slow
+        # it is.  The step they are waiting for may well land while they read.
         if self.board._help_requested:
             self.board._help_requested = False
             self._run_help_modal()
@@ -546,7 +608,12 @@ class SimulationScreen:
         """Return True when *ev* is a mouse press landing on the sim overlay's chrome."""
         if ev.type != pygame.MOUSEBUTTONDOWN:
             return False
-        for rect in (self._stop_btn_rect, self._pause_btn_rect):
+        for rect in (
+            self._stop_btn_rect,
+            self._pause_btn_rect,
+            self._stall_rect,
+            self._stall_hint_rect,
+        ):
             if rect is not None and rect.collidepoint(ev.pos):
                 return True
         return self._toolbar is not None and self._toolbar.covers(ev.pos)
@@ -588,6 +655,142 @@ class SimulationScreen:
         coarse = self.board.visual_signature(quantize=COARSE_LEVELS)
         return (coarse if self.shots.due(coarse, now) else None), now
 
+    def _input_signature(self) -> tuple[object, ...]:
+        """Switch and button state, for "has anyone touched this board?".
+
+        Deliberately *not* fed to the quiet timer -- see :meth:`_sample_stall`.
+        Latched buttons count: a latch is somebody having used the board.
+        """
+        return (
+            tuple(sw.state for sw in self.board.switches),
+            tuple((b.pressed, b.latched) for b in self.board.buttons),
+        )
+
+    def _sample_stall(self) -> None:
+        """Ask the stall watch whether the board has gone quiet (U48).
+
+        Fed the **output-only** signature: a student who cannot tell a slow
+        design from a dead one will flip switches to find out, and that must not
+        reset the timer that was about to tell them.
+        """
+        sim_ns = int(self._last_state.get("sim_ns", 0))
+        if not self._interactive:
+            return
+        showing = self._stall.sample(
+            self.board.output_signature(),
+            sim_ns,
+            time.monotonic(),
+            paused=self.panel.paused,
+            inputs=self._input_signature(),
+            clock_hz=self.panel.current_clock_hz,
+            speed_factor=self.panel.speed_factor,
+        )
+        if showing and not self._stall_showing:
+            # Built now so `_stall_lines` is always current if asked for, and
+            # rebuilt on the click.  Not *printed* here: a working
+            # button-and-LED design would fill the terminal with an advisory
+            # nobody asked for.
+            self._build_stall_message(sim_ns)
+        if not showing:
+            self._stall_rect = None
+        self._stall_showing = showing
+
+    def _build_stall_message(self, sim_ns: int) -> None:
+        """Measure now, and phrase the advisory for what is true now."""
+        facts = self._stall.facts(
+            sim_ns,
+            time.monotonic(),
+            # What is actually being simulated (the user can change it) and what
+            # the silicon would run at.  Not the same number, and the message
+            # needs both.
+            self.panel.current_clock_hz,
+            self.board_def.default_clock_hz if self.board_def else 0.0,
+        )
+        # A board with controls that nobody has touched is likelier to be
+        # waiting than stalled -- a design that lights an LED while a button is
+        # held is *correct* to show nothing.  Say that first.
+        waiting = self._has_inputs and not self._stall.inputs_used
+        self._stall_heading = stall_heading(waiting_for_input=waiting)
+        self._stall_lines = stall_message(facts, self._divider, waiting_for_input=waiting)
+
+    def _draw_stall_hint(
+        self,
+        rect: pygame.Rect,
+        label: str,
+        font: pygame.font.Font,
+        icon_d: int,
+        icon_gap: int,
+    ) -> None:
+        """Draw the offer of help: an information dot, then the question.
+
+        The dot is *drawn*, not rendered from a glyph: the UI font has neither
+        U+24D8 (circled latin small letter i) nor U+2139 (information source),
+        and an unavailable glyph does not fail loudly -- it comes out as an
+        empty box, on the one control whose whole job is to look approachable.
+        """
+        style = THEME.btn_sim_pause
+        hovered = rect.collidepoint(pygame.mouse.get_pos())
+        bg, fg = (style.bg_hover if hovered else style.bg), style.fg
+        pygame.draw.rect(self.screen, bg, rect, border_radius=style.radius)
+        if style.border_width > 0:
+            pygame.draw.rect(
+                self.screen, style.border, rect, style.border_width, border_radius=style.radius
+            )
+
+        text = font.render(label, True, fg)
+        content_w = icon_d + icon_gap + text.get_width()
+        x = rect.centerx - content_w // 2
+        center = (x + icon_d // 2, rect.centery)
+        pygame.draw.circle(self.screen, fg, center, icon_d // 2, width=1)
+        dot = font.render("i", True, fg)
+        self.screen.blit(dot, dot.get_rect(center=center))
+        self.screen.blit(text, text.get_rect(midleft=(x + icon_d + icon_gap, rect.centery)))
+
+    def _draw_stall_advisory(self) -> None:
+        """Draw the advisory as a dismissible banner across the top of the board."""
+        sw, sh = self.screen.get_size()
+        scale = min(sw / 1024, 1.4)
+        font = _get_font(max(10, round(13 * scale)), bold=True)
+        body = _get_font(max(9, round(12 * scale)))
+        pad = max(8, round(12 * scale))
+
+        head = font.render(self._stall_heading, True, THEME.sim_info)
+        lines = [body.render(t, True, THEME.sim_info) for t in self._stall_lines]
+        close = body.render("[ Close ]", True, THEME.sim_hint)
+
+        width = min(
+            sw - 2 * pad,
+            max([head.get_width(), close.get_width()] + [line.get_width() for line in lines])
+            + 2 * pad,
+        )
+        height = head.get_height() + sum(line.get_height() for line in lines) + close.get_height()
+        height += pad * 2 + max(2, round(6 * scale)) * (len(lines) + 1)
+
+        # Along the bottom, not the top: a banner reading "no digit has changed"
+        # must not be sitting on top of the digits, which are the first thing
+        # somebody checks when they are wondering whether anything is happening.
+        # The strip above the toolbar is the one part of the board that carries
+        # nothing.
+        top = max(pad, sh - height - max(46, round(52 * scale)))
+        rect = pygame.Rect((sw - width) // 2, top, width, height)
+        panel = pygame.Surface(rect.size, pygame.SRCALPHA)
+        # Near-opaque: at 226 the switches behind it showed through the text.
+        # A message about not being able to see anything has to be legible.
+        panel.fill((10, 10, 14, 248))
+        pygame.draw.rect(panel, THEME.info_green, panel.get_rect(), width=1)
+        self.screen.blit(panel, rect.topleft)
+
+        gap = max(2, round(6 * scale))
+        y = rect.top + pad
+        self.screen.blit(head, (rect.left + pad, y))
+        y += head.get_height() + gap
+        for line in lines:
+            self.screen.blit(line, (rect.left + pad, y))
+            y += line.get_height() + gap
+        close_pos = (rect.right - close.get_width() - pad, y)
+        self.screen.blit(close, close_pos)
+        self._stall_rect = pygame.Rect(close_pos, close.get_size())
+
     def _render_frame(self) -> None:
         """Draw board + panel + overlays and flip — unless nothing changed (U23).
 
@@ -606,7 +809,14 @@ class SimulationScreen:
                 self.board.set_height_offset(cur_offset)
                 self._board_offset = cur_offset
 
-        sig = (self._connected, self.panel.paused, self.board.visual_signature())
+        sig = (
+            self._connected,
+            self.panel.paused,
+            self._stall_showing,
+            self._stall_expanded,
+            (self._stall_heading, tuple(self._stall_lines)) if self._stall_expanded else (),
+            self.board.visual_signature(),
+        )
         # A screenshot that is due forces the draw it will capture: on a static
         # design the liveness shot lands on a frame U23 would otherwise skip,
         # and capturing before `flip` means the surface provably holds the
@@ -629,6 +839,12 @@ class SimulationScreen:
                 self.panel.draw()
             if self._connected:
                 self._draw_overlays()
+                if self._stall_expanded:
+                    # Deliberately not gated on `_stall_showing`: the reader
+                    # asked for this, and taking it away because an LED happened
+                    # to toggle mid-sentence would be the rudest possible moment
+                    # to do it.  Only [ Close ] closes it.
+                    self._draw_stall_advisory()
             else:
                 self._draw_waiting()
             if shot_sig is not None and self.shots is not None:
@@ -739,6 +955,23 @@ class SimulationScreen:
             pause_style,
             hovered=self._pause_btn_rect.collidepoint(pygame.mouse.get_pos()),
         )
+
+        # The stall indicator (U48), left of Pause.  It is phrased as the
+        # student's own question rather than as our diagnosis, and that is what
+        # makes it self-selecting: somebody whose button-and-LED design is
+        # working reads it, thinks "nothing is wrong, I know why", and ignores
+        # it; somebody staring at a board that will not move reads the same
+        # words and clicks.  A design that is merely waiting for input is the
+        # commonest first design there is, and it must not be interrupted.
+        self._stall_hint_rect = None
+        if self._stall_showing and self._interactive and not self._stall_expanded:
+            hint_label = "Why is nothing happening?"
+            icon_d = max(9, ov_font.get_height() - 3)
+            icon_gap = max(3, ov_pad_x // 2)
+            hint_bw = ov_font.size(hint_label)[0] + ov_pad_x * 2 + icon_d + icon_gap
+            hint_bx = pause_bx - ov_gap - hint_bw
+            self._stall_hint_rect = pygame.Rect(hint_bx, btn_py, hint_bw, btn_h)
+            self._draw_stall_hint(self._stall_hint_rect, hint_label, ov_font, icon_d, icon_gap)
 
         # Navigation toolbar (bottom-left, opposite Pause/Stop).
         toolbar_rect: pygame.Rect | None = None
