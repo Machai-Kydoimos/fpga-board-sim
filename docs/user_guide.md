@@ -93,7 +93,36 @@ To watch it here, set CNTR_LEN to about 15:
     [Stop], then [Generics…] on the preview  —  or relaunch with  --generic CNTR_LEN=15
 That steps about every 400 ms instead. Your file is not touched: CNTR_LEN stays 24 for the
   real board.
+NVC is also installed here and is usually faster than GHDL: [Stop], then the SIM: toggle on
+  the preview re-runs this design on it.
 ```
+
+**If a faster simulator is already installed, it says so** — naming the engine and
+pointing at the preview's `SIM:` toggle, which is the *only* place the simulator is
+chosen. It is deliberately not a button on the panel: switching engines mid-run
+restarts simulated time rather than continuing it, so a second control that looked
+like "go faster" would quietly throw away the wait you had already done. Saying
+"[Stop], then the toggle" keeps one control and is honest that a re-run is a re-run.
+It gives no ratio — the ordering never varies, but the factor depends on your design
+and your machine, and this panel does not print numbers it has not measured. See
+[choosing a simulator](install.md#choosing-a-simulator) for the figures.
+
+**The width it quotes is the one your design is actually running with**, which is
+not always the one in your file. The simulator floors `COUNTER_BITS` so a contract
+design blinks visibly here — to 17, or 20 on NVC, or `4 × digits` on a many-digit
+7-segment board — and you may have set something else yourself through
+[Generics…]. When the run and the file differ the advisory says so and names which
+is which:
+
+```text
+COUNTER_BITS is running at 17, not the 24 in your file (the simulator lowers it so
+  a design blinks visibly here) — that is 131 k cycles per step: about 804 ms here,
+  1 ms on the real board.
+```
+
+The promise below it still quotes your file — *"COUNTER_BITS stays 24 for the real
+board"* — because that is the number you can see in your editor and the one your
+hardware will use.
 
 **The width it suggests is computed from the rate it just measured**, not picked in
 advance — a faster backend is told it can afford a wider divider, a slower one a
@@ -134,6 +163,8 @@ To watch it here, set CNTR_LEN to about 15:
     [Stop], then [Generics…] on the preview  —  or relaunch with  --generic CNTR_LEN=15
 That steps about every 400 ms instead. Your file is not touched: CNTR_LEN stays 24 for the
   real board.
+NVC is also installed here and is usually faster than GHDL: [Stop], then the SIM: toggle on
+  the preview re-runs this design on it.
 ```
 
 Use a control — even once, even putting it straight back — and the simulator stops

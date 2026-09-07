@@ -12,6 +12,7 @@ it counts time it observed, and a test that jumped ten seconds in one call
 would be handing it an interruption, not a wait.
 """
 
+import re
 from typing import Any
 
 import pytest
@@ -22,6 +23,7 @@ from fpga_sim.stall import (
     Divider,
     StallFacts,
     StallWatch,
+    faster_backend,
     find_divider,
     stall_heading,
     stall_message,
@@ -446,3 +448,140 @@ def test_a_dead_measurement_does_not_divide_by_zero():
     dead = StallFacts(quiet_s=10.0, sim_ns=0, sim_clock_hz=50e6, board_hz=50e6)
     assert dead.seconds_here(2**24) == float("inf")
     assert "forever" in " ".join(stall_message(dead, divider=Divider("cntr_len", 24)))
+
+
+# ── Pointing at the one simulator control there is ───────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("current", "available", "expected"),
+    [
+        ("mcode", ("mcode", "nvc"), "nvc"),
+        ("mcode", ("mcode", "llvm-jit"), "llvm-jit"),
+        ("mcode", ("mcode", "llvm", "nvc"), "nvc"),  # the fastest, not merely a faster
+        ("llvm-jit", ("mcode", "llvm-jit", "llvm"), "llvm"),
+        ("nvc", ("mcode", "llvm", "nvc"), None),  # already on the fastest
+        ("llvm", ("mcode", "llvm"), None),
+        ("mcode", ("mcode",), None),  # nothing else installed
+        ("mcode", (), None),
+    ],
+)
+def test_faster_backend_orders_the_installs(current, available, expected):
+    assert faster_backend(current, available) == expected
+
+
+def test_an_unknown_backend_is_never_called_slower():
+    """A code generator added later must not be guessed about in either direction."""
+    assert faster_backend("some-future-gen", ("mcode", "nvc")) is None
+    assert faster_backend("mcode", ("some-future-gen",)) is None
+
+
+def test_the_advisory_points_at_the_toggle_when_a_faster_engine_is_installed(facts):
+    lines = stall_message(
+        facts,
+        Divider("cntr_len", 24),
+        backend="mcode",
+        available_backends=("mcode", "nvc"),
+    )
+    tail = lines[-1]
+    assert "NVC" in tail and "GHDL" in tail
+    assert "SIM:" in tail, "it must name the control that already exists"
+    assert "[Stop]" in tail, "and be honest that this is a re-run, not a resume"
+
+
+def test_it_says_nothing_when_there_is_nothing_to_switch_to(facts):
+    """Silence beats an unactionable suggestion: no second engine, no sentence."""
+    for backend, available in (("nvc", ("mcode", "nvc")), ("mcode", ("mcode",))):
+        lines = stall_message(
+            facts, Divider("cntr_len", 24), backend=backend, available_backends=available
+        )
+        assert not any("SIM:" in line for line in lines)
+
+
+def test_the_backend_line_never_predicts_a_ratio(facts):
+    """The module's own rule: no number about their machine that was not measured.
+
+    ``docs/install.md`` puts NVC at ~3.5-6x mcode -- a range that wide is a range
+    because it depends on the design and the machine, so the message gives the
+    ordering and lets the next run supply the number.
+    """
+    tail = stall_message(
+        facts, Divider("cntr_len", 24), backend="mcode", available_backends=("mcode", "nvc")
+    )[-1]
+    assert "x faster" not in tail
+    assert not re.search(r"\d+(\.\d+)?\s*[x×]", tail), tail
+
+
+def test_the_offer_is_absent_by_default(facts):
+    """Callers that do not know their backend get no speculation about it."""
+    assert not any("SIM:" in line for line in stall_message(facts, Divider("cntr_len", 24)))
+
+
+# ── The number it quotes must be the number that is running ──────────────────
+
+_DIVIDER_VHDL = (
+    "entity b is generic (COUNTER_BITS : positive := 24); port (clk : in std_logic); end entity;"
+)
+
+
+def test_the_simulators_own_floor_is_what_gets_reported():
+    """The defect this fixes: the file said 24, the run used 17, 128x apart."""
+    d = find_divider(_DIVIDER_VHDL, "b", {"COUNTER_BITS": "17"})
+    assert d is not None
+    assert (d.bits, d.file_bits, d.source) == (17, 24, "simulator")
+    assert d.overridden
+
+
+def test_a_users_own_override_outranks_the_contract_floor():
+    d = find_divider(_DIVIDER_VHDL, "b", {"COUNTER_BITS": "17"}, {"counter_bits": "20"})
+    assert d is not None
+    assert (d.bits, d.file_bits, d.source) == (20, 24, "user")
+
+
+def test_an_untouched_generic_reports_the_file_and_claims_no_override():
+    d = find_divider(_DIVIDER_VHDL, "b")
+    assert d is not None
+    assert (d.bits, d.declared, d.source) == (24, None, "")
+    assert not d.overridden
+
+
+def test_a_generic_the_run_did_not_change_is_not_called_overridden():
+    """Same value from both sides is agreement, not an override."""
+    d = find_divider(_DIVIDER_VHDL, "b", {"COUNTER_BITS": "24"})
+    assert d is not None and not d.overridden and d.source == ""
+
+
+def test_an_unreadable_effective_value_falls_back_to_the_file():
+    d = find_divider(_DIVIDER_VHDL, "b", {"COUNTER_BITS": "not a number"})
+    assert d is not None
+    assert (d.bits, d.overridden) == (24, False)
+
+
+def test_the_message_says_who_moved_it(facts):
+    tool = " ".join(stall_message(facts, Divider("counter_bits", 17, 24, "simulator")))
+    assert "running at 17, not the 24 in your file" in tool
+    assert "the simulator lowers it" in tool
+
+    mine = " ".join(stall_message(facts, Divider("counter_bits", 20, 24, "user")))
+    assert "running at 20, not the 24 in your file" in mine
+    assert "you set that here" in mine
+
+
+def test_the_untouched_file_promise_quotes_the_file_not_the_run(facts):
+    """ "Your file is not touched: X stays N" has to be the N they can see."""
+    lines = stall_message(facts, Divider("counter_bits", 17, 24, "simulator"))
+    promise = next(line for line in lines if "is not touched" in line)
+    assert "stays 24" in promise, promise
+    assert "stays 17" not in promise
+
+
+def test_a_floored_generic_that_is_already_quick_here_is_left_alone():
+    """The old reading called a 17-bit run a 24-bit one and invented a problem."""
+    fast = StallFacts(quiet_s=10.0, sim_ns=2_000_000_000, sim_clock_hz=50e6, board_hz=50e6)
+    d = find_divider(_DIVIDER_VHDL, "b", {"COUNTER_BITS": "17"})
+    assert d is not None
+    assert suggested_bits(fast, d) is None, "131 k cycles is quick on this machine"
+    assert "already small" in " ".join(stall_message(fast, d))
+    # ...and read as the file's 24 it would have demanded a change that was
+    # never needed, which is the whole defect.
+    assert suggested_bits(fast, Divider("counter_bits", 24)) is not None

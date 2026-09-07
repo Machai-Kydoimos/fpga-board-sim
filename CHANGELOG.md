@@ -8,6 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The "it looks frozen" advisory now names a faster simulator when one is
+  already installed**, and points at the preview's `SIM:` toggle. There is
+  deliberately **no [Switch to NVC] button on the panel**: the simulator is
+  chosen in exactly one place and it stays that way. A second control would have
+  meant something different from the first — switching engines mid-run tears the
+  child down and restarts simulated time rather than continuing it, so a button
+  reading "go faster" would silently discard the three minutes of counting the
+  reader had just spent waiting. "[Stop], then the toggle" keeps one control and
+  is honest that a re-run is a re-run.
+  - **It gives no ratio.** The ordering (mcode → LLVM-JIT → LLVM → NVC) does not
+    vary between machines, so it is safe to state; the *factor* does — NVC is
+    ~3.5–6x mcode precisely because it depends on the design — and this panel
+    refuses to print a number about somebody's computer that was not measured on
+    it. The next run supplies the number.
+  - Nothing is said when there is nothing to switch to: one install, or already
+    on the fastest. A backend the ordering does not recognize is ignored rather
+    than guessed at, so a code generator added later cannot be called slower by
+    accident.
+- **The README's install step says which simulator to pick, with figures.** The
+  relative-speed table lived only in `docs/install.md`, which is read once,
+  before any of it means anything — two documents away from the person choosing.
+  The ratios are now where the choice is made, linked rather than duplicated.
 - **`sim_bridge.py` is now nine modules and a shim** (D17). It was 3,067 lines
   and nine unrelated concerns — 2.5x the next-largest file in the project and
   22% of `src/` — and it is where the two largest pieces of the current work
@@ -434,6 +456,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The advisory quoted the divider width from your *file*, not the one the run
+  was using.** The simulator floors `COUNTER_BITS` so a contract design blinks
+  visibly (17, or 20 on NVC, or `4 x digits` on a many-digit 7-segment board), so
+  a design declaring 24 was described as stepping every 16.8 M cycles while it
+  was really doing 131 k — **wrong by 128x**, and wrong in the direction that
+  invents a problem: it demanded a change that was not needed. On a 6-digit
+  DE10-Standard the floor lands on 24 and the two agreed, which is why this was
+  not visible in the stills; on a 4-digit Basys 3 it does not.
+  - Worse, and newer: a student who took the advisory's own advice and lowered
+    the generic in **[Generics…]** came back to it still quoting the value they
+    had replaced, recommending the change they had just made.
+  - `find_divider` now takes the wrapper's contract generics and the user's
+    overrides — kept apart, so the message can say **who** moved it ("you set
+    that here" vs "the simulator lowers it so a design blinks visibly here")
+    rather than hedging. The "your file is not touched: `COUNTER_BITS` stays 24"
+    promise still quotes the file, because that is the number in the editor.
+- **Long advisory lines ran out through the panel's right border.** The panel
+  clamps its own width to the window but blits every line at a fixed left edge,
+  so anything wider simply overflowed — 307px past the border at 1024x700 once
+  the message began naming both the running and the declared divider width. It
+  now wraps, with a hanging indent so the continuation of the `[Stop], then …`
+  command still reads as part of that command. Latent since the panel was
+  written; the longer wording is what made it show.
+- **A brightness test raced the Windows clock.** It back-dated `_ema_t` by 50 ms
+  but `_apply_state` reads `time.monotonic()` again, so the interval was
+  `0.05 + however long two calls took`. On Linux that is microseconds; Windows'
+  monotonic clock advances in ~15.6 ms ticks, giving dt = 0.066 and a level of
+  0.483 against an expected 0.393. The clock is now frozen outright, so the
+  assertion is exact rather than tolerant of a tick.
+- **The README told macOS users to run `brew install ghdl`, which has not worked
+  since 2026-09-01** — the cask was disabled for failing the Gatekeeper check.
+  `docs/install.md` was corrected when the install-docs workflow (D-19) caught
+  this; the README was not, and CI's macOS job follows `install.md`'s tarball
+  path, so nothing re-caught it. The quick start now installs NVC there, with
+  the tarball route noted.
 - **A dim LED's halo now shrinks with it, instead of washing the whole board.**
   The halo's radius was fixed at twice the LED body whatever the brightness —
   only its alpha tracked duty — so on a DE10-Lite, whose 21px LEDs sit on a 60px
@@ -461,7 +518,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `glow_radius()` the renderer uses, rather than restating `radius * 2` — the
     drift that made the two renderers disagree before #396 — and its parity test
     is now parametrized over brightness.
-
 - **`generate-board-images`' SVG output now matches its own PNG.** The SVG
   renderer hardcoded `THEME.led_off` for every LED and `THEME.seg_off` for every
   segment, so it could not show a lit board — but the more immediate problem was

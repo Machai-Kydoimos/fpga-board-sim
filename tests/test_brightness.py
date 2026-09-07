@@ -9,7 +9,6 @@ APIs that predate it.
 from __future__ import annotations
 
 import math
-import time
 
 import pytest
 
@@ -178,22 +177,31 @@ def test_missing_duty_falls_back_to_binary_bits(headless_pygame, fake_child):
     assert [led.level for led in scr.board.leds[:4]] == [1.0, 0.0, 1.0, 0.0]
 
 
-def test_persistence_of_vision_eases_toward_the_target(headless_pygame, fake_child):
-    """After the first snap, a step change is approached, not jumped to."""
+def test_persistence_of_vision_eases_toward_the_target(headless_pygame, fake_child, monkeypatch):
+    """After the first snap, a step change is approached, not jumped to.
+
+    The clock is frozen rather than merely back-dated.  Back-dating pins only
+    the *start* of the interval -- ``_apply_state`` reads ``time.monotonic()``
+    again -- so the elapsed time is ``0.05 + (however long the two calls took)``.
+    On Linux that tail is microseconds and the assertion holds; on Windows the
+    monotonic clock advances in ~15.6 ms ticks, so it is frequently one whole
+    tick, giving dt = 0.066 and a level of 0.483 against an expected 0.393.
+    That is what failed in CI, and it was luck that it had not before.
+    """
     child, _client = fake_child
     scr = _screen(headless_pygame, child)
+    now = [1000.0]
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: now[0])
     scr._last_state = {"led": 0, "seg": None, "led_duty": [0.0, 0.0, 0.0, 0.0]}
     scr._apply_state()  # snaps to 0.0
-    # Pin the elapsed wall time rather than relying on how long two back-to-back
-    # calls happen to take, which would make the assertion a race.
-    scr._ema_t = time.monotonic() - 0.05
+    now[0] += 0.05
     scr._last_state = {"led": 0, "seg": None, "led_duty": [1.0, 0.0, 0.0, 0.0]}
     scr._apply_state()
     level = scr.board.leds[0].level
     assert 0.0 < level < 1.0, f"expected an eased value, got {level}"
-    # ~0.05 s at TAU=0.1 s is ~(1 - e^-0.5) of the way there; the exact constant
-    # is asserted against _smooth below, where dt is not read from the clock.
-    assert level == pytest.approx(1.0 - math.exp(-0.5), abs=1e-3)
+    # 0.05 s at TAU=0.1 s is exactly (1 - e^-0.5) of the way there -- and with the
+    # clock frozen it is exact, so the tolerance no longer has to cover a tick.
+    assert level == pytest.approx(1.0 - math.exp(-0.5), abs=1e-9)
 
 
 def test_smoothing_follows_the_declared_time_constant(headless_pygame, fake_child):

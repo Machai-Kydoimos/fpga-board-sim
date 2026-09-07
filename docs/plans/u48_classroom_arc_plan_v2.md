@@ -888,6 +888,16 @@ cocotb behavior tests for the decoder and the FSM.
   how large** (D-14: FST default, ~MB per simulated ms measured on the examples, `FPGA_SIM_WAVEFORM_DIR`).
 - **Waveform defaults (P13/P14):** FST is the first non-off choice in Settings; an end-of-run line
   reports the dump's size; optionally a retention sweep with a documented cap.
+- **Which simulator, said once, where a newcomer meets it.** `first_design.md` must name the
+  backend choice at the point it first matters — *"if this feels slow, and NVC is installed, the
+  `SIM:` toggle re-runs on it"* — with the ratios linked, not repeated
+  ([choosing a simulator](../install.md#choosing-a-simulator) is the single source). The
+  information was always correct and always two documents away from the person who needed it: it
+  lived only in `install.md`, which is read once, before any of it means anything. **Done already
+  (2026-09-07):** the README's install step carries the ratio table and the macOS
+  `brew install ghdl` correction, and the stall advisory names a faster *installed* engine and
+  points at the toggle. What is left for this PR is the tutorial's own mention — the one a reader
+  meets while their first design sits there looking dead.
 - **README re-aim:** one line above the fold pointing a newcomer at `first_design.md`; move the
   CI-matrix paragraph (`README.md:11-14`) below the value proposition; "Try it" reflects PR 4.
 - **Legend and map:** one sentence in `docs/architecture.md` saying `(U##)` / `(D##)` markers cite

@@ -45,6 +45,7 @@ of a board nobody has touched.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 #: Wall seconds of unchanging output before the advisory appears.  Long enough
@@ -325,9 +326,29 @@ def stall_heading(*, waiting_for_input: bool) -> str:
 
 
 def _divider_clause(facts: StallFacts, divider: Divider) -> str:
+    """State the width the run is using, and say so when it is not the file's.
+
+    Quoting a number the student cannot see in their editor is how an advisory
+    loses their trust, so when the two differ the message names both and says
+    which is which -- "running at 17, your file says 24" -- rather than picking
+    one and hoping.
+    """
     step = float(2**divider.bits)
+    name = divider.name.upper()
+    if divider.overridden:
+        why = (
+            "you set that here"
+            if divider.source == "user"
+            else "the simulator lowers it so a design blinks visibly here"
+        )
+        head = (
+            f"{name} is running at {divider.bits}, not the {divider.file_bits} in your file"
+            f" ({why}) — that is {_count(step)} cycles per step:"
+        )
+    else:
+        head = f"Your {name} = {divider.bits} means {_count(step)} cycles per step:"
     return (
-        f"Your {divider.name.upper()} = {divider.bits} means {_count(step)} cycles per step:"
+        f"{head}"
         f" about {_duration(facts.seconds_here(step))} here,"
         f" {_duration(facts.seconds_on_board(step))} on the real board."
     )
@@ -353,9 +374,68 @@ def _fix_clauses(facts: StallFacts, divider: Divider) -> list[str]:
         "    [Stop], then [Generics…] on the preview"
         f"  —  or relaunch with  --generic {divider.name.upper()}={smaller}",
         f"That steps about every {_duration(facts.seconds_here(step))} instead."
-        f" Your file is not touched: {divider.name.upper()} stays {divider.bits}"
+        f" Your file is not touched: {divider.name.upper()} stays {divider.file_bits}"
         " for the real board.",
     ]
+
+
+#: The backends this simulator can run, slowest first, keyed on
+#: :attr:`~fpga_sim.sim_discovery.SimulatorInfo.backend`.  The *order* is what
+#: matters here and it is stable across machines; the ratios behind it live in
+#: ``docs/install.md`` ("Choosing a simulator") and are deliberately **not**
+#: repeated in the message -- see :func:`faster_backend`.
+_BACKEND_SPEED_ORDER: tuple[str, ...] = ("mcode", "llvm-jit", "llvm", "nvc")
+
+
+def faster_backend(current: str, available: Iterable[str]) -> str | None:
+    """Name the fastest installed backend faster than *current*, or ``None``.
+
+    Order only, never a predicted ratio.  ``docs/install.md`` puts NVC at
+    ~3.5-6x mcode and GHDL-LLVM at ~2.3-4.3x, and a range that wide is a range
+    because the answer depends on the design and the machine -- so quoting a
+    figure here would be the one thing this module refuses to do everywhere
+    else, which is to tell somebody a number about their computer that was not
+    measured on it.  The *ordering* is safe: it does not vary.
+
+    Unknown backend names sort as unknown and are ignored rather than guessed
+    at, so a code generator added later cannot silently be called slower.
+    """
+    try:
+        here = _BACKEND_SPEED_ORDER.index(current)
+    except ValueError:
+        return None
+    faster = [b for b in available if b in _BACKEND_SPEED_ORDER[here + 1 :]]
+    return max(faster, key=_BACKEND_SPEED_ORDER.index) if faster else None
+
+
+def _backend_clause(current: str, faster: str) -> str:
+    """Point at the *existing* control rather than offering a second one.
+
+    The simulator is chosen in exactly one place -- the preview's ``SIM:``
+    toggle -- and it stays that way.  An in-run [Switch to NVC] button was
+    considered and dropped: it would have been a second selection point whose
+    meaning differed from the first, because switching engines mid-run restarts
+    simulated time rather than continuing it.  A student who has been waiting
+    three minutes would have lost the three minutes to a button that read like
+    "go faster".  Saying "[Stop], then the toggle" keeps one control and is
+    honest that a re-run is a re-run.
+    """
+    label = _BACKEND_LABELS.get(faster, faster)
+    return (
+        f"{label} is also installed here and is usually faster than"
+        f" {_BACKEND_LABELS.get(current, current)}:"
+        f" [Stop], then the SIM: toggle on the preview re-runs this design on it."
+    )
+
+
+#: Display names matching the preview toggle's own labels, so the message names
+#: the thing the user will actually see on the button.
+_BACKEND_LABELS: dict[str, str] = {
+    "mcode": "GHDL",
+    "llvm": "GHDL-LLVM",
+    "llvm-jit": "GHDL-JIT",
+    "nvc": "NVC",
+}
 
 
 def stall_message(
@@ -363,6 +443,8 @@ def stall_message(
     divider: Divider | None = None,
     *,
     waiting_for_input: bool = False,
+    backend: str = "",
+    available_backends: Iterable[str] = (),
 ) -> list[str]:
     """Build the advisory, in the student's terms and in measured numbers (D-15).
 
@@ -426,6 +508,12 @@ def stall_message(
             " `CNTR_LEN : positive := 24` -- and [Generics…] on the preview can"
             " lower it for the simulator without changing what your board uses."
         )
+    # Last, and only when it is actionable: the other thing that makes a step
+    # arrive sooner is a faster engine, and a student may already have one
+    # installed without knowing the toggle changes anything.
+    quicker = faster_backend(backend, available_backends) if backend else None
+    if quicker is not None:
+        lines.append(_backend_clause(backend, quicker))
     return lines
 
 
@@ -445,13 +533,44 @@ _DIVIDER_HINTS = (
 
 @dataclass(frozen=True)
 class Divider:
-    """A generic that plausibly sizes the design's clock divider."""
+    """A generic that plausibly sizes the design's clock divider.
+
+    Two widths, because the run and the file disagree more often than not.
+    Every figure in the advisory is about the run that is happening, so
+    :attr:`bits` is what the design is *actually* elaborated with; but the
+    sentence promising the file is untouched has to quote the file, or it
+    contradicts the editor the student is looking at.
+    """
 
     name: str  # as declared, lowercased
-    bits: int  # its default width
+    bits: int  # the width the run is actually using
+    #: The file's own default, when the run is not using it -- the simulator
+    #: floors COUNTER_BITS, and the user may have set anything through
+    #: [Generics…] or --generic.  ``None`` means the two agree.
+    declared: int | None = None
+    #: Who moved it: ``"user"`` (they set it themselves) or ``"simulator"`` (the
+    #: contract floor).  Worth distinguishing, because the two need opposite
+    #: sentences: one person is being reminded of their own choice, the other is
+    #: learning the tool did something to their design without saying so.
+    source: str = ""
+
+    @property
+    def file_bits(self) -> int:
+        """What the design file says, whatever the run was given."""
+        return self.bits if self.declared is None else self.declared
+
+    @property
+    def overridden(self) -> bool:
+        """Whether the run is using something other than the file's value."""
+        return self.declared is not None and self.declared != self.bits
 
 
-def find_divider(vhdl_text: str, toplevel: str) -> Divider | None:
+def find_divider(
+    vhdl_text: str,
+    toplevel: str,
+    contract: Mapping[str, str] | None = None,
+    overrides: Mapping[str, str] | None = None,
+) -> Divider | None:
     """Find the design's clock-divider generic, or ``None``.
 
     Reads only what the design already declares; nothing is inferred from the
@@ -462,19 +581,56 @@ def find_divider(vhdl_text: str, toplevel: str) -> Divider | None:
     The **name** matters as much as the width: without it the advice can only
     say "lower your divider", which is not something a student can act on.  With
     it the message can print the flag they should actually type.
+
+    *contract* is the wrapper's own generic map and *overrides* is whatever the
+    user set through [Generics…] or ``--generic``; the user wins, then the
+    contract, then the file.  They are kept apart rather than merged so the
+    message can name **who** moved the value, which needs opposite sentences:
+    somebody being reminded of their own choice, or somebody learning the tool
+    changed their design without telling them.
+    **Reading the file alone is not enough and was a defect.**
+    The simulator floors ``COUNTER_BITS`` well below the 24 a design declares
+    (17, or 20 on NVC), so a file saying 24 was described as stepping every
+    16.8 M cycles when the run was doing 131 k -- wrong by 128x.  Worse, a
+    student who took this advisory's own advice and lowered the generic in the
+    dialog came back to it still quoting the old number and recommending the
+    change they had just made.  Lookup is case-insensitive because the
+    override map is keyed lowercase and the wrapper's is upper.
     """
     from fpga_sim.generics import Kind, design_generics  # noqa: PLC0415 - avoid a cycle
 
+    by_user = {k.lower(): v for k, v in (overrides or {}).items()}
+    by_tool = {k.lower(): v for k, v in (contract or {}).items()}
     found: list[Divider] = []
     for g in design_generics(vhdl_text, toplevel):
         if g.kind != Kind.INTEGER or g.name not in _DIVIDER_HINTS:
             continue
         try:
-            width = int(g.default_text.replace("_", ""))
+            declared = int(g.default_text.replace("_", ""))
         except ValueError:
             continue
-        if 1 <= width <= 64:
-            found.append(Divider(g.name, width))
+        running, source = declared, ""
+        for candidate, who in ((by_user.get(g.name), "user"), (by_tool.get(g.name), "simulator")):
+            if candidate is None:
+                continue
+            try:
+                running, source = int(str(candidate).replace("_", "")), who
+            except ValueError:
+                # A value we cannot read is not a reason to report a number we
+                # know is wrong; fall back and say nothing clever.
+                running, source = declared, ""
+            break
+        if 1 <= running <= 64 and 1 <= declared <= 64:
+            found.append(
+                Divider(
+                    g.name,
+                    running,
+                    declared if declared != running else None,
+                    source if declared != running else "",
+                )
+            )
+    # Widest *as running*: that is the one setting the rate being complained
+    # about, which is the whole reason a width is picked at all.
     return max(found, key=lambda d: d.bits) if found else None
 
 

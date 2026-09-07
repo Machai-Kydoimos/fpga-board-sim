@@ -41,6 +41,8 @@ from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
     from fpga_sim.board_loader import BoardDef, ComponentInfo
     from fpga_sim.pinmap import PinMapMatch
     from fpga_sim.sim_bridge import ConventionMatch, SimChild, SimulatorInfo
@@ -119,6 +121,8 @@ class SimulationScreen:
         interactive: bool = True,
         screenshot_dir: str | Path | None = None,
         initial_inputs: BoardInputs | None = None,
+        available_sims: Sequence[SimulatorInfo] = (),
+        generic_overrides: Mapping[str, str] | None = None,
     ) -> None:
         """Build the board/panel/toolbar and wire pygame input to link messages."""
         self.screen = screen
@@ -127,6 +131,11 @@ class SimulationScreen:
         self.child = child
         self.match = match
         self.sim = sim
+        #: Backend names of every discovered install, so the advisory can point
+        #: at the preview's SIM: toggle when a faster engine is already there.
+        #: Names only -- `stall` is pygame-free and has no business holding UI
+        #: objects, and the ordering is all it needs.
+        self._available_backends = tuple(i.backend for i in available_sims)
         # Advisory only (U50): recorded in the session log so a run's dialect is
         # part of its record, never acted on here.
         self.synopsys = synopsys
@@ -157,10 +166,19 @@ class SimulationScreen:
         #: only ever earns an offer of help, never an interruption (U48).
         self._stall_hint_rect: pygame.Rect | None = None
         self._stall_expanded = False
+        # What the design is *actually* elaborated with, not what its file says.
+        # `child.generics` is the wrapper's contract map -- and it carries the
+        # floored COUNTER_BITS (17, or 20 on NVC), which is well below the 24 a
+        # design declares; the overrides are whatever [Generics…] or --generic
+        # put on top.  Reading the file alone made the advisory quote a number
+        # the run was not using, and told a student who had just lowered the
+        # generic to lower it again.
         try:
             self._divider = find_divider(
                 Path(vhdl_path).read_text(encoding="utf-8", errors="replace"),
                 Path(vhdl_path).stem,
+                child.generics,
+                generic_overrides,
             )
         except OSError:
             self._divider = None
@@ -711,7 +729,13 @@ class SimulationScreen:
         # held is *correct* to show nothing.  Say that first.
         waiting = self._has_inputs and not self._stall.inputs_used
         self._stall_heading = stall_heading(waiting_for_input=waiting)
-        self._stall_lines = stall_message(facts, self._divider, waiting_for_input=waiting)
+        self._stall_lines = stall_message(
+            facts,
+            self._divider,
+            waiting_for_input=waiting,
+            backend=self.sim.backend,
+            available_backends=self._available_backends,
+        )
 
     def _draw_stall_hint(
         self,
@@ -746,6 +770,41 @@ class SimulationScreen:
         self.screen.blit(dot, dot.get_rect(center=center))
         self.screen.blit(text, text.get_rect(midleft=(x + icon_d + icon_gap, rect.centery)))
 
+    @staticmethod
+    def _wrap(text: str, font: pygame.font.Font, max_w: int) -> list[str]:
+        """Break *text* onto lines that fit *max_w* pixels in *font*.
+
+        The panel clamps its own width to the window but blits each line at a
+        fixed left edge, so a line wider than the panel simply runs out through
+        the border -- which is what happened the moment the advisory started
+        naming both the running and the declared divider width.  Wrapping has to
+        live here rather than in ``stall``: that module is pygame-free and has
+        no font to measure with, so it emits *logical* lines and the screen
+        turns them into pixels.
+
+        A leading indent is kept, and continuations are indented two spaces past
+        it, so the wrapped remainder of the ``[Stop], then …`` command line still
+        reads as part of that command rather than as a new instruction.  A single
+        word wider than *max_w* is left long rather than broken mid-word; there
+        is no such word in these messages, and a mangled one would be worse.
+        """
+        indent = text[: len(text) - len(text.lstrip())]
+        words = text.split()
+        if not words:
+            return [text]
+        out: list[str] = []
+        cur = indent + words[0]
+        cont = indent + "  "
+        for word in words[1:]:
+            trial = f"{cur} {word}"
+            if font.size(trial)[0] <= max_w:
+                cur = trial
+            else:
+                out.append(cur)
+                cur = cont + word
+        out.append(cur)
+        return out
+
     def _draw_stall_advisory(self) -> None:
         """Draw the opened advisory panel, low on the board and above the toolbar."""
         sw, sh = self.screen.get_size()
@@ -754,8 +813,13 @@ class SimulationScreen:
         body = _get_font(max(9, round(12 * scale)))
         pad = max(8, round(12 * scale))
 
+        # Wrap first, then size the panel to what the wrapping produced: the
+        # budget is the widest the inner text could ever be, so the panel comes
+        # out no wider than it needs and never narrower than its content.
+        budget = max(120, sw - 4 * pad)
+        wrapped = [w for t in self._stall_lines for w in self._wrap(t, body, budget)]
         head = font.render(self._stall_heading, True, THEME.sim_info)
-        lines = [body.render(t, True, THEME.sim_info) for t in self._stall_lines]
+        lines = [body.render(t, True, THEME.sim_info) for t in wrapped]
         close = body.render("[ Close ]", True, THEME.sim_hint)
 
         width = min(
