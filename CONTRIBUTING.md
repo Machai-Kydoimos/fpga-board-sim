@@ -429,7 +429,8 @@ are saved when the board's appearance changes (brightness quantized coarsely, so
 a fade yields a handful of stills rather than one per frame), plus one a second
 while nothing changes so a frozen design still leaves a trail. A run is capped at
 240 files; the closing `[screenshots] N PNGs in …` line reports the count, any
-drops, and the wall→simulated time ratio for the run.
+drops, and the wall→simulated time ratio for the run, and a `manifest.json`
+lands beside the PNGs with the measurement behind each one (see below).
 
 **Filenames carry simulated time, not wall time:** `shot_0007_sim8123456ns.png`
 is the frame drawn from the state at **8,123,456 ns of simulated time**. The
@@ -445,21 +446,43 @@ FPGA_SIM_WAVEFORM=fst uv run fpga-sim --benchmark 5 --board Basys3 \
 # then in GTKWave, jump to the instant a PNG shows: Edit -> Set Marker -> 8123456 ns
 ```
 
-Two things to know when you get there:
+**A PNG is not an instantaneous sample of its timestamp.** It shows the LED
+*duty over the window ending there* — which is the point of the U9 engine — and
+that is further eased ~100 ms for persistence of vision. Measured over 72
+(frame, LED) samples of `blinky` on an Arty: pixel brightness correlates
+**r = +0.02** with the instantaneous `led` bit at the named time, and **r = +0.70**
+with the duty over the preceding window. So a signal *stable* across a window — a
+switch, a button, a settled digit, a slow blinker — reads back exactly, while one
+toggling faster than the window (PWM, a scan display, a fast counter) does not.
 
-- **The dump's own timescale is not ns.** GHDL writes `$timescale 1 fs`, so a bare
-  number means femtoseconds. Always carry the unit — GTKWave parses `8123456 ns`
-  correctly, a bare `8123456` lands a million times too early.
-- **A PNG is not an instantaneous sample of its timestamp.** It shows the LED
-  *duty over the window ending there* — which is the point of the U9 engine, and
-  is further eased ~100 ms for persistence of vision. Measured over 72
-  (frame, LED) samples of `blinky` on an Arty: pixel brightness correlates
-  **r = +0.02** with the instantaneous `led` bit at the named time, and
-  **r = +0.70** with the duty over the preceding window. So for a signal that is
-  *stable* across a window — a switch, a button, a settled digit, a slow blinker —
-  the trace at that timestamp is exactly what the PNG shows; for one toggling
-  faster than the window (PWM, a scan display, a fast counter) compare against the
-  duty, not the value at a single nanosecond.
+**So don't infer the window — read it.** Every capture run writes a
+`manifest.json` beside the PNGs (issue #388) giving, per shot, the window the
+duty was measured over, that duty per channel, and the level actually displayed:
+
+```json
+{
+  "file": "shot_0005_sim7292960ns.png",
+  "sim_ns": 7292960,
+  "window_ns": [6909120, 7292960],
+  "marker": { "gtkwave": "7292960 ns", "surfer_ticks": 7292960000000 },
+  "led": {
+    "duty":  [0.0, 0.0, 0.0, 0.0, 0.0, 1.0,    0.0,    1.0,   0.2189, 0.7811],
+    "level": [0.0, 0.0, 0.0, 0.0, 0.0, 0.9223, 0.0753, 0.708, 0.3236, 0.5262]
+  }
+}
+```
+
+Read that pair and the caveat stops being abstract: LED 5 measured a full 100%
+duty but was drawn at 92%, still easing up, and **LED 6 measured 0% yet was still
+lit at 8%**, easing down from the window before. Compare a trace against
+`window_ns` and `duty`; `level` is only there to explain the pixel.
+
+The two `marker` dialects exist because the viewers disagree about units. The
+dump's own timescale is **not** ns — both backends write `$timescale 1 fs`, read
+from the dump rather than assumed — so a bare number means femtoseconds. GTKWave
+parses `7292960 ns` correctly (as does Surfer's own command prompt); Surfer's
+`-C` parses before the waveform loads and needs the unitless tick count, which is
+why both are written out.
 
 Waveform capture is off unless you enable it — see the user guide's Waveform
 capture section, or `FPGA_SIM_WAVEFORM=fst` as above.

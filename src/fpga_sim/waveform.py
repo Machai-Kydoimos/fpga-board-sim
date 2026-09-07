@@ -17,10 +17,12 @@ falling back to the OS default handler.
 from __future__ import annotations
 
 import os
+import re
 import shlex
 import shutil
 import subprocess
 import sys
+import zlib
 from datetime import datetime
 from pathlib import Path
 
@@ -90,6 +92,87 @@ def _waveform_path(entity: str, fmt: WaveFormat, *, now: datetime | None = None)
     """
     stamp = (now or datetime.now()).strftime("%Y-%m-%d_%H-%M-%S")
     return _waveform_dir() / f"{entity}_{stamp}.{fmt}"
+
+
+#: One tick, in femtoseconds, for each SI unit a ``$timescale`` may name.
+#: Femtoseconds because it is the finest either writer emits, so every unit
+#: below is an exact integer and the tick arithmetic never touches a float.
+_UNIT_FS: dict[str, int] = {
+    "fs": 1,
+    "ps": 1_000,
+    "ns": 1_000_000,
+    "us": 1_000_000_000,
+    "ms": 1_000_000_000_000,
+    "s": 1_000_000_000_000_000,
+}
+
+#: Byte offset of the timescale exponent within an FST *header block*: one type
+#: byte, then nine ``uint64`` fields (section length, start, end, the endianness
+#: double, writer memory, scopes, hierarchy vars, vars, VC blocks).  The 128-byte
+#: writer-version string follows it, which is what pins the offset empirically:
+#: in a dump from either backend, "GHDL FST v0" / "nvc" begins one byte later.
+_FST_TIMESCALE_OFFSET = 1 + 8 * 9
+
+#: FST block type for a whole file deflated inside one wrapper block.  **Both**
+#: backends here write this -- the header block is not at offset 0 of the file,
+#: it is at offset 0 of the *decompressed* stream -- so a reader that trusts the
+#: documented layout against raw bytes silently reads compressed noise.
+_FST_BL_ZWRAPPER = 0xFE
+#: Header of that wrapper: type byte + section length + uncompressed length.
+#: The gzip stream starts here.
+_FST_ZWRAPPER_HEADER = 1 + 8 + 8
+
+#: How much of a dump to read while looking for its scale.  Generous, because
+#: for a wrapped FST this is *compressed* input for a ~74-byte answer.
+_TIMESCALE_PROBE_BYTES = 64 * 1024
+
+
+def _fst_timescale_fs(head: bytes) -> int | None:
+    """Read the timescale exponent out of the first bytes of an FST file."""
+    if head[:1] == bytes([_FST_BL_ZWRAPPER]):
+        try:
+            head = zlib.decompressobj(16 + zlib.MAX_WBITS).decompress(
+                head[_FST_ZWRAPPER_HEADER:], _FST_TIMESCALE_OFFSET + 1
+            )
+        except zlib.error:
+            return None
+    # After any unwrapping the first block must be the header block (type 0).
+    if len(head) <= _FST_TIMESCALE_OFFSET or head[0] != 0:
+        return None
+    exponent = int.from_bytes(
+        head[_FST_TIMESCALE_OFFSET : _FST_TIMESCALE_OFFSET + 1], "big", signed=True
+    )
+    fs = 10 ** (exponent + 15)  # a signed power-of-ten exponent of one second
+    return fs if isinstance(fs, int) and fs >= 1 else None
+
+
+def dump_timescale_fs(dump: str | Path) -> int | None:
+    """Length of one tick in the dump at *dump*, in femtoseconds.
+
+    A viewer's batch interface wants raw ticks, not a duration with a unit, so
+    a manifest that prints one has to know the dump's own scale (issue #388).
+    GHDL and NVC both write ``1 fs`` today, in both formats -- but that is an
+    observation about two versions, not a contract, so it is read rather than
+    assumed.  Returns ``None`` when the file is missing, truncated, or says
+    something this does not recognize; callers then omit the tick dialect
+    instead of printing a wrong number.
+    """
+    path = Path(dump)
+    try:
+        if path.suffix.lower() == ".fst":
+            with path.open("rb") as fh:
+                return _fst_timescale_fs(fh.read(_TIMESCALE_PROBE_BYTES))
+        # VCD: a text header, so read only enough of it to find the directive.
+        with path.open("r", encoding="utf-8", errors="replace") as fh:
+            head = fh.read(_TIMESCALE_PROBE_BYTES)
+    except OSError:
+        return None
+    match = re.search(r"\$timescale\s+(\d+)\s*([munpf]?s)\s*\$end", head)
+    if match is None:
+        return None
+    count, unit = int(match.group(1)), match.group(2)
+    per_tick = _UNIT_FS.get(unit)
+    return count * per_tick if per_tick is not None and count > 0 else None
 
 
 def _gtkw_path(wave_path: Path) -> Path:

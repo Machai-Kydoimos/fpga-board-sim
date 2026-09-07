@@ -38,11 +38,48 @@ duty at that exact nanosecond.  Switch, button and segment *states* are exact.
 
 from __future__ import annotations
 
+import json
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import pygame
+
+#: Name of the sidecar written beside the PNGs (issue #388).
+MANIFEST_NAME = "manifest.json"
+
+
+@dataclass(frozen=True)
+class ShotMetrics:
+    """What one captured frame was showing, in numbers rather than pixels.
+
+    The PNG is the picture; this is the measurement behind it.  ``duty`` is what
+    the child measured over :attr:`window_ns`; ``level`` is what the widget was
+    actually displaying when the shot was taken -- the same duty after the
+    host's persistence-of-vision easing.  Keeping both is the point of the
+    manifest: their *difference* is exactly the gap that made a still
+    un-reconcilable against a trace (issue #388, r = +0.02 against the
+    instantaneous bit, r = +0.70 against the window's duty).
+    """
+
+    #: ``(from_ns, to_ns)`` the duties average over, or ``None`` when unmeasured
+    #: (duty mode off, or the child had not reported a window yet).
+    window_ns: tuple[int, int] | None = None
+    led_duty: tuple[float, ...] = ()
+    led_level: tuple[float, ...] = ()
+    seg_duty: tuple[float, ...] = ()
+    seg_level: tuple[float, ...] = ()
+
+
+@dataclass
+class _Shot:
+    """One written PNG and the metrics that go with it."""
+
+    path: Path
+    sim_ns: int
+    metrics: ShotMetrics = field(default_factory=ShotMetrics)
+
 
 # Brightness steps a capture-gate signature quantizes to.  U23's redraw gate
 # uses 1000 (finer than any post-gamma pixel step, so the persistence-of-vision
@@ -85,6 +122,8 @@ class ScreenshotRecorder:
         self.min_gap_s = min_gap_s
         self.limit = limit
         self.saved: list[Path] = []
+        #: Per-shot metrics, parallel to :attr:`saved`, for the #388 manifest.
+        self._shots: list[_Shot] = []
         self.dropped = 0
         self._last_sig: tuple[object, ...] | None = None
         self._last_t = 0.0
@@ -109,12 +148,15 @@ class ScreenshotRecorder:
         signature: tuple[object, ...],
         now: float,
         sim_ns: int,
+        metrics: ShotMetrics | None = None,
     ) -> Path | None:
         """Write *surface* as the next PNG; return its path, or ``None`` past the limit.
 
         *now* is wall time and only paces the gate; *sim_ns* is the simulated
         time of the state this frame was drawn from, and is what the filename
-        carries — see the module docstring on why.
+        carries — see the module docstring on why.  *metrics* is what that frame
+        was measuring, recorded for the manifest (#388); omitting it still
+        writes the PNG, and the manifest simply carries no numbers for it.
 
         Call only when :meth:`due` said so — this advances the gate state
         whether or not the limit allowed a write, so a capped run keeps
@@ -138,6 +180,90 @@ class ScreenshotRecorder:
         path = self.out_dir / f"shot_{len(self.saved) + 1:04d}_sim{sim_ns}ns.png"
         pygame.image.save(surface, str(path))
         self.saved.append(path)
+        self._shots.append(_Shot(path, sim_ns, metrics or ShotMetrics()))
+        return path
+
+    def write_manifest(
+        self,
+        *,
+        dump: str | Path | None = None,
+        board: str = "",
+        design: str = "",
+    ) -> Path | None:
+        """Write the sidecar that makes each PNG reconcilable against a trace (#388).
+
+        A still is an **interval, not a sample**: the duty behind every lit pixel
+        is averaged over the window between two child state sends, then eased
+        over ~100 ms of wall time for the eye.  A reader comparing a PNG against
+        a waveform therefore has no way to know which interval to look at — so
+        this states it, per shot, alongside the duty measured over it and the
+        level actually displayed.
+
+        *dump* is the run's waveform file, when one was captured: its own
+        ``$timescale`` is read (never assumed) so the marker can be given in raw
+        ticks as well as in nanoseconds.  Returns the manifest path, or ``None``
+        when nothing was captured.
+        """
+        if not self._shots:
+            return None
+        from fpga_sim.waveform import _gtkw_path, dump_timescale_fs
+
+        doc: dict[str, Any] = {
+            "schema": 1,
+            "board": board,
+            "design": design,
+            "how_to_read": (
+                "Each PNG shows an interval, not an instant. led.duty is the exact "
+                "on-time fraction the simulator measured over window_ns; led.level is "
+                "what the board was displaying, which is that duty after a ~100 ms "
+                "persistence-of-vision ease, so a signal stable across the window "
+                "matches and a faster one (PWM, scan display) lags. Compare a trace "
+                "over window_ns against duty -- not the value at sim_ns."
+            ),
+        }
+        ticks_per_ns: int | None = None
+        if dump is not None:
+            dump_path = Path(dump)
+            timescale_fs = dump_timescale_fs(dump_path)
+            if timescale_fs:
+                # A nanosecond is 1e6 fs; exact integer division because every
+                # unit a dump may name divides it.
+                ticks_per_ns = 1_000_000 // timescale_fs or None
+            doc["waveform"] = {
+                "dump": str(dump_path),
+                "gtkw": str(_gtkw_path(dump_path)),
+                "timescale_fs": timescale_fs,
+            }
+
+        shots: list[dict[str, Any]] = []
+        for shot in self._shots:
+            marker: dict[str, Any] = {"gtkwave": f"{shot.sim_ns} ns"}
+            if ticks_per_ns is not None:
+                # Surfer's -C parses before the waveform loads, so it wants
+                # unitless ticks; its own prompt takes the "ns" form above.
+                marker["surfer_ticks"] = shot.sim_ns * ticks_per_ns
+            m = shot.metrics
+            entry: dict[str, Any] = {
+                "file": shot.path.name,
+                "sim_ns": shot.sim_ns,
+                "window_ns": list(m.window_ns) if m.window_ns else None,
+                "marker": marker,
+            }
+            if m.led_duty or m.led_level:
+                entry["led"] = {
+                    "duty": [round(v, 4) for v in m.led_duty],
+                    "level": [round(v, 4) for v in m.led_level],
+                }
+            if m.seg_duty or m.seg_level:
+                entry["seg"] = {
+                    "duty": [round(v, 4) for v in m.seg_duty],
+                    "level": [round(v, 4) for v in m.seg_level],
+                }
+            shots.append(entry)
+        doc["shots"] = shots
+
+        path = self.out_dir / MANIFEST_NAME
+        path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
         return path
 
     def summary(self) -> str:

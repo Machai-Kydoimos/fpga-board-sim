@@ -135,26 +135,16 @@ Still reserved by a live plan, to be filed as full cards / Icebox rows at that a
   benchmark path)~~ — ✅ **done 2026-08-31** as Docs & Assets round 2, PR 2. Reuses the product
   renderer the benchmark already drives, so the stills show true duty/RGB/scan brightness that
   `sim/capture_frames.py` cannot — which is also why PR 3 exists.
-- [#388](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/388) (screenshot manifest —
-  make the PNG↔waveform correspondence explicit) — follow-on to #129, **inherited scope of Docs &
-  Assets round 2 PR 3** (Next #3, with peripherals). No card and no ID: round 2 is a maintenance
-  arc that takes neither (its plan §1). Recorded here because the deferral chain pointed one way
-  only — the arc plan sent it to PR 3, and PR 3's section did not name it, so nothing would have
-  picked it up. Now cross-referenced from both ends. The measured evidence is the part worth not
-  losing: over 72 (frame, LED) samples of `blinky` on an Arty, pixel brightness correlates
-  **r = +0.02** with the instantaneous `led` bit at the PNG's named time and **r = +0.70** with the
-  duty over the *preceding window* — so a still is an interval, not a sample, and a stable signal
-  reads back exactly while a PWM or scan signal does not. Everything the manifest needs is
-  host-side **except the window start** (`DutyTracker._prev_ns`, a one-line addition to the `state`
-  payload). Deliberately not in the classroom arc: nothing there asks a student to reconcile a
-  still against a trace.
-- [#354](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/354) (GHDL-Cosim doc offer) —
-  gated on the docs refresh (Next #3).
-- NVC disclosure closed as **wontfix** 2026-07-30 → D16 is now the only mitigation; promoted to
-  Next #4. The interim README/user-guide warning shipped 2026-08-05.
-- RZ-EasyFPGA `KEY[4]` width gap (a 2026-07 session note) — **verified resolved 2026-08-05**:
-  both RZ board JSONs carry 4 buttons and a width-4 canonical `KEY` bank (#338's width
-  override).
+- ~~[#388](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/388) (screenshot manifest —
+  make the PNG↔waveform correspondence explicit)~~ — ✅ **done 2026-09-08**, pulled forward out
+  of Docs & Assets round 2 PR 3 and into the classroom arc so the arc's own fleet sweep could be
+  read rather than squinted at. `--screenshots` writes a `manifest.json` giving, per shot, the
+  duty **window**, the measured duty and the displayed level. The measured evidence that
+  motivated it held up in the product: over 72 (frame, LED) samples of `blinky` on an Arty,
+  brightness correlates **r = +0.02** with the instantaneous `led` bit and **r = +0.70** with the
+  duty over the preceding window — and one captured frame shows an LED at **0% measured duty
+  still lit at 8%**, easing down from the window before. Round 2 PR 3 keeps the capture-pipeline
+  rework; only the manifest moved.
 
 ---
 

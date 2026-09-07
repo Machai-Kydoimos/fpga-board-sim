@@ -124,6 +124,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`--screenshots` now writes a `manifest.json` beside the PNGs**
+  ([#388](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/388)). Each
+  file is already named by *simulated* time, which makes it a waveform marker —
+  but a still is an **interval, not a sample**, and the interval was not
+  guessable from outside: the U9 engine measures each LED's duty over the window
+  between two child state sends, and the host then eases that over ~100 ms for
+  persistence of vision. Measured over 72 (frame, LED) samples of `blinky` on an
+  Arty, pixel brightness correlates **r = +0.02** with the instantaneous `led`
+  bit at the named time and **r = +0.70** with the duty over the preceding
+  window. Documenting that was the weak fix; printing the numbers is the real
+  one. Per shot the manifest now gives `window_ns`, the measured duty per
+  channel, and the level actually displayed.
+  - **The pair is the point.** On one captured frame LED 5 measured a full 100%
+    duty and was drawn at 92%, still easing up, while **LED 6 measured 0% and was
+    still lit at 8%**, easing down from the window before. Comparing either
+    against the trace at a single nanosecond would have looked like a bug in the
+    simulator; against `window_ns` they agree exactly.
+  - **The window is the one number the host could not know.** It lives in the
+    child's `DutyTracker`, so it is now sent in the `state` payload. It
+    deliberately does **not** advance when a sample measures nothing — the
+    previous duties are still what is on screen, and attributing them to a window
+    they were never measured over is the confusion being removed.
+  - **The marker is written in both viewer dialects**, because they disagree
+    about units: `7292960 ns` for GTKWave (and for Surfer's own prompt), and the
+    raw tick count for Surfer's `-C`, which parses before the waveform loads. The
+    multiplier comes from the dump's **own** `$timescale` rather than a constant.
+    Both backends do write `1 fs` today — but they also **gzip-wrap their FSTs**
+    (`FST_BL_ZWRAPPER`), so the header block is at offset 0 of the *decompressed*
+    stream; a reader trusting the documented layout against the raw bytes reads
+    compressed noise. An unreadable dump omits the tick dialect rather than
+    printing a wrong number.
+
 - **Twenty board display names now read the way the vendor spells them** (U49,
   closing the card). The sync parsers build a name by splitting an upstream class
   name on case and digit boundaries, which is right for most of the fleet and

@@ -33,7 +33,7 @@
 |---|---|---|---|
 | PR 1 | Doc accuracy sweep + a count-drift guard test | S | ✅ **done 2026-08-25** |
 | PR 2 | `--screenshots` on the benchmark path (issue [#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129)) | S | ✅ **done 2026-08-31** |
-| PR 3 | Capture pipeline renders true brightness (§4 decision A) + the screenshot manifest ([#388](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/388), inherited) | M–L + S | not started |
+| PR 3 | Capture pipeline renders true brightness (§4 decision A). ~~The screenshot manifest ([#388](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/388), inherited)~~ — **shipped 2026-09-08 in the classroom arc**, pulled forward so that arc's fleet sweep was readable; this PR no longer carries it | M–L | not started |
 | PR 4 | Re-capture the existing asset set | M | not started |
 | PR 5 | New visuals for the unillustrated features (§4 decision B) | M | not started |
 | PR 6 | Asset-regeneration procedure + docs wiring | S | not started |

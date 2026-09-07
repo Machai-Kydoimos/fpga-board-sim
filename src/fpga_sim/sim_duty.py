@@ -51,6 +51,21 @@ def unpack(packed: int, count: int) -> list[int]:
     return [(packed >> (ACC_BITS * i)) & _ACC_MASK for i in range(count)]
 
 
+def duty_window(*trackers: DutyTracker | None) -> list[int] | None:
+    """Return the window the currently-reported duties cover, or ``None``.
+
+    Takes the first tracker that exists: a Full-mode wrapper drives both from the
+    same simulated instant, so they never disagree, and a run measuring only one
+    of the two still reports its window.  Lives here rather than in the child so
+    the host tests can reach it -- ``sim_testbench`` imports cocotb.
+    """
+    for tracker in trackers:
+        if tracker is not None:
+            start, end = tracker.window
+            return [start, end]
+    return None
+
+
 class DutyTracker:
     """Per-channel exact duty over the window between two wrapper snapshots.
 
@@ -65,6 +80,20 @@ class DutyTracker:
         self.count = max(0, count)
         self._prev_ton: list[int] = [0] * self.count
         self._prev_ns: int = 0
+        self._window: tuple[int, int] = (0, 0)
+
+    @property
+    def window(self) -> tuple[int, int]:
+        """The ``(from_ns, to_ns)`` the duties last returned by :meth:`update` cover.
+
+        A duty is an average over an interval, not a reading at an instant, and
+        the interval is not guessable from the outside: it is the gap between
+        two throttled sends (issue #388).  It is also **not** always the caller's
+        current ``sim_ns`` — when :meth:`update` returns ``None`` the caller
+        keeps displaying the previous duties, which still describe this older
+        window.  Reporting it from here keeps the two in step.
+        """
+        return self._window
 
     def update(
         self, packed_acc: int, packed_tch: int, levels: int, sim_ns: int
@@ -97,5 +126,6 @@ class DutyTracker:
             self._prev_ton[i] = ton
             duties.append(min(1.0, max(0.0, delta / window)))
 
+        self._window = (self._prev_ns, sim_ns)
         self._prev_ns = sim_ns
         return duties
