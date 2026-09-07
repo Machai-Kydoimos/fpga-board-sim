@@ -11,8 +11,9 @@ D17 split + `paths.py`, and **U53, the pin map, working end to end**; then the f
 (D-5 reversed); **PR 7 + PR 8** (U48 advisory + [Generics…]) ✅, **PR 9** ✅ (hints/caret, #420) and
 **PR 10** ✅ (`--doctor`, un-gated by D-19) — which closes **U50**; **PR 11** ✅ (#425, five
 lab-shaped references + two natives) — which closes **U52**; **PR 12** ✅ (`first_design.md` +
-`troubleshooting.md`, and the FST-first waveform default that resolves **P13** / **P14**).
-**Next: PR 13** (board display names) · PR 14 (release) · Supersedes
+`troubleshooting.md`, and the FST-first waveform default that resolves **P13** / **P14**);
+**PR 13** ✅ (the display-name table) — which closes **U49**.
+**Next: PR 14** (release v0.23.0) · Supersedes
 [u48_classroom_arc_plan.md](u48_classroom_arc_plan.md) (v1, kept as the record of how the arc was
 first framed) · Companion to [improvement_roadmap.md](../improvement_roadmap.md)*
 
@@ -1034,6 +1035,30 @@ Arc-level, end to end:
 
 ## 12. Revision log
 
+- **PR 13 (board display names) — 2026-09-07. U49 closed; P35 filed.** The card predicted
+  "sixteen mangled names"; the fleet says **fourteen**. `Genesys ZU-3EG-D` and `-5EV-D` trip the
+  guard's lone-capital rule and are *correct* — Digilent's own constraint files are named
+  `Genesys-ZU-3EG-D-Master.xdc` — so they are registered as vendor spellings rather than "fixed".
+  Renaming them would have been the guard corrupting real data to satisfy its own rule.
+  Six names were added that F7 never counted, because the mechanical rules cannot see them:
+  **`DE0 CV`, `DE0 Nano`, `DE10 Lite`, `DE10 Nano`** carry a space where Terasic prints a hyphen,
+  `Tang Nano9k` runs two tokens together, and `ICEStick` ignores Lattice's lowercase *i*. Those are
+  this course's own fleet — the boards a student actually scans for — so the table is twenty
+  entries, and every one is grounded in the `source.upstream_file` already recorded in the board
+  JSON rather than in what a board "should" be called.
+  **The renaming is safe for a reason worth stating:** `find_board` compares with separators and
+  case stripped, so every old spelling still resolves and saved sessions (which store `class_name`)
+  are untouched. That is a property of an implementation, not a law, so the guard asserts it.
+  One override *did* create a new duplicate display name — `Cora Z7-07S`, because the Digilent copy
+  of that board was already spelled exactly that way. That is the good kind: two sources finally
+  agreeing on one board's name, and `find_board` already keyed them identically, so no lookup
+  became ambiguous. The guard now distinguishes the two cases by device.
+  ⚠ **The rename was caught by a *skip*, not a failure.** `test_board_loader_sevenseg` matched
+  boards by name *fragment* and called `pytest.skip("... not in submodule")` when one missed, so
+  renaming DE0-CV and DE1-SoC silently deleted two 7-segment assertions and the suite still read
+  green — 2982 passed, 3 skipped, and only the skip *count* gave it away. The submodule that skip
+  guards against has not existed since the board-JSON migration; `boards/` is 289 committed files.
+  It now fails, and matches on exact names. **Read the skip count, not just the pass count.**
 - **PR 12 (documentation) — 2026-09-07. P13 / P14 resolved.** The two documents were written by
   *running* everything they quote rather than recalling it, and that is what made them worth the
   day: the sample `--doctor` report, the stall advisory, both compiler errors, the pin-map badge

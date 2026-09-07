@@ -22,6 +22,66 @@ _FALLBACK_CLOCK_HZ: float = 12e6  # most common across 80 surveyed boards
 
 
 # ═══════════════════════════════════════════════════════════════════════
+#  Display-name overrides (U49)
+# ═══════════════════════════════════════════════════════════════════════
+
+#: Corrected display names, keyed by ``class_name``.
+#:
+#: The two sync parsers derive a board's display name from its upstream class
+#: name by splitting on case and digit boundaries
+#: (``scripts/amaranth_parser._prettify_class_name``, and a second copy in
+#: ``scripts/litex_parser``).  The heuristic is right for most of the fleet and
+#: wrong for the names that matter here: it splits ``DE1SoC`` into "DE1 So C"
+#: and turns ``ULX3S_45F_``'s trailing underscore into a dangling hyphen,
+#: "ULX3 S-45 F-".
+#:
+#: **This table is the cheap half of the fix, on purpose.**  Correcting the
+#: parsers would mean re-syncing every generated board, which the CI drift job
+#: (``scripts/check_board_drift.py``) then has to agree with byte for byte --
+#: real risk, three weeks before a semester, for a cosmetic defect.  Applied at
+#: load time nothing regenerates and no board JSON changes, so there is nothing
+#: for the drift job to disagree with.  The parser fix stays carded.
+#:
+#: Every entry is grounded in data already in the tree rather than in what a
+#: board "should" be called: the ``source.upstream_file`` recorded in each board
+#: JSON, and the ``class_name``, are both un-mangled.  Where those two disagree
+#: with a vendor's marketing styling, this table follows them and undoes the
+#: mangling only -- it is a repair, not a rebrand.
+#:
+#: ``find_board`` compares names with separators and case stripped, so renaming
+#: here cannot break a ``--board`` argument, a saved session (which stores
+#: ``class_name``), or a documented example.
+_DISPLAY_NAME_OVERRIDES: dict[str, str] = {
+    # ── Mangled by the case/digit split (F7) ──────────────────────────────
+    "AX7325BPlatform": "AX7325B",  # alinx_ax7325b.py
+    "Colorlight_5A75B_R70Platform": "Colorlight-5A75B-R70",  # colorlight_5a75b_r7_0.py
+    "CoraZ7_07SPlatform": "Cora Z7-07S",  # class CoraZ7_07S; Digilent's variant suffix
+    "DE1SoCPlatform": "DE1-SoC",  # de1_soc.py
+    "Logicbone85FPlatform": "Logicbone 85F",  # logicbone.py; 85F is the ECP5 part
+    "OrangeCrabR0_2_25FPlatform": "OrangeCrab R0.2 25F",  # orangecrab_r0_2.py
+    "OrangeCrabR0_2_85FPlatform": "OrangeCrab R0.2 85F",  # orangecrab_r0_2.py
+    "SitlinvAE115fbPlatform": "Sitlinv AE115fb",  # sitlinv_a_e115fb.py
+    "TE0714_03_50_2IPlatform": "TE0714-03-50-2I",  # te0714_03_50_2I.py
+    # ── Trailing underscore turned into a dangling separator ──────────────
+    "CmodS7_Platform": "Cmod S7",  # cmod_s7.py
+    "ULX3S_12F_Platform": "ULX3S-12F",  # ulx3s.py
+    "ULX3S_25F_Platform": "ULX3S-25F",  # ulx3s.py
+    "ULX3S_45F_Platform": "ULX3S-45F",  # ulx3s.py
+    "ULX3S_85F_Platform": "ULX3S-85F",  # ulx3s.py
+    # ── A space where the vendor uses a hyphen ────────────────────────────
+    # Not caught by the guard below -- "DE0 CV" breaks no mechanical rule --
+    # but wrong all the same, and these are the boards this project's own
+    # course fleet is built on, so they are the ones a student will scan for.
+    "DE0CVPlatform": "DE0-CV",  # de0_cv.py
+    "DE0NanoPlatform": "DE0-Nano",  # de0nano.py
+    "DE10LitePlatform": "DE10-Lite",  # de10_lite.py
+    "DE10NanoPlatform": "DE10-Nano",  # de10_nano.py
+    "TangNano9kPlatform": "Tang Nano 9K",  # tang_nano_9k.py
+    "ICEStickPlatform": "iCEstick",  # icestick.py; Lattice styles the i lowercase
+}
+
+
+# ═══════════════════════════════════════════════════════════════════════
 #  Data classes
 # ═══════════════════════════════════════════════════════════════════════
 
@@ -434,9 +494,13 @@ class BoardDef:
         raw_clocks = [c.hz for c in clock_defs]
 
         raw_7seg = data.get("seven_seg")
+        class_name = data["class_name"]
         return cls(
-            name=data["name"],
-            class_name=data["class_name"],
+            # U49: repair the sync parsers' name heuristic at load time, so the
+            # correction reaches every consumer -- selector, session log, and
+            # the copy serialized to the headless child -- from one place.
+            name=_DISPLAY_NAME_OVERRIDES.get(class_name, data["name"]),
+            class_name=class_name,
             vendor=data.get("vendor", ""),
             device=data.get("device", ""),
             package=data.get("package", ""),

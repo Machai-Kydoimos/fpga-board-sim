@@ -171,28 +171,43 @@ def all_boards():
     return discover_boards(path)
 
 
+# Exact display names, not fragments (U49). Two reasons, both learned here:
+# a fragment silently picks whichever board sorts first ("DE10" matches
+# DE10-Lite, DE10-Nano, DE10-Standard and Terasic De10nano), and when the
+# display-name repair renamed DE0-CV and DE1-SoC, two fragments stopped matching
+# and these cases *skipped* rather than failed -- the assertions disappeared and
+# the suite still read green. Exact names are stable now that
+# `tests/test_board_display_names.py` guards them.
 _EXPECTED_7SEG = {
-    # Board name fragment (must match _prettify_class_name() output)
-    # → (num_digits, has_dp, is_multiplexed)
-    "DE0": (4, True, False),  # "DE0" board (not DE0 CV)
+    # Board display name → (num_digits, has_dp, is_multiplexed)
+    "DE0": (4, True, False),  # the DE0 proper, not the DE0-CV below
     "Nandland Go": (2, False, False),
-    "DE0 CV": (6, False, False),  # prettified from DE0CVPlatform
-    "DE1 So": (6, False, False),  # "DE1 So C" from DE1SoCPlatform
-    "DE10": (6, True, False),  # "DE10 Lite"
-    "Nexys4": (8, True, True),  # "Nexys4 DDR"
-    "RZEasy": (4, True, True),  # "RZEasy FPGAA2-2"
+    "DE0-CV": (6, False, False),
+    "DE1-SoC": (6, False, False),
+    "DE10-Lite": (6, True, False),
+    "Nexys4 DDR": (8, True, True),
+    "RZEasy FPGAA2-2": (4, True, True),
     "Step MXO2": (2, True, True),  # multiplexed, 2 select pins (active-low)
     # Mercury: 7-seg is in baseboard_no_sram (not in resources), so not detected
 }
 
 
-@pytest.mark.parametrize("name_frag,expected", _EXPECTED_7SEG.items())
-def test_real_board_sevenseg(all_boards, name_frag, expected):
-    matches = [b for b in all_boards if name_frag.lower() in b.name.lower()]
-    if not matches:
-        pytest.skip(f"{name_frag} not in submodule")
+@pytest.mark.parametrize("name,expected", _EXPECTED_7SEG.items())
+def test_real_board_sevenseg(all_boards, name, expected):
+    """Every named board must be present *and* correct.
+
+    A missing board is a failure, not a skip: `boards/` has been committed JSON
+    since the board migration -- there is no submodule left to be uninitialized
+    -- so "not found" now means the board was renamed or dropped, which is
+    exactly the news this test exists to deliver.
+    """
+    matches = [b for b in all_boards if b.name == name]
+    assert matches, (
+        f"no board is named {name!r}. It was renamed or removed; update this "
+        "table (and check board_loader._DISPLAY_NAME_OVERRIDES)."
+    )
     ssd = matches[0].seven_seg
-    assert ssd is not None, f"{name_frag}: expected SevenSegDef, got None"
+    assert ssd is not None, f"{name}: expected SevenSegDef, got None"
     num_digits, has_dp, is_mux = expected
     assert ssd.num_digits == num_digits
     assert ssd.has_dp == has_dp
@@ -200,9 +215,8 @@ def test_real_board_sevenseg(all_boards, name_frag, expected):
 
 
 def test_arty_has_no_sevenseg(all_boards):
-    arty = next((b for b in all_boards if "Arty A7-35" in b.name), None)
-    if arty is None:
-        pytest.skip("Arty not in submodule")
+    arty = next((b for b in all_boards if b.name == "Arty A7-35"), None)
+    assert arty is not None, "no board is named 'Arty A7-35'"
     assert arty.seven_seg is None
 
 
