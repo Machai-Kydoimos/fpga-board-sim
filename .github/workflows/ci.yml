@@ -8,9 +8,41 @@ on:
 permissions:
   contents: read
 
+# Transient CDN failures are not this project's news.  A `504 Gateway Time-out`
+# from the package index took three jobs red at once on 2026-09-07, on a change
+# that could not have caused it -- and a red that means nothing is how a red
+# that means something gets ignored.  `UV_HTTP_RETRIES` is uv's own retry path,
+# so the retry happens inside the tool that knows which failures are worth
+# retrying, and only the failed *request* is repeated rather than the whole
+# sync.
+#
+# Deliberately scoped to HTTP and nothing else.  A retry *wrapper* around a step
+# would have hidden the `TestButtonRowFits` order-dependence CI caught the same
+# afternoon, which is exactly the kind of flake a test suite must keep showing.
+# Retry the network; never the tests.
+env:
+  UV_HTTP_RETRIES: "5"
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+# ── About the two cache inputs repeated on every setup-uv below ──────────────
+#
+# `cache-dependency-glob: uv.lock` narrows the key.  The action's default glob
+# also includes `**/pyproject.toml`, so an edit with nothing to do with
+# dependencies -- a ruff per-file-ignore, a mypy override -- mints a fresh cache
+# on each of the ~20 job combinations and evicts something else to make room.
+# `uv.lock` is what actually decides which wheels are fetched, so it is the
+# honest key; ten distinct keys and 169 caches had accumulated by 2026-09-07.
+#
+# `prune-cache: true` drops what uv can rebuild before saving, because the repo
+# was sitting at ~10.7 GB against GitHub's 10 GB per-repository ceiling -- which
+# means eviction was continuous and a "cached" job was often not.
+#
+# Caching is *already* on: the action's `enable-cache` defaults to `auto`, which
+# covers push and pull_request on hosted runners.  The problem was never that it
+# was off, it was that the key churned.
 
 jobs:
   lint:
@@ -20,6 +52,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          cache-dependency-glob: uv.lock
+          prune-cache: true
       - run: uv sync --group dev
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -50,6 +85,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          cache-dependency-glob: uv.lock
+          prune-cache: true
       - run: uv sync --group dev
       - run: uv run python scripts/check_board_drift.py
 
@@ -70,6 +108,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
+          cache-dependency-glob: uv.lock
+          prune-cache: true
           python-version: ${{ matrix.python-version }}
       - run: uv sync --group dev
       - name: Run tests (no GHDL/NVC)
@@ -93,6 +133,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
+          cache-dependency-glob: uv.lock
+          prune-cache: true
           python-version: "3.12"
       - run: uv sync --group dev
       - name: Cache GHDL mcode install
@@ -139,6 +181,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
+          cache-dependency-glob: uv.lock
+          prune-cache: true
           python-version: "3.12"
       - run: uv sync --group dev
       # NVC floats on purpose -- it is the one simulator here that is not
@@ -191,6 +235,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
+          cache-dependency-glob: uv.lock
+          prune-cache: true
           python-version: "3.12"
       - run: uv sync --group dev
       - name: Install GNAT 13 runtime (ghdl1-llvm needs libgnat-13.so)
@@ -255,6 +301,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
+          cache-dependency-glob: uv.lock
+          prune-cache: true
           python-version: "3.12"
       - run: uv sync --group dev
       - name: Cache GHDL ${{ matrix.backend.name }} install
@@ -296,6 +344,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
+          cache-dependency-glob: uv.lock
+          prune-cache: true
           python-version: "3.12"
       - run: uv sync --group dev
       # NVC is a homebrew-core formula with an Apple-Silicon bottle, so this is
@@ -336,6 +386,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
+          cache-dependency-glob: uv.lock
+          prune-cache: true
           python-version: "3.12"
       - run: uv sync --group dev
       - name: Cache GHDL install

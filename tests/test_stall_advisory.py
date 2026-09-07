@@ -393,6 +393,30 @@ def test_the_divider_generic_is_found_by_name_with_its_name_kept():
     assert find_divider("entity t is port (c : in bit); end entity;", "t") is None
 
 
+def test_a_generic_the_simulator_overrides_loses_to_one_the_reader_controls():
+    """Advice must name the knob the reader can actually turn.
+
+    Every generic-contract design declares COUNTER_BITS whether it divides with
+    it or not, and the simulator overrides that at launch.  A design that
+    divides with a name of its own (hdl/running_light.vhd, DIVIDER_BITS) offers
+    two candidates of the same declared width, and naming the contract's one
+    would send the reader to edit a value the tool has already replaced.
+    """
+    src = (
+        "entity r is generic (COUNTER_BITS : positive := 24;"
+        " DIVIDER_BITS : positive := 24); port (clk : in bit); end entity;"
+    )
+    # No run in progress: nothing is being overridden, so width alone decides
+    # and the tie goes to whichever came first -- the old behavior, unchanged.
+    assert find_divider(src, "r") is not None
+
+    # During a real run the simulator supplies COUNTER_BITS, so the design's
+    # own generic is the only one worth naming.
+    found = find_divider(src, "r", {"COUNTER_BITS": "24"})
+    assert found is not None
+    assert found.name == "divider_bits", "named a generic the simulator already sets"
+
+
 # Throughput measured on one machine with `hdl/mx65_hello_7seg.vhd`, a design
 # documented as static, driven through the real `SimulationScreen` against a
 # real child on each installed backend (2026-09-07).  Kept as a fixture because
