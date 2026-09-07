@@ -25,7 +25,7 @@ clicking while you iterate on a design.
 | `--board BOARD` | Open on this board. Either spelling works — the name on screen (`DE10-Standard`) or the class name (`DE10StandardPlatform`) — and case and punctuation are ignored, so `de10 standard` finds it too. |
 | `--vhdl PATH` | Load this design. Relative paths are resolved against the directory you ran the command from, so your files stay wherever you keep them. |
 | `--pinmap PATH` | Bind the design through this constraint file instead of the one beside it (see [one folder is one project](#bring-your-own-project-one-folder-is-one-project)). |
-| `--generic NAME=VALUE` | Override a generic on the design's top level; repeatable. See [below](#when-the-board-looks-frozen-generic-overrides). |
+| `--generic NAME=VALUE` | Override a generic on the design's top level; repeatable — the same thing [Generics…] does, at launch. See [below](#changing-a-generic-without-leaving-the-simulator). |
 | `--sim NAME` | Use a particular simulator for this run (see [Simulator](#2-preview-the-board)). |
 | `--list-sims` · `--add-sim PATH` | List the simulators found, or register one that is not on `PATH`. |
 | `--benchmark N` | Run headless for N seconds and print a performance report instead of opening the launcher. |
@@ -48,8 +48,11 @@ control appears next to **[Pause]**:
 
 That is all that happens until you click it. Nothing covers the board, no warning
 appears, and if your design is a button that lights an LED and you simply were not
-pressing it, you can ignore the whole thing — touch a control and it withdraws by
-itself.
+pressing it, you can ignore the whole thing entirely. Touching a control does not
+withdraw the offer — poking at the board must not silence the thing that was about
+to explain it — but it does change what the offer says, because once you have used
+a switch "you may just not have pressed anything" is no longer the likeliest
+reading.
 
 **The simulation keeps running while you read it.** The panel is an overlay, not
 a modal — the board stays live behind it, and the step you are waiting for may
@@ -86,10 +89,10 @@ This design may just be slow, not broken
 No LED or digit has changed in 10 s of wall-clock time.
 In that time this machine simulated 819 k clock cycles = 16.4 ms of the board's 50 MHz.
 Your CNTR_LEN = 24 means 16.8 M cycles per step: about 3 min here, 336 ms on the real board.
-To watch it here, restart the simulator with a smaller CNTR_LEN:
-    fpga-sim --generic CNTR_LEN=15
-That steps about every 402 ms instead. Your file is not touched: CNTR_LEN stays 24
-for the real board.
+To watch it here, set CNTR_LEN to about 15:
+    [Stop], then [Generics…] on the preview  —  or relaunch with  --generic CNTR_LEN=15
+That steps about every 400 ms instead. Your file is not touched: CNTR_LEN stays 24 for the
+  real board.
 ```
 
 **The width it suggests is computed from the rate it just measured**, not picked in
@@ -122,13 +125,15 @@ alternative:
 ```text
 Nothing has changed on the board
 No LED or digit has changed in 10 s, and no switch or button has been touched.
-If your design follows the switches or buttons, try one: a design that is waiting
-  for input is right to show nothing.
-If instead it counts, it may just be slow here: in that time this machine simulated
-  819 k clock cycles = 16.4 ms of the board's 50 MHz.
+If your design follows the switches or buttons, try one: a design that is waiting for input
+  is right to show nothing.
+If instead it counts, it may just be slow here: in that time this machine simulated 819 k
+  clock cycles = 16.4 ms of the board's 50 MHz.
 Your CNTR_LEN = 24 means 16.8 M cycles per step: about 3 min here, 336 ms on the real board.
-To watch it here, restart the simulator with a smaller CNTR_LEN:
-    fpga-sim --generic CNTR_LEN=15
+To watch it here, set CNTR_LEN to about 15:
+    [Stop], then [Generics…] on the preview  —  or relaunch with  --generic CNTR_LEN=15
+That steps about every 400 ms instead. Your file is not touched: CNTR_LEN stays 24 for the
+  real board.
 ```
 
 Use a control — even once, even putting it straight back — and the simulator stops
@@ -151,11 +156,50 @@ Three things it deliberately does **not** do:
   at the board while you wonder will not silence the thing that was about to
   explain it. Your inputs are noted only to decide which explanation leads.
 
-**[ Dismiss ]** hides it for this quiet spell. If the design produces output and
-then goes quiet again, it comes back — that second silence is worth a word too.
+The offer goes away by itself after fifteen seconds of the board genuinely
+animating. One blink is not enough — a design that steps once every thirty seconds
+is exactly the case this exists for, so a single step is evidence *for* the
+explanation rather than against it. If the board goes quiet again, the offer comes
+back: that second silence is worth a word too.
 
 Read it together with [generic overrides](#when-the-board-looks-frozen-generic-overrides),
 which is what to do about it.
+
+### Changing a generic without leaving the simulator
+
+Once a design is loaded, the preview shows a **[Generics…]** button beside the
+gear (only when the design actually has something you can change). It lists the
+top level's generics with the values your file declares:
+
+```text
+Generics — running_light.vhd
+─────────────────────────────────────────────
+ NUM_SWITCHES  positive   set by the board
+ NUM_LEDS      positive   set by the board
+ COUNTER_BITS  positive  [ 24 ]
+ CNTR_LEN      positive  [ 15 ]  design says 24
+ INVERTED      boolean   [ false ]
+ PATTERN       std_logi… "1010"
+─────────────────────────────────────────────
+ [ Defaults ]                [ Cancel ]  [ Apply ]
+```
+
+Click a value to type in it, **Tab** moves between fields, **Enter** applies and
+**Esc** leaves the field (or closes the dialog). Values are checked when you apply
+— a `positive` set to 0 is refused there, with the reason, rather than becoming a
+confusing analysis error a minute later. **[Apply]** re-analyzes the design; the
+preview then carries a line naming what is overridden, so an hour later you can
+still see why the board is behaving as it is.
+
+**Your file is never edited.** The values belong to this run and last as long as
+the file is loaded; the design on disk keeps whatever the real board needs. The
+board's own sizing generics (`NUM_LEDS` and friends) are shown but not editable —
+they are the board's to set — and anything whose type we cannot offer safely (a
+vector, an enumeration) is listed read-only rather than hidden, so you can see it
+exists.
+
+`--generic NAME=VALUE` on the command line does the same thing at launch, and is
+still the right tool for a shortcut or a script.
 
 ### When the board looks frozen: generic overrides
 

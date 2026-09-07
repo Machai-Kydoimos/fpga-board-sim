@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import partial
@@ -34,7 +35,7 @@ from typing import Any
 import pygame
 
 from fpga_sim.board_loader import BoardDef, find_board
-from fpga_sim.generics import design_generics, parse_cli_override, resolve
+from fpga_sim.generics import GenericDef, design_generics, parse_cli_override, resolve
 from fpga_sim.paths import HDL_DIR
 from fpga_sim.pinmap import PinMapMatch
 from fpga_sim.session_config import load_session, push_recent, save_session
@@ -63,7 +64,27 @@ from fpga_sim.ui import (
     run_with_spinner,
 )
 from fpga_sim.ui.constants import get_font
+from fpga_sim.ui.generics_dialog import GenericsDialog
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
+
+
+def _generics_note(overrides: dict[str, str]) -> str | None:
+    """One line naming the generics this run is overriding, or ``None``.
+
+    Shown because an override is invisible otherwise: the design on disk still
+    says 24, and a student who set 15 an hour ago should not have to remember
+    that to make sense of what the board is doing.
+    """
+    if not overrides:
+        return None
+    shown = ", ".join(f"{name.upper()}={value}" for name, value in sorted(overrides.items()))
+    return f"Generics overridden for this run: {shown} (your file is unchanged)"
+
+
+def _preview_note(packages: tuple[str, ...], overrides: dict[str, str]) -> str | None:
+    """Join the preview's advisory lines; both are optional and independent."""
+    parts = [n for n in (_synopsys_note(packages), _generics_note(overrides)) if n]
+    return "\n".join(parts) if parts else None
 
 
 def _synopsys_note(packages: tuple[str, ...]) -> str | None:
@@ -325,6 +346,47 @@ class ScreenController:
                 print(f"[fpga-sim] {parsed}", flush=True)
             else:
                 self._cli_generic_pairs[parsed[0]] = parsed[1]
+
+    def _editable_generics(self) -> list[GenericDef]:
+        """List the picked design's generics, or [] when there is nothing to offer."""
+        path = self.state.vhdl_path
+        if not path:
+            return []
+        try:
+            text = Path(path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return []
+        return design_generics(text, Path(path).stem)
+
+    def _make_generics_hook(self, preview: FPGABoard) -> Callable[[], None] | None:
+        """Wire [Generics…] to the preview, or return None to hide the button.
+
+        Hidden rather than disabled when there is nothing to change: a control
+        that cannot do anything is a question the user has to answer before they
+        can ignore it.
+        """
+        defs = self._editable_generics()
+        if not any(g.editable for g in defs):
+            return None
+
+        def _open() -> None:
+            chosen = GenericsDialog(
+                self.screen,
+                Path(self.state.vhdl_path or "").name,
+                defs,
+                self.state.generic_overrides,
+            ).run(self.clock)
+            if chosen is None:
+                return  # canceled: change nothing, not "clear everything"
+            if chosen != self.state.generic_overrides:
+                self.state.generic_overrides = chosen
+                # The wrapper is a function of these, so `wrapper_is_stale`
+                # already notices -- but say it plainly rather than relying on a
+                # check three modules away to re-analyze at the right moment.
+                self.state.clear_analysis()
+            preview.vhdl_note = _preview_note(self.state.synopsys, self.state.generic_overrides)
+
+        return _open
 
     def _apply_cli_generics(self, vhdl_path: str | Path) -> dict[str, str]:
         """Resolve ``--generic`` against the design that was just loaded.
@@ -606,8 +668,9 @@ class ScreenController:
             sim=self.state.sim,
             available_sims=self.available_sims,
             vhdl_path=self.state.vhdl_path,
-            vhdl_note=_synopsys_note(self.state.synopsys),
+            vhdl_note=_preview_note(self.state.synopsys, self.state.generic_overrides),
         )
+        preview.generics_hook = self._make_generics_hook(preview)
         preview.restore_inputs(self.state.inputs)
         result = preview.run()
         self.state.inputs = preview.input_snapshot()
@@ -801,7 +864,10 @@ class ScreenController:
             res = check_vhdl_contract(Path(s.vhdl_path), board_def=board, pinmap=self.cli_pinmap)
             s.convention = res.match
             s.pinmap = res.pinmap
-            s.generic_overrides = self._apply_cli_generics(s.vhdl_path or "")
+            # NOT re-seeded from the CLI: [Generics…] may have set values since
+            # launch, and a reload is "the file changed", not "forget what I
+            # asked for".  A name the edited file no longer declares is dropped
+            # by `resolve` on the next analysis rather than silently passed on.
             s.synopsys = res.synopsys
             if not res.ok:
                 ErrorDialog(self.screen, "VHDL Error", res.message, example_path=example).run(

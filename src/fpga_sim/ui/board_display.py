@@ -348,6 +348,15 @@ class FPGABoard:
         self._settings_btn_rect: pygame.Rect | None = None
         # Set by the gear button; consumed by run() to open the settings overlay.
         self._settings_requested = False
+        #: Opens the [Generics…] editor (U48).  A *hook* rather than a dialog
+        #: opened here, because the values belong to the controller's session
+        #: state and this screen has no business knowing about VHDL generics.
+        #: ``None`` -- the default -- hides the button entirely, which is what a
+        #: board with no design loaded, or a design with nothing editable,
+        #: should show.
+        self.generics_hook: Callable[[], None] | None = None
+        self._generics_btn_rect: pygame.Rect | None = None
+        self._generics_requested = False
         self._layout()
 
     # ── public API ───────────────────────────────────────────────────
@@ -465,6 +474,12 @@ class FPGABoard:
                 self._settings_requested = False
                 self.release_transient_holds()  # same KEYUP-swallowing modal
                 SettingsDialog(self.screen).run(self.clock)
+                self._sync_to_surface()
+            if self._generics_requested:
+                self._generics_requested = False
+                self.release_transient_holds()  # same KEYUP-swallowing modal
+                if self.generics_hook is not None:
+                    self.generics_hook()
                 self._sync_to_surface()
             self._draw()
             self.clock.tick(60)
@@ -807,6 +822,10 @@ class FPGABoard:
                 # Settings (gear) button
                 if self._settings_btn_rect and self._settings_btn_rect.collidepoint(event.pos):
                     self._settings_requested = True
+                elif self._generics_btn_rect is not None and self._generics_btn_rect.collidepoint(
+                    event.pos
+                ):
+                    self._generics_requested = True
                     continue
 
                 # Simulator toggle (cycle to next installed simulator)
@@ -1193,6 +1212,28 @@ class FPGABoard:
             size=max(24, round(30 * s)),
             mouse=mouse_pos,
         )
+        # [Generics…] — only when a loaded design actually has something to
+        # change.  Beside the gear because it is the same kind of thing: a
+        # setting for this run, not an edit to anybody's file.
+        self._generics_btn_rect = None
+        if self.generics_hook is not None:
+            gen_font = get_font(max(9, round(12 * s)))
+            gen_label = "Generics…"
+            gen_w = gen_font.size(gen_label)[0] + round(20 * s)
+            self._generics_btn_rect = pygame.Rect(
+                self._settings_btn_rect.left - gap - gen_w,
+                help_margin,
+                gen_w,
+                self._settings_btn_rect.height,
+            )
+            draw_button(
+                self.screen,
+                self._generics_btn_rect,
+                gen_label,
+                gen_font,
+                THEME.btn_sim_pause,
+                hovered=self._generics_btn_rect.collidepoint(mouse_pos),
+            )
 
         # Shared button height from font metrics; button row pinned to the bottom.
         btn_h = btn_font.get_height() + 14

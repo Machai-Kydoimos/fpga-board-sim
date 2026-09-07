@@ -747,7 +747,7 @@ class SimulationScreen:
         self.screen.blit(text, text.get_rect(midleft=(x + icon_d + icon_gap, rect.centery)))
 
     def _draw_stall_advisory(self) -> None:
-        """Draw the advisory as a dismissible banner across the top of the board."""
+        """Draw the opened advisory panel, low on the board and above the toolbar."""
         sw, sh = self.screen.get_size()
         scale = min(sw / 1024, 1.4)
         font = _get_font(max(10, round(13 * scale)), bold=True)

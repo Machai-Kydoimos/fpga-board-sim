@@ -2,8 +2,9 @@
 
 A design whose visible rate comes from the top bits of a clock divider is
 correct, runs, and shows nothing.  ``CNTR_LEN = 24`` at 50 MHz steps about three
-times a second on the bench; here it steps about once every ninety seconds, and
-on screen that is indistinguishable from a design that does not work.  A student
+times a second on the bench; here it steps once every forty-five seconds to three
+minutes depending on the backend, and on screen that is indistinguishable from a
+design that does not work.  A student
 alone at 11 pm cannot tell those apart, and the tool has never helped.
 
 This module is the judgment and the arithmetic.  It holds no pygame: what it
@@ -348,8 +349,9 @@ def _fix_clauses(facts: StallFacts, divider: Divider) -> list[str]:
         ]
     step = float(2**smaller)
     return [
-        f"To watch it here, restart the simulator with a smaller {divider.name.upper()}:",
-        f"    fpga-sim --generic {divider.name.upper()}={smaller}",
+        f"To watch it here, set {divider.name.upper()} to about {smaller}:",
+        "    [Stop], then [Generics…] on the preview"
+        f"  —  or relaunch with  --generic {divider.name.upper()}={smaller}",
         f"That steps about every {_duration(facts.seconds_here(step))} instead."
         f" Your file is not touched: {divider.name.upper()} stays {divider.bits}"
         " for the real board.",
@@ -421,8 +423,8 @@ def stall_message(
         )
         lines.append(
             "Put the divider's width in a generic -- say"
-            " `CNTR_LEN : positive := 24` -- and you can lower it here with"
-            " `--generic CNTR_LEN=14` without changing the value your board uses."
+            " `CNTR_LEN : positive := 24` -- and [Generics…] on the preview can"
+            " lower it for the simulator without changing what your board uses."
         )
     return lines
 
