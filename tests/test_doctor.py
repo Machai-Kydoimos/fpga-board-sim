@@ -44,8 +44,12 @@ NVC = SimulatorInfo("nvc", "/usr/bin/nvc", "nvc", "NVC", "nvc 1.23-devel")
 
 
 def _pyproject() -> dict[str, Any]:
+    # The annotated local is load-bearing: on 3.11+ the stdlib `tomllib.load`
+    # is typed `Any`, so returning it directly trips mypy's `no-any-return`
+    # there and nowhere else -- matching tests/test_encoding_guard.py.
     with (PROJECT / "pyproject.toml").open("rb") as fh:
-        return tomllib.load(fh)
+        data: dict[str, Any] = tomllib.load(fh)
+    return data
 
 
 # ── The declared Python range, and the fix-its, agree with the repo ───────────
