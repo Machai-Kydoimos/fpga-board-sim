@@ -60,7 +60,7 @@ architecture rtl of sim_wrapper is
       NUM_SWITCHES => NUM_SWITCHES,
       NUM_BUTTONS  => NUM_BUTTONS,
       NUM_LEDS     => NUM_LEDS,
-{seg_generic_map}{rgb_generic_map}      COUNTER_BITS => COUNTER_BITS
+{seg_generic_map}{rgb_generic_map}{extra_generic_map}      COUNTER_BITS => {counter_bits_actual}
     )
     port map (
       clk => clk,

@@ -24,6 +24,8 @@ clicking while you iterate on a design.
 |---|---|
 | `--board BOARD` | Open on this board. Either spelling works — the name on screen (`DE10-Standard`) or the class name (`DE10StandardPlatform`) — and case and punctuation are ignored, so `de10 standard` finds it too. |
 | `--vhdl PATH` | Load this design. Relative paths are resolved against the directory you ran the command from, so your files stay wherever you keep them. |
+| `--pinmap PATH` | Bind the design through this constraint file instead of the one beside it (see [one folder is one project](#bring-your-own-project-one-folder-is-one-project)). |
+| `--generic NAME=VALUE` | Override a generic on the design's top level; repeatable. See [below](#when-the-board-looks-frozen-generic-overrides). |
 | `--sim NAME` | Use a particular simulator for this run (see [Simulator](#2-preview-the-board)). |
 | `--list-sims` · `--add-sim PATH` | List the simulators found, or register one that is not on `PATH`. |
 | `--benchmark N` | Run headless for N seconds and print a performance report instead of opening the launcher. |
@@ -33,6 +35,39 @@ is missing or fails validation opens the preview with nothing loaded — with th
 both on the terminal and in a dialog, since a shortcut may have no terminal attached.
 `--vhdl` on its own (no `--board`) simply preloads the path: the design cannot be
 checked until there is a board to check it against.
+
+### When the board looks frozen: generic overrides
+
+A design that gets its visible rate from the top bits of a clock divider is fine on
+hardware and looks dead here. `CNTR_LEN = 24` at 50 MHz steps about three times a
+second on the bench; in simulation the same design steps about once every minute and
+a half, and there is nothing on screen to tell you that from a design that does not
+work.
+
+Turn the divider down for the simulator without touching the file:
+
+```bash
+fpga-sim --board DE10-Standard --vhdl lab2/running_light.vhd --generic CNTR_LEN=4
+```
+
+Repeat the flag for more than one. Values are checked before anything runs, and a
+name your design does not declare is reported with the list of names it does — a
+typo should not look like the flag being ignored.
+
+**Nothing is ever overridden for you.** Your file's own defaults run unless you ask,
+because the point of this tool is that it agrees with your hardware. The override is
+per-run and changes nothing on disk.
+
+What you can change: whole-number generics (`integer`, `positive`, `natural`),
+`boolean` ones (`true` / `false`), and single-bit ones (`'0'` / `'1'`). Anything else
+— a vector, an enumeration — has to be changed in the file, where the syntax is
+unambiguous. `NUM_LEDS`, `NUM_SWITCHES` and the rest of the sizing generics are the
+board's to set and are not yours to override.
+
+`COUNTER_BITS` **is** overridable, and worth knowing about: the simulator already
+lowers it (to 17, not your file's 24) so that a contract design blinks visibly, and
+until now it did that silently. `--generic COUNTER_BITS=20` replaces that with your
+own number.
 
 ## Launcher screens
 

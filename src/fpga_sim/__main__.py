@@ -81,16 +81,16 @@ def _parse_args() -> argparse.Namespace:
         "--pinmap",
         metavar="PATH",
         default=None,
-        help="Constraint file (.qsf/.xdc/...) mapping the design's ports to board pins "
-        "[reserved: not yet consumed]",
+        help="Constraint file (.qsf/.xdc/...) mapping the design's ports to board pins; "
+        "by default the one beside the design is used",
     )
     p.add_argument(
         "--generic",
         metavar="NAME=VALUE",
         action="append",
         default=None,
-        help="Override a generic on the design's top level; repeatable "
-        "[reserved: not yet consumed]",
+        help="Override a generic on the design's top level, e.g. --generic CNTR_LEN=4; "
+        "repeatable. The design's own defaults run unless you ask otherwise",
     )
     p.add_argument(
         "--no-ui",

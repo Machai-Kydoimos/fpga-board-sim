@@ -71,6 +71,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     analysis, while a *component* declaration with default binding analyzes
     perfectly well alone and only fails to bind at elaboration.
 
+- **`--generic NAME=VALUE` overrides a generic on your design's top level**
+  (U48, decision D-9). A design that gets its visible rate from the top bits of
+  a clock divider is fine on hardware and looks dead here: `CNTR_LEN = 24` at
+  50 MHz steps three times a second on the bench and about once every ninety
+  seconds in simulation, which on screen is indistinguishable from a design that
+  does not work. Repeatable; values are checked before anything runs, and a name
+  the design does not declare is reported together with the names it does.
+  - **Never automatic.** Your file's own defaults run unless you ask for
+    something else — silently rewriting somebody's constant would make the
+    simulator disagree with their hardware without saying so, and agreeing with
+    the hardware is the whole point.
+  - Editable kinds are whole numbers, `boolean`, and single-bit literals.
+    Anything else is *listed* but not editable rather than hidden: "you cannot
+    change this here" is information, and a blank space is not. The board-sized
+    generics (`NUM_LEDS` and friends) stay the board's.
+  - **`COUNTER_BITS` is overridable, and that dispels a mystery**: the simulator
+    already lowers it (to 17, not your file's 24) so a contract design blinks
+    visibly, and until now it did that silently.
+  - Works on all three wrapper kinds — generic-contract, board-native (U21) and
+    pin-map (U53). The value is written into the generated wrapper as a literal
+    rather than passed as `-g` at run time, which means it behaves identically on
+    GHDL and NVC, a changed override re-analyzes for free (`wrapper_is_stale`
+    compares the rendered wrapper), and a bad value fails at *analysis*, while
+    you are still looking at the thing you typed.
+  - The `--pinmap` and `--generic` flags both stop saying "reserved: not yet
+    consumed" in `--help`.
+
 - **A design can now run through its own constraint file** (U53) — the pin map.
   Board-native mode recognizes a design by its port *names*, which covers
   designs written to a vendor's published naming and nothing else. Real course
