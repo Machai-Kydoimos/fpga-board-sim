@@ -27,8 +27,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     with `uv run pytest` — which the docs stopped prescribing when `--doctor`
     arrived. It now ends at `uv run fpga-sim --doctor`, needs no dev group, and
     therefore rehearses the install a reader actually gets.
-- **Python 3.11 is in the CI matrix.** The supported range is 3.10–3.13 and the
-  matrix tested 3.10, 3.12 and 3.13 — a version we advertise and never ran.
+- **Python 3.14 is supported, and the CI matrix now runs every version in the
+  range.** `requires-python` becomes `>=3.10,<3.15`; the matrix gains **3.11**
+  (a version we advertised and never ran) and **3.14**. The bound is still
+  cocotb's — it ships `cp314` wheels as of 2.1.0 and has no `cp315` yet — and it
+  stays load-bearing: without it `uv sync` picks the newest interpreter on the
+  machine and dies in a setuptools traceback.
+- **cocotb 2.0 *and* 2.1 both work** (roadmap P4, closed). 2.1 stopped loading
+  the Python bridge implicitly: its GPI reads `GPI_USERS`, a `;`-separated load
+  list, and without it every simulation exits with "No GPI_USERS specified".
+  `sim_runner` now sets it — **libpython first**, because `simulator.<abi>.so`
+  links Python's symbols and cannot resolve them (`undefined symbol:
+  PyExc_SystemExit`) unless libpython is already global. cocotb 2.0's GPI does
+  not know the variable at all, so one code path serves both and the project
+  keeps working across the version boundary rather than pinning across it.
+  - `sim/test_blinky.py` stopped wrapping `Clock(...).start()` in
+    `cocotb.start_soon`. That was always redundant — cocotb documents the return
+    as "an object which can be passed to `cocotb.start_soon` **or ignored**",
+    and `start()` already drives the signal — and cocotb 2.1's stubs type
+    `start_soon` as taking an `Awaitable[Never]`, which its own `Task[None]`
+    does not satisfy. Removing the call is the fix; suppressing the type error
+    would have kept the redundancy.
+  - **The runtime install grows from 4 packages to 9**: cocotb 2.1 adds
+    `pytest>=6` as a *runtime* dependency (2.0.1 needed only `find_libpython`),
+    which brings pluggy, iniconfig, pygments and packaging with it. All are
+    pure-Python wheels on every platform, so nothing about the install gets
+    more fragile — but it does mean the previous entry's "three packages" is
+    now nine.
 - **Dependency refresh:** pytest-randomly 4.1.0 → 5.0.0, ruff 0.16.5 → 0.16.6,
   rumdl 0.2.62 → 0.2.67, plus transitives. cocotb is deliberately held at 2.0.1:
   2.1.0 changes the GPI loading contract (it requires a new `GPI_USERS`

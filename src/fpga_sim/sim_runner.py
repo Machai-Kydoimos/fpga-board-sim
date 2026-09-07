@@ -126,6 +126,22 @@ def _libpython_via_config(venv_scripts: Path) -> str:
     return ""
 
 
+def _pygpi_entry_point(venv_site: Path) -> str:
+    """Return cocotb's PyGPI entry point as ``<path to simulator ext>,initialize``.
+
+    The same string ``cocotb-config --pygpi-entry-point`` prints, found on disk
+    rather than by running it: that flag exists only in cocotb 2.1, the value is
+    wanted for every simulation launch, and this avoids a subprocess on that
+    path.  Returns ``""`` when the extension is missing, which leaves
+    ``GPI_USERS`` unset and the diagnosis to the checks in
+    :mod:`fpga_sim.doctor`.
+    """
+    pattern = "simulator*.pyd" if IS_WINDOWS else "simulator*.so"
+    for path in sorted((venv_site / "cocotb").glob(pattern)):
+        return f"{path},initialize"
+    return ""
+
+
 def _build_sim_env(
     simulator: Simulator = "ghdl",
     venv_dir: str | Path | None = None,
@@ -185,6 +201,19 @@ def _build_sim_env(
     else:
         libpython = _libpython_name(base_python)
     env["PYGPI_PYTHON_LIB"] = libpython
+    # cocotb 2.1 stopped loading the Python bridge implicitly: its GPI reads
+    # ``GPI_USERS``, a ``;``-separated load list, and exits with
+    # "No GPI_USERS specified" without it.  **libpython must come first** --
+    # ``simulator.<abi>.so`` links Python's symbols and cannot resolve them
+    # (``undefined symbol: PyExc_SystemExit``) unless libpython is already in
+    # the global namespace, which is what listing it first achieves.  cocotb
+    # 2.0's GPI does not know the variable at all -- the string is absent from
+    # its ``libgpi.so`` -- so setting it unconditionally serves both, and this
+    # project keeps working across the version boundary rather than pinning
+    # across it.  Mirrors ``cocotb_tools.runner._set_env_common``.
+    entry = _pygpi_entry_point(venv_site)
+    if entry:
+        env["GPI_USERS"] = f"{libpython};{entry}"
     env["TOPLEVEL_LANG"] = "vhdl"
 
     return env, plugin_lib

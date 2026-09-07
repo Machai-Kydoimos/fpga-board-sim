@@ -177,7 +177,7 @@ def test_python_check_fails_below_the_floor(monkeypatch):
 
 
 def test_python_check_fails_above_the_ceiling(monkeypatch):
-    monkeypatch.setattr(sys, "version_info", (3, 14, 0, "final", 0))
+    monkeypatch.setattr(sys, "version_info", (3, 15, 0, "final", 0))
     assert doctor.check_python().status == "fail"
 
 

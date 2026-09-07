@@ -8,8 +8,8 @@
 [![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 
-*CI matrix: Ubuntu + Windows + macOS (Apple Silicon) + Linux arm64 × Python 3.10 / 3.12 /
-3.13, plus simulator jobs — GHDL 6.0 (mcode, LLVM, and LLVM-JIT backends) and NVC on
+*CI matrix: Ubuntu + Windows + macOS (Apple Silicon) + Linux arm64 × Python 3.10 / 3.11 /
+3.12 / 3.13 / 3.14, plus simulator jobs — GHDL 6.0 (mcode, LLVM, and LLVM-JIT backends) and NVC on
 Linux, GHDL 6.0 on Windows, GHDL 6.0 (LLVM + LLVM-JIT; no mcode on Apple Silicon) and
 NVC on macOS — and a board-data drift check.*
 

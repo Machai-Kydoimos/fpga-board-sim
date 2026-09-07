@@ -59,9 +59,9 @@ if TYPE_CHECKING:
 #: on an interpreter too old to have ``tomllib``, and reading the project's own
 #: metadata says nothing when the project was never installed.
 #: ``tests/test_doctor.py`` fails if this drifts from ``requires-python``.
-REQUIRES_PYTHON = ">=3.10,<3.14"
+REQUIRES_PYTHON = ">=3.10,<3.15"
 _PYTHON_MIN = (3, 10)
-_PYTHON_MAX_EXCLUSIVE = (3, 14)
+_PYTHON_MAX_EXCLUSIVE = (3, 15)
 
 #: The design and board the end-to-end check uses.  Both are bundled, so the
 #: check measures the toolchain rather than anything the user wrote; the board

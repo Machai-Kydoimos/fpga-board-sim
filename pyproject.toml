@@ -2,14 +2,16 @@
 name = "fpga-simulator"
 version = "0.22.0"
 description = "Interactive FPGA board simulator with GHDL-backed VHDL simulation"
-# Upper bound is cocotb's, not ours: cocotb 2.0.1 refuses to build on 3.14
-# ("only supports a maximum Python version of 3.13").  Without the bound, uv
-# picks the newest interpreter it can find and `uv sync` -- the one command the
-# install docs tell a reader to run -- dies inside a setuptools traceback.  Found
-# by the install-docs workflow on a runner whose default python3 is 3.14; the CI
-# test matrix could not have found it, because every job there pins its own
-# python-version.  Lift this when cocotb supports 3.14 (roadmap P4).
-requires-python = ">=3.10,<3.14"
+# Upper bound is still cocotb's, and it moved: cocotb 2.1.0 ships cp314 wheels,
+# so 3.14 is in (roadmap P4, closed).  3.15 stays out because cocotb has no
+# cp315 wheel yet -- pygame-ce already does.  The bound is load-bearing, not
+# decorative: without it uv picks the newest interpreter it can find and
+# `uv sync` -- the one command the install docs tell a reader to run -- dies in
+# a setuptools traceback.  Found by the install-docs workflow on a runner whose
+# default python3 was 3.14; the CI test matrix could not have found it, because
+# every job there pins its own python-version.  Re-check PyPI wheel *tags*, not
+# release dates, before moving it again.
+requires-python = ">=3.10,<3.15"
 license = {text = "MIT"}
 authors = [
     {name = "Richard Graham", email = "rickhg12hs@users.noreply.github.com"},
@@ -25,7 +27,7 @@ classifiers = [
 ]
 dependencies = [
     "pygame-ce>=2.5.8",
-    "cocotb>=2.0",
+    "cocotb>=2.1",
     "find_libpython",
 ]
 
