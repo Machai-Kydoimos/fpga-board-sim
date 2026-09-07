@@ -25,7 +25,7 @@ clicking while you iterate on a design.
 | `--board BOARD` | Open on this board. Either spelling works — the name on screen (`DE10-Standard`) or the class name (`DE10StandardPlatform`) — and case and punctuation are ignored, so `de10 standard` finds it too. |
 | `--vhdl PATH` | Load this design. Relative paths are resolved against the directory you ran the command from, so your files stay wherever you keep them. |
 | `--pinmap PATH` | Bind the design through this constraint file instead of the one beside it (see [one folder is one project](#bring-your-own-project-one-folder-is-one-project)). |
-| `--generic NAME=VALUE` | Override a generic on the design's top level; repeatable. See [below](#when-the-board-looks-frozen-generic-overrides). |
+| `--generic NAME=VALUE` | Override a generic on the design's top level; repeatable — the same thing [Generics…] does, at launch. See [below](#changing-a-generic-without-leaving-the-simulator). |
 | `--sim NAME` | Use a particular simulator for this run (see [Simulator](#2-preview-the-board)). |
 | `--list-sims` · `--add-sim PATH` | List the simulators found, or register one that is not on `PATH`. |
 | `--benchmark N` | Run headless for N seconds and print a performance report instead of opening the launcher. |
@@ -156,6 +156,42 @@ then goes quiet again, it comes back — that second silence is worth a word too
 
 Read it together with [generic overrides](#when-the-board-looks-frozen-generic-overrides),
 which is what to do about it.
+
+### Changing a generic without leaving the simulator
+
+Once a design is loaded, the preview shows a **[Generics…]** button beside the
+gear (only when the design actually has something you can change). It lists the
+top level's generics with the values your file declares:
+
+```text
+Generics — running_light.vhd
+─────────────────────────────────────────────
+ NUM_SWITCHES  positive   set by the board
+ NUM_LEDS      positive   set by the board
+ COUNTER_BITS  positive  [ 24 ]
+ CNTR_LEN      positive  [ 15 ]  design says 24
+ INVERTED      boolean   [ false ]
+ PATTERN       std_logi… "1010"
+─────────────────────────────────────────────
+ [ Defaults ]                [ Cancel ]  [ Apply ]
+```
+
+Click a value to type in it, **Tab** moves between fields, **Enter** applies and
+**Esc** leaves the field (or closes the dialog). Values are checked when you apply
+— a `positive` set to 0 is refused there, with the reason, rather than becoming a
+confusing analysis error a minute later. **[Apply]** re-analyzes the design; the
+preview then carries a line naming what is overridden, so an hour later you can
+still see why the board is behaving as it is.
+
+**Your file is never edited.** The values belong to this run and last as long as
+the file is loaded; the design on disk keeps whatever the real board needs. The
+board's own sizing generics (`NUM_LEDS` and friends) are shown but not editable —
+they are the board's to set — and anything whose type we cannot offer safely (a
+vector, an enumeration) is listed read-only rather than hidden, so you can see it
+exists.
+
+`--generic NAME=VALUE` on the command line does the same thing at launch, and is
+still the right tool for a shortcut or a script.
 
 ### When the board looks frozen: generic overrides
 

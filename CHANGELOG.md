@@ -158,8 +158,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     analysis, while a *component* declaration with default binding analyzes
     perfectly well alone and only fails to bind at elaboration.
 
-- **`--generic NAME=VALUE` overrides a generic on your design's top level**
-  (U48, decision D-9). A design that gets its visible rate from the top bits of
+- **A [Generics…] editor on the preview, and `--generic NAME=VALUE` on the
+  command line**, both overriding a generic on your design's top level
+  (U48, decision D-9). The dialog lists the top level's generics with the values
+  your file declares, checks what you type when you apply it — a `positive` set
+  to 0 is refused there, with the reason, rather than becoming a confusing
+  analysis error a minute later — and re-analyzes on [Apply]. The preview then
+  carries a line naming what is overridden, because an override is otherwise
+  invisible: the design on disk still says 24. A design that gets its visible rate from the top bits of
   a clock divider is fine on hardware and looks dead here: `CNTR_LEN = 24` at
   50 MHz steps three times a second on the bench and about once every ninety
   seconds in simulation, which on screen is indistinguishable from a design that

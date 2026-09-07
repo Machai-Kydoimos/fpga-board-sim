@@ -1247,7 +1247,8 @@ def test_a_declared_divider_turns_the_advice_into_a_number(
     assert "16.8 M cycles per step" in text
     assert "on the real board" in text
     # ...and, crucially, the command to type
-    assert "fpga-sim --generic COUNTER_BITS=" in text
+    assert "--generic COUNTER_BITS=" in text
+    assert "[Generics…] on the preview" in text
 
 
 # ── e2e against a real simulator (slow) ───────────────────────────────────────

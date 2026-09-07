@@ -328,7 +328,8 @@ def test_it_prints_the_command_to_type(facts):
     """ "Lower it for the simulator" is a diagnosis, not an instruction."""
     lines = stall_message(facts, Divider("cntr_len", 24))
     text = " ".join(lines)
-    assert "fpga-sim --generic CNTR_LEN=" in text
+    assert "[Generics…] on the preview" in text
+    assert "--generic CNTR_LEN=" in text
     assert "Your file is not touched" in text
     assert "CNTR_LEN stays 24 for the real board" in text
 
@@ -362,7 +363,7 @@ def test_without_a_divider_it_says_how_to_make_one(facts):
     """The design hard-codes its width, so the fix is to expose it."""
     text = " ".join(stall_message(facts))
     assert "Put the divider's width in a generic" in text
-    assert "--generic CNTR_LEN=" in text
+    assert "[Generics…] on the preview" in text
 
 
 def test_the_divider_generic_is_found_by_name_with_its_name_kept():

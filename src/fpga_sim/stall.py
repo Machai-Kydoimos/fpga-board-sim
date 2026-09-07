@@ -348,8 +348,9 @@ def _fix_clauses(facts: StallFacts, divider: Divider) -> list[str]:
         ]
     step = float(2**smaller)
     return [
-        f"To watch it here, restart the simulator with a smaller {divider.name.upper()}:",
-        f"    fpga-sim --generic {divider.name.upper()}={smaller}",
+        f"To watch it here, set {divider.name.upper()} to about {smaller}:",
+        "    [Stop], then [Generics…] on the preview"
+        f"  —  or relaunch with  --generic {divider.name.upper()}={smaller}",
         f"That steps about every {_duration(facts.seconds_here(step))} instead."
         f" Your file is not touched: {divider.name.upper()} stays {divider.bits}"
         " for the real board.",
@@ -421,8 +422,8 @@ def stall_message(
         )
         lines.append(
             "Put the divider's width in a generic -- say"
-            " `CNTR_LEN : positive := 24` -- and you can lower it here with"
-            " `--generic CNTR_LEN=14` without changing the value your board uses."
+            " `CNTR_LEN : positive := 24` -- and [Generics…] on the preview can"
+            " lower it for the simulator without changing what your board uses."
         )
     return lines
 
