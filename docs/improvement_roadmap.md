@@ -340,7 +340,7 @@ This document inventories all viable improvements and ranks them by impact.
   default board list is alphabetical, `terasic` filters, Enter selects on a fresh profile; and
   `DE1-SoC` / `ULX3S-45F` read correctly.
 
-#### U50. Student-error diagnostics — Synopsys packages, hint coverage, caret preservation, `--doctor`
+#### U50. Student-error diagnostics — Synopsys packages, hint coverage, caret preservation, `--doctor` ✅
 
 - **Why:** when a take-home student's file fails there is no TA in the room, so the message *is* the
   teaching. Today:
@@ -395,14 +395,24 @@ This document inventories all viable improvements and ranks them by impact.
   `bad_semantic_blinky.vhdl` produces a `numeric_std` hint on **both** backends; a caret-bearing
   diagnostic renders aligned; `uv run fpga-sim --doctor` prints a pass/fail matrix with a fix-it per
   failure on all three OSes, and both docs point at it instead of the test suite.
-- **Shipped so far:** `-fsynopsys` + the one-line note (PR 3, #405); the hint families, the caret and
-  copy-to-clipboard (PR 9). **`--doctor` is what remains** (PR 10, un-gated by D-19). Two departures
-  found while building PR 9, both from soaking rather than reading: a **port-less entity** is
-  reported as a testbench rather than as a design missing `clk`/`sw`/`btn`/`led` (§4.1 G4 predicted
+- **Shipped:** `-fsynopsys` + the one-line note (PR 3, #405); the hint families, the caret and
+  copy-to-clipboard (PR 9, #420); `--doctor` (PR 10). The `docs/troubleshooting.md` entries that
+  mirror the hint catalog are written by **PR 12**, the arc's documentation PR. Two departures found
+  while building PR 9, both from soaking rather than reading: a **port-less entity** is reported as
+  a testbench rather than as a design missing `clk`/`sw`/`btn`/`led` (§4.1 G4 predicted
   `ports = []`; the parser actually returns `None`, because there is no port clause to parse), and a
   **reserved word used as an identifier** gets its own hint — `units` is the one the corpus hit —
   which *suppresses* the syntax hint, because "check the previous line" is wrong advice for
   `signal units : integer` and GHDL emits a missing-`;` cascade behind it.
+- **`--doctor` grew two checks the card did not list**, both for failures discovery cannot see.
+  (1) The **cocotb VPI/VHPI plugin and the Python shared library** the simulator child is handed
+  are checked to exist, through `sim_runner._build_sim_env` itself — that half of the pipeline an
+  `analyze` never touches, and it is the Windows DLL failure in `docs/install.md`. (2) The
+  end-to-end analyze runs on **every discovered install**, not only the default: answering
+  `--version` and being able to compile are different facts, and a bundled design costs 0.02–0.26 s
+  per backend, so there is nothing to save by asking only one. The module also imports no pygame
+  and runs as `python -m fpga_sim.doctor`, because the pygame/pygame-ce collision it reports is
+  exactly the state in which `fpga-sim` cannot start.
 
 #### U53. Project pin map — run a design through its own constraint file
 
@@ -1288,7 +1298,8 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 
 ## Critical files modified across the roadmap
 
-- `src/fpga_sim/__main__.py` — U2 ✅, U5 ✅ (window-size restore), U21 ✅ (`res.match` → analyze/launch), U16, D6a ✅, D6b ✅ (now a thin driver), D9 ✅, U35 ✅ (`--sim` slugs + `--list-sims` + `--add-sim`), U49 (`--board` / `--vhdl` seed the *interactive* launcher; `--pinmap` / `--generic` reserved), U50 (`--doctor`)
+- `src/fpga_sim/doctor.py` — U50 ✅ (`--doctor`: the checks, the per-OS fix-its, the report; imports no pygame, so it also runs as `python -m fpga_sim.doctor` when pygame is the thing that is broken)
+- `src/fpga_sim/__main__.py` — U2 ✅, U5 ✅ (window-size restore), U21 ✅ (`res.match` → analyze/launch), U16, D6a ✅, D6b ✅ (now a thin driver), D9 ✅, U35 ✅ (`--sim` slugs + `--list-sims` + `--add-sim`), U49 (`--board` / `--vhdl` seed the *interactive* launcher; `--pinmap` / `--generic` reserved), U50 ✅ (`--doctor` — the checks themselves live in `doctor.py`)
 - `src/fpga_sim/controller.py` — D6b ✅ (new: `ScreenController` + `SessionState`), U4 ✅ (`example_vhdl_for` wiring), U5 ✅ (save-on-pick/change/quit + speed plumbing), U7 ✅ (`on_simulate` acts on the returned `SimExit`; reload/back/change routing), U21 ✅ (`SessionState.convention` + `ConventionMatch` threading), U35 ✅ (persist simulator engine + path), U49 (seeded start + the retry start-dir, moved here from U18), U48 ✅ (`SessionState.generic_overrides` + the [Generics…] hook the preview calls), U53 (`ContractResult.match` gains `PinMapMatch`)
 - `src/fpga_sim/sim_bridge.py` — U4 ✅ (parsed contract checks + `add_error_hints`), U5 ✅ (`speed_factor` → `FPGA_SIM_SPEED`), U7 ✅ (`SimExit` enum + exit-intent sidecar; `launch_simulation()` returns it), U10 ✅, U21 ✅ (convention matcher + native `_render_native_wrapper`; native `.gtkw` preselection), D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`), D16 (wrap the run subprocess), U34 ✅ (`SimChild` + `start_simulation` + `finish_waveform`; `launch_simulation` and the exit-intent file removed — `SimExit` now lives in `ui/results.py`), U35 ✅ (simulator discovery/identity + stage-3 runtime-elab probe), **D17 (split into seven flat siblings + a re-export shim — every row below that names this file moves with it)**, U50 ✅ (`-fsynopsys` + hint coverage — both now in `sim_backends.py` / `vhdl_contract.py`), U53 (pin-map matcher + `_render_pinmap_wrapper`), U48 (generic pass-through on all three wrapper kinds)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅, U21 ✅ (B1: `BoardDef.port_conventions` + serialization), U49 (display-name override table + guard test), U53 (`SevenSegDef` gains segment pins)
@@ -1296,7 +1307,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/ui/constants.py` — D15 ✅ (base neutrals), U17 (and the `get_font` / `render_text` LRU caches)
 - `src/fpga_sim/ui/theme.py` — D15 ✅ (new: `Theme` dataclass + `THEME`), U2 ✅ (`spinner_arc` / `spinner_track` roles), U5 ✅ (`THEME_NAMES` / `THEME_LABELS` + settings button styles), U6 ✅ (`dark` / `high-contrast` instances + `set_theme` / `current_theme_name`), U27 (dynamic registry + JSON loader), U46 (glass / socket / glow roles)
 - `src/fpga_sim/ui/components.py` — U3 ✅, U9/U36–U38 ✅ (`LED.level` brightness, colored banks, `RGBLED` puck, debug duty bars), D3 ✅, D15, U46 (a Nixie sibling renderer beside `SevenSeg`)
-- `src/fpga_sim/ui/board_display.py` — U1 ✅, U3 ✅, U5 ✅ (gear trigger), U11, U16, D3 ✅, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15, U35 ✅ (`[SIM:…]` cycles labeled backend variants), U46 (digit geometry for the taller tube), U48 ✅ (`output_signature()`, the output-only companion to `visual_signature()`), U50 (the Synopsys note slot), U53 (the pin-map badge)
+- `src/fpga_sim/ui/board_display.py` — U1 ✅, U3 ✅, U5 ✅ (gear trigger), U11, U16, D3 ✅, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15, U35 ✅ (`[SIM:…]` cycles labeled backend variants), U46 (digit geometry for the taller tube), U48 ✅ (`output_signature()`, the output-only companion to `visual_signature()`), U50 ✅ (the Synopsys note slot), U53 (the pin-map badge)
 - `src/fpga_sim/ui/board_selector.py` — U0, U1 ✅, U8, U12, U13 ✅, D15, U49 (`"name"` sort branch, vendor in the filter, `hovered = 0`; scroll helpers extracted)
 - `src/fpga_sim/ui/sim_panel.py` — U5 ✅ (`speed_factor` ctor param; public `SPEED_DEFAULT`), U21 ✅ (native-convention INFO note), U34 ✅ (`set_remote` remote stats feed; child `sim_pct` G zone), U14, U15, U19, D4 ✅, D15 — U48's advisory did **not** land here: it lives in `simulation_screen.py` over `stall.py`, and reads the panel only for `current_clock_hz` / `speed_factor`
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15, U49 (`bad_*` fixtures gone, preselection, retry start-dir, `DROPFILE`, help button), U51 (what a folder pick reports)

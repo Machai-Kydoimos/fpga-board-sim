@@ -61,6 +61,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`fpga-sim --doctor` answers "is this machine ready?"** (U50) — and, for
+  whatever is not, prints the command to fix it *on this operating system*. Nine
+  rows, no display needed, non-zero exit when something is broken: the Python,
+  `uv`, pygame-ce and cocotb versions; every simulator found (label, backend,
+  version, path) and which one a run uses when you do not say; how many board
+  definitions loaded, from how many sources; whether `~/.fpga_simulator/` is
+  writable; whether cocotb's VPI/VHPI plugin and the Python shared library the
+  simulator child is handed both exist — and, last, `hdl/blinky.vhd` compiled
+  and elaborated on **each** simulator found.
+  - **It replaces "run the test suite" as the documented install check** in the
+    README and `docs/install.md`. 2,800 tests, most of them about board JSON,
+    were never an answer to *why will the window not open* — and they take
+    minutes to say something a student cannot act on. The doctor takes under a
+    second and every failure comes with a command.
+  - **The last row is the one worth having.** A simulator can answer
+    `--version` and still be unable to compile anything: a broken GHDL install,
+    a PATH that finds the binary but not its libraries, a Windows DLL that is
+    not where the child looks. Discovery cannot see that; a real analyze can, so
+    every discovered install gets one rather than only the default.
+  - **It runs the product's own code**, not a description of it — the same
+    discovery the launcher uses, the same environment builder the simulator
+    child is launched with, the same contract check and wrapper generation a
+    user's file goes through. A health check that re-derives what the product
+    does can agree with itself while the product fails.
+  - **It survives the environment it diagnoses.** The pygame/pygame-ce pip
+    collision it reports is exactly the state in which `import pygame` raises —
+    and `fpga-sim` imports pygame before argparse ever sees the flag. So nothing
+    in the module imports pygame at module scope, cocotb is read through its
+    distribution metadata rather than imported, and
+    `python -m fpga_sim.doctor` is a supported entry point.
+  - **Every install command it prints is one `docs/install.md` documents** and
+    the install-docs workflow runs verbatim on all three operating systems; a
+    test asserts the two agree. The report is ASCII, because it is printed to
+    Windows consoles where a stray dash is a `UnicodeEncodeError` in place of
+    the diagnostic.
+
 - **A compiler error now says what to do about it, for six more failures** (U50).
   The analyzer's own text is still shown unedited — that is the wording a search
   engine and the person next to you both recognize — with a `Hint:` under it:

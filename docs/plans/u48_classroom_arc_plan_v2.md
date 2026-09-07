@@ -8,8 +8,9 @@ PRs 1–6c ✅ merged 2026-09-06 — U50 Synopsys acceptance, U49 first-run and 
 D17 split + `paths.py`, and **U53, the pin map, working end to end**; then the folder contract
 (D-16) ✅, the DE2-115/VEEK-MT2 display pins (D-17) ✅, `install-docs.yml` (D-19) ✅ — which found
 `brew install ghdl` broken since 2026-09-01 and `uv sync` broken on Python 3.14 — and **U51** ✅
-(D-5 reversed). **PR 7 + PR 8 (U48) open for visual review. Next: PR 9** (hints/caret) ·
-**PR 10** (`--doctor`, un-gated by D-19) · PR 11 · PR 12 · PR 13 · PR 14 · Supersedes
+(D-5 reversed); **PR 7 + PR 8** (U48 advisory + [Generics…]) ✅, **PR 9** ✅ (hints/caret, #420) and
+**PR 10** ✅ (`--doctor`, un-gated by D-19) — which closes **U50**. **Next: PR 11** (examples) ·
+PR 12 · PR 13 · PR 14 · Supersedes
 [u48_classroom_arc_plan.md](u48_classroom_arc_plan.md) (v1, kept as the record of how the arc was
 first framed) · Companion to [improvement_roadmap.md](../improvement_roadmap.md)*
 
@@ -1021,13 +1022,32 @@ Arc-level, end to end:
 - **7-segment pins for non-target boards:** stop at the target boards, or let the re-sync populate
   every board the parsers can see (more diff, same risk class)?
 - **tkinter availability** on uv-managed Python and the lab image, for the OS file dialog option.
-- **Whether `--doctor` should attempt the analyze step on every discovered simulator** or only the
-  default one.
+- ~~**Whether `--doctor` should attempt the analyze step on every discovered simulator** or only
+  the default one.~~ **Resolved in PR 10: every one.** Measured on the dev machine, `hdl/blinky.vhd`
+  analyzes + elaborates in 0.02 s (GHDL mcode), 0.05 s (NVC), 0.05 s (GHDL LLVM-JIT) and 0.26 s
+  (GHDL LLVM AOT) — 0.4 s for all four, against a diagnostic that otherwise cannot distinguish "GHDL
+  answers `--version`" from "GHDL can compile", which is the failure students actually have.
 
 ---
 
 ## 12. Revision log
 
+- **PR 10 (`--doctor`) — 2026-09-07. U50 closed.** Two checks the card did not list were added,
+  both for failures *discovery cannot see*. (1) The **cocotb VPI/VHPI plugin and libpython** handed
+  to the simulator child are verified to exist, asked through `sim_runner._build_sim_env` itself —
+  that half of the pipeline an `analyze` never touches, and precisely the Windows DLL failure
+  `docs/install.md` already documents a manual workaround for. (2) The analyze runs on **every
+  discovered install** (§11 resolved above). One structural constraint drove the module's shape:
+  the pygame/pygame-ce pip collision the doctor reports is exactly the state in which
+  `import pygame` raises, and `fpga-sim` imports pygame before argparse sees the flag — so nothing
+  in `doctor.py` imports pygame at module scope, cocotb is read through distribution metadata
+  rather than imported, and `python -m fpga_sim.doctor` is a supported entry point. A health check
+  that cannot run in the environment it diagnoses is not one. The install commands it prints are
+  asserted by test to appear verbatim in `docs/install.md`, so D-19's workflow is what proves them;
+  and the report is asserted ASCII, because a legacy Windows console turns a stray dash into a
+  `UnicodeEncodeError` in place of the diagnostic. F8's dev-dependency contradiction is fixed the
+  other way round from the plan's reading: `uv sync` installs the `dev` group *by default*, so the
+  docs now say that rather than telling contributors to ask for it.
 - **Stack merge + four decisions — 2026-09-06.** PRs 1–6c merged (U50 Synopsys acceptance, U49
   first run + board selector, D17 split, U53 pin map). Rick then supplied material that moved four
   things, recorded as **D-16…D-19** and a reversal of **D-5**. The reversal is the substantive one:

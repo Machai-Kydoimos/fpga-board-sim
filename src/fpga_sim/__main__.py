@@ -14,6 +14,7 @@ picker → simulate) is orchestrated by fpga_sim/controller.py
 Usage:
   uv run python -m fpga_sim [--sim ghdl|nvc]
   uv run python -m fpga_sim --benchmark 10 [--board ICEStick] [--vhdl hdl/blinky.vhd]
+  uv run python -m fpga_sim --doctor
 """
 
 from __future__ import annotations
@@ -104,6 +105,12 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Save rendered simulation frames as PNGs in DIR (visual smoke-test); "
         "benchmark mode only, and incompatible with --no-ui.",
+    )
+    p.add_argument(
+        "--doctor",
+        action="store_true",
+        help="Check this machine can run the simulator (versions, simulators, boards, "
+        "a real analyze) and print how to fix whatever is missing, then exit",
     )
     p.add_argument(
         "--list-sims",
@@ -636,7 +643,11 @@ def main() -> None:
             file=sys.stderr,
         )
 
-    # Headless registry utilities: probe/report installed simulators, then exit.
+    # Headless diagnostics and registry utilities: report, then exit.
+    if args.doctor:
+        from fpga_sim.doctor import run_doctor
+
+        sys.exit(run_doctor())
     if args.list_sims:
         sys.exit(_list_sims())
     if args.add_sim is not None:
