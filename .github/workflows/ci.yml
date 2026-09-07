@@ -8,6 +8,21 @@ on:
 permissions:
   contents: read
 
+# Transient CDN failures are not this project's news.  A `504 Gateway Time-out`
+# from the package index took three jobs red at once on 2026-09-07, on a change
+# that could not have caused it -- and a red that means nothing is how a red
+# that means something gets ignored.  `UV_HTTP_RETRIES` is uv's own retry path,
+# so the retry happens inside the tool that knows which failures are worth
+# retrying, and only the failed *request* is repeated rather than the whole
+# sync.
+#
+# Deliberately scoped to HTTP and nothing else.  A retry *wrapper* around a step
+# would have hidden the `TestButtonRowFits` order-dependence CI caught the same
+# afternoon, which is exactly the kind of flake a test suite must keep showing.
+# Retry the network; never the tests.
+env:
+  UV_HTTP_RETRIES: "5"
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
