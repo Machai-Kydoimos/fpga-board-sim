@@ -15,10 +15,17 @@ those would only invite the workflow to grow lies.
 """
 
 import re
+import sys
+from typing import Any
 
 import yaml
 
 from fpga_sim.paths import REPO_ROOT
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # pragma: no cover - exercised only on Python 3.10
+    import tomli as tomllib
 
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "install-docs.yml"
 
@@ -36,7 +43,7 @@ DOCUMENTED = {
     ): "docs/install.md",
     "winget install ghdl.ghdl.ucrt64.mcode": "docs/install.md",
     "uv sync": "docs/install.md",
-    "uv run pytest": "docs/install.md",
+    "uv run fpga-sim --doctor": "docs/install.md",
     "curl -LsSf https://astral.sh/uv/install.sh | sh": "README.md",
     "winget install --id=astral-sh.uv -e": "README.md",
     (
@@ -88,3 +95,32 @@ def test_it_covers_all_three_operating_systems():
     doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     systems = {job["runs-on"].split("-")[0] for job in doc["jobs"].values()}
     assert systems == {"ubuntu", "macos", "windows"}
+
+
+def _pyproject() -> dict[str, Any]:
+    # The annotated local is load-bearing on 3.11+, where stdlib `tomllib.load`
+    # is typed `Any`; see tests/test_encoding_guard.py.
+    with (REPO_ROOT / "pyproject.toml").open("rb") as fh:
+        data: dict[str, Any] = tomllib.load(fh)
+    return data
+
+
+def test_a_plain_uv_sync_installs_only_the_runtime_dependencies():
+    """`uv sync` is what a student runs, so it must stay the small, robust one.
+
+    uv installs the `dev` group by default; this project turns that off.  The
+    dev group is ~30 extra packages a student never uses, and `actionlint-py`
+    publishes **no wheels at all** -- it builds from an sdist that downloads a
+    release binary from GitHub, so a proxy or a school network turns "install
+    the simulator" into a build failure about a workflow linter.
+
+    This is also what lets the workflow above verify the *real* student path:
+    it runs plain `uv sync`, then `uv run fpga-sim --doctor`, which needs no
+    dev dependency.
+    """
+    assert _pyproject()["tool"]["uv"]["default-groups"] == []
+
+
+def test_the_workflow_syncs_the_way_the_docs_tell_a_student_to():
+    """No `--group dev` here, or it stops rehearsing what a reader gets."""
+    assert "uv sync --group dev" not in _workflow_commands()

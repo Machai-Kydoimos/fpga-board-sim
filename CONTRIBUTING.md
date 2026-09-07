@@ -49,9 +49,16 @@ uv sync --group dev
 uv run pre-commit install
 ```
 
-> `uv` includes the `dev` dependency group by default, so plain `uv sync` (as in the
-> README) already installs the quality tooling (pytest, ruff, mypy, pre-commit); the
-> explicit `--group dev` above is equivalent.
+> **`--group dev` is required, not decorative.** This project sets
+> `[tool.uv] default-groups = []`, so plain `uv sync` — what the README tells a
+> *student* to run — installs the three runtime dependencies and nothing else.
+> Run it once as above and you are done: `uv run pytest` / `ruff` / `mypy` work
+> normally afterwards, because `uv run` installs what the default groups need
+> but never removes what is already there.
+>
+> If you do sync without it, `uv run pytest` fails in a confusing way rather than
+> an obvious one — uv falls back to an ephemeral pytest that prints a version
+> happily and then cannot import `fpga_sim`. `uv sync --group dev` fixes it.
 
 ### Windows notes for contributors
 

@@ -37,6 +37,21 @@ Issues = "https://github.com/Machai-Kydoimos/fpga-board-sim/issues"
 fpga-sim              = "fpga_sim.__main__:main"
 generate-board-images = "fpga_sim.generate_board_images:main"
 
+# uv installs the `dev` group by default; this turns that off, so plain
+# `uv sync` -- the one command the README and docs/install.md tell a student to
+# run -- installs the three runtime dependencies and nothing else.  The dev
+# group is ~30 more packages they never use, and one of them, actionlint-py,
+# publishes **no wheels at all**: it builds from an sdist that downloads a
+# release binary from GitHub, so a school network or a proxy turns "install the
+# simulator" into a build failure with nothing to do with the simulator.
+#
+# Contributors are unaffected beyond one flag: `uv sync --group dev` once, after
+# which `uv run pytest` / `ruff` / `mypy` work unchanged, because `uv run` adds
+# what the default groups need but never prunes what is already installed.
+# CI already passes --group dev in every ci.yml job.
+[tool.uv]
+default-groups = []
+
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",

@@ -8,6 +8,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`uv sync` now installs three packages instead of about thirty.** uv includes
+  the `dev` group by default; `[tool.uv] default-groups = []` turns that off, so
+  the one command the README and `docs/install.md` give a student installs
+  pygame-ce, cocotb and find_libpython and stops. The tooling they were also
+  getting — pytest, ruff, mypy, pre-commit, rumdl, pillow — is not needed to run
+  the simulator, and **one of those packages publishes no wheels at all**:
+  `actionlint-py` builds from an sdist that downloads a release binary from
+  GitHub, so a proxy or a school network turned "install the simulator" into a
+  build failure about a workflow linter. Every dependency on the student's path
+  is now a wheel on every supported platform.
+  - **Contributors add one flag, once:** `uv sync --group dev`. Nothing else
+    changes — `uv run pytest` / `ruff` / `mypy` keep working afterwards, because
+    `uv run` installs what the default groups need but never removes what is
+    already there. CI already passed `--group dev` in every job.
+  - **It also fixes what the install-docs workflow was measuring.** That
+    workflow exists to run the documented commands verbatim, and it verified
+    with `uv run pytest` — which the docs stopped prescribing when `--doctor`
+    arrived. It now ends at `uv run fpga-sim --doctor`, needs no dev group, and
+    therefore rehearses the install a reader actually gets.
+- **Python 3.11 is in the CI matrix.** The supported range is 3.10–3.13 and the
+  matrix tested 3.10, 3.12 and 3.13 — a version we advertise and never ran.
+- **Dependency refresh:** pytest-randomly 4.1.0 → 5.0.0, ruff 0.16.5 → 0.16.6,
+  rumdl 0.2.62 → 0.2.67, plus transitives. cocotb is deliberately held at 2.0.1:
+  2.1.0 changes the GPI loading contract (it requires a new `GPI_USERS`
+  environment variable that 2.0.1 does not even have a `cocotb-config` flag to
+  produce) and that migration is its own piece of work.
 - **The "it looks frozen" advisory now names a faster simulator when one is
   already installed**, and points at the preview's `SIM:` toggle. There is
   deliberately **no [Switch to NVC] button on the panel**: the simulator is
