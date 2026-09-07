@@ -21,7 +21,9 @@ from fpga_sim.board_loader import BoardDef, ComponentInfo, SevenSegDef
 from fpga_sim.paths import HDL_DIR
 from fpga_sim.sim_bridge import SimChild, SimulatorInfo
 from fpga_sim.sim_link import drain, send
+from fpga_sim.stall import StallFacts, stall_message
 from fpga_sim.ui.board_display import BoardInputs
+from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.results import SimExit
 from fpga_sim.ui.simulation_screen import SimulationScreen
 
@@ -1448,3 +1450,87 @@ def test_the_screen_prefers_what_the_user_set_over_the_contract(
     )
     assert screen._divider is not None
     assert (screen._divider.bits, screen._divider.source) == (15, "user")
+
+
+# ── The panel must contain its own text ──────────────────────────────────────
+
+
+@pytest.mark.parametrize("size", [(1024, 700), (800, 600), (640, 480), (1600, 900)])
+def test_no_advisory_line_escapes_the_panel(headless_pygame, fake_child, tmp_path, size):
+    """The bug: the panel clamps its width to the window but blits at a fixed
+    left edge, so a line wider than the panel ran out through the border.
+
+    This watches what is actually **blitted** rather than re-deriving the wrap:
+    a test that calls ``_wrap`` itself and checks the result would pass happily
+    while the draw ignored it, which is the exact defect. The first blit is the
+    panel; every later one is text and has to land inside it. Several window
+    sizes, since a line that fits at 1600 wide does not at 640.
+    """
+    child, _client = fake_child
+    child.generics["COUNTER_BITS"] = "17"
+    screen = _make_screen(
+        headless_pygame,
+        child,
+        vhdl_path=_divider_design(tmp_path),
+        available_sims=(_sim("ghdl"), _sim("nvc")),
+    )
+    screen.screen = headless_pygame.display.set_mode(size)
+    screen._stall_heading = "This design may just be slow, not broken"
+    screen._stall_lines = stall_message(
+        StallFacts(quiet_s=10.0, sim_ns=16_380_000, sim_clock_hz=50e6, board_hz=50e6),
+        screen._divider,
+        backend="mcode",
+        available_backends=("mcode", "nvc"),
+    )
+    assert any(len(line) > 120 for line in screen._stall_lines), "need a long line to test"
+
+    blits: list[tuple[int, int, int, int]] = []
+
+    class _BlitSpy:
+        """A stand-in surface: records what is drawn, forwards everything else.
+
+        ``pygame.Surface.blit`` is read-only on the C type, so it cannot be
+        patched on the instance -- the screen attribute is swapped instead.
+        """
+
+        def __init__(self, surface: Any) -> None:
+            self._surface = surface
+
+        def blit(self, surf: Any, pos: Any, *a: Any, **kw: Any) -> Any:
+            blits.append((pos[0], pos[1], surf.get_width(), surf.get_height()))
+            return self._surface.blit(surf, pos, *a, **kw)
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._surface, name)
+
+    screen.screen = _BlitSpy(screen.screen)  # type: ignore[assignment]
+    screen._draw_stall_advisory()
+
+    assert len(blits) > 3, "expected the panel plus heading, lines and [ Close ]"
+    px, _py, pw, _ph = blits[0]  # the panel surface is drawn first
+    panel_right = px + pw
+    for x, _y, w, _h in blits[1:]:
+        assert x + w <= panel_right, (
+            f"text runs {x + w - panel_right}px past the panel's right edge at {size}"
+        )
+
+
+def test_wrapping_keeps_a_command_lines_indent(headless_pygame, fake_child):
+    """The continuation of "    [Stop], then …" must not read as a new step."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    body = _get_font(12)
+    text = "    [Stop], then [Generics…] on the preview  —  or relaunch with  --generic X=15"
+    out = screen._wrap(text, body, 200)
+    assert len(out) > 1, "the fixture must actually wrap"
+    assert out[0].startswith("    ")
+    assert all(line.startswith("      ") for line in out[1:]), out
+
+
+def test_wrapping_leaves_a_word_longer_than_the_budget_alone(headless_pygame, fake_child):
+    """Better one long word than a mangled one; it must not loop or drop text."""
+    child, _client = fake_child
+    screen = _make_screen(headless_pygame, child)
+    body = _get_font(12)
+    out = screen._wrap("short " + "x" * 400, body, 100)
+    assert "".join(out).replace(" ", "").endswith("x" * 400)

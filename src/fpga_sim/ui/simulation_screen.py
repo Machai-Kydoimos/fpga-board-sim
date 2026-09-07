@@ -770,6 +770,41 @@ class SimulationScreen:
         self.screen.blit(dot, dot.get_rect(center=center))
         self.screen.blit(text, text.get_rect(midleft=(x + icon_d + icon_gap, rect.centery)))
 
+    @staticmethod
+    def _wrap(text: str, font: pygame.font.Font, max_w: int) -> list[str]:
+        """Break *text* onto lines that fit *max_w* pixels in *font*.
+
+        The panel clamps its own width to the window but blits each line at a
+        fixed left edge, so a line wider than the panel simply runs out through
+        the border -- which is what happened the moment the advisory started
+        naming both the running and the declared divider width.  Wrapping has to
+        live here rather than in ``stall``: that module is pygame-free and has
+        no font to measure with, so it emits *logical* lines and the screen
+        turns them into pixels.
+
+        A leading indent is kept, and continuations are indented two spaces past
+        it, so the wrapped remainder of the ``[Stop], then …`` command line still
+        reads as part of that command rather than as a new instruction.  A single
+        word wider than *max_w* is left long rather than broken mid-word; there
+        is no such word in these messages, and a mangled one would be worse.
+        """
+        indent = text[: len(text) - len(text.lstrip())]
+        words = text.split()
+        if not words:
+            return [text]
+        out: list[str] = []
+        cur = indent + words[0]
+        cont = indent + "  "
+        for word in words[1:]:
+            trial = f"{cur} {word}"
+            if font.size(trial)[0] <= max_w:
+                cur = trial
+            else:
+                out.append(cur)
+                cur = cont + word
+        out.append(cur)
+        return out
+
     def _draw_stall_advisory(self) -> None:
         """Draw the opened advisory panel, low on the board and above the toolbar."""
         sw, sh = self.screen.get_size()
@@ -778,8 +813,13 @@ class SimulationScreen:
         body = _get_font(max(9, round(12 * scale)))
         pad = max(8, round(12 * scale))
 
+        # Wrap first, then size the panel to what the wrapping produced: the
+        # budget is the widest the inner text could ever be, so the panel comes
+        # out no wider than it needs and never narrower than its content.
+        budget = max(120, sw - 4 * pad)
+        wrapped = [w for t in self._stall_lines for w in self._wrap(t, body, budget)]
         head = font.render(self._stall_heading, True, THEME.sim_info)
-        lines = [body.render(t, True, THEME.sim_info) for t in self._stall_lines]
+        lines = [body.render(t, True, THEME.sim_info) for t in wrapped]
         close = body.render("[ Close ]", True, THEME.sim_hint)
 
         width = min(

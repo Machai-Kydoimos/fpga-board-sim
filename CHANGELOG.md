@@ -472,6 +472,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     that here" vs "the simulator lowers it so a design blinks visibly here")
     rather than hedging. The "your file is not touched: `COUNTER_BITS` stays 24"
     promise still quotes the file, because that is the number in the editor.
+- **Long advisory lines ran out through the panel's right border.** The panel
+  clamps its own width to the window but blits every line at a fixed left edge,
+  so anything wider simply overflowed — 307px past the border at 1024x700 once
+  the message began naming both the running and the declared divider width. It
+  now wraps, with a hanging indent so the continuation of the `[Stop], then …`
+  command still reads as part of that command. Latent since the panel was
+  written; the longer wording is what made it show.
 - **A brightness test raced the Windows clock.** It back-dated `_ema_t` by 50 ms
   but `_apply_state` reads `time.monotonic()` again, so the interval was
   `0.05 + however long two calls took`. On Linux that is microseconds; Windows'
