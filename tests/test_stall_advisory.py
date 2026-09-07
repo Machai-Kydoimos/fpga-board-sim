@@ -236,6 +236,20 @@ def test_using_a_control_does_not_reset_the_quiet_timer():
     assert loop.run(2, inputs=("b",))
 
 
+def test_using_a_control_does_not_withdraw_an_offer_already_made():
+    """The guide promises this, and inputs are recorded rather than acted on.
+
+    Somebody who cannot tell a slow design from a dead one will flip a switch to
+    find out.  That is the moment the explanation is most wanted, so the flip
+    must not be what takes it away -- it only changes which reading leads.
+    """
+    loop = Loop(StallWatch())
+    assert loop.run(_T + 1, inputs=("a",)), "the offer is up"
+    assert not loop.w.inputs_used
+    assert loop.run(2, inputs=("b",)), "flipping a switch does not withdraw it"
+    assert loop.w.inputs_used, "but it is remembered, so the wording changes"
+
+
 def test_an_untouched_board_is_told_to_try_a_switch_first(facts):
     """The fix for the false positive: the likelier reading leads."""
     head = stall_heading(waiting_for_input=True)

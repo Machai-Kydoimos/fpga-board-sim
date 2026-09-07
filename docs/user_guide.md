@@ -48,8 +48,11 @@ control appears next to **[Pause]**:
 
 That is all that happens until you click it. Nothing covers the board, no warning
 appears, and if your design is a button that lights an LED and you simply were not
-pressing it, you can ignore the whole thing — touch a control and it withdraws by
-itself.
+pressing it, you can ignore the whole thing entirely. Touching a control does not
+withdraw the offer — poking at the board must not silence the thing that was about
+to explain it — but it does change what the offer says, because once you have used
+a switch "you may just not have pressed anything" is no longer the likeliest
+reading.
 
 **The simulation keeps running while you read it.** The panel is an overlay, not
 a modal — the board stays live behind it, and the step you are waiting for may
