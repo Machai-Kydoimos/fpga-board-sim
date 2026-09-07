@@ -269,6 +269,10 @@ def test_profile_check_fails_when_the_directory_cannot_be_made(tmp_path, monkeyp
     monkeypatch.setattr("fpga_sim.session_config.SESSION_FILE", blocker / "sub" / "session.json")
     check = doctor.check_profile_dir()
     assert check.status == "fail"
+    assert str(blocker / "sub") in check.detail
+    # The reason, not the errno and the probe file's name.
+    assert ".doctor-write-probe" not in check.detail
+    assert "Errno" not in check.detail
     assert check.fix
 
 

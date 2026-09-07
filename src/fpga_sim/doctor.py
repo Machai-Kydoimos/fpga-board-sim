@@ -416,7 +416,14 @@ def check_profile_dir() -> Check:
         probe.write_text("", encoding="utf-8")
     except OSError as exc:
         fix = _PROFILE_FIX_WINDOWS if platform_tag() == "windows" else _PROFILE_FIX_POSIX
-        return Check("Profile", "fail", f"cannot write to {target}: {exc}", fix=_lines(fix))
+        # ``strerror``, not ``str(exc)``: the latter repeats the errno and the
+        # probe file's name, and the row already says which directory failed.
+        return Check(
+            "Profile",
+            "fail",
+            f"cannot write to {target}: {exc.strerror or exc}",
+            fix=_lines(fix),
+        )
     finally:
         try:
             probe.unlink()
