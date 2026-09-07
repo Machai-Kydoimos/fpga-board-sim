@@ -527,6 +527,50 @@ per digit (`HEX0`…`HEXn`) — and the **multiplexed `scan`** interface describ
 (U22). Serial (shift-register) and per-segment-scalar displays stay on the generic
 contract.
 
+## When the compiler rejects your file
+
+The simulator shows the analyzer's **own** error text, unedited — that is the
+wording a search engine and the person next to you both recognize — and appends a
+`Hint:` under it when it recognizes the failure. The hint is advice; the error
+above it is the evidence.
+
+GHDL and NVC word the same defect differently, so both are listed. Every message
+below was captured by running the failure, not copied from a manual.
+
+| What the compiler says | What it means | What to do |
+|---|---|---|
+| `no declaration for "std_logic"` · `no visible declaration for STD_LOGIC` | The IEEE header is missing | Add `library ieee;` and `use ieee.std_logic_1164.all;` |
+| `no declaration for "unsigned"` · `... for "to_unsigned"` · `no visible declaration for UNSIGNED` | `numeric_std` is missing — it declares `unsigned`/`signed` and the conversions (`to_unsigned`, `to_integer`, `resize`) | Add `use ieee.numeric_std.all;` under the header |
+| `no declaration for "couner"` | A name nothing declares — usually a typo, sometimes a signal declared in the wrong place | Check the spelling; declare signals between `architecture ... is` and `begin` |
+| `an identifier is expected instead of 'units'` · `unexpected units while parsing signal declaration, expecting identifier` | A **reserved word** used as a name. Neither engine says "reserved word" | Rename it. The ones that read like ordinary names: `units`, `range`, `next`, `open`, `select`, `signal`, `type`, `bus`, `register`, `severity`, `label`, `body` |
+| `missing ";" at end of object declaration` · `unexpected signal while parsing signal declaration, expecting one of := or ;` | A syntax error, reported where the text stopped making sense — often the line **after** the mistake | Check the end of the previous line. Every declaration and statement ends with `;`; the last entry inside `port ( ... )` or `generic ( ... )` does not |
+| `unit "counter" not found in library "work"` · `design unit COUNTER not found in library WORK` | Something the design instantiates is not in the folder | Copy the file that declares it into the same folder, named after its entity (`counter.vhd` holds `entity counter`). If it *is* the design and you picked its testbench, pick the design |
+| `too many actuals for component instance "uut"` · `found at least 7 positional actuals but WORK.X has only 6 ports` | A **positional** port map with the wrong number of actuals | Name the ports: `port map (clk => clk, rst => rst, sw => sw)`. A positional map binds by order, so it changes meaning silently whenever the entity's ports do |
+
+### The error dialog
+
+The dialog word-wraps but never re-indents, so GHDL's `^` stays under the column
+it marks — including when the source line above it is too long to fit and wraps,
+in which case the caret follows the piece of the line it points at. **[Copy]**
+(or the `C` key) puts the whole thing — title, compiler text and hints — on the
+clipboard, which is what you want when you are pasting it into a message.
+
+The panel grows to the window, so a hinted error is normally shown whole. When a
+message is longer than that, the footer says so and **↑ ↓ / PgUp / PgDn / Home /
+End** scroll it as well as the mouse wheel.
+
+The same text is also written to the terminal you started `fpga-sim` in, so it is
+already in your scrollback whether or not you scrolled the dialog.
+
+### Picking a testbench by mistake
+
+A file whose entity declares **no ports at all** is a testbench, and the
+simulator says so rather than listing the contract ports it is missing. Pick the
+design instead: the simulator *is* the stimulus — the board's switches and
+buttons are the inputs, and it drives the clock. The testbench can stay in the
+folder; [files beside the design](#designs-split-across-several-files) are
+analyzed with it.
+
 ## Example designs (`hdl/`)
 
 Ready-to-run starting points, all on the generic contract:

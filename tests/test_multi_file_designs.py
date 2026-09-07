@@ -281,7 +281,10 @@ def test_the_design_own_error_is_the_one_reported(lab, ghdl):
     ok, detail = analyze_vhdl(lab / "top.vhd", toplevel="top")
     assert not ok
     assert "counter" in detail.lower()
-    assert "testbench" not in detail.lower()
+    # The broken neighbor is never the file blamed.  (U50's entity-not-found
+    # hint does say the word, advising where to look, so the assertion is on
+    # the file it names -- not on the word appearing anywhere.)
+    assert "testbench.vhd" not in detail.lower()
 
 
 @pytest.mark.slow

@@ -61,6 +61,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A compiler error now says what to do about it, for six more failures** (U50).
+  The analyzer's own text is still shown unedited — that is the wording a search
+  engine and the person next to you both recognize — with a `Hint:` under it:
+  - a missing **`use ieee.numeric_std.all;`**, which the existing `std_logic`
+    rule was one word away from. `unsigned`, `signed` and the conversion
+    functions (`to_unsigned`, `to_integer`, `resize`) all reach it.
+  - an **undeclared identifier**, named, with where a signal is declared.
+  - a **reserved word used as an identifier**. Neither engine says "reserved
+    word": GHDL says only *"an identifier is expected instead of 'units'"*, and
+    nothing in a first course explains why `units` — the obvious name for a
+    countdown's ones digit, and what the author of the soak corpus reached for
+    without thinking — is one. It **suppresses** the syntax hint, whose "check
+    the previous line" would be wrong advice here.
+  - a **syntax error**, with the observation that it is reported where the text
+    stopped making sense, which is usually the line *after* the mistake.
+  - an **entity not found in `work`**, with the folder rule that finds it.
+  - a **positional port map with too many actuals**, which is the shape two of
+    the three course testbenches ship with.
+  - Every pattern was captured by running the failure against both GHDL and NVC,
+    which word all six differently.
+
+- **A file whose entity declares no ports is reported as a testbench**, rather
+  than as a design missing `clk`, `sw`, `btn` and `led`. Pick the design it
+  tests: the simulator *is* the stimulus — the board's switches and buttons are
+  the inputs, and it drives the clock. The testbench can stay in the folder.
+
+- **[Copy] on the error dialog** (or the `C` key) puts the title, the compiler's
+  text and the hints on the clipboard in one piece — the part worth pasting into
+  a message is exactly the part you would otherwise have to scroll to reach.
+
 - **The simulator now offers to explain when a design only *looks* frozen** (U48). A design
   that gets its visible rate from the top bits of a clock divider is correct,
   runs, and shows nothing: at the simulator's throughput a 24-bit divider steps
@@ -456,6 +486,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The error dialog no longer cuts the message off at the bottom edge.** Its
+  body was a fixed third of the window and never a whole number of lines, so the
+  last row was always drawn half-clipped — which reads as text running off the
+  panel rather than as text you can scroll. It now takes the room the window
+  actually has, in whole lines, which shows a hinted error **complete** at every
+  window size down to 800x600. What genuinely does not fit now scrolls with the
+  **keyboard** (↑ ↓ / PgUp / PgDn / Home / End) and not only the wheel, and the
+  footer says so when there is more to see. (The full text has always also gone
+  to the terminal `fpga-sim` was launched from.)
+- **A missing unit reported against the generated wrapper no longer sends you
+  looking for a file you already have.** Only `sim_wrapper.vhd` instantiates the
+  design, and it is analyzed after the design compiled — so the unit is missing
+  because the entity is named something other than the file, which is what the
+  hint now says.
+- **GHDL's `^` column marker no longer collapses to column 0.** The error dialog
+  word-wrapped with `.strip()`, so the one line of a diagnostic that is nothing
+  but indentation lost all of it, and the caret pointed confidently at the wrong
+  character. Wrapping now carries indentation through, and a wrapped line hangs
+  under its own indent. When a source line is too long to fit the panel, the
+  caret is re-anchored to the *segment* whose columns contain it, so it still
+  sits under what it marks instead of floating past the end of a continuation.
 - **The advisory quoted the divider width from your *file*, not the one the run
   was using.** The simulator floors `COUNTER_BITS` so a contract design blinks
   visibly (17, or 20 on NVC, or `4 x digits` on a many-digit 7-segment board), so
