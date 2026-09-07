@@ -141,6 +141,8 @@ ignore = [
 "sim/test_duty.py" = ["ANN"]         # cocotb headless tests: dut signals are dynamic
 "sim/test_rgb.py" = ["ANN"]          # cocotb headless tests: dut signals are dynamic
 "sim/test_native_scan.py" = ["ANN"]  # cocotb headless tests: dut signals are dynamic
+"sim/test_hex_decoder.py" = ["ANN"] # cocotb headless tests: dut signals are dynamic
+"sim/test_code_lock.py" = ["ANN"]   # cocotb headless tests: dut signals are dynamic
 # these embed verbatim/near-verbatim real constraint-file excerpts as fixtures;
 # line length is a property of the source format, not authored prose.
 "tests/test_port_convention_parser_xdc.py" = ["E501"]
@@ -172,6 +174,8 @@ module = [
     "test_duty",
     "test_rgb",
     "test_native_scan",
+    "test_hex_decoder",
+    "test_code_lock",
 ]
 disallow_untyped_defs = false    # test functions and fixtures are exempt
 disallow_untyped_calls = false   # ...and so are their calls to each other

@@ -112,6 +112,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Five lab-shaped reference designs, written to be read** (U52). Every design
+  in `hdl/` used to contain `rising_edge` — there was no `led <= sw`, no gate,
+  no mux, no `case` decoder and no labeled-states FSM — so the ladder went from
+  a 62-line blinker straight to a generated soft CPU. These fill the bottom of
+  it, all on the generic contract so they run on all 285 boards:
+  - **`gates_mux.vhd`** — two switches through AND / OR / XOR / NOT to one LED.
+    No clock anywhere, so every output can be predicted by reading a truth
+    table. It is the new starting point.
+  - **`hex_decoder_7seg.vhd`** — a byte on the switches, in hex on two digits:
+    the archetypal `case` decoder, written once as a function and shared by
+    both digits.
+  - **`code_lock_fsm.vhd`** — a three-press combination lock. Enumerated states
+    (so a waveform shows `ONE_OK`, not `"01"`, and an illegal state will not
+    compile) and edge-detected buttons, because a held button is `'1'` for
+    millions of cycles and testing the level walks the machine straight to
+    open — the classic first-FSM bug.
+  - **`countdown_7seg.vhd`** — 99 → 00 and round again, in BCD with a borrow.
+  - **`running_light.vhd`** — one LED walks the row, **deliberately timed for
+    hardware**, see below.
+
+- **Two more board-native references** (U52): **`de10_lite.vhd`**, which carries
+  all three Terasic polarities in one file (active-high `LEDR`, active-low `KEY`
+  and `HEX`), and **`tang_nano_9k.vhd`**, which declares **no inputs at all**
+  beyond its clock and so exercises the U31 tie-off — the smallest complete
+  board-native design in the repository. It matches both the amaranth and the
+  litex spelling of that board, since both carry the cited `sipeed` convention.
+
+- **The two clocks, taught by two designs that differ in one word.**
+  `countdown_7seg.vhd` divides with `COUNTER_BITS`, which is part of the
+  contract, so the simulator **overrides it** and the countdown ticks about
+  once a second. `running_light.vhd` divides with `DIVIDER_BITS`, which is the
+  design's own name, so its hardware-sized default of 24 stands — and at
+  simulator speed that is minutes per step. Neither is wrong, and the
+  difference is the most common surprise when a working design is brought to a
+  simulator. Run the second one unchanged and the "it looks frozen" advisory
+  (U48) picks it up by name and prints the value to try, which is the whole
+  lesson in one screen.
+
+- **`hdl/blinky_survey.md` is now linked** from the README and
+  `docs/writing_designs.md`. Twelve idioms for the same simple task, with a
+  blink-rate formula table and what each one teaches — and until now, nothing
+  in the repository pointed at it.
+
 - **`fpga-sim --doctor` answers "is this machine ready?"** (U50) — and, for
   whatever is not, prints the command to fix it *on this operating system*. Nine
   rows, no display needed, non-zero exit when something is broken: the Python,

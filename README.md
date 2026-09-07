@@ -136,6 +136,11 @@ issue if you get stuck.
 5. **Interact:** **BTN0** reverses the snake, **BTN1** lights every segment, **SW0**
    speeds it up — exactly as in the demo above.
 
+New to VHDL? [`hdl/gates_mux.vhd`](hdl/gates_mux.vhd) is two switches, four gates and
+one LED with no clock anywhere — then `hex_decoder_7seg.vhd`, `code_lock_fsm.vhd` and
+`countdown_7seg.vhd` each add one idea. Twelve more ways to write a blinker, with what
+each one teaches, are in [`hdl/blinky_survey.md`](hdl/blinky_survey.md).
+
 For a design with no hand-written RTL at all, repeat with
 [`hdl/mx65_walking_counter_7seg.vhd`](hdl/mx65_walking_counter_7seg.vhd) — a **6502
 soft CPU** executing firmware from an embedded ROM, driving the same board through

@@ -514,6 +514,8 @@ own board (they are deliberately not offered in the file picker):
 | `arty_rgb.vhd` | Digilent Arty A7-100 | native RGB channels `led0_r`…`led3_b`, color wheel + lamp test |
 | `nexys4ddr_scan.vhd` | Digilent Nexys 4 DDR | physical scan display (`CA..CG`/`DP`/`AN`), hex counter + lamp test |
 | `basys3_scan.vhd` | Digilent Basys 3 | scan display, shared-vector idiom (`seg`/`dp`/`an`) |
+| `de10_lite.vhd` | Terasic DE10-Lite | active-high `LEDR`, active-low `KEY` and `HEX` — all three polarities in one file |
+| `tang_nano_9k.vhd` | Sipeed Tang Nano 9K | **no inputs at all** beyond the clock; six active-low LEDs. The smallest one here |
 
 Board-native designs get **no `COUNTER_BITS` override** (that generic belongs to the
 generic contract). A design that derives its visible rate from the top bits of a full
@@ -573,10 +575,17 @@ analyzed with it.
 
 ## Example designs (`hdl/`)
 
-Ready-to-run starting points, all on the generic contract:
+Ready-to-run starting points, all on the generic contract. The first five are
+written to be *read*: each one teaches a single idea, and the header comment says
+which. Start at `gates_mux.vhd` and work down.
 
 | File | What it does |
 |------|--------------|
+| `gates_mux.vhd` | **Start here.** Two switches through AND/OR/XOR/NOT to one LED; no clock at all |
+| `hex_decoder_7seg.vhd` | A byte on the switches, in hex on two digits — the archetypal `case` decoder |
+| `code_lock_fsm.vhd` | A three-press combination lock: labeled states, edge-detected buttons |
+| `countdown_7seg.vhd` | 99 → 00 and round again; BCD with a borrow, ticked by `COUNTER_BITS` |
+| `running_light.vhd` | One LED walks the row — **deliberately hardware-timed**, see below |
 | `blinky.vhd` | Switches XOR a counter → LEDs; buttons OR → LEDs |
 | `blinky_alt.vhd` | Independent per-LED counters |
 | `blinky_counter.vhd` | Binary counter on the LEDs |
@@ -589,3 +598,38 @@ Ready-to-run starting points, all on the generic contract:
 | `walking_counter_7seg.vhd` | Bouncing LED + decimal BCD counter; switch speed, button direction |
 | `stopwatch_7seg.vhd` | Interactive stopwatch: `btn(0)` start/stop, `btn(1)` reset |
 | `mx65_*.vhd`, `t80_*.vhd` | Generated embedded-core systems (see above) |
+
+### The two clocks, and which generic the simulator adjusts
+
+`countdown_7seg.vhd` and `running_light.vhd` are the same idea — divide the clock,
+step something — and they behave completely differently here. That contrast is on
+purpose, and it is the single most common surprise when a design that works on the
+bench is brought to a simulator:
+
+- **`countdown_7seg.vhd` divides with `COUNTER_BITS`.** That generic is part of the
+  contract above, so the simulator **overrides it at launch** with a value you can
+  actually watch. Nothing to do: it ticks about once a second.
+- **`running_light.vhd` divides with `DIVIDER_BITS`.** That name is the design's own.
+  The simulator has never heard of it, so the file's default stands — and the default
+  is 24, the value you would really synthesize for a 50 MHz board. At simulator speed
+  that is *minutes* per step, so the board looks broken.
+
+Neither file is wrong. A generic the tool knows about gets adjusted for you; one of
+your own is yours to set:
+
+```bash
+uv run fpga-sim --generic DIVIDER_BITS=15 --vhdl hdl/running_light.vhd
+```
+
+or press **[Generics…]** on the preview screen before you start. Run it unchanged and
+the simulator will notice the board has gone quiet, work out the arithmetic on *your*
+machine, and offer to explain — naming this generic and the value to try. That is the
+lesson `running_light.vhd` exists to teach, so it is worth meeting once on purpose.
+
+### Twelve ways to write a blinker
+
+[`hdl/blinky_survey.md`](../hdl/blinky_survey.md) walks through twelve idioms for the
+same simple task — counter taps, shift registers, PWM, a state machine, one-liners —
+with a blink-rate formula table and, for each, what it is worth learning from. If you
+have got the first few designs working and want to know what else the language will
+let you say, read that next.
