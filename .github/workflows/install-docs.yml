@@ -8,9 +8,16 @@
 #
 # So this workflow runs the commands a reader actually types, verbatim, on all
 # three operating systems -- README.md's quick start and docs/install.md's
-# per-OS matrix -- and ends where the docs end, at `uv run pytest`.  A student
-# following the docs on a clean machine is the scenario; the runner is the
-# closest thing to one that can be automated.
+# per-OS matrix -- and ends where the docs end, at `uv run fpga-sim --doctor`.
+# A student following the docs on a clean machine is the scenario; the runner is
+# the closest thing to one that can be automated.
+#
+# `--doctor` replaced `uv run pytest` here when the docs did (#421).  It is the
+# better tripwire for this workflow's question: it exercises the documented
+# install rather than the test suite, exits non-zero per failing check, and
+# needs no dev dependencies -- which matters, because plain `uv sync` no longer
+# installs them (see `[tool.uv] default-groups` in pyproject.toml), and that is
+# precisely the install a student gets.
 #
 # **Never make this a required check.**  It fails for reasons a contributor did
 # not cause and cannot fix in their PR -- a Homebrew formula renamed, a winget
@@ -81,8 +88,8 @@ jobs:
       # needs no display".  Run it with no display variables set, because that
       # claim is part of what is being verified (tests/conftest.py sets the
       # dummy SDL drivers itself, via setdefault).
-      - name: uv run pytest
-        run: uv run pytest
+      - name: uv run fpga-sim --doctor
+        run: uv run fpga-sim --doctor
 
   # ── Linux: the NVC from-source *dependency list* ───────────────────────────
   # The build itself is minutes of compile that tests nickg/nvc, not us.  What
@@ -148,8 +155,8 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: uv sync
         run: uv sync
-      - name: uv run pytest
-        run: uv run pytest
+      - name: uv run fpga-sim --doctor
+        run: uv run fpga-sim --doctor
 
   # ── Windows: does `winget install ghdl.ghdl.ucrt64.mcode` still resolve? ───
   # This is the arc's F23, and the one question ci.yml's pinned-zip job is
@@ -252,5 +259,5 @@ jobs:
 
       - name: uv sync
         run: uv sync
-      - name: uv run pytest
-        run: uv run pytest
+      - name: uv run fpga-sim --doctor
+        run: uv run fpga-sim --doctor

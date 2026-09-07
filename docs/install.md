@@ -228,10 +228,14 @@ Python is sandboxed and can't be embedded by an external simulator process.
 uv sync
 ```
 
-That installs the runtime dependencies **and** the `dev` group (pytest, ruff,
-mypy, pre-commit): uv syncs `dev` by default, so contributors need no extra
-command — see [CONTRIBUTING.md](../CONTRIBUTING.md). For a runtime-only
-environment, add `--no-dev`.
+That installs the three runtime dependencies and nothing else — pygame-ce,
+cocotb and find_libpython, all of them wheels on every supported platform. It is
+deliberately small: you do not need the project's test and lint tooling to run
+the simulator, and one of those tools has no wheels at all, so shipping it to
+everyone would turn a flaky network into a failed install.
+
+Contributing? Add the tooling with `uv sync --group dev` — see
+[CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Check the install
 
@@ -273,9 +277,10 @@ uv run python -m fpga_sim.doctor
 ```
 
 Contributors can additionally run the full test suite, which exercises the whole
-analyze/simulate path on both installed simulators:
+analyze/simulate path on both installed simulators (it needs the `dev` group):
 
 ```bash
+uv sync --group dev
 uv run pytest
 ```
 
