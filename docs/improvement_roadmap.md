@@ -191,7 +191,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 - Shipped 2026-06-25 (PR #110). Headless renderer can later feed **U8** (splash). Full detail → [roadmap_delivered.md](roadmap_delivered.md).
 
-#### U48. "It looks frozen" — runtime stall advisory + opt-in generic override
+#### U48. "It looks frozen" — runtime stall advisory + opt-in generic override ✅
 
 - **Why:** a real course design renders a **dead board with no message**. `build_generics()`
   (`controller.py`) floors `COUNTER_BITS` at 17 bits (20 on NVC, `_COUNTER_BITS_FLOOR`) precisely
@@ -237,6 +237,34 @@ This document inventories all viable improvements and ranks them by impact.
 - ⚠ **Carried-forward:** the advisory touches the live run loop — the "simulated time is advancing"
   clause must not fire on a hung child, and the `hdl/native/*.vhd` examples (which tap *mid* counter
   bits precisely to stay visible) must never trigger it.
+- **Shipped 2026-09-07** (PRs 7 and 8), with four departures from the sketch above, each forced
+  by something the sketch had not considered:
+  1. **It offers rather than announces.** No banner. The detection cannot tell a stalled divider
+     from a design *waiting for a button* — still inputs, still outputs, simulated time advancing
+     are identical from outside — so a banner would have accused a working press-a-button-light-an-
+     LED design, which is the commonest first design there is. What it earns instead is one small
+     `ⓘ Why is nothing happening?` control beside [Pause]; the numbers open on a click. Phrased as
+     the student's own question so it self-selects: whoever knows why the board is still ignores it.
+  2. **The message carries both readings**, leading with the one the evidence favors — "try a
+     switch" when nothing has been touched this run, the divider arithmetic when it has.
+  3. **The override is a literal in the generated wrapper, not `-gNAME=VALUE`.** The design's
+     generics are not the wrapper's; GHDL applies `-g` at `-r` while NVC bakes it at elaboration;
+     and a literal makes `wrapper_is_stale` re-analyze for free *and* turns a bad value into an
+     **analysis** error the user sees while still looking at what they typed.
+  4. **[Generics…] is deferred** — §9's sanctioned reduction of PR 7 to `--generic` on the CLI, so
+     the never-cut PR 8 had a lever to point at sooner. `generics.py` holds everything a dialog
+     needs. **[Switch to NVC] is not wired** either: switching engines mid-run means tearing down
+     and relaunching the child, which is its own PR.
+- **The measurement was the hard part, not the detection.** Six defects surfaced in review, every
+  one of them an assumption about what the *rest* of the system does while this code measures it:
+  cycles were counted at the board's nominal clock rather than the one being simulated (a **50x**
+  overstatement for anyone who had moved the preset); the rate came from the stats panel's moving
+  average, which carries throughput from *before* the board went quiet; a single LED step withdrew
+  the offer, when that step is evidence *for* the slow-divider reading; an open panel closed itself
+  mid-read; the F1 help modal's wall time counted as the board being still; and a "paused" run,
+  which does not stop simulated time but shrinks the step to 1 ns, quietly inflated the window.
+  The watch now accumulates **observed** wall time and **observed** simulated time over the same
+  frames, which makes the ratio honest by construction rather than by two rules agreeing.
 - **Done when:** a 2³⁰-divider fixture raises the banner within ~10 s with correct arithmetic on
   both backends and both actions work; no bundled example ever raises it; a Lab 2a-shaped design
   animates within seconds after one dialog change or one `--generic`.
@@ -1236,23 +1264,23 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 ## Critical files modified across the roadmap
 
 - `src/fpga_sim/__main__.py` — U2 ✅, U5 ✅ (window-size restore), U21 ✅ (`res.match` → analyze/launch), U16, D6a ✅, D6b ✅ (now a thin driver), D9 ✅, U35 ✅ (`--sim` slugs + `--list-sims` + `--add-sim`), U49 (`--board` / `--vhdl` seed the *interactive* launcher; `--pinmap` / `--generic` reserved), U50 (`--doctor`)
-- `src/fpga_sim/controller.py` — D6b ✅ (new: `ScreenController` + `SessionState`), U4 ✅ (`example_vhdl_for` wiring), U5 ✅ (save-on-pick/change/quit + speed plumbing), U7 ✅ (`on_simulate` acts on the returned `SimExit`; reload/back/change routing), U21 ✅ (`SessionState.convention` + `ConventionMatch` threading), U35 ✅ (persist simulator engine + path), U49 (seeded start + the retry start-dir, moved here from U18), U48 (the [Generics…] values on `SessionState`), U53 (`ContractResult.match` gains `PinMapMatch`)
+- `src/fpga_sim/controller.py` — D6b ✅ (new: `ScreenController` + `SessionState`), U4 ✅ (`example_vhdl_for` wiring), U5 ✅ (save-on-pick/change/quit + speed plumbing), U7 ✅ (`on_simulate` acts on the returned `SimExit`; reload/back/change routing), U21 ✅ (`SessionState.convention` + `ConventionMatch` threading), U35 ✅ (persist simulator engine + path), U49 (seeded start + the retry start-dir, moved here from U18), U48 ✅ (`SessionState.generic_overrides`; the dialog itself is deferred), U53 (`ContractResult.match` gains `PinMapMatch`)
 - `src/fpga_sim/sim_bridge.py` — U4 ✅ (parsed contract checks + `add_error_hints`), U5 ✅ (`speed_factor` → `FPGA_SIM_SPEED`), U7 ✅ (`SimExit` enum + exit-intent sidecar; `launch_simulation()` returns it), U10 ✅, U21 ✅ (convention matcher + native `_render_native_wrapper`; native `.gtkw` preselection), D1, D2 ✅, D5, D7, D9 ✅ (defines `Simulator`), D16 (wrap the run subprocess), U34 ✅ (`SimChild` + `start_simulation` + `finish_waveform`; `launch_simulation` and the exit-intent file removed — `SimExit` now lives in `ui/results.py`), U35 ✅ (simulator discovery/identity + stage-3 runtime-elab probe), **D17 (split into seven flat siblings + a re-export shim — every row below that names this file moves with it)**, U50 (`-fsynopsys` + hint coverage), U53 (pin-map matcher + `_render_pinmap_wrapper`), U48 (generic pass-through on all three wrapper kinds)
 - `src/fpga_sim/board_loader.py` — U12, D11 ✅, U21 ✅ (B1: `BoardDef.port_conventions` + serialization), U49 (display-name override table + guard test), U53 (`SevenSegDef` gains segment pins)
 - `src/fpga_sim/session_config.py` — U5 ✅ (merge-on-write; new `update_session` / `push_recent`), U18, D9 ✅, D14 ✅, D16 (sandbox toggle), U35 ✅ (`extra_simulators` + `simulator_path`), U46 (persisted display-skin toggle)
 - `src/fpga_sim/ui/constants.py` — D15 ✅ (base neutrals), U17 (and the `get_font` / `render_text` LRU caches)
 - `src/fpga_sim/ui/theme.py` — D15 ✅ (new: `Theme` dataclass + `THEME`), U2 ✅ (`spinner_arc` / `spinner_track` roles), U5 ✅ (`THEME_NAMES` / `THEME_LABELS` + settings button styles), U6 ✅ (`dark` / `high-contrast` instances + `set_theme` / `current_theme_name`), U27 (dynamic registry + JSON loader), U46 (glass / socket / glow roles)
 - `src/fpga_sim/ui/components.py` — U3 ✅, U9/U36–U38 ✅ (`LED.level` brightness, colored banks, `RGBLED` puck, debug duty bars), D3 ✅, D15, U46 (a Nixie sibling renderer beside `SevenSeg`)
-- `src/fpga_sim/ui/board_display.py` — U1 ✅, U3 ✅, U5 ✅ (gear trigger), U11, U16, D3 ✅, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15, U35 ✅ (`[SIM:…]` cycles labeled backend variants), U46 (digit geometry for the taller tube), U48 (an *output-only* `visual_signature()` variant), U50 (the Synopsys note slot), U53 (the pin-map badge)
+- `src/fpga_sim/ui/board_display.py` — U1 ✅, U3 ✅, U5 ✅ (gear trigger), U11, U16, D3 ✅, D4 ✅, D6a ✅ (`run()` returns `ScreenResult`), D9 ✅ (simulator round-trips through `FPGABoard`), D15, U35 ✅ (`[SIM:…]` cycles labeled backend variants), U46 (digit geometry for the taller tube), U48 ✅ (`output_signature()`, the output-only companion to `visual_signature()`), U50 (the Synopsys note slot), U53 (the pin-map badge)
 - `src/fpga_sim/ui/board_selector.py` — U0, U1 ✅, U8, U12, U13 ✅, D15, U49 (`"name"` sort branch, vendor in the filter, `hovered = 0`; scroll helpers extracted)
-- `src/fpga_sim/ui/sim_panel.py` — U5 ✅ (`speed_factor` ctor param; public `SPEED_DEFAULT`), U21 ✅ (native-convention INFO note), U34 ✅ (`set_remote` remote stats feed; child `sim_pct` G zone), U14, U15, U19, D4 ✅, D15, U48 (the stall advisory and its actions)
+- `src/fpga_sim/ui/sim_panel.py` — U5 ✅ (`speed_factor` ctor param; public `SPEED_DEFAULT`), U21 ✅ (native-convention INFO note), U34 ✅ (`set_remote` remote stats feed; child `sim_pct` G zone), U14, U15, U19, D4 ✅, D15 — U48's advisory did **not** land here: it lives in `simulation_screen.py` over `stall.py`, and reads the panel only for `current_clock_hz` / `speed_factor`
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15, U49 (`bad_*` fixtures gone, preselection, retry start-dir, `DROPFILE`, help button), U51 (what a folder pick reports)
 - `src/fpga_sim/ui/error_dialog.py` — U4 ✅ (`example_path` → [View Example]), D4 ✅, D6a ✅ (`run()` returns `DialogResult`), D15, U50 (keep GHDL's caret column; copy-to-clipboard)
-- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/sim_toolbar.py` (U7 ✅), `ui/tooltip.py` (U3 ✅), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅, U34 ✅ — `SimExit` relocated here), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `src/fpga_sim/ui/nixie.py` (U46), **`src/fpga_sim/paths.py` + `sim_backends.py` / `sim_discovery.py` / `vhdl_contract.py` / `conventions.py` / `wrapper.py` / `waveform.py` / `sim_runner.py` (D17)**, `src/fpga_sim/pinmap.py` + `src/fpga_sim/constraints/` (U53 — the latter relocated from `src/fpga_sim/constraints/`), `src/fpga_sim/generics.py` (U48), `src/fpga_sim/ui/_scroll.py` (U49), `docs/first_design.md` + `docs/troubleshooting.md` + `docs/plans/` (the classroom arc's docs), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
+- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/sim_toolbar.py` (U7 ✅), `ui/tooltip.py` (U3 ✅), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅, U34 ✅ — `SimExit` relocated here), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `src/fpga_sim/ui/nixie.py` (U46), **`src/fpga_sim/paths.py` + `sim_backends.py` / `sim_discovery.py` / `vhdl_contract.py` / `conventions.py` / `wrapper.py` / `waveform.py` / `sim_runner.py` (D17)**, `src/fpga_sim/pinmap.py` + `src/fpga_sim/constraints/` (U53 — the latter relocated from `src/fpga_sim/constraints/`), `src/fpga_sim/generics.py` + `src/fpga_sim/stall.py` (U48 ✅), `src/fpga_sim/ui/_scroll.py` (U49), `docs/first_design.md` + `docs/troubleshooting.md` + `docs/plans/` (the classroom arc's docs), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
 - `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U34 ✅ **replaced it with the headless bridge** (no pygame; streams state over `sim_link`; the pre-U34 pygame-testbench notes U5/U7/U21 ✅ are history — those UI surfaces now live in `ui/simulation_screen.py`), U9 ✅ (child-side duty sampling + the U38 pause-instant sample); U22 ✅ needed no testbench change (the native wrapper adapts scan below the boundary)
-- `src/fpga_sim/ui/simulation_screen.py` — U34 ✅ (new: in-launcher `SimulationScreen` + `RunStats`), U23 (dirty-flag draw loop), U9/U37 ✅ (streamed brightness, channel-domain routing, pause-follow), U14 (`P` pause key), U48 (stall detection in the live run loop)
+- `src/fpga_sim/ui/simulation_screen.py` — U34 ✅ (new: in-launcher `SimulationScreen` + `RunStats`), U23 (dirty-flag draw loop), U9/U37 ✅ (streamed brightness, channel-domain routing, pause-follow), U14 (`P` pause key), U48 ✅ (stall detection in the live run loop; the offer, its panel, and the `interactive=False` suppression that keeps it out of `--benchmark` captures)
 - `pyproject.toml` — D8 ✅ (`[tool.mypy]` now just `strict = true`), U26 (`dev` group gains Pillow)
 - `.pre-commit-config.yaml`, new `.editorconfig` — D10 ✅
 - `CONTRIBUTING.md` — D12
