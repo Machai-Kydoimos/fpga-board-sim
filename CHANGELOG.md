@@ -486,6 +486,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The error dialog no longer cuts the message off at the bottom edge.** Its
+  body was a fixed third of the window and never a whole number of lines, so the
+  last row was always drawn half-clipped — which reads as text running off the
+  panel rather than as text you can scroll. It now takes the room the window
+  actually has, in whole lines, which shows a hinted error **complete** at every
+  window size down to 800x600. What genuinely does not fit now scrolls with the
+  **keyboard** (↑ ↓ / PgUp / PgDn / Home / End) and not only the wheel, and the
+  footer says so when there is more to see. (The full text has always also gone
+  to the terminal `fpga-sim` was launched from.)
+- **A missing unit reported against the generated wrapper no longer sends you
+  looking for a file you already have.** Only `sim_wrapper.vhd` instantiates the
+  design, and it is analyzed after the design compiled — so the unit is missing
+  because the entity is named something other than the file, which is what the
+  hint now says.
 - **GHDL's `^` column marker no longer collapses to column 0.** The error dialog
   word-wrapped with `.strip()`, so the one line of a diagnostic that is nothing
   but indentation lost all of it, and the caret pointed confidently at the wrong

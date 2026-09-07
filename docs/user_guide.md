@@ -401,7 +401,12 @@ The catalog of them, with both engines' wordings, is in
 GHDL's `^` column marker keeps its column, so it still points at the character it
 was aimed at. **[Copy]** (or `C`) puts the title, the compiler's text and the
 hints on the clipboard together. **[View Example]** (or `V`) opens the board's
-own example beside the error; the dialog stays open so you can compare them.
+own example beside the error; the dialog stays open so you can compare them. A
+message too long for the panel scrolls with **↑ ↓ / PgUp / PgDn / Home / End**
+or the wheel, and the footer says so when there is more to see.
+
+Every error is also printed to the terminal you launched from — the whole thing,
+hints included — so you never have to transcribe it from the screen.
 
 #### Bring your own project: one folder is one project
 

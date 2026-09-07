@@ -20,6 +20,10 @@ from fpga_sim.ui.results import DialogResult
 from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
 
+#: "Scroll past the end" -- _draw clamps it to the true maximum, which only it
+#: knows (the wrap depends on the font and the window width).
+_SCROLL_TO_END = 1 << 30
+
 #: How long the [Copy] button reads "Copied!" before returning to its label.
 _COPIED_FEEDBACK_MS = 1500
 
@@ -66,16 +70,23 @@ def _wrap_spans(raw: str, font: _Measurer, max_w: int) -> list[tuple[str, int, i
     pad = len(indent)
     spans: list[tuple[str, int, int]] = []
     current = indent
+    # "Nothing placed yet" is a flag, not ``current == indent``: a run of
+    # spaces splits into empty words, so a break landing on one leaves current
+    # back at the indent while a word *has* been placed.  Comparing strings
+    # there dropped the separator and shifted every column after it -- and the
+    # caret with them.
+    empty = True
     start = pad  # source column of current's first content character
     col = pad  # source column of the word about to be placed
     for word in stripped.split(" "):
-        candidate = current + word if current == indent else f"{current} {word}"
-        if current != indent and font.size(candidate)[0] > max_w:
+        candidate = current + word if empty else f"{current} {word}"
+        if not empty and font.size(candidate)[0] > max_w:
             spans.append((current, start, pad))
             current = indent + word
             start = col
         else:
             current = candidate
+        empty = False
         col += len(word) + 1  # the space that split() consumed
     spans.append((current, start, pad))
     return spans
@@ -207,6 +218,9 @@ class ErrorDialog:
         self._example_rect: pygame.Rect | None = None
         self._copy_rect: pygame.Rect | None = None
         self._copied_at: int | None = None
+        self._line_h = 22
+        self._viewport_h = 0
+        self._overflowing = False
 
     def run(self, clock: pygame.time.Clock) -> DialogResult:
         """Run the event loop and return DialogResult.RETRY or DialogResult.BACK."""
@@ -228,6 +242,8 @@ class ErrorDialog:
                         open_with_default_app(self.example_path)
                     elif ev.key == pygame.K_c:
                         self.copy()
+                    else:
+                        self._scroll_key(ev.key)
                 elif ev.type == pygame.MOUSEBUTTONDOWN:
                     if ev.button == 1:
                         result = self._click(ev.pos)
@@ -240,6 +256,41 @@ class ErrorDialog:
 
             self._draw()
             clock.tick(30)
+
+    def _footer_hint(self) -> str:
+        """Build the keys line under the panel, naming only what this dialog can do.
+
+        Scrolling is offered only when there is something below the fold: a key
+        that does nothing is a question the reader has to answer before
+        ignoring it.
+        """
+        text = "C: Copy    Enter: Try Another File    Esc: Back to Boards"
+        if self.example_path is not None:
+            text = f"V: View Example    {text}"
+        if self._overflowing:
+            text = f"\u2191\u2193 PgUp/PgDn: Scroll    {text}"
+        return text
+
+    def _scroll_key(self, key: int) -> None:
+        """Move the message under the keys a reader reaches for.
+
+        The wheel was the only way to see the rest of a message, which leaves
+        out anyone on a trackpad-less keyboard -- and the hints this dialog now
+        carries are several lines longer than the text it was built for.
+        """
+        page = max(self._line_h, self._viewport_h - self._line_h)
+        if key in (pygame.K_DOWN, pygame.K_KP2):
+            self._scroll += self._line_h
+        elif key in (pygame.K_UP, pygame.K_KP8):
+            self._scroll = max(0, self._scroll - self._line_h)
+        elif key == pygame.K_PAGEDOWN:
+            self._scroll += page
+        elif key == pygame.K_PAGEUP:
+            self._scroll = max(0, self._scroll - page)
+        elif key == pygame.K_HOME:
+            self._scroll = 0
+        elif key == pygame.K_END:
+            self._scroll = _SCROLL_TO_END  # clamped to the real end by _draw
 
     def _click(self, pos: tuple[int, int]) -> DialogResult | None:
         if self._retry_rect and self._retry_rect.collidepoint(pos):
@@ -291,9 +342,21 @@ class ErrorDialog:
         max_text_w = panel_w - pad * 2
         wrapped = _wrap_message(self.message, body_f, max_text_w)
 
+        # The body gets the room the window actually has, not a fixed third of
+        # it, and always a whole number of lines: a viewport that ended
+        # mid-glyph drew a half-row of pixels at the bottom edge, which reads
+        # as text running off the panel rather than as text you can scroll.
         body_h = len(wrapped) * line_h
-        viewport_h = min(body_h, round(sh / 3))
+        chrome = pad + title_f.get_linesize() + pad + btns_h + pad
+        avail = sh - chrome - max(40, round(72 * s))  # margins + the footer hint
+        viewport_h = min(body_h, max(3 * line_h, avail))
+        viewport_h -= viewport_h % line_h
         panel_h = pad + title_f.get_linesize() + pad + viewport_h + btns_h + pad
+        # Remembered for the keyboard: run() scrolls, _draw() is what knows the
+        # line height and how much of the message is off-screen.
+        self._line_h = line_h
+        self._viewport_h = viewport_h
+        self._overflowing = body_h > viewport_h
 
         px = (sw - panel_w) // 2
         py = (sh - panel_h) // 2
@@ -380,10 +443,7 @@ class ErrorDialog:
 
         # Keyboard shortcut hint below the panel
         hint_f = get_font(max(12, round(14 * s)))
-        hint_text = "C: Copy    Enter: Try Another File    Esc: Back to Boards"
-        if self.example_path is not None:
-            hint_text = f"V: View Example    {hint_text}"
-        hint = hint_f.render(hint_text, True, THEME.footer_hint)
+        hint = hint_f.render(self._footer_hint(), True, THEME.footer_hint)
         self.screen.blit(hint, hint.get_rect(centerx=px + panel_w // 2, top=py + panel_h + 8))
 
         pygame.display.flip()

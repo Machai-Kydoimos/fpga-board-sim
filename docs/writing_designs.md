@@ -555,6 +555,13 @@ in which case the caret follows the piece of the line it points at. **[Copy]**
 (or the `C` key) puts the whole thing — title, compiler text and hints — on the
 clipboard, which is what you want when you are pasting it into a message.
 
+The panel grows to the window, so a hinted error is normally shown whole. When a
+message is longer than that, the footer says so and **↑ ↓ / PgUp / PgDn / Home /
+End** scroll it as well as the mouse wheel.
+
+The same text is also written to the terminal you started `fpga-sim` in, so it is
+already in your scrollback whether or not you scrolled the dialog.
+
 ### Picking a testbench by mistake
 
 A file whose entity declares **no ports at all** is a testbench, and the

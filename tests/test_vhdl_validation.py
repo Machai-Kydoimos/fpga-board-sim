@@ -854,6 +854,41 @@ class TestAddErrorHints:
     def test_nvc_too_many_actuals_hint_quotes_the_counts(self):
         assert "6 actuals for 5 ports" in add_error_hints(NVC_TOO_MANY_ACTUALS)
 
+    def test_a_wrapper_stage_missing_unit_is_a_name_mismatch_not_a_missing_file(self):
+        """Only the generated wrapper instantiates the design, and it runs after
+        the design compiled -- so the unit is missing because the entity is named
+        something else, and "copy the file here" would be advice about a file the
+        reader already has."""
+        stderr = (
+            '/tmp/fpga_sim_x/sim_wrapper.vhd:104:21:error: unit "bad_contract_blinky" '
+            'not found in library "work"'
+        )
+        out = add_error_hints(stderr)
+        assert "does not declare an entity called bad_contract_blinky" in out
+        assert "copy the file" not in out
+
+    #: Text a hint must keep its hands off.  Warnings, successes, an unrelated
+    #: tool's output, and -- the ones that nearly matched -- prose that uses a
+    #: recognized word without being the failure it belongs to.
+    QUIET = [
+        "",
+        "   \n  \n",
+        "analysis successful",
+        "ghdl:info: compilation finished",
+        "** Warning: directory nw already exists and is not an NVC library",
+        'design.vhd:4:1:warning: declaration of "foo" hides an earlier one',
+        "error: cannot find executable 'ghdl' on PATH",
+        'Traceback (most recent call last):\n  File "x.py", line 1',
+        "the identifier of this signal is fine and nothing is expected of it",
+        "a testbench declares units of time; that is not an error",
+        "port map (clk => clk) is the recommended style",
+        "no declaration was needed for this design",
+    ]
+
+    @pytest.mark.parametrize("quiet", QUIET)
+    def test_no_hint_on_output_that_is_not_the_failure(self, quiet):
+        assert add_error_hints(quiet, board_def=_rich_7seg_board()) == quiet
+
     def test_unrecognized_message_unchanged(self):
         msg = "some unrelated failure"
         assert add_error_hints(msg, board_def=_rich_7seg_board()) == msg

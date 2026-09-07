@@ -589,6 +589,11 @@ _SYNTAX_ERROR = re.compile(
     re.IGNORECASE,
 )
 
+#: The generated wrapper.  Its name in a diagnostic says the failure is at the
+#: simulator's own boundary rather than in a file the user wrote, which is the
+#: difference between two opposite pieces of advice about a missing unit.
+_WRAPPER_FILE = "sim_wrapper.vhd"
+
 #: GHDL: ``unit "test_entity" not found in library "work"``
 #: NVC:  ``design unit TEST_ENTITY not found in library WORK``
 _UNIT_NOT_FOUND = re.compile(
@@ -777,14 +782,26 @@ def add_error_hints(message: str, board_def: BoardDef | None = None) -> str:
     m = _UNIT_NOT_FOUND.search(message)
     if m:
         unit = m.group(1)
-        hints.append(
-            f"Nothing in the library declares {unit}. The simulator analyzes the other "
-            "files in the folder you picked from (one folder is one project), so copy "
-            f"the file that declares {unit} into that folder, named after the entity it "
-            f"declares — {unit.lower()}.vhd holds entity {unit.lower()}.\n"
-            f"If {unit} is the design and you picked its testbench, pick the design "
-            "instead: the simulator supplies the stimulus itself."
-        )
+        if _WRAPPER_FILE in message:
+            # Only the generated wrapper instantiates the design, and it is
+            # analyzed after the design succeeded -- so the design compiled
+            # under some *other* name.  Sending this reader to look for a
+            # missing file would be sending them after one they already have.
+            hints.append(
+                f"The file analyzed, but it does not declare an entity called {unit}.\n"
+                "The entity name must match the filename — a design in "
+                f"{unit.lower()}.vhd has to declare  entity {unit.lower()} is  — so "
+                "rename whichever of the two is wrong."
+            )
+        else:
+            hints.append(
+                f"Nothing in the library declares {unit}. The simulator analyzes the other "
+                "files in the folder you picked from (one folder is one project), so copy "
+                f"the file that declares {unit} into that folder, named after the entity it "
+                f"declares — {unit.lower()}.vhd holds entity {unit.lower()}.\n"
+                f"If {unit} is the design and you picked its testbench, pick the design "
+                "instead: the simulator supplies the stimulus itself."
+            )
 
     m = _TOO_MANY_ACTUALS.search(message)
     if m:

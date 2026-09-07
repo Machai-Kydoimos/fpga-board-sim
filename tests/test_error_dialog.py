@@ -1,5 +1,7 @@
 """Tests for ErrorDialog: button layout, View-Example behavior, dismiss keys."""
 
+import random
+from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType
 
@@ -8,7 +10,7 @@ import pytest
 
 import fpga_sim.ui.error_dialog as error_dialog_mod
 from fpga_sim.ui.constants import get_font
-from fpga_sim.ui.error_dialog import ErrorDialog, _wrap_line, _wrap_message
+from fpga_sim.ui.error_dialog import ErrorDialog, _wrap_line, _wrap_message, _wrap_spans
 from fpga_sim.ui.results import DialogResult
 from fpga_sim.ui.widgets import draw_button
 
@@ -370,3 +372,150 @@ class TestButtonRowFits:
         font, total = self._fit(monkeypatch, avail=10)
         assert font._advance == round(_FixedMetricFont.ADVANCE * error_dialog_mod._MIN_BUTTON_FONT)
         assert total > 10  # honest about not fitting, rather than illegible
+
+
+# ── U50/F5: the wrap holds up as a property, not just on the cases I picked ──
+
+
+def _random_lines(seed: int, count: int = 400) -> Iterator[tuple[str, int]]:
+    """Diagnostic-shaped lines: an indent, then words of assorted lengths."""
+    rng = random.Random(seed)
+    for _ in range(count):
+        indent = " " * rng.choice([0, 0, 1, 2, 4, 8, 17, 40])
+        words = [
+            "".join(rng.choice("abcdefgh(),;=>_^") for _ in range(rng.randint(1, 18)))
+            for _ in range(rng.randint(1, 14))
+        ]
+        # Runs of spaces occur in real source; they must survive the round trip.
+        text = " ".join(words)
+        if rng.random() < 0.3:
+            text = text.replace(" ", "   ", 1)
+        yield indent + text, rng.choice([40, 80, 140, 300, 900])
+
+
+class TestWrapProperties:
+    """The caret rests on `_wrap_spans`' claim that a segment maps back to a
+    source column.  These check that claim over a few hundred generated lines
+    rather than over the four diagnostics that happened to get typed out."""
+
+    FONT = _CharFont()
+
+    def test_a_segment_maps_back_to_the_source_it_came_from(self):
+        """`text[pad:] is raw[src_col:...]` — the mapping the caret is placed by."""
+        for raw, width in _random_lines(seed=20260907):
+            for text, src_col, pad in _wrap_spans(raw, self.FONT, width):
+                assert text[pad:] == raw[src_col : src_col + len(text) - pad], raw
+
+    def test_no_character_is_lost_or_invented(self):
+        for raw, width in _random_lines(seed=1):
+            spans = _wrap_spans(raw, self.FONT, width)
+            rebuilt = spans[0][0]
+            for text, _, pad in spans[1:]:
+                rebuilt += " " + text[pad:]  # the space that split() consumed
+            assert rebuilt == raw, raw
+
+    def test_every_segment_keeps_the_original_indent(self):
+        for raw, width in _random_lines(seed=2):
+            indent = raw[: len(raw) - len(raw.lstrip(" "))]
+            for text, _, _ in _wrap_spans(raw, self.FONT, width):
+                assert text.startswith(indent)
+        # A continuation may begin with *further* spaces -- a break can land
+        # inside a run of them, and those belong to the source.  That they are
+        # the source's own is what test_a_segment_maps_back_to_the_source
+        # checks; it is not a defect in the indent.
+
+    def test_a_segment_is_over_wide_only_when_one_token_is(self):
+        for raw, width in _random_lines(seed=3):
+            for text, _, pad in _wrap_spans(raw, self.FONT, width):
+                if self.FONT.size(text)[0] > width:
+                    assert " " not in text[pad:], f"{text!r} could have been broken"
+
+    def test_wrapping_is_idempotent_on_a_line_that_already_fits(self):
+        for raw, _ in _random_lines(seed=4):
+            once = _wrap_line(raw, self.FONT, 10_000)
+            assert once == [raw]
+
+
+# ── U50: the message is readable without a mouse, and never half-drawn ───────
+
+#: Longer than any panel: 60 diagnostic-shaped lines.
+LONG = "\n".join(
+    f"design.vhd:{i}:12:error: a fairly long sentence about line {i}" for i in range(60)
+)
+
+
+class TestScrolling:
+    """Rick, reading the stills: "there is more text than can fit ... it runs on
+    off the bottom".  The viewport was a fixed third of the window and never a
+    whole number of lines, so the bottom row was always drawn half-clipped --
+    and the wheel was the only way to reach the rest."""
+
+    SIZES = [(1920, 1080), (1280, 800), (1024, 700), (900, 620), (800, 600), (640, 480)]
+
+    @pytest.mark.parametrize("size", SIZES)
+    def test_the_viewport_is_a_whole_number_of_lines(self, screen, headless_pygame, size):
+        dlg = ErrorDialog(headless_pygame.Surface(size), "VHDL Error", LONG)
+        dlg._draw()
+        assert dlg._viewport_h % dlg._line_h == 0
+
+    @pytest.mark.parametrize("size", SIZES)
+    def test_the_panel_stays_inside_the_window(self, screen, headless_pygame, size):
+        """Giving the body more room must not push the buttons off the bottom."""
+        dlg = ErrorDialog(headless_pygame.Surface(size), "VHDL Error", LONG)
+        dlg._draw()
+        assert dlg._back_rect is not None
+        assert dlg._back_rect.bottom < size[1]
+
+    def test_a_message_that_fits_is_shown_whole(self, screen, headless_pygame):
+        """The hinted errors this PR produces are ~13 lines; they should not
+        need scrolling at any window size a student is likely to use."""
+        hinted = (
+            'tb.vhd:22:45:error: too many actuals for component instance "uut"\n'
+            "    port map (clock, reset, sw, led_r, hex, open, open);\n"
+            "                                            ^\n\n"
+            "Hint: The port map lists more actuals than the entity has ports.\n"
+            "A positional port map binds by position, so it silently changes meaning "
+            "whenever the entity's port list does. Name the ports instead:\n"
+            "  port map (clk => clk, rst => rst, sw => sw);"
+        )
+        for size in [(1920, 1080), (1280, 800), (1024, 700), (900, 620), (800, 600)]:
+            dlg = ErrorDialog(headless_pygame.Surface(size), "VHDL Error", hinted)
+            dlg._draw()
+            assert not dlg._overflowing, f"needs scrolling at {size}"
+
+    def test_the_footer_offers_scrolling_only_when_there_is_more(self, screen, headless_pygame):
+        small = ErrorDialog(headless_pygame.Surface((1280, 800)), "VHDL Error", "boom")
+        small._draw()
+        assert "Scroll" not in small._footer_hint()
+        big = ErrorDialog(headless_pygame.Surface((640, 480)), "VHDL Error", LONG)
+        big._draw()
+        assert "Scroll" in big._footer_hint()
+
+    def test_the_keyboard_reaches_the_rest_of_the_message(self, screen, headless_pygame):
+        dlg = ErrorDialog(headless_pygame.Surface((800, 600)), "VHDL Error", LONG)
+        dlg._draw()
+        assert dlg._overflowing
+        dlg._scroll_key(pygame.K_DOWN)
+        assert dlg._scroll == dlg._line_h
+        dlg._scroll_key(pygame.K_UP)
+        assert dlg._scroll == 0
+        dlg._scroll_key(pygame.K_UP)
+        assert dlg._scroll == 0  # never above the first line
+        dlg._scroll_key(pygame.K_PAGEDOWN)
+        assert dlg._scroll > dlg._line_h
+        dlg._scroll_key(pygame.K_END)
+        dlg._draw()  # _draw owns the clamp: only it knows how long the wrap is
+        at_end = dlg._scroll
+        assert 0 < at_end < error_dialog_mod._SCROLL_TO_END
+        dlg._scroll_key(pygame.K_DOWN)
+        dlg._draw()
+        assert dlg._scroll == at_end  # the end is the end
+        dlg._scroll_key(pygame.K_HOME)
+        assert dlg._scroll == 0
+
+    def test_scrolling_keys_do_not_dismiss_the_dialog(self, screen, headless_pygame):
+        """They fall through the same KEYDOWN branch as Enter and Esc."""
+        dlg = ErrorDialog(headless_pygame.Surface((800, 600)), "VHDL Error", LONG)
+        _post_keys(headless_pygame, pygame.K_DOWN, pygame.K_PAGEDOWN, pygame.K_END, pygame.K_ESCAPE)
+        assert dlg.run(headless_pygame.time.Clock()) is DialogResult.BACK
+        assert dlg._scroll > 0
