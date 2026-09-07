@@ -268,9 +268,10 @@ This document inventories all viable improvements and ranks them by impact.
   which does not stop simulated time but shrinks the step to 1 ns, quietly inflated the window.
   The watch now accumulates **observed** wall time and **observed** simulated time over the same
   frames, which makes the ratio honest by construction rather than by two rules agreeing.
-- **Done when:** a 2³⁰-divider fixture raises the banner within ~10 s with correct arithmetic on
+- **Done when:** a 2³⁰-divider fixture raises the offer within ~10 s with correct arithmetic on
   both backends and both actions work; no bundled example ever raises it; a Lab 2a-shaped design
-  animates within seconds after one dialog change or one `--generic`.
+  animates within seconds after one dialog change or one `--generic`. (Shipped as an *offer*, not
+  the banner this line first said — see the departure note above.)
 - **Open (decide during execution):** the threshold T (10 s? 15 s?), per-run vs per-session
   dismissal, whether a single changing segment resets the timer.
 
