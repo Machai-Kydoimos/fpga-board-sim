@@ -50,6 +50,7 @@ from fpga_sim.vhdl_interface import (
     _parse_toplevel_interface,
     _plural,
     _strip_vhdl_comments,
+    declares_no_ports,
 )
 
 if TYPE_CHECKING:
@@ -444,6 +445,23 @@ def _check_contract(
             f"Rename the file to '{entities[0]}{path.suffix}' or rename the entity to '{stem}'.",
         )
 
+    # A port-less entity is a testbench, and saying so is worth more than the
+    # contract-port list it is missing (U50/G4).  It has to be asked here
+    # rather than after the parse: an entity with no port clause and one whose
+    # ports simply did not parse both leave _parse_toplevel_interface at None.
+    if declares_no_ports(text, stem):
+        return ContractResult(
+            False,
+            f"'{path.name}' declares an entity with no ports, which is what a "
+            "testbench looks like.\n"
+            "Pick the design it tests instead — the file whose entity declares "
+            "clk, sw, btn and led. The simulator supplies the stimulus itself: "
+            "the board's switches and buttons are the inputs, and it drives the "
+            "clock.\n"
+            "The testbench can stay in the folder; files beside the design are "
+            "analyzed with it.",
+        )
+
     parsed = _parse_toplevel_interface(text, stem)
     if parsed is not None:
         ok, msg = _check_parsed_contract(path.name, parsed[0], parsed[1], board_def)
@@ -492,25 +510,168 @@ def _check_contract(
     return ContractResult(True)
 
 
+# ── Reading a simulator's own diagnostics (U4, widened by U50) ───────────────
+#
+# Every pattern below was captured by running the failure it describes against
+# GHDL and NVC, never read off a manual: the two engines word the same defect
+# differently, only one of them prints a caret, and the wording a student
+# actually meets is the one their file produces on the machine in front of
+# them.  A hint is added; the compiler's own text is never replaced.
+
+#: GHDL ``no declaration for "x"`` / NVC ``no visible declaration for X``.
+#: One message, three different answers -- see :func:`_classify_undeclared`.
+_UNDECLARED = re.compile(r"no (?:visible )?declaration for \"?([A-Za-z_]\w*)", re.IGNORECASE)
+
+#: Undeclared names that mean ``ieee.std_logic_1164`` was never imported.
+_STD_LOGIC_NAMES = frozenset(
+    {"std_logic", "std_logic_vector", "std_ulogic", "std_ulogic_vector", "rising_edge"}
+)
+
+#: Undeclared names that mean ``ieee.numeric_std`` was never imported (U50).
+#: The types come first because they are what a declaration names, but the
+#: conversion functions are the more common miss: a design can be written
+#: entirely in ``std_logic_vector`` and still need ``to_unsigned`` to count.
+_NUMERIC_STD_NAMES = frozenset(
+    {
+        "unsigned",
+        "signed",
+        "to_unsigned",
+        "to_signed",
+        "to_integer",
+        "resize",
+        "shift_left",
+        "shift_right",
+        "rotate_left",
+        "rotate_right",
+    }
+)
+
+#: The VHDL-2008 reserved words (LRM 15.10).  Used only to recognize one that a
+#: student has used as an identifier -- ``units`` for a countdown's ones digit
+#: is the case that found this (U50/G7) -- because neither engine says
+#: "reserved word", and nothing in a first course explains why ``units`` is one.
+_VHDL_RESERVED = frozenset(
+    """
+    abs access after alias all and architecture array assert assume
+    assume_guarantee attribute begin block body buffer bus case component
+    configuration constant context cover default disconnect downto else elsif
+    end entity exit fairness file for force function generate generic group
+    guarded if impure in inertial inout is label library linkage literal loop
+    map mod nand new next nor not null of on open or others out package
+    parameter port postponed procedure process property protected pure range
+    record register reject release rem report restrict restrict_guarantee
+    return rol ror select sequence severity signal shared sla sll sra srl
+    strong subtype then to transport type unaffected units until use variable
+    vmode vprop vunit wait when while with xnor xor
+    """.split()
+)
+
+#: GHDL: ``an identifier is expected instead of 'units'``.
+_GHDL_WANTED_IDENTIFIER = re.compile(
+    r"an identifier is expected instead of '([A-Za-z_]\w*)'", re.IGNORECASE
+)
+
+#: NVC: ``unexpected units while parsing signal declaration, expecting
+#: identifier``.  The expectation set is the discriminator: NVC words a missing
+#: semicolon the same way ("unexpected signal ... expecting one of := or ;"),
+#: and *that* token is reserved too, so matching the token alone would blame a
+#: reserved word for a defect on the previous line.
+_NVC_WANTED_IDENTIFIER = re.compile(
+    r"unexpected ([A-Za-z_]\w*) while parsing [^\n]*?expecting [^\n]*\bidentifier\b",
+    re.IGNORECASE,
+)
+
+#: Syntax errors, both engines.  Deliberately broad: the hint it produces is
+#: about *where to look*, which is the same advice for every one of them.
+_SYNTAX_ERROR = re.compile(
+    r"missing \";\" at end of|is expected instead of|unexpected token"
+    r"|unexpected \S+ while parsing",
+    re.IGNORECASE,
+)
+
+#: GHDL: ``unit "test_entity" not found in library "work"``
+#: NVC:  ``design unit TEST_ENTITY not found in library WORK``
+_UNIT_NOT_FOUND = re.compile(
+    r"(?:design )?unit \"?([A-Za-z_]\w*)\"? not found in library \"?work\"?", re.IGNORECASE
+)
+
+#: GHDL: ``too many actuals for component instance "uut"``
+#: NVC:  ``found at least 7 positional actuals but WORK.TEST_ENTITY has only 6 ports``
+_TOO_MANY_ACTUALS = re.compile(
+    r"too many actuals for|found at least (\d+) positional actuals but"
+    r"[^\n]*?has only (\d+) ports",
+    re.IGNORECASE,
+)
+
+
+def _classify_undeclared(message: str) -> tuple[bool, bool, list[str]]:
+    """Sort every undeclared name in *message* into why it is undeclared.
+
+    Returns ``(needs_1164, needs_numeric_std, unknown_names)``.  The same
+    sentence carries all three cases -- a missing library header, a missing
+    ``numeric_std``, and a plain typo -- and only the name inside it tells them
+    apart, so they are classified together rather than by three regexes that
+    would each have to avoid the other two.
+    """
+    needs_1164 = needs_numeric = False
+    unknown: list[str] = []
+    for m in _UNDECLARED.finditer(message):
+        name = m.group(1).lower()
+        if name in _STD_LOGIC_NAMES:
+            needs_1164 = True
+        elif name in _NUMERIC_STD_NAMES:
+            needs_numeric = True
+        elif name not in unknown:
+            unknown.append(name)
+    return needs_1164, needs_numeric, unknown
+
+
+def _reserved_word_used_as_identifier(message: str) -> str | None:
+    """Return the reserved word a design used as an identifier, if that is the fault."""
+    for pattern in (_GHDL_WANTED_IDENTIFIER, _NVC_WANTED_IDENTIFIER):
+        m = pattern.search(message)
+        if m is not None and m.group(1).lower() in _VHDL_RESERVED:
+            return m.group(1).lower()
+    return None
+
+
 def add_error_hints(message: str, board_def: BoardDef | None = None) -> str:
     """Append actionable "Hint:" lines to a simulator analysis/elaboration error.
 
-    Recognizes the GHDL and NVC wordings of the failure modes a contract-
-    violating design produces (missing IEEE header, unmapped generics, extra
-    unconnected ports, vector-length mismatches) and explains the fix in terms
-    of the design contract — with the board's real resource counts when
-    *board_def* is given.  Unrecognized messages pass through unchanged.
+    Recognizes the GHDL and NVC wordings of two kinds of failure and explains
+    the fix for each.  **Contract violations** -- a missing IEEE header,
+    unmapped generics, extra unconnected ports, vector-length mismatches --
+    are explained in terms of the design contract, with the board's real
+    resource counts when *board_def* is given.  **Defects in the source
+    itself** (U50) -- a missing ``numeric_std``, an undeclared identifier, a
+    reserved word used as a name, a syntax error, an entity missing from
+    ``work``, a positional port map with too many actuals -- are explained in
+    terms of VHDL, because that is what went wrong.
+
+    Unrecognized messages pass through unchanged, and a recognized one is
+    never edited: the hint is appended below the compiler's own text.
     """
     if not message.strip():
         return message
     hints: list[str] = []
 
-    # GHDL: no declaration for "std_logic" / NVC: no visible declaration for STD_LOGIC
-    if re.search(r"no (?:visible )?declaration for \"?std_logic", message, re.IGNORECASE):
+    # An undeclared name is one sentence with three causes (U50): a missing
+    # library header, a missing numeric package, or a typo.
+    needs_1164, needs_numeric_std, unknown_names = _classify_undeclared(message)
+
+    if needs_1164:
         hints.append(
             "Add the IEEE library header at the top of the file:\n"
             "  library ieee;\n"
             "  use ieee.std_logic_1164.all;"
+        )
+
+    if needs_numeric_std:
+        hints.append(
+            "Add the numeric package under the IEEE library header:\n"
+            "  use ieee.numeric_std.all;\n"
+            "It declares unsigned and signed, and the conversions between them, "
+            "integer and std_logic_vector (to_unsigned, to_signed, to_integer, resize)."
         )
 
     # GHDL: generic "NUM_LEDS" is not an interface name
@@ -577,6 +738,66 @@ def add_error_hints(message: str, board_def: BoardDef | None = None) -> str:
             "reported above can differ from the board's.)"
         )
         hints.append("\n".join(lines))
+
+    # ── Source-level defects the compiler describes but does not explain ──
+
+    # A reserved word used as an identifier, and a plain syntax error, are
+    # mutually exclusive readings of the same diagnostic: "check the previous
+    # line" is wrong advice for `signal units : integer`, whose previous line
+    # is fine.  The reserved word is the more specific of the two, so it wins.
+    reserved = _reserved_word_used_as_identifier(message)
+    if reserved is not None:
+        hints.append(
+            f"'{reserved}' is one of VHDL's reserved words, so it cannot name a signal, "
+            f"variable, port or constant. Rename it — '{reserved}_value' or 's_{reserved}' "
+            "— everywhere it appears.\n"
+            'Neither GHDL nor NVC says "reserved word": both report only that an '
+            "identifier was expected here. The ones that read like ordinary names "
+            "include units, range, next, open, select, signal, type, bus, register, "
+            "severity, label and body."
+        )
+    elif _SYNTAX_ERROR.search(message):
+        hints.append(
+            "A syntax error is reported where the text stopped making sense, which is "
+            "often the line *after* the mistake — check the end of the previous line "
+            "for a missing ';'.\n"
+            "Every declaration and statement ends with a semicolon; the last entry "
+            "inside a port ( ... ) or generic ( ... ) clause does not."
+        )
+
+    if unknown_names:
+        names = ", ".join(f"'{n}'" for n in unknown_names)
+        hints.append(
+            f"Nothing declares {names}. Check the spelling against the declaration, and "
+            "declare every signal in the architecture's declarative part — between "
+            "'architecture ... is' and 'begin'.\n"
+            "A port of the entity is visible without redeclaring it; a signal is not."
+        )
+
+    m = _UNIT_NOT_FOUND.search(message)
+    if m:
+        unit = m.group(1)
+        hints.append(
+            f"Nothing in the library declares {unit}. The simulator analyzes the other "
+            "files in the folder you picked from (one folder is one project), so copy "
+            f"the file that declares {unit} into that folder, named after the entity it "
+            f"declares — {unit.lower()}.vhd holds entity {unit.lower()}.\n"
+            f"If {unit} is the design and you picked its testbench, pick the design "
+            "instead: the simulator supplies the stimulus itself."
+        )
+
+    m = _TOO_MANY_ACTUALS.search(message)
+    if m:
+        counts = ""
+        if m.group(1) and m.group(2):
+            counts = f" — {m.group(1)} actuals for {m.group(2)} ports"
+        hints.append(
+            f"The port map lists more actuals than the entity has ports{counts}.\n"
+            "A positional port map — port map (clk, rst, sw) — binds by position, so it "
+            "silently changes meaning whenever the entity's port list does. Name the "
+            "ports instead:\n"
+            "  port map (clk => clk, rst => rst, sw => sw);"
+        )
 
     if not hints:
         return message

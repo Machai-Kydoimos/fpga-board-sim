@@ -633,6 +633,47 @@ def test_num_segs_in_comment_does_not_require_seg_port(tmp_path):
     assert ok, f"Unexpected rejection: {msg}"
 
 
+# ── U50/G4: a port-less entity is a testbench ────────────────────────────────
+
+_TESTBENCH = """\
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity testbench is
+end testbench;
+
+architecture sim of testbench is
+  signal clock : std_logic := '0';
+begin
+  clock <= not clock after 10 ns;
+end sim;
+"""
+
+
+def test_a_picked_testbench_is_named_as_one(tmp_path):
+    """The course's lab folders each hold one, and it sorts next to the design."""
+    f = _write(tmp_path, "testbench", _TESTBENCH)
+    ok, msg = _contract(f, board_def=_plain_board())
+    assert not ok
+    assert "no ports, which is what a testbench looks like" in msg
+    assert "supplies the stimulus itself" in msg
+
+
+def test_the_testbench_message_replaces_the_missing_port_list(tmp_path):
+    """Listing clk/sw/btn/led at a testbench answers a question nobody asked."""
+    f = _write(tmp_path, "testbench", _TESTBENCH)
+    _, msg = _contract(f, board_def=_plain_board())
+    assert "Missing required port" not in msg
+
+
+def test_an_entity_with_an_empty_port_clause_is_not_called_a_testbench(tmp_path):
+    """`port ()` is a parse failure, not a testbench: it must keep its own message."""
+    src = "entity empty is\n  port (\n  );\nend entity;\n"
+    f = _write(tmp_path, "empty", src)
+    _, msg = _contract(f, board_def=_plain_board())
+    assert "testbench" not in msg
+
+
 # ── U4: contextual hints on analysis stderr ──────────────────────────────────
 
 GHDL_NO_IEEE = 'design.vhd:10:15:error: no declaration for "std_logic"'
@@ -653,6 +694,63 @@ NVC_LENGTH = (
     "    > /tmp/x/sim_wrapper.vhd:62\n"
     " 62 |       seg => seg,\n"
     "    |       ^^^^^^^^^^ error occurred here"
+)
+
+
+# U50: every constant below is verbatim stderr, captured by running the failure
+# against GHDL 7.0.0-dev and NVC 1.23 -- not transcribed from a manual.
+GHDL_NUMERIC_STD = (
+    'bad.vhdl:28:20:error: no declaration for "unsigned"\n'
+    "  signal counter : unsigned(COUNTER_BITS - 1 downto 0) := (others => '0');\n"
+    "                   ^"
+)
+NVC_NUMERIC_STD = (
+    "** Error: no visible declaration for UNSIGNED\n"
+    "    > /x/bad.vhdl:28\n"
+    " 28 |   signal counter : unsigned(COUNTER_BITS - 1 downto 0);\n"
+    "    |                    ^^^^^^^^"
+)
+GHDL_TO_UNSIGNED = 'numfn.vhd:14:27:error: no declaration for "to_unsigned"'
+NVC_TO_UNSIGNED = "** Error: no visible declaration for TO_UNSIGNED"
+GHDL_UNDECLARED = 'undecl.vhd:13:21:error: no declaration for "couner"'
+NVC_UNDECLARED = "** Error: no visible declaration for COUNER"
+GHDL_RESERVED = (
+    "test_entity.vhd:25:10:error: an identifier is expected instead of 'units'\n"
+    "  signal units   : integer range 0 to 9;\n"
+    "         ^\n"
+    'test_entity.vhd:25:9:error: missing ";" at end of object declaration'
+)
+NVC_RESERVED = (
+    "** Error: unexpected units while parsing signal declaration, expecting identifier\n"
+    "    > /x/test_entity.vhd:25\n"
+    " 25 |   signal units   : integer range 0 to 9;\n"
+    "    |          ^^^^^ this token was unexpected"
+)
+GHDL_SYNTAX = (
+    'semi.vhd:12:23:error: missing ";" at end of object declaration\n'
+    "  signal a : std_logic\n"
+    "                      ^"
+)
+NVC_SYNTAX = (
+    "** Error: unexpected signal while parsing signal declaration, "
+    "expecting one of := or ;\n"
+    "    > semi.vhd:13\n"
+    " 13 |   signal b : std_logic;\n"
+    "    |   ^^^^^^ this token was unexpected"
+)
+GHDL_UNIT_NOT_FOUND = (
+    'testbench.vhd:21:21:error: unit "test_entity" not found in library "work"\n'
+    "  uut : entity work.test_entity\n"
+    "                    ^"
+)
+NVC_UNIT_NOT_FOUND = "** Error: design unit TEST_ENTITY not found in library WORK"
+GHDL_TOO_MANY_ACTUALS = (
+    'testbench.vhd:22:45:error: too many actuals for component instance "uut"\n'
+    "    port map (clock, reset, sw, led_r, hex, open, open);\n"
+    "                                            ^"
+)
+NVC_TOO_MANY_ACTUALS = (
+    "** Error: found at least 6 positional actuals but WORK.TEST_ENTITY has only 5 ports"
 )
 
 
@@ -703,6 +801,59 @@ class TestAddErrorHints:
         assert "NUM_LEDS" in out
         assert "provides" not in out  # no board numbers to quote
 
+    # ── U50: the widened and added families ─────────────────────────────
+
+    @pytest.mark.parametrize(
+        "stderr", [GHDL_NUMERIC_STD, NVC_NUMERIC_STD, GHDL_TO_UNSIGNED, NVC_TO_UNSIGNED]
+    )
+    def test_numeric_std_hint_on_both_backends(self, stderr):
+        out = add_error_hints(stderr)
+        assert "use ieee.numeric_std.all;" in out
+        assert out.startswith(stderr)  # raw compiler text always stays
+
+    def test_unsigned_does_not_also_claim_the_ieee_header_is_missing(self):
+        """The 1164 hint would send a student to a line they already have."""
+        assert "std_logic_1164" not in add_error_hints(GHDL_NUMERIC_STD)
+
+    @pytest.mark.parametrize("stderr", [GHDL_UNDECLARED, NVC_UNDECLARED])
+    def test_undeclared_identifier_is_named(self, stderr):
+        out = add_error_hints(stderr)
+        assert "'couner'" in out
+        assert "architecture" in out.split("Hint:")[1]
+
+    @pytest.mark.parametrize("stderr", [GHDL_RESERVED, NVC_RESERVED])
+    def test_reserved_word_hint_names_the_word(self, stderr):
+        out = add_error_hints(stderr)
+        assert "'units' is one of VHDL's reserved words" in out
+
+    def test_reserved_word_suppresses_the_previous_line_advice(self):
+        """GHDL's cascade includes a missing ';', but the previous line is fine."""
+        out = add_error_hints(GHDL_RESERVED)
+        assert 'missing ";" at end of object declaration' in out  # still quoted verbatim
+        assert "check the end of the previous line" not in out
+
+    @pytest.mark.parametrize("stderr", [GHDL_SYNTAX, NVC_SYNTAX])
+    def test_syntax_error_points_at_the_previous_line(self, stderr):
+        assert "check the end of the previous line" in add_error_hints(stderr)
+
+    def test_a_reserved_word_that_is_not_the_fault_is_not_blamed(self):
+        """NVC words a missing ';' with a reserved token too ('unexpected signal')."""
+        assert "reserved words" not in add_error_hints(NVC_SYNTAX)
+
+    @pytest.mark.parametrize("stderr", [GHDL_UNIT_NOT_FOUND, NVC_UNIT_NOT_FOUND])
+    def test_unit_not_found_hint_names_the_unit_and_the_folder_rule(self, stderr):
+        out = add_error_hints(stderr)
+        assert "test_entity.vhd holds entity test_entity" in out
+        assert "picked its testbench" in out
+
+    def test_ghdl_too_many_actuals_hint(self):
+        out = add_error_hints(GHDL_TOO_MANY_ACTUALS)
+        assert "positional port map" in out
+        assert "port map (clk => clk" in out
+
+    def test_nvc_too_many_actuals_hint_quotes_the_counts(self):
+        assert "6 actuals for 5 ports" in add_error_hints(NVC_TOO_MANY_ACTUALS)
+
     def test_unrecognized_message_unchanged(self):
         msg = "some unrelated failure"
         assert add_error_hints(msg, board_def=_rich_7seg_board()) == msg
@@ -731,6 +882,86 @@ def test_fixed_width_fixture_stage3_hint_nvc(nvc):
     assert not ok
     assert "Hint:" in detail
     assert "NUM_LEDS" in detail
+
+
+# The course's own testbench shape: seven actuals for six ports, beside the
+# design it tests.  U51's sibling sweep is what gets the design into the
+# library, which is what turns "unit not found" into "too many actuals".
+_POSITIONAL_TB = """\
+library ieee;
+use ieee.std_logic_1164.all;
+
+entity testbench is
+end testbench;
+
+architecture sim of testbench is
+  signal clk : std_logic := '0';
+  signal sw  : std_logic_vector(3 downto 0) := (others => '0');
+  signal btn : std_logic_vector(3 downto 0) := (others => '0');
+  signal led : std_logic_vector(3 downto 0);
+begin
+  uut : entity work.solo
+    port map (clk, sw, btn, led, open, open);
+end sim;
+"""
+
+_SOLO = """\
+library ieee;
+use ieee.std_logic_1164.all;
+entity solo is
+  generic (
+    NUM_SWITCHES : positive := 4;
+    NUM_BUTTONS  : positive := 4;
+    NUM_LEDS     : positive := 4;
+    COUNTER_BITS : positive := 24
+  );
+  port (
+    clk : in  std_logic;
+    sw  : in  std_logic_vector(NUM_SWITCHES - 1 downto 0);
+    btn : in  std_logic_vector(NUM_BUTTONS - 1 downto 0);
+    led : out std_logic_vector(NUM_LEDS - 1 downto 0)
+  );
+end entity;
+architecture rtl of solo is
+begin
+  led <= sw xor btn;
+end architecture;
+"""
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("simulator", ["ghdl", "nvc"])
+def test_missing_numeric_std_is_hinted_on_both_backends(simulator, request):
+    """PR 9's headline: the repo's own semantic fixture now says which use clause."""
+    request.getfixturevalue(simulator)
+    f = FIXTURES / "bad_semantic_blinky.vhdl"
+    ok, detail = analyze_vhdl(f, toplevel=f.stem, simulator=simulator)
+    assert not ok
+    assert "use ieee.numeric_std.all;" in detail
+    assert "std_logic_1164" not in detail.split("Hint:")[1]
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("simulator", ["ghdl", "nvc"])
+def test_positional_port_map_is_hinted_on_both_backends(simulator, request, tmp_path):
+    """The Lab 1-shaped testbench, analyzed with its design beside it (U51)."""
+    request.getfixturevalue(simulator)
+    (tmp_path / "solo.vhd").write_text(_SOLO, encoding="utf-8")
+    tb = tmp_path / "testbench.vhd"
+    tb.write_text(_POSITIONAL_TB, encoding="utf-8")
+    ok, detail = analyze_vhdl(tb, toplevel="testbench", simulator=simulator)
+    assert not ok
+    assert "positional port map" in detail
+
+
+@pytest.mark.slow
+def test_a_design_missing_its_sibling_is_told_where_it_looks(tmp_path, ghdl):
+    """The entity-not-found hint, on the route a picked *design* reaches it."""
+    tb = tmp_path / "testbench.vhd"
+    tb.write_text(_POSITIONAL_TB, encoding="utf-8")  # solo.vhd deliberately absent
+    ok, detail = analyze_vhdl(tb, toplevel="testbench")
+    assert not ok
+    assert "solo.vhd holds entity solo" in detail
 
 
 @pytest.mark.slow

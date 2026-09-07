@@ -224,6 +224,18 @@ def _parse_toplevel_interface(
     return ports, generics
 
 
+def declares_no_ports(text: str, entity_name: str) -> bool:
+    """Report whether *entity_name* is declared with no port clause at all.
+
+    :func:`_parse_toplevel_interface` returns ``None`` for this file *and* for
+    one whose interface it merely could not parse, and the two deserve
+    different answers: a port-less entity is what a testbench looks like, and
+    saying so is more use than listing the contract ports it is missing.
+    """
+    block = _entity_block(_strip_vhdl_comments(text), entity_name)
+    return block is not None and _clause_body(block, "port") is None
+
+
 def _board_port_widths(board_def: BoardDef | None) -> dict[str, int]:
     """Effective wrapper port widths for *board_def*.
 

@@ -389,6 +389,20 @@ When you pick a file, the simulator analyzes and elaborates it (a few seconds on
 large design); a spinner overlay keeps the window responsive while this runs and
 reports any contract or compile error.
 
+#### When it does not load
+
+The error dialog shows GHDL's or NVC's **own** words, unedited, and adds a `Hint:`
+underneath when it recognizes the failure — a missing `use ieee.numeric_std.all;`,
+a reserved word used as a signal name, a syntax error reported one line late, a
+positional port map with too many actuals, an entity that is not in the folder.
+The catalog of them, with both engines' wordings, is in
+[writing_designs.md](writing_designs.md#when-the-compiler-rejects-your-file).
+
+GHDL's `^` column marker keeps its column, so it still points at the character it
+was aimed at. **[Copy]** (or `C`) puts the title, the compiler's text and the
+hints on the clipboard together. **[View Example]** (or `V`) opens the board's
+own example beside the error; the dialog stays open so you can compare them.
+
 #### Bring your own project: one folder is one project
 
 You do not have to rename anything to match a contract. If a **constraint file** —
