@@ -629,9 +629,17 @@ def find_divider(
                     source if declared != running else "",
                 )
             )
-    # Widest *as running*: that is the one setting the rate being complained
-    # about, which is the whole reason a width is picked at all.
-    return max(found, key=lambda d: d.bits) if found else None
+    # Prefer a generic the *reader* controls, then the widest as running.
+    #
+    # A design may well declare both: `COUNTER_BITS` is part of the contract, so
+    # every generic-contract design has one whether it uses it or not, and the
+    # simulator overrides it at launch.  A design that divides with a name of
+    # its own -- `hdl/running_light.vhd` and `DIVIDER_BITS` -- therefore offers
+    # two candidates of equal declared width, and picking by width alone lands
+    # on the contract's.  That advice cannot be acted on: the tool has already
+    # set that value, and changing it in the file changes nothing.  So a name
+    # the simulator is not overriding wins, and only then does width decide.
+    return max(found, key=lambda d: (d.name not in by_tool, d.bits)) if found else None
 
 
 #: How long a step should take here for the design to look alive.  Used to size

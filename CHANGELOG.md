@@ -616,6 +616,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The "it looks frozen" advisory named the one generic the reader cannot
+  usefully change.** Every generic-contract design declares `COUNTER_BITS`
+  whether it divides with it or not, and the simulator overrides that at launch;
+  a design that divides with a name of its own then offered two candidates of
+  equal declared width, and picking by width alone landed on the contract's.
+  The advice was to lower a value the tool had already replaced — editing it in
+  the file would have changed nothing. A generic the simulator is not overriding
+  now wins, and only then does width decide. Found by checking the promise
+  `running_light.vhd` makes in its own header, rather than by a failing test.
 - **The error dialog no longer cuts the message off at the bottom edge.** Its
   body was a fixed third of the window and never a whole number of lines, so the
   last row was always drawn half-clipped — which reads as text running off the
