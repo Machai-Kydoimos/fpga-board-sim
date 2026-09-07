@@ -117,7 +117,7 @@ Two consequences worth knowing:
 
 - **Only your picked file is simulated.** The others are compiled so that it can be;
   the picker still runs the top level you chose. To run a testbench instead, see the
-  manual recipe in the troubleshooting guide.
+  manual recipe in [troubleshooting.md](troubleshooting.md#running-a-testbench-by-hand).
 - Keep the folder to one project. Sixty VHDL files in a directory is not a lab
   folder, and the sweep stops there.
 - **A design that compiles on its own costs nothing.** The folder is only read

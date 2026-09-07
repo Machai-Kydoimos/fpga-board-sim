@@ -30,6 +30,10 @@ from fpga_sim.sim_bridge import (
     add_error_hints,
 )
 
+# The waveform tail is exercised through its owning module rather than the
+# sim_bridge shim: these two helpers are new, and new code names the owner.
+from fpga_sim.waveform import _announce_waveform, _format_size
+
 # ── ABC conformance ───────────────────────────────────────────────────────────
 
 # D2 hoisted the four discovery helpers onto the _SimBackend ABC as classmethods;
@@ -543,3 +547,51 @@ def test_bound_check_probe_flags_error_during_elaboration_on_rc0(tmp_path):
         '#!/bin/sh\necho "error during elaboration at sim_wrapper.vhd:2"\nexit 0\n',
     )
     assert _bound_check_probe(str(tmp_path)) is not None
+
+
+# ── End-of-run size line (P13/D-14) ───────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("n_bytes", "expected"),
+    [
+        (0, "0 bytes"),
+        (999, "999 bytes"),
+        (1024, "1 KB"),
+        (5 * 1024**2, "5.0 MB"),
+        (2 * 1024**3, "2.0 GB"),
+    ],
+)
+def test_format_size_reads_like_a_file_listing(n_bytes, expected):
+    assert _format_size(n_bytes) == expected
+
+
+def _announce(tmp_path, fmt, capsys, *, size=4096):
+    dump = tmp_path / f"d.{fmt}"
+    dump.write_bytes(b"x" * size)
+    _announce_waveform(WaveConfig(str(dump), fmt), {}, None, False)
+    return capsys.readouterr().out
+
+
+def test_announce_reports_the_dump_size(tmp_path, capsys):
+    """A dump nobody can see the size of is how 190 MB accumulates unnoticed."""
+    out = _announce(tmp_path, "fst", capsys, size=3 * 1024**2)
+    assert "Waveform written" in out
+    assert "(3.0 MB)" in out
+
+
+def test_announce_steers_a_vcd_run_toward_fst(tmp_path, capsys):
+    """VCD says what it costs and where to change it; FST, having nothing to
+    apologize for, stays quiet."""
+    vcd = _announce(tmp_path, "vcd", capsys)
+    assert "FST" in vcd and "Settings" in vcd
+    fst = _announce(tmp_path, "fst", capsys)
+    assert "Settings" not in fst
+
+
+def test_announce_says_nothing_when_the_dump_is_empty(tmp_path, capsys):
+    """A crashed run leaves a zero-byte file; pointing at it would be a lie."""
+    empty = tmp_path / "e.fst"
+    empty.write_bytes(b"")
+    _announce_waveform(WaveConfig(str(empty), "fst"), {}, None, False)
+    assert capsys.readouterr().out == ""

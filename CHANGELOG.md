@@ -8,6 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Waveform capture offers FST first, and says how big the dump is** (roadmap
+  P13/P14). The Settings row cycled off → VCD → FST, which walked everyone
+  through the worse of the two formats: measured on one machine, a ten-second
+  run of `blinky.vhd` wrote **9 MB of FST against 190 MB of VCD** — the same
+  waveform, 21× the size file-to-file and 29× per simulated millisecond, since
+  writing VCD is slow enough to cost the run simulated time — and under GHDL
+  the VCD writer omits
+  memories entirely, so "off → VCD" plus the **Memories** toggle was a silent
+  dead end. The cycle is now off → FST → VCD, and the end-of-run line reports
+  the size next to the path, with one extra line under VCD saying what it costs
+  and where to change it. Nothing sweeps the directory, so the moment the file
+  is written is the only moment anyone can act on its size.
 - **`uv sync` now installs three packages instead of about thirty.** uv includes
   the `dev` group by default; `[tool.uv] default-groups = []` turns that off, so
   the one command the README and `docs/install.md` give a student installs
@@ -111,6 +123,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   module in the package to keep the pattern from coming back.
 
 ### Added
+
+- **`docs/first_design.md` — the walkthrough that did not exist.** Written for a
+  student alone with a `.vhd` file they wrote for a real lab board and no lab
+  around them: install, `--doctor`, one of ours, then **theirs**, straight out of
+  the Quartus or Vivado folder it already lives in. It carries the two things
+  nothing else explained in one place — **the two clocks** (why a *correct*
+  design can sit there looking dead, with the arithmetic done on real measured
+  numbers rather than assumed ones) and **what the simulator wraps around your
+  file**, including why `COUNTER_BITS` is not the value your file declares.
+  Every command, error message and advisory quoted in it was run to produce the
+  text that is printed, rather than written from memory.
+
+- **`docs/troubleshooting.md` — indexed by symptom, not by cause**, because a
+  reader who knew the cause would not need it. It mirrors the error-hint catalog
+  the app itself ships, so the same wording answers you whether you meet it on
+  screen or search for it; and it documents the things the app cannot say for
+  you — **running your own testbench by hand** (the GHDL and NVC recipes, and
+  the fact that a `severity failure` ending is a testbench *working*, non-zero
+  exit and all), where waveforms go and how large they get, and the active-low
+  surprises that separate a board-native run from a generic-contract one.
 
 - **Five lab-shaped reference designs, written to be read** (U52). Every design
   in `hdl/` used to contain `rising_edge` — there was no `led <= sw`, no gate,

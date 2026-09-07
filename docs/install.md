@@ -4,6 +4,9 @@ Full install reference for the FPGA board simulator: how to install a VHDL
 simulator on every supported platform, set up the Python environment, and fix the
 common problems. The [README](../README.md) has the short happy-path version; this
 is the complete matrix, including from-source builds and the Windows specifics.
+Once it is installed, [docs/first_design.md](first_design.md) walks you through your
+first run; [docs/troubleshooting.md](troubleshooting.md) is indexed by symptom and
+covers everything past the install.
 
 ## Prerequisites
 
@@ -35,6 +38,17 @@ has not been verified there. Unsure which (or which build of which)? See
 ```powershell
 winget install ghdl.ghdl.ucrt64.mcode
 ```
+
+> This is the path a scheduled CI workflow re-runs on a clean `windows-latest`
+> runner — the package identifier, the install, and `ghdl --version` afterwards — so
+> if it has stopped resolving, we find out rather than you. See
+> [`.github/workflows/install-docs.yml`](../.github/workflows/install-docs.yml).
+>
+> Two things it cannot prove, both covered below: that GHDL lands somewhere on your
+> `PATH` (it often does not — see
+> [Windows: GHDL not on PATH](#windows-ghdl-not-on-path-after-winget-install)), and
+> that `winget` is present at all, since it ships as an App Installer component. If
+> you do not have it, use the [MSYS2 route](#windows-msys2-alternative).
 
 **Linux (Ubuntu/Debian):**
 
@@ -326,6 +340,10 @@ numerically lower than upstream pygame's (2.6.1) because they are independent
 version lines — a `pygame-ce>=2.6` pin is unsatisfiable.
 
 ## Troubleshooting
+
+This section covers *installation* problems. For anything that goes wrong once the
+app starts — a file that will not load, a compiler error, a board that looks dead —
+see [docs/troubleshooting.md](troubleshooting.md).
 
 ### No board definitions found
 

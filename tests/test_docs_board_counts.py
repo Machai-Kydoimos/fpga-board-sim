@@ -32,8 +32,19 @@ from fpga_sim.board_loader import discover_boards, get_default_boards_path
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
-#: Docs that must describe the fleet as it stands right now.
-_LIVE_DOCS = ("README.md", "docs/user_guide.md", "docs/writing_designs.md")
+#: Docs that must describe the fleet as it stands right now.  ``install.md`` and
+#: ``first_design.md`` joined the list when they began printing a sample
+#: ``--doctor`` report: that report quotes the fleet size in a shape the sweep
+#: below cannot see ("285 definitions", not "285 boards"), which is exactly the
+#: hole #345 fell through, so both are registered as claims as well.
+_LIVE_DOCS = (
+    "README.md",
+    "docs/user_guide.md",
+    "docs/writing_designs.md",
+    "docs/install.md",
+    "docs/first_design.md",
+    "docs/troubleshooting.md",
+)
 
 #: Sentences quoting the fleet size, as literal snippets with the count
 #: templated in.  ``{boards}`` = total fleet, ``{conv}`` = boards carrying a
@@ -47,6 +58,9 @@ _CLAIMS: tuple[tuple[str, str], ...] = (
     ("docs/user_guide.md", "A list of {boards} FPGA boards"),
     ("docs/user_guide.md", "only 6 of {boards} have more than 10"),
     ("docs/writing_designs.md", "**{conv} of the {boards} boards**"),
+    # The sample --doctor report, in both documents that print one.
+    ("docs/install.md", "Boards         {boards} definitions in {sources} sources"),
+    ("docs/first_design.md", "Boards         {boards} definitions in {sources} sources"),
 )
 
 #: A three-digit count immediately qualifying "board(s)" -- "285 boards",
@@ -61,6 +75,9 @@ def fleet() -> dict[str, int]:
     return {
         "boards": len(boards),
         "conv": sum(1 for b in boards if b.port_conventions),
+        # How ``doctor.check_boards`` counts them, so a new boards/ subdirectory
+        # ages the sample report here rather than in front of a student.
+        "sources": len({b.source for b in boards if b.source}),
     }
 
 

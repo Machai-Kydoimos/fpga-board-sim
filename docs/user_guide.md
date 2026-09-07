@@ -2,8 +2,10 @@
 
 Everything the simulator does once it is installed: the four launcher screens, the
 in-simulation controls and stats panel, board-native runs, and how your
-preferences, waveforms, and session logs are stored. For installation see
-[docs/install.md](install.md); for writing your own designs see
+preferences, waveforms, and session logs are stored. This is a **reference**: if you
+have not run anything yet, [docs/first_design.md](first_design.md) walks the whole
+path once, and [docs/troubleshooting.md](troubleshooting.md) is indexed by symptom.
+For installation see [docs/install.md](install.md); for writing your own designs see
 [docs/writing_designs.md](writing_designs.md). Back to the [README](../README.md).
 
 ## Starting from the command line

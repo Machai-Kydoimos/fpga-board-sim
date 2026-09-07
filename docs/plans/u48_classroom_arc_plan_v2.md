@@ -9,8 +9,10 @@ D17 split + `paths.py`, and **U53, the pin map, working end to end**; then the f
 (D-16) ✅, the DE2-115/VEEK-MT2 display pins (D-17) ✅, `install-docs.yml` (D-19) ✅ — which found
 `brew install ghdl` broken since 2026-09-01 and `uv sync` broken on Python 3.14 — and **U51** ✅
 (D-5 reversed); **PR 7 + PR 8** (U48 advisory + [Generics…]) ✅, **PR 9** ✅ (hints/caret, #420) and
-**PR 10** ✅ (`--doctor`, un-gated by D-19) — which closes **U50**. **Next: PR 11** (examples) ·
-PR 12 · PR 13 · PR 14 · Supersedes
+**PR 10** ✅ (`--doctor`, un-gated by D-19) — which closes **U50**; **PR 11** ✅ (#425, five
+lab-shaped references + two natives) — which closes **U52**; **PR 12** ✅ (`first_design.md` +
+`troubleshooting.md`, and the FST-first waveform default that resolves **P13** / **P14**).
+**Next: PR 13** (board display names) · PR 14 (release) · Supersedes
 [u48_classroom_arc_plan.md](u48_classroom_arc_plan.md) (v1, kept as the record of how the arc was
 first framed) · Companion to [improvement_roadmap.md](../improvement_roadmap.md)*
 
@@ -1032,6 +1034,30 @@ Arc-level, end to end:
 
 ## 12. Revision log
 
+- **PR 12 (documentation) — 2026-09-07. P13 / P14 resolved.** The two documents were written by
+  *running* everything they quote rather than recalling it, and that is what made them worth the
+  day: the sample `--doctor` report, the stall advisory, both compiler errors, the pin-map badge
+  ("10 output bit(s) and 13 input bit(s)"), the wrong-board refusal and the waveform sizes are all
+  captured output. Three claims died on contact with the code. (1) A failed **[Reload VHDL]** does
+  *not* leave the old run going — `_revalidate_for_reload` calls `clear_analysis()` and hands the
+  next screen to an ErrorDialog — so the draft's reassurance was backwards. (2) `gates_mux.vhd`
+  selects AND/OR/XOR/**NOT**, not NAND. (3) The advisory's own suggested divider width (17, computed
+  from the measured rate) differs from the design header's "try 15", which now reads as the point it
+  is rather than as a contradiction. A fourth was a false alarm worth recording: constructing
+  `Divider(declared="24")` with a **string** made `overridden` true and produced the nonsense line
+  *"running at 24, not the 24 in your file"* — the field is `int | None` and the product passes an
+  int, so the bug was in the repro, not the code.
+  Two guards were extended rather than trusted. `test_docs_simulator_ratios` now covers both new
+  documents: each had been drafted quoting a machine-measured ratio (8.5x) that install.md's table
+  does not contain, which is exactly the drift the guard exists to stop — so they quote **absolute
+  measured rates plus the command that reproduces them** and link install.md for the comparison.
+  `test_docs_board_counts` gained the sample `--doctor` report in *both* files that print one:
+  "285 definitions in 4 sources" is a live count in a shape the existing three-digit sweep cannot
+  see, so `install.md`'s copy had been unguarded since PR 10 — a new `sources` key in the fleet
+  fixture covers the second number too, and the guard was checked for teeth by breaking it.
+  **The retention sweep (P13) was deliberately not taken**: the per-run size line puts the decision
+  in front of the only person who knows whether a dump still matters.
+  Also closed **P11**'s Icebox marker, which U52 graduated but never ticked.
 - **PR 10 (`--doctor`) — 2026-09-07. U50 closed.** Two checks the card did not list were added,
   both for failures *discovery cannot see*. (1) The **cocotb VPI/VHPI plugin and libpython** handed
   to the simulator child are verified to exist, asked through `sim_runner._build_sim_env` itself —
