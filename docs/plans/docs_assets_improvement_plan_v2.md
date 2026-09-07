@@ -33,7 +33,7 @@
 |---|---|---|---|
 | PR 1 | Doc accuracy sweep + a count-drift guard test | S | ✅ **done 2026-08-25** |
 | PR 2 | `--screenshots` on the benchmark path (issue [#129](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/129)) | S | ✅ **done 2026-08-31** |
-| PR 3 | Capture pipeline renders true brightness (§4 decision A) | M–L | not started |
+| PR 3 | Capture pipeline renders true brightness (§4 decision A) + the screenshot manifest ([#388](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/388), inherited) | M–L + S | not started |
 | PR 4 | Re-capture the existing asset set | M | not started |
 | PR 5 | New visuals for the unillustrated features (§4 decision B) | M | not started |
 | PR 6 | Asset-regeneration procedure + docs wiring | S | not started |
@@ -253,10 +253,38 @@ CONTRIBUTING's "Smoke-testing a board" is the right home for the replacement.
 
 **Do:** whichever of A1 / A2 §4 settles on.
 
+**Also do — inherited scope: the screenshot manifest,
+[#388](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/388).** The classroom arc deferred
+it here (its §8) and nothing in this section named it back, so it is written down now rather than
+left to be rediscovered. It belongs in this PR because this PR is already inside the capture
+pipeline; bolted on later it is a second excavation.
+
+Write a sidecar manifest (CSV or JSON) beside the PNGs, per shot: `sim_ns` and the duty window
+`[from_ns, to_ns]` it covers; per-LED measured duty and displayed level; a ready-to-paste viewer
+command. **Why it is not optional polish:** `--screenshots` names each PNG by *simulated* time, so
+it reads as a waveform marker — but a PNG is the U9 integrator's duty over the window between
+state sends, eased by a ~100 ms persistence-of-vision EMA and gamma 1/3. Measured over 72
+(frame, LED) samples of `blinky` on an Arty: brightness correlates **r = +0.02** with the
+instantaneous `led` bit at the named time and **r = +0.70** with duty over the preceding window.
+A stable signal therefore reads back exactly and a PWM or scan signal does not, and a reader
+comparing a PNG against a trace cannot tell which case they are in. Documenting the caveat is the
+weak fix; printing the numbers is the real one.
+
+Two implementation notes from the issue: everything is host-side **except the window start**,
+which `DutyTracker._prev_ns` holds and the child does not send — a one-line addition to the
+`state` payload (verified 2026-09-07: `src/fpga_sim/sim_duty.py:67`, sent from
+`sim/sim_testbench.py:395`). The viewer command needs **both** dialects — `8123456 ns` for GTKWave and for
+pasting into Surfer's own prompt, and raw ticks for Surfer's `-C` (its batch path parses commands
+before the waveform loads, so documented units are rejected there — the same instability that
+parks Icebox **P16**). Read the multiplier from the dump's `$timescale` rather than hardcoding it:
+GHDL and NVC both write `1fs` today, but that is an observation, not a contract.
+
 **Verify:** capture a PWM design and a scan design; LEDs are graded and a 1/N scan digit renders
 at 1/N brightness. Cross-check one frame against the same design captured via PR 2's
 `--screenshots` — **the two paths must agree** (under A2 they are the same code, which is the
-point).
+point). For the manifest: pick any PNG, find its window in the trace, and reconcile the LED
+brightness against the duty over that window **without reading the source** — that is #388's own
+done-when, kept verbatim.
 
 **Quality gates:** under A2, do not regress the offline/no-launcher property — these tools are
 invoked outside the app and must stay that way. Keep GIF assembly (`capture_common.assemble_gif`)
