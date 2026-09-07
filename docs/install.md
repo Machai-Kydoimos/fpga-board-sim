@@ -228,11 +228,52 @@ Python is sandboxed and can't be embedded by an external simulator process.
 uv sync
 ```
 
-That installs runtime dependencies. Contributors want `uv sync --group dev`
-(pytest, ruff, mypy, pre-commit) — see [CONTRIBUTING.md](../CONTRIBUTING.md).
+That installs the runtime dependencies **and** the `dev` group (pytest, ruff,
+mypy, pre-commit): uv syncs `dev` by default, so contributors need no extra
+command — see [CONTRIBUTING.md](../CONTRIBUTING.md). For a runtime-only
+environment, add `--no-dev`.
 
-To confirm the install works, run the test suite — it needs no display and
-exercises the full analyze/simulate path on both installed simulators:
+## Check the install
+
+```bash
+uv run fpga-sim --doctor
+```
+
+`--doctor` needs no display. It reports the Python, uv, pygame-ce and cocotb
+versions; every simulator it can find (label, backend, version, path) and which
+one a run uses by default; the number of board definitions loaded; whether
+`~/.fpga_simulator/` is writable; that cocotb's VPI/VHPI plugin and the Python
+shared library the simulator child loads both exist — and it finishes by
+compiling and elaborating `hdl/blinky.vhd` on **each** simulator it found:
+
+```text
+fpga-sim doctor - Fedora Linux 43 - x86_64
+
+  [ ok ] Python         3.10.20 (CPython), within >=3.10,<3.14
+  [ ok ] uv             uv 0.12.10
+  [ ok ] pygame-ce      2.5.8 (SDL 2.32.10)
+  [ ok ] cocotb         2.0.1
+  [ ok ] Boards         285 definitions in 4 sources
+  [ ok ] Profile        writable: /home/you/.fpga_simulator
+  [ ok ] Simulators     2 found
+  [ ok ] cocotb plugin  ghdl -> libcocotbvpi_ghdl.so, nvc -> libcocotbvhpi_nvc.so
+  [ ok ] Analyze        blinky.vhd on DE10-Standard: compiled and elaborated
+
+All 9 checks passed.
+```
+
+Every failing check prints, under **How to fix**, the command for *this*
+operating system, and the exit code is non-zero — so it can gate a script.
+
+If `pygame` itself is broken (the pip collision below), `fpga-sim` cannot start
+at all. The doctor also runs as a module, which does not import pygame:
+
+```bash
+uv run python -m fpga_sim.doctor
+```
+
+Contributors can additionally run the full test suite, which exercises the whole
+analyze/simulate path on both installed simulators:
 
 ```bash
 uv run pytest
@@ -305,8 +346,10 @@ If `test_cocotb_simulation_passes` fails with:
 Unable to open lib hon313.dll: The specified module could not be found.
 ```
 
-GHDL cannot locate the Python shared library. `fpga_sim/sim_bridge.py` auto-detects
-it via `cocotb-config --libpython` on Windows, so this should not occur on current
+GHDL cannot locate the Python shared library. `uv run fpga-sim --doctor` reports
+that directly — its **cocotb plugin** row prints the library it resolved, or says
+it could not find one. `fpga_sim/sim_runner.py` auto-detects it via
+`cocotb-config --libpython` on Windows, so this should not occur on current
 checkouts. If you see it on an older checkout, set the path manually before running:
 
 ```powershell

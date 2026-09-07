@@ -104,19 +104,24 @@ both flags are described in the
 [user guide](docs/user_guide.md#starting-from-the-command-line).
 
 > `fpga-sim` opens a desktop window, so it needs a graphical display — not a bare SSH
-> session. On a headless machine, use `uv run pytest` or the headless
-> `uv run fpga-sim --benchmark 10`.
+> session. On a headless machine, use `uv run fpga-sim --doctor`, `uv run pytest`,
+> or the headless `uv run fpga-sim --benchmark 10`.
 
-Confirm everything works — this needs no display and exercises the full
-analyze/simulate path:
+Confirm everything works — this needs no display, checks the versions, every
+simulator it can find, the board definitions and your settings directory, and
+finishes by compiling a bundled design on each simulator:
 
 ```bash
-uv run pytest
+uv run fpga-sim --doctor
 ```
 
+Every check that fails prints the command to fix it on your operating system, and
+the exit code is non-zero, so it also works in a script. Paste its output into an
+issue if you get stuck.
+
 > **Windows** requires PowerShell (not Command Prompt), and GHDL must be on your
-> `PATH`. See [docs/install.md](docs/install.md#windows-run-notes) if `fpga-sim` or
-> `pytest` reports "ghdl not found".
+> `PATH`. See [docs/install.md](docs/install.md#windows-run-notes) if `fpga-sim`
+> reports "ghdl not found" — or just run `--doctor`, which says so and how to fix it.
 
 ## Try it
 

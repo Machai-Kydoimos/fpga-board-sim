@@ -28,6 +28,7 @@ clicking while you iterate on a design.
 | `--generic NAME=VALUE` | Override a generic on the design's top level; repeatable — the same thing [Generics…] does, at launch. See [below](#changing-a-generic-without-leaving-the-simulator). |
 | `--sim NAME` | Use a particular simulator for this run (see [Simulator](#2-preview-the-board)). |
 | `--list-sims` · `--add-sim PATH` | List the simulators found, or register one that is not on `PATH`. |
+| `--doctor` | Check this machine can run the simulator and print how to fix whatever cannot (see [below](#is-this-machine-ready)). |
 | `--benchmark N` | Run headless for N seconds and print a performance report instead of opening the launcher. |
 
 Neither flag can strand you. An unknown board name opens the selector, and a file that
@@ -35,6 +36,34 @@ is missing or fails validation opens the preview with nothing loaded — with th
 both on the terminal and in a dialog, since a shortcut may have no terminal attached.
 `--vhdl` on its own (no `--board`) simply preloads the path: the design cannot be
 checked until there is a board to check it against.
+
+### Is this machine ready?
+
+```bash
+fpga-sim --doctor
+```
+
+Needs no display, and answers the question the first launch on a new machine
+actually raises. One row per thing the simulator needs: the Python, uv, pygame-ce
+and cocotb versions; every simulator found (label, backend, version, path) and
+which one a run uses when you do not say; how many board definitions loaded;
+whether `~/.fpga_simulator/` is writable; whether cocotb's VPI/VHPI plugin and
+the Python shared library the simulator child loads are both present — and,
+last, `hdl/blinky.vhd` compiled and elaborated on **each** simulator found.
+
+That last row is the one worth waiting for: a simulator can answer `--version`
+and still be unable to compile anything, and this is the difference.
+
+Whatever fails prints, under **How to fix**, the command for the operating system
+you are on — and the exit code is non-zero, so it can gate a script. The report is
+plain text; paste it into an issue.
+
+If `pygame` itself will not import, `fpga-sim` cannot start to run its own doctor.
+Then use the module, which does not import pygame:
+
+```bash
+uv run python -m fpga_sim.doctor
+```
 
 ### "It looks frozen"
 
