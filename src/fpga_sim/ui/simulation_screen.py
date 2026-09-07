@@ -27,7 +27,7 @@ import pygame
 from fpga_sim.session_config import update_session
 from fpga_sim.sim_link import drain, send
 from fpga_sim.sim_session_log import save_session_stats
-from fpga_sim.stall import StallWatch, divider_bits, stall_heading, stall_message
+from fpga_sim.stall import StallWatch, find_divider, stall_heading, stall_message
 from fpga_sim.ui.board_display import BoardInputs, FPGABoard
 from fpga_sim.ui.components import debug_view_enabled, pwm_display_enabled, set_debug_view
 from fpga_sim.ui.constants import get_font as _get_font
@@ -158,12 +158,12 @@ class SimulationScreen:
         self._stall_hint_rect: pygame.Rect | None = None
         self._stall_expanded = False
         try:
-            self._divider_bits = divider_bits(
+            self._divider = find_divider(
                 Path(vhdl_path).read_text(encoding="utf-8", errors="replace"),
                 Path(vhdl_path).stem,
             )
         except OSError:
-            self._divider_bits = None
+            self._divider = None
 
         clk_hz = board_def.default_clock_hz if board_def else 0.0
         self._board_name = board_def.name if board_def else "Generic"
@@ -711,7 +711,7 @@ class SimulationScreen:
         # held is *correct* to show nothing.  Say that first.
         waiting = self._has_inputs and not self._stall.inputs_used
         self._stall_heading = stall_heading(waiting_for_input=waiting)
-        self._stall_lines = stall_message(facts, self._divider_bits, waiting_for_input=waiting)
+        self._stall_lines = stall_message(facts, self._divider, waiting_for_input=waiting)
 
     def _draw_stall_hint(
         self,

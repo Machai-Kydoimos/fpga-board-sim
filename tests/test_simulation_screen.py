@@ -1216,7 +1216,7 @@ def test_a_design_whose_file_cannot_be_read_still_gets_the_general_advice(
     """`_make_screen` passes a bare name, which is the unreadable case."""
     child, _client = fake_child
     screen = _make_screen(headless_pygame, child)
-    assert screen._divider_bits is None
+    assert screen._divider is None
     _run_quiet(screen, monkeypatch, seconds=30.0)
     text = " ".join(screen._stall_lines)
     assert "may simply be counting" in text
@@ -1239,12 +1239,15 @@ def test_a_declared_divider_turns_the_advice_into_a_number(
         vhdl_path=HDL_DIR / "blinky.vhd",
         sim=_sim("ghdl"),
     )
-    assert screen._divider_bits == 24
+    assert screen._divider is not None
+    assert (screen._divider.name, screen._divider.bits) == ("counter_bits", 24)
     _run_quiet(screen, monkeypatch, seconds=30.0)
     text = " ".join(screen._stall_lines)
-    assert "24-bit divider" in text
+    assert "COUNTER_BITS = 24" in text
     assert "16.8 M cycles per step" in text
     assert "on the real board" in text
+    # ...and, crucially, the command to type
+    assert "fpga-sim --generic COUNTER_BITS=" in text
 
 
 # ── e2e against a real simulator (slow) ───────────────────────────────────────

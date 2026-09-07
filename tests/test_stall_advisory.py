@@ -19,10 +19,13 @@ import pytest
 from fpga_sim.stall import (
     DEFAULT_THRESHOLD_S,
     MAX_OBSERVED_GAP_S,
+    Divider,
     StallFacts,
     StallWatch,
+    find_divider,
     stall_heading,
     stall_message,
+    suggested_bits,
 )
 
 _T = DEFAULT_THRESHOLD_S
@@ -236,7 +239,7 @@ def test_using_a_control_does_not_reset_the_quiet_timer():
 def test_an_untouched_board_is_told_to_try_a_switch_first(facts):
     """The fix for the false positive: the likelier reading leads."""
     head = stall_heading(waiting_for_input=True)
-    lines = stall_message(facts, divider_bits=24, waiting_for_input=True)
+    lines = stall_message(facts, divider=Divider("cntr_len", 24), waiting_for_input=True)
     assert head == "Nothing has changed on the board"
     assert "may just be slow" not in head
     assert "no switch or button has been touched" in lines[0]
@@ -247,7 +250,7 @@ def test_an_untouched_board_is_told_to_try_a_switch_first(facts):
 
 def test_a_board_that_has_been_used_gets_the_direct_claim(facts):
     head = stall_heading(waiting_for_input=False)
-    lines = stall_message(facts, divider_bits=False or None, waiting_for_input=False)
+    lines = stall_message(facts, None, waiting_for_input=False)
     assert head == "This design may just be slow, not broken"
     assert "switch or button" not in " ".join(lines)
     assert "wall-clock" in lines[0]
@@ -272,7 +275,7 @@ def test_cycles_are_counted_at_the_clock_actually_being_simulated():
     """
     slowed = StallFacts(quiet_s=10.0, sim_ns=10_000_000, sim_clock_hz=1e6, board_hz=50e6)
     assert slowed.cycles == pytest.approx(10_000)
-    text = " ".join(stall_message(slowed, divider_bits=24))
+    text = " ".join(stall_message(slowed, divider=Divider("cntr_len", 24)))
     assert "10 k clock cycles" in text
     assert "1 MHz you selected" in text
 
@@ -281,7 +284,9 @@ def test_the_real_board_comparison_still_uses_the_real_board():
     """Slowing the *simulation* does not slow the silicon it is compared against."""
     slowed = StallFacts(quiet_s=10.0, sim_ns=10_000_000, sim_clock_hz=1e6, board_hz=50e6)
     assert slowed.seconds_on_board(2**24) == pytest.approx(2**24 / 50e6)
-    assert "336 ms on the real board" in " ".join(stall_message(slowed, divider_bits=24))
+    assert "336 ms on the real board" in " ".join(
+        stall_message(slowed, divider=Divider("cntr_len", 24))
+    )
 
 
 def test_the_rate_is_this_window_not_a_running_average(facts):
@@ -296,7 +301,7 @@ def test_the_cycle_count_is_derived_not_assumed(facts):
 
 def test_it_reports_both_clocks(facts):
     """D-15: every number is labeled simulated or wall-clock."""
-    text = " ".join(stall_message(facts, divider_bits=24))
+    text = " ".join(stall_message(facts, divider=Divider("cntr_len", 24)))
     assert "wall-clock" in text
     assert "1.9 M clock cycles" in text
     assert "38 ms" in text
@@ -304,7 +309,7 @@ def test_it_reports_both_clocks(facts):
 
 
 def test_a_known_divider_turns_the_complaint_into_a_number(facts):
-    text = " ".join(stall_message(facts, divider_bits=24))
+    text = " ".join(stall_message(facts, divider=Divider("cntr_len", 24)))
     assert "16.8 M cycles per step" in text
     assert "88 s here" in text  # 2**24 / 190_000
     assert "336 ms on the real board" in text
@@ -316,15 +321,70 @@ def test_without_a_divider_it_explains_rather_than_guesses(facts):
     assert "cycles per step" not in text
 
 
+# ── The advice has to be something a student can act on ──────────────────────
+
+
+def test_it_prints_the_command_to_type(facts):
+    """ "Lower it for the simulator" is a diagnosis, not an instruction."""
+    lines = stall_message(facts, Divider("cntr_len", 24))
+    text = " ".join(lines)
+    assert "fpga-sim --generic CNTR_LEN=" in text
+    assert "Your file is not touched" in text
+    assert "CNTR_LEN stays 24 for the real board" in text
+
+
+def test_the_suggested_width_is_computed_from_the_measured_rate():
+    """A constant would suit the author's machine and nobody else's."""
+    divider = Divider("cntr_len", 24)
+    slow = StallFacts(quiet_s=10.0, sim_ns=1_000_000, sim_clock_hz=50e6, board_hz=50e6)
+    here = StallFacts(quiet_s=10.0, sim_ns=16_300_000, sim_clock_hz=50e6, board_hz=50e6)
+    fast = StallFacts(quiet_s=10.0, sim_ns=163_000_000, sim_clock_hz=50e6, board_hz=50e6)
+
+    widths = []
+    for f in (slow, here, fast):
+        w = suggested_bits(f, divider)
+        assert w is not None
+        assert f.seconds_here(float(2**w)) < 1.0, "every suggestion is watchable"
+        widths.append(w)
+    assert widths == sorted(widths), "a faster machine can afford a wider divider"
+
+
+def test_a_divider_that_is_already_quick_is_left_alone():
+    """Suggesting a smaller number would send somebody chasing the wrong thing."""
+    facts = StallFacts(quiet_s=10.0, sim_ns=16_300_000, sim_clock_hz=50e6, board_hz=50e6)
+    assert suggested_bits(facts, Divider("cntr_len", 4)) is None
+    text = " ".join(stall_message(facts, Divider("cntr_len", 4)))
+    assert "already small" in text
+    assert "--generic" not in text
+
+
+def test_without_a_divider_it_says_how_to_make_one(facts):
+    """The design hard-codes its width, so the fix is to expose it."""
+    text = " ".join(stall_message(facts))
+    assert "Put the divider's width in a generic" in text
+    assert "--generic CNTR_LEN=" in text
+
+
+def test_the_divider_generic_is_found_by_name_with_its_name_kept():
+    src = (
+        "entity r is generic (CNTR_LEN : positive := 22;"
+        " COUNTER_BITS : positive := 24); port (clk : in bit); end entity;"
+    )
+    found = find_divider(src, "r")
+    assert found is not None
+    assert (found.name, found.bits) == ("counter_bits", 24), "the widest wins"
+    assert find_divider("entity t is port (c : in bit); end entity;", "t") is None
+
+
 def test_a_faster_machine_gets_a_smaller_number():
     """Nothing here is a constant; NVC on the same design says something else."""
     slow = StallFacts(quiet_s=10.0, sim_ns=38_000_000, sim_clock_hz=50e6, board_hz=50e6)
     fast = StallFacts(quiet_s=10.0, sim_ns=300_000_000, sim_clock_hz=50e6, board_hz=50e6)
     assert slow.seconds_here(2**24) > fast.seconds_here(2**24)
-    assert "11 s here" in " ".join(stall_message(fast, divider_bits=24))
+    assert "11 s here" in " ".join(stall_message(fast, divider=Divider("cntr_len", 24)))
 
 
 def test_a_dead_measurement_does_not_divide_by_zero():
     dead = StallFacts(quiet_s=10.0, sim_ns=0, sim_clock_hz=50e6, board_hz=50e6)
     assert dead.seconds_here(2**24) == float("inf")
-    assert "forever" in " ".join(stall_message(dead, divider_bits=24))
+    assert "forever" in " ".join(stall_message(dead, divider=Divider("cntr_len", 24)))

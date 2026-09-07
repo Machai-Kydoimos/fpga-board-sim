@@ -43,6 +43,7 @@ of a board nobody has touched.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 #: Wall seconds of unchanging output before the advisory appears.  Long enough
@@ -322,18 +323,42 @@ def stall_heading(*, waiting_for_input: bool) -> str:
     return "This design may just be slow, not broken"
 
 
-def _divider_clause(facts: StallFacts, divider_bits: int) -> str:
-    step = float(2**divider_bits)
+def _divider_clause(facts: StallFacts, divider: Divider) -> str:
+    step = float(2**divider.bits)
     return (
-        f"A {divider_bits}-bit divider means {_count(step)} cycles per step:"
+        f"Your {divider.name.upper()} = {divider.bits} means {_count(step)} cycles per step:"
         f" about {_duration(facts.seconds_here(step))} here,"
         f" {_duration(facts.seconds_on_board(step))} on the real board."
     )
 
 
+def _fix_clauses(facts: StallFacts, divider: Divider) -> list[str]:
+    """Say what to type.  "Lower it" is not an instruction somebody can follow.
+
+    The suggested width is computed from the rate just measured rather than
+    picked, so it is a number that will actually work on *this* machine; and the
+    flag is spelled out in full, because a student who is already unsure whether
+    their design works should not also have to guess at a command line.
+    """
+    smaller = suggested_bits(facts, divider)
+    if smaller is None:
+        return [
+            f"Nothing to lower automatically -- {divider.name.upper()} is already small."
+            " If the board is still, the cause is elsewhere."
+        ]
+    step = float(2**smaller)
+    return [
+        f"To watch it here, restart the simulator with a smaller {divider.name.upper()}:",
+        f"    fpga-sim --generic {divider.name.upper()}={smaller}",
+        f"That steps about every {_duration(facts.seconds_here(step))} instead."
+        f" Your file is not touched: {divider.name.upper()} stays {divider.bits}"
+        " for the real board.",
+    ]
+
+
 def stall_message(
     facts: StallFacts,
-    divider_bits: int | None = None,
+    divider: Divider | None = None,
     *,
     waiting_for_input: bool = False,
 ) -> list[str]:
@@ -343,9 +368,11 @@ def stall_message(
     the window that just went quiet.  Nothing here is a constant, because a
     number that is wrong about *their* machine teaches them to ignore the box.
 
-    *divider_bits*, when the design declares a plausible divider generic, turns
-    the general complaint into the specific one -- how long one step of *this*
-    design takes here, and how long it takes on the board.
+    *divider*, when the design declares a plausible divider generic, turns the
+    general complaint into the specific one -- how long one step of *this*
+    design takes here, how long it takes on the board, and **the command to
+    type** to see it move.  Naming the generic is what makes the advice
+    actionable: "lower your divider" is a diagnosis, not an instruction.
 
     *waiting_for_input* says the board has controls and nobody has touched one
     since the run began.  That does not mean the design is fine -- it means the
@@ -383,14 +410,19 @@ def stall_message(
     else:
         tail = f"In that time {counted}."
     lines.append(tail)
-    if divider_bits is not None and divider_bits > 0:
-        lines.append(_divider_clause(facts, divider_bits))
-        lines.append("Lower it for the simulator and your file keeps its hardware value.")
+    if divider is not None:
+        lines.append(_divider_clause(facts, divider))
+        lines.extend(_fix_clauses(facts, divider))
     else:
         lines.append(
             "If your design divides the clock, it may simply be counting."
             " The simulator runs far slower than the board, so a divider sized"
             " for hardware can take minutes to show one step."
+        )
+        lines.append(
+            "Put the divider's width in a generic -- say"
+            " `CNTR_LEN : positive := 24` -- and you can lower it here with"
+            " `--generic CNTR_LEN=14` without changing the value your board uses."
         )
     return lines
 
@@ -409,23 +441,57 @@ _DIVIDER_HINTS = (
 )
 
 
-def divider_bits(vhdl_text: str, toplevel: str) -> int | None:
-    """Guess the design's clock-divider width from its generics, or ``None``.
+@dataclass(frozen=True)
+class Divider:
+    """A generic that plausibly sizes the design's clock divider."""
+
+    name: str  # as declared, lowercased
+    bits: int  # its default width
+
+
+def find_divider(vhdl_text: str, toplevel: str) -> Divider | None:
+    """Find the design's clock-divider generic, or ``None``.
 
     Reads only what the design already declares; nothing is inferred from the
     architecture, because a wrong *number* in the advisory is worse than no
     number.  When several candidates exist the widest wins -- that is the one
     setting the slowest visible rate, which is the one being complained about.
+
+    The **name** matters as much as the width: without it the advice can only
+    say "lower your divider", which is not something a student can act on.  With
+    it the message can print the flag they should actually type.
     """
     from fpga_sim.generics import Kind, design_generics  # noqa: PLC0415 - avoid a cycle
 
-    widths: list[int] = []
+    found: list[Divider] = []
     for g in design_generics(vhdl_text, toplevel):
         if g.kind != Kind.INTEGER or g.name not in _DIVIDER_HINTS:
             continue
         try:
-            widths.append(int(g.default_text.replace("_", "")))
+            width = int(g.default_text.replace("_", ""))
         except ValueError:
             continue
-    plausible = [w for w in widths if 1 <= w <= 64]
-    return max(plausible) if plausible else None
+        if 1 <= width <= 64:
+            found.append(Divider(g.name, width))
+    return max(found, key=lambda d: d.bits) if found else None
+
+
+#: How long a step should take here for the design to look alive.  Used to size
+#: the width the advice suggests, from the rate just measured -- so the number
+#: offered is one that will actually work on *this* machine rather than a
+#: constant that happens to suit the author's.
+_TARGET_STEP_S = 0.5
+
+
+def suggested_bits(facts: StallFacts, divider: Divider) -> int | None:
+    """Pick the widest divider whose step this machine can still show promptly."""
+    if facts.effective_hz <= 0:
+        return None
+    if facts.seconds_here(float(2**divider.bits)) <= _TARGET_STEP_S:
+        # Already quick enough here, so there is nothing to lower -- and
+        # suggesting a smaller number anyway would send somebody chasing the
+        # wrong thing when the real cause is elsewhere.
+        return None
+    width = int(math.floor(math.log2(max(1.0, _TARGET_STEP_S * facts.effective_hz))))
+    width = max(1, min(width, divider.bits - 1))
+    return width

@@ -48,6 +48,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cycles simulated, how much board time that was, and, when the design declares
   a divider generic, how long one step takes here against how long it takes on
   the bench.
+  - **It says what to type.** Naming the design's divider generic is what makes
+    the advice actionable — "lower it for the simulator" is a diagnosis, not an
+    instruction — so the message prints the flag:
+    `fpga-sim --generic CNTR_LEN=15`, with the width **computed from the rate it
+    just measured** so the suggestion suits the machine in front of the reader
+    rather than the author's. A divider already quick enough here is left alone
+    and says so; a design with no divider generic is told how to add one.
   - **It never interrupts.** All the detection earns is a small
     `ⓘ Why is nothing happening?` control beside [Pause]; the panel with the
     numbers opens only if the user clicks it. The detection cannot distinguish a

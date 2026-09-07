@@ -84,10 +84,23 @@ of it:
 ```text
 This design may just be slow, not broken
 No LED or digit has changed in 10 s of wall-clock time.
-In that time this machine simulated 500 k clock cycles = 10 ms of the board's 50 MHz.
-A 24-bit divider means 16.8 M cycles per step: about 87 s here, 336 ms on the real board.
-Lower it for the simulator and your file keeps its hardware value.
+In that time this machine simulated 819 k clock cycles = 16.4 ms of the board's 50 MHz.
+Your CNTR_LEN = 24 means 16.8 M cycles per step: about 3 min here, 336 ms on the real board.
+To watch it here, restart the simulator with a smaller CNTR_LEN:
+    fpga-sim --generic CNTR_LEN=15
+That steps about every 402 ms instead. Your file is not touched: CNTR_LEN stays 24
+for the real board.
 ```
+
+**The width it suggests is computed from the rate it just measured**, not picked in
+advance — a faster backend is told it can afford a wider divider, a slower one a
+narrower, and each suggestion is sized to step about twice a second on the machine
+in front of you. If your divider is already small enough to be quick here, it says
+so and suggests nothing, because the cause is then somewhere else.
+
+If your design has no divider generic — the width is a constant in the
+architecture — it says how to make one, since that is the change that gives you the
+lever without touching what the board runs.
 
 Every number is measured on **your** machine during the quiet spell that just
 happened. The cycle count is the simulated time your simulator actually reported
@@ -112,8 +125,10 @@ No LED or digit has changed in 10 s, and no switch or button has been touched.
 If your design follows the switches or buttons, try one: a design that is waiting
   for input is right to show nothing.
 If instead it counts, it may just be slow here: in that time this machine simulated
-  500 k clock cycles = 10 ms of the board's 50 MHz.
-A 24-bit divider means 16.8 M cycles per step: about 87 s here, 336 ms on the real board.
+  819 k clock cycles = 16.4 ms of the board's 50 MHz.
+Your CNTR_LEN = 24 means 16.8 M cycles per step: about 3 min here, 336 ms on the real board.
+To watch it here, restart the simulator with a smaller CNTR_LEN:
+    fpga-sim --generic CNTR_LEN=15
 ```
 
 Use a control — even once, even putting it straight back — and the simulator stops
