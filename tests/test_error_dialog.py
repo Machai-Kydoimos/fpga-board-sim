@@ -140,35 +140,39 @@ def _caret_column(line: str) -> int:
     return len(line) - len(line.lstrip(" "))
 
 
-class _StretchedFont:
-    """A real font that reports *factor* times its true width.
+class _FixedMetricFont:
+    """A real font that reports a fixed width per character.
 
-    Stands in for a machine whose UI font is wider than this one's. Rendering
-    is delegated unchanged -- only the measurements the layout reads are
-    inflated, which is all the layout has to survive.
+    Absolute, not a multiple of the machine's own metrics: a proxy defined as
+    "1.5x whatever this computer has" compounds with the platform and asks a
+    macOS runner (already ~17% wider than Linux) for a fit no legible type size
+    can deliver.  Rendering is delegated unchanged -- only the measurements the
+    layout reads are synthetic, which is all the layout has to survive.
     """
 
-    def __init__(self, real: pygame.font.Font, factor: float) -> None:
+    #: px per character at each point of type size.  0.7 puts a 20 px bold
+    #: label within a pixel or two of what macOS actually measures, which is
+    #: the environment that found the defect this guards.
+    ADVANCE = 0.7
+
+    def __init__(self, real: pygame.font.Font, size: int) -> None:
         self._real = real
-        self._factor = factor
+        self._advance = max(1, round(self.ADVANCE * size))
 
     def size(self, text: str) -> tuple[int, int]:
-        w, h = self._real.size(text)
-        return round(w * self._factor), h
+        return self._advance * len(text), self._real.get_height()
 
     def __getattr__(self, name: str) -> object:  # render, get_linesize, ...
         return getattr(self._real, name)
 
 
-def _stretch_ui_font(monkeypatch: pytest.MonkeyPatch, factor: float) -> None:
-    """Make every font the dialog asks for measure *factor* times as wide."""
-    if factor == 1.0:
-        return
+def _use_fixed_metric_font(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make every font the dialog asks for measure a fixed width per character."""
 
-    def stretched(size: int, bold: bool = False) -> _StretchedFont:
-        return _StretchedFont(get_font(size, bold=bold), factor)
+    def fixed(size: int, bold: bool = False) -> _FixedMetricFont:
+        return _FixedMetricFont(get_font(size, bold=bold), size)
 
-    monkeypatch.setattr(error_dialog_mod, "get_font", stretched)
+    monkeypatch.setattr(error_dialog_mod, "get_font", fixed)
 
 
 def _record_copies(monkeypatch: pytest.MonkeyPatch) -> list[str]:
@@ -246,27 +250,21 @@ class TestCopy:
         assert not dlg._copy_rect.colliderect(dlg._example_rect)
 
     @pytest.mark.parametrize("size", [(1920, 1080), (1280, 800), (1024, 700), (800, 600)])
-    @pytest.mark.parametrize("stretch", [1.0, 1.5], ids=["this-machine", "wide-font"])
-    def test_four_buttons_still_fit_the_panel(
-        self, screen, headless_pygame, monkeypatch, size, stretch
-    ):
+    def test_four_buttons_still_fit_the_panel(self, screen, headless_pygame, size):
         """[Copy] made the row four wide, and 1024x700 is the reference size.
 
-        The label widths belong to the machine: the UI asks for Consolas, which
-        Windows has and fontconfig substitutes on Linux, while macOS has
-        neither and its fallback is ~17% wider -- enough to push the row past
-        the panel edge, which is how this arrived. So it is also run against a
-        deliberately wider font than any real one.
-
         Drawn to an off-screen Surface rather than a resized display: a test
-        that called ``set_mode`` would resize the global surface every other
-        UI test shares, which ``pytest-randomly`` turns into a failure
-        somewhere else.  It still asks for ``screen``, because ``_draw`` ends
-        in ``display.flip()`` and a display mode has to exist -- relying on
+        that called ``set_mode`` would resize the global surface every other UI
+        test shares, which ``pytest-randomly`` turns into a failure somewhere
+        else.  It still asks for ``screen``, because ``_draw`` ends in
+        ``display.flip()`` and a display mode has to exist -- relying on
         another test to have set one is the same order dependency by a
         different route.
+
+        This measures the machine's own font.  The width the *layout* must
+        survive is tested against a synthetic metric in
+        :class:`TestButtonRowFits`, because the machine's is not the widest.
         """
-        _stretch_ui_font(monkeypatch, stretch)
         surface = headless_pygame.Surface(size)
         dlg = ErrorDialog(surface, "VHDL Error", "boom", example_path=EXAMPLE)
         dlg._draw()
@@ -323,3 +321,52 @@ class TestCopy:
 
         monkeypatch.setattr(pygame.scrap, "get_init", refuse)
         assert error_dialog_mod._copy_to_clipboard("x") is False
+
+
+# ── U50/F5: the row is fitted, not assumed ───────────────────────────────────
+
+
+class TestButtonRowFits:
+    """`_button_row_metrics` against a synthetic width, so every machine agrees.
+
+    The four-button row fitted on Linux and overflowed the panel on macOS,
+    whose fallback for the UI's Consolas is ~17% wider — at the **1024x700
+    reference size**, which is the window the app opens at.  Padding and gaps
+    alone could not absorb it, so the type size has to give way too.
+    """
+
+    LABELS = ["Copy", "View Example", "Try Another File", "Back to Boards"]
+    #: 1024x700: panel 683 wide, the fitter is handed panel_w - gap.
+    REFERENCE = dict(base_size=20, pad=28, gap=16, avail=667)
+
+    def _fit(self, monkeypatch, **kwargs):
+        _use_fixed_metric_font(monkeypatch)
+        args = {**self.REFERENCE, **kwargs}
+        font, widths, gap = error_dialog_mod._button_row_metrics(
+            self.LABELS, args["base_size"], args["pad"], args["gap"], args["avail"]
+        )
+        return font, sum(widths) + gap * (len(self.LABELS) - 1)
+
+    def test_a_wide_font_still_fits_at_the_reference_size(self, monkeypatch):
+        """The macOS regression, stated in a way every platform can check."""
+        _, total = self._fit(monkeypatch)
+        assert total <= self.REFERENCE["avail"]
+
+    def test_a_comfortable_row_keeps_the_full_type_size(self, monkeypatch):
+        """Nothing is shrunk gratuitously: a wide window looks as it always did."""
+        font, total = self._fit(monkeypatch, avail=2000)
+        assert font._advance == round(_FixedMetricFont.ADVANCE * 20)
+        assert total <= 2000
+
+    def test_padding_gives_way_before_the_labels(self, monkeypatch):
+        """A row that only just overflows is fixed by squeezing, not by shrinking."""
+        nominal_font, nominal = self._fit(monkeypatch, avail=10_000)
+        font, total = self._fit(monkeypatch, avail=nominal - 4)
+        assert total <= nominal - 4
+        assert font._advance == nominal_font._advance  # same type size
+
+    def test_an_impossible_row_falls_back_to_the_floor(self, monkeypatch):
+        """Below the legibility floor it overflows rather than becoming specks."""
+        font, total = self._fit(monkeypatch, avail=10)
+        assert font._advance == round(_FixedMetricFont.ADVANCE * error_dialog_mod._MIN_BUTTON_FONT)
+        assert total > 10  # honest about not fitting, rather than illegible
