@@ -7,6 +7,7 @@ import pygame
 import pytest
 
 import fpga_sim.ui.error_dialog as error_dialog_mod
+from fpga_sim.ui.constants import get_font
 from fpga_sim.ui.error_dialog import ErrorDialog, _wrap_line, _wrap_message
 from fpga_sim.ui.results import DialogResult
 from fpga_sim.ui.widgets import draw_button
@@ -139,6 +140,37 @@ def _caret_column(line: str) -> int:
     return len(line) - len(line.lstrip(" "))
 
 
+class _StretchedFont:
+    """A real font that reports *factor* times its true width.
+
+    Stands in for a machine whose UI font is wider than this one's. Rendering
+    is delegated unchanged -- only the measurements the layout reads are
+    inflated, which is all the layout has to survive.
+    """
+
+    def __init__(self, real: pygame.font.Font, factor: float) -> None:
+        self._real = real
+        self._factor = factor
+
+    def size(self, text: str) -> tuple[int, int]:
+        w, h = self._real.size(text)
+        return round(w * self._factor), h
+
+    def __getattr__(self, name: str) -> object:  # render, get_linesize, ...
+        return getattr(self._real, name)
+
+
+def _stretch_ui_font(monkeypatch: pytest.MonkeyPatch, factor: float) -> None:
+    """Make every font the dialog asks for measure *factor* times as wide."""
+    if factor == 1.0:
+        return
+
+    def stretched(size: int, bold: bool = False) -> _StretchedFont:
+        return _StretchedFont(get_font(size, bold=bold), factor)
+
+    monkeypatch.setattr(error_dialog_mod, "get_font", stretched)
+
+
 def _record_copies(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     """Capture what the dialog puts on the clipboard, without touching one."""
     copied: list[str] = []
@@ -214,14 +246,27 @@ class TestCopy:
         assert not dlg._copy_rect.colliderect(dlg._example_rect)
 
     @pytest.mark.parametrize("size", [(1920, 1080), (1280, 800), (1024, 700), (800, 600)])
-    def test_four_buttons_still_fit_the_panel(self, headless_pygame, size):
+    @pytest.mark.parametrize("stretch", [1.0, 1.5], ids=["this-machine", "wide-font"])
+    def test_four_buttons_still_fit_the_panel(
+        self, screen, headless_pygame, monkeypatch, size, stretch
+    ):
         """[Copy] made the row four wide, and 1024x700 is the reference size.
+
+        The label widths belong to the machine: the UI asks for Consolas, which
+        Windows has and fontconfig substitutes on Linux, while macOS has
+        neither and its fallback is ~17% wider -- enough to push the row past
+        the panel edge, which is how this arrived. So it is also run against a
+        deliberately wider font than any real one.
 
         Drawn to an off-screen Surface rather than a resized display: a test
         that called ``set_mode`` would resize the global surface every other
         UI test shares, which ``pytest-randomly`` turns into a failure
-        somewhere else.
+        somewhere else.  It still asks for ``screen``, because ``_draw`` ends
+        in ``display.flip()`` and a display mode has to exist -- relying on
+        another test to have set one is the same order dependency by a
+        different route.
         """
+        _stretch_ui_font(monkeypatch, stretch)
         surface = headless_pygame.Surface(size)
         dlg = ErrorDialog(surface, "VHDL Error", "boom", example_path=EXAMPLE)
         dlg._draw()

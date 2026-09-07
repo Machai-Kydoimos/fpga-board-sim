@@ -121,6 +121,44 @@ def _wrap_message(message: str, font: _Measurer, max_w: int) -> list[str]:
     return wrapped
 
 
+#: Floor for the button labels when the row will not fit any other way.
+_MIN_BUTTON_FONT = 11
+
+
+def _button_row_metrics(
+    labels: list[str], base_size: int, pad: int, gap: int, avail: int
+) -> tuple[pygame.font.Font, list[int], int]:
+    """Choose a font, padding and gap that fit the button row into *avail*.
+
+    Returns ``(font, widths, gap)``.  [Copy] made the row four buttons wide,
+    and the label metrics belong to the machine, not to us: the UI asks for
+    Consolas, which Windows has, fontconfig substitutes on Linux, and macOS has
+    neither -- there the fallback is wide enough to push four buttons past the
+    panel edge at the 1024x700 reference size.  So the fit is computed rather
+    than assumed.
+
+    Padding and gaps give way first, because shrinking the labels is the first
+    thing a reader notices; the type size only when that is not enough.  If
+    even the floor does not fit, the floor is what gets drawn -- a row that
+    overflows slightly still beats one whose labels are illegible.
+    """
+    candidates = [
+        (base_size, pad, gap),
+        (base_size, max(8, pad // 2), max(6, gap // 2)),
+        (base_size, 8, 6),
+    ]
+    candidates += [(size, 8, 6) for size in range(base_size - 1, _MIN_BUTTON_FONT - 1, -1)]
+    font = get_font(base_size, bold=True)
+    widths = [font.size(label)[0] + pad for label in labels]
+    for size, this_pad, this_gap in candidates:
+        font = get_font(size, bold=True)
+        widths = [font.size(label)[0] + this_pad for label in labels]
+        if sum(widths) + this_gap * (len(labels) - 1) <= avail:
+            return font, widths, this_gap
+        gap = this_gap
+    return font, widths, gap
+
+
 def _copy_to_clipboard(text: str) -> bool:
     """Put *text* on the system clipboard; False if this platform will not.
 
@@ -247,7 +285,6 @@ class ErrorDialog:
 
         title_f = get_font(max(20, round(26 * s)), bold=True)
         body_f = get_font(max(16, round(20 * s)))
-        btn_f = get_font(max(16, round(20 * s)), bold=True)
         line_h = body_f.get_linesize() + 2
 
         # Word-wrap message lines to fit panel width, indentation preserved
@@ -316,16 +353,14 @@ class ErrorDialog:
             ("Try Another File", THEME.btn_error_retry, "_retry_rect"),
             ("Back to Boards", THEME.btn_error_back, "_back_rect"),
         ]
-        # The row has to fit the panel.  [Copy] made it four buttons wide, and
-        # at the 1024x700 reference size the nominal padding no longer leaves
-        # room for four -- so the padding and the gaps are squeezed before
-        # anything else, because shrinking the labels is the first thing a
-        # reader would notice.
-        for btn_pad, gap in ((pad, btn_gap), (max(8, pad // 2), max(6, btn_gap // 2)), (8, 6)):
-            widths = [btn_f.size(label)[0] + btn_pad for label, _, _ in buttons]
-            total_btn_w = sum(widths) + gap * (len(buttons) - 1)
-            if total_btn_w <= panel_w - btn_gap:
-                break
+        btn_f, widths, gap = _button_row_metrics(
+            [label for label, _, _ in buttons],
+            max(16, round(20 * s)),
+            pad,
+            btn_gap,
+            panel_w - btn_gap,
+        )
+        total_btn_w = sum(widths) + gap * (len(buttons) - 1)
         bx = px + (panel_w - total_btn_w) // 2
 
         mouse = pygame.mouse.get_pos()
