@@ -124,6 +124,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Twenty board display names now read the way the vendor spells them** (U49,
+  closing the card). The sync parsers build a name by splitting an upstream class
+  name on case and digit boundaries, which is right for most of the fleet and
+  produced `DE1SoCPlatform` → **"DE1 So C"**, `ULX3S_45F_Platform` → **"ULX3 S-45 F-"**
+  and fourteen more; the Terasic boards this project's own course fleet is built
+  on read **"DE10 Lite"** and **"DE0 CV"**, with a space where Terasic prints a
+  hyphen. A curated override table in `board_loader.py` corrects them at load
+  time, so they are right in the selector, the session log, and the board copy
+  handed to the headless child.
+  - **Deliberately not a parser fix.** Correcting `_prettify_class_name` means
+    re-syncing every generated board, which the CI board-data drift job then has
+    to agree with byte for byte — real risk for a cosmetic defect. Nothing
+    regenerates here and no board JSON changes. The parser fix is carded as
+    Icebox **P35**, with the cleanup made mechanical: a guard names every
+    override the parser has learned to emit on its own.
+  - **Renaming cannot cost anyone their board.** `find_board` compares names with
+    separators and case stripped, so `--board "DE10 Lite"` still resolves, as do
+    the new spelling and the class name; saved sessions store `class_name`. All
+    three are asserted rather than reasoned about.
+  - `tests/test_board_display_names.py` is the guard: a shape rule over every
+    board's final name (no lone capital as a word, no dangling separator) that
+    fires on any *new* mangling, plus checks that the table stays honest and
+    introduces no lookup ambiguity. **Two names that only look mangled are
+    registered as correct** — Digilent ships `Genesys-ZU-3EG-D-Master.xdc`, so
+    the trailing `-D` is theirs.
+
 - **`docs/first_design.md` — the walkthrough that did not exist.** Written for a
   student alone with a `.vhd` file they wrote for a real lab board and no lab
   around them: install, `--doctor`, one of ours, then **theirs**, straight out of

@@ -170,7 +170,7 @@ def test_native_fixed_widths_equal_to_convention_are_accepted() -> None:
 
 
 def test_board_without_7seg_matches_without_seg() -> None:
-    board = _board(_NANO_CONV, digits=None, name="DE0 Nano")
+    board = _board(_NANO_CONV, digits=None, name="DE0-Nano")
     ports = [
         "CLOCK_50 : in std_logic",
         "LED : out std_logic_vector(7 downto 0)",
