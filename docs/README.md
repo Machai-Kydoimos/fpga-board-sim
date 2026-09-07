@@ -3,7 +3,10 @@
 Two kinds of document live here, and the split is the point of this directory's layout.
 
 **`docs/*.md` is what you read to *use* or *extend* the simulator** — it describes the tool as it
-is today. **[`docs/plans/`](plans/) is how it got that way**: one execution plan per arc, kept as
+is today. If you are here for the first time with a design of your own, read
+[first_design.md](first_design.md) and ignore the rest until something breaks.
+
+**[`docs/plans/`](plans/) is how it got that way**: one execution plan per arc, kept as
 the project's engineering history rather than deleted at merge. A plan is never the answer to "how
 does this work?"; when the two disagree, the reference below is right and the plan is a record of
 what was intended at the time.
@@ -12,6 +15,8 @@ what was intended at the time.
 
 | If you want to… | Read |
 |---|---|
+| **run your own lab design for the first time** | **[first_design.md](first_design.md)** |
+| fix whatever just went wrong | [troubleshooting.md](troubleshooting.md) |
 | install it, on any of the three OSes | [install.md](install.md) |
 | drive it — the four screens, the in-sim controls, sessions and settings | [user_guide.md](user_guide.md) |
 | write a design it can run | [writing_designs.md](writing_designs.md) |

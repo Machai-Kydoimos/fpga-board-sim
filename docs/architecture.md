@@ -7,6 +7,15 @@ and the curious. For using the app see [docs/user_guide.md](user_guide.md); for
 writing designs see [docs/writing_designs.md](writing_designs.md). Back to the
 [README](../README.md).
 
+> **Reading the `(U##)` / `(D##)` markers.** They appear throughout this repository —
+> in prose, docstrings and code comments — and each cites a roadmap card, so a piece
+> of code can point at the reasoning that produced it without restating it. Look the
+> card up in [roadmap_delivered.md](roadmap_delivered.md) once it has shipped, or in
+> [improvement_roadmap.md](improvement_roadmap.md) while it is still open. `U` is a
+> usability card and `D` a design/infrastructure one; `P##` is a parked Icebox item.
+> Note the hyphen elsewhere: a `D-n` in a plan document is a **decision** recorded in
+> that plan, not a card.
+
 ## Single-window process model
 
 The simulator uses **one window for the whole session**, split across **two OS

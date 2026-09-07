@@ -11,6 +11,13 @@ So the README's figures must be a **subset** of install.md's.  Subset, not
 equality: install.md is free to carry more detail (startup cost, the
 arithmetic-heavy caveat, the from-source rows) and the README deliberately
 carries less.  What it may not do is carry a *different* number.
+
+The classroom docs are held to the same rule for the same reason.  Both were
+drafted quoting a ratio measured on one machine -- honest, reproducible, and
+*different* from install.md's range, which would have left a reader holding two
+irreconcilable numbers with no way to tell which was stale.  They quote absolute
+measured rates and a reproduce command instead, and link install.md for the
+comparison; this guard is what keeps a later edit from putting a ratio back.
 """
 
 from __future__ import annotations
@@ -57,4 +64,22 @@ def test_the_readme_quotes_no_ratio_install_md_does_not(install_ratios: set[str]
     assert not drifted, (
         f"README.md quotes {sorted(drifted)}, which docs/install.md does not. "
         "install.md owns these numbers; update it first, or fix the README."
+    )
+
+
+#: Documents that may quote a ratio but do not own one.  Unlike the README these
+#: are allowed to quote none at all -- both currently do, deliberately -- so the
+#: assertion is one-sided: whatever they say must already be in install.md.
+_DEPENDENT_DOCS = ("docs/first_design.md", "docs/troubleshooting.md")
+
+
+@pytest.mark.parametrize("rel", _DEPENDENT_DOCS)
+def test_a_classroom_doc_quotes_no_ratio_install_md_does_not(
+    rel: str, install_ratios: set[str]
+) -> None:
+    drifted = _ratios(REPO_ROOT / rel) - install_ratios
+    assert not drifted, (
+        f"{rel} quotes {sorted(drifted)}, which docs/install.md does not. "
+        "install.md owns these numbers: cite a measured absolute rate with the "
+        "command that reproduces it, or link the table -- do not restate a ratio."
     )

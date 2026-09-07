@@ -145,30 +145,37 @@ class TestActions:
         dlg._click(dlg._clear_rect.center)
         assert not session_file.exists()
 
-    def test_waveform_cycle_off_to_vcd(self, screen, session_file):
-        """U10: default (off) → first click selects VCD; row stays open."""
+    def test_waveform_cycle_off_to_fst(self, screen, session_file):
+        """U10/D-14: default (off) → first click selects FST; row stays open.
+
+        Which format one click reaches is the whole point of the ordering: FST
+        is ~30x smaller for the same run, and under GHDL it is the only one of
+        the two that records memories, so landing on VCD first would have made
+        the worse choice the default for everyone who clicks once.
+        """
         dlg = SettingsDialog(screen)
         dlg._draw()
         assert dlg._waveform_rect is not None
         assert dlg._click(dlg._waveform_rect.center) is False  # stays open
-        assert load_session()["waveform"] == "vcd"
+        assert load_session()["waveform"] == "fst"
 
     def test_waveform_cycle_full_loop(self, screen, session_file):
-        """off → vcd → fst → off, writing each state in turn."""
+        """off → fst → vcd → off, writing each state in turn."""
         dlg = SettingsDialog(screen)
         dlg._draw()
         assert dlg._waveform_rect is not None
-        for expected in ("vcd", "fst", "off"):
+        for expected in ("fst", "vcd", "off"):
             dlg._click(dlg._waveform_rect.center)
             assert load_session()["waveform"] == expected
 
     def test_waveform_cycle_starts_from_saved_value(self, screen, session_file):
-        update_session(waveform="vcd")
+        """The cycle resumes from the persisted value, not from the start."""
+        update_session(waveform="fst")
         dlg = SettingsDialog(screen)
         dlg._draw()
         assert dlg._waveform_rect is not None
         dlg._click(dlg._waveform_rect.center)
-        assert load_session()["waveform"] == "fst"
+        assert load_session()["waveform"] == "vcd"
 
     def test_actions_preserve_other_session_keys(self, screen, session_file):
         session_file.write_text(

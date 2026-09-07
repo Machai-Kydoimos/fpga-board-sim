@@ -9,10 +9,14 @@ persisted session file (:mod:`fpga_sim.session_config`):
   restores the persisted name at startup).
 * **Sim speed** — the speed slider's value as written back by the last
   simulation run, with a [Reset] to the default.
-* **Waveform** — cycles native simulator capture off / VCD / FST; the launcher
+* **Waveform** — cycles native simulator capture off / FST / VCD; the launcher
   passes the choice to the sim run subprocess, which writes a timestamped
   ``~/.fpga_simulator/waveforms/<design>_<timestamp>.<ext>`` (or under
-  ``$FPGA_SIM_WAVEFORM_DIR``) for opening in GTKWave.
+  ``$FPGA_SIM_WAVEFORM_DIR``) for opening in GTKWave.  **FST comes first
+  deliberately** (D-14): it is the same waveform roughly thirty times smaller,
+  and it is the only one of the two that carries memories under GHDL, so the
+  choice a user reaches by clicking once is the one that will not fill their
+  disk or silently drop the arrays they enabled below.
 * **Memories** — include nested arrays / memories (the embedded-core designs'
   RAM/ROM/registers) in the capture.  Applies under NVC (which otherwise skips
   them); GHDL's FST/GHW writers already include them, though its VCD writer does
@@ -44,9 +48,13 @@ from fpga_sim.ui.sim_panel import SPEED_DEFAULT
 from fpga_sim.ui.theme import THEME, THEME_LABELS, THEME_NAMES, current_theme_name, set_theme
 from fpga_sim.ui.widgets import draw_button
 
-# Waveform-capture cycle for the Settings row: off → VCD → FST → off.  The two
-# active values match ``sim_bridge.WaveFormat``; "off" (no capture) is the default.
-_WAVEFORM_MODES = ("off", "vcd", "fst")
+# Waveform-capture cycle for the Settings row: off → FST → VCD → off.  The two
+# active values match ``sim_config.WaveFormat``; "off" (no capture) is the default.
+# FST is first because it is the better of the two in both ways that bite: on one
+# 10 s run of blinky.vhd it wrote 9 MB where VCD wrote 190 MB, and GHDL's VCD
+# writer omits memories entirely, so off → VCD → FST would have walked every user
+# through the one combination that silently loses data (roadmap P13/P14, D-14).
+_WAVEFORM_MODES = ("off", "fst", "vcd")
 _WAVEFORM_LABELS = {"off": "Off", "vcd": "VCD", "fst": "FST"}
 
 

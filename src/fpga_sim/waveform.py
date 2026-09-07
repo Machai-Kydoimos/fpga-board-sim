@@ -266,6 +266,17 @@ def _open_waveform(dump: Path, gtkw: Path) -> None:
     open_with_default_app(dump)
 
 
+def _format_size(n_bytes: int) -> str:
+    """Render a dump size the way a person checking their disk would read it."""
+    if n_bytes >= 1024**3:
+        return f"{n_bytes / 1024**3:.1f} GB"
+    if n_bytes >= 1024**2:
+        return f"{n_bytes / 1024**2:.1f} MB"
+    if n_bytes >= 1024:
+        return f"{n_bytes / 1024:.0f} KB"
+    return f"{n_bytes} bytes"
+
+
 def _announce_waveform(
     wave_cfg: WaveConfig | None,
     generics: dict[str, str],
@@ -288,7 +299,23 @@ def _announce_waveform(
     # board-native run, preselect the design's own native ports.
     gtkw = _gtkw_path(wpath)
     _write_gtkw(gtkw, wpath, generics, match=match)
-    print(f"Waveform written: {wpath}\n  Open it with preloaded signals:  gtkwave {gtkw}")
+    # Say how big it is (roadmap P13).  Capture is per-run and nothing sweeps the
+    # directory, so the only moment a user can act on the size is now -- and the
+    # figure is startling enough to be worth showing: a ten-second VCD run of
+    # blinky.vhd measured 190 MB against FST's 9 MB.  The quoted range is wide on
+    # purpose: writing VCD is slow enough that the two runs cover *different*
+    # amounts of simulated time, so the ratio is ~21x compared file-to-file and
+    # ~29x compared per simulated millisecond.  Both readings are true and a
+    # reader will reach for whichever is in front of them.
+    size = _format_size(wpath.stat().st_size)
+    print(f"Waveform written: {wpath}  ({size})")
+    if wave_cfg.fmt == "vcd":
+        print(
+            "  VCD is the large format -- FST holds the same design 10-30x smaller,"
+            "\n  and under GHDL it is the only one of the two that records memories."
+            "\n  Settings -> Waveform switches format."
+        )
+    print(f"  Open it with preloaded signals:  gtkwave {gtkw}")
     # U29: optionally launch the user's viewer on the produced dump.
     env_open = _env_flag(WAVEFORM_OPEN_ENV)
     do_open = env_open if env_open is not None else bool(waveform_open)
