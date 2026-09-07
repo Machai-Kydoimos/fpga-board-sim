@@ -254,20 +254,36 @@ jobs:
 
       # winget installs uv but a PATH entry an installer makes does not reach the
       # next step, so uv has to be found and exported the same way ghdl was.
+      #
+      # uv is *bootstrap here, not the subject*: docs/install.md never says how
+      # to get uv on Windows, and the documented commands this job exists to
+      # test are the GHDL and NVC ones above.  So when one route to uv fails the
+      # other is tried rather than failing the job -- on 2026-09-07 winget's
+      # download of uv returned `0x801901f8 : Gateway timeout (504)` from the
+      # GitHub release CDN and took the whole job with it, while uv's own
+      # installer sat unused one line away.  Both attempts are recorded in the
+      # summary, so a *persistent* winget breakage still shows rather than being
+      # papered over.
       - name: Install uv
         run: |
+          function Find-Uv {
+            Get-ChildItem -Recurse -ErrorAction SilentlyContinue -Filter uv.exe `
+              -Path "$env:LOCALAPPDATA\Microsoft\WinGet\Packages", "$env:USERPROFILE\.local\bin" |
+              Select-Object -First 1
+          }
+
           if ($null -ne (Get-Command winget -ErrorAction SilentlyContinue)) {
             winget install --id=astral-sh.uv -e `
               --accept-source-agreements --accept-package-agreements --disable-interactivity
-          } else {
-            # Runner limitation only: keep the rest of the job meaningful by
-            # using uv's own installer.  Recorded above so the summary does not
-            # imply the documented command was tested.
-            irm https://astral.sh/uv/install.ps1 | iex
           }
-          $uv = Get-ChildItem -Recurse -ErrorAction SilentlyContinue -Filter uv.exe `
-                  -Path "$env:LOCALAPPDATA\Microsoft\WinGet\Packages", "$env:USERPROFILE\.local\bin" |
-                Select-Object -First 1
+
+          $uv = Find-Uv
+          if (-not $uv) {
+            "- _uv did not arrive via winget; used uv's own installer instead._" >> $env:GITHUB_STEP_SUMMARY
+            irm https://astral.sh/uv/install.ps1 | iex
+            $uv = Find-Uv
+          }
+
           if (-not $uv) { throw "uv.exe not found after install" }
           $uv.DirectoryName >> $env:GITHUB_PATH
           & $uv.FullName --version

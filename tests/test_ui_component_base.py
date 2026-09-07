@@ -379,7 +379,14 @@ def test_badge_ink_is_vertically_centered(headless_pygame, size):
     assert abs(box.centerx - btn.rect.centerx) <= 2
 
 
-@pytest.mark.parametrize("size", [(171, 81), (73, 48), (62, 56), (40, 30), (24, 24)])
+#: Button sizes the badge/latch geometry is checked at, smallest last.  24x24
+#: is deliberately below the badge floor, so the collision test skips there --
+#: see `test_the_badge_sizes_are_not_all_below_the_floor` for why that skip is
+#: safe to have.
+_BADGE_SIZES = [(171, 81), (73, 48), (62, 56), (40, 30), (24, 24)]
+
+
+@pytest.mark.parametrize("size", _BADGE_SIZES)
 def test_badge_never_overlaps_the_latch_corner(headless_pygame, size):
     """A centered badge and the corner padlock must not collide.
 
@@ -398,6 +405,27 @@ def test_badge_never_overlaps_the_latch_corner(headless_pygame, size):
     pad = Button._LATCH_ICON_PAD
     lock = headless_pygame.Rect(btn.rect.right - pad - icon, btn.rect.top + pad, icon, icon)
     assert not badge.colliderect(lock)
+
+
+def test_the_badge_sizes_are_not_all_below_the_floor(headless_pygame):
+    """The test above skips where no badge fits, so something must not skip.
+
+    Exactly one of the sizes (24x24) is below the badge floor today, and its
+    skip is honest: with no badge drawn there is nothing that could collide.
+    But a regression that stopped badges rendering *anywhere* would turn every
+    case into that one, and the suite would go green reporting five skips -- the
+    same vacuous pass the cocotb suites here guard against by requiring a test
+    count rather than just `FAIL=0`.
+    """
+    budgets = []
+    for size in _BADGE_SIZES:
+        btn = Button(3)
+        btn.rect = headless_pygame.Rect(0, 0, *size)
+        budgets.append(btn._badge_budget())
+
+    drawn = [s for s, b in zip(_BADGE_SIZES, budgets, strict=True) if b > 0]
+    assert len(drawn) >= 4, f"badges have stopped fitting; only {drawn} still draw one"
+    assert budgets[-1] == 0, "24x24 now fits a badge, so the collision test no longer skips"
 
 
 def test_badge_size_does_not_change_when_latched(headless_pygame):
