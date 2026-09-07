@@ -377,6 +377,49 @@ def test_the_divider_generic_is_found_by_name_with_its_name_kept():
     assert find_divider("entity t is port (c : in bit); end entity;", "t") is None
 
 
+# Throughput measured on one machine with `hdl/mx65_hello_7seg.vhd`, a design
+# documented as static, driven through the real `SimulationScreen` against a
+# real child on each installed backend (2026-09-07).  Kept as a fixture because
+# the *ratios* are the point: the advisory's arithmetic is a pure function of
+# what it measured, so a backend four times faster must be told a different
+# story, and told it correctly.
+_MEASURED_HZ = {
+    "ghdl-mcode": 84_000,
+    "ghdl-llvm-jit": 106_000,
+    "ghdl-llvm": 223_000,
+    "nvc": 361_000,
+}
+
+
+@pytest.mark.parametrize("backend,rate", sorted(_MEASURED_HZ.items()))
+def test_every_backend_gets_its_own_numbers(backend, rate):
+    """The same design on a faster simulator is a different, correct answer."""
+    facts = StallFacts(
+        quiet_s=10.0, sim_ns=int(rate * 10 / 50e6 * 1e9), sim_clock_hz=50e6, board_hz=50e6
+    )
+    assert facts.effective_hz == pytest.approx(rate, rel=0.01)
+    # the real board's figure is the board's, so it cannot vary by backend
+    assert facts.seconds_on_board(2**24) == pytest.approx(0.336, abs=0.001)
+    width = suggested_bits(facts, Divider("counter_bits", 24))
+    assert width is not None
+    assert facts.seconds_here(float(2**width)) < 1.0, f"{backend}: unwatchable suggestion"
+
+
+def test_a_faster_backend_is_told_it_can_afford_a_wider_divider():
+    """NVC measured 4.3x GHDL-mcode here, and was told 17 bits rather than 15."""
+    rates = [_MEASURED_HZ[k] for k in ("ghdl-mcode", "ghdl-llvm-jit", "ghdl-llvm", "nvc")]
+    widths = []
+    for rate in rates:
+        facts = StallFacts(
+            quiet_s=10.0, sim_ns=int(rate * 10 / 50e6 * 1e9), sim_clock_hz=50e6, board_hz=50e6
+        )
+        w = suggested_bits(facts, Divider("counter_bits", 24))
+        assert w is not None
+        widths.append(w)
+    assert widths == sorted(widths)
+    assert widths[0] < widths[-1], "mcode and NVC must not be given the same advice"
+
+
 def test_a_faster_machine_gets_a_smaller_number():
     """Nothing here is a constant; NVC on the same design says something else."""
     slow = StallFacts(quiet_s=10.0, sim_ns=38_000_000, sim_clock_hz=50e6, board_hz=50e6)
