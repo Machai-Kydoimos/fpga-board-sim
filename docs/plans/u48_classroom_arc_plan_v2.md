@@ -503,6 +503,149 @@ What the substitution does not buy: a runner has no display, no prior Python, no
 half-installed MSYS2 and no group policy, so it exercises the install matrix and not the
 troubleshooting section. Those paths stay unrehearsed until someone runs them on a real profile.
 
+## 4.2 Gate B soak findings (2026-09-08)
+
+**These supersede §10 where they disagree.**
+
+Gate B ran on 2026-09-08 against `main` at `f004284`, with PRs 3, 6, 7, 8 and 9 shipped. The
+corpus of §4.1 went back through the app on DE10-Standard, **twice — once per backend** (GHDL
+7.0.0-dev mcode, NVC 1.23-devel): its thirteen cases plus the `broken_sibling` folder staged
+alongside them, so 28 runs, which agreed on every case. Each file
+was then put through `check_vhdl_contract` directly as well, because `--benchmark` prints its own
+one-line summary and the text a student actually reads is the preview's.
+
+**G6 is fixed, and that is the headline.** The twelve cases that were indistinguishable in Gate A
+are now distinct. The four that should fail do, on both backends, each with its own message: the
+entity/filename mismatch, `unsigned` with no `numeric_std` (with the caret preserved and the
+package named), the reserved-word signal — whose hint also explains that *"Neither GHDL nor NVC
+says 'reserved word'"*, which is the fact that makes the error unsearchable — and the picked
+testbench. The five lab shapes all load and run. Lab 1 decodes exactly as its source predicts at
+`sw = 0`: digit 0 = `0`, digit 2 = `8` (`HIGH_LUT(0)`), digits 1 and 3 blank, digits 4–5 dark per
+G3, `led_r(1)` at 0.5 duty (the clock), and `led_r(0)` at 1.0 — which is the **active-low reset
+honored**, confirmed against a purpose-built probe design carrying a constant-1 and a constant-0
+control so the readout itself was checked rather than assumed.
+
+**Four cases run without comment, and three of them are right to.** `wrong_polarity` analyzes and
+simulates because it is wrong only on the board, which the tool cannot know. `wrong_integer_port`
+leaves its unassigned `integer` output `open`, which is G1 as specified — though see B4 on the
+silence. `broken_sibling` drops a sibling that never compiles (U51). The fourth, `wrong_board`,
+runs because that fixture changes only the `DEVICE` line — every pin in it is still a DE10-Standard
+pin — so it is weaker than its name suggests. A *genuine*
+cross-board run does produce the right refusal, naming the part:
+`test_entity.qsf targets 5CSXFC6D6F31C6, but Basys 3 is xc7a35t — did you select the wrong board?`
+
+### §10 at a glance
+
+| # | Item | 2026-09-08 |
+|---|---|---|
+| 1 | Course-shaped files, both backends | pass — see B2 for the `CNTR_LEN` clause |
+| 2 | Frozen board | **not runnable headless, by design** — see below |
+| 3 | Fresh-profile walkthrough | outstanding (interactive) |
+| 4 | Fleet sweep, 9 boards × 2 backends | pass — 18/18 |
+| 5 | Install rehearsal | superseded by D-19; `install-docs.yml` green |
+| 6 | Board data | pass — "No drift", LED colors current, counts green |
+| 7 | Language and lint | pass — rumdl clean (40 files), spelling green |
+| 8 | CI | pass — `f004284` CI + CodeQL both success |
+
+Per-PR gate on the merge commit: **3031 passed, 1 skipped**. The skip is size-parametrized
+(`test_badge_never_overlaps_the_latch_corner`, at a size where no badge fits) and is itself guarded
+by `test_the_badge_sizes_are_not_all_below_the_floor`, so the PR-13 lesson holds here.
+
+**The fleet sweep is not a green-exit illusion.** Every board produced 19–20 *distinct* LED
+patterns across its shots, with digit counts matching the board (Basys 3 four, the Terasic boards
+six, DE2-115 eight, the LED-only boards none) — so the captures show a running design rather than
+eighteen dark boards. ULX3S ships as four variants in `boards/`; `ULX3S-85F` was swept.
+
+**§10.2 cannot be run from the benchmark path and should stop claiming to be.** `_sample_stall`
+returns early when `not self._interactive`, deliberately: *"an offer nobody can accept is not help,
+it is a control painted into every `--screenshots` capture of a design that happens to be static."*
+The advisory's logic is unit-covered; the banner itself needs a person at the keyboard, which makes
+§10.2 part of §10.3 rather than a separate mechanical step.
+
+### Defects found (triaged, not fixed)
+
+**B1 — the "wrong board" hint fires on the *correct* board.** `pinmap.py`, in the `if unknown:`
+branch: the board JSON stores the device family (`5CSXFC6D6`) and Quartus writes the full ordering
+code (`5CSXFC6D6F31C6`), and the test asks whether the **long** string is contained in the
+**short** one. That is false for a correct match, so the hint is appended whenever a DE10-Standard
+project's pin map fails for *any* other reason. Reproduced with the correct board, its own `.qsf`
+and one bogus pin:
+
+```text
+test_entity.qsf assigns pins that DE10-Standard does not have:
+  led_r[9] -> pin ZZ99
+
+test_entity.qsf targets 5CSXFC6D6F31C6, but DE10-Standard is 5CSXFC6D6 — did you select the wrong board?
+```
+
+Reverse containment (`board.device in qsf_device`) is `True`, which is the shape the comparison
+wants. The reason this survived review is worth keeping: `test_a_constraint_file_for_another_board_says_so`
+exercises the DE10-Standard `.qsf` against **DE10-Lite** only — the case where the two strings
+genuinely differ — so the matching case has no test at all. **A fixture that only ever differs
+cannot catch a false positive.** This is the flagship path on the first course board telling a
+student something untrue, and it is the one finding here that should not wait for the
+post-semester queue.
+
+**B2 — `--generic` is silently ignored in `--benchmark` mode.** The benchmark path builds only
+`build_generics(chosen, simulator=...)`; `args.generic` reaches the `NAME=VALUE` shape check and
+the *interactive* controller, and nothing else. `--generic NOSUCHGENERIC=5` returns exit 0 with no
+output, where the launcher would print `[fpga-sim] <problem>` from `_apply_cli_generics`. Two
+consequences: a flag the user deliberately typed does nothing and says nothing, which is exactly
+what `_inapplicable_flags` exists to prevent for the mirror-image case; and **§10.1's own criterion
+— "Lab 2a's shape animates within 10 s after a `CNTR_LEN` override" — cannot be checked through the
+mechanical harness §6 prescribes**, which is the likeliest reason nobody noticed. (Lab 2a needs a
+reset press to leave `'U'` regardless, so no headless run can complete that check on its own.)
+
+**B3 — an off-by-one port width against the constraint file is silent.** `wrong_width` declares
+`led_r(8 downto 0)` where the `.qsf` assigns `LED_R[0..9]`. It binds **37** output bits where every
+sibling case binds 38: `led_r[9]`/pin AC22 is dropped and **nothing is shifted** — every remaining
+bit lands on its own pin — so the failure mode is benign, one dark LED, and unexplained. The
+student sees nine LEDs work and the tenth dead. `PinMapMatch.widths` already carries the declared
+width and the assignment set is already parsed, so the comparison is one step away. G2's rule
+("every assignment no declared port claims is ignored") was written about *undeclared* ports like
+`DRAM_ADDR`; a declared port that is one bit short is a distinguishable case and reads differently.
+
+**B4 — `open_outputs` is computed and never surfaced.** `wrong_integer_port` yields
+`open_outputs=['counter']` and produces no note, while its sibling `tied_inputs` gets one ("reads
+as 0 here…"). The *behavior* is G1 as designed; the asymmetry in what gets said looks like
+oversight rather than decision.
+
+### Checked, and *not* a defect
+
+**A pin-map failure is terminal, and that is deliberate.** `hdl/native/de10_standard.vhd` — a
+shipped reference design that matches the board's Terasic convention perfectly — is refused when a
+constraint file sits beside it naming a pin the board lacks, rather than falling back to the
+convention match that would have run. `_check_contract` says why, and the reasoning holds: a
+constraint file *"is the only one of the three that carries the user's own statement of intent …
+falling back would answer a question about pins with a message about names."* Recorded because the
+behavior is surprising the first time you meet it, not because it should change.
+
+**The `wrong_board` fixture is weaker than its name.** It changes only the `DEVICE` line, so every
+pin in it is still a DE10-Standard pin and the design correctly runs. The real cross-board case is
+covered instead by pointing a DE10-Standard `.qsf` at a Basys 3, which refuses with the part named.
+Worth fixing in the corpus if it is ever promoted into `tests/fixtures/`, so the case tests what it
+claims to.
+
+**The corpus's own `HEX4`/`HEX5` pins are not the board's.** `test_entity.qsf` assigns
+`HEX4[0] -> PIN_AH21` and `HEX5[0] -> PIN_AJ22`, while `boards/custom/` gives digit 4 segment 0 as
+`AD21` and digit 5 as `AF21`. The board data has full six-digit pin coverage; it is the lab-shaped
+fixture that approximated those two lines, so the refusal is correct and the *product* is not at
+fault. Noted because it is what surfaced B1, and because a reader meeting that message would
+reasonably suspect the board JSON first.
+
+### Plan drift found while running it
+
+- **§10.1 names fixtures that do not exist.** It refers to repo fixtures "in the shapes of Lab 1,
+  Lab 2a, Lab 2b and a Basys 3 renamed-port design" under `tests/fixtures/pinmap/`; that directory
+  holds **two** — `de10_standard/` (a Task-3b shape) and `basys3/`. §4.1 recorded that "PR 6
+  promotes the parts it needs into `tests/fixtures/pinmap/` … which is where it should live
+  permanently"; that promotion did not happen. The corpus still lives at `/tmp/arc/gate_a/`, with
+  the durable copy at `~/.claude/arc/gate_a_corpus/` intact.
+- **§10.2 still names `[Switch to NVC]`**, which D-9 retired rather than deferred — the advisory
+  points at the preview's `SIM:` toggle and deliberately has no button of its own.
+
+Per §4.1's precedent this section supersedes rather than rewrites: §10 is left as it stands.
+
 ---
 
 ## 5. Cards to file
@@ -1015,16 +1158,26 @@ Arc-level, end to end:
 
 ## 11. Open at execution time
 
-- **The stall threshold T** (10 s? 15 s?), per-run vs per-session dismissal, and whether a change on
-  a single segment resets the timer. Decide against Gate A's observations.
-- **Pin-map precedence** when a folder holds a constraint file *and* the design already uses the
+- ~~**The stall threshold T** (10 s? 15 s?), per-run vs per-session dismissal, and whether a change
+  on a single segment resets the timer.~~ **Resolved as shipped, confirmed in Gate B:** T is
+  `stall.DEFAULT_THRESHOLD_S = 10.0`; dismissal is **per-run**, because `_stall_expanded` belongs to
+  the `SimulationScreen` and a new run re-offers; and a change on a single segment **does** reset the
+  timer, since `output_signature` fingerprints LEDs *and* digits. That last one is the intended
+  reading rather than an oversight — a design driving one segment is doing something.
+- ~~**Pin-map precedence** when a folder holds a constraint file *and* the design already uses the
   board's canonical names (both match): pin map first is the plan; confirm the message makes the
-  choice visible.
+  choice visible.~~ **Resolved in Gate B: pin map first, and the message makes the choice visible**
+  — *"Pin map: test_entity.qsf -> DE10-Standard. … so this design's own port names are not used."*
+  What the question did not ask is what happens when the preferred path *fails*: it is terminal by
+  design, and §4.2 records why — falling back "would answer a question about pins with a message
+  about names".
 - **FST-default migration** for sessions that already persisted `waveform = "vcd"`: leave them, or
   nudge once?
 - **7-segment pins for non-target boards:** stop at the target boards, or let the re-sync populate
   every board the parsers can see (more diff, same risk class)?
 - **tkinter availability** on uv-managed Python and the lab image, for the OS file dialog option.
+  Present on the dev machine on **both** uv-managed and system Python (Tk 9.0, 2026-09-08); **the
+  lab image is still unverified**, which is the half that decides it.
 - ~~**Whether `--doctor` should attempt the analyze step on every discovered simulator** or only
   the default one.~~ **Resolved in PR 10: every one.** Measured on the dev machine, `hdl/blinky.vhd`
   analyzes + elaborates in 0.02 s (GHDL mcode), 0.05 s (NVC), 0.05 s (GHDL LLVM-JIT) and 0.26 s
@@ -1035,6 +1188,18 @@ Arc-level, end to end:
 
 ## 12. Revision log
 
+- **Gate B (soak-1) — 2026-09-08. Findings in [§4.2](#42-gate-b-soak-findings-2026-09-08).** The
+  §4.1 corpus went back through the app on both backends (28 runs, no disagreement between GHDL and
+  NVC) and **G6 is fixed**: the twelve cases that were indistinguishable in Gate A now each get
+  their own message. Four defects were triaged rather than fixed, and **B1 is the one that should
+  not wait** — the "did you select the wrong board?" hint fires on the *correct* board, because the
+  board JSON stores the device family (`5CSXFC6D6`) while Quartus writes the full ordering code
+  (`5CSXFC6D6F31C6`) and the containment is tested in the wrong direction. It survived review
+  because its only test compares a DE10-Standard `.qsf` against a **DE10-Lite** — the case where the
+  strings genuinely differ — so the matching case is untested. **A fixture that only ever differs
+  cannot catch a false positive.** B2 is the other one worth stating here: `--generic` is silently
+  ignored under `--benchmark`, which is why §10.1's own `CNTR_LEN` clause could never have been
+  checked by the harness §6 prescribes.
 - **PR 13 (board display names) — 2026-09-07. U49 closed; P35 filed.** The card predicted
   "sixteen mangled names"; the fleet says **fourteen**. `Genesys ZU-3EG-D` and `-5EV-D` trip the
   guard's lone-capital rule and are *correct* — Digilent's own constraint files are named
