@@ -146,8 +146,25 @@ gtkwave "$(jq -r .waveform.dump manifest.json)" \
         "$(jq -r .waveform.gtkw manifest.json)" -S /tmp/win.tcl
 ```
 
-> Not yet verified: whether those Tcl commands accept a unit suffix or want raw ticks. If they
-> reject `ns`, use `.window.ticks` instead — the manifest carries both for exactly this reason.
+**Verified against GTKWave v3.3.125** (2026-09-08), by setting a marker from Tcl and reading it
+back with `gtkwave::getMarker`:
+
+| Tcl argument | `getMarker` returns (dump ticks, 1 fs each) | |
+|---|---|---|
+| `"1000 ns"` | `1000000000` | units parsed |
+| `"1000 us"` | `1000000000000` | exactly 1000× the `ns` value — the unit is genuinely honored, not ignored |
+| `"1000 ps"` | `1000000` | |
+| `1000` | `1000` | **a bare number is dump ticks, not nanoseconds** |
+| `"banana"` | `0` | unparseable input **silently zeroes the marker** — no error |
+
+So `.marker.time` and `.window.time` work as written, and `.marker.ticks` / `.window.ticks` work
+equally well as bare arguments. Two things to know: a bare number is *ticks*, so never pass
+`.sim_ns` directly (it would land a million times too early at a 1 fs scale); and a malformed time
+is not reported, it just moves the marker to 0.
+
+`setZoomRangeTimes` accepts both dialects too, but the resulting viewport is **approximate** — it
+snaps to pixel boundaries. Asking for `[6909120 ns, 7292960 ns]` gave `[6909100 ns, 7295482 ns]`.
+The marker is exact; the zoom is a view.
 
 Surfer takes SUCL commands via `-C`, separated by `;`. The dependable route is to open the dump and
 type the time at Surfer's own prompt:
