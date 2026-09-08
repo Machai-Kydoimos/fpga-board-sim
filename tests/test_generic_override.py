@@ -13,7 +13,14 @@ value reaches the *analyzer*, not just the rendered text.
 import pytest
 
 from fpga_sim.board_loader import discover_boards, find_board, get_default_boards_path
-from fpga_sim.generics import Kind, design_generics, parse_cli_override, resolve, validate
+from fpga_sim.generics import (
+    Kind,
+    design_generics,
+    parse_cli_override,
+    resolve,
+    resolve_cli_overrides,
+    validate,
+)
 from fpga_sim.wrapper import _render_wrapper, analyze_vhdl, wrapper_is_stale
 
 _BOARDS = discover_boards(get_default_boards_path())
@@ -211,3 +218,109 @@ def test_changing_an_override_re_analyzes(design, board, ghdl):
         generic_overrides={"cntr_len": "8"},
     )  # fmt: skip
     assert wrapper_is_stale(work_dir, "runlight", vhdl_path=design, board_def=board)
+
+
+# ── --generic reaches the benchmark too (B2) ─────────────────────────────────
+
+_BIT_AND_BOOL = """
+library ieee; use ieee.std_logic_1164.all;
+entity picky is
+  generic (WIDTH : positive := 4; MODE : boolean := true; LEVEL : std_logic := '0');
+  port (clk : in std_logic; led : out std_logic_vector(1 downto 0));
+end picky;
+architecture rtl of picky is begin led <= (others => LEVEL); end rtl;
+"""
+
+_TINY = """
+library ieee; use ieee.std_logic_1164.all;
+entity tiny is
+  generic (COUNTER_BITS : positive := 24);
+  port (clk : in std_logic;
+        sw  : in std_logic_vector(1 downto 0);
+        btn : in std_logic_vector(1 downto 0);
+        led : out std_logic_vector(1 downto 0));
+end tiny;
+architecture rtl of tiny is begin led <= sw; end rtl;
+"""
+
+
+def test_every_rejection_names_the_generic_it_refused():
+    """On the CLI the name is the only way to tell which --generic was refused.
+
+    The dialog shows these beside a labeled field, so it never needed them;
+    ``--generic`` surfaced the same words with no field and, until B2, not at
+    all. The integer messages always named it -- now all of them do.
+    """
+    defs = {d.name: d for d in design_generics(_BIT_AND_BOOL, "picky")}
+    assert "MODE takes true or false." == validate(defs["mode"], "yes")
+    assert "LEVEL takes '0' or '1', with the quotes." == validate(defs["level"], "1")
+    assert "WIDTH takes a whole number." == validate(defs["width"], "wide")
+
+
+def test_the_one_shot_resolver_parses_and_resolves_together():
+    accepted, problems = resolve_cli_overrides(["COUNTER_BITS=18"], _TINY, "tiny")
+    assert accepted == {"counter_bits": "18"}
+    assert problems == []
+
+
+def test_the_one_shot_resolver_reports_a_name_the_design_lacks():
+    accepted, problems = resolve_cli_overrides(["NOPE=1"], _TINY, "tiny")
+    assert accepted == {}
+    assert len(problems) == 1 and "NOPE" in problems[0]
+
+
+def test_the_one_shot_resolver_reports_a_malformed_pair():
+    accepted, problems = resolve_cli_overrides(["COUNTER_BITS"], _TINY, "tiny")
+    assert accepted == {}
+    assert problems and "NAME=VALUE" in problems[0]
+
+
+def test_no_overrides_is_not_a_problem():
+    assert resolve_cli_overrides([], _TINY, "tiny") == ({}, [])
+
+
+def test_the_benchmark_hands_generic_overrides_to_the_analyzer(monkeypatch):
+    """B2: ``--generic`` reached the launcher and never the benchmark.
+
+    The flag was parsed and shape-checked, then dropped: ``_run_benchmark``
+    built only the board-derived generics, so the design ran its own defaults
+    and the run said nothing about it.  Anything measured through
+    ``--benchmark``/``--screenshots`` -- which is how this project smoke-tests a
+    board, and how §10.1 of the arc plan says to check a ``CNTR_LEN`` override
+    -- was silently measuring the wrong thing.
+
+    Pinned at the seam rather than end to end: the resolution was never broken,
+    nobody called it, so what matters is that the value reaches ``analyze_vhdl``.
+    """
+    import argparse
+
+    from fpga_sim import __main__ as main_mod
+    from fpga_sim import sim_bridge
+    from fpga_sim.paths import HDL_DIR
+    from fpga_sim.sim_discovery import SimulatorInfo
+
+    stub = SimulatorInfo(
+        engine="ghdl", path="/nonexistent/ghdl", backend="mcode", label="GHDL", version="stub"
+    )
+    monkeypatch.setattr(sim_bridge, "resolve_simulator_arg", lambda *_a, **_k: stub)
+
+    seen: dict[str, object] = {}
+
+    def fake_analyze(*_args, **kwargs):
+        seen.update(kwargs)
+        return False, "stop here -- the kwargs are the assertion"
+
+    monkeypatch.setattr(sim_bridge, "analyze_vhdl", fake_analyze)
+
+    args = argparse.Namespace(
+        sim=None,
+        board="ICEStickPlatform",
+        vhdl=str(HDL_DIR / "blinky.vhd"),
+        pinmap=None,
+        benchmark=1,
+        no_ui=True,
+        screenshots=None,
+        generic=["COUNTER_BITS=18"],
+    )
+    assert main_mod._run_benchmark(args, [stub]) == 1  # the stubbed analysis
+    assert seen.get("generic_overrides") == {"counter_bits": "18"}
