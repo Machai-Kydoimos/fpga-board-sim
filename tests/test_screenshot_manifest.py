@@ -25,11 +25,20 @@ from __future__ import annotations
 import gzip
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
+from fpga_sim.manifest import (
+    MANIFEST_NAME,
+    Shot,
+    ShotMetrics,
+    led_legend,
+    run_block,
+    seg_legend,
+)
 from fpga_sim.sim_duty import DutyTracker, duty_window
-from fpga_sim.ui.screenshots import MANIFEST_NAME, ScreenshotRecorder, ShotMetrics
+from fpga_sim.ui.screenshots import ScreenshotRecorder
 from fpga_sim.waveform import _FST_TIMESCALE_OFFSET, dump_timescale_fs
 
 # ── 1. The window travels with the duties ─────────────────────────────────────
@@ -152,16 +161,14 @@ def test_a_missing_dump_is_not_an_error(tmp_path: Path) -> None:
 def _recorder_with_two_shots(tmp_path: Path) -> ScreenshotRecorder:
     """A recorder holding two shots, without needing pygame to write a PNG."""
     rec = ScreenshotRecorder(tmp_path)
-    from fpga_sim.ui.screenshots import _Shot
-
     rec.saved = [tmp_path / "shot_0001_sim1000ns.png", tmp_path / "shot_0002_sim2000ns.png"]
     rec._shots = [
-        _Shot(
+        Shot(
             rec.saved[0],
             1000,
             ShotMetrics(window_ns=(0, 1000), led_duty=(1.0, 0.0), led_level=(0.5, 0.25)),
         ),
-        _Shot(
+        Shot(
             rec.saved[1],
             2000,
             ShotMetrics(
@@ -211,6 +218,14 @@ def test_duty_and_level_describe_the_same_channels(tmp_path: Path) -> None:
                 assert len(shot[block]["duty"]) == len(shot[block]["level"])
 
 
+def test_the_schema_version_is_gone(tmp_path: Path) -> None:
+    """A version integer nothing reads is worse than a legend that explains itself."""
+    doc = json.loads(
+        _recorder_with_two_shots(tmp_path).write_manifest().read_text(encoding="utf-8")  # type: ignore[union-attr]
+    )
+    assert "schema" not in doc
+
+
 def test_the_manifest_explains_itself_without_the_source(tmp_path: Path) -> None:
     """#388's acceptance: a reader reconciles a PNG without reading the code."""
     doc = json.loads(
@@ -234,8 +249,13 @@ def test_a_dump_supplies_the_tick_dialect_surfer_needs(tmp_path: Path) -> None:
     assert doc["waveform"]["dump"] == str(dump)
     assert doc["waveform"]["gtkw"].endswith("run.gtkw")
     marker = doc["shots"][0]["marker"]
-    assert marker["gtkwave"] == "1000 ns"
-    assert marker["surfer_ticks"] == 1000 * 1_000_000, "1 ns is 1e6 ticks at a 1 fs scale"
+    assert marker["time"] == "1000 ns"
+    assert marker["ticks"] == 1000 * 1_000_000, "1 ns is 1e6 ticks at a 1 fs scale"
+    # The window gets the same two dialects: it is the interval you actually
+    # want on screen, so it must be as pasteable as the point.
+    window = doc["shots"][0]["window"]
+    assert window["time"] == ["0 ns", "1000 ns"]
+    assert window["ticks"] == [0, 1000 * 1_000_000]
 
 
 def test_without_a_dump_no_tick_count_is_invented(tmp_path: Path) -> None:
@@ -244,7 +264,8 @@ def test_without_a_dump_no_tick_count_is_invented(tmp_path: Path) -> None:
         _recorder_with_two_shots(tmp_path).write_manifest().read_text(encoding="utf-8")  # type: ignore[union-attr]
     )
     assert "waveform" not in doc
-    assert doc["shots"][0]["marker"] == {"gtkwave": "1000 ns"}
+    assert doc["shots"][0]["marker"] == {"time": "1000 ns"}
+    assert doc["shots"][0]["window"] == {"time": ["0 ns", "1000 ns"]}
 
 
 def test_an_unreadable_dump_still_names_the_dump(tmp_path: Path) -> None:
@@ -258,7 +279,8 @@ def test_an_unreadable_dump_still_names_the_dump(tmp_path: Path) -> None:
     )
     assert doc["waveform"]["dump"] == str(dump)
     assert doc["waveform"]["timescale_fs"] is None
-    assert "surfer_ticks" not in doc["shots"][0]["marker"]
+    assert "ticks" not in doc["shots"][0]["marker"]
+    assert "ticks" not in doc["shots"][0]["window"]
 
 
 # ── 4. End to end, against a dump this machine's simulator actually wrote ─────
@@ -295,3 +317,138 @@ def test_a_real_ghdl_fst_declares_one_femtosecond(tmp_path: Path, ghdl: str) -> 
 
     assert dump.exists() and dump.stat().st_size > 0
     assert dump_timescale_fs(dump) == 1, "GHDL's FST writer changed its timescale or its layout"
+
+
+# ── 5. The legend: what index i means, on the board and in the VHDL ──────────
+
+
+@pytest.fixture(scope="module")
+def boards() -> list[Any]:
+    from fpga_sim.board_loader import discover_boards, get_default_boards_path
+
+    return discover_boards(get_default_boards_path())
+
+
+def _board(boards: list[Any], name: str) -> Any:
+    from fpga_sim.board_loader import find_board
+
+    found = find_board(boards, name)
+    assert found is not None, f"{name!r} is not in the fleet; update this test"
+    return found
+
+
+def test_a_mono_board_legend_names_every_led_and_its_pin(boards: list[Any]) -> None:
+    """The plain case: one channel per LED, labeled as the board draws it."""
+    rows = led_legend(_board(boards, "DE10-Lite"))
+    assert len(rows) == 10
+    assert rows[0]["label"] == "LED0"
+    assert rows[0]["pins"] == ["A8"]
+    assert rows[0]["color"] == "red", "color explains why equal duties look different"
+    assert rows[0]["vhdl"] == "led(0)", "generic contract: the design drives the vector"
+
+
+def test_an_rgb_board_legend_distinguishes_channels_from_components(boards: list[Any]) -> None:
+    """The case that proves the legend is needed at all.
+
+    An Arty A7-35 has **16 boundary channels for 8 visible components**, so
+    ``led.duty[7]`` is not "the eighth LED" -- it is the red channel of RGB site
+    1, on its own pin. Nobody can infer that from the numbers.
+    """
+    rows = led_legend(_board(boards, "Arty A7-35"))
+    assert len(rows) == 16, "channels, not components"
+    assert [r["role"] for r in rows[:4]] == ["mono"] * 4
+    seven = rows[7]
+    assert seven["label"] == "RGB1.r"
+    assert seven["role"] == "r"
+    assert seven["pins"] == ["G3"], "one pin per channel, not all three of the site's"
+    assert rows[8]["pins"] == ["J4"] and rows[9]["pins"] == ["G4"]
+
+
+@pytest.mark.parametrize(
+    ("subdir", "board_name", "expect"),
+    [
+        ("de10_standard", "DE10-Standard", "led_r(0)"),
+        ("basys3", "Basys 3", "lamps(0)"),
+    ],
+)
+def test_the_pin_map_legend_names_the_students_own_port_bit(
+    boards: list[Any], subdir: str, board_name: str, expect: str
+) -> None:
+    """A pin-map run must say which bit of *their* file drives each LED.
+
+    The constraint file binds a port bit to a pin and the pin picks the channel,
+    so this mapping cannot be guessed from either side alone.  Both fixtures are
+    named explicitly rather than globbed: an earlier draft took whichever design
+    sorted first and matched a Basys 3 file against a DE10-Standard, which
+    *skipped* instead of failing -- the assertion silently disappeared.
+    """
+    from fpga_sim.vhdl_contract import check_vhdl_contract
+
+    fixture = Path(__file__).parent / "fixtures" / "pinmap" / subdir
+    design = next(iter(sorted(fixture.glob("*.vhd"))), None)
+    assert design is not None, f"no design in {fixture}; the fixture layout changed"
+    board = _board(boards, board_name)
+    res = check_vhdl_contract(str(design), board_def=board)
+    assert res.pinmap is not None, f"{design.name} no longer maps through its constraint file"
+
+    rows = led_legend(board, None, res.pinmap)
+    driven = [r for r in rows if r["vhdl"]]
+    assert driven, "the pin map bound no LED; the legend would be empty"
+    assert rows[0]["vhdl"] == expect
+    for row in driven:
+        assert row["active_low"] is False, "neither board inverts its LEDs"
+
+
+def test_a_board_led_the_design_never_reaches_is_named_as_such(boards: list[Any]) -> None:
+    """An unmapped channel says ``null``, not 0 -- it is dark, not measured off."""
+    from fpga_sim.pinmap import BitBinding, PinMapMatch, PinRole
+
+    board = _board(boards, "DE10-Lite")
+    partial = PinMapMatch(
+        source="x.qsf",
+        board_name=board.name,
+        outputs=(BitBinding("ledr", 0, "a8", PinRole("led", 0)),),
+    )
+    rows = led_legend(board, None, partial)
+    assert rows[0]["vhdl"] == "ledr(0)"
+    assert rows[5]["vhdl"] is None, "a channel nothing drives must not look driven"
+
+
+def test_the_segment_rule_is_stated_rather_than_enumerated(boards: list[Any]) -> None:
+    """48 channels do not need 48 rows: the rule is exact and much shorter."""
+    seg = seg_legend(_board(boards, "DE10-Lite"))
+    assert seg is not None
+    assert seg["index"] == "8 * digit + segment"
+    assert seg["segments"] == ["a", "b", "c", "d", "e", "f", "g", "dp"]
+    assert seg["digits"] == 6
+    assert "rightmost" in seg["digit_0"], "index 0 is drawn on the right; say so"
+    assert "active-low" in seg["board_note"], "the DE10-Lite display is active-low"
+
+
+def test_a_board_with_no_display_gets_no_segment_legend(boards: list[Any]) -> None:
+    assert seg_legend(_board(boards, "Arty A7-35")) is None
+
+
+def test_the_run_block_says_which_mapping_produced_the_vhdl_column() -> None:
+    """Without the mode, the ``vhdl`` column cannot be interpreted."""
+    from fpga_sim.conventions import ConventionMatch
+    from fpga_sim.pinmap import PinMapMatch
+
+    assert run_block() == {"mode": "generic"}
+    native = ConventionMatch(maker="terasic", board_name="DE0-CV", clk="CLOCK_50", leds=None)
+    assert run_block(native) == {"mode": "board-native", "source": "terasic"}
+    pm = PinMapMatch(source="lab1.qsf", board_name="DE10-Standard")
+    assert run_block(None, pm) == {"mode": "pin map", "source": "lab1.qsf"}
+    assert run_block(native, pm)["mode"] == "pin map", "the pin map is what ran"
+
+
+def test_a_run_with_no_duty_says_so_instead_of_explaining_easing(tmp_path: Path) -> None:
+    """With LED PWM off there is no window and no easing -- the prose must not lie."""
+    rec = ScreenshotRecorder(tmp_path)
+    rec.saved = [tmp_path / "shot_0001_sim5ns.png"]
+    rec._shots = [Shot(rec.saved[0], 5, ShotMetrics(led_duty=(), led_level=(1.0, 0.0)))]
+    doc = json.loads(rec.write_manifest().read_text(encoding="utf-8"))  # type: ignore[union-attr]
+    assert "no duty" in doc["how_to_read"]
+    assert "instantaneous sample" in doc["how_to_read"]
+    assert doc["shots"][0]["window_ns"] is None
+    assert "window" not in doc["shots"][0], "no window means no window block"

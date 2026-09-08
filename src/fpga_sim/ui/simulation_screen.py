@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any
 
 import pygame
 
+from fpga_sim.manifest import ShotMetrics
 from fpga_sim.session_config import update_session
 from fpga_sim.sim_link import drain, send
 from fpga_sim.sim_session_log import save_session_stats
@@ -34,7 +35,7 @@ from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.error_dialog import ErrorDialog
 from fpga_sim.ui.help_dialog import HelpDialog
 from fpga_sim.ui.results import SimExit
-from fpga_sim.ui.screenshots import COARSE_LEVELS, ScreenshotRecorder, ShotMetrics
+from fpga_sim.ui.screenshots import COARSE_LEVELS, ScreenshotRecorder
 from fpga_sim.ui.sim_panel import _PANEL_H_BASE, SimPanel
 from fpga_sim.ui.sim_toolbar import SimToolbar
 from fpga_sim.ui.theme import THEME

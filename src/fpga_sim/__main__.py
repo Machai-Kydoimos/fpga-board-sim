@@ -363,6 +363,9 @@ def _benchmark_full_system(
                 dump=dump if dump and Path(dump).exists() else None,
                 board=board.name,
                 design=Path(vhdl_path).name,
+                board_def=board,
+                match=match,
+                pinmap=pinmap,
             )
             if manifest is not None:
                 print(f"[screenshots] manifest: {manifest}")

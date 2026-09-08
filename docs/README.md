@@ -29,6 +29,7 @@ what was intended at the time.
 |---|---|
 | [improvement_roadmap.md](improvement_roadmap.md) | **The strategy source of truth** — every open card, the dependency table, the live queue in *Current focus*, and the Icebox with each parked item's trigger |
 | [roadmap_delivered.md](roadmap_delivered.md) | The shipped detail behind every ✅ card, so the roadmap above can stay short |
+| [screenshot_manifest.md](screenshot_manifest.md) | How to read the `manifest.json` written beside `--screenshots` PNGs — what every array index means, on the board and in your VHDL |
 | [u25_ghdl_perf_profile.md](u25_ghdl_perf_profile.md) | A measurement report: where GHDL's time actually goes (U25). Numbers, not a plan |
 | [embedded_core_build_notes.md](embedded_core_build_notes.md) | The working log kept while the embedded-core generator was built |
 

@@ -457,14 +457,18 @@ toggling faster than the window (PWM, a scan display, a fast counter) does not.
 
 **So don't infer the window — read it.** Every capture run writes a
 `manifest.json` beside the PNGs (issue #388) giving, per shot, the window the
-duty was measured over, that duty per channel, and the level actually displayed:
+duty was measured over, that duty per channel, and the level actually displayed —
+plus a legend saying what every array index is, on the board and in your VHDL.
+[**docs/screenshot_manifest.md**](docs/screenshot_manifest.md) is the reference;
+the short version:
 
 ```json
 {
   "file": "shot_0005_sim7292960ns.png",
   "sim_ns": 7292960,
   "window_ns": [6909120, 7292960],
-  "marker": { "gtkwave": "7292960 ns", "surfer_ticks": 7292960000000 },
+  "marker": { "time": "7292960 ns", "ticks": 7292960000000 },
+  "window": { "time": ["6909120 ns", "7292960 ns"] },
   "led": {
     "duty":  [0.0, 0.0, 0.0, 0.0, 0.0, 1.0,    0.0,    1.0,   0.2189, 0.7811],
     "level": [0.0, 0.0, 0.0, 0.0, 0.0, 0.9223, 0.0753, 0.708, 0.3236, 0.5262]
@@ -477,12 +481,13 @@ duty but was drawn at 92%, still easing up, and **LED 6 measured 0% yet was stil
 lit at 8%**, easing down from the window before. Compare a trace against
 `window_ns` and `duty`; `level` is only there to explain the pixel.
 
-The two `marker` dialects exist because the viewers disagree about units. The
-dump's own timescale is **not** ns — both backends write `$timescale 1 fs`, read
-from the dump rather than assumed — so a bare number means femtoseconds. GTKWave
-parses `7292960 ns` correctly (as does Surfer's own command prompt); Surfer's
-`-C` parses before the waveform loads and needs the unitless tick count, which is
-why both are written out.
+The `marker` and `window` blocks each carry two dialects, because the viewers
+disagree about units. The dump's own timescale is **not** ns — both backends write
+`$timescale 1 fs`, read from the dump rather than assumed — so a bare number means
+femtoseconds. GTKWave parses `7292960 ns` (as does Surfer's own command prompt);
+Surfer's `-C` parses before the waveform loads and needs the unitless tick count.
+`channels` explains the array indices — on an RGB board they are *channels*, three
+per site, not LEDs. See [docs/screenshot_manifest.md](docs/screenshot_manifest.md).
 
 Waveform capture is off unless you enable it — see the user guide's Waveform
 capture section, or `FPGA_SIM_WAVEFORM=fst` as above.
