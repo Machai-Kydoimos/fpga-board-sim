@@ -31,6 +31,7 @@ import pygame
 
 from fpga_sim.board_loader import discover_boards, find_board, get_default_boards_path
 from fpga_sim.controller import ScreenController, build_generics
+from fpga_sim.generics import resolve_cli_overrides
 from fpga_sim.paths import HDL_DIR
 from fpga_sim.session_config import load_session, update_session
 from fpga_sim.sim_bridge import (
@@ -244,6 +245,18 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
     if args.screenshots is not None:
         print(f"[benchmark] Shots:    {args.screenshots}")
 
+    # --generic, resolved against *this* design (U48/D-9).  The launcher has
+    # always honored it; the benchmark silently did not, so a flag the user
+    # typed ran the design's own defaults and said nothing about it.
+    overrides, problems = resolve_cli_overrides(
+        args.generic or (), vhdl_path.read_text(encoding="utf-8", errors="replace"), toplevel_name
+    )
+    for problem in problems:
+        print(f"[benchmark] {problem}", file=sys.stderr)
+    if overrides:
+        applied = ", ".join(f"{n.upper()}={v}" for n, v in sorted(overrides.items()))
+        print(f"[benchmark] Generics: {applied}")
+
     # Analyze VHDL
     generics = build_generics(chosen, simulator=sim.engine)
     ok, work_dir = analyze_vhdl(
@@ -254,6 +267,7 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
         board_def=chosen,
         match=res.match,
         pinmap=res.pinmap,
+        generic_overrides=overrides,
     )
     if not ok:
         print(f"[benchmark] VHDL analysis failed: {work_dir}", file=sys.stderr)
@@ -264,7 +278,15 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
     # child alone with no pygame, isolating simulator throughput from UI cost.
     if args.no_ui:
         return _benchmark_no_ui(
-            chosen, vhdl_path, toplevel_name, generics, sim, work_dir, res.match, args.benchmark
+            chosen,
+            vhdl_path,
+            toplevel_name,
+            generics,
+            sim,
+            work_dir,
+            res.match,
+            args.benchmark,
+            generic_overrides=overrides,
         )
     return _benchmark_full_system(
         chosen,
@@ -277,6 +299,7 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
         args.benchmark,
         screenshots=args.screenshots,
         pinmap=res.pinmap,
+        generic_overrides=overrides,
     )
 
 
@@ -292,6 +315,7 @@ def _benchmark_full_system(
     *,
     screenshots: str | None = None,
     pinmap: PinMapMatch | None = None,
+    generic_overrides: dict[str, str] | None = None,
 ) -> int:
     """Benchmark the whole app headless: the real SimulationScreen + a free-running child.
 
@@ -332,6 +356,7 @@ def _benchmark_full_system(
             speed_factor=speed,
             match=match,
             benchmark_secs=secs,
+            generic_overrides=generic_overrides,
         )
         sim_screen = SimulationScreen(
             screen,
@@ -400,6 +425,8 @@ def _benchmark_no_ui(
     work_dir: str,
     match: ConventionMatch | None,
     secs: int,
+    *,
+    generic_overrides: dict[str, str] | None = None,
 ) -> int:
     """Benchmark the simulator alone: a free-running headless child, no pygame.
 
@@ -423,6 +450,7 @@ def _benchmark_no_ui(
         board_def=board,
         match=match,
         benchmark_secs=secs,
+        generic_overrides=generic_overrides,
     )
     try:
         connected = child.link.wait_connected(90.0)

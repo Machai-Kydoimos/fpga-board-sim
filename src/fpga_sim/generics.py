@@ -27,6 +27,7 @@ a blank space is not.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from fpga_sim.vhdl_interface import _IfaceDecl, _parse_toplevel_interface
@@ -129,6 +130,11 @@ def validate(defn: GenericDef, value: str) -> str | None:
     to the simulator, whose error message about a range violation is better
     than anything invented here.  Guessing harder would mean re-implementing
     VHDL's static expression rules to no benefit.
+
+    Every message names its generic.  In the dialog that is mild redundancy
+    beside a labeled field, but these are also the words a ``--generic`` user
+    reads, and there the name is the only way to tell which of several flags
+    was refused.
     """
     text = value.strip()
     if not text:
@@ -145,9 +151,13 @@ def validate(defn: GenericDef, value: str) -> str | None:
             return "A natural generic cannot be negative."
         return None
     if defn.kind == Kind.BOOLEAN:
-        return None if text.lower() in ("true", "false") else "Enter true or false."
+        if text.lower() in ("true", "false"):
+            return None
+        return f"{defn.name.upper()} takes true or false."
     if defn.kind == Kind.BIT:
-        return None if _BIT_RE.match(text) else "Enter '0' or '1', with the quotes."
+        if _BIT_RE.match(text):
+            return None
+        return f"{defn.name.upper()} takes '0' or '1', with the quotes."
     return f"{defn.name.upper()} is a {defn.type_text}; change it in the file."
 
 
@@ -160,6 +170,37 @@ def parse_cli_override(text: str) -> tuple[str, str] | str:
     if not re.fullmatch(r"[A-Za-z_]\w*", name):
         return f"{name!r} is not a VHDL identifier."
     return name.lower(), value
+
+
+def resolve_cli_overrides(
+    raw: Iterable[str],
+    vhdl_text: str,
+    toplevel: str,
+) -> tuple[dict[str, str], list[str]]:
+    """Parse ``--generic NAME=VALUE`` strings and resolve them against a design.
+
+    The one-shot form of what the launcher does in two phases, for callers that
+    have the design in hand already.  ``ScreenController`` keeps the phases
+    apart deliberately -- it parses at startup so a typo is reported before a
+    board is even chosen, and resolves once a file is picked -- but the
+    benchmark has both at the same moment and no reason to split them.
+
+    Returns ``(accepted, problems)``.  Problems are *reported*, never fatal:
+    running the design unchanged while saying nothing is the one outcome that
+    looks exactly like the flag not working.
+    """
+    pairs: dict[str, str] = {}
+    problems: list[str] = []
+    for item in raw:
+        parsed = parse_cli_override(item)
+        if isinstance(parsed, str):
+            problems.append(parsed)
+        else:
+            pairs[parsed[0]] = parsed[1]
+    if not pairs:
+        return {}, problems
+    accepted, unresolved = resolve(design_generics(vhdl_text, toplevel), pairs)
+    return accepted, problems + unresolved
 
 
 def resolve(

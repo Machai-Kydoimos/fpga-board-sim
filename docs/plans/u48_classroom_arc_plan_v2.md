@@ -604,6 +604,18 @@ what `_inapplicable_flags` exists to prevent for the mirror-image case; and **§
 mechanical harness §6 prescribes**, which is the likeliest reason nobody noticed. (Lab 2a needs a
 reset press to leave `'U'` regardless, so no headless run can complete that check on its own.)
 
+> **Fixed 2026-09-08 (#432).** `resolve_cli_overrides` resolves `--generic` against the design and the
+> benchmark hands the result to **both** `analyze_vhdl` and `start_simulation` — both, because
+> `start_simulation` re-renders the wrapper when it must, and passing one without the other would
+> compile one contract and run another. Problems are reported to stderr and the run continues,
+> matching `_inapplicable_flags`, the closest precedent for a flag that would otherwise do nothing
+> silently; an applied override is echoed as `[benchmark] Generics: …` so the run says what it did.
+> Proven end to end rather than at the seam alone: `--generic RESET_ACTIVE="'1'"` on the Lab-2a
+> shape now holds the design in reset and lights LED0, where before the flag changed nothing and the
+> board stayed dark. Every rejection now names its generic — the dialog never needed that beside a
+> labeled field, but a `--generic` user reading the same words has no other way to tell which of
+> several flags was refused.
+
 **B3 — an off-by-one port width against the constraint file is silent.** `wrong_width` declares
 `led_r(8 downto 0)` where the `.qsf` assigns `LED_R[0..9]`. It binds **37** output bits where every
 sibling case binds 38: `led_r[9]`/pin AC22 is dropped and **nothing is shifted** — every remaining
