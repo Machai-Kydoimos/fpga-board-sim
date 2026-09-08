@@ -452,6 +452,23 @@ def _same_silicon(declared: str, board_device: str) -> bool:
     return a in b or b in a
 
 
+def _undeclared_bits_note(source: str, name: str, extra: list[int], width: int | None) -> str:
+    """Say that a constraint file binds bits the design's port does not have.
+
+    The message names the *port* rather than the pins, because the fix is in
+    the VHDL: the student wrote ``led_r(8 downto 0)`` against a file that
+    assigns ``LED_R[0..9]``, and the symptom they see is one dead LED.
+    """
+    spelled = ", ".join(f"{name}[{b}]" for b in extra)
+    declared = (
+        f"'{name}' does not declare"
+        if width is None
+        else f"'{name}' does not declare -- it is {width} bits wide (0 to {width - 1})"
+    )
+    tail = "that pin stays dark" if len(extra) == 1 else "those pins stay dark"
+    return f"{source} assigns {spelled}, which {declared}, so {tail} here."
+
+
 def build_pin_map(
     ports: list[_IfaceDecl],
     table: PortTable,
@@ -502,9 +519,34 @@ def build_pin_map(
                     continue
                 bound.append(BitBinding(name, bit, normalize_pin(pin), role))
 
+            # B3: the off-by-one.  A port one bit narrower than its own pin
+            # assignments binds every bit it has and leaves the last pin with
+            # no driver -- nine LEDs work, the tenth is dead, and nothing said
+            # why.  Distinct from G2's rule, which is about assignments no
+            # declared port claims at all; this port claims the name.
+            if bound:
+                claimed = set(bits)
+                if None in claimed:
+                    claimed.add(0)  # a scalar may be written `name[0]`
+                undeclared = sorted(
+                    b for (n, b) in assignments if n == name and b is not None and b not in claimed
+                )
+                if undeclared:
+                    notes.append(
+                        _undeclared_bits_note(source, name, undeclared, decl.literal_width)
+                    )
+
             if not bound:
                 if decl.mode == "out":
+                    # B4: the input side has said this since Gate A; the output
+                    # side computed it and stayed quiet, which reads as the
+                    # design working rather than as a port going nowhere.
                     open_outputs.append(name)
+                    notes.append(
+                        f"'{name}' has no pin assignment in {source}, so it is left open "
+                        "here and nothing on the board shows it (on hardware it would be "
+                        "placed automatically)."
+                    )
                 elif decl.has_default:
                     pass  # the design already says what it should read
                 else:
