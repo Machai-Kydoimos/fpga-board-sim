@@ -586,6 +586,14 @@ cannot catch a false positive.** This is the flagship path on the first course b
 student something untrue, and it is the one finding here that should not wait for the
 post-semester queue.
 
+> **Fixed 2026-09-08.** `_same_silicon` now tests containment **both ways**, because which spelling
+> is longer varies by sync source: most board JSONs hold the family (`5CSXFC6D6`, `10M50DA`) but
+> some hold an ordering code of their own (`xc7a35tftg256-1`), and every one of the 45 substring
+> pairs across the fleet is the same die with a different package or temperature grade. Unknown
+> compares equal, so a `.xdc` — which states no device at all — cannot imply a mismatch. The guard
+> is data-driven rather than another fixture: **no board in the fleet may disown its own part**,
+> asserted across all 194 that declare one. The genuine cross-board refusal is unchanged.
+
 **B2 — `--generic` is silently ignored in `--benchmark` mode.** The benchmark path builds only
 `build_generics(chosen, simulator=...)`; `args.generic` reaches the `NAME=VALUE` shape check and
 the *interactive* controller, and nothing else. `--generic NOSUCHGENERIC=5` returns exit 0 with no
