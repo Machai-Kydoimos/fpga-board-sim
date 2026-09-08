@@ -625,7 +625,7 @@ width and the assignment set is already parsed, so the comparison is one step aw
 ("every assignment no declared port claims is ignored") was written about *undeclared* ports like
 `DRAM_ADDR`; a declared port that is one bit short is a distinguishable case and reads differently.
 
-> **Fixed 2026-09-08.** A note, not a refusal — the design still runs, as G1's shape requires. It
+> **Fixed 2026-09-08 (#433).** A note, not a refusal — the design still runs, as G1's shape requires. It
 > names the *port* rather than the pin, because the fix is in the VHDL:
 > *"test_entity.qsf assigns led_r[9], which 'led_r' does not declare — it is 9 bits wide (0 to 8),
 > so that pin stays dark here."* The bit-level check reuses the binding's own scalar/indexed
@@ -637,7 +637,7 @@ width and the assignment set is already parsed, so the comparison is one step aw
 as 0 here…"). The *behavior* is G1 as designed; the asymmetry in what gets said looks like
 oversight rather than decision.
 
-> **Fixed 2026-09-08.** The output side now says what the input side has said since Gate A:
+> **Fixed 2026-09-08 (#433).** The output side now says what the input side has said since Gate A:
 > *"'counter' has no pin assignment in test_entity.qsf, so it is left open here and nothing on the
 > board shows it (on hardware it would be placed automatically)."*
 >
