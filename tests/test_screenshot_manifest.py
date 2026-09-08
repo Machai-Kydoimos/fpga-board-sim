@@ -452,3 +452,58 @@ def test_a_run_with_no_duty_says_so_instead_of_explaining_easing(tmp_path: Path)
     assert "instantaneous sample" in doc["how_to_read"]
     assert doc["shots"][0]["window_ns"] is None
     assert "window" not in doc["shots"][0], "no window means no window block"
+
+
+# ── 6. Timescales other than 1 fs ────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("directive", "expect"),
+    [
+        ("$timescale 1 fs $end", 7292960000000),
+        ("$timescale 1 ps $end", 7292960000),
+        ("$timescale 100 ps $end", 72929600),
+        ("$timescale 1 ns $end", 7292960),
+        # Coarser than a nanosecond is still exact when it divides: 7292960 ns
+        # is 729296 ticks of 10 ns. An earlier draft computed a ticks-per-ns
+        # multiplier and integer-divided it to zero, dropping this figure.
+        ("$timescale 10 ns $end", 729296),
+        # ...and genuinely is not representable here: 7292960 / 100 = 72929.6.
+        ("$timescale 100 ns $end", None),
+        # Not a power of ten, so no conformant writer emits it -- but the
+        # multiplier approach truncated 1e6/3 to 333333 and produced a number
+        # that was wrong by a hair, which is worse than saying nothing.
+        ("$timescale 3 fs $end", None),
+    ],
+)
+def test_the_tick_dialect_follows_the_dumps_own_scale(
+    tmp_path: Path, directive: str, expect: int | None
+) -> None:
+    """GHDL's ``--time-resolution`` changes the dump's scale; the manifest tracks it.
+
+    Verified against real GHDL 7.0.0-dev output on 2026-09-08: analyzing and
+    running with ``--time-resolution=fs|ps|ns`` writes ``$timescale 1 fs|ps|ns``
+    and the matching FST exponent, and this reader returns 1 / 1000 / 1000000
+    for them. The product never passes that flag -- there is no simulator-flag
+    passthrough -- so its own dumps are always the default; this covers a dump
+    made outside it.
+    """
+    from fpga_sim import manifest
+
+    dump = tmp_path / "d.vcd"
+    dump.write_text(f"{directive}\n$scope module top $end\n", encoding="utf-8")
+    doc = manifest.build([Shot(tmp_path / "s.png", 7292960)], dump=dump)
+    assert doc["shots"][0]["marker"].get("ticks") == expect
+
+
+def test_a_window_is_never_half_converted(tmp_path: Path) -> None:
+    """Both ends convert, or neither: half a window in ticks is worse than none."""
+    from fpga_sim import manifest
+
+    dump = tmp_path / "d.vcd"
+    dump.write_text("$timescale 100 ns $end\n", encoding="utf-8")
+    # 6909000 ns is a whole 100 ns tick; 7292960 ns is not.
+    shot = Shot(tmp_path / "s.png", 7292960, ShotMetrics(window_ns=(6909000, 7292960)))
+    window = manifest.build([shot], dump=dump)["shots"][0]["window"]
+    assert window["time"] == ["6909000 ns", "7292960 ns"]
+    assert "ticks" not in window, "one end converted and the other did not"

@@ -170,6 +170,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     offset 0 of the *decompressed* stream; a reader trusting the documented
     layout against the raw bytes reads compressed noise. An unreadable dump omits
     the tick dialect rather than printing a wrong number.
+  - **Any dump scale converts, not just `1 fs`.** GHDL's `--time-resolution`
+    changes what a dump is scaled in, so the tick count is computed from the
+    nanoseconds against whatever the dump declares — `1 ns` gives `7292960`,
+    `10 ns` gives `729296`. It is emitted **only when the conversion is exact**,
+    and a window converts as a pair or not at all: half a window, or a figure
+    wrong in its last digits, is worse than saying nothing. (The simulator never
+    passes that flag and offers no way to — the point is that the dump is the
+    authority, not that the resolution varies in practice.)
   - **With LED PWM off the manifest says so** instead of describing an average
     that never happened: that preference drops the duty integrator from the
     generated wrapper entirely (~4.8x throughput), so `duty` is empty,

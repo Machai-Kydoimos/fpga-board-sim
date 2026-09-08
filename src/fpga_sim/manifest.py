@@ -241,15 +241,34 @@ _HOW_TO_READ_NO_DUTY = (
 )
 
 
-def _dialects(values: list[int], ticks_per_ns: int | None) -> dict[str, Any]:
+def _ticks(ns: int, timescale_fs: int | None) -> int | None:
+    """*ns* as a whole number of the dump's own ticks, or ``None`` if it is not one.
+
+    Computed from the nanoseconds rather than from a ticks-per-ns multiplier,
+    because that multiplier is not always a whole number: a dump scaled at 10 ns
+    per tick has one tick per *ten* nanoseconds, and integer-dividing to get
+    "ticks per ns" collapses it to zero -- dropping a figure (729296) that is
+    exactly representable. Going the other way keeps every scale that divides,
+    and refuses the ones that do not instead of truncating them into a number
+    that looks right and is not.
+    """
+    if not timescale_fs:
+        return None
+    ticks, remainder = divmod(ns * 1_000_000, timescale_fs)  # a ns is 1e6 fs
+    return ticks if remainder == 0 else None
+
+
+def _dialects(values: list[int], timescale_fs: int | None) -> dict[str, Any]:
     """One time, or a pair, in both dialects the two viewers disagree about.
 
     GTKWave parses ``7292960 ns`` (so does Surfer's own command prompt); Surfer's
     ``-C`` parses before the waveform loads and needs the unitless tick count.
+    A pair is all-or-nothing: half a window in ticks is worse than none.
     """
     out: dict[str, Any] = {"time": [f"{v} ns" for v in values]}
-    if ticks_per_ns is not None:
-        out["ticks"] = [v * ticks_per_ns for v in values]
+    ticks = [_ticks(v, timescale_fs) for v in values]
+    if all(t is not None for t in ticks):
+        out["ticks"] = ticks
     if len(values) == 1:
         return {k: v[0] for k, v in out.items()}
     return out
@@ -276,14 +295,10 @@ def build(
         "how_to_read": _HOW_TO_READ if measured else _HOW_TO_READ_NO_DUTY,
     }
 
-    ticks_per_ns: int | None = None
+    timescale_fs: int | None = None
     if dump is not None:
         dump_path = Path(dump)
         timescale_fs = dump_timescale_fs(dump_path)
-        if timescale_fs:
-            # A nanosecond is 1e6 fs; exact because every unit a dump may name
-            # divides it.
-            ticks_per_ns = 1_000_000 // timescale_fs or None
         doc["waveform"] = {
             "dump": str(dump_path),
             "gtkw": str(_gtkw_path(dump_path)),
@@ -307,10 +322,10 @@ def build(
             "file": shot.path.name,
             "sim_ns": shot.sim_ns,
             "window_ns": list(m.window_ns) if m.window_ns else None,
-            "marker": _dialects([shot.sim_ns], ticks_per_ns),
+            "marker": _dialects([shot.sim_ns], timescale_fs),
         }
         if m.window_ns:
-            entry["window"] = _dialects(list(m.window_ns), ticks_per_ns)
+            entry["window"] = _dialects(list(m.window_ns), timescale_fs)
         if m.led_duty or m.led_level:
             entry["led"] = {
                 "duty": [round(v, 4) for v in m.led_duty],

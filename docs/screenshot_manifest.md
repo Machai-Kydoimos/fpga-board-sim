@@ -128,10 +128,37 @@ The viewers disagree about units, so both are written:
 ```
 
 `time` is what GTKWave parses, and what Surfer's own command prompt accepts. `ticks` is for Surfer's
-`-C`, which parses commands *before* the waveform loads and therefore rejects units. The multiplier
-comes from the dump's own `$timescale`, read rather than assumed — both backends write `1 fs` today,
-but they also **gzip-wrap their FSTs**, so the header block is at offset 0 of the *decompressed*
-stream. When the scale cannot be read, `ticks` is omitted rather than guessed.
+`-C`, which parses commands *before* the waveform loads and therefore rejects units.
+
+The tick count comes from the dump's own `$timescale`, **read rather than assumed**. Both backends
+write `1 fs` today, but they also gzip-wrap their FSTs, so the header block is at offset 0 of the
+*decompressed* stream.
+
+### Other time resolutions
+
+GHDL's `--time-resolution=fs|ps|ns` changes the dump's scale, and the manifest follows it. Verified
+against GHDL 7.0.0-dev on 2026-09-08 — the flag produces `$timescale 1 fs` / `1 ps` / `1 ns` and the
+matching FST exponent, and `sim_ns` is converted against whichever it finds:
+
+| dump `$timescale` | `marker.ticks` for `sim_ns = 7292960` |
+|---|---|
+| `1 fs` | `7292960000000` |
+| `1 ps` | `7292960000` |
+| `100 ps` | `72929600` |
+| `1 ns` | `7292960` |
+| `10 ns` | `729296` |
+| `100 ns` | *omitted* — 7292960 / 100 is not a whole tick |
+
+**The simulator itself never passes that flag**, and offers no way to: the backends build fixed
+argument lists and there is no `FPGA_SIM_*FLAGS` passthrough. So every dump it writes is at the
+simulator default, which measures 1 fs on both GHDL and NVC. The conversion is general because the
+dump is the authority, not because the resolution varies in practice. (Resolutions coarser than `ns`
+are barely usable anyway — GHDL rejects `--time-resolution=us` outright, since the standard `textio`
+library declares `ns`.)
+
+`ticks` is emitted **only when the conversion is exact**, and a window converts as a pair or not at
+all. A scale that does not divide evenly gets no tick count rather than a truncated one — half a
+window, or a figure wrong in its last digits, is worse than saying nothing.
 
 ### Jumping to a window
 
