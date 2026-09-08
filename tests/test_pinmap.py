@@ -564,6 +564,81 @@ def test_no_board_in_the_fleet_disowns_its_own_part():
         assert _same_silicon(f"{board.device}F31C6", board.device), board.name
 
 
+# ── What the map says when the design and the file disagree quietly ──────────
+
+_NARROW_VHDL = _LAB_VHDL.replace(
+    "led_r : out std_logic_vector(9 downto 0)", "led_r : out std_logic_vector(8 downto 0)"
+)
+
+
+def test_a_port_one_bit_narrower_than_its_pins_says_so():
+    """B3: nine LEDs work, the tenth is dead, and nothing used to say why.
+
+    The off-by-one binds every bit the port has -- nothing is shifted, so it is
+    benign -- and silently drops the last assignment.  The fix is in the VHDL,
+    so the note names the port and its width rather than the pin.
+    """
+    result = _map(_NARROW_VHDL, "test_entity", _LAB_QSF, "DE10-Standard", source="test_entity.qsf")
+    assert isinstance(result, PinMapMatch)
+    assert len(result.outputs) == 37  # one LED bit short of the 38 a full map binds
+    note = next(n for n in result.notes if "led_r[9]" in n)
+    assert "does not declare" in note and "9 bits wide (0 to 8)" in note
+
+
+def test_a_port_that_matches_its_pins_says_nothing():
+    """The control: the same design at the right width must stay quiet."""
+    result = _map(_LAB_VHDL, "test_entity", _LAB_QSF, "DE10-Standard", source="test_entity.qsf")
+    assert isinstance(result, PinMapMatch)
+    assert len(result.outputs) == 38
+    assert not any("led_r" in n for n in result.notes)
+
+
+def test_a_scalar_written_with_an_index_is_not_called_undeclared():
+    """``clock`` and ``CLOCK[0]`` are the same pin, and the map already knows it.
+
+    The bit-level check must use the same spelling fallback the binding does,
+    or every scalar port in an indexed constraint file would be reported.
+    """
+    cons = _LAB_QSF.replace(
+        "set_location_assignment PIN_AF14 -to CLOCK",
+        "set_location_assignment PIN_AF14 -to CLOCK[0]",
+    )
+    result = _map(_LAB_VHDL, "test_entity", cons, "DE10-Standard", source="test_entity.qsf")
+    assert isinstance(result, PinMapMatch)
+    assert result.clock_port == "clock"
+    assert not any("clock" in n.lower() for n in result.notes)
+
+
+def test_an_output_no_pin_binds_is_reported_like_its_input_sibling():
+    """B4: the input side has said this since Gate A; the output side did not.
+
+    An ``integer`` top level port is the case that found it -- copied up from a
+    sub-entity, assigned by nothing, and left open in silence, which reads as
+    the design working rather than as a port going nowhere.
+    """
+    vhdl = _LAB_VHDL.replace(
+        "hex : out std_logic_vector(27 downto 0)",
+        "hex : out std_logic_vector(27 downto 0); counter : out integer range 0 to 9",
+    )
+    result = _map(vhdl, "test_entity", _LAB_QSF, "DE10-Standard", source="test_entity.qsf")
+    assert isinstance(result, PinMapMatch)
+    assert "counter" in result.open_outputs
+    assert any("counter" in n and "left open" in n for n in result.notes)
+
+
+def test_an_output_every_pin_binds_is_not_reported():
+    """The control: a fully bound design must not gain a note for its outputs.
+
+    This design still earns the Gate A note about ``button``, whose input the
+    lab .qsf never assigns -- so the assertion is about the output half only,
+    which is what B4 changed.
+    """
+    result = _map(_LAB_VHDL, "test_entity", _LAB_QSF, "DE10-Standard", source="test_entity.qsf")
+    assert isinstance(result, PinMapMatch)
+    assert result.open_outputs == ()
+    assert not any("left open" in n for n in result.notes)
+
+
 def test_a_design_that_lights_nothing_is_refused():
     vhdl = """
     library ieee; use ieee.std_logic_1164.all;

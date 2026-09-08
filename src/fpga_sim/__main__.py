@@ -240,6 +240,10 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
     print(f"[benchmark] VHDL:     {vhdl_path.name}")
     if res.pinmap is not None:
         print(f"[benchmark] Pin map:  {res.pinmap.source} -> {res.pinmap.board_name}")
+        # The preview shows these; the headless path dropped them, so a port
+        # bound to nothing looked exactly like a port that works.
+        for note in res.pinmap.notes:
+            print(f"[benchmark]           {note}")
     print(f"[benchmark] Sim:      {sim.label}  ({sim.backend})")
     print(f"[benchmark] Duration: {args.benchmark}s  (headless, {mode})")
     if args.screenshots is not None:

@@ -625,10 +625,27 @@ width and the assignment set is already parsed, so the comparison is one step aw
 ("every assignment no declared port claims is ignored") was written about *undeclared* ports like
 `DRAM_ADDR`; a declared port that is one bit short is a distinguishable case and reads differently.
 
+> **Fixed 2026-09-08.** A note, not a refusal — the design still runs, as G1's shape requires. It
+> names the *port* rather than the pin, because the fix is in the VHDL:
+> *"test_entity.qsf assigns led_r[9], which 'led_r' does not declare — it is 9 bits wide (0 to 8),
+> so that pin stays dark here."* The bit-level check reuses the binding's own scalar/indexed
+> spelling fallback, or every scalar port in an indexed constraint file would be reported as
+> undeclared; a test pins that. Silence on a matching design is asserted as its own control.
+
 **B4 — `open_outputs` is computed and never surfaced.** `wrong_integer_port` yields
 `open_outputs=['counter']` and produces no note, while its sibling `tied_inputs` gets one ("reads
 as 0 here…"). The *behavior* is G1 as designed; the asymmetry in what gets said looks like
 oversight rather than decision.
+
+> **Fixed 2026-09-08.** The output side now says what the input side has said since Gate A:
+> *"'counter' has no pin assignment in test_entity.qsf, so it is left open here and nothing on the
+> board shows it (on hardware it would be placed automatically)."*
+>
+> **And all three notes now reach the headless path.** `--benchmark` printed only
+> `Pin map: <file> -> <board>` and dropped the notes entirely, so a port bound to nothing looked
+> exactly like a port that works — the same silence as B2, on a different surface. Measured across
+> the corpus, the notes stay precise: of the fourteen cases plus both repo fixtures, exactly three
+> carry one and the rest carry none.
 
 ### Checked, and *not* a defect
 
