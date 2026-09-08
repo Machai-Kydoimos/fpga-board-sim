@@ -38,11 +38,21 @@ duty at that exact nanosecond.  Switch, button and segment *states* are exact.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from fpga_sim.manifest import MANIFEST_NAME, Shot, ShotMetrics
+
 if TYPE_CHECKING:
     import pygame
+
+    from fpga_sim.board_loader import BoardDef
+    from fpga_sim.conventions import ConventionMatch
+    from fpga_sim.pinmap import PinMapMatch
+
+__all__ = ["COARSE_LEVELS", "MANIFEST_NAME", "ScreenshotRecorder", "ShotMetrics"]
+
 
 # Brightness steps a capture-gate signature quantizes to.  U23's redraw gate
 # uses 1000 (finer than any post-gamma pixel step, so the persistence-of-vision
@@ -85,6 +95,8 @@ class ScreenshotRecorder:
         self.min_gap_s = min_gap_s
         self.limit = limit
         self.saved: list[Path] = []
+        #: Per-shot metrics, parallel to :attr:`saved`, for the #388 manifest.
+        self._shots: list[Shot] = []
         self.dropped = 0
         self._last_sig: tuple[object, ...] | None = None
         self._last_t = 0.0
@@ -109,12 +121,15 @@ class ScreenshotRecorder:
         signature: tuple[object, ...],
         now: float,
         sim_ns: int,
+        metrics: ShotMetrics | None = None,
     ) -> Path | None:
         """Write *surface* as the next PNG; return its path, or ``None`` past the limit.
 
         *now* is wall time and only paces the gate; *sim_ns* is the simulated
         time of the state this frame was drawn from, and is what the filename
-        carries — see the module docstring on why.
+        carries — see the module docstring on why.  *metrics* is what that frame
+        was measuring, recorded for the manifest (#388); omitting it still
+        writes the PNG, and the manifest simply carries no numbers for it.
 
         Call only when :meth:`due` said so — this advances the gate state
         whether or not the limit allowed a write, so a capped run keeps
@@ -138,6 +153,42 @@ class ScreenshotRecorder:
         path = self.out_dir / f"shot_{len(self.saved) + 1:04d}_sim{sim_ns}ns.png"
         pygame.image.save(surface, str(path))
         self.saved.append(path)
+        self._shots.append(Shot(path, sim_ns, metrics or ShotMetrics()))
+        return path
+
+    def write_manifest(
+        self,
+        *,
+        dump: str | Path | None = None,
+        board: str = "",
+        design: str = "",
+        board_def: BoardDef | None = None,
+        match: ConventionMatch | None = None,
+        pinmap: PinMapMatch | None = None,
+    ) -> Path | None:
+        """Write the sidecar that makes each PNG reconcilable against a trace (#388).
+
+        The document itself is assembled by :mod:`fpga_sim.manifest`, which is
+        pygame-free; this only owns the shots and the file.  *board_def*, *match*
+        and *pinmap* are what the channel legend is built from -- without them the
+        arrays are still written, just unexplained.  Returns the manifest path, or
+        ``None`` when nothing was captured.
+        """
+        if not self._shots:
+            return None
+        from fpga_sim import manifest
+
+        doc = manifest.build(
+            self._shots,
+            board=board,
+            design=design,
+            dump=dump,
+            board_def=board_def,
+            match=match,
+            pinmap=pinmap,
+        )
+        path = self.out_dir / MANIFEST_NAME
+        path.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
         return path
 
     def summary(self) -> str:

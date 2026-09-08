@@ -354,6 +354,21 @@ def _benchmark_full_system(
         finish_waveform(child)
         if sim_screen.shots is not None:
             print(sim_screen.shots.summary())
+            # The manifest is what makes a still comparable against the
+            # trace beside it (#388): it is written here, after the run,
+            # because only now is the dump complete enough to read its
+            # own timescale.
+            dump = child.wave_cfg.path if child.wave_cfg is not None else None
+            manifest = sim_screen.shots.write_manifest(
+                dump=dump if dump and Path(dump).exists() else None,
+                board=board.name,
+                design=Path(vhdl_path).name,
+                board_def=board,
+                match=match,
+                pinmap=pinmap,
+            )
+            if manifest is not None:
+                print(f"[screenshots] manifest: {manifest}")
         stats = sim_screen.run_stats
         _print_benchmark_report(
             board,

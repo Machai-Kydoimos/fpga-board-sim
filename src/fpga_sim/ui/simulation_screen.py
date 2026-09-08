@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any
 
 import pygame
 
+from fpga_sim.manifest import ShotMetrics
 from fpga_sim.session_config import update_session
 from fpga_sim.sim_link import drain, send
 from fpga_sim.sim_session_log import save_session_stats
@@ -247,6 +248,10 @@ class SimulationScreen:
         self._last_state: dict[str, Any] = {}
         # Persistence-of-vision smoothing state, keyed "led" / "seg" (U9).
         self._ema: dict[str, list[float]] = {}
+        # Channel-domain levels as last routed to the widgets -- what the
+        # board was *displaying*, recorded rather than recomputed so the
+        # #388 manifest cannot drift from what a PNG actually shows.
+        self._shown: dict[str, list[float]] = {}
         self._ema_t = time.monotonic()
         self._bye: dict[str, Any] | None = None
         self._input_seq = 0
@@ -506,6 +511,7 @@ class SimulationScreen:
             else:
                 targets = [float(bool(led & (1 << i))) for i in range(n_chan)]
             led_levels = self._smooth("led", targets, dt_s)
+        self._shown["led"] = led_levels
         # Route in the channel domain (each channel is an independent measured
         # duty): mono channels drive their widget's level, RGB channels drive
         # one color channel of their site's RGBLED puck (U37).
@@ -529,9 +535,11 @@ class SimulationScreen:
             if self.panel.paused:
                 self._pause_follow_binary(seg_targets, int(seg))
             levels = self._smooth("seg", seg_targets, dt_s)
+            self._shown["seg"] = levels
             for i in range(self._seg_digits):
                 self.board.set_seg_levels(i, levels[8 * i : 8 * i + 8])
         else:
+            self._shown["seg"] = [float((int(seg) >> b) & 1) for b in range(8 * self._seg_digits)]
             for i in range(self._seg_digits):
                 self.board.set_seg(i, (int(seg) >> (8 * i)) & 0xFF)
 
@@ -672,6 +680,34 @@ class SimulationScreen:
         now = time.monotonic()
         coarse = self.board.visual_signature(quantize=COARSE_LEVELS)
         return (coarse if self.shots.due(coarse, now) else None), now
+
+    def _shot_metrics(self) -> ShotMetrics:
+        """Return the numbers behind the frame about to be captured (#388).
+
+        Duties come from the same ``_last_state`` payload that produced these
+        pixels -- including the window it measured them over, which the child
+        sends because only it knows where the window started.  Levels come from
+        what was last routed to the widgets, so the pair in the manifest is
+        measurement and display of one frame rather than two guesses at it.
+        """
+        state = self._last_state
+        window = state.get("duty_window")
+        window_ns = (
+            (int(window[0]), int(window[1]))
+            if isinstance(window, (list, tuple)) and len(window) == 2
+            else None
+        )
+
+        def _floats(values: object) -> tuple[float, ...]:
+            return tuple(float(v) for v in values) if isinstance(values, (list, tuple)) else ()
+
+        return ShotMetrics(
+            window_ns=window_ns,
+            led_duty=_floats(state.get("led_duty")),
+            led_level=tuple(self._shown.get("led", ())),
+            seg_duty=_floats(state.get("seg_duty")),
+            seg_level=tuple(self._shown.get("seg", ())),
+        )
 
     def _input_signature(self) -> tuple[object, ...]:
         """Switch and button state, for "has anyone touched this board?".
@@ -917,7 +953,11 @@ class SimulationScreen:
                 # one instant -- which is what makes the name a usable waveform
                 # marker rather than merely a label.
                 self.shots.capture(
-                    self.screen, shot_sig, shot_now, int(self._last_state.get("sim_ns", 0))
+                    self.screen,
+                    shot_sig,
+                    shot_now,
+                    int(self._last_state.get("sim_ns", 0)),
+                    self._shot_metrics(),
                 )
             pygame.display.flip()
             draw_us = (time.monotonic_ns() - t_draw_start) / 1_000

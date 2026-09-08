@@ -62,7 +62,7 @@ import cocotb
 from cocotb.triggers import Timer
 
 from fpga_sim.board_loader import _FALLBACK_CLOCK_HZ, BoardDef
-from fpga_sim.sim_duty import DutyTracker
+from fpga_sim.sim_duty import DutyTracker, duty_window
 from fpga_sim.sim_input import InputQueue
 from fpga_sim.sim_link import connect_from_env, drain, send
 
@@ -400,6 +400,13 @@ async def bridge_sim(dut: object) -> None:
                     # whenever the run is not measuring.
                     "led_duty": [round(d, 4) for d in led_duty] if led_duty else None,
                     "seg_duty": [round(d, 4) for d in seg_duty] if seg_duty else None,
+                    # The interval those duties average over (#388).  A still
+                    # captured from this state describes this window, not the
+                    # instant `sim_ns` names, and the two are orders of
+                    # magnitude apart -- so the window travels with the duties
+                    # rather than being guessed at the far end.  Both trackers
+                    # advance at the same sim_elapsed_ns, so either reports it.
+                    "duty_window": duty_window(led_tracker, seg_tracker),
                     "sim_ns": sim_elapsed_ns,
                     "steps": steps,
                     "input_seq": input_seq,

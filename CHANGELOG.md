@@ -124,6 +124,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`--screenshots` now writes a `manifest.json` beside the PNGs**
+  ([#388](https://github.com/Machai-Kydoimos/fpga-board-sim/issues/388)). Each
+  file is already named by *simulated* time, which makes it a waveform marker —
+  but a still is an **interval, not a sample**, and the interval was not
+  guessable from outside: the U9 engine measures each LED's duty over the window
+  between two child state sends, and the host then eases that over ~100 ms for
+  persistence of vision. Measured over 72 (frame, LED) samples of `blinky` on an
+  Arty, pixel brightness correlates **r = +0.02** with the instantaneous `led`
+  bit at the named time and **r = +0.70** with the duty over the preceding
+  window. Documenting that was the weak fix; printing the numbers is the real
+  one. Per shot the manifest gives `window_ns`, the measured duty per channel,
+  and the level actually displayed.
+  - **The pair is the point.** On one captured frame LED 5 measured a full 100%
+    duty and was drawn at 92%, still easing up, while **LED 6 measured 0% and was
+    still lit at 8%**, easing down from the window before. Comparing either
+    against the trace at a single nanosecond would have looked like a bug in the
+    simulator; against `window_ns` they agree exactly.
+  - **A legend says what every array index means** — because a number is
+    useless until you know which LED it is. `led` is indexed by boundary
+    *channel*, not by component: an **Arty A7-35 has 16 channels for 8 visible
+    components**, so `led.duty[7]` is the red of RGB site 1, on pin G3. Each row
+    carries the label the board draws, the pin, the cited color, and **which bit
+    of the user's own VHDL drives it** — which depends on how the design was
+    matched, so `run.mode` (`generic` / `board-native` / `pin map`) is recorded
+    too. 7-segment channels get the rule (`8 * digit + segment`, `a`…`g`, `dp`)
+    rather than 8N rows, plus the two facts nobody can guess: **digit 0 is the
+    rightmost digit as drawn**, and the values are lit-ness at the boundary, not
+    the level on the pin.
+  - **`active_low` is per channel, and it is the trap worth naming.** On a board
+    wired active-low the wrapper inverts, so the manifest can report a duty of
+    1.0 while the design's own signal sits at `'0'`. Both are correct — opposite
+    sides of an inverter — and a reader without that note would file a bug.
+  - **The window is the one number the host could not know.** It lives in the
+    child's `DutyTracker`, so it is now sent in the `state` payload. It
+    deliberately does **not** advance when a sample measures nothing — the
+    previous duties are still what is on screen, and attributing them to a window
+    they were never measured over is the confusion being removed.
+  - **Both the marker and the window are written in both viewer dialects**,
+    because they disagree about units: `time` (`"7292960 ns"`) for GTKWave and
+    Surfer's own prompt, and `ticks` for Surfer's `-C`, which parses before the
+    waveform loads. The multiplier comes from the dump's **own** `$timescale`
+    rather than a constant. Both backends do write `1 fs` today — but they also
+    **gzip-wrap their FSTs** (`FST_BL_ZWRAPPER`), so the header block is at
+    offset 0 of the *decompressed* stream; a reader trusting the documented
+    layout against the raw bytes reads compressed noise. An unreadable dump omits
+    the tick dialect rather than printing a wrong number.
+  - **Any dump scale converts, not just `1 fs`.** GHDL's `--time-resolution`
+    changes what a dump is scaled in, so the tick count is computed from the
+    nanoseconds against whatever the dump declares — `1 ns` gives `7292960`,
+    `10 ns` gives `729296`. It is emitted **only when the conversion is exact**,
+    and a window converts as a pair or not at all: half a window, or a figure
+    wrong in its last digits, is worse than saying nothing. (The simulator never
+    passes that flag and offers no way to — the point is that the dump is the
+    authority, not that the resolution varies in practice.)
+  - **With LED PWM off the manifest says so** instead of describing an average
+    that never happened: that preference drops the duty integrator from the
+    generated wrapper entirely (~4.8x throughput), so `duty` is empty,
+    `window_ns` is `null`, `level` is exactly 0.0 or 1.0 with no easing — and in
+    that mode a PNG really *is* an instantaneous sample.
+  - **[docs/screenshot_manifest.md](docs/screenshot_manifest.md)** is the
+    reference: every field, the index rules, worked segment decodes, and `jq` and
+    viewer recipes.
+
 - **Twenty board display names now read the way the vendor spells them** (U49,
   closing the card). The sync parsers build a name by splitting an upstream class
   name on case and digit boundaries, which is right for most of the fleet and
