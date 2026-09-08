@@ -405,7 +405,7 @@ This document inventories all viable improvements and ranks them by impact.
   and runs as `python -m fpga_sim.doctor`, because the pygame/pygame-ce collision it reports is
   exactly the state in which `fpga-sim` cannot start.
 
-#### U53. Project pin map — run a design through its own constraint file
+#### U53. Project pin map — run a design through its own constraint file ✅
 
 - **Why:** **the single item that decides whether the course's files run at all.** U21 ✅ matches a
   design's ports against a board's *canonical names*; this course — and structurally any
@@ -1050,7 +1050,7 @@ See also **P1** (NVC elaborate-once / run-many) in the [Icebox](#icebox).
 - **Dependencies:** None, but **order after D17**: that split moves this seam into `sim_runner.py`, so doing D7 first means extracting it twice.
 - **Done when:** `start_simulation()` is a thin orchestrator over `_prepare_simulation()` plus a spawn seam D16 can wrap without touching prep.
 
-#### D17. Decompose `sim_bridge.py` + one `paths.py`
+#### D17. Decompose `sim_bridge.py` + one `paths.py` ✅
 
 - **Why:** `sim_bridge.py` is **3,067 lines** and nine unrelated concerns — 2.5× the next-largest
   source file (`ui/board_display.py`, 1,222) and 22% of `src/`. It already carries `# ── section ──`
@@ -1306,7 +1306,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 - `src/fpga_sim/ui/sim_panel.py` — U5 ✅ (`speed_factor` ctor param; public `SPEED_DEFAULT`), U21 ✅ (native-convention INFO note), U34 ✅ (`set_remote` remote stats feed; child `sim_pct` G zone), U14, U15, U19, D4 ✅, D15 — U48's advisory did **not** land here: it lives in `simulation_screen.py` over `stall.py`, and reads the panel only for `current_clock_hz` / `speed_factor`
 - `src/fpga_sim/ui/vhdl_picker.py` — U1 ✅, U13 ✅, U18, D15, U49 (`bad_*` fixtures gone, preselection, retry start-dir, `DROPFILE`, help button), U51 (what a folder pick reports)
 - `src/fpga_sim/ui/error_dialog.py` — U4 ✅ (`example_path` → [View Example]), D4 ✅, D6a ✅ (`run()` returns `DialogResult`), D15, U50 ✅ (indentation-preserving wrap: GHDL's caret keeps its column, and follows the segment it marks when the line wraps; [Copy] / `C`)
-- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/sim_toolbar.py` (U7 ✅), `ui/tooltip.py` (U3 ✅), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅, U34 ✅ — `SimExit` relocated here), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `src/fpga_sim/ui/nixie.py` (U46), **`src/fpga_sim/paths.py` + `sim_backends.py` / `sim_discovery.py` / `vhdl_contract.py` / `conventions.py` / `wrapper.py` / `waveform.py` / `sim_runner.py` (D17)**, `src/fpga_sim/pinmap.py` + `src/fpga_sim/constraints/` (U53 — the latter relocated from `src/fpga_sim/constraints/`), `src/fpga_sim/generics.py` + `src/fpga_sim/stall.py` + `ui/generics_dialog.py` (U48 ✅), `src/fpga_sim/ui/_scroll.py` (U49), `docs/first_design.md` + `docs/troubleshooting.md` + `docs/plans/` (the classroom arc's docs), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
+- New: `src/fpga_sim/ui/theme.py` (D15 ✅), `src/fpga_sim/ui/help_dialog.py` (U1 ✅), `src/fpga_sim/ui/spinner.py` (U2 ✅), `ui/settings_dialog.py` (U5 ✅), `ui/sim_toolbar.py` (U7 ✅), `ui/tooltip.py` (U3 ✅), `ui/widgets/button.py` (D4 ✅), `src/fpga_sim/ui/results.py` (D6a ✅, U34 ✅ — `SimExit` relocated here), `src/fpga_sim/controller.py` (D6b ✅), `src/fpga_sim/sandbox.py` (D16), `src/fpga_sim/ui/nixie.py` (U46), **`src/fpga_sim/paths.py` + `sim_backends.py` / `sim_discovery.py` / `vhdl_contract.py` / `conventions.py` / `wrapper.py` / `waveform.py` / `sim_runner.py` (D17)**, `src/fpga_sim/pinmap.py` + `src/fpga_sim/constraints/` (U53 — the latter relocated from `scripts/port_convention_parsers/`), `src/fpga_sim/generics.py` + `src/fpga_sim/stall.py` + `ui/generics_dialog.py` (U48 ✅), `src/fpga_sim/ui/_scroll.py` (U49), `docs/first_design.md` + `docs/troubleshooting.md` + `docs/plans/` (the classroom arc's docs), `scripts/capture_demo.py` / `scripts/capture_selector.py` / `scripts/capture_common.py` + `sim/capture_frames.py` (U26), `docs/assets/` (U26 — committed GIFs)
 - `README.md` — U26 (hero GIF + screenshot embed)
 - `sim/sim_wrapper_template.vhd` — D1 ✅ (absorbed 7seg template)
 - `sim/sim_testbench.py` — U34 ✅ **replaced it with the headless bridge** (no pygame; streams state over `sim_link`; the pre-U34 pygame-testbench notes U5/U7/U21 ✅ are history — those UI surfaces now live in `ui/simulation_screen.py`), U9 ✅ (child-side duty sampling + the U38 pause-instant sample); U22 ✅ needed no testbench change (the native wrapper adapts scan below the boundary)
