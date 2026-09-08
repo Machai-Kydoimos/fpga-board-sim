@@ -81,7 +81,7 @@ no still can show it and it has no row here.
 { "index": "8 * digit + segment",
   "segments": ["a", "b", "c", "d", "e", "f", "g", "dp"],
   "digits": 6,
-  "digit_0": "the rightmost digit as drawn (HEX0 on Terasic boards)",
+  "digit_0": "the rightmost digit as drawn -- the least-significant one (HEX0 …, AN0 …)",
   "has_dp": true,
   "boundary_polarity": "active-high: 1.0 means the segment is lit",
   "board_note": "this board's display is wired active-low; the wrapper inverts it, …" }
@@ -101,6 +101,18 @@ Worked decode, from a real capture of `counter_7seg.vhd` with LED PWM off (so th
 digit 0 = level[0:8]   = [0, 1, 1, 0, 0, 1, 1, 0]  -> b c f g      -> "4"
 digit 2 = level[16:24] = [1, 0, 0, 1, 1, 1, 1, 0]  -> a d e f g    -> "E"
 ```
+
+**And the case the manifest is really for.** The same read on a *scanned* display — a Nexys 4 DDR
+running `nexys4ddr_scan.vhd`, which multiplexes eight digits in hardware:
+
+```text
+digit 0 = level[0:8] = [0.0904, 0.1263, 0.1263, 0.0904, 0.0904, 0.0904, 0.0, 0.1263]
+```
+
+Every lit segment sits near **1/8 = 0.125**, because each digit is only driven for one slot in eight.
+Nothing is wrong: that *is* the brightness. A reader comparing the still against the trace at a
+single instant would find each segment either fully on or fully off and conclude the render was
+broken — which is exactly the misreading `window_ns` plus `duty` exists to prevent.
 
 ## `shots[]`
 

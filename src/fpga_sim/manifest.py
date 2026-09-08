@@ -197,7 +197,10 @@ def seg_legend(board_def: BoardDef | None) -> dict[str, Any] | None:
         "index": "8 * digit + segment",
         "segments": list(SEGMENT_ORDER),
         "digits": ssd.num_digits,
-        "digit_0": "the rightmost digit as drawn (HEX0 on Terasic boards)",
+        "digit_0": (
+            "the rightmost digit as drawn -- the least-significant one "
+            "(HEX0 on Terasic boards, AN0 on Digilent)"
+        ),
         "has_dp": ssd.has_dp,
         "boundary_polarity": "active-high: 1.0 means the segment is lit",
     }

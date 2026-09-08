@@ -208,14 +208,31 @@ def test_the_manifest_records_the_window_and_both_numbers(tmp_path: Path) -> Non
 
 
 def test_duty_and_level_describe_the_same_channels(tmp_path: Path) -> None:
-    """The pair is the whole point; mismatched lengths would make it unreadable."""
-    doc = json.loads(
-        _recorder_with_two_shots(tmp_path).write_manifest().read_text(encoding="utf-8")  # type: ignore[union-attr]
-    )
+    """When duty was measured it indexes the same channels as level.
+
+    Stated as a conditional on purpose. An earlier version asserted the two are
+    always the same length and passed only because its fixture happened to make
+    them so -- a real LED-PWM-off run reports ``duty: []`` against ten levels,
+    because the wrapper has no integrator at all. Empty duty is a *signal*, not
+    a length claim, and a guard that forbade it would have been asserting
+    something the product does not do.
+    """
+    from fpga_sim import manifest
+
+    unmeasured = Shot(tmp_path / "b.png", 2, ShotMetrics(led_duty=(), led_level=(1.0, 0.0)))
+    shots = [*_recorder_with_two_shots(tmp_path)._shots, unmeasured]
+    doc = manifest.build(shots)
+    saw_empty = False
     for shot in doc["shots"]:
         for block in ("led", "seg"):
-            if block in shot:
-                assert len(shot[block]["duty"]) == len(shot[block]["level"])
+            if block not in shot:
+                continue
+            duty, level = shot[block]["duty"], shot[block]["level"]
+            if not duty:
+                saw_empty = True
+                continue
+            assert len(duty) == len(level), f"{block}: {len(duty)} duties, {len(level)} levels"
+    assert saw_empty, "the unmeasured case was not exercised"
 
 
 def test_the_schema_version_is_gone(tmp_path: Path) -> None:
@@ -423,6 +440,7 @@ def test_the_segment_rule_is_stated_rather_than_enumerated(boards: list[Any]) ->
     assert seg["digits"] == 6
     assert "rightmost" in seg["digit_0"], "index 0 is drawn on the right; say so"
     assert "active-low" in seg["board_note"], "the DE10-Lite display is active-low"
+    assert "AN0" in seg["digit_0"], "the note must not name only one vendor"
 
 
 def test_a_board_with_no_display_gets_no_segment_legend(boards: list[Any]) -> None:
@@ -507,3 +525,48 @@ def test_a_window_is_never_half_converted(tmp_path: Path) -> None:
     window = manifest.build([shot], dump=dump)["shots"][0]["window"]
     assert window["time"] == ["6909000 ns", "7292960 ns"]
     assert "ticks" not in window, "one end converted and the other did not"
+
+
+# ── 7. The legend holds up across the whole fleet ────────────────────────────
+
+
+def test_the_legend_builds_for_every_board_in_the_fleet(boards: list[Any]) -> None:
+    """Built from board JSON, so it meets every shape the fleet actually has.
+
+    The five hand-checked runs cover mono, RGB, native, pin-map and 7-segment.
+    This covers the other ~284 -- one-LED boards, RGB-only boards with no mono
+    bank, boards with no LEDs at all -- where the risk is a crash or an index
+    that silently disagrees with the channel vector, not a wrong label.
+    """
+    assert len(boards) > 200, "fleet unexpectedly small; this guard would be weak"
+    for board in boards:
+        rows = led_legend(board)
+        assert len(rows) == board.num_led_channels, (
+            f"{board.name}: {len(rows)} legend rows for {board.num_led_channels} boundary channels"
+        )
+        assert [r["i"] for r in rows] == list(range(len(rows))), f"{board.name}: gap in indices"
+        for row in rows:
+            assert row["label"], f"{board.name}: a channel with no label"
+            assert row["role"] in ("mono", "r", "g", "b")
+            # An RGB channel names exactly its own pin, not the site's three.
+            if row["role"] != "mono":
+                assert len(row["pins"]) == 1, f"{board.name}: {row['label']} has {row['pins']}"
+        seg = seg_legend(board)
+        if seg is not None:
+            assert seg["digits"] == board.seven_seg.num_digits
+
+
+def test_a_scan_display_board_is_described_the_same_way(boards: list[Any]) -> None:
+    """A scanned display is still 8 bits per digit at the simulator boundary.
+
+    The board multiplexes its segment lines in hardware (U22), but the wrapper
+    demultiplexes them onto the same ``8 * digit + segment`` vector, so the
+    legend's rule holds unchanged -- worth pinning, because "scan" is the case
+    where someone would reasonably expect the layout to differ.
+    """
+    board = _board(boards, "Nexys4 DDR")
+    assert board.seven_seg is not None and board.seven_seg.is_multiplexed
+    seg = seg_legend(board)
+    assert seg is not None
+    assert seg["index"] == "8 * digit + segment"
+    assert seg["digits"] == 8
