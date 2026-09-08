@@ -427,6 +427,31 @@ def _port_bits(decl: _IfaceDecl, name: str) -> list[int | None]:
     return list(range(decl.literal_width))
 
 
+def _same_silicon(declared: str, board_device: str) -> bool:
+    """Whether a constraint file's part and the board's are the same chip.
+
+    Neither string is canonical, and which one is longer varies by source.  A
+    ``.qsf`` states the full ordering code (``5CSXFC6D6F31C6``); a board JSON
+    holds whatever its sync captured, which is usually the device family
+    (``5CSXFC6D6``, ``10M50DA``) but is sometimes an ordering code of its own
+    (``xc7a35tftg256-1``).  So the test is containment **either way** rather
+    than equality or a one-sided prefix -- the shorter spelling of one chip is
+    always inside the longer one, and the package and temperature-grade
+    suffixes that differ between them describe the same die.
+
+    Unknown compares equal: a dialect that states no device (Vivado keeps the
+    part in the project file, not the ``.xdc``) must not imply a mismatch.
+
+    Deliberately biased toward silence.  This gates a hint appended to a
+    failure that *already* names the offending pins, so a false "wrong board?"
+    on the right board costs a student more than a missing one costs anybody.
+    """
+    a, b = declared.strip().casefold(), board_device.strip().casefold()
+    if not a or not b:
+        return True
+    return a in b or b in a
+
+
 def build_pin_map(
     ports: list[_IfaceDecl],
     table: PortTable,
@@ -506,7 +531,7 @@ def build_pin_map(
         detail = "\n".join(f"  {u}" for u in unknown[:8])
         extra = f"\n  ... and {len(unknown) - 8} more" if len(unknown) > 8 else ""
         hint = ""
-        if device and board.device and device.lower() not in board.device.lower():
+        if not _same_silicon(device, board.device):
             hint = (
                 f"\n\n{source} targets {device}, but {board.name} is {board.device} — "
                 "did you select the wrong board?"

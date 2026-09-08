@@ -16,6 +16,7 @@ from fpga_sim.paths import HDL_DIR
 from fpga_sim.pinmap import (
     PinMapMatch,
     PinMapProblem,
+    _same_silicon,
     board_pin_index,
     build_pin_map,
     discover_pinmap,
@@ -491,6 +492,76 @@ def test_a_constraint_file_for_another_board_says_so():
     assert isinstance(result, PinMapProblem)
     assert "5CSXFC6D6F31C6" in result.message
     assert "wrong board" in result.message
+
+
+def test_the_right_board_is_never_accused_of_being_the_wrong_one():
+    """The regression: a correct project must not be told to change boards.
+
+    The board JSON holds the device *family* (``5CSXFC6D6``) and Quartus writes
+    the full ordering code (``5CSXFC6D6F31C6``), so the old containment test --
+    long inside short -- was false for a correct match and appended "did you
+    select the wrong board?" to every DE10-Standard failure.  The pins are the
+    error here; the board is not.
+    """
+    bad = _LAB_QSF.replace(
+        "set_location_assignment PIN_AA24 -to LED_R[0]",
+        "set_location_assignment PIN_ZZ99 -to LED_R[0]",
+    )
+    result = _map(
+        _LAB_VHDL,
+        "test_entity",
+        bad,
+        "DE10-Standard",
+        source="test_entity.qsf",
+        device="5CSXFC6D6F31C6",
+    )
+    assert isinstance(result, PinMapProblem)
+    assert "ZZ99" in result.message  # the real error still lands
+    assert "wrong board" not in result.message
+
+
+@pytest.mark.parametrize(
+    ("declared", "board_device"),
+    [
+        ("5CSXFC6D6F31C6", "5CSXFC6D6"),  # DE10-Standard: family in ordering code
+        ("10M50DAF484C7G", "10M50DA"),  # DE10-Lite, same shape
+        ("EP4CE6E22C8", "EP4CE6"),
+        ("xc7a35ticsg324-1L", "xc7a35ti"),
+        ("XC7A35T", "xc7a35t"),  # case alone never means another chip
+        ("xc7a35t", "xc7a35tftg256-1"),  # board JSON holds the *longer* form
+        ("", "5CSXFC6D6"),  # .xdc states no device -- not a mismatch
+        ("5CSXFC6D6F31C6", ""),
+    ],
+)
+def test_one_chip_spelled_two_ways_is_one_chip(declared: str, board_device: str) -> None:
+    assert _same_silicon(declared, board_device)
+
+
+@pytest.mark.parametrize(
+    ("declared", "board_device"),
+    [
+        ("5CSXFC6D6F31C6", "xc7a35t"),  # Cyclone V vs Artix-7
+        ("5CSXFC6D6F31C6", "10M50DA"),  # Cyclone V vs MAX 10
+        ("10M50DAF484C7G", "5CSXFC6D6"),
+    ],
+)
+def test_two_different_chips_still_read_as_different(declared: str, board_device: str) -> None:
+    assert not _same_silicon(declared, board_device)
+
+
+def test_no_board_in_the_fleet_disowns_its_own_part():
+    """Whatever each source recorded, a board must match the part it declares.
+
+    A data-driven guard rather than a fixture: the ``device`` strings come from
+    four sync pipelines and are inconsistent by nature -- some families, some
+    ordering codes -- which is exactly the variation that produced this bug.
+    """
+    with_device = [b for b in _BOARDS if b.device]
+    assert len(with_device) > 100, "fixture would be vacuous if the fleet lost its device data"
+    for board in with_device:
+        assert _same_silicon(board.device, board.device), board.name
+        # A constraint file naming the same die with package/grade appended.
+        assert _same_silicon(f"{board.device}F31C6", board.device), board.name
 
 
 def test_a_design_that_lights_nothing_is_refused():
