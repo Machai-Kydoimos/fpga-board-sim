@@ -586,7 +586,7 @@ cannot catch a false positive.** This is the flagship path on the first course b
 student something untrue, and it is the one finding here that should not wait for the
 post-semester queue.
 
-> **Fixed 2026-09-08.** `_same_silicon` now tests containment **both ways**, because which spelling
+> **Fixed 2026-09-08 (#431).** `_same_silicon` now tests containment **both ways**, because which spelling
 > is longer varies by sync source: most board JSONs hold the family (`5CSXFC6D6`, `10M50DA`) but
 > some hold an ordering code of their own (`xc7a35tftg256-1`), and every one of the 45 substring
 > pairs across the fleet is the same die with a different package or temperature grade. Unknown
