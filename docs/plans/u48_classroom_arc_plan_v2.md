@@ -604,7 +604,7 @@ what `_inapplicable_flags` exists to prevent for the mirror-image case; and **§
 mechanical harness §6 prescribes**, which is the likeliest reason nobody noticed. (Lab 2a needs a
 reset press to leave `'U'` regardless, so no headless run can complete that check on its own.)
 
-> **Fixed 2026-09-08.** `resolve_cli_overrides` resolves `--generic` against the design and the
+> **Fixed 2026-09-08 (#432).** `resolve_cli_overrides` resolves `--generic` against the design and the
 > benchmark hands the result to **both** `analyze_vhdl` and `start_simulation` — both, because
 > `start_simulation` re-renders the wrapper when it must, and passing one without the other would
 > compile one contract and run another. Problems are reported to stderr and the run continues,
