@@ -154,14 +154,24 @@ class HelpDialog:
         header_f: pygame.font.Font,
         body_f: pygame.font.Font,
         key_f: pygame.font.Font,
-    ) -> list[_Row]:
-        """Render all help content into a flat list of (height, segments) rows."""
+    ) -> tuple[list[_Row], list[tuple[str, int]]]:
+        """Render all help content into a flat list of (height, segments) rows.
+
+        Also returns where each section starts, as ``(slug, first row index)``.
+        The content is one scrolling column of rendered lines, so a section has
+        no rect of its own until it is laid out -- these indices are what lets
+        ``_draw`` give each one an inspect-mode address (U55), which matters
+        because this screen is almost entirely prose and was otherwise
+        addressable only as a single panel.
+        """
         rows: list[_Row] = []
+        sections: list[tuple[str, int]] = []
         line_h = body_f.get_linesize() + 2
         head_h = header_f.get_linesize() + max(3, line_h // 3)
         spacer = max(4, line_h // 2)
 
         def header(text: str) -> None:
+            sections.append((inspect.slug(text), len(rows)))
             rows.append((head_h, [(header_f.render(text, True, THEME.header_text), 0)]))
 
         def body(text: str, indent: int = 0) -> None:
@@ -192,7 +202,7 @@ class HelpDialog:
         header("VHDL design contract")
         for line in CONTRACT:
             body(line)
-        return rows
+        return rows, sections
 
     def _draw(self) -> None:
         inspect.begin_frame("dlg.help")
@@ -210,7 +220,7 @@ class HelpDialog:
         panel_w = min(sw - 2 * pad, max(480, round(720 * s)))
         content_w = panel_w - 2 * pad
 
-        rows = self._build_rows(content_w, header_f, body_f, key_f)
+        rows, sections = self._build_rows(content_w, header_f, body_f, key_f)
         content_h = sum(h for h, _ in rows)
 
         btn_h = max(34, round(44 * s))
@@ -249,6 +259,18 @@ class HelpDialog:
 
         self.screen.set_clip(pygame.Rect(px + pad, content_top, content_w, viewport_h))
         y = content_top - self._scroll
+        # One address per section (U55), clipped to what is actually visible --
+        # a section scrolled off screen is not something a reader can point at.
+        viewport = pygame.Rect(px + pad, content_top, content_w, viewport_h)
+        heights = [h for h, _ in rows]
+        for idx, (slug, first) in enumerate(sections):
+            last = sections[idx + 1][1] if idx + 1 < len(sections) else len(rows)
+            top = y + sum(heights[:first])
+            band = pygame.Rect(px + pad, top, content_w, sum(heights[first:last]))
+            visible = band.clip(viewport)
+            if visible.height > 0:
+                inspect.zone(slug, visible)
+
         for h, segs in rows:
             if y + h >= content_top and y <= content_top + viewport_h:
                 for surf, dx in segs:

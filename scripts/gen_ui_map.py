@@ -56,6 +56,7 @@ from fpga_sim.ui.generics_dialog import GenericsDialog  # noqa: E402
 from fpga_sim.ui.help_dialog import HelpDialog  # noqa: E402
 from fpga_sim.ui.settings_dialog import SettingsDialog  # noqa: E402
 from fpga_sim.ui.simulation_screen import SimulationScreen  # noqa: E402
+from fpga_sim.ui.spinner import SpinnerOverlay  # noqa: E402
 from fpga_sim.ui.vhdl_picker import VHDLFilePicker  # noqa: E402
 
 if TYPE_CHECKING:
@@ -113,6 +114,15 @@ def _collect_screen(draw: Callable[[], object], label: str) -> list[Region]:
         print(f"  ! {label}: {type(exc).__name__}: {exc}", file=sys.stderr)
         return []
     found = list(inspect.regions())
+    paths = [r.path for r in found]
+    dupes = sorted({p for p in paths if paths.count(p) > 1})
+    if dupes:
+        # Checked per *draw*, not over the whole run: a screen rendered twice to
+        # reach a second state legitimately repeats itself, while two places
+        # answering to one name inside a single frame is the real defect -- the
+        # one that gave five Settings rows the address `dlg.settings.toggle`.
+        print(f"  ! {label}: duplicate addresses in one frame: {dupes}", file=sys.stderr)
+        raise SystemExit(1)
     print(f"  {label}: {len(found)} regions")
     return found
 
@@ -180,11 +190,28 @@ def collect() -> list[Region]:
     def _draw_sim() -> None:
         sim_screen.board._draw(flip=False)
         sim_screen.panel.draw()
+        # Force the stall advisory (U48) open so its regions register: it only
+        # paints when a design has gone quiet, which no static render does.
+        sim_screen._stall_showing = True
+        sim_screen._stall_heading = "Has it frozen?"
+        sim_screen._stall_lines = ["A sample line, so the panel has a size."]
         sim_screen._draw_overlays()
+        if sim_screen._stall_expanded:
+            sim_screen._draw_stall_advisory()
 
-    out += _collect_screen(_draw_sim, "sim")
+    # Twice, because the advisory's indicator and its expanded panel are
+    # mutually exclusive on screen: one render can only ever see one of them.
+    sim_screen._stall_expanded = False
+    out += _collect_screen(_draw_sim, "sim (advisory offered)")
+    sim_screen._stall_expanded = True
+    out += _collect_screen(_draw_sim, "sim (advisory open)")
 
-    out += _collect_screen(lambda: HelpDialog(screen)._draw(), "dlg.help")
+    # Likewise the help dialog scrolls, and a section below the fold has no
+    # rect to register -- so render it at the top and at the bottom.
+    help_dialog = HelpDialog(screen)
+    out += _collect_screen(help_dialog._draw, "dlg.help (top)")
+    help_dialog._scroll = 10**6  # clamped to the true maximum by _draw
+    out += _collect_screen(help_dialog._draw, "dlg.help (bottom)")
     out += _collect_screen(lambda: SettingsDialog(screen)._draw(), "dlg.settings")
     out += _collect_screen(
         lambda: ErrorDialog(screen, "Title", "Message", example_path=vhdl)._draw(), "dlg.error"
@@ -192,6 +219,7 @@ def collect() -> list[Region]:
     out += _collect_screen(
         lambda: GenericsDialog(screen, vhdl.name, [], {})._draw(), "dlg.generics"
     )
+    out += _collect_screen(SpinnerOverlay(screen, "Analyzing…", "blinky.vhd").draw, "spinner")
 
     inspect.set_inspect(False)
     inspect.set_trace_origins(False)

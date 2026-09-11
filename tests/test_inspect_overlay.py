@@ -662,6 +662,58 @@ def test_the_led_index_is_a_widget_index_not_a_channel_index(
     )
 
 
+def test_the_surfaces_a_confused_reader_reaches_are_addressable() -> None:
+    """Coverage is the feature. A screen with no address cannot be reported on.
+
+    These four were the gaps a per-screen audit found: the stall advisory (the
+    control that appears exactly when somebody is confused), the two scrolling
+    lists, the analysis spinner, and the help dialog's prose sections — which
+    had two addresses for a screen that is almost entirely text.
+    """
+    addresses = set(_ui_map())
+    required = {
+        "sim.stall.offer",
+        "sim.stall.panel",
+        "sim.stall.close",
+        "select.list.row[i]",
+        "pick.list.row[i]",
+        "spinner.panel",
+        "dlg.help.workflow",
+        "dlg.help.keyboard-shortcuts",
+        "dlg.help.vhdl-design-contract",
+    }
+    assert required <= addresses, f"no longer addressable: {sorted(required - addresses)}"
+
+
+def test_a_list_row_reports_which_entry_it_is(headless_pygame: ModuleType) -> None:
+    """A row index alone is worthless once the filter changes; carry the name."""
+    from fpga_sim.board_loader import discover_boards, get_default_boards_path
+    from fpga_sim.ui.board_selector import BoardSelector
+
+    surface = headless_pygame.display.set_mode((1280, 800))
+    boards = discover_boards(get_default_boards_path())
+    selector = BoardSelector(boards, surface)
+    inspect.set_inspect(True)
+    selector._draw()
+
+    rows = [r for r in inspect.regions() if ".list.row[" in r.path]
+    assert rows, "the selector registered no list rows"
+    named = dict(rows[0].value)
+    assert named.get("board"), f"a row carried no board name: {rows[0].value}"
+    # The name must be the board actually drawn on that row.
+    assert named["board"] == selector._filtered()[0].name
+
+
+def test_the_record_carries_geometry(headless_pygame: ModuleType) -> None:
+    """A layout complaint is a statement about a rect, so the record must hold one."""
+    inspect.set_inspect(True)
+    inspect.begin_frame("sim")
+    inspect.item("overlay.stop", headless_pygame.Rect(11, 22, 33, 44))
+    target = inspect.hovered((12, 23))
+    assert target is not None
+    assert inspect.report(target)["rect"] == [11, 22, 33, 44]
+
+
 # ── the seams ─────────────────────────────────────────────────────────────────
 
 

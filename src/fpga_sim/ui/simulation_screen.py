@@ -910,6 +910,11 @@ class SimulationScreen:
         close_pos = (rect.right - close.get_width() - pad, y)
         self.screen.blit(close, close_pos)
         self._stall_rect = pygame.Rect(close_pos, close.get_size())
+        # Addressable (U55): this panel appears exactly when somebody is
+        # confused, which makes it the likeliest thing in the app for them to
+        # want to point at.
+        inspect.zone("stall.panel", rect)
+        inspect.item("stall.close", self._stall_rect)
 
     def _render_frame(self) -> None:
         """Draw board + panel + overlays and flip — unless nothing changed (U23).
@@ -1131,6 +1136,7 @@ class SimulationScreen:
             hint_bw = ov_font.size(hint_label)[0] + ov_pad_x * 2 + icon_d + icon_gap
             hint_bx = pause_bx - ov_gap - hint_bw
             self._stall_hint_rect = pygame.Rect(hint_bx, btn_py, hint_bw, btn_h)
+            inspect.item("stall.offer", self._stall_hint_rect)
             self._draw_stall_hint(self._stall_hint_rect, hint_label, ov_font, icon_d, icon_gap)
 
         # Navigation toolbar (bottom-left, opposite Pause/Stop).

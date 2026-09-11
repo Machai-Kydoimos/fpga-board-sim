@@ -464,8 +464,13 @@ def report(target: Region | None) -> dict[str, Any]:
         "app": app_version(),
         "screen": _SCOPE or None,
     }
-    if target is not None and target.value:
-        doc["value"] = dict(target.value)
+    if target is not None:
+        # Geometry, because a layout complaint -- "this sits too low", "these do
+        # not line up" -- *is* a statement about a rect, and the record carried
+        # no way to say it.
+        doc["rect"] = [target.rect.x, target.rect.y, target.rect.width, target.rect.height]
+        if target.value:
+            doc["value"] = dict(target.value)
     for group in ("board", "design", "simulator", "run"):
         block = _CONTEXT.get(group)
         if block:

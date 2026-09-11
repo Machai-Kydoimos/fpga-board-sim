@@ -624,6 +624,8 @@ screen and cannot guess:
   should be read.
 - **the run's own state** — simulated time, paused, speed, virtual clock — which also
   lines the report up with a waveform dump.
+- **where the thing is** — the region's rectangle, so "this sits too low" or "these
+  don't line up" carries its own evidence.
 
 It deliberately does *not* carry your OS, Python or library versions: `fpga-sim
 --doctor` reports all of that in more detail, and the record says so. If you are

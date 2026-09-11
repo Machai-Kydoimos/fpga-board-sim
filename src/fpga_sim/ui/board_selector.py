@@ -466,7 +466,12 @@ class BoardSelector(RowCursorMixin):
                 if i == self.hovered
                 else (THEME.sel_row_a if i % 2 == 0 else THEME.sel_row_b)
             )
-            pygame.draw.rect(self.screen, bg, (10, y, self.width - 20, self.row_h - 2))
+            row_rect = pygame.Rect(10, y, self.width - 20, self.row_h - 2)
+            pygame.draw.rect(self.screen, bg, row_rect)
+            # Indexed by position in the *filtered* list, which is what a reader
+            # is looking at; the board's own name rides along in the report's
+            # value so a row survives a different filter (U55).
+            inspect.widget(f"list.row[{i}]", row_rect, (("board", b.name),))
             nm = item_f.render(b.name, True, THEME.board_name)
             self.screen.blit(nm, (20, y + 4))
             sub_y = y + 4 + item_f.get_height() + 2

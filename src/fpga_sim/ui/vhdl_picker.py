@@ -232,7 +232,9 @@ class VHDLFilePicker(RowCursorMixin):
                 if i == self.hovered
                 else (THEME.sel_row_a if i % 2 == 0 else THEME.sel_row_b)
             )
-            pygame.draw.rect(self.screen, bg, (10, y, self.width - 20, self.row_h - 2))
+            row_rect = pygame.Rect(10, y, self.width - 20, self.row_h - 2)
+            pygame.draw.rect(self.screen, bg, row_rect)
+            inspect.widget(f"list.row[{i}]", row_rect, (("entry", name), ("is_dir", is_dir)))
             color = THEME.dir_entry if is_dir else THEME.file_entry
             nm = item_f.render(name, True, color)
             self.screen.blit(nm, (24, y + 8))

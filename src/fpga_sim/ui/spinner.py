@@ -25,6 +25,7 @@ from typing import TypeVar
 
 import pygame
 
+from fpga_sim.ui import inspect
 from fpga_sim.ui.constants import _ui_scale, get_font, lerp_rgb
 from fpga_sim.ui.theme import THEME
 
@@ -75,6 +76,7 @@ class SpinnerOverlay:
 
     def draw(self) -> None:
         """Paint one frame: dim backdrop, panel, spinner, and text lines."""
+        inspect.begin_frame("spinner")
         sw, sh = self.screen.get_size()
         s = _ui_scale(sw, sh)
         pad = max(20, round(28 * s))
@@ -96,6 +98,7 @@ class SpinnerOverlay:
         px = (sw - panel_w) // 2
         py = (sh - panel_h) // 2
         self._panel_rect = pygame.Rect(px, py, panel_w, panel_h)
+        inspect.zone("panel", self._panel_rect)
 
         # Dim backdrop over the snapshot of the screen beneath.
         overlay = pygame.Surface((sw, sh), pygame.SRCALPHA)
@@ -120,6 +123,7 @@ class SpinnerOverlay:
             dy = my + msg_surf.get_height() + gap // 2
             self.screen.blit(det_surf, det_surf.get_rect(centerx=cx, top=dy))
 
+        inspect.draw_overlay(self.screen)
         pygame.display.flip()
 
 
