@@ -589,6 +589,44 @@ The new half-period is written directly to the VHDL wrapper; the clock changes w
 one half-period without restarting the simulator. A **[PAUSE] / [RESUME]** button
 freezes simulation while keeping the simulator process alive.
 
+## Naming what you see (inspect mode)
+
+Press **F3** on any screen to label it. Every part of the window gets a short
+address — `sim.panel.speed.slider`, `sim.board.led[5]`, `dlg.settings.duty-bars` —
+and the box in the corner names whatever is under the cursor, along with the build,
+board, design, simulator, theme and window size. Press **F3** again to hide it.
+
+**F4** copies the address under the cursor, together with that context line, to the
+clipboard. Paste it into a question or a bug report:
+
+```text
+sim.panel.speed.slider · fpga-sim 0.22.0 · sim · DE10-Standard · blinky.vhd · GHDL-LLVM · pcb-green · 1280x800
+```
+
+That one line says *where* and *what you were looking at*, which is everything a
+reader needs to find the code — [docs/ui_map.md](ui_map.md) turns the address into a
+file and a line number. The addresses are stable across releases, so a report written
+today still resolves after the code moves. (If the clipboard is unavailable — no
+display server, or an SDL build without clipboard support — the same line is printed
+to the terminal instead.)
+
+Inspect mode is a **label, not a mode**: it consumes only F3 and F4, so every button,
+switch and shortcut behaves exactly as it does with the overlay off, and simulation
+keeps running underneath. It is off at every start and is never saved to your session.
+
+Two details worth knowing:
+
+- **LEDs, switches, buttons and digits are not badged.** A board like the DE2-115
+  carries 57 of them and a name painted on each is wider than the thing it names.
+  They already show `LED0` / `SW3` / `BTN1`; hover one to see its address.
+- **A label that would land on top of another is dropped**, so a crowded corner
+  shows fewer names rather than a stack of unreadable ones. Hovering always names
+  the thing under the cursor, including one whose badge was dropped.
+
+Opening a dialog while inspect mode is on leaves the screen behind it dimmed with its
+labels frozen in the snapshot; those are stale until the dialog closes. The live
+readout at the corner always describes the current frame.
+
 ## Board-native runs
 
 Most designs use the generic `clk/sw/btn/led` contract, but a design can instead be
