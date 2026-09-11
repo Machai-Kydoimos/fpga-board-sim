@@ -610,6 +610,17 @@ today still resolves after the code moves. (If the clipboard is unavailable — 
 display server, or an SDL build without clipboard support — the same line is printed
 to the terminal instead.)
 
+The overlay's type scales with the window, like every other widget. If it is still
+too small or too large on your display, set **`FPGA_SIM_INSPECT_SCALE`** to a
+multiplier (0.5–4.0, default 1.0) — it is read every frame, so you can change it and
+press F3 again without restarting:
+
+```bash
+FPGA_SIM_INSPECT_SCALE=1.5 uv run fpga-sim
+```
+
+It affects the overlay only; the board and the stats panel are untouched.
+
 Inspect mode is a **label, not a mode**: it consumes only F3 and F4, so every button,
 switch and shortcut behaves exactly as it does with the overlay off, and simulation
 keeps running underneath. It is off at every start and is never saved to your session.

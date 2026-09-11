@@ -25,6 +25,7 @@ import pytest
 
 from fpga_sim.ui import inspect
 from fpga_sim.ui.clipboard import copy_to_clipboard, read_clipboard
+from fpga_sim.ui.constants import _ui_scale
 from tests.test_simulation_screen import _make_screen, _pump_state
 
 if TYPE_CHECKING:
@@ -281,6 +282,65 @@ def test_context_fields_can_be_cleared(headless_pygame: ModuleType) -> None:
     assert "blinky.vhd" in inspect.context_stamp()
     inspect.set_context(design=None)
     assert "blinky.vhd" not in inspect.context_stamp()
+
+
+def test_type_scales_with_the_window_like_every_other_widget(
+    headless_pygame: ModuleType,
+) -> None:
+    """Fixed point sizes were the first cut's mistake, found by running the app.
+
+    The board, its captions and its buttons all size themselves off
+    ``_ui_scale``, so an overlay drawn at a constant size shrinks *relative to
+    everything around it* as the window grows -- unreadable at full screen while
+    every test passed. Assert the relationship, not a pixel count.
+    """
+    small = inspect._px(inspect._PATH_PT, _ui_scale(1024, 700), inspect._MIN_PATH_PT)
+    large = inspect._px(inspect._PATH_PT, _ui_scale(1920, 1080), inspect._MIN_PATH_PT)
+    huge = inspect._px(inspect._PATH_PT, _ui_scale(3840, 2160), inspect._MIN_PATH_PT)
+    assert small < large < huge, f"type did not grow with the window: {small}, {large}, {huge}"
+    # The address is the string somebody reads off the screen and retypes, so it
+    # is deliberately the largest thing the overlay draws.
+    assert inspect._PATH_PT > inspect._STAMP_PT >= inspect._LABEL_PT
+
+
+def test_a_tiny_window_falls_back_to_the_floor(headless_pygame: ModuleType) -> None:
+    """Small is acceptable; illegible is not."""
+    tiny = inspect._px(inspect._PATH_PT, _ui_scale(320, 240), inspect._MIN_PATH_PT)
+    assert tiny == inspect._MIN_PATH_PT
+
+
+def test_the_scale_override_is_read_clamped_and_survives_junk(
+    headless_pygame: ModuleType, monkeypatch: Any
+) -> None:
+    """The env knob exists because legibility cannot be settled from in here."""
+    monkeypatch.delenv(inspect._SCALE_ENV, raising=False)
+    assert inspect._env_scale() == 1.0
+    monkeypatch.setenv(inspect._SCALE_ENV, "1.5")
+    assert inspect._env_scale() == 1.5
+    # Clamped: a zero would draw nothing, a huge one would fill the window.
+    monkeypatch.setenv(inspect._SCALE_ENV, "0")
+    assert inspect._env_scale() == 0.5
+    monkeypatch.setenv(inspect._SCALE_ENV, "99")
+    assert inspect._env_scale() == 4.0
+    # Junk degrades to the default rather than taking down the frame.
+    for junk in ("", "   ", "big", "1.2.3"):
+        monkeypatch.setenv(inspect._SCALE_ENV, junk)
+        assert inspect._env_scale() == 1.0, f"{junk!r} did not fall back"
+
+
+def test_the_readout_wraps_instead_of_spanning_the_window(headless_pygame: ModuleType) -> None:
+    """A stamp naming seven facts must not set the box's width to the screen's."""
+    font = headless_pygame.font.SysFont("consolas", 14)
+    stamp = (
+        "fpga-sim 0.22.0+gabc1234 · sim · DE10-Standard · blinky.vhd · GHDL-LLVM · dark · 1920x1080"
+    )
+    max_w = 400
+    lines = inspect._wrap(stamp, font, max_w)
+    assert len(lines) > 1, "a long stamp did not wrap"
+    assert all(font.size(line)[0] <= max_w for line in lines[:-1])
+    # Wrapped on the separator, so no fact is split across two lines.
+    assert " · ".join(lines) == stamp
+    assert "DE10-Standard" in " ".join(lines)
 
 
 # ── the seams ─────────────────────────────────────────────────────────────────

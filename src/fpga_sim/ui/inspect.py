@@ -46,6 +46,7 @@ into invisibility.
 
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -53,11 +54,10 @@ from typing import TYPE_CHECKING
 import pygame
 
 from fpga_sim.ui.clipboard import copy_to_clipboard
-from fpga_sim.ui.constants import get_font, render_text
+from fpga_sim.ui.constants import _ui_scale, get_font, render_text
 from fpga_sim.version import app_version
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
     from types import FrameType
 
 # ── the diagnostic palette (theme-independent by design; see the module docstring)
@@ -68,13 +68,61 @@ _CHIP = (12, 10, 16)  # backing behind every glyph, so text lands on a known gro
 _CHIP_ALPHA = 225
 _HILITE = (255, 240, 90)  # the one region under the cursor
 
+# Type sizes are **bases at the 1024x700 reference**, scaled at draw time by
+# ``_ui_scale`` exactly as every other widget in the app does.  Fixed sizes were
+# the first cut's mistake: the board, its captions and its buttons all grow with
+# the window, so an overlay that did not grow with them shrank relative to
+# everything around it and was unreadable on a large display.
+#
+# The address is the largest thing on screen after the board, and deliberately
+# so -- it is the one string somebody has to read off a screen and retype.
 _ZONE_BORDER = 1
 _HILITE_BORDER = 2
-_LABEL_PT = 12
-_PATH_PT = 17
-_STAMP_PT = 12
-_PAD = 6
-_GAP = 3
+_LABEL_PT = 13
+_PATH_PT = 21
+_STAMP_PT = 14
+_PAD = 8
+_GAP = 4
+
+#: Floors, so a very small window degrades to merely small rather than illegible.
+_MIN_LABEL_PT = 11
+_MIN_PATH_PT = 17
+_MIN_STAMP_PT = 12
+
+
+#: Multiplies the overlay's own type size on top of the window scale.  It exists
+#: because legibility is the one thing that cannot be settled from here: display
+#: scaling, panel DPI and eyesight all vary, and the alternative to a knob is a
+#: round trip through somebody else's screen.  Overlay-only -- it never touches
+#: the board or the panel.
+_SCALE_ENV = "FPGA_SIM_INSPECT_SCALE"
+
+
+def _env_scale() -> float:
+    """Return the ``FPGA_SIM_INSPECT_SCALE`` multiplier, or 1.0 if unset or junk.
+
+    Read at draw time rather than cached, so a value can be tried without
+    restarting; clamped, because a zero would render nothing and a huge one
+    would fill the window with a single label.
+    """
+    raw = os.environ.get(_SCALE_ENV, "").strip()
+    if not raw:
+        return 1.0
+    try:
+        return max(0.5, min(4.0, float(raw)))
+    except ValueError:
+        return 1.0
+
+
+def _scale(surface: pygame.Surface) -> float:
+    """Return the overlay's type scale: the window's, times any env override."""
+    return _ui_scale(*surface.get_size()) * _env_scale()
+
+
+def _px(base: int, scale: float, floor: int) -> int:
+    """Scale a reference-size measurement, never below *floor*."""
+    return max(floor, round(base * scale))
+
 
 #: Keys.  F3/F4 rather than letters because ``BoardSelector`` appends every
 #: printable character to its filter text, so no letter is free app-wide.
@@ -325,21 +373,28 @@ def _chip(surface: pygame.Surface, rect: pygame.Rect) -> None:
     surface.blit(chip, rect.topleft)
 
 
-def _label_box(surface: pygame.Surface, text: str, topleft: tuple[int, int]) -> pygame.Rect:
+def _label_box(
+    surface: pygame.Surface, font: pygame.font.Font, text: str, topleft: tuple[int, int], gap: int
+) -> pygame.Rect:
     """Return where a label would land, clamped into *surface*."""
-    glyphs = render_text(get_font(_LABEL_PT), text, _INK)
-    box = pygame.Rect(0, 0, glyphs.get_width() + 2 * _GAP, glyphs.get_height() + 2)
+    glyphs = render_text(font, text, _INK)
+    box = pygame.Rect(0, 0, glyphs.get_width() + 2 * gap, glyphs.get_height() + 2)
     box.topleft = topleft
     box.clamp_ip(surface.get_rect())
     return box
 
 
 def _blit_label(
-    surface: pygame.Surface, text: str, color: tuple[int, int, int], box: pygame.Rect
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    text: str,
+    color: tuple[int, int, int],
+    box: pygame.Rect,
+    gap: int,
 ) -> None:
     """Draw *text* on a chip filling *box*."""
     _chip(surface, box)
-    surface.blit(render_text(get_font(_LABEL_PT), text, color), (box.x + _GAP, box.y + 1))
+    surface.blit(render_text(font, text, color), (box.x + gap, box.y + 1))
 
 
 def _leaf(path: str) -> str:
@@ -347,33 +402,74 @@ def _leaf(path: str) -> str:
     return path.rsplit(".", 1)[-1]
 
 
-def _readout_lines(target: Region | None) -> Iterator[tuple[str, int, tuple[int, int, int]]]:
-    """Yield ``(text, point size, color)`` for the readout box, in order."""
-    yield (target.path if target is not None else "—", _PATH_PT, _HILITE)
-    yield (context_stamp(), _STAMP_PT, _INK_DIM)
-    yield ("F3 hide · F4 copy", _STAMP_PT, _INK_DIM)
+#: The readout may not grow past this fraction of the window's width.  The box
+#: is diagnostic chrome sitting over the board, and a stamp long enough to name
+#: build, screen, board, design, simulator, theme and size would otherwise set
+#: the width and cover most of the top of the screen.
+_READOUT_MAX_W = 0.42
 
 
-def _draw_readout(surface: pygame.Surface, target: Region | None, pos: tuple[int, int]) -> None:
-    """Draw the fixed readout box, flipping corners so it never hides its subject."""
-    rendered = [
-        render_text(get_font(pt, bold=pt == _PATH_PT), text, color)
-        for text, pt, color in _readout_lines(target)
+def _wrap(text: str, font: pygame.font.Font, max_w: int) -> list[str]:
+    """Split *text* at its ``·`` separators into lines no wider than *max_w*.
+
+    Wrapping on the separator rather than on spaces keeps each fact whole, so a
+    reader never has to reassemble "DE10-" and "Standard" across a line break.
+    """
+    parts = text.split(" · ")
+    lines: list[str] = []
+    current = ""
+    for part in parts:
+        candidate = f"{current} · {part}" if current else part
+        if current and font.size(candidate)[0] > max_w:
+            lines.append(current)
+            current = part
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines
+
+
+def _readout_lines(
+    target: Region | None, stamp_font: pygame.font.Font, max_w: int
+) -> list[tuple[str, bool, tuple[int, int, int]]]:
+    """Return ``(text, is the address, color)`` for the readout box, in order."""
+    rows: list[tuple[str, bool, tuple[int, int, int]]] = [
+        (target.path if target is not None else "—", True, _HILITE)
     ]
-    width = max(g.get_width() for g in rendered) + 2 * _PAD
-    height = sum(g.get_height() for g in rendered) + 2 * _PAD + _GAP * (len(rendered) - 1)
-    box = pygame.Rect(_PAD, _PAD, width, height)
+    rows += [(line, False, _INK_DIM) for line in _wrap(context_stamp(), stamp_font, max_w)]
+    rows.append(("F3 hide · F4 copy", False, _INK_DIM))
+    return rows
+
+
+def _draw_readout(
+    surface: pygame.Surface, target: Region | None, pos: tuple[int, int], scale: float
+) -> None:
+    """Draw the fixed readout box, flipping corners so it never hides its subject."""
+    path_font = get_font(_px(_PATH_PT, scale, _MIN_PATH_PT), bold=True)
+    stamp_font = get_font(_px(_STAMP_PT, scale, _MIN_STAMP_PT))
+    pad = _px(_PAD, scale, _PAD)
+    gap = _px(_GAP, scale, _GAP)
+
+    max_w = round(surface.get_width() * _READOUT_MAX_W)
+    rendered = [
+        render_text(path_font if is_path else stamp_font, text, color)
+        for text, is_path, color in _readout_lines(target, stamp_font, max_w)
+    ]
+    width = max(g.get_width() for g in rendered) + 2 * pad
+    height = sum(g.get_height() for g in rendered) + 2 * pad + gap * (len(rendered) - 1)
+    box = pygame.Rect(pad, pad, width, height)
     # The box is chrome the cursor must be able to get behind: when the pointer
     # reaches it, move it to the far corner rather than letting it mask the very
     # region somebody is trying to read.
     if box.collidepoint(pos):
-        box.topright = (surface.get_width() - _PAD, _PAD)
+        box.topright = (surface.get_width() - pad, pad)
     _chip(surface, box)
-    pygame.draw.rect(surface, _INK, box, _ZONE_BORDER)
-    y = box.y + _PAD
+    pygame.draw.rect(surface, _INK, box, max(_ZONE_BORDER, round(scale)))
+    y = box.y + pad
     for glyphs in rendered:
-        surface.blit(glyphs, (box.x + _PAD, y))
-        y += glyphs.get_height() + _GAP
+        surface.blit(glyphs, (box.x + pad, y))
+        y += glyphs.get_height() + gap
 
 
 def draw_overlay(surface: pygame.Surface) -> None:
@@ -386,11 +482,16 @@ def draw_overlay(surface: pygame.Surface) -> None:
         return
     pos = pygame.mouse.get_pos()
     target = hovered(pos)
+    scale = _scale(surface)
+    label_font = get_font(_px(_LABEL_PT, scale, _MIN_LABEL_PT))
+    label_h = label_font.get_height()
+    gap = _px(_GAP, scale, _GAP)
 
     # Frames first, so every label lands on top of every frame.
+    border = max(_ZONE_BORDER, round(scale))
     for reg in _REGIONS:
         if reg.kind == "zone":
-            pygame.draw.rect(surface, _INK, reg.rect, _ZONE_BORDER)
+            pygame.draw.rect(surface, _INK, reg.rect, border)
 
     # Then labels, decluttered.  A label that would land on one already placed
     # is dropped rather than stacked: two overlapping names are less readable
@@ -401,10 +502,10 @@ def draw_overlay(surface: pygame.Surface) -> None:
     def _place(text: str, *candidates: tuple[int, int]) -> None:
         """Draw *text* at the first candidate position that is still free."""
         for at in candidates:
-            box = _label_box(surface, text, at)
+            box = _label_box(surface, label_font, text, at, gap)
             if any(box.colliderect(other) for other in placed):
                 continue
-            _blit_label(surface, text, _INK, box)
+            _blit_label(surface, label_font, text, _INK, box, gap)
             placed.append(box)
             return
 
@@ -413,7 +514,7 @@ def draw_overlay(surface: pygame.Surface) -> None:
             continue
         # Above the frame when there is room, so the label does not sit over
         # the first thing inside the zone.
-        above = reg.rect.y - _LABEL_PT - 4
+        above = reg.rect.y - label_h - 4
         _place(reg.path, (reg.rect.x + 2, above), (reg.rect.x + 2, reg.rect.y + 2))
     for reg in _REGIONS:
         if reg.kind == "item":
@@ -423,9 +524,14 @@ def draw_overlay(surface: pygame.Surface) -> None:
             _place(
                 _leaf(reg.path),
                 (reg.rect.x, reg.rect.bottom + 1),
-                (reg.rect.x, reg.rect.y - _LABEL_PT - 4),
+                (reg.rect.x, reg.rect.y - label_h - 4),
             )
 
     if target is not None:
-        pygame.draw.rect(surface, _HILITE, target.rect.inflate(4, 4), _HILITE_BORDER)
-    _draw_readout(surface, target, pos)
+        pygame.draw.rect(
+            surface,
+            _HILITE,
+            target.rect.inflate(4, 4),
+            max(_HILITE_BORDER, round(_HILITE_BORDER * scale)),
+        )
+    _draw_readout(surface, target, pos, scale)
