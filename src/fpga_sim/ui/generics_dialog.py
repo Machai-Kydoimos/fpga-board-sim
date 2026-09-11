@@ -24,6 +24,7 @@ from __future__ import annotations
 import pygame
 
 from fpga_sim.generics import GenericDef, validate
+from fpga_sim.ui import inspect
 from fpga_sim.ui.constants import get_font
 from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets.button import draw_button
@@ -115,6 +116,10 @@ class GenericsDialog:
         """Run the blocking loop; return the overrides, or None if canceled."""
         while True:
             for ev in pygame.event.get():
+                # Inspect mode (U55) first: it consumes only its own two
+                # keys, so nothing this dialog binds can be shadowed.
+                if inspect.handle_key(ev):
+                    continue
                 if ev.type == pygame.QUIT:
                     pygame.event.post(pygame.event.Event(pygame.QUIT))
                     return None
@@ -194,6 +199,7 @@ class GenericsDialog:
     # ── drawing ──────────────────────────────────────────────────────────────
 
     def _draw(self) -> None:  # noqa: PLR0914 - a dialog is mostly layout
+        inspect.begin_frame("dlg.generics")
         self.screen.blit(self._bg, (0, 0))
         dim = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
         dim.fill((0, 0, 0, 170))
@@ -285,4 +291,5 @@ class GenericsDialog:
             (self._apply_rect, "Apply", THEME.btn_select_board),
         ):
             draw_button(self.screen, r, label, row_f, style, hovered=r.collidepoint(mouse))
+        inspect.draw_overlay(self.screen)
         pygame.display.flip()

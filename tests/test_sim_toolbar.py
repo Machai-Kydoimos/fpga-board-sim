@@ -66,7 +66,7 @@ def test_click_outside_the_row_is_a_miss(headless_pygame):
 
 def test_button_roles_are_real_theme_button_styles():
     """The borrowed role names must stay valid Theme ButtonStyle fields."""
-    for _label, role, _intent in _BUTTONS:
+    for _label, role, _intent, _region in _BUTTONS:
         assert isinstance(getattr(Theme(), role), ButtonStyle)
 
 

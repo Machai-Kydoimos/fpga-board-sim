@@ -316,12 +316,17 @@ class TestCopy:
         assert dlg._copied_at is None
 
     def test_clipboard_failure_never_escapes(self, screen, monkeypatch):
-        """A dialog explaining a failure must not fail itself (no display, no scrap)."""
+        """A dialog explaining a failure must not fail itself (no display, no scrap).
 
-        def refuse():
+        Patches ``put_text`` because that is the call the shared helper makes:
+        ``scrap.init()``/``get_init()`` were deprecated in pygame-ce 2.2 and
+        warned on every copy, so ``ui.clipboard`` dropped them.
+        """
+
+        def refuse(_text):
             raise pygame.error("no scrap")
 
-        monkeypatch.setattr(pygame.scrap, "get_init", refuse)
+        monkeypatch.setattr(pygame.scrap, "put_text", refuse)
         assert error_dialog_mod._copy_to_clipboard("x") is False
 
 

@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Protocol
 import pygame
 
 from fpga_sim.board_loader import BoardDef, ComponentInfo
-from fpga_sim.ui import keymap
+from fpga_sim.ui import inspect, keymap
 from fpga_sim.ui.components import LED, RGBLED, Button, FPGAChip, SevenSeg, Switch, UIComponent
 from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
@@ -106,6 +106,39 @@ class _Positionable(Protocol):
     """Structural type for board widgets `_place_items` can lay out (assigns `.rect`)."""
 
     rect: pygame.Rect
+
+
+def _led_value(led: LED) -> tuple[tuple[str, object], ...]:
+    """Return what an LED is doing, as the report quotes it (U55): both halves.
+
+    *Measured* duty and *displayed* level are reported separately because they
+    genuinely differ, and reporting only the second under the name of the first
+    would be a lie: with the LED PWM display switched off (U47) the renderer is
+    handed the raw bit, so a channel the design drives at 42% displays -- and
+    would have reported -- 100%.  Even with PWM on, the displayed value is a
+    persistence-of-vision EMA of the measurement rather than the measurement.
+    The screenshot manifest publishes the same pair for the same reason (#388).
+
+    Both are reported unconditionally, unlike the hover tooltip's version, which
+    hides an exact 0 or 100% as uninformative.  In a report it is the opposite:
+    "this LED looks wrong" is answered by the number whatever the number is, and
+    a missing field reads as missing data rather than as a clean 0.
+    """
+    if isinstance(led, RGBLED):
+        rows: list[tuple[str, object]] = []
+        for ch, duty, level in zip("rgb", led.duties, led.levels, strict=False):
+            rows.append((f"{ch}_duty_pct", round(duty * 100, 1)))
+            rows.append((f"{ch}_displayed_pct", round(level * 100, 1)))
+        return tuple(rows)
+    return (
+        ("duty_pct", round(led.duty * 100, 1)),
+        ("displayed_pct", round(led.level * 100, 1)),
+    )
+
+
+def _seg_duty(seg: SevenSeg) -> list[float]:
+    """Per-segment measured duty for one digit, in ``_BIT`` order (a..g, dp)."""
+    return [round(level * 100, 1) for level in seg.levels]
 
 
 class FPGABoard:
@@ -300,6 +333,11 @@ class FPGABoard:
         self.components: list[UIComponent] = [*self.leds, *self.switches, *self.buttons]
         self._tooltip = Tooltip()
         self._hover_target: UIComponent | None = None
+        #: Which screen this board is part of, for inspect-mode paths (U55).
+        #: The preview owns its own window; ``SimulationScreen`` composites the
+        #: same widget into its frame and relabels it, because a report saying
+        #: ``sim.board.led[3]`` must not be ambiguous with the preview's.
+        self.inspect_scope = "preview"
         self._hover_since_ms = 0
 
         # Which widget each held mouse button is holding (U44).  Keyed by the
@@ -369,6 +407,27 @@ class FPGABoard:
         """Set an LED's brightness by index, as a duty cycle in [0, 1] (U9)."""
         if 0 <= index < len(self.leds):
             self.leds[index].level = max(0.0, min(1.0, level))
+
+    def set_led_duty(self, index: int, duty: float) -> None:
+        """Record an LED's **measured** duty, independent of what is displayed.
+
+        A separate setter rather than another argument on
+        :meth:`set_led_level`: the two values travel together but mean different
+        things, and every existing caller of the display setter means exactly
+        what it says.
+        """
+        if 0 <= index < len(self.leds):
+            self.leds[index].duty = max(0.0, min(1.0, duty))
+
+    def set_led_channel_duty(self, index: int, channel: str, duty: float) -> None:
+        """Record one RGB channel's measured duty (``channel`` = "r"/"g"/"b")."""
+        if 0 <= index < len(self.leds):
+            widget = self.leds[index]
+            clamped = max(0.0, min(1.0, duty))
+            if isinstance(widget, RGBLED) and channel in "rgb":
+                widget.duties["rgb".index(channel)] = clamped
+            else:
+                widget.duty = clamped
 
     def set_led_channel(self, index: int, channel: str, level: float) -> None:
         """Set one channel of an RGB LED by index (``channel`` = "r"/"g"/"b", U37).
@@ -778,6 +837,13 @@ class FPGABoard:
             ):
                 self._help_requested = True
 
+            # Inspect mode (U55).  Ahead of ``_bind_key`` for the same reason
+            # every other named shortcut is: a board binding must never swallow
+            # one.  F3/F4 are function keys, so they cannot collide with the hex
+            # tier -- the ordering is what keeps that true if the keys change.
+            elif inspect.handle_key(event):
+                pass
+
             elif event.type == pygame.KEYUP:
                 self._release_key_hold(event)
 
@@ -1014,6 +1080,57 @@ class FPGABoard:
         for btn in self.buttons:
             btn.handle_release()
 
+    # ── inspect mode (U55) ───────────────────────────────────────────
+
+    def _register_inspect_regions(self) -> None:
+        """Register the board's own widgets and banks for the inspect overlay.
+
+        Paths come from kind and index, never from geometry: ``_layout`` hands
+        every widget a fresh rect on resize, so a rect is this frame's hit target
+        and nothing more.
+
+        The index is this list's -- the board JSON's own ``leds[]`` order -- and
+        deliberately **not** the boundary-channel numbering
+        :func:`~fpga_sim.manifest.led_legend` publishes.  The two coincide only
+        while a board is all-mono: an RGB site is one widget but three channels,
+        so on the 8-mono + 4-RGB Myminieye Runber ``board.led[7]`` is the fourth
+        RGB site while channel 7 is the eighth mono LED.  The widget index is the
+        right one here because a person points at a *thing on screen*; the
+        channel index is the right one in the manifest because a reader there is
+        indexing a duty array.  Saying which is which is what stops a report
+        being read against the wrong LED.
+
+        A no-op while the overlay is off -- every call below returns on a single
+        bool read.
+        """
+        if not inspect.inspect_enabled():
+            return
+        inspect.widget("board.chip", self.fpga_chip.rect)
+        for i, led in enumerate(self.leds):
+            inspect.widget(f"board.led[{i}]", led.rect, _led_value(led))
+        for sw in self.switches:
+            inspect.widget(f"board.sw[{sw.index}]", sw.rect, (("on", sw.state),))
+        for btn in self.buttons:
+            inspect.widget(
+                f"board.btn[{btn.index}]",
+                btn.rect,
+                (("pressed", btn.pressed), ("latched", btn.latched)),
+            )
+        for seg in self._seven_segs:
+            inspect.widget(
+                f"board.seg[{seg.index}]",
+                seg.rect,
+                (("bits", f"0x{seg.bits:02X}"), ("duty_pct", _seg_duty(seg))),
+            )
+        # LED banks are a zone rather than an item: on a two-bank board (LEDR +
+        # LEDG) "which bank" is a real question, and the bank's name is the
+        # board's own.
+        for name, leds in self._led_banks:
+            if leds:
+                first = leds[0].rect
+                bank = first.unionall([x.rect for x in leds[1:]])
+                inspect.zone(f"board.leds.{inspect.slug(name)}", bank)
+
     # ── hover tooltips (U3) ──────────────────────────────────────────
 
     def _component_at(self, pos: tuple[int, int]) -> UIComponent | None:
@@ -1120,6 +1237,13 @@ class FPGABoard:
     # ── drawing ──────────────────────────────────────────────────────
 
     def _draw(self, *, flip: bool = True) -> None:
+        # Inspect mode (U55) starts here because this is the first paint of every
+        # frame on *both* screens the board appears on: the preview owns the
+        # window, and ``SimulationScreen._render_frame`` calls this before its
+        # panel and overlays.  Whatever ``draw_button`` registers later in the
+        # frame therefore lands in a registry that was cleared exactly once.
+        inspect.begin_frame(self.inspect_scope)
+        self._register_inspect_regions()
         self.screen.fill(THEME.pcb_bg)
 
         s = _ui_scale(self.width, self.height)
@@ -1233,6 +1357,7 @@ class FPGABoard:
                 gen_font,
                 THEME.btn_sim_pause,
                 hovered=self._generics_btn_rect.collidepoint(mouse_pos),
+                region="header.generics",
             )
 
         # Shared button height from font metrics; button row pinned to the bottom.
@@ -1249,6 +1374,7 @@ class FPGABoard:
             btn_font,
             THEME.btn_select_board,
             hovered=self._select_board_btn_rect.collidepoint(mouse_pos),
+            region="footer.select-board",
         )
 
         load_w = btn_font.size("Load VHDL File")[0] + 30
@@ -1261,6 +1387,7 @@ class FPGABoard:
             btn_font,
             THEME.btn_load_vhdl,
             hovered=self._load_vhdl_btn_rect.collidepoint(mouse_pos),
+            region="footer.load-vhdl",
         )
 
         # ── Right side: [SIM: …]  [Start Simulation] ──────────────────────────
@@ -1276,6 +1403,7 @@ class FPGABoard:
             THEME.btn_start_sim,
             hovered=self._sim_btn_rect.collidepoint(mouse_pos),
             enabled=can_simulate,
+            region="footer.simulate",
         )
 
         # [SIM:…] toggle — drawn only when a simulator is surfaced (U35).  The
@@ -1298,6 +1426,7 @@ class FPGABoard:
                 toggle_style,
                 hovered=self._sim_toggle_rect.collidepoint(mouse_pos),
                 enabled=can_toggle,
+                region="footer.sim-toggle",
             )
         else:
             self._sim_toggle_rect = None
@@ -1327,4 +1456,5 @@ class FPGABoard:
 
         self._draw_hover_tooltip()
         if flip:
+            inspect.draw_overlay(self.screen)
             pygame.display.flip()

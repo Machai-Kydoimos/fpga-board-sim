@@ -39,7 +39,7 @@ from fpga_sim.sim_bridge import (
     _probe_simulator,
     discover_simulators,
 )
-from fpga_sim.ui import FPGABoard
+from fpga_sim.ui import FPGABoard, inspect
 from fpga_sim.ui.components import set_debug_view, set_pwm_display
 from fpga_sim.ui.constants import get_font
 from fpga_sim.ui.theme import THEME_NAMES, set_theme
@@ -579,6 +579,19 @@ def _restore_session_debug_view(session: dict[str, Any]) -> None:
     set_debug_view(session.get("debug_view") is True)
 
 
+def _restore_session_inspect_scale(session: dict[str, Any]) -> None:
+    """Apply the saved inspect-overlay size (U55).
+
+    Persisted unlike the overlay's on/off state, because the size describes the
+    *display* rather than the session -- somebody who needed larger type last
+    week still needs it today.  Junk or a missing key leaves it unset, which
+    falls back to ``FPGA_SIM_INSPECT_SCALE`` and then to 1.0.
+    """
+    raw = session.get(inspect.SCALE_SESSION_KEY)
+    if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+        inspect.set_user_scale(float(raw))
+
+
 def _restore_session_pwm_display(session: dict[str, Any]) -> None:
     """Apply the saved U47 LED PWM display mode.
 
@@ -721,6 +734,7 @@ def main() -> None:
     session = load_session()
     _restore_session_theme(session)
     _restore_session_debug_view(session)
+    _restore_session_inspect_scale(session)
     pygame.init()
     # get_desktop_sizes() is reliable in pygame 2.x before any set_mode() call
     sizes = pygame.display.get_desktop_sizes()

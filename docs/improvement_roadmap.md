@@ -105,7 +105,9 @@ The three live plans, then executed history (each file carries its own detailed 
 
 ### ID allocation
 
-**Next free: U55 · D18 · P36.** **P35** was filed 2026-09-07 at U49's closeout (the board-name *parser* fix the
+**Next free: U56 · D18 · P36.** **U55** was claimed 2026-09-10 for inspect mode — the
+addressable-coordinate overlay — and carded below in the same commit that implemented it,
+per the corollary. **P35** was filed 2026-09-07 at U49's closeout (the board-name *parser* fix the
 load-time table deliberately deferred). The classroom arc claimed **U48–U54**, **D17** and **P34** on
 2026-09-05 and filed all nine as cards in the same commit that landed its plan — the corollary
 below applied deliberately for once, rather than after the fact. (Earlier: U45 and P31–P33 were
@@ -783,9 +785,39 @@ This document inventories all viable improvements and ranks them by impact.
 | ~~U28~~ | ~~Auto-emit a `<design>.gtkw` GTKWave save file beside the dump (preload clk/sw/btn/led/seg)~~ ✅ | `sim_bridge.py` (`_write_gtkw`) | S |
 | ~~U29~~ | ~~`FPGA_SIM_WAVEFORM` env to enable capture headlessly/CI + one-click auto-open (configurable-viewer template)~~ ✅ | `sim_bridge.py`, `platform_open.py`, Settings dialog | S |
 | ~~U30~~ | ~~"Include memories" depth toggle — NVC `--dump-arrays` (GHDL's FST dumps arrays already) so embedded-core RAM/ROM/registers appear in the trace~~ ✅ | `sim_bridge.py` (`run_cmd`), Settings/env | S |
+| U55 ✅ | Inspect mode — an addressable coordinate for every place on screen (F3 / F4) | `ui/inspect.py`, `ui/clipboard.py`, `version.py`, `scripts/gen_ui_map.py`, every UI screen | M |
 | U52 ✅ | Learn-by-example — lab-shaped reference designs on the generic contract, plus two target-board natives (graduates **P11**) | `hdl/*.vhd`, `hdl/native/*.vhd`, `docs/writing_designs.md`, README | M |
 
 **Note on U28–U30 (waveform-capture follow-ups):** all three extend **U10 ✅** and were raised 2026-07-09 during U10 review. U28 (a ready-made `.gtkw` view) and U29 (env-enable for CI/headless + one-click auto-open) are UX polish; **U30** makes capture useful for the mx65/t80 **embedded-core** designs, whose interesting state (RAM/ROM/registers) is exactly the nested arrays NVC skips by default (GHDL's FST/GHW dump them already — see the correction below). `scripts/capture_waveform.py` already contains a `.gtkw`-writer idiom U28 can reuse. **U28 shipped 2026-07-09** (Sprint 5 lead, issue #189) — `sim_bridge._write_gtkw` writes the save file after a produced dump, naming ports from the run generics (`sim_wrapper.led[N-1:0]`, `seg[8·digits-1:0]`); signal names were cross-checked against a real `sim_wrapper` VCD (plain + 7-seg). **U29 shipped 2026-07-09** (issue #190): `$FPGA_SIM_WAVEFORM` (env capture-enable, env-wins), a Settings **Auto-open** toggle (+ `$FPGA_SIM_WAVEFORM_OPEN`), and a **command-template** viewer `$FPGA_SIM_WAVEFORM_VIEWER` (`{dump}`/`{gtkw}`, default `gtkwave {gtkw}`; any CLI viewer via env, e.g. `surfer {dump}`) with an OS-default-handler fallback — U4's opener extracted to `platform_open.py` as that fallback. **U30 shipped 2026-07-11** (issue #191, PR #196): a Settings **Memories** toggle (+ `$FPGA_SIM_WAVEFORM_MEMORIES`, env-wins) threads NVC `--dump-arrays` through a new `WaveConfig.dump_arrays` field into `run_cmd`, so the embedded-core RAM/ROM/registers land in the trace (empirically an `mx65_hello` NVC dump jumps 202 → 2254 `$var` with the flag, expanding the 2 KB `cpu_ram` into per-cell `ram[i]` vars). **Correction to the premise:** the "GHDL dumps arrays already" shorthand holds only for GHDL's **FST/GHW** writers (memories included by default) — GHDL's **VCD writer** omits a memory (array-of-`std_logic_vector`), with or without any flag, so under GHDL the path to inspect a memory is to pick FST. This is a *writer* limit, not a *format* one: a VCD can hold a memory flattened to one vector var per element, and **NVC's VCD writer emits exactly that** under `--dump-arrays` (`ram[0][7:0]`…) — GHDL's VCD writer simply doesn't. NVC omits nested arrays in *every* format (VCD **and** FST — both empirically 202 → 2254 `$var`) unless `--dump-arrays` is given, which is why the opt-in is NVC-only and a no-op for GHDL. **Follow-up parked as Icebox P14:** a GHDL-VCD + Memories=On combination silently yields no memories (a format dead-end); a small Settings hint could steer such users to FST. **Deferred idea:** U28's `.gtkw` could set a default time dimension (verify GTKWave supports it) so units read sensibly without a viewer flag.
+
+**Note on U55 — why an address, and why not a stack trace.** A finding in a markdown file has
+a free address (`user_guide.md § Themes`); a finding in the *running app* had none, so filing one
+meant describing pixels and having the reader grep. **F3** labels the screen, **F4** copies the
+address under the cursor plus a context stamp (build · screen · board · design · simulator · theme
+· size), and [`docs/ui_map.md`](ui_map.md) — generated by rendering the real screens, not by
+scanning for what they would do — turns the address back into `file:line`. The two halves are kept
+separate on purpose: an address that encoded state would be untypable, and state left unrecorded
+would make the address unreproducible.
+
+*Rejected: deriving the address from a stack trace.* `draw_button` is the single paint primitive
+for **17 call sites across 8 files**, three of which draw several buttons from one line inside a
+loop — the drawing frame is shared, so it cannot tell `sim.toolbar.reload` from `dlg.error.copy`.
+Line numbers also churn, which is the same fragility `tests/test_paths.py` exists to prevent. The
+generated map gets the anchor without either problem, and the *name* stays stable so a report filed
+against an old release still resolves.
+
+*Measured, not asserted.* On the worst board in the fleet (DE2-115, 57 widgets, 1280x800) the
+median board draw is ~775 µs on `main` and ~775 µs on this branch with the overlay off — inside the
+run-to-run spread, i.e. leaving the feature in costs nothing. With the overlay **on** the paired
+delta is **+38 µs/frame (+4.8 %)**, about 0.2 % of a 60 fps budget; `--benchmark 20 --board DE2-115`
+still reports 62.1 fps. 78 `--screenshots` stills contained zero pixels of the overlay's palette.
+
+*Two findings from building it.* (1) The uniqueness rule caught a real defect on its first run: five
+Settings rows are labeled "Toggle", so deriving their addresses from the button text gave all five
+`dlg.settings.toggle` — they are now named for the *setting*. The `[PAUSE]`/`[RESUME]` button is the
+same trap in miniature, and is named explicitly. (2) The two E2E clipboard tests initially **skipped
+silently** because the `skipif` probe ran at collection time, before any display existed — the suite
+was green with the two tests that matter most never running. Read the skip count.
 
 **Note on U12:** `BoardDef.summary` already includes 7-seg digit count as of v0.5.0. Remaining work is the formatting change (dot separators, abbreviated labels).
 

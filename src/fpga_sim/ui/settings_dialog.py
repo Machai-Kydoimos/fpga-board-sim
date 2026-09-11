@@ -42,6 +42,7 @@ import math
 import pygame
 
 from fpga_sim.session_config import load_session, update_session
+from fpga_sim.ui import inspect
 from fpga_sim.ui.components import set_debug_view, set_pwm_display
 from fpga_sim.ui.constants import _ui_scale, get_font
 from fpga_sim.ui.sim_panel import SPEED_DEFAULT
@@ -130,7 +131,17 @@ def draw_settings_button(
     rect = pygame.Rect(right - size, top, size, size)
     font = get_font(max(12, round(size * 0.6)), bold=True)
     style = THEME.btn_settings  # read at draw time so a theme switch restyles the gear
-    draw_button(surface, rect, "", font, style, hovered=rect.collidepoint(mouse))
+    # An empty label (the gear is drawn on top), so the inspect-mode name
+    # cannot be derived from it (U55).
+    draw_button(
+        surface,
+        rect,
+        "",
+        font,
+        style,
+        hovered=rect.collidepoint(mouse),
+        region="header.settings",
+    )
     _draw_gear_icon(surface, rect.center, max(6, round(size * 0.32)), style.fg)
     return rect
 
@@ -216,6 +227,10 @@ class SettingsDialog:
         """Run the blocking event loop until the overlay is dismissed."""
         while True:
             for ev in pygame.event.get():
+                # Inspect mode (U55) first: it consumes only its own two
+                # keys, so nothing this dialog binds can be shadowed.
+                if inspect.handle_key(ev):
+                    continue
                 if ev.type == pygame.QUIT:
                     pygame.event.post(pygame.event.Event(pygame.QUIT))
                     return
@@ -289,6 +304,7 @@ class SettingsDialog:
     # ── Drawing ───────────────────────────────────────────────────────────────
 
     def _draw(self) -> None:
+        inspect.begin_frame("dlg.settings")
         sw, sh = self.screen.get_size()
         s = _ui_scale(sw, sh)
         pad = max(16, round(24 * s))
@@ -326,6 +342,7 @@ class SettingsDialog:
         panel_h = pad * 2 + title_h + gap + len(rows) * (row_h + gap) + hint_h + gap + row_h
         px = (sw - panel_w) // 2
         py = max(0, (sh - panel_h) // 2)
+        inspect.zone("panel", pygame.Rect(px, py, panel_w, panel_h))
         self._panel_rect = pygame.Rect(px, py, panel_w, panel_h)
 
         # Dimmed backdrop.
@@ -363,6 +380,11 @@ class SettingsDialog:
                 btn_f,
                 THEME.btn_settings_action,
                 hovered=rect.collidepoint(mouse),
+                # Named from the row's *setting*, not from its action label:
+                # five of these rows say "Toggle", so deriving the inspect
+                # address from the button text would give five rows one
+                # ambiguous name (U55).
+                region=inspect.slug(label),
                 enabled=enabled,
             )
             action_rects.append(rect)
@@ -398,4 +420,5 @@ class SettingsDialog:
         dismiss = hint_f.render("Esc or click outside to close", True, THEME.dim_text)
         self.screen.blit(dismiss, dismiss.get_rect(centerx=px + panel_w // 2, top=py + panel_h + 8))
 
+        inspect.draw_overlay(self.screen)
         pygame.display.flip()

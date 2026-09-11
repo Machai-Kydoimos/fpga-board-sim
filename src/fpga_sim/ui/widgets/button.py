@@ -14,6 +14,7 @@ from dataclasses import dataclass
 
 import pygame
 
+from fpga_sim.ui import inspect
 from fpga_sim.ui.constants import WHITE
 
 RGB = tuple[int, int, int]
@@ -49,12 +50,21 @@ def draw_button(
     *,
     hovered: bool = False,
     enabled: bool = True,
+    region: str | None = None,
 ) -> None:
     """Draw a rounded-rect button with a centered label.
 
     The fill, border and text colors are resolved from *style* according to
     *enabled* and *hovered* (a disabled button ignores *hovered*), then the
     rectangle, its border and the centered *label* are painted onto *surface*.
+
+    *region* names this button for the inspect overlay (U55), e.g.
+    ``"toolbar.reload"``.  Left out, the path leaf is derived from *label* --
+    which is why almost none of the seventeen call sites need to pass it.  Pass
+    it when the label is not text (an icon-only toggle), when the label *varies
+    with state* (a button that alternates PAUSE/RESUME would otherwise change
+    its own address), or when the button wants a sub-scope of its own.
+    Registration is a no-op while the overlay is off.
     """
     if not enabled:
         bg = style.bg_disabled or style.bg
@@ -70,3 +80,4 @@ def draw_button(
         pygame.draw.rect(surface, border, rect, style.border_width, border_radius=style.radius)
     text = font.render(label, True, fg)
     surface.blit(text, text.get_rect(center=rect.center))
+    inspect.item(region or inspect.slug(label), rect)

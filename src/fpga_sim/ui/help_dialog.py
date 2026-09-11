@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import pygame
 
+from fpga_sim.ui import inspect
 from fpga_sim.ui.constants import _ui_scale, get_font
 from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
@@ -59,6 +60,10 @@ SHORTCUTS: list[tuple[str, str]] = [
     ("R", "Reset switches & buttons, including latches (preview & sim)"),
     ("S", "Toggle the stats panel (simulation)"),
     ("D", "Toggle duty bars — LED duty as bar length (simulation)"),
+    ("F3", "Inspect mode — show a name for each part of the screen"),
+    ("F4", "Copy the name under the cursor, to quote in a question"),
+    ("Shift+F4", "Copy a full report — what you see, plus how it was run"),
+    ("Shift+F3", "Resize the inspect labels (while inspect mode is on)"),
 ]
 
 CONTRACT: list[str] = [
@@ -112,6 +117,10 @@ class HelpDialog:
         """Run the blocking event loop until the overlay is dismissed."""
         while True:
             for ev in pygame.event.get():
+                # Inspect mode (U55) first: it consumes only its own two
+                # keys, so nothing this dialog binds can be shadowed.
+                if inspect.handle_key(ev):
+                    continue
                 if ev.type == pygame.QUIT:
                     pygame.event.post(pygame.event.Event(pygame.QUIT))
                     return
@@ -145,14 +154,24 @@ class HelpDialog:
         header_f: pygame.font.Font,
         body_f: pygame.font.Font,
         key_f: pygame.font.Font,
-    ) -> list[_Row]:
-        """Render all help content into a flat list of (height, segments) rows."""
+    ) -> tuple[list[_Row], list[tuple[str, int]]]:
+        """Render all help content into a flat list of (height, segments) rows.
+
+        Also returns where each section starts, as ``(slug, first row index)``.
+        The content is one scrolling column of rendered lines, so a section has
+        no rect of its own until it is laid out -- these indices are what lets
+        ``_draw`` give each one an inspect-mode address (U55), which matters
+        because this screen is almost entirely prose and was otherwise
+        addressable only as a single panel.
+        """
         rows: list[_Row] = []
+        sections: list[tuple[str, int]] = []
         line_h = body_f.get_linesize() + 2
         head_h = header_f.get_linesize() + max(3, line_h // 3)
         spacer = max(4, line_h // 2)
 
         def header(text: str) -> None:
+            sections.append((inspect.slug(text), len(rows)))
             rows.append((head_h, [(header_f.render(text, True, THEME.header_text), 0)]))
 
         def body(text: str, indent: int = 0) -> None:
@@ -183,9 +202,10 @@ class HelpDialog:
         header("VHDL design contract")
         for line in CONTRACT:
             body(line)
-        return rows
+        return rows, sections
 
     def _draw(self) -> None:
+        inspect.begin_frame("dlg.help")
         sw, sh = self.screen.get_size()
         s = _ui_scale(sw, sh)
         pad = max(16, round(24 * s))
@@ -200,7 +220,7 @@ class HelpDialog:
         panel_w = min(sw - 2 * pad, max(480, round(720 * s)))
         content_w = panel_w - 2 * pad
 
-        rows = self._build_rows(content_w, header_f, body_f, key_f)
+        rows, sections = self._build_rows(content_w, header_f, body_f, key_f)
         content_h = sum(h for h, _ in rows)
 
         btn_h = max(34, round(44 * s))
@@ -212,6 +232,7 @@ class HelpDialog:
 
         px = (sw - panel_w) // 2
         py = (sh - panel_h) // 2
+        inspect.zone("panel", pygame.Rect(px, py, panel_w, panel_h))
         self._panel_rect = pygame.Rect(px, py, panel_w, panel_h)
 
         # Dimmed backdrop.
@@ -238,6 +259,18 @@ class HelpDialog:
 
         self.screen.set_clip(pygame.Rect(px + pad, content_top, content_w, viewport_h))
         y = content_top - self._scroll
+        # One address per section (U55), clipped to what is actually visible --
+        # a section scrolled off screen is not something a reader can point at.
+        viewport = pygame.Rect(px + pad, content_top, content_w, viewport_h)
+        heights = [h for h, _ in rows]
+        for idx, (slug, first) in enumerate(sections):
+            last = sections[idx + 1][1] if idx + 1 < len(sections) else len(rows)
+            top = y + sum(heights[:first])
+            band = pygame.Rect(px + pad, top, content_w, sum(heights[first:last]))
+            visible = band.clip(viewport)
+            if visible.height > 0:
+                inspect.zone(slug, visible)
+
         for h, segs in rows:
             if y + h >= content_top and y <= content_top + viewport_h:
                 for surf, dx in segs:
@@ -282,6 +315,7 @@ class HelpDialog:
         hint = hint_f.render("Esc / F1 / ?  or click outside to close", True, THEME.dim_text)
         self.screen.blit(hint, hint.get_rect(centerx=px + panel_w // 2, top=py + panel_h + 8))
 
+        inspect.draw_overlay(self.screen)
         pygame.display.flip()
 
 
@@ -298,5 +332,15 @@ def draw_help_button(
     rect = pygame.Rect(right - size, top, size, size)
     font = get_font(max(12, round(size * 0.6)), bold=True)
     # Read the style at draw time so a theme switch restyles the trigger too.
-    draw_button(surface, rect, "?", font, THEME.btn_help, hovered=rect.collidepoint(mouse))
+    # The label is a bare "?", which slugs to nothing -- inspect mode (U55)
+    # needs the name spelled out here.
+    draw_button(
+        surface,
+        rect,
+        "?",
+        font,
+        THEME.btn_help,
+        hovered=rect.collidepoint(mouse),
+        region="header.help",
+    )
     return rect

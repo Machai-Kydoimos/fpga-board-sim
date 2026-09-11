@@ -176,6 +176,25 @@ def restore_debug_view() -> Iterator[None]:
     set_debug_view(False)
 
 
+@pytest.fixture(autouse=True)
+def restore_inspect() -> Iterator[None]:
+    """Reset inspect mode (U55) after every test, whether or not it touched it.
+
+    Autouse, unlike its two neighbours above, because leaking this one is not
+    merely cosmetic: while the overlay is on it joins the U23 frame signature
+    and pulls the cursor position in with it, so a leaked "on" would make every
+    later redraw-skip test see a frame that changes when the mouse does.  It
+    also costs nothing to reset, having no expensive default to rebuild.
+    """
+    from fpga_sim.ui import inspect
+
+    yield
+    inspect.set_inspect(False)
+    inspect.set_trace_origins(False)
+    inspect.clear_context()
+    inspect.set_user_scale(None)
+
+
 @pytest.fixture
 def restore_pwm_display() -> Iterator[None]:
     """Reset the U47 LED PWM display global after a test that toggles it.

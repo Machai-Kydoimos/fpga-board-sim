@@ -472,6 +472,15 @@ class LED(UIComponent):
         """Initialize the LED with its board index and optional component metadata."""
         super().__init__(index, info)
         self.level: float = 0.0
+        #: The **measured** duty behind :attr:`level` (U55 reporting).  Kept
+        #: separate because the two genuinely differ: ``level`` is what the
+        #: renderer shows -- a persistence-of-vision EMA, or the raw bit when
+        #: the LED PWM display is switched off (U47) -- while this is what the
+        #: design was actually driving.  #388 established the same pair for the
+        #: screenshot manifest, and for the same reason: brightness correlates
+        #: r=+0.70 with the duty over the window and r=+0.02 with the
+        #: instantaneous bit.  Equal to ``level`` until somebody sets it.
+        self.duty: float = 0.0
         # Resolved emission color (U36); None -> theme default at draw time.
         self._on_color: tuple[int, int, int] | None = resolve_led_color(info.color if info else "")
 
@@ -562,6 +571,8 @@ class RGBLED(LED):
     def __init__(self, index: int, info: ComponentInfo | None = None) -> None:
         """Initialize the puck with its board index and optional metadata."""
         self.levels: list[float] = [0.0, 0.0, 0.0]
+        #: Measured duty per channel, beside :attr:`levels` (see ``LED.duty``).
+        self.duties: list[float] = [0.0, 0.0, 0.0]
         super().__init__(index, info)  # sets .level -> routed through the setter
 
     @property

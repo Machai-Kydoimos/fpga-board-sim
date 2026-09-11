@@ -3,6 +3,7 @@
 import pygame
 
 from fpga_sim.board_loader import BoardDef
+from fpga_sim.ui import inspect
 from fpga_sim.ui._scroll import RowCursorMixin
 from fpga_sim.ui.constants import GRAY, WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
@@ -285,6 +286,13 @@ class BoardSelector(RowCursorMixin):
                 return False, None
             return True, None
 
+        # Inspect mode (U55).  It must sit above the printable-append branch
+        # below for the same reason F1/? does -- but F3/F4 are non-printable
+        # precisely *because* this screen eats every printable character, which
+        # is what rules out a letter shortcut app-wide.
+        if inspect.handle_key(ev):
+            return False, None
+
         # Help overlay: F1 (non-printable) or `?`.  Match `?` here, above the
         # printable-append branch below, so it opens help instead of filtering.
         if ev.key == pygame.K_F1 or ev.unicode == "?":
@@ -429,6 +437,7 @@ class BoardSelector(RowCursorMixin):
         return len(self._filtered())
 
     def _draw(self) -> None:
+        inspect.begin_frame("select")
         self.screen.fill(THEME.sel_bg)
         s = _ui_scale(self.width, self.height)
         title_f = get_font(max(14, round(22 * s)), bold=True)
@@ -437,6 +446,10 @@ class BoardSelector(RowCursorMixin):
         chip_f = detail_f
 
         hdr = self._hdr
+        # The two halves of this screen: the header strip carries the title,
+        # filter text and facet chips; everything below it scrolls (U55).
+        inspect.zone("header", pygame.Rect(0, 0, self.width, hdr))
+        inspect.zone("list", pygame.Rect(0, hdr, self.width, self.height - hdr))
         filtered = self._filtered()
         max_scroll = max(0, len(filtered) * self.row_h - (self.height - hdr))
         self.scroll = min(self.scroll, max_scroll)
@@ -453,7 +466,12 @@ class BoardSelector(RowCursorMixin):
                 if i == self.hovered
                 else (THEME.sel_row_a if i % 2 == 0 else THEME.sel_row_b)
             )
-            pygame.draw.rect(self.screen, bg, (10, y, self.width - 20, self.row_h - 2))
+            row_rect = pygame.Rect(10, y, self.width - 20, self.row_h - 2)
+            pygame.draw.rect(self.screen, bg, row_rect)
+            # Indexed by position in the *filtered* list, which is what a reader
+            # is looking at; the board's own name rides along in the report's
+            # value so a row survives a different filter (U55).
+            inspect.widget(f"list.row[{i}]", row_rect, (("board", b.name),))
             nm = item_f.render(b.name, True, THEME.board_name)
             self.screen.blit(nm, (20, y + 4))
             sub_y = y + 4 + item_f.get_height() + 2
@@ -522,6 +540,7 @@ class BoardSelector(RowCursorMixin):
         sort_hovered = self._hovered_chip == "_sort"
         sort_bg = THEME.sort_hover if (sort_hovered or self._sort_open) else THEME.sort_bg
         self._sort_rect = pygame.Rect(sort_x, chip1_y, sort_w, chip_h)
+        inspect.item("header.sort", self._sort_rect)
         pygame.draw.rect(self.screen, sort_bg, self._sort_rect, border_radius=3)
         self.screen.blit(
             sort_surf,
@@ -544,6 +563,13 @@ class BoardSelector(RowCursorMixin):
             chip_rects.append((rect, "vendor", "Other"))
 
         self._chip_rects = chip_rects
+        # Each facet chip by its own key, so a report can name the chip that
+        # misbehaved rather than "one of the chips" (U55).  Registered as
+        # widgets, not chrome: the chips already read "Has LEDs" / "Xilinx", and
+        # a badge repeating that in two tightly-packed rows is clutter -- the
+        # same reason board LEDs and switches go unbadged.
+        for _r, _kind, _key in chip_rects:
+            inspect.widget(f"header.chip.{inspect.slug(_kind)}.{inspect.slug(_key)}", _r)
 
         # Scrollbar — always visible when the board list overflows the viewport.
         if max_scroll > 0:
@@ -597,4 +623,5 @@ class BoardSelector(RowCursorMixin):
         else:
             self._sort_item_rects = []
 
+        inspect.draw_overlay(self.screen)
         pygame.display.flip()

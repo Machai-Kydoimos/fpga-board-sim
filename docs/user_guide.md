@@ -589,6 +589,86 @@ The new half-period is written directly to the VHDL wrapper; the clock changes w
 one half-period without restarting the simulator. A **[PAUSE] / [RESUME]** button
 freezes simulation while keeping the simulator process alive.
 
+## Naming what you see (inspect mode)
+
+Press **F3** on any screen to label it. Every part of the window gets a short
+address — `sim.panel.speed.slider`, `sim.board.led[5]`, `dlg.settings.duty-bars` —
+and the box in the corner names whatever is under the cursor, along with the build,
+board, design, simulator, theme and window size. Press **F3** again to hide it.
+
+**F4** copies the address under the cursor plus that context line — one line, meant
+to be pasted inline:
+
+```text
+sim.board.led[3] · fpga-sim 0.22.0 · sim · DE2-115 · blinky.vhd (generic) · GHDL-LLVM · pcb-green · 1280x800
+```
+
+That says *where* and *what you were looking at*, which is what a reader needs to find
+the code — [docs/ui_map.md](ui_map.md) turns the address into a file and a line number.
+The addresses are stable across releases, so a report written today still resolves
+after the code moves.
+
+**Shift+F4** copies a fuller record as JSON, for when something is actually wrong
+rather than merely worth a comment. It adds the three things a reader cannot see on
+screen and cannot guess:
+
+- **what the widget was showing** — a switch's position, a digit's segment bits, and
+  for an LED **both** its measured duty and the level actually displayed. Those two
+  genuinely differ: with [LED PWM](#led-pwm-and-speed) switched off the renderer is
+  handed the plain on/off bit, so an LED the design drives at 42% displays 100%, and
+  even with PWM on the displayed value is a persistence-of-vision average rather than
+  the measurement. The record carries a `display` block naming the render modes in
+  force, so the gap between the two reads as the setting it is rather than as a bug.
+- **how the design was run** — generic contract, board-native, or pin map, plus any
+  generic overrides in force. This decides how every complaint about an LED or a digit
+  should be read.
+- **the run's own state** — simulated time, paused, speed, virtual clock — which also
+  lines the report up with a waveform dump.
+- **where the thing is** — the region's rectangle, so "this sits too low" or "these
+  don't line up" carries its own evidence.
+
+It deliberately does *not* carry your OS, Python or library versions: `fpga-sim
+--doctor` reports all of that in more detail, and the record says so. If you are
+sending a bug report, send both.
+
+(If the clipboard is unavailable — no display server, or an SDL build without clipboard
+support — whatever would have been copied is printed to the terminal instead.)
+
+The overlay's type scales with the window, like every other widget. If it is still
+too small or too large on your display, press **Shift+F3** while inspect mode is on:
+it steps through 0.8× · 1× · 1.25× · 1.6× · 2× and wraps, and the readout shows the
+current size. The choice is **remembered across sessions** — it describes your display
+rather than one run, so unlike the overlay's on/off state it is saved.
+
+There is also **`FPGA_SIM_INSPECT_SCALE`** (0.5–4.0) for setting a starting size from
+a shell profile or a launcher. It is read from the environment the app started with,
+so changing *it* means restarting:
+
+```bash
+FPGA_SIM_INSPECT_SCALE=1.5 uv run fpga-sim
+```
+
+Shift+F3 wins over the variable for the rest of the session — a control that visibly
+did nothing would be worse — and a restart brings the variable back. Either way it
+affects the overlay only; the board and the stats panel are untouched.
+
+Inspect mode is a **label, not a mode**: it consumes only F3 and F4, so every button,
+switch and shortcut behaves exactly as it does with the overlay off, and simulation
+keeps running underneath. It is off at every start and is never saved to your session.
+
+Two details worth knowing:
+
+- **LEDs, switches, buttons and digits are not badged.** A board like the DE2-115
+  carries 57 of them and a name painted on each is wider than the thing it names.
+  They already show `LED0` / `SW3` / `BTN1`; hover one to see its address.
+- **A label that would land on top of another is dropped**, so a crowded corner
+  shows fewer names rather than a stack of unreadable ones. Hovering always names
+  the thing under the cursor, including one whose badge was dropped.
+
+Opening a dialog while inspect mode is on leaves the screen behind it dimmed with its
+labels frozen in the snapshot; those are stale until the dialog closes. The live
+readout at the corner always describes the current frame.
+
 ## Board-native runs
 
 Most designs use the generic `clk/sw/btn/led` contract, but a design can instead be

@@ -29,6 +29,7 @@ from fpga_sim.session_config import update_session
 from fpga_sim.sim_link import drain, send
 from fpga_sim.sim_session_log import save_session_stats
 from fpga_sim.stall import StallWatch, find_divider, stall_heading, stall_message
+from fpga_sim.ui import inspect
 from fpga_sim.ui.board_display import BoardInputs, FPGABoard
 from fpga_sim.ui.components import debug_view_enabled, pwm_display_enabled, set_debug_view
 from fpga_sim.ui.constants import get_font as _get_font
@@ -208,6 +209,12 @@ class SimulationScreen:
             # when the sim starts — the overlays live in that strip (U34).
             reserve_footer_space=True,
         )
+        # Relabel the embedded board for inspect mode (U55): it is the same
+        # widget the preview draws, but a report saying ``sim.board.led[3]``
+        # must not be ambiguous with ``preview.board.led[3]`` -- the two screens
+        # lay the board out differently and a finding about one is rarely a
+        # finding about the other.
+        self.board.inspect_scope = "sim"
         # A board with no controls at all can never be "waiting for input", so
         # the advisory's alternative reading does not apply to it (U48).
         self._has_inputs = bool(self.board.switches or self.board.buttons)
@@ -501,15 +508,19 @@ class SimulationScreen:
         chan_map = self._led_chan_map
         n_chan = len(chan_map)
         pwm = pwm_display_enabled()
+        # The **measurement**, computed whatever the display mode is: it is what
+        # the design drove, and an inspect-mode report (U55) must be able to
+        # quote it even when the renderer has been told to show plain on/off.
+        measured = [
+            float(led_duty[i]) if led_duty and i < len(led_duty) else float(bool(led & (1 << i)))
+            for i in range(n_chan)
+        ]
         if not pwm:
             led_levels: list[float] = [float(bool(led & (1 << i))) for i in range(n_chan)]
         else:
-            if led_duty:
-                targets = [float(led_duty[i]) if i < len(led_duty) else 0.0 for i in range(n_chan)]
-                if self.panel.paused:
-                    self._pause_follow_binary(targets, led)
-            else:
-                targets = [float(bool(led & (1 << i))) for i in range(n_chan)]
+            targets = list(measured)
+            if led_duty and self.panel.paused:
+                self._pause_follow_binary(targets, led)
             led_levels = self._smooth("led", targets, dt_s)
         self._shown["led"] = led_levels
         # Route in the channel domain (each channel is an independent measured
@@ -520,8 +531,10 @@ class SimulationScreen:
             role = self._led_chan_roles[ch]
             if role == "mono":
                 self.board.set_led_level(comp, level)
+                self.board.set_led_duty(comp, measured[ch])
             else:
                 self.board.set_led_channel(comp, role, level)
+                self.board.set_led_channel_duty(comp, role, measured[ch])
 
         seg = self._last_state.get("seg")
         if seg is None:
@@ -570,6 +583,13 @@ class SimulationScreen:
         # onto [Stop] before letting go would strand that button down.
         self.board._handle_events([ev for ev in events if not self._chrome_press(ev)])
 
+        # No inspect-mode branch here on purpose (U55).  The board above already
+        # ran ``inspect.handle_key`` on this same event list -- ``_chrome_press``
+        # filters mouse presses only, so every KEYDOWN reaches it -- and the
+        # board is the one widget both screens share, which is what makes it the
+        # right owner.  Handling it here as well toggled the overlay on and then
+        # straight back off within one frame, so a single F3 on the simulation
+        # screen did nothing at all.
         for ev in events:
             if ev.type == pygame.KEYDOWN and ev.key == pygame.K_s:
                 self._show_panel = not self._show_panel
@@ -890,6 +910,11 @@ class SimulationScreen:
         close_pos = (rect.right - close.get_width() - pad, y)
         self.screen.blit(close, close_pos)
         self._stall_rect = pygame.Rect(close_pos, close.get_size())
+        # Addressable (U55): this panel appears exactly when somebody is
+        # confused, which makes it the likeliest thing in the app for them to
+        # want to point at.
+        inspect.zone("stall.panel", rect)
+        inspect.item("stall.close", self._stall_rect)
 
     def _render_frame(self) -> None:
         """Draw board + panel + overlays and flip — unless nothing changed (U23).
@@ -916,6 +941,16 @@ class SimulationScreen:
             self._stall_expanded,
             (self._stall_heading, tuple(self._stall_lines)) if self._stall_expanded else (),
             self.board.visual_signature(),
+            # Inspect mode (U55), exactly as the stall indicator above: an
+            # overlay that can appear on a frame U23 would otherwise skip has to
+            # be part of what "unchanged" means.  The cursor is in the tuple
+            # because the readout names whatever it is over, so moving it
+            # changes the frame; while the overlay is off this is a constant
+            # ``(False, None)`` and costs no redraws at all.
+            (
+                inspect.inspect_enabled(),
+                pygame.mouse.get_pos() if inspect.inspect_enabled() else None,
+            ),
         )
         # A screenshot that is due forces the draw it will capture: on a static
         # design the liveness shot lands on a frame U23 would otherwise skip,
@@ -930,6 +965,20 @@ class SimulationScreen:
             or self.board.hover_active()  # a dwell-timed tooltip may be in play
             or shot_sig is not None  # --screenshots wants this frame (#129)
         )
+
+        # Inspect mode (U55): the run's own state, for the shift-F4 record.
+        # Published only while the overlay is on, so a frame nobody is
+        # inspecting pays nothing for it, and cleared in ``_teardown`` so a
+        # later screen cannot quote a run that has ended.
+        if inspect.inspect_enabled():
+            inspect.set_context(
+                run={
+                    "sim_ns": int(self._last_state.get("sim_ns", 0)),
+                    "paused": self.panel.paused,
+                    "speed": self.panel.speed_factor,
+                    "clock_hz": self.panel.current_clock_hz,
+                }
+            )
 
         draw_us = 0.0
         if dirty:
@@ -959,6 +1008,13 @@ class SimulationScreen:
                     int(self._last_state.get("sim_ns", 0)),
                     self._shot_metrics(),
                 )
+            # After the capture and before the flip: a still is the product's
+            # own frame, and diagnostic chrome in one would contaminate every
+            # generated board image.  ``_interactive`` is the same guard the
+            # stall advisory uses, so a benchmark cannot paint this even if
+            # something managed to turn it on.
+            if self._interactive:
+                inspect.draw_overlay(self.screen)
             pygame.display.flip()
             draw_us = (time.monotonic_ns() - t_draw_start) / 1_000
             self._last_frame_sig = sig
@@ -1048,6 +1104,7 @@ class SimulationScreen:
             ov_font,
             THEME.btn_sim_stop,
             hovered=self._stop_btn_rect.collidepoint(pygame.mouse.get_pos()),
+            region="overlay.stop",
         )
         pause_bx = stop_bx - ov_gap - pause_bw
         self._pause_btn_rect = pygame.Rect(pause_bx, btn_py, pause_bw, btn_h)
@@ -1058,6 +1115,10 @@ class SimulationScreen:
             ov_font,
             pause_style,
             hovered=self._pause_btn_rect.collidepoint(pygame.mouse.get_pos()),
+            # Named rather than derived: this label alternates between
+            # "[PAUSE]" and "[RESUME]", and an address that changes with the
+            # state of the thing it addresses is not an address (U55).
+            region="overlay.pause",
         )
 
         # The stall indicator (U48), left of Pause.  It is phrased as the
@@ -1075,6 +1136,7 @@ class SimulationScreen:
             hint_bw = ov_font.size(hint_label)[0] + ov_pad_x * 2 + icon_d + icon_gap
             hint_bx = pause_bx - ov_gap - hint_bw
             self._stall_hint_rect = pygame.Rect(hint_bx, btn_py, hint_bw, btn_h)
+            inspect.item("stall.offer", self._stall_hint_rect)
             self._draw_stall_hint(self._stall_hint_rect, hint_label, ov_font, icon_d, icon_gap)
 
         # Navigation toolbar (bottom-left, opposite Pause/Stop).
@@ -1130,6 +1192,8 @@ class SimulationScreen:
     def _teardown(self, exit_intent: SimExit, session_start: float) -> None:
         """Stop the child and persist speed + session stats on every exit path."""
         self.child.stop()
+        # The run is over; a report filed from the preview must not quote it.
+        inspect.set_context(run=None)
         update_session(speed_factor=self.panel.speed_factor)
 
         duration = time.monotonic() - session_start
