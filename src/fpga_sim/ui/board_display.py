@@ -1087,9 +1087,18 @@ class FPGABoard:
 
         Paths come from kind and index, never from geometry: ``_layout`` hands
         every widget a fresh rect on resize, so a rect is this frame's hit target
-        and nothing more.  The indices are the boundary-channel indices the
-        screenshot manifest already publishes (``manifest.led_legend``), so a
-        path a reader quotes and a row that legend prints mean the same LED.
+        and nothing more.
+
+        The index is this list's -- the board JSON's own ``leds[]`` order -- and
+        deliberately **not** the boundary-channel numbering
+        :func:`~fpga_sim.manifest.led_legend` publishes.  The two coincide only
+        while a board is all-mono: an RGB site is one widget but three channels,
+        so on the 8-mono + 4-RGB Myminieye Runber ``board.led[7]`` is the fourth
+        RGB site while channel 7 is the eighth mono LED.  The widget index is the
+        right one here because a person points at a *thing on screen*; the
+        channel index is the right one in the manifest because a reader there is
+        indexing a duty array.  Saying which is which is what stops a report
+        being read against the wrong LED.
 
         A no-op while the overlay is off -- every call below returns on a single
         bool read.

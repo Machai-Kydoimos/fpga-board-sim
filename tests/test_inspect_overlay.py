@@ -620,6 +620,48 @@ def test_the_run_block_does_not_outlive_the_run(
     assert "run" not in inspect.report(None), "the run block survived the run"
 
 
+def test_the_led_index_is_a_widget_index_not_a_channel_index(
+    headless_pygame: ModuleType,
+) -> None:
+    """The address indexes widgets; the screenshot manifest indexes channels.
+
+    They coincide only while a board is all-mono, and the docs used to claim
+    they always did -- caught by working a real report against the 8-mono +
+    4-RGB Myminieye Runber, where ``board.led[7]`` is the fourth RGB site and
+    the manifest's channel 7 is the eighth mono LED. A reader who mixed them up
+    would file a report against the wrong LED.
+    """
+    from fpga_sim.board_loader import discover_boards, find_board, get_default_boards_path
+    from fpga_sim.manifest import led_legend
+    from fpga_sim.ui.board_display import FPGABoard
+    from fpga_sim.ui.components import RGBLED
+
+    surface = headless_pygame.display.set_mode((1280, 800))
+    board_def = find_board(discover_boards(get_default_boards_path()), "Myminieye Runber")
+    assert board_def is not None and board_def.num_rgb_leds > 0, "pick a board with RGB LEDs"
+
+    board = FPGABoard(board_def=board_def, screen=surface, width=1280, height=800)
+    inspect.set_inspect(True)
+    board._draw(flip=False)
+
+    region = next(r for r in inspect.regions() if r.path.endswith("board.led[7]"))
+    # Widget 7 is an RGB site, so the value carries three channels.
+    assert isinstance(board.leds[7], RGBLED)
+    assert {k for k, _ in region.value} == {
+        "r_duty_pct",
+        "r_displayed_pct",
+        "g_duty_pct",
+        "g_displayed_pct",
+        "b_duty_pct",
+        "b_displayed_pct",
+    }
+    # Channel 7 in the manifest's numbering is a different LED entirely.
+    assert led_legend(board_def)[7]["role"] == "mono"
+    assert len(board.leds) != board_def.num_led_channels, (
+        "this board cannot distinguish the two numberings"
+    )
+
+
 # ── the seams ─────────────────────────────────────────────────────────────────
 
 
