@@ -22,8 +22,8 @@ as `manifest.json`'s LED legend numbers it.
 | `dlg.generics.apply` | item | `fpga_sim/ui/generics_dialog.py:293` |
 | `dlg.generics.cancel` | item | `fpga_sim/ui/generics_dialog.py:293` |
 | `dlg.generics.defaults` | item | `fpga_sim/ui/generics_dialog.py:293` |
-| `dlg.help.close` | item | `fpga_sim/ui/help_dialog.py:280` |
-| `dlg.help.panel` | zone | `fpga_sim/ui/help_dialog.py:223` |
+| `dlg.help.close` | item | `fpga_sim/ui/help_dialog.py:281` |
+| `dlg.help.panel` | zone | `fpga_sim/ui/help_dialog.py:224` |
 | `dlg.settings.auto-open` | item | `fpga_sim/ui/settings_dialog.py:376` |
 | `dlg.settings.close` | item | `fpga_sim/ui/settings_dialog.py:410` |
 | `dlg.settings.duty-bars` | item | `fpga_sim/ui/settings_dialog.py:376` |
@@ -35,7 +35,7 @@ as `manifest.json`'s LED legend numbers it.
 | `dlg.settings.theme` | item | `fpga_sim/ui/settings_dialog.py:376` |
 | `dlg.settings.waveform` | item | `fpga_sim/ui/settings_dialog.py:376` |
 | `pick.header` | zone | `fpga_sim/ui/vhdl_picker.py:221` |
-| `pick.header.help` | item | `fpga_sim/ui/help_dialog.py:313` |
+| `pick.header.help` | item | `fpga_sim/ui/help_dialog.py:314` |
 | `pick.list` | zone | `fpga_sim/ui/vhdl_picker.py:222` |
 | `preview.board.btn[i]` | widget | `fpga_sim/ui/board_display.py:1051` |
 | `preview.board.chip` | widget | `fpga_sim/ui/board_display.py:1045` |
@@ -48,7 +48,7 @@ as `manifest.json`'s LED legend numbers it.
 | `preview.footer.sim-toggle` | item | `fpga_sim/ui/board_display.py:1350` |
 | `preview.footer.simulate` | item | `fpga_sim/ui/board_display.py:1327` |
 | `preview.header.generics` | item | `fpga_sim/ui/board_display.py:1282` |
-| `preview.header.help` | item | `fpga_sim/ui/help_dialog.py:313` |
+| `preview.header.help` | item | `fpga_sim/ui/help_dialog.py:314` |
 | `preview.header.settings` | item | `fpga_sim/ui/settings_dialog.py:136` |
 | `select.header` | zone | `fpga_sim/ui/board_selector.py:451` |
 | `select.header.chip.component.has-7seg` | widget | `fpga_sim/ui/board_selector.py:567` |
@@ -62,7 +62,7 @@ as `manifest.json`'s LED legend numbers it.
 | `select.header.chip.vendor.lattice` | widget | `fpga_sim/ui/board_selector.py:567` |
 | `select.header.chip.vendor.other` | widget | `fpga_sim/ui/board_selector.py:567` |
 | `select.header.chip.vendor.xilinx` | widget | `fpga_sim/ui/board_selector.py:567` |
-| `select.header.help` | item | `fpga_sim/ui/help_dialog.py:313` |
+| `select.header.help` | item | `fpga_sim/ui/help_dialog.py:314` |
 | `select.header.sort` | item | `fpga_sim/ui/board_selector.py:538` |
 | `select.list` | zone | `fpga_sim/ui/board_selector.py:452` |
 | `sim.board.btn[i]` | widget | `fpga_sim/ui/board_display.py:1051` |

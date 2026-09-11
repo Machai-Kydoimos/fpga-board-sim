@@ -328,6 +328,93 @@ def test_the_scale_override_is_read_clamped_and_survives_junk(
         assert inspect._env_scale() == 1.0, f"{junk!r} did not fall back"
 
 
+def _shift_f3(pygame_mod: ModuleType) -> Any:
+    """A shift-F3 chord, as SDL delivers it."""
+    return pygame_mod.event.Event(
+        pygame_mod.KEYDOWN, key=inspect.TOGGLE_KEY, mod=pygame_mod.KMOD_LSHIFT
+    )
+
+
+def test_shift_f3_cycles_the_size_and_plain_f3_still_toggles(
+    headless_pygame: ModuleType, monkeypatch: Any
+) -> None:
+    """The chord must not fall through to the toggle, or resizing would also hide it."""
+    # ``_isolate_session_file`` (conftest, autouse) already points the session
+    # file at a tmp dir, so the persisting write here touches nothing real.
+    monkeypatch.delenv(inspect._SCALE_ENV, raising=False)
+
+    assert inspect.handle_key(_key(headless_pygame, inspect.TOGGLE_KEY)) is True
+    assert inspect.inspect_enabled() is True
+
+    seen = []
+    for _ in range(len(inspect.SCALE_STEPS) + 1):
+        assert inspect.handle_key(_shift_f3(headless_pygame)) is True
+        assert inspect.inspect_enabled() is True, "shift-F3 also toggled the overlay off"
+        seen.append(inspect.user_scale())
+
+    assert set(seen) == set(inspect.SCALE_STEPS), f"did not visit every step: {seen}"
+    # One press past a full lap lands back where the first press did.
+    assert seen[len(inspect.SCALE_STEPS)] == seen[0], f"the cycle did not wrap: {seen}"
+    # And the plain key is untouched by any of it.
+    assert inspect.handle_key(_key(headless_pygame, inspect.TOGGLE_KEY)) is True
+    assert inspect.inspect_enabled() is False
+
+
+def test_shift_f3_is_left_alone_while_the_overlay_is_off(headless_pygame: ModuleType) -> None:
+    """There is nothing on screen to resize, so the chord is not consumed."""
+    assert inspect.inspect_enabled() is False
+    assert inspect.handle_key(_shift_f3(headless_pygame)) is False
+    assert inspect.user_scale() is None
+
+
+def test_a_chosen_size_beats_the_environment_default(
+    headless_pygame: ModuleType, monkeypatch: Any
+) -> None:
+    """Not env-wins, unlike the waveform settings -- and deliberately so.
+
+    There the variable exists so CI can force a choice. Here it supplies a
+    starting point for somebody about to adjust it by eye, and a control that
+    visibly did nothing would be worse than a variable being superseded by the
+    very reader it was set for. A restart brings the variable back.
+    """
+    monkeypatch.setenv(inspect._SCALE_ENV, "2.0")
+    surface = headless_pygame.display.set_mode((1024, 700))
+
+    inspect.set_user_scale(None)
+    assert inspect._scale(surface) == pytest.approx(_ui_scale(1024, 700) * 2.0)
+
+    inspect.set_user_scale(1.25)
+    assert inspect._scale(surface) == pytest.approx(_ui_scale(1024, 700) * 1.25)
+
+    inspect.set_user_scale(None)
+    assert inspect._scale(surface) == pytest.approx(_ui_scale(1024, 700) * 2.0)
+
+
+def test_a_chosen_size_is_persisted_and_restored(
+    headless_pygame: ModuleType, monkeypatch: Any
+) -> None:
+    """The size describes the display, so it outlives the run -- unlike on/off."""
+    from fpga_sim.__main__ import _restore_session_inspect_scale
+
+    written: dict[str, object] = {}
+    monkeypatch.setattr("fpga_sim.session_config.update_session", lambda **kw: written.update(kw))
+    monkeypatch.delenv(inspect._SCALE_ENV, raising=False)
+    inspect.set_inspect(True)
+    inspect.handle_key(_shift_f3(headless_pygame))
+
+    assert written == {inspect.SCALE_SESSION_KEY: inspect.user_scale()}
+
+    # A fresh process restores it; the on/off state is not restored at all.
+    inspect.set_user_scale(None)
+    _restore_session_inspect_scale({inspect.SCALE_SESSION_KEY: 1.6})
+    assert inspect.user_scale() == 1.6
+    # Junk and a stray bool leave it unset rather than resizing to nothing.
+    for junk in ({"inspect_scale": "big"}, {"inspect_scale": True}, {}):
+        inspect.set_user_scale(None)
+        _restore_session_inspect_scale(junk)
+        assert inspect.user_scale() is None, f"{junk} was accepted"
+
+
 def test_the_readout_wraps_instead_of_spanning_the_window(headless_pygame: ModuleType) -> None:
     """A stamp naming seven facts must not set the box's width to the screen's."""
     font = headless_pygame.font.SysFont("consolas", 14)

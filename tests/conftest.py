@@ -192,6 +192,7 @@ def restore_inspect() -> Iterator[None]:
     inspect.set_inspect(False)
     inspect.set_trace_origins(False)
     inspect.set_context(board=None, design=None, sim=None)
+    inspect.set_user_scale(None)
 
 
 @pytest.fixture

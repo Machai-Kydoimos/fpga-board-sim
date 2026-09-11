@@ -611,15 +611,22 @@ display server, or an SDL build without clipboard support — the same line is p
 to the terminal instead.)
 
 The overlay's type scales with the window, like every other widget. If it is still
-too small or too large on your display, set **`FPGA_SIM_INSPECT_SCALE`** to a
-multiplier (0.5–4.0, default 1.0) — it is read every frame, so you can change it and
-press F3 again without restarting:
+too small or too large on your display, press **Shift+F3** while inspect mode is on:
+it steps through 0.8× · 1× · 1.25× · 1.6× · 2× and wraps, and the readout shows the
+current size. The choice is **remembered across sessions** — it describes your display
+rather than one run, so unlike the overlay's on/off state it is saved.
+
+There is also **`FPGA_SIM_INSPECT_SCALE`** (0.5–4.0) for setting a starting size from
+a shell profile or a launcher. It is read from the environment the app started with,
+so changing *it* means restarting:
 
 ```bash
 FPGA_SIM_INSPECT_SCALE=1.5 uv run fpga-sim
 ```
 
-It affects the overlay only; the board and the stats panel are untouched.
+Shift+F3 wins over the variable for the rest of the session — a control that visibly
+did nothing would be worse — and a restart brings the variable back. Either way it
+affects the overlay only; the board and the stats panel are untouched.
 
 Inspect mode is a **label, not a mode**: it consumes only F3 and F4, so every button,
 switch and shortcut behaves exactly as it does with the overlay off, and simulation

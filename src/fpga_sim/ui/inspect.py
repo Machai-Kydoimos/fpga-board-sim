@@ -97,13 +97,60 @@ _MIN_STAMP_PT = 12
 #: the board or the panel.
 _SCALE_ENV = "FPGA_SIM_INSPECT_SCALE"
 
+#: The sizes **shift-F3** cycles through, smallest first.  Five steps rather than
+#: a continuous control: this is a legibility setting somebody sets once and
+#: forgets, not something to dial in.
+SCALE_STEPS: tuple[float, ...] = (0.8, 1.0, 1.25, 1.6, 2.0)
+
+#: The session key holding the chosen step.  Persisted like ``debug_view`` and
+#: ``led_pwm``, because it describes *this display* rather than this run -- the
+#: on/off state deliberately is not persisted, since that does describe a run.
+SCALE_SESSION_KEY = "inspect_scale"
+
+#: What shift-F3 last chose, or None while nothing has been chosen this session.
+_USER_SCALE: float | None = None
+
+
+def set_user_scale(value: float | None) -> None:
+    """Set (or clear, with None) the size chosen by shift-F3 or restored at start."""
+    global _USER_SCALE
+    _USER_SCALE = None if value is None else max(SCALE_STEPS[0], min(SCALE_STEPS[-1], float(value)))
+
+
+def user_scale() -> float | None:
+    """Return the chosen size, or None when none has been chosen."""
+    return _USER_SCALE
+
+
+def cycle_scale() -> float:
+    """Advance to the next size, persist it, and return it.
+
+    Starts from whatever is in effect -- the env value, or the restored one --
+    so the first press steps up from what the reader is actually looking at
+    rather than from the bottom of the list.
+    """
+    current = _USER_SCALE if _USER_SCALE is not None else _env_scale()
+    nxt = next((step for step in SCALE_STEPS if step > current + 1e-9), SCALE_STEPS[0])
+    set_user_scale(nxt)
+    # Imported here, not at module scope: ``session_config`` is pygame-free and
+    # has no business being pulled in by a module that a headless test may import
+    # only for its path helpers.
+    from fpga_sim.session_config import update_session
+
+    update_session(**{SCALE_SESSION_KEY: nxt})
+    return nxt
+
 
 def _env_scale() -> float:
     """Return the ``FPGA_SIM_INSPECT_SCALE`` multiplier, or 1.0 if unset or junk.
 
-    Read at draw time rather than cached, so a value can be tried without
-    restarting; clamped, because a zero would render nothing and a huge one
-    would fill the window with a single label.
+    Read per frame rather than cached because the read is a dict lookup and
+    caching it would buy nothing measurable -- **not** because it can be changed
+    live.  Nothing in this process writes the variable, so in practice its value
+    is fixed at launch and changing it means restarting.
+
+    Clamped: a zero would render nothing and a huge one would fill the window
+    with a single label.
     """
     raw = os.environ.get(_SCALE_ENV, "").strip()
     if not raw:
@@ -115,8 +162,18 @@ def _env_scale() -> float:
 
 
 def _scale(surface: pygame.Surface) -> float:
-    """Return the overlay's type scale: the window's, times any env override."""
-    return _ui_scale(*surface.get_size()) * _env_scale()
+    """Return the overlay's type scale: the window's, times the overlay's own.
+
+    The overlay's own factor is whatever **shift-F3** last chose; failing that,
+    the environment's.  Deliberately *not* env-wins, unlike the waveform
+    settings: there the variable exists so CI can force a choice, whereas here it
+    supplies a starting point for a person who is about to adjust it by eye. A
+    control that visibly does nothing would be worse than a variable being
+    superseded by the very reader it was set for -- and a restart brings the
+    variable back.
+    """
+    own = _USER_SCALE if _USER_SCALE is not None else _env_scale()
+    return _ui_scale(*surface.get_size()) * own
 
 
 def _px(base: int, scale: float, floor: int) -> int:
@@ -341,13 +398,29 @@ def handle_key(ev: pygame.event.Event) -> bool:
     """Handle F3 / F4 from the event stream; return True when *ev* was consumed.
 
     Called at the top of every screen's KEYDOWN chain.  Consuming the event is
-    what keeps the overlay from changing anything else: these two keys are the
-    only input it ever takes.
+    what keeps the overlay from changing anything else: these three chords are
+    the only input it ever takes, and shift-F3 only while the overlay is visible.
+
+    Function keys (and a modifier on one of them) rather than letters because the
+    board selector appends every printable character to its filter text, so no
+    letter is free app-wide.
     """
     global _LAST_COPY_OK
     if ev.type != pygame.KEYDOWN:
         return False
     if ev.key == TOGGLE_KEY:
+        # Shift first: otherwise the chord would fall through to the toggle and
+        # resizing would also hide the thing being resized.
+        #
+        # ``getattr`` because a synthesized KEYDOWN carries no ``mod`` -- the
+        # same reason ``FPGABoard._handle_events`` reads ``unicode`` that way.
+        # A real SDL event always has it; anything the app posts itself may not,
+        # and an AttributeError here would take down the whole key chain.
+        if getattr(ev, "mod", 0) & pygame.KMOD_SHIFT:
+            if not _ENABLED:
+                return False  # nothing on screen to resize; leave the key alone
+            cycle_scale()
+            return True
         set_inspect(not _ENABLED)
         return True
     if ev.key == COPY_KEY and _ENABLED:
@@ -438,7 +511,8 @@ def _readout_lines(
         (target.path if target is not None else "—", True, _HILITE)
     ]
     rows += [(line, False, _INK_DIM) for line in _wrap(context_stamp(), stamp_font, max_w)]
-    rows.append(("F3 hide · F4 copy", False, _INK_DIM))
+    own = _USER_SCALE if _USER_SCALE is not None else _env_scale()
+    rows.append((f"F3 hide · F4 copy · shift-F3 size {own:g}x", False, _INK_DIM))
     return rows
 
 

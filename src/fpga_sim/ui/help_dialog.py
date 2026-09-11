@@ -62,6 +62,7 @@ SHORTCUTS: list[tuple[str, str]] = [
     ("D", "Toggle duty bars — LED duty as bar length (simulation)"),
     ("F3", "Inspect mode — show a name for each part of the screen"),
     ("F4", "Copy the name under the cursor, to quote in a question"),
+    ("Shift+F3", "Resize the inspect labels (while inspect mode is on)"),
 ]
 
 CONTRACT: list[str] = [
