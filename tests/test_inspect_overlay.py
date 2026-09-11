@@ -597,10 +597,22 @@ def test_measured_duty_survives_the_led_pwm_display_toggle(
     # The measurement is the same in both modes, because it is the same design.
     assert seen[True]["duty_pct"] == pytest.approx(42.0)
     assert seen[False]["duty_pct"] == pytest.approx(42.0)
-    # The displayed value is not, and with PWM off it is the raw bit.
+
+    # PWM **off** is the deterministic half, and the one this test exists for:
+    # the renderer is handed the raw bit, so the displayed value is 100 while
+    # the measurement is 42.  Reporting the former as the latter is the defect.
     assert seen[False]["displayed_pct"] == pytest.approx(100.0)
-    assert seen[True]["displayed_pct"] != pytest.approx(42.0), (
-        "the displayed level happened to equal the duty — pick a case where they differ"
+
+    # PWM **on** is deliberately *not* asserted to differ.  The displayed level
+    # is a persistence-of-vision EMA converging on the duty over wall-clock
+    # time, so on a fast machine it is still near 0 and on a slow one it has
+    # already reached 42 -- an inequality here was a flake that passed locally
+    # and failed on every macOS and Windows runner.  What is true whatever the
+    # timing is that the smoother approaches the target from below and never
+    # overshoots it.
+    smoothed = float(seen[True]["displayed_pct"])  # type: ignore[arg-type]
+    assert 0.0 <= smoothed <= 42.0 + 1e-6, (
+        f"the smoothed level left the range it converges through: {seen[True]}"
     )
 
 
