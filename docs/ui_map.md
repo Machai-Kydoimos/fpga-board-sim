@@ -71,8 +71,8 @@ as `manifest.json`'s LED legend numbers it.
 | `sim.board.leds.ledr` | zone | `fpga_sim/ui/board_display.py:1061` |
 | `sim.board.seg[i]` | widget | `fpga_sim/ui/board_display.py:1053` |
 | `sim.board.sw[i]` | widget | `fpga_sim/ui/board_display.py:1049` |
-| `sim.overlay.pause` | item | `fpga_sim/ui/simulation_screen.py:1081` |
-| `sim.overlay.stop` | item | `fpga_sim/ui/simulation_screen.py:1070` |
+| `sim.overlay.pause` | item | `fpga_sim/ui/simulation_screen.py:1086` |
+| `sim.overlay.stop` | item | `fpga_sim/ui/simulation_screen.py:1075` |
 | `sim.panel` | zone | `fpga_sim/ui/sim_panel.py:387` |
 | `sim.panel.clock` | zone | `fpga_sim/ui/sim_panel.py:390` |
 | `sim.panel.clock.faster` | item | `fpga_sim/ui/sim_panel.py:635` |

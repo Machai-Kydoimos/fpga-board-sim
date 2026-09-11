@@ -577,9 +577,14 @@ class SimulationScreen:
         # onto [Stop] before letting go would strand that button down.
         self.board._handle_events([ev for ev in events if not self._chrome_press(ev)])
 
+        # No inspect-mode branch here on purpose (U55).  The board above already
+        # ran ``inspect.handle_key`` on this same event list -- ``_chrome_press``
+        # filters mouse presses only, so every KEYDOWN reaches it -- and the
+        # board is the one widget both screens share, which is what makes it the
+        # right owner.  Handling it here as well toggled the overlay on and then
+        # straight back off within one frame, so a single F3 on the simulation
+        # screen did nothing at all.
         for ev in events:
-            if inspect.handle_key(ev):
-                continue
             if ev.type == pygame.KEYDOWN and ev.key == pygame.K_s:
                 self._show_panel = not self._show_panel
                 self._board_offset = self.panel.panel_height if self._show_panel else 0

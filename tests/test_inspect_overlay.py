@@ -116,6 +116,132 @@ def test_an_unrelated_key_is_not_consumed(headless_pygame: ModuleType) -> None:
     assert inspect.handle_key(_key(headless_pygame, headless_pygame.K_a)) is False
 
 
+def test_one_f3_through_the_sim_screens_real_loop_turns_it_on(
+    headless_pygame: ModuleType, fake_child: tuple[SimChild, Connection]
+) -> None:
+    """One press, one toggle -- driven through ``_pump_events``, not ``handle_key``.
+
+    This is the regression for the bug that shipped in the first cut and was
+    found by running the app: the simulation screen composes two handlers over
+    **one** event list -- the embedded board's ``_handle_events`` and its own
+    key chain -- so F3 was consumed twice and the overlay turned on and straight
+    back off inside a single frame. Every other screen handles it once, which is
+    exactly why the selector, preview and picker all worked and only the screen
+    somebody actually reaches by running a design did not.
+
+    The existing tests all called ``handle_key`` directly or set the flag, so
+    none of them composed anything. Press the key through the loop.
+    """
+    child, _conn = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+
+    headless_pygame.event.post(_key(headless_pygame, inspect.TOGGLE_KEY))
+    screen._pump_events()
+    assert inspect.inspect_enabled() is True, "one F3 did not turn the overlay on"
+
+    headless_pygame.event.post(_key(headless_pygame, inspect.TOGGLE_KEY))
+    screen._pump_events()
+    assert inspect.inspect_enabled() is False, "a second F3 did not turn it off"
+
+
+def test_one_f3_through_every_other_screens_real_loop(headless_pygame: ModuleType) -> None:
+    """The same single-toggle rule on the selector, the picker and the preview.
+
+    Each dispatches KEYDOWN its own way, so "it works on one" says nothing about
+    the others -- the sim-screen bug is the proof.
+    """
+    from fpga_sim.board_loader import discover_boards, find_board, get_default_boards_path
+    from fpga_sim.ui.board_display import FPGABoard
+    from fpga_sim.ui.board_selector import BoardSelector
+    from fpga_sim.ui.vhdl_picker import VHDLFilePicker
+
+    surface = headless_pygame.display.set_mode((1024, 700))
+    boards = discover_boards(get_default_boards_path())
+    board_def = find_board(boards, "DE10-Standard")
+
+    selector = BoardSelector(boards, surface)
+    picker = VHDLFilePicker(surface, str(REPO_ROOT / "hdl"))
+    preview = FPGABoard(board_def=board_def, screen=surface, width=1024, height=700)
+
+    presses: list[tuple[str, object]] = [
+        ("select", lambda ev: selector._handle_keydown(ev)),
+        ("pick", lambda ev: picker._handle_keydown(ev)),
+        ("preview", lambda ev: preview._handle_events([ev])),
+    ]
+    for name, press in presses:
+        inspect.set_inspect(False)
+        press(_key(headless_pygame, inspect.TOGGLE_KEY))  # type: ignore[operator]
+        assert inspect.inspect_enabled() is True, f"one F3 did nothing on {name}"
+        press(_key(headless_pygame, inspect.TOGGLE_KEY))  # type: ignore[operator]
+        assert inspect.inspect_enabled() is False, f"a second F3 did nothing on {name}"
+
+
+def test_one_f4_through_a_real_loop_copies_exactly_once(
+    headless_pygame: ModuleType, fake_child: tuple[SimChild, Connection], monkeypatch: Any
+) -> None:
+    """F4 was double-handled by the same defect as F3 -- count the copies, do not infer them.
+
+    The F3 symptom was loud (on-then-off, so nothing happened). F4's was silent:
+    two copies of identical text land on the clipboard looking exactly like one,
+    and only the duplicated stdout line gave it away. A boolean "did it copy?"
+    assertion passes either way, so this counts.
+    """
+    child, _conn = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+
+    copies: list[str] = []
+
+    def _spy(text: str) -> bool:
+        copies.append(text)
+        return True
+
+    monkeypatch.setattr(inspect, "copy_to_clipboard", _spy)
+
+    inspect.set_inspect(True)
+    screen._events_this_frame = True
+    screen._render_frame()
+    target = next(r for r in inspect.regions() if r.path == "sim.overlay.stop")
+    headless_pygame.mouse.set_pos(target.rect.center)
+    headless_pygame.event.pump()
+
+    headless_pygame.event.post(_key(headless_pygame, inspect.COPY_KEY))
+    screen._pump_events()
+    assert len(copies) == 1, f"one F4 produced {len(copies)} copies"
+    assert copies[0].startswith("sim.overlay.stop · ")
+
+
+def test_one_f4_on_the_preview_copies_exactly_once(
+    headless_pygame: ModuleType, monkeypatch: Any
+) -> None:
+    """The preview routes keys through ``FPGABoard._handle_events`` instead."""
+    from fpga_sim.board_loader import discover_boards, find_board, get_default_boards_path
+    from fpga_sim.ui.board_display import FPGABoard
+
+    surface = headless_pygame.display.set_mode((1024, 700))
+    board_def = find_board(discover_boards(get_default_boards_path()), "DE10-Standard")
+    board = FPGABoard(board_def=board_def, screen=surface, width=1024, height=700)
+
+    copies: list[str] = []
+
+    def _spy(text: str) -> bool:
+        copies.append(text)
+        return True
+
+    monkeypatch.setattr(inspect, "copy_to_clipboard", _spy)
+
+    inspect.set_inspect(True)
+    board._draw(flip=False)
+    target = next(r for r in inspect.regions() if r.path.endswith("board.led[0]"))
+    headless_pygame.mouse.set_pos(target.rect.center)
+    headless_pygame.event.pump()
+
+    board._handle_events([_key(headless_pygame, inspect.COPY_KEY)])
+    assert len(copies) == 1, f"one F4 produced {len(copies)} copies"
+    assert copies[0].startswith("preview.board.led[0] · ")
+
+
 # ── addressing ────────────────────────────────────────────────────────────────
 
 
