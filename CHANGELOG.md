@@ -137,8 +137,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   moves.
 
   **Shift+F4** copies a fuller record as JSON, for when something is actually
-  wrong rather than merely worth a comment: what the widget was showing (an
-  LED's measured duty, a switch's position, a digit's segment bits), how the
+  wrong rather than merely worth a comment: what the widget was showing (a
+  switch's position, a digit's segment bits, and for an LED **both** its
+  measured duty and the level displayed — with LED PWM off the renderer is
+  handed the raw bit, so an LED driven at 42% displays 100%, and a `display`
+  block names the render modes so that gap reads as a setting rather than a
+  bug), how the
   design was run (generic / board-native / pin map, plus any generic overrides),
   and the run's own state (simulated time, paused, speed, virtual clock). Two
   formats because the two readers want opposite things — somebody filing a dozen

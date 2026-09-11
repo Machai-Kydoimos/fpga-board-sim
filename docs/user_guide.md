@@ -612,9 +612,13 @@ after the code moves.
 rather than merely worth a comment. It adds the three things a reader cannot see on
 screen and cannot guess:
 
-- **what the widget was showing** — an LED's measured duty, an RGB site's per-channel
-  mix, a switch's position, a digit's segment bits. "This LED looks wrong" becomes a
-  number.
+- **what the widget was showing** — a switch's position, a digit's segment bits, and
+  for an LED **both** its measured duty and the level actually displayed. Those two
+  genuinely differ: with [LED PWM](#led-pwm-and-speed) switched off the renderer is
+  handed the plain on/off bit, so an LED the design drives at 42% displays 100%, and
+  even with PWM on the displayed value is a persistence-of-vision average rather than
+  the measurement. The record carries a `display` block naming the render modes in
+  force, so the gap between the two reads as the setting it is rather than as a bug.
 - **how the design was run** — generic contract, board-native, or pin map, plus any
   generic overrides in force. This decides how every complaint about an LED or a digit
   should be read.

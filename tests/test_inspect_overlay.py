@@ -475,6 +475,9 @@ def test_shift_f4_copies_valid_json_carrying_what_a_reader_cannot_see(
         simulator={"label": "GHDL-LLVM", "version": "GHDL 5.0.0"},
         run={"sim_ns": 12400000, "paused": False, "speed": 1.0, "clock_hz": 50000000.0},
     )
+    # Deliberately unequal: a fixture where measurement and display agree could
+    # not catch the record reading the wrong one of them.
+    board.leds[3].duty = 0.37
     board.leds[3].level = 0.42
     board._draw(flip=False)
 
@@ -492,7 +495,7 @@ def test_shift_f4_copies_valid_json_carrying_what_a_reader_cannot_see(
     assert doc["design"]["generics"] == {"COUNTER_BITS": "17"}
     assert doc["run"]["sim_ns"] == 12400000
     # And the one they can see but cannot quote precisely.
-    assert doc["value"] == {"duty_pct": 42.0}
+    assert doc["value"] == {"duty_pct": 37.0, "displayed_pct": 42.0}
     # Host and toolchain are deliberately absent; the record says where to get them.
     assert "host" not in doc and "python" not in doc
     assert "--doctor" in doc["more"]
@@ -539,14 +542,66 @@ def test_an_led_reports_its_duty_even_when_fully_on_or_off(
     board = FPGABoard(board_def=board_def, screen=surface, width=1280, height=800)
     inspect.set_inspect(True)
 
-    for level in (0.0, 1.0, 0.375):
-        board.leds[0].level = level
+    for duty in (0.0, 1.0, 0.375):
+        board.leds[0].duty = duty
+        board.leds[0].level = duty
         board._draw(flip=False)
         region = next(r for r in inspect.regions() if r.path.endswith("board.led[0]"))
-        assert dict(region.value) == {"duty_pct": round(level * 100, 1)}
+        assert dict(region.value) == {
+            "duty_pct": round(duty * 100, 1),
+            "displayed_pct": round(duty * 100, 1),
+        }
     # The tooltip's own rule is unchanged: it still hides the binary cases.
     board.leds[0].level = 1.0
     assert board.leds[0].tooltip_extra == []
+
+
+def test_measured_duty_survives_the_led_pwm_display_toggle(
+    headless_pygame: ModuleType,
+    fake_child: tuple[SimChild, Connection],
+    restore_pwm_display: None,
+) -> None:
+    """Reporting the *displayed* level as a duty would be a lie in both modes.
+
+    With the LED PWM display off (U47) the renderer is handed the raw bit, so an
+    LED the design drives at 42% displays 100%. With it on, the displayed value
+    is a persistence-of-vision EMA of the measurement, so it is *still* not the
+    measurement. The record therefore carries both, and the ``display`` block
+    says which mode produced the second -- otherwise the gap between them reads
+    as a bug.
+
+    Driven through the real link and the real ``_apply_state``, because the
+    whole defect lives in that routing rather than in anything the record does.
+    """
+    from fpga_sim.sim_link import send
+    from fpga_sim.ui.components import set_pwm_display
+
+    child, conn = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    inspect.set_inspect(True)
+
+    send(conn, "state", {"led": 0b1, "led_duty": [0.42, 0.0, 0.0, 0.0], "sim_ns": 1000})
+    _pump_state(screen)
+
+    seen = {}
+    for pwm in (True, False):
+        set_pwm_display(pwm)
+        screen._apply_state()
+        screen._events_this_frame = True
+        screen._render_frame()
+        region = next(r for r in inspect.regions() if r.path.endswith("board.led[0]"))
+        seen[pwm] = dict(region.value)
+        assert inspect.report(region)["display"]["led_pwm"] is pwm
+
+    # The measurement is the same in both modes, because it is the same design.
+    assert seen[True]["duty_pct"] == pytest.approx(42.0)
+    assert seen[False]["duty_pct"] == pytest.approx(42.0)
+    # The displayed value is not, and with PWM off it is the raw bit.
+    assert seen[False]["displayed_pct"] == pytest.approx(100.0)
+    assert seen[True]["displayed_pct"] != pytest.approx(42.0), (
+        "the displayed level happened to equal the duty — pick a case where they differ"
+    )
 
 
 def test_the_run_block_does_not_outlive_the_run(

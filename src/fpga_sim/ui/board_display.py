@@ -109,19 +109,31 @@ class _Positionable(Protocol):
 
 
 def _led_value(led: LED) -> tuple[tuple[str, object], ...]:
-    """Return the measured duty an LED is showing, as the report quotes it (U55).
+    """Return what an LED is doing, as the report quotes it (U55): both halves.
 
-    Reported unconditionally, unlike the hover tooltip's version, which hides a
-    duty of exactly 0 or 100% as uninformative.  In a report it is the opposite:
+    *Measured* duty and *displayed* level are reported separately because they
+    genuinely differ, and reporting only the second under the name of the first
+    would be a lie: with the LED PWM display switched off (U47) the renderer is
+    handed the raw bit, so a channel the design drives at 42% displays -- and
+    would have reported -- 100%.  Even with PWM on, the displayed value is a
+    persistence-of-vision EMA of the measurement rather than the measurement.
+    The screenshot manifest publishes the same pair for the same reason (#388).
+
+    Both are reported unconditionally, unlike the hover tooltip's version, which
+    hides an exact 0 or 100% as uninformative.  In a report it is the opposite:
     "this LED looks wrong" is answered by the number whatever the number is, and
     a missing field reads as missing data rather than as a clean 0.
     """
     if isinstance(led, RGBLED):
-        return tuple(
-            (f"{ch}_pct", round(level * 100, 1))
-            for ch, level in zip("rgb", led.levels, strict=False)
-        )
-    return (("duty_pct", round(led.level * 100, 1)),)
+        rows: list[tuple[str, object]] = []
+        for ch, duty, level in zip("rgb", led.duties, led.levels, strict=False):
+            rows.append((f"{ch}_duty_pct", round(duty * 100, 1)))
+            rows.append((f"{ch}_displayed_pct", round(level * 100, 1)))
+        return tuple(rows)
+    return (
+        ("duty_pct", round(led.duty * 100, 1)),
+        ("displayed_pct", round(led.level * 100, 1)),
+    )
 
 
 def _seg_duty(seg: SevenSeg) -> list[float]:
@@ -395,6 +407,27 @@ class FPGABoard:
         """Set an LED's brightness by index, as a duty cycle in [0, 1] (U9)."""
         if 0 <= index < len(self.leds):
             self.leds[index].level = max(0.0, min(1.0, level))
+
+    def set_led_duty(self, index: int, duty: float) -> None:
+        """Record an LED's **measured** duty, independent of what is displayed.
+
+        A separate setter rather than another argument on
+        :meth:`set_led_level`: the two values travel together but mean different
+        things, and every existing caller of the display setter means exactly
+        what it says.
+        """
+        if 0 <= index < len(self.leds):
+            self.leds[index].duty = max(0.0, min(1.0, duty))
+
+    def set_led_channel_duty(self, index: int, channel: str, duty: float) -> None:
+        """Record one RGB channel's measured duty (``channel`` = "r"/"g"/"b")."""
+        if 0 <= index < len(self.leds):
+            widget = self.leds[index]
+            clamped = max(0.0, min(1.0, duty))
+            if isinstance(widget, RGBLED) and channel in "rgb":
+                widget.duties["rgb".index(channel)] = clamped
+            else:
+                widget.duty = clamped
 
     def set_led_channel(self, index: int, channel: str, level: float) -> None:
         """Set one channel of an RGB LED by index (``channel`` = "r"/"g"/"b", U37).

@@ -436,6 +436,18 @@ def context_stamp() -> str:
     return " · ".join(parts)
 
 
+def _display_modes() -> dict[str, bool]:
+    """Return the global render modes that change what is on screen.
+
+    Imported inside the function for the same cycle reason as
+    :func:`_theme_name`: ``ui.components`` reaches ``ui.theme``, which reaches
+    ``ui.widgets.button``, which imports this module.
+    """
+    from fpga_sim.ui.components import debug_view_enabled, pwm_display_enabled
+
+    return {"led_pwm": pwm_display_enabled(), "duty_bars": debug_view_enabled()}
+
+
 def report(target: Region | None) -> dict[str, Any]:
     """Assemble the full record behind **shift-F4**, as plain JSON-able data.
 
@@ -461,6 +473,11 @@ def report(target: Region | None) -> dict[str, Any]:
     surface = pygame.display.get_surface()
     doc["window"] = list(surface.get_size()) if surface is not None else None
     doc["theme"] = _theme_name()
+    # The render modes that change what a reader is looking at (U47, U38).  With
+    # ``led_pwm`` off the renderer is handed the raw bit, so ``displayed_pct``
+    # is 0 or 100 while ``duty_pct`` is what the design actually drove -- and
+    # without this field the gap between the two would look like a bug.
+    doc["display"] = _display_modes()
     doc["at_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     doc["more"] = "run `fpga-sim --doctor` for OS, Python, pygame and simulator versions"
     return doc

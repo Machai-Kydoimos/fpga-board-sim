@@ -508,15 +508,19 @@ class SimulationScreen:
         chan_map = self._led_chan_map
         n_chan = len(chan_map)
         pwm = pwm_display_enabled()
+        # The **measurement**, computed whatever the display mode is: it is what
+        # the design drove, and an inspect-mode report (U55) must be able to
+        # quote it even when the renderer has been told to show plain on/off.
+        measured = [
+            float(led_duty[i]) if led_duty and i < len(led_duty) else float(bool(led & (1 << i)))
+            for i in range(n_chan)
+        ]
         if not pwm:
             led_levels: list[float] = [float(bool(led & (1 << i))) for i in range(n_chan)]
         else:
-            if led_duty:
-                targets = [float(led_duty[i]) if i < len(led_duty) else 0.0 for i in range(n_chan)]
-                if self.panel.paused:
-                    self._pause_follow_binary(targets, led)
-            else:
-                targets = [float(bool(led & (1 << i))) for i in range(n_chan)]
+            targets = list(measured)
+            if led_duty and self.panel.paused:
+                self._pause_follow_binary(targets, led)
             led_levels = self._smooth("led", targets, dt_s)
         self._shown["led"] = led_levels
         # Route in the channel domain (each channel is an independent measured
@@ -527,8 +531,10 @@ class SimulationScreen:
             role = self._led_chan_roles[ch]
             if role == "mono":
                 self.board.set_led_level(comp, level)
+                self.board.set_led_duty(comp, measured[ch])
             else:
                 self.board.set_led_channel(comp, role, level)
+                self.board.set_led_channel_duty(comp, role, measured[ch])
 
         seg = self._last_state.get("seg")
         if seg is None:
