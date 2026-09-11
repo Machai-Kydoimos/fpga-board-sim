@@ -108,6 +108,27 @@ class _Positionable(Protocol):
     rect: pygame.Rect
 
 
+def _led_value(led: LED) -> tuple[tuple[str, object], ...]:
+    """Return the measured duty an LED is showing, as the report quotes it (U55).
+
+    Reported unconditionally, unlike the hover tooltip's version, which hides a
+    duty of exactly 0 or 100% as uninformative.  In a report it is the opposite:
+    "this LED looks wrong" is answered by the number whatever the number is, and
+    a missing field reads as missing data rather than as a clean 0.
+    """
+    if isinstance(led, RGBLED):
+        return tuple(
+            (f"{ch}_pct", round(level * 100, 1))
+            for ch, level in zip("rgb", led.levels, strict=False)
+        )
+    return (("duty_pct", round(led.level * 100, 1)),)
+
+
+def _seg_duty(seg: SevenSeg) -> list[float]:
+    """Per-segment measured duty for one digit, in ``_BIT`` order (a..g, dp)."""
+    return [round(level * 100, 1) for level in seg.levels]
+
+
 class FPGABoard:
     """Pygame window that renders an FPGA-style board.
 
@@ -1044,13 +1065,21 @@ class FPGABoard:
             return
         inspect.widget("board.chip", self.fpga_chip.rect)
         for i, led in enumerate(self.leds):
-            inspect.widget(f"board.led[{i}]", led.rect)
+            inspect.widget(f"board.led[{i}]", led.rect, _led_value(led))
         for sw in self.switches:
-            inspect.widget(f"board.sw[{sw.index}]", sw.rect)
+            inspect.widget(f"board.sw[{sw.index}]", sw.rect, (("on", sw.state),))
         for btn in self.buttons:
-            inspect.widget(f"board.btn[{btn.index}]", btn.rect)
+            inspect.widget(
+                f"board.btn[{btn.index}]",
+                btn.rect,
+                (("pressed", btn.pressed), ("latched", btn.latched)),
+            )
         for seg in self._seven_segs:
-            inspect.widget(f"board.seg[{seg.index}]", seg.rect)
+            inspect.widget(
+                f"board.seg[{seg.index}]",
+                seg.rect,
+                (("bits", f"0x{seg.bits:02X}"), ("duty_pct", _seg_duty(seg))),
+            )
         # LED banks are a zone rather than an item: on a two-bank board (LEDR +
         # LEDG) "which bank" is a real question, and the bank's name is the
         # board's own.

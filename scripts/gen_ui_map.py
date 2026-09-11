@@ -129,7 +129,11 @@ def collect() -> list[Region]:
 
     inspect.set_inspect(True)
     inspect.set_trace_origins(True)
-    inspect.set_context(board=_BOARD, design=vhdl.name, sim=sim.label)
+    inspect.set_context(
+        board={"name": _BOARD},
+        design={"file": vhdl.name, "mode": "generic"},
+        simulator={"label": sim.label},
+    )
 
     out: list[Region] = []
 

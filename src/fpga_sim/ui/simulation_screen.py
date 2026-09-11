@@ -955,6 +955,20 @@ class SimulationScreen:
             or shot_sig is not None  # --screenshots wants this frame (#129)
         )
 
+        # Inspect mode (U55): the run's own state, for the shift-F4 record.
+        # Published only while the overlay is on, so a frame nobody is
+        # inspecting pays nothing for it, and cleared in ``_teardown`` so a
+        # later screen cannot quote a run that has ended.
+        if inspect.inspect_enabled():
+            inspect.set_context(
+                run={
+                    "sim_ns": int(self._last_state.get("sim_ns", 0)),
+                    "paused": self.panel.paused,
+                    "speed": self.panel.speed_factor,
+                    "clock_hz": self.panel.current_clock_hz,
+                }
+            )
+
         draw_us = 0.0
         if dirty:
             t_draw_start = time.monotonic_ns()
@@ -1166,6 +1180,8 @@ class SimulationScreen:
     def _teardown(self, exit_intent: SimExit, session_start: float) -> None:
         """Stop the child and persist speed + session stats on every exit path."""
         self.child.stop()
+        # The run is over; a report filed from the preview must not quote it.
+        inspect.set_context(run=None)
         update_session(speed_factor=self.panel.speed_factor)
 
         duration = time.monotonic() - session_start

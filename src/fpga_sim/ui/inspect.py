@@ -46,10 +46,12 @@ into invisibility.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any
 
 import pygame
 
@@ -200,13 +202,22 @@ class Region:
     rect: pygame.Rect
     kind: str  # "zone" | "item" | "widget"
     origin: str = ""
+    #: What this thing was showing when the frame was drawn -- an LED's measured
+    #: duty, a switch's position.  Supplied by whoever registers it, because
+    #: this module deliberately knows nothing about widgets; empty for anything
+    #: with no value worth quoting (a zone, a button).
+    value: tuple[tuple[str, object], ...] = ()
 
 
 _ENABLED = False
 _TRACE_ORIGINS = False
 _SCOPE = ""
 _REGIONS: list[Region] = []
-_CONTEXT: dict[str, str] = {}
+#: Structured facts about what the app is working on, published by whoever
+#: knows them: the controller sets board / design / simulator at each screen
+#: boundary, the simulation screen sets ``run`` while it is on screen.  Values
+#: are plain data so the JSON report can hand them straight to ``json.dumps``.
+_CONTEXT: dict[str, Any] = {}
 #: Set by :func:`draw_overlay`; read by the copy key and by the tests.
 _LAST_COPY_OK: bool | None = None
 
@@ -266,18 +277,29 @@ def _origin() -> str:
     return ""
 
 
-def set_context(**fields: str | None) -> None:
-    """Record what the app is working on, for the context stamp.
+def set_context(**fields: object) -> None:
+    """Record what the app is working on, for the stamp and the JSON report.
 
     Called when a fact *changes* (a board is chosen, a design loads, a run
     starts), never per frame.  A ``None`` value clears its field, which is how
-    "no design loaded" is said.
+    "no design loaded" and "not in a run" are said.
     """
     for key, value in fields.items():
         if value is None:
             _CONTEXT.pop(key, None)
         else:
-            _CONTEXT[key] = str(value)
+            _CONTEXT[key] = value
+
+
+def clear_context() -> None:
+    """Forget every recorded fact (the tests' reset, and a hard screen change)."""
+    _CONTEXT.clear()
+
+
+def _fact(group: str, key: str) -> object | None:
+    """Read one field out of a context group, tolerating a missing group."""
+    block = _CONTEXT.get(group)
+    return block.get(key) if isinstance(block, dict) else None
 
 
 def begin_frame(scope: str) -> None:
@@ -302,7 +324,7 @@ def item(name: str, rect: pygame.Rect) -> None:
     _register(name, rect, "item")
 
 
-def widget(name: str, rect: pygame.Rect) -> None:
+def widget(name: str, rect: pygame.Rect, value: tuple[tuple[str, object], ...] = ()) -> None:
     """Register a board part: addressable and hoverable, but never badged.
 
     The distinction is legibility, and it is the whole reason the overlay stays
@@ -313,14 +335,18 @@ def widget(name: str, rect: pygame.Rect) -> None:
     say it in the overlay's spelling, which the hover readout does one at a
     time.
     """
-    _register(name, rect, "widget")
+    _register(name, rect, "widget", value)
 
 
-def _register(name: str, rect: pygame.Rect, kind: str) -> None:
+def _register(
+    name: str, rect: pygame.Rect, kind: str, value: tuple[tuple[str, object], ...] = ()
+) -> None:
     if not _ENABLED:
         return
     path = f"{_SCOPE}.{name}" if _SCOPE else name
-    _REGIONS.append(Region(path, pygame.Rect(rect), kind, _origin() if _TRACE_ORIGINS else ""))
+    _REGIONS.append(
+        Region(path, pygame.Rect(rect), kind, _origin() if _TRACE_ORIGINS else "", value)
+    )
 
 
 def regions() -> tuple[Region, ...]:
@@ -369,6 +395,18 @@ def slug(label: str) -> str:
     return "-".join(part for part in "".join(out).split("-") if part) or UNNAMED
 
 
+def _theme_name() -> str:
+    """Return the active theme's name.
+
+    Imported inside the function, not at module scope: ``ui.theme`` imports
+    ``ButtonStyle`` from ``ui.widgets.button``, which imports *this* module to
+    register every button it draws.  A top-level import would close that loop.
+    """
+    from fpga_sim.ui.theme import current_theme_name
+
+    return current_theme_name()
+
+
 def context_stamp() -> str:
     """One line describing what the app was showing.
 
@@ -378,20 +416,59 @@ def context_stamp() -> str:
     parts: list[str] = [f"fpga-sim {app_version()}"]
     if _SCOPE:
         parts.append(_SCOPE)
-    parts.extend(_CONTEXT[k] for k in ("board", "design", "sim") if k in _CONTEXT)
-    # Imported here, not at module scope: ``ui.theme`` imports ``ButtonStyle``
-    # from ``ui.widgets.button``, which imports *this* module to register every
-    # button it draws.  A top-level import would close that loop.  The cost is a
-    # ``sys.modules`` lookup on the frames where the overlay is actually
-    # painting, which is the only time this function runs at all.
-    from fpga_sim.ui.theme import current_theme_name
-
-    parts.append(current_theme_name())
+    board = _fact("board", "name")
+    if board:
+        parts.append(str(board))
+    design = _fact("design", "file")
+    if design:
+        # The mode is the fact a reader cannot see on screen and cannot guess,
+        # and it decides how to read every complaint about an LED or a digit.
+        mode = _fact("design", "mode")
+        parts.append(f"{design} ({mode})" if mode else str(design))
+    sim = _fact("simulator", "label")
+    if sim:
+        parts.append(str(sim))
+    parts.append(_theme_name())
     surface = pygame.display.get_surface()
     if surface is not None:
         w, h = surface.get_size()
         parts.append(f"{w}x{h}")
     return " · ".join(parts)
+
+
+def report(target: Region | None) -> dict[str, Any]:
+    """Assemble the full record behind **shift-F4**, as plain JSON-able data.
+
+    Everything here is either something the reader cannot see on screen (the
+    design's mode, the generics in force) or something they can see but cannot
+    quote precisely (an LED's measured duty, the simulated time).  What is
+    deliberately absent is the host and toolchain -- OS, Python, pygame, the
+    simulator's banner -- because ``fpga-sim --doctor`` already reports all of
+    it, in more detail and in a form somebody can be asked for separately.  The
+    ``more`` field says so, so the record explains its own gap.
+    """
+    doc: dict[str, Any] = {
+        "at": target.path if target is not None else None,
+        "app": app_version(),
+        "screen": _SCOPE or None,
+    }
+    if target is not None and target.value:
+        doc["value"] = dict(target.value)
+    for group in ("board", "design", "simulator", "run"):
+        block = _CONTEXT.get(group)
+        if block:
+            doc[group] = block
+    surface = pygame.display.get_surface()
+    doc["window"] = list(surface.get_size()) if surface is not None else None
+    doc["theme"] = _theme_name()
+    doc["at_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    doc["more"] = "run `fpga-sim --doctor` for OS, Python, pygame and simulator versions"
+    return doc
+
+
+def report_json(target: Region | None) -> str:
+    """Render :func:`report` as the text shift-F4 copies."""
+    return json.dumps(report(target), indent=2, ensure_ascii=False)
 
 
 def handle_key(ev: pygame.event.Event) -> bool:
@@ -425,11 +502,19 @@ def handle_key(ev: pygame.event.Event) -> bool:
         return True
     if ev.key == COPY_KEY and _ENABLED:
         target = hovered(pygame.mouse.get_pos())
-        path = target.path if target is not None else "(no region)"
-        _LAST_COPY_OK = copy_to_clipboard(f"{path} · {context_stamp()}")
+        if getattr(ev, "mod", 0) & pygame.KMOD_SHIFT:
+            # The full record.  Two formats rather than one because the two
+            # readers want opposite things: somebody filing a dozen findings in
+            # a review wants a line they can paste inline, and somebody
+            # reporting "it is broken" wants everything, machine-readable.
+            text = report_json(target)
+        else:
+            path = target.path if target is not None else "(no region)"
+            text = f"{path} · {context_stamp()}"
+        _LAST_COPY_OK = copy_to_clipboard(text)
         # Also to stdout: a clipboard can be absent (no display server, an SDL
         # build without scrap), and a terminal is the fallback that always works.
-        print(f"[fpga-sim] {path} · {context_stamp()}", flush=True)
+        print(f"[fpga-sim] {text}", flush=True)
         return True
     return False
 
@@ -512,7 +597,7 @@ def _readout_lines(
     ]
     rows += [(line, False, _INK_DIM) for line in _wrap(context_stamp(), stamp_font, max_w)]
     own = _USER_SCALE if _USER_SCALE is not None else _env_scale()
-    rows.append((f"F3 hide · F4 copy · shift-F3 size {own:g}x", False, _INK_DIM))
+    rows.append((f"F3 hide · F4 copy · shift-F4 details · shift-F3 size {own:g}x", False, _INK_DIM))
     return rows
 
 

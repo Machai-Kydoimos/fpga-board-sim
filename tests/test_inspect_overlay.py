@@ -16,7 +16,9 @@ Settings rows sharing one address.
 
 from __future__ import annotations
 
+import json
 import re
+import time
 from pathlib import Path
 from types import ModuleType
 from typing import TYPE_CHECKING, Any
@@ -26,6 +28,7 @@ import pytest
 from fpga_sim.ui import inspect
 from fpga_sim.ui.clipboard import copy_to_clipboard, read_clipboard
 from fpga_sim.ui.constants import _ui_scale
+from fpga_sim.ui.results import SimExit
 from tests.test_simulation_screen import _make_screen, _pump_state
 
 if TYPE_CHECKING:
@@ -269,7 +272,11 @@ def test_a_label_that_reduces_to_nothing_is_loud(headless_pygame: ModuleType) ->
 def test_context_stamp_names_the_build_and_the_state(headless_pygame: ModuleType) -> None:
     """The stamp carries what a report needs and cannot be guessed from a path."""
     inspect.begin_frame("sim")
-    inspect.set_context(board="DE10-Standard", design="blinky.vhd", sim="GHDL-LLVM")
+    inspect.set_context(
+        board={"name": "DE10-Standard"},
+        design={"file": "blinky.vhd", "mode": "generic"},
+        simulator={"label": "GHDL-LLVM"},
+    )
     stamp = inspect.context_stamp()
     assert "fpga-sim " in stamp
     for fact in ("sim", "DE10-Standard", "blinky.vhd", "GHDL-LLVM"):
@@ -278,7 +285,7 @@ def test_context_stamp_names_the_build_and_the_state(headless_pygame: ModuleType
 
 def test_context_fields_can_be_cleared(headless_pygame: ModuleType) -> None:
     """``None`` is how "no design loaded" gets said."""
-    inspect.set_context(design="blinky.vhd")
+    inspect.set_context(design={"file": "blinky.vhd", "mode": "generic"})
     assert "blinky.vhd" in inspect.context_stamp()
     inspect.set_context(design=None)
     assert "blinky.vhd" not in inspect.context_stamp()
@@ -428,6 +435,134 @@ def test_the_readout_wraps_instead_of_spanning_the_window(headless_pygame: Modul
     # Wrapped on the separator, so no fact is split across two lines.
     assert " · ".join(lines) == stamp
     assert "DE10-Standard" in " ".join(lines)
+
+
+def _shift_f4(pygame_mod: ModuleType) -> Any:
+    """A shift-F4 chord, as SDL delivers it."""
+    return pygame_mod.event.Event(
+        pygame_mod.KEYDOWN, key=inspect.COPY_KEY, mod=pygame_mod.KMOD_LSHIFT
+    )
+
+
+def test_shift_f4_copies_valid_json_carrying_what_a_reader_cannot_see(
+    headless_pygame: ModuleType, monkeypatch: Any
+) -> None:
+    """The record must parse, and must carry the facts that are invisible on screen.
+
+    Asserted against the JSON the product actually produced and re-parsed, not
+    against a dict rebuilt here -- a record that cannot survive ``json.loads`` is
+    no use to whoever receives it.
+    """
+    from fpga_sim.board_loader import discover_boards, find_board, get_default_boards_path
+    from fpga_sim.ui.board_display import FPGABoard
+
+    surface = headless_pygame.display.set_mode((1280, 800))
+    board_def = find_board(discover_boards(get_default_boards_path()), "DE10-Standard")
+    board = FPGABoard(board_def=board_def, screen=surface, width=1280, height=800)
+    board.inspect_scope = "sim"
+
+    copies: list[str] = []
+
+    def _spy(text: str) -> bool:
+        copies.append(text)
+        return True
+
+    monkeypatch.setattr(inspect, "copy_to_clipboard", _spy)
+    inspect.set_inspect(True)
+    inspect.set_context(
+        board={"name": "DE10-Standard", "source": "custom"},
+        design={"file": "blinky.vhd", "mode": "board-native", "generics": {"COUNTER_BITS": "17"}},
+        simulator={"label": "GHDL-LLVM", "version": "GHDL 5.0.0"},
+        run={"sim_ns": 12400000, "paused": False, "speed": 1.0, "clock_hz": 50000000.0},
+    )
+    board.leds[3].level = 0.42
+    board._draw(flip=False)
+
+    target = next(r for r in inspect.regions() if r.path == "sim.board.led[3]")
+    headless_pygame.mouse.set_pos(target.rect.center)
+    headless_pygame.event.pump()
+    assert inspect.handle_key(_shift_f4(headless_pygame)) is True
+    assert len(copies) == 1
+
+    doc = json.loads(copies[0])
+    assert doc["at"] == "sim.board.led[3]"
+    assert doc["screen"] == "sim"
+    # The three things a reader can neither see on screen nor guess.
+    assert doc["design"]["mode"] == "board-native"
+    assert doc["design"]["generics"] == {"COUNTER_BITS": "17"}
+    assert doc["run"]["sim_ns"] == 12400000
+    # And the one they can see but cannot quote precisely.
+    assert doc["value"] == {"duty_pct": 42.0}
+    # Host and toolchain are deliberately absent; the record says where to get them.
+    assert "host" not in doc and "python" not in doc
+    assert "--doctor" in doc["more"]
+
+
+def test_plain_f4_stays_a_single_line(headless_pygame: ModuleType, monkeypatch: Any) -> None:
+    """The two formats exist because the two readers want opposite things.
+
+    A review pastes a dozen of these inline; a fifteen-line blob each time would
+    make that unusable. Guard the property, not the exact wording.
+    """
+    copies: list[str] = []
+
+    def _spy(text: str) -> bool:
+        copies.append(text)
+        return True
+
+    monkeypatch.setattr(inspect, "copy_to_clipboard", _spy)
+    inspect.set_inspect(True)
+    inspect.begin_frame("sim")
+    inspect.set_context(design={"file": "blinky.vhd", "mode": "generic"})
+    assert inspect.handle_key(_key(headless_pygame, inspect.COPY_KEY)) is True
+
+    assert "\n" not in copies[0], "the short copy is not one line"
+    assert not copies[0].lstrip().startswith("{"), "the short copy is JSON"
+    # The design mode rides along, since it changes how every LED complaint reads.
+    assert "blinky.vhd (generic)" in copies[0]
+
+
+def test_an_led_reports_its_duty_even_when_fully_on_or_off(
+    headless_pygame: ModuleType,
+) -> None:
+    """The hover tooltip elides 0% and 100%; a report must not.
+
+    In a tooltip an exact 0 or 100 is uninformative noise. In a report the
+    number *is* the answer to "this LED looks wrong", and a missing field reads
+    as missing data rather than as a clean zero.
+    """
+    from fpga_sim.board_loader import discover_boards, find_board, get_default_boards_path
+    from fpga_sim.ui.board_display import FPGABoard
+
+    surface = headless_pygame.display.set_mode((1280, 800))
+    board_def = find_board(discover_boards(get_default_boards_path()), "DE10-Standard")
+    board = FPGABoard(board_def=board_def, screen=surface, width=1280, height=800)
+    inspect.set_inspect(True)
+
+    for level in (0.0, 1.0, 0.375):
+        board.leds[0].level = level
+        board._draw(flip=False)
+        region = next(r for r in inspect.regions() if r.path.endswith("board.led[0]"))
+        assert dict(region.value) == {"duty_pct": round(level * 100, 1)}
+    # The tooltip's own rule is unchanged: it still hides the binary cases.
+    board.leds[0].level = 1.0
+    assert board.leds[0].tooltip_extra == []
+
+
+def test_the_run_block_does_not_outlive_the_run(
+    headless_pygame: ModuleType, fake_child: tuple[SimChild, Connection]
+) -> None:
+    """A report filed from the preview must not quote a run that has ended."""
+    child, _conn = fake_child
+    screen = _make_screen(headless_pygame, child)
+    screen._connected = True
+    inspect.set_inspect(True)
+    screen._events_this_frame = True
+    screen._render_frame()
+    assert "run" in inspect.report(None), "the sim screen never published its run state"
+
+    screen._teardown(SimExit.STOPPED, time.monotonic())
+    assert "run" not in inspect.report(None), "the run block survived the run"
 
 
 # ── the seams ─────────────────────────────────────────────────────────────────
@@ -654,7 +789,11 @@ def test_end_to_end_f4_copies_an_address_that_resolves_to_code(
 
     inspect.set_inspect(True)
     inspect.set_trace_origins(True)
-    inspect.set_context(board="DE10-Standard", design="blinky.vhd", sim="GHDL-LLVM")
+    inspect.set_context(
+        board={"name": "DE10-Standard"},
+        design={"file": "blinky.vhd", "mode": "generic"},
+        simulator={"label": "GHDL-LLVM"},
+    )
 
     # (1) a real frame, so the registry holds what the product actually drew.
     screen._events_this_frame = True

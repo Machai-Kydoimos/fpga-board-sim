@@ -136,8 +136,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   stable across releases, so a report written today still resolves after the code
   moves.
 
-  It is a label, not a mode: it consumes only F3 and F4, so nothing else changes
-  behavior, and it is off at every start and never saved to the session. Measured on
+  **Shift+F4** copies a fuller record as JSON, for when something is actually
+  wrong rather than merely worth a comment: what the widget was showing (an
+  LED's measured duty, a switch's position, a digit's segment bits), how the
+  design was run (generic / board-native / pin map, plus any generic overrides),
+  and the run's own state (simulated time, paused, speed, virtual clock). Two
+  formats because the two readers want opposite things — somebody filing a dozen
+  review findings wants a line they can paste inline; somebody reporting a
+  defect wants everything, machine-readable. It deliberately carries no OS or
+  library versions: `--doctor` reports those in more detail, and the record says
+  so. **Shift+F3** cycles the overlay's size, remembered across sessions.
+
+  It is a label, not a mode: nothing else changes behavior, and the overlay is
+  off at every start and never saved to the session. Measured on
   the worst board in the fleet (DE2-115, 57 widgets): with the overlay **off** the
   median board draw is indistinguishable from `main` (~775 µs, inside the run-to-run
   spread), and **on** it costs **+38 µs/frame — about 0.2 % of a 60 fps budget**.

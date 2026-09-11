@@ -596,19 +596,37 @@ address — `sim.panel.speed.slider`, `sim.board.led[5]`, `dlg.settings.duty-bar
 and the box in the corner names whatever is under the cursor, along with the build,
 board, design, simulator, theme and window size. Press **F3** again to hide it.
 
-**F4** copies the address under the cursor, together with that context line, to the
-clipboard. Paste it into a question or a bug report:
+**F4** copies the address under the cursor plus that context line — one line, meant
+to be pasted inline:
 
 ```text
-sim.panel.speed.slider · fpga-sim 0.22.0 · sim · DE10-Standard · blinky.vhd · GHDL-LLVM · pcb-green · 1280x800
+sim.board.led[3] · fpga-sim 0.22.0 · sim · DE2-115 · blinky.vhd (generic) · GHDL-LLVM · pcb-green · 1280x800
 ```
 
-That one line says *where* and *what you were looking at*, which is everything a
-reader needs to find the code — [docs/ui_map.md](ui_map.md) turns the address into a
-file and a line number. The addresses are stable across releases, so a report written
-today still resolves after the code moves. (If the clipboard is unavailable — no
-display server, or an SDL build without clipboard support — the same line is printed
-to the terminal instead.)
+That says *where* and *what you were looking at*, which is what a reader needs to find
+the code — [docs/ui_map.md](ui_map.md) turns the address into a file and a line number.
+The addresses are stable across releases, so a report written today still resolves
+after the code moves.
+
+**Shift+F4** copies a fuller record as JSON, for when something is actually wrong
+rather than merely worth a comment. It adds the three things a reader cannot see on
+screen and cannot guess:
+
+- **what the widget was showing** — an LED's measured duty, an RGB site's per-channel
+  mix, a switch's position, a digit's segment bits. "This LED looks wrong" becomes a
+  number.
+- **how the design was run** — generic contract, board-native, or pin map, plus any
+  generic overrides in force. This decides how every complaint about an LED or a digit
+  should be read.
+- **the run's own state** — simulated time, paused, speed, virtual clock — which also
+  lines the report up with a waveform dump.
+
+It deliberately does *not* carry your OS, Python or library versions: `fpga-sim
+--doctor` reports all of that in more detail, and the record says so. If you are
+sending a bug report, send both.
+
+(If the clipboard is unavailable — no display server, or an SDL build without clipboard
+support — whatever would have been copied is printed to the terminal instead.)
 
 The overlay's type scales with the window, like every other widget. If it is still
 too small or too large on your display, press **Shift+F3** while inspect mode is on:

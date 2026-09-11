@@ -596,11 +596,25 @@ class ScreenController:
         is how "no design loaded yet" gets said.
         """
         s = self.state
-        inspect.set_context(
-            board=self.board.name if self.board is not None else None,
-            design=Path(s.vhdl_path).name if s.vhdl_path else None,
-            sim=s.sim.label if s.sim is not None else None,
+        board = (
+            {"name": self.board.name, "class": self.board.class_name, "source": self.board.source}
+            if self.board is not None
+            else None
         )
+        design: dict[str, object] | None = None
+        if s.vhdl_path:
+            # The mode is the fact a reader can neither see nor guess, and it
+            # decides how to read every complaint about an LED or a digit.
+            mode = "pin map" if s.pinmap else ("board-native" if s.convention else "generic")
+            design = {"file": Path(s.vhdl_path).name, "mode": mode}
+            if s.generic_overrides:
+                design["generics"] = dict(s.generic_overrides)
+        simulator = (
+            {"label": s.sim.label, "backend": s.sim.backend, "version": s.sim.version}
+            if s.sim is not None
+            else None
+        )
+        inspect.set_context(board=board, design=design, simulator=simulator)
 
     def _run_selector(self) -> NextScreen:
         """Run the board selector; capture sort/filter preferences even on quit."""

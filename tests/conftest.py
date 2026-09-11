@@ -191,7 +191,7 @@ def restore_inspect() -> Iterator[None]:
     yield
     inspect.set_inspect(False)
     inspect.set_trace_origins(False)
-    inspect.set_context(board=None, design=None, sim=None)
+    inspect.clear_context()
     inspect.set_user_scale(None)
 
 
