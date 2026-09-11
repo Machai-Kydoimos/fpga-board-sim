@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pygame
 
+from fpga_sim.ui import inspect
 from fpga_sim.ui._scroll import RowCursorMixin
 from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
@@ -143,6 +144,8 @@ class VHDLFilePicker(RowCursorMixin):
         """
         if ev.key == pygame.K_ESCAPE:
             return True, None
+        if inspect.handle_key(ev):  # inspect mode (U55)
+            return False, None
         if ev.key == pygame.K_F1 or ev.unicode == "?":
             self._help_requested = True
             return False, None
@@ -205,6 +208,7 @@ class VHDLFilePicker(RowCursorMixin):
         return len(self.entries)
 
     def _draw(self) -> None:
+        inspect.begin_frame("pick")
         self.screen.fill(THEME.sel_bg)
         s = _ui_scale(self.width, self.height)
         title_f = get_font(max(13, round(20 * s)), bold=True)
@@ -212,6 +216,10 @@ class VHDLFilePicker(RowCursorMixin):
         item_f = get_font(max(10, round(14 * s)))
 
         hdr = self._hdr
+        # Header strip (title + current directory) above, scrolling entries
+        # below -- the same two halves the board selector has (U55).
+        inspect.zone("header", pygame.Rect(0, 0, self.width, hdr))
+        inspect.zone("list", pygame.Rect(0, hdr, self.width, self.height - hdr))
         max_scroll = max(0, len(self.entries) * self.row_h - (self.height - hdr))
         self.scroll = min(self.scroll, max_scroll)
 
@@ -251,4 +259,5 @@ class VHDLFilePicker(RowCursorMixin):
             mouse=pygame.mouse.get_pos(),
         )
 
+        inspect.draw_overlay(self.screen)
         pygame.display.flip()

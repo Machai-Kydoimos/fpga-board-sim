@@ -1,5 +1,7 @@
 """Tests for the shared button widget (ui/widgets/button.py)."""
 
+from typing import Any
+
 import pygame
 import pytest
 
@@ -12,7 +14,7 @@ def screen(headless_pygame):
     return headless_pygame.display.set_mode((200, 120))
 
 
-def _fill_rgb(screen: pygame.Surface, style: ButtonStyle, **kwargs: bool) -> tuple[int, int, int]:
+def _fill_rgb(screen: pygame.Surface, style: ButtonStyle, **kwargs: Any) -> tuple[int, int, int]:
     """Draw a borderless button with an empty label; return the center pixel RGB."""
     screen.fill((1, 2, 3))
     rect = pygame.Rect(20, 20, 120, 60)

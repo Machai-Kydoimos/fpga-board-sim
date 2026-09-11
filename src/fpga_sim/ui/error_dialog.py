@@ -15,6 +15,8 @@ from typing import Protocol
 import pygame
 
 from fpga_sim.platform_open import open_with_default_app
+from fpga_sim.ui import inspect
+from fpga_sim.ui.clipboard import copy_to_clipboard
 from fpga_sim.ui.constants import _ui_scale, get_font
 from fpga_sim.ui.results import DialogResult
 from fpga_sim.ui.theme import THEME
@@ -170,20 +172,10 @@ def _button_row_metrics(
     return font, widths, gap
 
 
-def _copy_to_clipboard(text: str) -> bool:
-    """Put *text* on the system clipboard; False if this platform will not.
-
-    Never raises: a clipboard that is unavailable (no display server, an SDL
-    build without scrap support) must not take down the dialog that is already
-    explaining a failure.
-    """
-    try:
-        if not pygame.scrap.get_init():
-            pygame.scrap.init()
-        pygame.scrap.put_text(text)
-    except (pygame.error, NotImplementedError, AttributeError):
-        return False
-    return True
+#: Bound as a module attribute rather than imported under this name: the
+#: dialog's tests monkeypatch ``error_dialog._copy_to_clipboard``, and an
+#: aliased import is not an export mypy will let them reach.
+_copy_to_clipboard = copy_to_clipboard
 
 
 class ErrorDialog:
@@ -226,6 +218,10 @@ class ErrorDialog:
         """Run the event loop and return DialogResult.RETRY or DialogResult.BACK."""
         while True:
             for ev in pygame.event.get():
+                # Inspect mode (U55) first: it consumes only its own two
+                # keys, so nothing this dialog binds can be shadowed.
+                if inspect.handle_key(ev):
+                    continue
                 if ev.type == pygame.QUIT:
                     return DialogResult.BACK
                 elif ev.type == pygame.WINDOWRESIZED:
@@ -318,6 +314,7 @@ class ErrorDialog:
         return ok
 
     def _draw(self) -> None:
+        inspect.begin_frame("dlg.error")
         sw, sh = self.screen.get_size()
         s = _ui_scale(sw, sh)
 
@@ -360,6 +357,7 @@ class ErrorDialog:
 
         px = (sw - panel_w) // 2
         py = (sh - panel_h) // 2
+        inspect.zone("panel", pygame.Rect(px, py, panel_w, panel_h))
 
         # Panel background
         panel_rect = pygame.Rect(px, py, panel_w, panel_h)
@@ -446,4 +444,5 @@ class ErrorDialog:
         hint = hint_f.render(self._footer_hint(), True, THEME.footer_hint)
         self.screen.blit(hint, hint.get_rect(centerx=px + panel_w // 2, top=py + panel_h + 8))
 
+        inspect.draw_overlay(self.screen)
         pygame.display.flip()

@@ -22,13 +22,17 @@ from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
 from fpga_sim.ui.widgets.button import ButtonStyle
 
-#: (label, THEME ButtonStyle role, resulting intent) per button, in draw order.
+#: (label, THEME ButtonStyle role, resulting intent, inspect path leaf) per
+#: button, in draw order.
 #: Roles are stored by *name* and resolved at draw time so a set_theme() swap
 #: restyles the toolbar (never capture ``THEME.<field>`` at import — U6).
-_BUTTONS: tuple[tuple[str, str, SimExit], ...] = (
-    ("Back to Boards", "btn_select_board", SimExit.BACK_TO_BOARDS),
-    ("Change VHDL", "btn_load_vhdl", SimExit.CHANGE_VHDL),
-    ("Reload VHDL", "btn_start_sim", SimExit.RELOAD_VHDL),
+#: The fourth column names the button for the inspect overlay (U55); it is
+#: spelled out rather than derived from the label so that rewording a button
+#: does not silently change the address somebody has already quoted.
+_BUTTONS: tuple[tuple[str, str, SimExit, str], ...] = (
+    ("Back to Boards", "btn_select_board", SimExit.BACK_TO_BOARDS, "toolbar.back"),
+    ("Change VHDL", "btn_load_vhdl", SimExit.CHANGE_VHDL, "toolbar.change-vhdl"),
+    ("Reload VHDL", "btn_start_sim", SimExit.RELOAD_VHDL, "toolbar.reload"),
 )
 
 
@@ -67,10 +71,12 @@ class SimToolbar:
         btn_h = font.get_height() + 2 * pad_y
         x = left
         self._hit = []
-        for label, role, intent in _BUTTONS:
+        for label, role, intent, region in _BUTTONS:
             style: ButtonStyle = getattr(THEME, role)
             rect = pygame.Rect(x, bottom - btn_h, font.size(label)[0] + 2 * pad_x, btn_h)
-            draw_button(screen, rect, label, font, style, hovered=rect.collidepoint(mouse))
+            draw_button(
+                screen, rect, label, font, style, hovered=rect.collidepoint(mouse), region=region
+            )
             self._hit.append((rect, intent))
             x = rect.right + gap
         return self._hit[0][0].unionall([r for r, _ in self._hit[1:]])

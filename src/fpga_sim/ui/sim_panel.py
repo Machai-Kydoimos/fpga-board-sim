@@ -30,6 +30,7 @@ from collections import deque
 
 import pygame
 
+from fpga_sim.ui import inspect
 from fpga_sim.ui.constants import DARK_GRAY, WHITE, YELLOW, _ui_scale, get_font
 from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
@@ -379,6 +380,15 @@ class SimPanel:
 
         zone_w = sw // 3
 
+        # Inspect mode (U55): the three zones are named here, where their
+        # geometry is decided, rather than inside each drawing method -- the
+        # split into thirds is the fact worth addressing, and it lives on this
+        # line.
+        inspect.zone("panel", pygame.Rect(0, y0, sw, self.panel_height))
+        inspect.zone("panel.info", pygame.Rect(0, y0, zone_w, ph))
+        inspect.zone("panel.speed", pygame.Rect(zone_w, y0, zone_w, ph))
+        inspect.zone("panel.clock", pygame.Rect(zone_w * 2, y0, sw - zone_w * 2, ph))
+
         self._draw_info_zone(0, y0, zone_w, ph, font, bold, s)
         self._draw_speed_zone(zone_w, y0, zone_w, ph, font, bold, small, s)
         self._draw_clock_zone(zone_w * 2, y0, sw - zone_w * 2, ph, font, bold, s)
@@ -491,6 +501,7 @@ class SimPanel:
         track_h = max(4, round(6 * s))
         track = pygame.Rect(x + margin, track_top, w - 2 * margin, track_h)
         self._slider_track = track
+        inspect.item("panel.speed.track", track)
         pygame.draw.rect(self.screen, DARK_GRAY, track, border_radius=2)
 
         # Filled portion
@@ -512,6 +523,7 @@ class SimPanel:
         pygame.draw.circle(self.screen, knob_color, (hx, hy), hr)
         pygame.draw.circle(self.screen, DARK_GRAY, (hx, hy), hr, 1)
         self._slider_handle = pygame.Rect(hx - hr, hy - hr, hr * 2, hr * 2)
+        inspect.item("panel.speed.slider", self._slider_handle)
 
         # Tick marks + labels.
         # At/above REAL the step is always capped at the max-cycles limit, so
@@ -613,6 +625,7 @@ class SimPanel:
             THEME.btn_sim_clock,
             hovered=can_dec and minus_rect.collidepoint(mouse),
             enabled=can_dec,
+            region="panel.clock.slower",
         )
         self._minus_rect = minus_rect
 
@@ -627,6 +640,7 @@ class SimPanel:
             THEME.btn_sim_clock,
             hovered=can_inc and plus_rect.collidepoint(mouse),
             enabled=can_inc,
+            region="panel.clock.faster",
         )
         self._plus_rect = plus_rect
 

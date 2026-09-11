@@ -29,6 +29,7 @@ from fpga_sim.session_config import update_session
 from fpga_sim.sim_link import drain, send
 from fpga_sim.sim_session_log import save_session_stats
 from fpga_sim.stall import StallWatch, find_divider, stall_heading, stall_message
+from fpga_sim.ui import inspect
 from fpga_sim.ui.board_display import BoardInputs, FPGABoard
 from fpga_sim.ui.components import debug_view_enabled, pwm_display_enabled, set_debug_view
 from fpga_sim.ui.constants import get_font as _get_font
@@ -208,6 +209,12 @@ class SimulationScreen:
             # when the sim starts — the overlays live in that strip (U34).
             reserve_footer_space=True,
         )
+        # Relabel the embedded board for inspect mode (U55): it is the same
+        # widget the preview draws, but a report saying ``sim.board.led[3]``
+        # must not be ambiguous with ``preview.board.led[3]`` -- the two screens
+        # lay the board out differently and a finding about one is rarely a
+        # finding about the other.
+        self.board.inspect_scope = "sim"
         # A board with no controls at all can never be "waiting for input", so
         # the advisory's alternative reading does not apply to it (U48).
         self._has_inputs = bool(self.board.switches or self.board.buttons)
@@ -571,6 +578,8 @@ class SimulationScreen:
         self.board._handle_events([ev for ev in events if not self._chrome_press(ev)])
 
         for ev in events:
+            if inspect.handle_key(ev):
+                continue
             if ev.type == pygame.KEYDOWN and ev.key == pygame.K_s:
                 self._show_panel = not self._show_panel
                 self._board_offset = self.panel.panel_height if self._show_panel else 0
@@ -916,6 +925,16 @@ class SimulationScreen:
             self._stall_expanded,
             (self._stall_heading, tuple(self._stall_lines)) if self._stall_expanded else (),
             self.board.visual_signature(),
+            # Inspect mode (U55), exactly as the stall indicator above: an
+            # overlay that can appear on a frame U23 would otherwise skip has to
+            # be part of what "unchanged" means.  The cursor is in the tuple
+            # because the readout names whatever it is over, so moving it
+            # changes the frame; while the overlay is off this is a constant
+            # ``(False, None)`` and costs no redraws at all.
+            (
+                inspect.inspect_enabled(),
+                pygame.mouse.get_pos() if inspect.inspect_enabled() else None,
+            ),
         )
         # A screenshot that is due forces the draw it will capture: on a static
         # design the liveness shot lands on a frame U23 would otherwise skip,
@@ -959,6 +978,13 @@ class SimulationScreen:
                     int(self._last_state.get("sim_ns", 0)),
                     self._shot_metrics(),
                 )
+            # After the capture and before the flip: a still is the product's
+            # own frame, and diagnostic chrome in one would contaminate every
+            # generated board image.  ``_interactive`` is the same guard the
+            # stall advisory uses, so a benchmark cannot paint this even if
+            # something managed to turn it on.
+            if self._interactive:
+                inspect.draw_overlay(self.screen)
             pygame.display.flip()
             draw_us = (time.monotonic_ns() - t_draw_start) / 1_000
             self._last_frame_sig = sig
@@ -1048,6 +1074,7 @@ class SimulationScreen:
             ov_font,
             THEME.btn_sim_stop,
             hovered=self._stop_btn_rect.collidepoint(pygame.mouse.get_pos()),
+            region="overlay.stop",
         )
         pause_bx = stop_bx - ov_gap - pause_bw
         self._pause_btn_rect = pygame.Rect(pause_bx, btn_py, pause_bw, btn_h)
@@ -1058,6 +1085,10 @@ class SimulationScreen:
             ov_font,
             pause_style,
             hovered=self._pause_btn_rect.collidepoint(pygame.mouse.get_pos()),
+            # Named rather than derived: this label alternates between
+            # "[PAUSE]" and "[RESUME]", and an address that changes with the
+            # state of the thing it addresses is not an address (U55).
+            region="overlay.pause",
         )
 
         # The stall indicator (U48), left of Pause.  It is phrased as the

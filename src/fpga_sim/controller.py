@@ -61,6 +61,7 @@ from fpga_sim.ui import (
     SimExit,
     SimulationScreen,
     VHDLFilePicker,
+    inspect,
     run_with_spinner,
 )
 from fpga_sim.ui.constants import get_font
@@ -585,8 +586,25 @@ class ScreenController:
 
     # ── Step 1: pick a board ──────────────────────────────────────────────
 
+    def _publish_inspect_context(self) -> None:
+        """Tell inspect mode (U55) what the app is currently working on.
+
+        One publisher rather than a ``set_context`` beside every assignment that
+        could change one of these facts: the stamp has to agree with the app,
+        and the cheapest way to guarantee that is to have a single function read
+        the state afresh at each screen boundary.  ``None`` clears a field, which
+        is how "no design loaded yet" gets said.
+        """
+        s = self.state
+        inspect.set_context(
+            board=self.board.name if self.board is not None else None,
+            design=Path(s.vhdl_path).name if s.vhdl_path else None,
+            sim=s.sim.label if s.sim is not None else None,
+        )
+
     def _run_selector(self) -> NextScreen:
         """Run the board selector; capture sort/filter preferences even on quit."""
+        self._publish_inspect_context()
         s = self.state
         selector = BoardSelector(
             self.boards,
@@ -662,6 +680,7 @@ class ScreenController:
         (U45); without that they would be discarded at each screen boundary.
         """
         assert self.board is not None  # PREVIEW is only reachable after on_board_selected()
+        self._publish_inspect_context()
         preview = FPGABoard(
             board_def=self.board,
             screen=self.screen,
@@ -714,6 +733,7 @@ class ScreenController:
         preview with the previously-loaded VHDL untouched.
         """
         assert self.board is not None
+        self._publish_inspect_context()
         s = self.state
 
         # Start dir: current VHDL, then last session path, then hdl/
@@ -889,6 +909,10 @@ class ScreenController:
         s.last_vhdl_path = s.vhdl_path
         self._save_session(window_size=self.screen.get_size())
         push_recent(board.class_name, board.source, s.vhdl_path)
+        # Republished here, not only at preview entry: by this point the design
+        # and simulator are settled (a re-analysis may have changed either), and
+        # the run is the screen a report is most likely to come from.
+        self._publish_inspect_context()
 
         sim_error: str | None = None
         sim_exit = SimExit.STOPPED

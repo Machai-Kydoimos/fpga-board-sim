@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import pygame
 
+from fpga_sim.ui import inspect
 from fpga_sim.ui.constants import _ui_scale, get_font
 from fpga_sim.ui.theme import THEME
 from fpga_sim.ui.widgets import draw_button
@@ -59,6 +60,8 @@ SHORTCUTS: list[tuple[str, str]] = [
     ("R", "Reset switches & buttons, including latches (preview & sim)"),
     ("S", "Toggle the stats panel (simulation)"),
     ("D", "Toggle duty bars — LED duty as bar length (simulation)"),
+    ("F3", "Inspect mode — show a name for each part of the screen"),
+    ("F4", "Copy the name under the cursor, to quote in a question"),
 ]
 
 CONTRACT: list[str] = [
@@ -112,6 +115,10 @@ class HelpDialog:
         """Run the blocking event loop until the overlay is dismissed."""
         while True:
             for ev in pygame.event.get():
+                # Inspect mode (U55) first: it consumes only its own two
+                # keys, so nothing this dialog binds can be shadowed.
+                if inspect.handle_key(ev):
+                    continue
                 if ev.type == pygame.QUIT:
                     pygame.event.post(pygame.event.Event(pygame.QUIT))
                     return
@@ -186,6 +193,7 @@ class HelpDialog:
         return rows
 
     def _draw(self) -> None:
+        inspect.begin_frame("dlg.help")
         sw, sh = self.screen.get_size()
         s = _ui_scale(sw, sh)
         pad = max(16, round(24 * s))
@@ -212,6 +220,7 @@ class HelpDialog:
 
         px = (sw - panel_w) // 2
         py = (sh - panel_h) // 2
+        inspect.zone("panel", pygame.Rect(px, py, panel_w, panel_h))
         self._panel_rect = pygame.Rect(px, py, panel_w, panel_h)
 
         # Dimmed backdrop.
@@ -282,6 +291,7 @@ class HelpDialog:
         hint = hint_f.render("Esc / F1 / ?  or click outside to close", True, THEME.dim_text)
         self.screen.blit(hint, hint.get_rect(centerx=px + panel_w // 2, top=py + panel_h + 8))
 
+        inspect.draw_overlay(self.screen)
         pygame.display.flip()
 
 
@@ -298,5 +308,15 @@ def draw_help_button(
     rect = pygame.Rect(right - size, top, size, size)
     font = get_font(max(12, round(size * 0.6)), bold=True)
     # Read the style at draw time so a theme switch restyles the trigger too.
-    draw_button(surface, rect, "?", font, THEME.btn_help, hovered=rect.collidepoint(mouse))
+    # The label is a bare "?", which slugs to nothing -- inspect mode (U55)
+    # needs the name spelled out here.
+    draw_button(
+        surface,
+        rect,
+        "?",
+        font,
+        THEME.btn_help,
+        hovered=rect.collidepoint(mouse),
+        region="header.help",
+    )
     return rect

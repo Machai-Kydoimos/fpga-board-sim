@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING, Protocol
 import pygame
 
 from fpga_sim.board_loader import BoardDef, ComponentInfo
-from fpga_sim.ui import keymap
+from fpga_sim.ui import inspect, keymap
 from fpga_sim.ui.components import LED, RGBLED, Button, FPGAChip, SevenSeg, Switch, UIComponent
 from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
@@ -300,6 +300,11 @@ class FPGABoard:
         self.components: list[UIComponent] = [*self.leds, *self.switches, *self.buttons]
         self._tooltip = Tooltip()
         self._hover_target: UIComponent | None = None
+        #: Which screen this board is part of, for inspect-mode paths (U55).
+        #: The preview owns its own window; ``SimulationScreen`` composites the
+        #: same widget into its frame and relabels it, because a report saying
+        #: ``sim.board.led[3]`` must not be ambiguous with the preview's.
+        self.inspect_scope = "preview"
         self._hover_since_ms = 0
 
         # Which widget each held mouse button is holding (U44).  Keyed by the
@@ -778,6 +783,13 @@ class FPGABoard:
             ):
                 self._help_requested = True
 
+            # Inspect mode (U55).  Ahead of ``_bind_key`` for the same reason
+            # every other named shortcut is: a board binding must never swallow
+            # one.  F3/F4 are function keys, so they cannot collide with the hex
+            # tier -- the ordering is what keeps that true if the keys change.
+            elif inspect.handle_key(event):
+                pass
+
             elif event.type == pygame.KEYUP:
                 self._release_key_hold(event)
 
@@ -1014,6 +1026,40 @@ class FPGABoard:
         for btn in self.buttons:
             btn.handle_release()
 
+    # ── inspect mode (U55) ───────────────────────────────────────────
+
+    def _register_inspect_regions(self) -> None:
+        """Register the board's own widgets and banks for the inspect overlay.
+
+        Paths come from kind and index, never from geometry: ``_layout`` hands
+        every widget a fresh rect on resize, so a rect is this frame's hit target
+        and nothing more.  The indices are the boundary-channel indices the
+        screenshot manifest already publishes (``manifest.led_legend``), so a
+        path a reader quotes and a row that legend prints mean the same LED.
+
+        A no-op while the overlay is off -- every call below returns on a single
+        bool read.
+        """
+        if not inspect.inspect_enabled():
+            return
+        inspect.widget("board.chip", self.fpga_chip.rect)
+        for i, led in enumerate(self.leds):
+            inspect.widget(f"board.led[{i}]", led.rect)
+        for sw in self.switches:
+            inspect.widget(f"board.sw[{sw.index}]", sw.rect)
+        for btn in self.buttons:
+            inspect.widget(f"board.btn[{btn.index}]", btn.rect)
+        for seg in self._seven_segs:
+            inspect.widget(f"board.seg[{seg.index}]", seg.rect)
+        # LED banks are a zone rather than an item: on a two-bank board (LEDR +
+        # LEDG) "which bank" is a real question, and the bank's name is the
+        # board's own.
+        for name, leds in self._led_banks:
+            if leds:
+                first = leds[0].rect
+                bank = first.unionall([x.rect for x in leds[1:]])
+                inspect.zone(f"board.leds.{inspect.slug(name)}", bank)
+
     # ── hover tooltips (U3) ──────────────────────────────────────────
 
     def _component_at(self, pos: tuple[int, int]) -> UIComponent | None:
@@ -1120,6 +1166,13 @@ class FPGABoard:
     # ── drawing ──────────────────────────────────────────────────────
 
     def _draw(self, *, flip: bool = True) -> None:
+        # Inspect mode (U55) starts here because this is the first paint of every
+        # frame on *both* screens the board appears on: the preview owns the
+        # window, and ``SimulationScreen._render_frame`` calls this before its
+        # panel and overlays.  Whatever ``draw_button`` registers later in the
+        # frame therefore lands in a registry that was cleared exactly once.
+        inspect.begin_frame(self.inspect_scope)
+        self._register_inspect_regions()
         self.screen.fill(THEME.pcb_bg)
 
         s = _ui_scale(self.width, self.height)
@@ -1233,6 +1286,7 @@ class FPGABoard:
                 gen_font,
                 THEME.btn_sim_pause,
                 hovered=self._generics_btn_rect.collidepoint(mouse_pos),
+                region="header.generics",
             )
 
         # Shared button height from font metrics; button row pinned to the bottom.
@@ -1249,6 +1303,7 @@ class FPGABoard:
             btn_font,
             THEME.btn_select_board,
             hovered=self._select_board_btn_rect.collidepoint(mouse_pos),
+            region="footer.select-board",
         )
 
         load_w = btn_font.size("Load VHDL File")[0] + 30
@@ -1261,6 +1316,7 @@ class FPGABoard:
             btn_font,
             THEME.btn_load_vhdl,
             hovered=self._load_vhdl_btn_rect.collidepoint(mouse_pos),
+            region="footer.load-vhdl",
         )
 
         # ── Right side: [SIM: …]  [Start Simulation] ──────────────────────────
@@ -1276,6 +1332,7 @@ class FPGABoard:
             THEME.btn_start_sim,
             hovered=self._sim_btn_rect.collidepoint(mouse_pos),
             enabled=can_simulate,
+            region="footer.simulate",
         )
 
         # [SIM:…] toggle — drawn only when a simulator is surfaced (U35).  The
@@ -1298,6 +1355,7 @@ class FPGABoard:
                 toggle_style,
                 hovered=self._sim_toggle_rect.collidepoint(mouse_pos),
                 enabled=can_toggle,
+                region="footer.sim-toggle",
             )
         else:
             self._sim_toggle_rect = None
@@ -1327,4 +1385,5 @@ class FPGABoard:
 
         self._draw_hover_tooltip()
         if flip:
+            inspect.draw_overlay(self.screen)
             pygame.display.flip()
