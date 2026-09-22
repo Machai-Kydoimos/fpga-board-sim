@@ -70,9 +70,10 @@ dev = [
     # pinned binary hash -> official release.  Trade-off: installing needs
     # network (there are no wheels), which CI already has.
     "actionlint-py>=1.7.12.24",
-    # Only used by tests/test_workflow_lint_guard.py, to assert on the hook
-    # config structurally rather than by string matching.  Already in the tree
-    # as a pre-commit dependency, but declared here so the test does not rest
+    # Only used by tests/test_workflow_lint_guard.py and
+    # tests/test_precommit_hooks.py, to assert on the hook config structurally
+    # rather than by string matching.  Already in the tree
+    # as a pre-commit dependency, but declared here so the tests do not rest
     # on a transitive one that pre-commit could drop.
     "pyyaml>=6.0",
     # TOML reader for the embedded-core generator on Python 3.10; 3.11+ uses stdlib tomllib.

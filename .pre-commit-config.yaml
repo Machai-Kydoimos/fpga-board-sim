@@ -1,8 +1,21 @@
 repos:
   # Every lint/format/type hook runs as a *local* hook that invokes the
-  # uv.lock-pinned tool via `uv run`, so the version pre-commit uses is always
-  # identical to CI's (`uv run ruff/mypy/rumdl ...`) and to the project venv —
-  # one source of truth (uv.lock), zero drift.
+  # uv.lock-pinned tool via `uv run --group dev`, so the version pre-commit uses
+  # is always identical to CI's (`uv run ruff/mypy/rumdl ...`) and to the
+  # project venv — one source of truth (uv.lock), zero drift.
+  #
+  # `--group dev` is what makes that true. ruff, mypy, rumdl and actionlint —
+  # and the jsonschema that check-registry-schema imports — live in
+  # pyproject's `dev` group, and since `[tool.uv] default-groups = []` (#422) a
+  # plain `uv run` syncs no group at all: it neither installs a missing tool
+  # nor upgrades a stale one. Without the flag, one checkout's hooks were still
+  # running ruff 0.16.6 / rumdl 0.2.67 two Dependabot bumps after CI had moved
+  # to 0.16.8 / 0.2.73 — at exit 0, printing nothing — and in a fresh checkout
+  # (a new clone, or a new worktree, which shares these hooks) they ran
+  # whatever copy was on PATH, or failed outright. With it, each hook syncs the
+  # dev group first: no measurable cost when nothing changed (18 vs 19 ms), an
+  # upgrade when uv.lock moved. tests/test_precommit_hooks.py keeps the flag on
+  # every entry.
   #
   # This is a deliberate divergence from Astral's documented recommendation
   # (https://docs.astral.sh/ruff/integrations/), which shows only the
@@ -12,7 +25,7 @@ repos:
   # at 0.15.16). Folding ruff in here — as mypy and rumdl already are — removes
   # that drift class entirely. Trade-off: pre-commit now needs the uv
   # environment, already a hard requirement for this repo (CI + the hooks
-  # below); `uv run` auto-syncs the venv, so first run is self-healing.
+  # below); `uv run --group dev` syncs the venv, so first run is self-healing.
   - repo: local
     hooks:
       # ruff lint runs before ruff-format (per Astral's ordering guidance) so
@@ -21,23 +34,24 @@ repos:
       # files are linted/formatted, unlike the whole-repo mypy hook below.
       - id: ruff
         name: ruff
-        entry: uv run ruff check --fix
+        entry: uv run --group dev ruff check --fix
         language: system
         types_or: [python, pyi]
       - id: ruff-format
         name: ruff-format
-        entry: uv run ruff format
+        entry: uv run --group dev ruff format
         language: system
         types_or: [python, pyi]
       # mypy runs as a local hook (not mirrors-mypy) so it uses the project venv,
       # where pygame / find_libpython / cocotb are importable. The isolated env that
       # mirrors-mypy builds lacks those deps, degrading expressions to Any and
       # tripping warn_return_any — false failures that CI's `uv run mypy .` never
-      # sees. Running the exact CI command keeps local and CI in lockstep; the mypy
-      # version is pinned by uv.lock rather than a hook rev.
+      # sees. Running CI's command (with the dev-group sync CI does as its own
+      # step) keeps local and CI in lockstep; the mypy version is pinned by
+      # uv.lock rather than a hook rev.
       - id: mypy
         name: mypy
-        entry: uv run mypy .
+        entry: uv run --group dev mypy .
         language: system
         types: [python]
         pass_filenames: false
@@ -46,7 +60,7 @@ repos:
       # rationale as the mypy hook above. --fix auto-corrects fixable issues.
       - id: rumdl
         name: rumdl
-        entry: uv run rumdl check --fix
+        entry: uv run --group dev rumdl check --fix
         language: system
         types: [markdown]
       # Text I/O with no explicit encoding decodes via the locale default —
@@ -61,7 +75,7 @@ repos:
       # enforces it in CI, since CI runs the lint tools directly, not pre-commit.
       - id: check-encoding
         name: check-encoding
-        entry: uv run python scripts/check_encoding.py
+        entry: uv run --group dev python scripts/check_encoding.py
         language: system
         types_or: [python, pyi]
       # The registry TOMLs gained JSON Schemas in #346, but every hook above is
@@ -95,13 +109,13 @@ repos:
       # only decides when to run.
       - id: actionlint
         name: actionlint
-        entry: uv run actionlint
+        entry: uv run --group dev actionlint
         language: system
         files: ^\.github/workflows/.*\.ya?ml$
         pass_filenames: false
       - id: check-registry-schema
         name: check-registry-schema
-        entry: uv run python scripts/check_registry_schema.py
+        entry: uv run --group dev python scripts/check_registry_schema.py
         language: system
         files: ^docs/(port_convention_sources|led_color_sources)/.*\.(toml|json)$
         pass_filenames: false
