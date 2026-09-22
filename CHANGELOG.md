@@ -30,10 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   GitHub, so a proxy or a school network turned "install the simulator" into a
   build failure about a workflow linter. Every dependency on the student's path
   is now a wheel on every supported platform.
-  - **Contributors add one flag, once:** `uv sync --group dev`. Nothing else
-    changes — `uv run pytest` / `ruff` / `mypy` keep working afterwards, because
-    `uv run` installs what the default groups need but never removes what is
-    already there. CI already passed `--group dev` in every job.
+  - **Contributors add one flag:** `uv sync --group dev`, and again after a pull
+    that changes `uv.lock`. `uv run pytest` / `ruff` / `mypy` keep working in
+    between, because `uv run` never removes what is already there — but it never
+    upgrades the dev tools either, since `dev` is no longer a group it syncs.
+    The pre-commit hooks therefore call `uv run --group dev`, which syncs the
+    group before each tool runs; without it, one checkout's hooks were still
+    linting with ruff 0.16.6 and rumdl 0.2.67 two lock bumps after CI moved on.
+    CI already passed `--group dev` in every job.
   - **It also fixes what the install-docs workflow was measuring.** That
     workflow exists to run the documented commands verbatim, and it verified
     with `uv run pytest` — which the docs stopped prescribing when `--doctor`
