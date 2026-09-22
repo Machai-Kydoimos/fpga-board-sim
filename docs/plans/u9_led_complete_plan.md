@@ -319,7 +319,7 @@ wrapper + child + demos + docs. It ships alone and already fixes "PWM designs lo
   elaborate the Full wrapper around `duty_probe`, read `led`/`led_acc`/`led_tch`, compute
   `T_on` duty (§2.3), assert within ±1% for the static-duty channels; **stuck-ON and
   stuck-OFF exact**; duty tracks a mid-run gate flip; `now_ns` decomposition exact across a
-  >2.2 s static gap (the INTEGER-overflow trap); metavalue-clean at t=0. Phase 0 already
+  static gap of more than 2.2 s (the INTEGER-overflow trap); metavalue-clean at t=0. Phase 0 already
   proved all of these on all four backends via the throwaway four-variant harness — port the
   assertions (add CYC-EVT-PC cycle-unit asserts if that algo is wired selectable).
 - **Host unit tests** (`tests/`): EMA math, γ-lerp, `set_led_level` compat, `_apply_state`
