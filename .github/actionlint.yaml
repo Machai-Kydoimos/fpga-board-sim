@@ -1,0 +1,8 @@
+# TRIAL-ONLY (throwaway branch ci/trial-ubuntu-26.04 -- never merge).
+# actionlint 1.7.12 (latest release, and upstream main as of 2026-10-01) does
+# not yet list the GitHub-hosted `ubuntu-26.04` label, so it rejects it as an
+# unknown runner.  Declaring it here keeps the Lint job's verdict about the
+# 26.04 image rather than about actionlint's label table.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04

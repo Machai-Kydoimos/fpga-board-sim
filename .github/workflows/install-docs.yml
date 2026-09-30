@@ -68,7 +68,7 @@ jobs:
   # ── Linux: `sudo apt install ghdl`, exactly as docs/install.md prints it ────
   linux-apt:
     name: Linux — documented apt install
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -112,7 +112,7 @@ jobs:
   # dev package -- and that is one apt call away.
   linux-nvc-build-deps:
     name: Linux — NVC build dependencies resolve
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
