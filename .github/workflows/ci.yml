@@ -55,6 +55,11 @@ jobs:
         with:
           cache-dependency-glob: uv.lock
           prune-cache: true
+          # Named, not inherited: left unset, uv takes the runner image's
+          # python3 -- 3.12 on Ubuntu 24.04, 3.14 on 26.04 -- and the
+          # interpreter decides which installed packages mypy can see.  See
+          # tests/test_ci_python_pins.py, which holds every job to this.
+          python-version: "3.12"
       - run: uv sync --group dev
       - run: uv run ruff check .
       - run: uv run ruff format --check .
@@ -88,6 +93,10 @@ jobs:
         with:
           cache-dependency-glob: uv.lock
           prune-cache: true
+          # Named for the same reason as Lint & type-check's: the amaranth and
+          # litex parsers exec upstream board files, so a re-sync should not
+          # change interpreter when the runner image does.
+          python-version: "3.12"
       - run: uv sync --group dev
       - run: uv run python scripts/check_board_drift.py
 
