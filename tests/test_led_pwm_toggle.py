@@ -22,13 +22,13 @@ this card's ``resolve_duty_mode`` change made necessary suite-wide.
 from __future__ import annotations
 
 import math
-import time
 
 import pytest
 
 from fpga_sim.session_config import update_session
 from fpga_sim.sim_bridge import _duty_channels, _generate_wrapper, resolve_duty_mode
 from fpga_sim.ui.components import pwm_display_enabled, set_pwm_display
+from fpga_sim.ui.simulation_screen import _POV_TAU_S
 
 
 def _screen(pygame_mod, child, *, seg=False):
@@ -60,38 +60,59 @@ def test_pwm_off_renders_binary_from_measured_duty(
 
 
 def test_pwm_off_is_unsmoothed_so_an_led_can_reach_zero(
-    headless_pygame, fake_child, restore_pwm_display
+    headless_pygame, fake_child, restore_pwm_display, monkeypatch
 ):
     """The load-bearing one: cutting at the source, not thresholding the EMA.
 
     An exponential never reaches zero, so had the flag been applied to the
     smoothed output an LED that turned off would stay faintly -- then forever --
-    lit. Drive it on, then off, with real elapsed time in between.
+    lit. Drive it on, then off, one 50 ms frame apart: the frames that
+    ``test_pwm_on_still_eases`` mirrors.
     """
     child, _client = fake_child
     scr = _screen(headless_pygame, child)
     set_pwm_display(False)
+    now = [1000.0]
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: now[0])
     scr._last_state = {"led": 0b0001, "seg": None, "led_duty": [1.0, 0.0, 0.0, 0.0]}
     scr._apply_state()
     assert scr.board.leds[0].level == 1.0
 
-    scr._ema_t = time.monotonic() - 0.05  # a real gap, as the POV tests do
+    now[0] += 0.05
     scr._last_state = {"led": 0b0000, "seg": None, "led_duty": [1.0, 0.0, 0.0, 0.0]}
     scr._apply_state()
     assert scr.board.leds[0].level == 0.0, "must be exactly off, not an EMA tail"
 
 
-def test_pwm_on_still_eases(headless_pygame, fake_child, restore_pwm_display):
-    """The inverse: with PWM on, the same sequence is smoothed as before."""
+def test_pwm_on_still_eases(headless_pygame, fake_child, restore_pwm_display, monkeypatch):
+    """The inverse: with PWM on, the same turn-off eases -- the tail the flag cuts.
+
+    Frame for frame the mirror of the test above, each changing only the input
+    its mode reads.  That one drops the *bit* and holds the duty on, so only a
+    bit-driven, unsmoothed display reads 0.0; this one drops the *duty* and
+    holds the bit on, so only a duty-driven, smoothed display reads one
+    persistence-of-vision step down, ``exp(-dt/tau)`` -- unsmoothed would read
+    0.0 and bit-driven 1.0.
+
+    The clock is frozen, as in the brightness easing test since #419; this test
+    began as a copy of that one from before its fix.  Back-dating ``_ema_t``
+    pins only the start of the interval -- ``_apply_state`` reads the clock
+    again -- and the old 1e-3 tolerance allowed ~0.17 ms for that second read.
+    A macOS runner took 0.52 ms (#445).
+    """
     child, _client = fake_child
     scr = _screen(headless_pygame, child)
     set_pwm_display(True)
-    scr._last_state = {"led": 0, "seg": None, "led_duty": [0.0, 0.0, 0.0, 0.0]}
+    now = [1000.0]
+    monkeypatch.setattr("fpga_sim.ui.simulation_screen.time.monotonic", lambda: now[0])
+    scr._last_state = {"led": 0b0001, "seg": None, "led_duty": [1.0, 0.0, 0.0, 0.0]}
     scr._apply_state()
-    scr._ema_t = time.monotonic() - 0.05
-    scr._last_state = {"led": 0, "seg": None, "led_duty": [1.0, 0.0, 0.0, 0.0]}
+    assert scr.board.leds[0].level == 1.0, "the first sample snaps; it does not fade up"
+
+    now[0] += 0.05
+    scr._last_state = {"led": 0b0001, "seg": None, "led_duty": [0.0, 0.0, 0.0, 0.0]}
     scr._apply_state()
-    assert scr.board.leds[0].level == pytest.approx(1.0 - math.exp(-0.5), abs=1e-3)
+    assert scr.board.leds[0].level == pytest.approx(math.exp(-0.05 / _POV_TAU_S), abs=1e-9)
 
 
 def test_pwm_off_renders_segments_binary(headless_pygame, fake_child, restore_pwm_display):
