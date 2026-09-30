@@ -683,7 +683,12 @@ green.
 
 - **`mypy` is whole-repo.** The `Lint & type-check` job runs `mypy .` across
   `src/`, `tests/`, `sim/`, and `scripts/` — not just `src/`. A type change has
-  to keep the tests and scripts clean too.
+  to keep the tests and scripts clean too. It runs on **Python 3.12**, and that
+  matters even though mypy's *target* is pinned to 3.10 in `pyproject.toml`:
+  mypy checks against the packages its environment has installed, and `tomli`
+  is installed only below 3.11, so a 3.10 `.venv` can pass where CI fails. To
+  run CI's check without touching your `.venv`:
+  `UV_PROJECT_ENVIRONMENT=/tmp/venv312 uv run --python 3.12 --group dev mypy .`
 - **Don't `paths-ignore` the required jobs.** The workflows aren't path-filtered,
   so even a docs-only PR runs and *satisfies* the required checks. If you skip
   them with `paths-ignore`, the required check never reports and the PR can't
