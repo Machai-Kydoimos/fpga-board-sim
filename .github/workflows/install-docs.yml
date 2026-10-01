@@ -64,6 +64,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# `persist-credentials: false` on every checkout, for the reason given in
+# ci.yml: no step here runs git after checking out, so none needs the token.
+
 jobs:
   # ── Linux: `sudo apt install ghdl`, exactly as docs/install.md prints it ────
   linux-apt:
@@ -72,6 +75,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       # Verbatim from docs/install.md "GHDL / Linux (Ubuntu/Debian)".  It is
       # deliberately NOT preceded by `apt-get update`: if the documented command
@@ -116,6 +121,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install build dependencies (docs/install.md, Debian/Ubuntu)
         run: |
           sudo apt install build-essential automake autoconf flex check \
@@ -131,6 +138,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       # Both simulators, because the document offers both and a student may
       # follow either line; the suite skips the one it cannot find, so
@@ -190,6 +199,8 @@ jobs:
         shell: pwsh
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Package identifiers still exist in winget-pkgs
         env:
