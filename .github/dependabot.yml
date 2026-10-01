@@ -4,6 +4,14 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Every update type, majors included, so a week's action bumps arrive as
+    # one PR instead of several: each extra PR is another audit, and under
+    # strict branch protection each merge sends the rest BEHIND.  Kept apart
+    # from the uv group below until dependabot-audit can audit a PR that spans
+    # ecosystems (Machai-Kydoimos/dependabot-audit#192).
+    groups:
+      actions:
+        patterns: ["*"]
   - package-ecosystem: "uv"
     directory: "/"
     schedule:

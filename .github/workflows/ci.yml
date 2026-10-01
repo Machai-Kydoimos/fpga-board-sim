@@ -44,6 +44,18 @@ concurrency:
 # covers push and pull_request on hosted runners.  The problem was never that it
 # was off, it was that the key churned.
 
+# ── About `persist-credentials: false` on every checkout below ──────────────
+#
+# By default actions/checkout leaves the job's token configured for git until
+# the job ends, so any later step -- the test suite, the simulators it
+# launches, each third-party action -- can run authenticated git commands.
+# Nothing here needs that: no job pushes, fetches or clones after checkout,
+# and the drift job reads GITHUB_TOKEN from `env:`, not from git.  The token is
+# read-only (`permissions: contents: read`) and, since checkout v6, kept under
+# $RUNNER_TEMP rather than in .git/config, so this is least privilege rather
+# than a leak being closed.  zizmor's `artipacked` audit flags the default;
+# tests/test_checkout_credentials.py holds every workflow's checkouts to it.
+
 jobs:
   lint:
     name: Lint & type-check
@@ -51,6 +63,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           cache-dependency-glob: uv.lock
@@ -89,6 +103,8 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           cache-dependency-glob: uv.lock
@@ -115,6 +131,8 @@ jobs:
         python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           cache-dependency-glob: uv.lock
@@ -140,6 +158,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           cache-dependency-glob: uv.lock
@@ -188,6 +208,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           cache-dependency-glob: uv.lock
@@ -242,6 +264,8 @@ jobs:
             sha256: 2250f49e5334885fe9b50597b8f8607304ea3dc6c947489812f9e2a5afa35f23
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           cache-dependency-glob: uv.lock
@@ -308,6 +332,8 @@ jobs:
             sha256: c21312d5a0cc5833e6d8690d8c4343e67f4fc32f070c07343816cd11a31c7769
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           cache-dependency-glob: uv.lock
@@ -351,6 +377,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           cache-dependency-glob: uv.lock
@@ -393,6 +421,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
         with:
           cache-dependency-glob: uv.lock
