@@ -17,3 +17,9 @@
 # Generated single-file embedded-core designs (regenerate; never hand-edit) — collapse in diffs
 hdl/mx65_*.vhd linguist-generated=true
 hdl/t80_*.vhd  linguist-generated=true
+
+# VHDL templates and splice fragments. By extension alone, GitHub Linguist files *.frag
+# as JavaScript and *.tmpl as Go Template; the phantom JavaScript made CodeQL default
+# setup try (and fail) a javascript-typescript scan on 2026-07-02.
+*.vhd.frag linguist-language=VHDL
+*.vhd.tmpl linguist-language=VHDL
