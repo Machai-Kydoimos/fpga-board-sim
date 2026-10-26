@@ -78,7 +78,11 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy .
-      - run: uv run rumdl check .
+      # --deny-config-warnings: an option rumdl no longer recognizes would
+      # otherwise only warn while it silently stops applying.  rumdl is pinned
+      # by uv.lock, so this can only fire on a PR that bumps rumdl or edits its
+      # configuration.
+      - run: uv run rumdl check --deny-config-warnings .
       # Lints this file.  Paired with the pre-commit hook, and both are needed
       # because each covers the other's blind spot: a hook only fires on
       # *staged* files, so a broken ci.yml left sitting in the working tree
