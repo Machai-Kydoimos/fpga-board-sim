@@ -221,7 +221,7 @@ ROM/RAM widths + decode literals, which then appear in the output).
 - **Validate before writing.** The CLI writes to a temp file **named `<spec.name>.vhd`** (so the
   entity==filename contract check passes) and runs `check_vhdl_encoding` + `check_vhdl_contract`
   before committing bytes to `--out`.
-- **TOML:** stdlib `tomllib` (a `tomli` fallback guard covered the 3.10 floor until it rose to 3.11); the banner description
+- **TOML on the 3.10 floor:** `tomllib` (3.11+) with a `tomli` fallback guard; the banner description
   is stored as prose and the emitter prefixes each line as a `--` comment (blank line -> bare `--`).
 - **Deferred to growth (documented, not built):** generating the `cpu_io` register cases / IO layout
   from the spec (v1 keeps `cpu_io` a template; the spec carries the memory map, not per-register

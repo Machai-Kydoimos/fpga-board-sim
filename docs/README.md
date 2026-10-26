@@ -48,8 +48,10 @@ write-ups kept for their measurements.
 
 ## Plans — [`docs/plans/`](plans/)
 
-Each file carries its own status header; this table is the index. **Live** plans are being executed
-or are approved and queued; **executed** plans shipped in the release named.
+This table is the authority on each plan's status. A plan's own header may be missing or out of
+date, and is left as written, because an executed plan is a historical record (see
+[CONTRIBUTING](../CONTRIBUTING.md#live-documents-and-historical-records)). **Live** plans are being
+executed or are approved and queued; **executed** plans shipped in the release named.
 
 | Plan | Status |
 |---|---|
