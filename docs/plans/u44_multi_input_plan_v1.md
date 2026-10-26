@@ -1,7 +1,7 @@
 # U44 — Multi-input: simultaneous holds, latched buttons, keyboard mapping (arc plan v1)
 
-> **Status:** ✅ **COMPLETE — shipped 2026-08-25** across six PRs (#371 · #373 · #375 · #376 ·
-> #378 · #380); milestone "U44 — Multi-input (v0.21.0)"; #353 closed. **Released as v0.21.0 on
+> **Status:** ✅ **COMPLETE — shipped 2026-08-25** across six
+> PRs (#371 · #373 · #375 · #376 · #378 · #380); milestone "U44 — Multi-input (v0.21.0)"; #353 closed. **Released as v0.21.0 on
 > 2026-08-25.** Full delivered record: `docs/roadmap_delivered.md`. Retained as the decision and
 > evidence record; §9 carries the per-phase ledger and the corrections found during execution.
 > Follow-on **U45** (carry preview switch/latch state into the run) shipped 2026-08-31.
