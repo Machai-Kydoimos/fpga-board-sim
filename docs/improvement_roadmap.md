@@ -13,7 +13,7 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Current focus
 
-*Updated 2026-08-05 — the live execution view; the tiers below are strategy and delivered
+*Updated 2026-10-26 — the live execution view; the tiers below are strategy and delivered
 history. This section says what is in flight, what is queued in what order, and what was just
 decided. Update it when an arc starts, ships, or changes order.*
 
@@ -24,6 +24,13 @@ decided. Update it when an arc starts, ships, or changes order.*
 > ID-allocation note below close that gap.)
 
 ### Now — U48–U54 + D17, the pre-semester classroom arc
+
+> **Released as v0.23.0 on 2026-10-26, with an open tail.** Rick's doc review and the plan's two
+> interactive checks — §10.2 (the frozen board) and §10.3 (the fresh-profile walkthrough) — were
+> not done before the release, by his decision, and **remain owed after it**. So do the eight
+> `roadmap_delivered.md` entries (U47–U53 + D17), held so the review reads the cards in place.
+> When running §10.2, note that its `[Switch to NVC]` action was retired (D-9; plan §4.2): the
+> advisory points at the preview's `SIM:` toggle. The text below is the arc as planned.
 
 **The first VHDL/FPGA lab session is ≈ 2026-09-26**, and this project's role in that course is to
 be the tool a student uses *outside* the lab — alone at 11 pm with the `.vhd` file and the
@@ -50,8 +57,9 @@ tagged ≥ 4 days before the first lab. Milestone and issues open per PR as the 
 
 ### Next — in order
 
-1. **U48–U54 + D17 — the classroom arc** → v0.23.0, "the classroom release"
-   ([plan](plans/u48_classroom_arc_plan_v2.md)) — **the live arc**, approved 2026-09-05. Cards: U48 ·
+1. **U48–U54 + D17 — the classroom arc** → ✅ **v0.23.0, "the classroom release", released
+   2026-10-26** — its open tail (the doc review, §10.2/§10.3, the eight delivered entries) is in
+   *Now* above ([plan](plans/u48_classroom_arc_plan_v2.md)) — approved 2026-09-05. Cards: U48 ·
    U49 · U50 · U53 in Tier 1, U52 in Tier 3, **D17** in Part 2 / Tier 2. **U51** (multi-file) was
    pulled **back into** this arc on 2026-09-06 (decision D-5 reversed — a second course's projects
    are multi-file to the core); **U54** (testbench runner) stays out (D-11) and rides the next
@@ -88,7 +96,7 @@ The three live plans, then executed history (each file carries its own detailed 
 
 | Plan document | Status |
 |---|---|
-| [u48_classroom_arc_plan_v2.md](plans/u48_classroom_arc_plan_v2.md) | **LIVE — approved 2026-09-05**; the arc now executing → v0.23.0 |
+| [u48_classroom_arc_plan_v2.md](plans/u48_classroom_arc_plan_v2.md) | **LIVE — released as v0.23.0 2026-10-26**; open tail: the doc review, §10.2/§10.3, the delivered entries |
 | [u39_peripherals_plan.md](plans/u39_peripherals_plan.md) | **LIVE — approved 2026-08-05**; displaced one release by the classroom arc → v0.24.0 |
 | [docs_assets_improvement_plan_v2.md](plans/docs_assets_improvement_plan_v2.md) | **LIVE — decisions resolved 2026-08-05**; split execution: PRs 1–2 ✅, PRs 3–6 with the peripherals arc |
 | [u44_multi_input_plan_v1.md](plans/u44_multi_input_plan_v1.md) | executed → v0.21.0 |
@@ -152,7 +160,7 @@ Still reserved by a live plan, to be filed as full cards / Icebox rows at that a
 
 ## Context
 
-The simulator is mature: ~13,300 LOC across 34 Python modules (≈15,100 incl. `sim/`), 83 test files (2350 tests), multi-platform CI (Linux x64/arm64 · Windows · macOS arm64), two simulator engines surfaced as four selectable backends (GHDL mcode/LLVM/JIT + NVC, U35), 7-segment support including physical scan displays shipped, embedded CPU core systems (6502/Z80) shipped, 285 board definitions from four sources, three UI themes with exact duty-cycle brightness and RGB rendering, performance profiled and tuned (PR #31 / U25 / U34), **v0.22.0 released (2026-09-04)** — the capture & carry release. *(Counts refreshed 2026-09-04.)*
+The simulator is mature: ~21,600 LOC across 65 Python modules (≈23,800 incl. `sim/`), 105 test files (3109 tests), multi-platform CI (Linux x64/arm64 · Windows · macOS arm64), two simulator engines surfaced as four selectable backends (GHDL mcode/LLVM/JIT + NVC, U35), 7-segment support including physical scan displays shipped, embedded CPU core systems (6502/Z80) shipped, 285 board definitions from four sources, three UI themes with exact duty-cycle brightness and RGB rendering, performance profiled and tuned (PR #31 / U25 / U34), **v0.23.0 released (2026-10-26)** — the classroom release. *(Counts refreshed 2026-10-26.)*
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 

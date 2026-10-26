@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-10-26
+
 ### Changed
 
 - **Python 3.11 is now the minimum** (`requires-python = ">=3.11,<3.15"`).
@@ -55,7 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     arrived. It now ends at `uv run fpga-sim --doctor`, needs no dev group, and
     therefore rehearses the install a reader actually gets.
 - **Python 3.14 is supported, and the CI matrix now runs every version in the
-  range.** `requires-python` becomes `>=3.10,<3.15`; the matrix gains **3.11**
+  range.** `requires-python` becomes `>=3.10,<3.15` (later in this release the
+  floor rose to 3.11 — see the first entry above), and the matrix gains **3.11**
   (a version we advertised and never ran) and **3.14**. The bound is still
   cocotb's — it ships `cp314` wheels as of 2.1.0 and has no `cp315` yet — and it
   stays load-bearing: without it `uv sync` picks the newest interpreter on the
@@ -2899,7 +2902,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
-[Unreleased]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.23.0...HEAD
+[0.23.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/Machai-Kydoimos/fpga-board-sim/compare/v0.19.0...v0.20.0
