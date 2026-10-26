@@ -24,15 +24,10 @@ still passing, because the code is written against the API both share.
 
 from __future__ import annotations
 
-import sys
+import tomllib
 from importlib.metadata import distributions
 from pathlib import Path
 from typing import Any
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover - exercised only on Python 3.10
-    import tomli as tomllib
 
 PROJECT = Path(__file__).parent.parent
 PYGAME_DISTRIBUTIONS = {"pygame", "pygame-ce"}

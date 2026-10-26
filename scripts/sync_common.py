@@ -11,7 +11,7 @@ import json
 import os
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -323,7 +323,7 @@ def write_outputs(
     metadata = {
         "source_repo": f"https://github.com/{repo}",
         "source_commit": commit_sha,
-        "sync_timestamp": datetime.now(timezone.utc).isoformat(),
+        "sync_timestamp": datetime.now(UTC).isoformat(),
         "board_count": len(board_jsons),
         "files_written": sorted(board_jsons.keys()),
     }

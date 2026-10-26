@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import subprocess
 import sys
+import tomllib
 from importlib.metadata import PackageNotFoundError
 from pathlib import Path
 from typing import Any
@@ -31,11 +32,6 @@ import fpga_sim.__main__ as main_mod
 import fpga_sim.doctor as doctor
 from fpga_sim.doctor import Check, exit_code, render
 from fpga_sim.sim_discovery import SimulatorInfo
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover - exercised only on Python 3.10
-    import tomli as tomllib
 
 PROJECT = Path(__file__).resolve().parent.parent
 

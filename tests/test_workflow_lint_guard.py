@@ -20,16 +20,11 @@ reach its own lint step, which only the hook catches.
 
 from __future__ import annotations
 
-import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
 import yaml
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover - exercised only on Python 3.10
-    import tomli as tomllib
 
 PROJECT = Path(__file__).parent.parent
 CI_WORKFLOW = PROJECT / ".github" / "workflows" / "ci.yml"

@@ -7,7 +7,7 @@ Self-contained: no ``fpga_sim`` dependency.  Used by
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from led_metadata import color_from_name
@@ -851,7 +851,7 @@ def build_board_json(
     buttons = _build_button_components(pins.get("button", []))
     seven_seg = _build_seven_seg(pins.get("seven_seg", []))
 
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     board: dict[str, Any] = {
         "$schema": schema_ref,

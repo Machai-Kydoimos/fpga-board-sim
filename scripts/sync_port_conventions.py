@@ -38,16 +38,11 @@ import copy
 import hashlib
 import json
 import re
-import sys
+import tomllib
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover - exercised only on Python 3.10
-    import tomli as tomllib
 
 from check_registry_schema import check_cross_field, check_schemas
 from framework_conventions import reconcile_framework_polarity

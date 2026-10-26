@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Python 3.11 is now the minimum** (`requires-python = ">=3.11,<3.15"`).
+  3.10 reaches end of life on 2026-10-31, and its dependencies left first:
+  Pillow 13.0.0 and filelock 4.1.1+ require 3.11 and have no fixed release
+  that runs on 3.10, so while the lock had to satisfy 3.10 it could not take
+  their security fixes (see Security). A student whose only Python is 3.10
+  still just runs `uv sync`: uv reads the bound and fetches a suitable
+  interpreter itself, as it already did for a machine whose Python is too new.
+  The CI matrix drops its 3.10 leg, the TOML readers lose their `tomli`
+  fallback (stdlib `tomllib`), and the `rpds-py` lock fork collapses. The
+  upper bound stays at 3.14: cocotb 2.1.0 refuses to build on 3.15, and the
+  support upstream merged on 2026-10-23 is not in a release yet.
 - **Waveform capture offers FST first, and says how big the dump is** (roadmap
   P13/P14). The Settings row cycled off → VCD → FST, which walked everyone
   through the worse of the two formats: measured on one machine, a ten-second
@@ -892,6 +903,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     243 are byte-identical, including every board with RGB pucks (a dark puck's
     fill is `max(led_off, 0)`, which is `led_off`) and every 7-segment digit (an
     unlit segment interpolates to `seg_off` exactly).
+
+### Security
+
+- **All 59 open Dependabot alerts fixed** (5 critical, 31 high, 18 medium,
+  5 low) by moving three packages to fixed releases: Pillow 12.3.0 → 13.0.0
+  (41 advisories, every critical among them), virtualenv 21.14.1 → 21.14.13
+  (15) and filelock 3.32.5 → 4.2.4 (3). All three are development-only —
+  plain `uv sync` installs none of them. Pillow serves the `scripts/capture_*`
+  tools; virtualenv and filelock arrive through pre-commit, which never builds
+  a hook environment here — so no student install was exposed. Two of the
+  three fixes need Python 3.11, which is why the floor moved (see Changed).
 
 ### Internal
 

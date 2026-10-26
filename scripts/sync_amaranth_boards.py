@@ -10,7 +10,7 @@ import io
 import json
 import sys
 import tarfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Ensure the project src/ is importable
@@ -55,7 +55,7 @@ def generate_board_json(
     """Parse board files and generate JSON strings. Returns {output_filename: json_str}."""
     seen: dict[str, int] = {}
     results: dict[str, str] = {}
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
 
     for filename, source in sorted(board_files.items()):
         try:

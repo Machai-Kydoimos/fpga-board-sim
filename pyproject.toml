@@ -11,7 +11,7 @@ description = "Interactive FPGA board simulator with GHDL-backed VHDL simulation
 # default python3 was 3.14; the CI test matrix could not have found it, because
 # every job there pins its own python-version.  Re-check PyPI wheel *tags*, not
 # release dates, before moving it again.
-requires-python = ">=3.10,<3.15"
+requires-python = ">=3.11,<3.15"
 license = {text = "MIT"}
 authors = [
     {name = "Richard Graham", email = "rickhg12hs@users.noreply.github.com"},
@@ -63,7 +63,7 @@ dev = [
     "jsonschema>=4.0",
     "pytest-randomly>=4.1.0",
     "rumdl>=0.2.55",
-    "pillow>=12.3.0",
+    "pillow>=13.0.0",
     # Workflow linter.  Ships as an sdist that downloads the upstream
     # rhysd/actionlint release binary at build time and verifies it against a
     # sha256 baked into the sdist, so the chain is uv.lock -> sdist hash ->
@@ -76,8 +76,6 @@ dev = [
     # as a pre-commit dependency, but declared here so the tests do not rest
     # on a transitive one that pre-commit could drop.
     "pyyaml>=6.0",
-    # TOML reader for the embedded-core generator on Python 3.10; 3.11+ uses stdlib tomllib.
-    "tomli>=2.0 ; python_version < '3.11'",
 ]
 
 [tool.pytest.ini_options]
@@ -100,7 +98,7 @@ filterwarnings = ["error::EncodingWarning"]
 
 # ── Ruff (linter + formatter) ────────────────────────────────────────────────
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 line-length = 100
 exclude = ["amaranth-boards/", "boards/"]
 
@@ -160,7 +158,7 @@ indent-style = "space"
 # ── mypy (static type checker) ───────────────────────────────────────────────
 [tool.mypy]
 mypy_path = ["src"]
-python_version = "3.10"
+python_version = "3.11"
 ignore_missing_imports = true
 exclude = ["amaranth-boards/", "boards/"]
 strict = true  # D8 (#125): full strict flip; supersedes the individual flags this used to list

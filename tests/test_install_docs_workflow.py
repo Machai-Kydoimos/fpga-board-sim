@@ -15,17 +15,12 @@ those would only invite the workflow to grow lies.
 """
 
 import re
-import sys
+import tomllib
 from typing import Any
 
 import yaml
 
 from fpga_sim.paths import REPO_ROOT
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover - exercised only on Python 3.10
-    import tomli as tomllib
 
 WORKFLOW = REPO_ROOT / ".github" / "workflows" / "install-docs.yml"
 

@@ -62,7 +62,7 @@ simulator it found:
 ```text
 fpga-sim doctor - Ubuntu 24.04.1 LTS - x86_64
 
-  [ ok ] Python         3.12.3 (CPython), within >=3.10,<3.15
+  [ ok ] Python         3.12.3 (CPython), within >=3.11,<3.15
   [ ok ] uv             uv 0.12.10
   [ ok ] pygame-ce      2.5.8 (SDL 2.32.10)
   [ ok ] cocotb         2.1.0
