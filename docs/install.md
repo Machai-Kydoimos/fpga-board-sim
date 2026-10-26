@@ -54,8 +54,13 @@ winget install ghdl.ghdl.ucrt64.mcode
 **Linux (Ubuntu/Debian):**
 
 ```bash
+sudo apt update
 sudo apt install ghdl
 ```
+
+`apt update` refreshes the package list first. Without it, `apt install` on a
+machine whose list is out of date — a fresh install, a container, WSL — can fail
+with `404 Not Found` or `Unable to locate package`.
 
 **Linux (Fedora):**
 
@@ -135,6 +140,7 @@ sudo pkg install nvc
 
 ```bash
 # Install build dependencies:
+sudo apt update
 sudo apt install build-essential automake autoconf flex check \
   llvm-dev pkg-config zlib1g-dev libdw-dev libffi-dev libzstd-dev
 
@@ -210,6 +216,7 @@ distros; build them from one source tree into **separate prefixes** so each
 `ghdl` binary stays self-contained and discovery can find them:
 
 ```bash
+sudo apt update
 sudo apt install llvm-dev clang gnat   # or the Fedora/… equivalents
 
 git clone https://github.com/ghdl/ghdl && cd ghdl

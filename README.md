@@ -60,10 +60,10 @@ Board definitions ship as JSON in `boards/` — no submodule initialization need
 The happy path for **GHDL** (the default, fully tested everywhere):
 
 ```bash
-sudo apt install ghdl          # Linux (Ubuntu/Debian)
-sudo dnf install ghdl          # Linux (Fedora)
-brew install nvc               # macOS — see the note below
-winget install ghdl.ghdl.ucrt64.mcode   # Windows (PowerShell)
+sudo apt update && sudo apt install ghdl   # Linux (Ubuntu/Debian)
+sudo dnf install ghdl                      # Linux (Fedora)
+brew install nvc                           # macOS — see the note below
+winget install ghdl.ghdl.ucrt64.mcode      # Windows (PowerShell)
 ```
 
 **Which one, and does it matter?** Any installed simulator runs any design; they

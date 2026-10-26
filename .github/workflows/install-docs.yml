@@ -68,7 +68,7 @@ concurrency:
 # ci.yml: no step here runs git after checking out, so none needs the token.
 
 jobs:
-  # ── Linux: `sudo apt install ghdl`, exactly as docs/install.md prints it ────
+  # ── Linux: the documented `apt` install, exactly as docs/install.md prints it ─
   linux-apt:
     name: Linux — documented apt install
     runs-on: ubuntu-latest
@@ -78,12 +78,18 @@ jobs:
         with:
           persist-credentials: false
 
-      # Verbatim from docs/install.md "GHDL / Linux (Ubuntu/Debian)".  It is
-      # deliberately NOT preceded by `apt-get update`: if the documented command
-      # needs one to work on a clean machine, the document is what is wrong, and
-      # this job going red is how we find out.
-      - name: sudo apt install ghdl
-        run: sudo apt install ghdl
+      # Verbatim from docs/install.md "GHDL / Linux (Ubuntu/Debian)", including
+      # its `apt update`.  The rule is unchanged: this job runs only what the
+      # document says, so if the documented commands fail on a clean machine,
+      # the document is what is wrong.  The document used to omit the update;
+      # on 2026-10-26 the runner image's stale package list made the NVC job
+      # below fail with a 404 on a superseded `liblzma-dev` -- the same failure
+      # a reader with an out-of-date list gets -- so the update went into the
+      # document, and from there into here.
+      - name: sudo apt update && sudo apt install ghdl
+        run: |
+          sudo apt update
+          sudo apt install ghdl
 
       - name: ghdl --version
         run: |
@@ -125,6 +131,7 @@ jobs:
           persist-credentials: false
       - name: Install build dependencies (docs/install.md, Debian/Ubuntu)
         run: |
+          sudo apt update
           sudo apt install build-essential automake autoconf flex check \
             llvm-dev pkg-config zlib1g-dev libdw-dev libffi-dev libzstd-dev
       - name: Record

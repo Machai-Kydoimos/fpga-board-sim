@@ -23,7 +23,7 @@ runs your design) and **uv** (which handles Python for you).
 
 ```bash
 # Linux
-sudo apt install ghdl        # or: sudo dnf install ghdl
+sudo apt update && sudo apt install ghdl   # or: sudo dnf install ghdl
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # macOS

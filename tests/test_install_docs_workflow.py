@@ -28,7 +28,11 @@ WORKFLOW = REPO_ROOT / ".github" / "workflows" / "install-docs.yml"
 #: workflow runs verbatim *because a reader is told to run it*; the workflow's
 #: own plumbing (checkout, PATH exports, summary lines) is not in scope.
 DOCUMENTED = {
-    "sudo apt install ghdl": "docs/install.md",
+    # Each apt install is pinned *with* the `apt update` before it, as one
+    # sequence, so neither side can drop the update from one block alone: a
+    # runner's (or a reader's) stale package list 404s on a superseded package,
+    # which took the NVC job red on 2026-10-26.
+    "sudo apt update\nsudo apt install ghdl": "docs/install.md",
     "brew install nvc": "docs/install.md",
     # macOS GHDL is a tarball, not a brew cask: the cask was disabled on
     # 2026-09-01 for failing the Gatekeeper check, which this very workflow
@@ -42,6 +46,7 @@ DOCUMENTED = {
     "curl -LsSf https://astral.sh/uv/install.sh | sh": "README.md",
     "winget install --id=astral-sh.uv -e": "README.md",
     (
+        "sudo apt update\n"
         "sudo apt install build-essential automake autoconf flex check "
         "llvm-dev pkg-config zlib1g-dev libdw-dev libffi-dev libzstd-dev"
     ): "docs/install.md",
