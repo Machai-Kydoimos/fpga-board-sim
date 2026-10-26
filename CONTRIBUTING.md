@@ -278,7 +278,7 @@ Three conventions here; only the last one is enforced automatically:
   |---|---|---|
   | `ruff` rule `PLW1514` | statically, at every site whose receiver ruff can prove is a `Path` | anything it can't type-infer — an unannotated `tmp_path` fixture, or `SESSION_FILE = Path.home() / …`. Annotating the binding (`X: Path = …`) makes it visible. Does **not** look at `subprocess` at all |
   | `scripts/check_encoding.py` | statically, matching on *names* rather than inferred types, so it covers the two gaps above — including `subprocess` | a call assembled dynamically (`getattr(p, "read_text")()`) |
-  | `EncodingWarning`-as-error in the test suite | every site actually executed, no inference needed | code no test exercises; and `subprocess` warnings only exist on Python 3.13+, so a 3.10-only run under-reports |
+  | `EncodingWarning`-as-error in the test suite | every site actually executed, no inference needed | code no test exercises; and `subprocess` warnings only exist on Python 3.13+, so a run on 3.11 or 3.12 under-reports |
 
   `check_encoding.py` runs as a pre-commit hook on changed files, and
   repo-wide from `tests/test_check_encoding.py::test_repo_is_clean` — the
@@ -291,6 +291,33 @@ Three conventions here; only the last one is enforced automatically:
   ```bash
   PYTHONWARNDEFAULTENCODING=1 uv run pytest
   ```
+
+### Live documents and historical records
+
+The repository holds two kinds of document, and they follow opposite rules.
+**[`docs/README.md`](docs/README.md), the docs map, says which is which.** Its
+Plans table marks every plan **LIVE**, **executed → vX.Y** or **superseded**.
+Go by that table, not by the file: a plan's own status header can be missing or
+out of date, and is left as written.
+
+- **Live documents describe the project as it is today, and change with it.**
+  Update them in the same PR as the change they describe. They are `README.md`,
+  this file, `CLAUDE.md`, the reference docs in `docs/` (install, user guide,
+  first design, troubleshooting, writing designs, architecture, …), the
+  roadmap — above all its *Current focus* — and the status of every LIVE plan,
+  in the plan itself and in the map's table.
+- **Historical records say what was true when they were written, and are not
+  edited to match today.** They are executed and superseded plans,
+  `docs/embedded_core_build_notes.md`, `docs/u25_ghdl_perf_profile.md`,
+  `docs/experiments/`, and the released sections of `CHANGELOG.md`.
+  `docs/roadmap_delivered.md` and the CHANGELOG are **append-only**: new entries
+  land as work ships, and existing ones are never rewritten.
+- **A sweep leaves records alone.** A rename, a version-floor change or a count
+  refresh that hits a historical record skips it. The one exception is an edit
+  CI forces, such as a new lint rule failing on an old line. Two guards already
+  follow this split: `tests/test_us_spelling.py` exempts `CHANGELOG.md`, and
+  `tests/test_docs_board_counts.py` checks only documents that describe the
+  product as it is today.
 
 ---
 
