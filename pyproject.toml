@@ -195,6 +195,17 @@ disable = ["MD013", "MD036"]
 respect-gitignore = true         # skips memory/, .venv/, .pytest_cache/, etc.
 exclude = [".git", ".github"]
 
+# MD018 (no space after `#` in a heading) reads any line starting with `#` plus
+# a non-space as a broken heading -- including an issue reference such as
+# `#378` that a hard wrap left at the start of a line.  Its fix then makes the
+# line a real heading, splitting the paragraph, and MD026 strips the heading's
+# trailing punctuation.  rumdl 0.3.0 extended the check into blockquotes, which
+# is how it reached docs/plans/u44_multi_input_plan_v1.md.  `magiclink` skips
+# `#<digits>` references at a line start; a real `#Heading` typo is still
+# reported.
+[tool.rumdl.MD018]
+magiclink = true
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
