@@ -53,7 +53,7 @@ or are approved and queued; **executed** plans shipped in the release named.
 
 | Plan | Status |
 |---|---|
-| [u48_classroom_arc_plan_v2.md](plans/u48_classroom_arc_plan_v2.md) | **LIVE — executing** → v0.23.0. The pre-semester classroom arc: U48–U54 + D17 |
+| [u48_classroom_arc_plan_v2.md](plans/u48_classroom_arc_plan_v2.md) | **LIVE — released as v0.23.0** (2026-10-26); open tail: the doc review and §10.2/§10.3. The pre-semester classroom arc: U48–U54 + D17 |
 | [u39_peripherals_plan.md](plans/u39_peripherals_plan.md) | **LIVE — approved**, unstarted → v0.24.0. Character LCD + SPI OLED on a peripheral framework |
 | [docs_assets_improvement_plan_v2.md](plans/docs_assets_improvement_plan_v2.md) | **LIVE — split execution**; PRs 1–2 shipped, PRs 3–6 ride the peripherals arc |
 | [u44_multi_input_plan_v1.md](plans/u44_multi_input_plan_v1.md) | executed → v0.21.0 — simultaneous holds, latched buttons, keyboard mapping |

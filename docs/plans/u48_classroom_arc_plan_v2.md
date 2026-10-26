@@ -13,7 +13,10 @@ D17 split + `paths.py`, and **U53, the pin map, working end to end**; then the f
 lab-shaped references + two natives) — which closes **U52**; **PR 12** ✅ (`first_design.md` +
 `troubleshooting.md`, and the FST-first waveform default that resolves **P13** / **P14**);
 **PR 13** ✅ (the display-name table) — which closes **U49**.
-**Next: PR 14** (release v0.23.0) · Supersedes
+**PR 14** ✅ — v0.23.0 released 2026-10-26, *without* Rick's doc review and the two interactive
+checks §10.2/§10.3 (his call). **Both are still owed**, as are the eight `roadmap_delivered.md`
+entries (U47–U53 + D17). **Next:** the doc review, §10.2/§10.3, then the delivered entries ·
+Supersedes
 [u48_classroom_arc_plan.md](u48_classroom_arc_plan.md) (v1, kept as the record of how the arc was
 first framed) · Companion to [improvement_roadmap.md](../improvement_roadmap.md)*
 

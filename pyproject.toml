@@ -1,6 +1,6 @@
 [project]
 name = "fpga-simulator"
-version = "0.22.0"
+version = "0.23.0"
 description = "Interactive FPGA board simulator with GHDL-backed VHDL simulation"
 # Upper bound is still cocotb's, and it moved: cocotb 2.1.0 ships cp314 wheels,
 # so 3.14 is in (roadmap P4, closed).  3.15 stays out because cocotb has no
