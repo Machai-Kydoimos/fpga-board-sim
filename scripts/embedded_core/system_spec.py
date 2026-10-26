@@ -9,14 +9,9 @@ the generics drive the VHDL generic defaults.
 from __future__ import annotations
 
 import itertools
-import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover - exercised only on Python 3.10
-    import tomli as tomllib
 
 # Top of the CPU's 16-bit address space; every region must fit under it.
 ADDRESS_SPACE_SIZE = 0x10000

@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 _SESSION_DIR = Path.home() / ".fpga_simulator" / "sessions"
@@ -118,7 +118,7 @@ def save_session_stats(
 
     """
     _SESSION_DIR.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    ts = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
     slug = _safe_name(board_name)
     path = _SESSION_DIR / f"{ts}_{slug}.json"
 

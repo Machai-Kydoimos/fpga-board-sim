@@ -15,16 +15,11 @@ closed for dead citations and this closes for malformed ones.
 from __future__ import annotations
 
 import json
-import sys
+import tomllib
 from pathlib import Path
 
 import pytest
 from check_registry_schema import LCS_DIR, PCS_DIR, check_cross_field, check_schemas, maker_files
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover - exercised only on Python 3.10
-    import tomli as tomllib
 
 PROJECT = Path(__file__).resolve().parent.parent
 

@@ -28,15 +28,10 @@ from __future__ import annotations
 
 import json
 import re
-import sys
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover - exercised only on Python 3.10
-    import tomli as tomllib
 
 # Name token -> canonical color.  Single letters r/g/b/o are evidence-backed
 # (Black Ice ``led_o``, iCEBreaker ``led_r``/``led_g``, litex ``led_g_n`` ...);

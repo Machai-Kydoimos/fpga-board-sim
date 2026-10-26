@@ -607,7 +607,7 @@ Every push and pull request runs the following jobs:
 | Job | Runner | Simulators installed | Pytest filter |
 |-----|--------|----------------------|---------------|
 | Lint & type-check | ubuntu-latest | none | n/a |
-| Test (matrix) | ubuntu + windows + macos (Apple Silicon) + ubuntu-24.04-arm × py3.10 + py3.11 + py3.12 + py3.13 + py3.14 | none | `-m "not slow"` |
+| Test (matrix) | ubuntu + windows + macos (Apple Silicon) + ubuntu-24.04-arm × py3.11 + py3.12 + py3.13 + py3.14 | none | `-m "not slow"` |
 | Test Linux + GHDL | ubuntu-24.04 | GHDL mcode tarball from GitHub Releases (pinned v6.0.0) | full suite |
 | Test Linux + GHDL-LLVM / GHDL-LLVM-JIT | ubuntu-24.04 | the official `ghdl-llvm` / `ghdl-llvm-jit` release assets (sha256-pinned) | full + slow suites |
 | Test Linux + NVC | ubuntu-latest | `nickg/setup-nvc` action | full suite |
@@ -662,10 +662,10 @@ or both simulators is safe — those tests are skipped, not failed.
 A PR cannot be merged until these seven checks all pass:
 
 - `Lint & type-check`
-- `Test (ubuntu-latest, Python 3.10)`
+- `Test (ubuntu-latest, Python 3.11)`
 - `Test (ubuntu-latest, Python 3.12)`
 - `Test (ubuntu-latest, Python 3.13)`
-- `Test (windows-latest, Python 3.10)`
+- `Test (windows-latest, Python 3.11)`
 - `Test (windows-latest, Python 3.12)`
 - `Test (windows-latest, Python 3.13)`
 
@@ -684,10 +684,11 @@ green.
 - **`mypy` is whole-repo.** The `Lint & type-check` job runs `mypy .` across
   `src/`, `tests/`, `sim/`, and `scripts/` — not just `src/`. A type change has
   to keep the tests and scripts clean too. It runs on **Python 3.12**, and that
-  matters even though mypy's *target* is pinned to 3.10 in `pyproject.toml`:
-  mypy checks against the packages its environment has installed, and `tomli`
-  is installed only below 3.11, so a 3.10 `.venv` can pass where CI fails. To
-  run CI's check without touching your `.venv`:
+  matters even though mypy's *target* is pinned to 3.11 in `pyproject.toml`:
+  mypy checks against the packages its environment has installed, and those
+  depend on the interpreter — while the floor was 3.10, `tomli` was installed
+  only below 3.11, so a 3.10 `.venv` passed where CI failed (#421). To run
+  CI's check without touching your `.venv`:
   `UV_PROJECT_ENVIRONMENT=/tmp/venv312 uv run --python 3.12 --group dev mypy .`
 - **Don't `paths-ignore` the required jobs.** The workflows aren't path-filtered,
   so even a docs-only PR runs and *satisfies* the required checks. If you skip

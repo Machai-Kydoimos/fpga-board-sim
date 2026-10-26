@@ -55,7 +55,7 @@ import platform
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import cocotb
@@ -163,7 +163,7 @@ def _write_meta_sidecar(
         generics = {}
 
     meta = {
-        "timestamp": datetime.now(tz=timezone.utc).isoformat(timespec="seconds"),
+        "timestamp": datetime.now(tz=UTC).isoformat(timespec="seconds"),
         "vhdl_file": os.path.basename(vhdl_path),
         "vhdl_path": vhdl_path,
         "toplevel": toplevel,

@@ -50,7 +50,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import pygame
@@ -483,7 +483,7 @@ def report(target: Region | None) -> dict[str, Any]:
     # is 0 or 100 while ``duty_pct`` is what the design actually drove -- and
     # without this field the gap between the two would look like a bug.
     doc["display"] = _display_modes()
-    doc["at_time"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    doc["at_time"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     doc["more"] = "run `fpga-sim --doctor` for OS, Python, pygame and simulator versions"
     return doc
 

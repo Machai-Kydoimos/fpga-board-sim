@@ -31,15 +31,11 @@ from __future__ import annotations
 
 import json
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
 import jsonschema
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:  # pragma: no cover - exercised only on Python 3.10
-    import tomli as tomllib
 
 REPO = Path(__file__).parent.parent
 BOARDS_DIR = REPO / "boards"

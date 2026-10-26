@@ -10,7 +10,7 @@ import io
 import json
 import sys
 import tarfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from litex_parser import parse_litex_board  # noqa: E402
@@ -66,7 +66,7 @@ def generate_all_json(
     """Parse all board files and generate JSON strings."""
     seen: dict[str, int] = {}
     results: dict[str, str] = {}
-    timestamp = datetime.now(timezone.utc).isoformat()
+    timestamp = datetime.now(UTC).isoformat()
     skipped = 0
 
     for filename, source in sorted(board_files.items()):

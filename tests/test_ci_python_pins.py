@@ -9,9 +9,9 @@ unpinned job alternates between them from one run to the next.
 
 Lint & type-check is where that bites.  mypy's *target* is pinned in
 pyproject.toml, but mypy checks against the packages installed in whatever
-environment it runs in, and those depend on the interpreter: ``tomli`` is
-installed only below 3.11, which has already turned a local green into a CI
-red (#421).  Both 3.12 and 3.14 were green on the 26.04 trial (#448); naming
+environment it runs in, and those depend on the interpreter: while the floor
+was 3.10, ``tomli`` was installed only below 3.11, which turned a local green
+into a CI red (#421).  Both 3.12 and 3.14 were green on the 26.04 trial (#448); naming
 the version keeps the result from depending on which image a run lands on.
 
 ``install-docs.yml`` is deliberately outside this rule.  It rehearses a
