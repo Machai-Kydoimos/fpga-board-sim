@@ -82,6 +82,7 @@ def test_platform_tag_is_always_one_with_a_fix(monkeypatch):
         ("windows", "winget install ghdl.ghdl.ucrt64.mcode"),
         ("windows", "pacman -S mingw-w64-ucrt-x86_64-ghdl"),
         ("macos", "brew install nvc"),
+        ("debian", "sudo apt update"),
         ("debian", "sudo apt install ghdl"),
         ("fedora", "sudo dnf install ghdl"),
         ("arch", "yay -S nvc"),

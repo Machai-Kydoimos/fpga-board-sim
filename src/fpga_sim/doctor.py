@@ -176,6 +176,7 @@ _SIM_FIX: dict[str, str] = {
     """,
     "debian": """
         Install GHDL from the distribution's repository:
+            sudo apt update
             sudo apt install ghdl
         NVC, and GHDL's faster LLVM backends, are in docs/install.md.
     """,

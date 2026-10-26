@@ -791,6 +791,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The Ubuntu/Debian install commands now run `sudo apt update` first.** A
+  bare `apt install` uses the machine's saved package list, so on a machine
+  where that list is out of date — a fresh install, a container, WSL — it asks
+  for package versions the mirror has already replaced and fails with
+  `404 Not Found` or `Unable to locate package`. The install-docs workflow,
+  which runs the documented commands verbatim, hit exactly that on 2026-10-26
+  (a superseded `liblzma-dev` in the NVC build dependencies). The update now
+  leads every apt block in `docs/install.md`, the README quick start,
+  `docs/first_design.md` and the `--doctor` fix-it text. The workflow runs it
+  as documented, and its test pins each update to the install it precedes.
 - **The "it looks frozen" advisory named the one generic the reader cannot
   usefully change.** Every generic-contract design declares `COUNTER_BITS`
   whether it divides with it or not, and the simulator overrides that at launch;
@@ -909,11 +919,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **All 59 open Dependabot alerts fixed** (5 critical, 31 high, 18 medium,
   5 low) by moving three packages to fixed releases: Pillow 12.3.0 → 13.0.0
   (41 advisories, every critical among them), virtualenv 21.14.1 → 21.14.13
-  (15) and filelock 3.32.5 → 4.2.4 (3). All three are development-only —
-  plain `uv sync` installs none of them. Pillow serves the `scripts/capture_*`
-  tools; virtualenv and filelock arrive through pre-commit, which never builds
-  a hook environment here — so no student install was exposed. Two of the
-  three fixes need Python 3.11, which is why the floor moved (see Changed).
+  (15) and filelock 3.32.5 → 4.2.4 (3). All three are development
+  dependencies, and the simulator never runs them: nothing under `src/` or
+  `sim/` imports them, at this release or at 0.22.0. Pillow serves only the
+  `scripts/capture_*` tools, and virtualenv and filelock arrive through
+  pre-commit, which never builds a hook environment here. They were still
+  *installed* for students, though: up to and including 0.22.0, a plain
+  `uv sync` also installed the dev group, which brought in vulnerable versions
+  of all three. With the `uv sync` change above, it now installs none of
+  them. Two of the three fixes need Python 3.11, which is why the floor moved
+  (see Changed).
 
 ### Internal
 
