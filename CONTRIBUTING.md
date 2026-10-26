@@ -213,6 +213,14 @@ Two rules are disabled project-wide:
 - **MD036** (emphasis-as-heading) — its autofix rewrites bold/italic lead-ins
   and bylines into real headings, changing document structure and the TOC.
 
+One rule is configured rather than disabled:
+
+- **MD018** (no space after `#` in a heading) runs with `magiclink = true`. By
+  default it reads an issue reference such as `#378`, hard-wrapped to the start
+  of a line, as a broken heading. Its autofix then turns the line into a real
+  heading and strips the line's trailing punctuation. `magiclink` skips
+  `#<digits>` references and still reports a real `#Heading` typo.
+
 `rumdl check --fix` (or `rumdl fmt`) auto-corrects the remaining issues — mostly
 blank lines around code fences and lists, fenced-block languages, and stray
 whitespace.
