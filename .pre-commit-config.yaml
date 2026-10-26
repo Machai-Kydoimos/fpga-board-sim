@@ -58,9 +58,12 @@ repos:
       # rumdl runs as a local hook (not the upstream rumdl-pre-commit repo) so it
       # uses the uv.lock-pinned version, keeping local and CI in lockstep — same
       # rationale as the mypy hook above. --fix auto-corrects fixable issues.
+      # --deny-config-warnings matches CI: an option rumdl no longer recognizes
+      # (e.g. MD018's `magiclink` renamed upstream) fails instead of warning
+      # while it silently stops applying.
       - id: rumdl
         name: rumdl
-        entry: uv run --group dev rumdl check --fix
+        entry: uv run --group dev rumdl check --fix --deny-config-warnings
         language: system
         types: [markdown]
       # Text I/O with no explicit encoding decodes via the locale default —

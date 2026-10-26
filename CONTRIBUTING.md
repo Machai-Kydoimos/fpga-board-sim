@@ -107,7 +107,7 @@ of them except pytest automatically; run them manually at any time:
 uv run ruff check .        # linter — must report 0 errors
 uv run ruff format --check . # formatter check (ruff format . to auto-fix)
 uv run mypy .              # type checker — must report 0 errors
-uv run rumdl check .       # Markdown linter (rumdl check --fix to auto-fix)
+uv run rumdl check --deny-config-warnings .  # Markdown linter (add --fix to auto-fix)
 uv run actionlint          # GitHub Actions workflow linter (incl. shellcheck)
 uv run python scripts/check_encoding.py $(git ls-files '*.py')   # explicit encoding=
 uv run python scripts/check_registry_schema.py                   # registry TOMLs
@@ -132,7 +132,7 @@ PATH surgery), validates `uses:` refs, and reports duplicate keys, which are
 Running them all at once:
 
 ```bash
-uv run ruff check . && uv run mypy . && uv run rumdl check . && uv run actionlint && uv run pytest
+uv run ruff check . && uv run mypy . && uv run rumdl check --deny-config-warnings . && uv run actionlint && uv run pytest
 ```
 
 > **Windows / PowerShell 5.1:** `&&` is not supported — upgrade to
@@ -220,6 +220,12 @@ One rule is configured rather than disabled:
   of a line, as a broken heading. Its autofix then turns the line into a real
   heading and strips the line's trailing punctuation. `magiclink` skips
   `#<digits>` references and still reports a real `#Heading` typo.
+
+CI and the pre-commit hook both run rumdl with `--deny-config-warnings`. Without
+the flag, a setting rumdl no longer recognizes (say a later release renames
+`magiclink`) only prints a `[config warning]` and quietly stops applying. With
+it, the run fails. Because `uv.lock` pins rumdl, that can only happen on the PR
+that bumps rumdl or edits its configuration.
 
 `rumdl check --fix` (or `rumdl fmt`) auto-corrects the remaining issues — mostly
 blank lines around code fences and lists, fenced-block languages, and stray
