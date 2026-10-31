@@ -366,3 +366,28 @@ def test_the_accept_list_schema_rejects_malformed_entries(entry):
     schema = json.loads(ACCEPT_SCHEMA.read_text(encoding="utf-8"))
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate({"accept": [entry]}, schema)
+
+
+def test_a_parser_that_raises_on_a_recorded_identity_reports_it_as_failed(tmp_path):
+    folder = tmp_path / ORIGIN
+    _write(folder, "w.json", _board("W", "w.py", args={"revision": 2}))
+
+    def wukong(args):
+        if args:
+            raise RuntimeError("parser bug")
+        return ParseOutcome(boards=[_produced("W", "w.py", args={"revision": 1})])
+
+    accept = [
+        Acceptance(
+            ORIGIN,
+            "w.py",
+            "orphan",
+            "Checked: upstream dropped revision 2.",
+            "w.json",
+            "no_longer_defined",
+        )
+    ]
+    report, _ = _sync(folder, {"w.py": wukong}, accept)
+    assert report.warnings == {"w.py": ['version_failed: {"revision": 2}: RuntimeError']}
+    assert _load(folder, "w.json")["source"]["orphaned_reason"] == "no_longer_defined"
+    assert _load(folder, "w.json")["source"]["successor"] == "litex-boards/w_revision-1.json"

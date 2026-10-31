@@ -180,7 +180,10 @@ def _construct_recorded(
             for b in outcome.boards + extra
         ):
             continue
-        alternative = read(filename, text, entry.upstream_args)
+        try:
+            alternative = read(filename, text, entry.upstream_args)
+        except Exception as exc:  # a parser bug: report the version, never crash the sync
+            alternative = ParseOutcome(outcome="error", detail=normalize_error(exc))
         built = [
             b
             for b in alternative.boards
