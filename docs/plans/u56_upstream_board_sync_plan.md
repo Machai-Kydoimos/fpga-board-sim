@@ -1,11 +1,13 @@
 # U56 — Upstream board-sync repair: arc plan (faithful parsers, stable identity, orphaned boards)
 
-**Status:** **APPROVED 2026-10-31 (Rick)** — drafted 2026-10-28, revised twice on 2026-10-31.
-Queued → **v0.26.0**, after U39–U41 (v0.24.0) and D16 (v0.25.0) (D-5). Two items land early,
-outside that slot: Phase 1a item 6 (`--board` by source) and the no-scope sync-token recipe in
-`CONTRIBUTING.md` (§4.4). PR 0 ([#465](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/465))
-commits this file and the roadmap card; issues open just-in-time per phase. From here on, the phase
-ledger in §12 is the status source of truth.
+**Status:** **APPROVED 2026-10-31 (Rick)** — drafted 2026-10-28, revised twice on 2026-10-31, and
+amended the same day at the start of execution. **Executing → v0.24.0, the whole arc** (D-5,
+revised: next, ahead of U39–U41 → v0.25.0 and D16 → v0.26.0; Phases 5–7 included). **No upstream
+code is ever executed** (D-7): Phase 0 replaces the Amaranth and LiteX parsers' `exec()` with a
+reader that only parses. The early `--board` item shipped in [#466](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/466); the no-scope sync-token
+recipe was dropped (D-7). PR 0 ([#465](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/465))
+committed this file and the roadmap card; issues open just-in-time per phase. From here on, the
+phase ledger in §12 is the status source of truth.
 
 **Card ID:** **U56**, claimed 2026-10-28 in [`improvement_roadmap.md`](../improvement_roadmap.md)
 (ID allocation → next free **U57 · D18 · P38**). Card: Part 1 / Tier 2. This arc **absorbs Icebox
@@ -34,6 +36,19 @@ switches · D-3 one component per pin, behind two prerequisites (defect 21; a sp
 displaces today's bank) · D-4 emit every upstream-listed version · D-5 v0.26.0, after D16, with a
 stop point after Phase 4 · D-6 read every frequency upstream defines (defects 13, 22, 23), and mark
 the remaining four boards' clocks as assumed.
+
+**Decided 2026-10-31, at the start of execution (Rick) — amends the above:**
+
+- **D-7 (new): never execute upstream code.** "I consider executing upstream code a potential
+  vulnerability. Let's not do that." Phase 0 replaces `exec()` with a parse-only reader (§3 D-7,
+  §4.4, §5a).
+- **D-5 revised: next, as v0.24.0, and the whole arc.** "U56 should come next, and we need the full
+  arc." U39–U41 → v0.25.0, D16 → v0.26.0. Phase 4 stays a checkpoint, not a release point.
+- **No separate sync token.** "Locally, `gh` can do everything we need." Once nothing executes
+  upstream code, `gh`'s own token is fine for the one step that needs a token (§4.4).
+- **Also folded in (recommended 2026-10-31):** the external review's R2 — mono and RGB LEDs
+  interleaved on 19 LiteX boards — is a parser misreading of upstream's order, so it joins Phase 1c
+  as defect 24.
 
 **Revised 2026-10-31** after a review pass that checked this draft against the code, the saved
 audit data and a re-run of today's parser at the LiteX pin:
@@ -74,10 +89,23 @@ audit data and a re-run of today's parser at the LiteX pin:
 - **Wording.** D-2: `user_dip_btn` is an explicit button entry, not a substring accident. D-4: how
   many versions §4.7's rules find.
 
+**Amended 2026-10-31, at the start of execution** (the decisions above):
+
+- **D-7 and Phase 0 (§5a).** The parsers stop executing upstream files. §4.4 is rewritten as the
+  reader's design. Phase 1a loses its credential items, since nothing executes. Phase 1c's
+  import-aware resolution and Phase 2's extension modules are *read*, not executed. Phase 4 reads
+  unreviewed heads and runs none of them, and §14's sandbox question is moot.
+- **D-5.** Next, v0.24.0, the whole arc; the roadmap is renumbered in the PR that records this.
+  Phase 8 releases after Phase 7.
+- **Defect 24 (§2.3, Phase 1c):** the external review's R2.
+- **The 2026-10-28 audit harness executed upstream files** (Appendix A). It must not be run again:
+  rebuild evidence with the Phase 0 reader or the static scans in `~/.claude/u56-audit/`.
+
 **Audience contract:** written to be executed phase by phase by a capable model without additional
 context. Every phase has **Do**, **Verify**, **Quality gates**. Do not start a phase until the
 previous phase's Verify passes. One PR per phase; branch each phase off post-merge `main`; never
-commit to `main`. A phase that adds boards or changes what a board draws (phases 1c and 2–7)
+commit to `main`. **Never execute, import or instantiate an upstream file** (D-7): not in a sync, a
+test, an audit or a one-off measurement. A phase that adds boards or changes what a board draws (phases 1c and 2–7)
 attaches PNGs and waits for Rick's visual review **before** merge. Name boards as
 **`<source>/<file>.json`** in Verify steps and PR text: display names and class names repeat
 across sources, and an unqualified `--board` can pick the other source's twin (§2.6).
@@ -85,7 +113,8 @@ across sources, and an unqualified `--board` can pick the other source's twin (�
 **Evidence:** every number below was measured on 2026-10-28 against the pinned and then-current
 upstream commits (§2.1); numbers marked *2026-10-31* were measured in the review pass. The audit
 scripts and their raw results are saved outside the repository on the drafting machine
-(`~/.claude/u56-audit/`, with a README). Appendix A describes them closely enough to rebuild, and
+(`~/.claude/u56-audit/`, with a README; the scripts there that execute upstream files must not be
+run again, D-7). Appendix A describes them closely enough to rebuild, and
 Phase 1a commits the design × board impact matrix, so no later phase depends on them. Every phase
 re-proves its own effect with in-place re-syncs and tests. **Upstream keeps moving — re-measure
 before relying on a number.**
@@ -189,6 +218,7 @@ such as `tiny_fpgabx` ↔ `tinyfpga_bx`.)*
 | 21 | LiteX classifier treats any name containing "switch" as a user switch | `litex_parser.py:241` | `fairwaves_xtrx` and `limesdr_xtrx` draw `rf_switches` — upstream's control lines for the board's SKY13330/SKY13384 RF-path switches — as a user switch; the only such name at the pin (*2026-10-31*) | 1c |
 | 22 | Amaranth default clock ignores on-chip oscillators: it looks only for a `Clock` resource named by `default_clk` | `amaranth_parser.py:375` | 6 boards at 12 MHz whose frequency the board file and Amaranth's vendor platform define: Chameleon96 100 MHz (`cyclonev_oscillator`), both MachXO2 breakouts 2.08 MHz (`OSCH`, `osch_frequency`), QuickFeather 5 MHz (`osc_freq / osc_div`), UPduino v1 48 MHz (`SB_HFOSC`, `hfosc_div = 0`), Tang Nano 24 MHz (`OSC`, `osc_frequency`) (*2026-10-31*) | 1c |
 | 23 | Digilent reads a frequency only from `create_clock`, and a clock only under a clock heading | `digilent_parser.py:227`, `:825` | the three Genesys ZU boards have neither, but their comment above `sysclk` says "Sysclk is a 25 MHz PL reference clock"; they ship with no clock, at 100 MHz (*2026-10-31*) | 1c |
+| 24 | LiteX sorts all LEDs by their upstream index across resource names, so `user_led` *n* and `rgb_led` *n* interleave | `litex_parser.py:642` | 19 boards draw mono and RGB LEDs alternately (ZCU216: 16 captioned banks for 16 LEDs); `led(i)` is unaffected, because `BoardDef.led_channels` already puts every mono channel before the RGB ones (external review R2, 2026-09-22) | 1c |
 
 ### 2.4 Instantiation audit (LiteX)
 
@@ -348,6 +378,15 @@ changes ([u39_peripherals_plan.md](u39_peripherals_plan.md) "no sync-tooling cha
 *Alternatives (not taken):* its own MINOR before the peripherals, renumbering the roadmap in ~8
 places (the v0.22.0 precedent); or Phases 1a–1c as maintenance inside the peripherals release.
 
+**D-5 revised (2026-10-31, at the start of execution): next, as v0.24.0, and the whole arc.** Rick:
+"U56 should come next, and we need the full arc. We really need to stop executing upstream code,
+but we also want a thorough and accurate upstream sync." The first alternative above is now the
+decision: U39–U41 → v0.25.0 (their second slip) and D16 → v0.26.0, renumbered in the PR that
+records this. What changed: D-7 makes the arc a security fix as well, since the sync tooling
+executes third-party code on contributors' machines and in CI on every PR, and the arc answers two
+findings of the external review (defect 24; D-1). Phases 5–7 ship in the same release, so Phase 4
+is a checkpoint, not a release point. The course boards stay untouched (§2.5).
+
 **D-6 — Boards with no upstream clock (Phases 1c and 2). Decided: read every frequency upstream
 defines, then mark the rest as assumed.** 13 shipped boards show a default clock we invented —
 12 MHz from `amaranth_parser.py:383` and `litex_parser.py:641`, 100 MHz from
@@ -364,6 +403,27 @@ the fallback but record it as assumed: the parsers write `default_clock_assumed:
 chip marks the number ("100 MHz, assumed"). The fallback values stay as they are — both are
 guesses, and changing one would change simulated timing for nothing. *Alternative (not taken):*
 mark all 13 as assumed, which would label our own misreadings as assumptions.
+
+**D-7 — Never execute upstream code (decided 2026-10-31, Rick).** "I consider executing upstream
+code a potential vulnerability. Let's not do that." The Amaranth and LiteX parsers load every
+upstream file with `exec()` against mock classes (`amaranth_parser.py:613`, `litex_parser.py:499`;
+the LiteX parser then instantiates `Platform()`, `:533`), and the namespace carries the real `os`,
+`subprocess` and builtins (`amaranth_parser.py:340-345`, `litex_parser.py:199-203`). A compromised
+upstream file would run as the user, on a contributor's machine and in CI. It buys nothing: at the
+2026-10-31 heads, 81 of 83 Amaranth files and 206 of 256 LiteX files are pure data in the code that
+runs, where every call is one of our own mock constructors, and no executed path uses `os` or
+`subprocess`. The rest call LiteX's extension helpers or need a constructor's default arguments.
+**Rule:** no sync, drift check, test, audit or one-off measurement executes, imports or
+instantiates an upstream file. Phase 0 replaces `exec()` with a reader that parses each file and
+interprets an allowlisted subset of Python (§4.4); a construct outside it is reported, never run.
+**Consequences:** the old §4.4 credential rules go, since nothing executes, so `gh`'s own token is
+fine for `sync_port_conventions.py`, the one step that needs a token; the source syncs need none at
+a pinned commit; §14's sandbox question is moot; Phase 2 reads extension modules; Phase 4 reads
+unreviewed heads instead of running them. **Nothing was harmed before the rule:** a static scan of
+the code the parsers execute (module and class bodies, LiteX `__init__`, and the calls they make)
+found no environment, process, network or obfuscation construct in any upstream revision run since
+2026-07-14, when a token could first have been present (`~/.claude/u56-audit/exec_scope_scan.py`;
+it catches a planted file in 9 of 9 ways).
 
 ---
 
@@ -496,39 +556,52 @@ After generating, for each existing file whose identity was **not** produced:
   by their qualified name (an unqualified name can be shadowed by the successor's — the Efinix T8
   case, §2.6).
 
-### 4.4 Mock namespace principles
+### 4.4 Reading upstream files without executing them (D-7)
 
-- **Import-aware resolution** (replaces blind blanking): before blanking `import`/`from` lines, walk
-  the AST for every `Import`/`ImportFrom` (module level and inside functions). For each imported
-  name the mock namespace does not provide: if the module is inside the same upstream archive
-  (`litex_boards.*`, Amaranth relative imports such as `from .upduino_v1 import …`) → exec that
-  module (cleaned the same way, recursively, cycle-guarded) and bind the name; otherwise bind a
-  permissive stub. Star imports (`from litex.build.generic_platform import *`) are what our mocks
-  cover. A `NameError` for a name that is **not imported anywhere** is a genuine gap → ledger
-  `error`.
-- **Permissive stub:** callable; any attribute (instance **and class level** — use a metaclass, so
-  `MachdyneML1.revisions` works); `__getitem__`/`__setitem__`; `__iadd__`; iterates as empty.
+- **Parse, then interpret an allowlist.** `scripts/upstream_reader.py` parses each upstream file
+  with `ast.parse` and walks it with a small interpreter that implements only the Python the board
+  files use: literals; names; arithmetic and `+`/`*` on lists and strings; starred unpacking;
+  subscripts and slices; comprehensions; f-strings; `if`, `for` and `while` under a step budget;
+  assignment, augmented assignment and tuple unpacking; `def` and `lambda`, interpreted when
+  called and never compiled; class definitions with in-file inheritance; keyword, default and
+  `*args`/`**kwargs` arguments; and `raise`, which fails the file as `exec` would have.
+- **The only native calls are ours.** The interpreter calls into Python only for our mock
+  constructors and mock platform methods (today's `_make_namespace` / `_make_litex_namespace`
+  vocabulary) and attributes of our own mock objects; a fixed set of pure builtins (`range`,
+  `enumerate`, `zip`, `len`, `str`, `int`, `float`, `bool`, `list`, `tuple`, `dict`, `set`,
+  `sorted`, `reversed`, `min`, `max`, `abs`, `round`, `sum`, `any`, `all`, `isinstance`, `chr`,
+  `ord`); and allowlisted methods of `str`, `list` and `dict`. Upstream functions and classes are
+  data the interpreter walks, never Python callables. A dunder attribute, a name nothing defines,
+  `str.format` with an attribute or index field (it reads attributes without a call), and any
+  construct outside the list raise `UnsupportedConstruct` with file, line and construct. Budgets
+  cap steps, list length and string length.
+- **Classes stay classes.** A class definition becomes a real Python class built with `type()`: its
+  bases are our mock classes or other classes from the same file, its attributes are the evaluated
+  class-body values, and each method is an interpreter-backed descriptor. The parsers' extraction
+  (`__mro__`, `getattr`, `Platform()`) keeps working unchanged, and a method body still runs only
+  inside the interpreter.
+- **Equivalence first.** Phase 0 reproduces today's output byte for byte at the pins, defects
+  included: a name the mocks lack fails as `exec` failed, and LiteX's instantiation fallback is
+  reproduced. Each later fix is then its own visible diff. The reference is the committed JSON, so
+  proving it executes nothing.
+- **Imports.** Phase 0 keeps today's behavior: import lines are not resolved. From Phase 1c, for
+  every `Import`/`ImportFrom` (module level and inside functions), a module inside the same
+  upstream archive (`litex_boards.*`, Amaranth relative imports such as `from .upduino_v1 import …`)
+  is **read** with the same interpreter, recursively and cycle-guarded, and the name is bound; any
+  other module binds a permissive stub. Phase 1c reads Amaranth's sibling modules and stubs
+  `litex_boards.extensions.*`; Phase 2 reads those too. Star imports
+  (`from litex.build.generic_platform import *`) are what our mocks cover. A `NameError` for a name
+  imported nowhere is a genuine gap → ledger `error`.
+- **Permissive stub:** callable; any attribute (instance **and class level**, so
+  `MachdyneML1.revisions` works); `__getitem__`/`__setitem__`; `__iadd__`; iterates as empty. It is
+  our object, so the interpreter may call it.
 - **Mock platform:** keep explicit `add_resources` / `add_extension` / `request`; add
   `toolchain = <stub>` and a `__getattr__` returning a no-op callable for every other platform method
   (`add_platform_command`, `add_connector`, `add_period_constraint`, `lookup_request`, …).
-- Phase 1c stubs LiteX extension names so files parse; Phase 2 resolves `litex_boards.extensions.*`
-  for real.
-- **Trust model and credentials.** We already exec upstream platform files, and extension modules
-  come from the same archive. But the exec namespace carries the real builtins
-  (`litex_parser.py:203`, `amaranth_parser.py:345`), so upstream code can read the environment —
-  and import-aware resolution executes more of it, and the bump (Phase 4) executes an upstream
-  head nobody has reviewed. Two rules:
-  1. **Never run a sync with `gh auth token`**: it carries `repo` and `workflow` scopes. GitHub's
-     rate limit needs a token with **no scopes** (a classic token with nothing ticked, or a
-     fine-grained token with public, read-only access). CI's `github.token` is already
-     `contents: read`.
-  2. **From Phase 1a, the step that executes upstream code runs in a child process** whose
-     environment carries no credential: an allowlist such as `PATH`, `HOME`, `LANG`, never
-     `GITHUB_TOKEN`/`GH_TOKEN`. Popping the variable in-process is not enough, because
-     `/proc/self/environ` keeps the environment the process started with.
-
-  Full isolation (filesystem, keyring, network) is a sandbox question in the D16 family and out of
-  scope (§14).
+- **Tokens.** Only `sync_port_conventions.py` needs one: it resolves a path-scoped pin per cited
+  file, far past the 60 requests an hour the API allows without a token. It reads text and runs
+  only our code, so `GITHUB_TOKEN="$(gh auth token)"` is fine. The source syncs make one API call
+  each and work without a token at a pinned commit; Phase 4 resolves heads with `git ls-remote`.
 
 ### 4.5 Schema
 
@@ -596,14 +669,54 @@ plan-index rows in `docs/improvement_roadmap.md` and `docs/README.md`; Icebox P3
 **Verify:** `uv run rumdl check docs/`; `uv run pytest tests/test_docs_*.py`.
 **Quality gates:** documentation only.
 
+## 5a. Phase 0 — Stop executing upstream code (D-7)
+
+**Do:**
+
+1. `scripts/upstream_reader.py`: the reader of §4.4, standalone (no `fpga_sim` import), with
+   `UnsupportedConstruct`.
+2. `amaranth_parser.load_board_from_source` and the LiteX parser read through it instead of
+   `exec(compile(…))` (`amaranth_parser.py:613`, `litex_parser.py:499`), and LiteX's
+   `platform_class()` (`:533`) runs the interpreted constructor. Delete the real `os`,
+   `subprocess`, `unittest` and `__builtins__` entries from both namespaces; the mock vocabulary
+   stays, as the reader's allowlist. The seven Amaranth files that declare
+   `class TestCase(unittest.TestCase)` need a stub base, not the module.
+3. A file the reader cannot evaluate prints one line naming file, line and construct (loud from
+   here on, until Phase 1a's ledger records it) and yields what `exec` yielded: a file `exec`
+   dropped is still dropped, and a LiteX board built from the module-level fallback prints a
+   warning.
+4. A guard test, an AST rule in the style of `tests/test_no_input_polling.py`: nothing under
+   `scripts/` calls `exec`, `eval`, `compile`, `__import__` or `importlib`. Unit tests for the
+   reader: the allowlist, refused dunders, refused `str.format` fields, budgets, an unsupported
+   construct's message, and planted upstream files that read the environment, run a command or open
+   a connection, which are refused and never run.
+5. Docs: `CONTRIBUTING.md` ("Syncs that run upstream code" becomes "the syncs read upstream files
+   and never execute them"; the drift check runs locally again, with
+   `GITHUB_TOKEN="$(gh auth token)"` for its port-convention step, and the release pre-flight runs
+   it again); `CLAUDE.md` (the parser rows and the "Amaranth Parser Mock Namespace" section);
+   `docs/architecture.md` (the sync pipeline).
+
+**Verify:**
+
+- In place at the recorded pins, `sync_amaranth_boards.py --ref <pin>` and
+  `sync_litex_boards.py --ref <pin>` leave `git status boards/` empty: byte-identical to what
+  `exec` produced, with nothing executed to get there. Run it twice.
+- The files the reader reports are exactly the files whose `exec` failed, each with its construct:
+  the 53 LiteX and 4 Amaranth errors in §6's Verify list. The 86 fallback-built LiteX boards print
+  their warning.
+- `check_board_drift.py` green locally and in CI; the guard and reader tests; full `pytest`;
+  `ruff check`, `ruff format --check`, `mypy` at CI scope.
+
+**Visual review:** no — board content does not change. **Effort:** M/L.
+
 ## 6. Phase 1a — Identity, ledger, orphan detection, `--board`, impact matrix (no board content change)
 
 **Do:**
 
 1. Schema fields of §4.5 (Phase 1a set) and the accept-list's schema; `tests/test_board_schema.py`.
 2. Parsers return `ParseOutcome` (§4.2: an outcome plus warnings) and the identity fields (§4.1);
-   the LiteX parser records `upstream_class` and effective `upstream_args` (`inspect.signature`
-   defaults); keep the module-`_io` fallback, reported as an `io_fallback` warning.
+   the LiteX parser records `upstream_class` and effective `upstream_args` (the constructor's
+   defaults, which the reader evaluates, §4.4); keep the module-`_io` fallback, reported as an `io_fallback` warning.
 3. Restructure the write path (`sync_common.write_outputs`, `:268`): index existing files by
    identity; construct and match per §4.1; assign file names per §4.1; detect orphans and apply
    the accept-list per §4.2–4.3; write the ledger and `orphans` into `_sync_metadata.json`.
@@ -611,10 +724,8 @@ plan-index rows in `docs/improvement_roadmap.md` and `docs/README.md`; Icebox P3
    `_carry_forward_sync_stamp` (`:240`), framework polarity reconciliation (`:223`), LED color
    stamping and schema validation.
 4. The Wukong migration entry (§4.1), kept until Phase 1c.
-5. Credentials (§4.4): run the step that executes upstream code in a credential-free child
-   process, with a test whose platform file reads `os.environ` and must see no token. The
-   `GITHUB_TOKEN=$(gh auth token)` recipes (`CONTRIBUTING.md:589`, `:787`) become a no-scope token
-   ahead of the arc (D-5), so here only check that no recipe has come back.
+5. ~~Credentials~~ — dropped by D-7: nothing executes upstream code (Phase 0), so there is nothing
+   to shield, and the no-scope token recipe was withdrawn before it was needed.
 6. **`--board` by source** (defect 19). `find_board` accepts `<source>/<stem>` (e.g.
    `litex-boards/icebreaker`; `.json` optional) and resolves it exactly; the loader records each
    board's file stem (runtime only, not serialized — keep `tests/test_serialization.py` green). An
@@ -623,6 +734,7 @@ plan-index rows in `docs/improvement_roadmap.md` and `docs/README.md`; Icebox P3
    name; a snapshot of unqualified collisions, so a new one shows up in review. Docs:
    `docs/user_guide.md` (the `--board` row) and `CONTRIBUTING.md` ("Smoke-testing a board"). The
    bug predates this arc, so this item **lands early, on its own** (D-5); Phase 1a only re-checks it.
+   **Done 2026-10-31 in [#466](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/466).**
 7. **The impact matrix, committed.** `scripts/gen_board_design_matrix.py` writes
    `tests/fixtures/board_design_matrix.json`: for every design in `hdl/native/*.vhd`, `hdl/*.vhd`
    and `tests/fixtures/pinmap/*/*.vhd` × every board on disk, `check_vhdl_contract`'s verdict and,
@@ -649,9 +761,9 @@ plan-index rows in `docs/improvement_roadmap.md` and `docs/README.md`; Icebox P3
 
 **Verify:**
 
-- With a no-scope token in `GITHUB_TOKEN` (§4.4), re-sync each source **in place at its recorded
-  pin** (`uv run python scripts/sync_<source>.py --ref <source_commit>` — never a fresh directory,
-  the A1 trap).
+- Re-sync each source **in place at its recorded pin** (`uv run python
+  scripts/sync_<source>.py --ref <source_commit>` — never a fresh directory, the A1 trap; no token
+  needed, §4.4).
 - `git diff boards/` shows **only**: the new `source` identity fields; on every synced file, a fresh
   `sync_commit` (the pin) and `sync_timestamp` — adding fields is a content change, so
   `_carry_forward_sync_stamp` re-stamps every file; and the `_sync_metadata.json` ledger. Zero
@@ -673,7 +785,7 @@ plan-index rows in `docs/improvement_roadmap.md` and `docs/README.md`; Icebox P3
   upstream default keeps the old file's meaning; a version upstream dropped → `no_longer_defined`,
   which needs an acceptance), every orphan situation of §4.3 including the accept-list paths and a
   stale acceptance (synthetic archives), successor matching, ledger normalization, un-orphaning,
-  re-sync stability, the credential-free child.
+  re-sync stability.
 - `--board`: every board resolves by `<source>/<stem>`; `--board "Nexys 4 DDR"` still opens the
   Amaranth board, as today, and names `digilent-xdc/nexys_4_ddr` on stderr.
 - `uv run python scripts/check_board_drift.py` green; full `pytest`.
@@ -703,14 +815,14 @@ check; full `pytest`.
 
 ## 8. Phase 1c — Fix the parsers' misreadings (at the current pins)
 
-**Do:** items 3–10, 18 and 21–23 of §2.3, using the §4.4 principles:
+**Do:** items 3–10, 18 and 21–24 of §2.3, using the §4.4 reader:
 
 - `_Pins.__init__(self, *identifiers, dir="io", conn=None, assert_width=None)`; names = each string
   split on whitespace; set `self.identifiers`.
 - `_PLATFORM_VENDORS`: `LatticeiCE40Platform`, `LatticePlatform` (Lattice), `MicrosemiPlatform`,
   `AnlogicPlatform`, `QuickLogicPlatform`; drop the misspelled key; add a regression test.
-- Permissive mock platform and stub (§4.4), import-aware resolution (LiteX: stub
-  `litex_boards.extensions.*` for now; Amaranth: exec sibling modules). Remove the module-`_io`
+- Permissive mock platform and stub (§4.4), import-aware reading (LiteX: stub
+  `litex_boards.extensions.*` for now; Amaranth: read sibling modules with the reader). Remove the module-`_io`
   fallback **and the Wukong migration entry** together; from here on the sync builds `revision=2`
   from the on-disk identity (§4.1).
 - Amaranth: `DDR4Resource` → `_stub_single`; `DiffPairsN` → `_DiffPairs`; `_classify` (`:431`):
@@ -739,6 +851,12 @@ check; full `pytest`.
   upstream data — `default_clock_hz: 100e6` with `clocks: []` (`digilent_parser.py:864`), which the
   chip shows as "100 MHz". Keep it here; D-6 (Phase 2) decides how such boards are shown. Record
   what the ZedBoard JSON contains.
+- LiteX LED order (defect 24, `:642`): stable-partition today's sorted list into mono LEDs, then
+  3-pin `rgb_led` sites — the partition `BoardDef.led_channels` already applies to channels — so
+  the display shows upstream's blocks and no `led(i)` moves. Order within the mono group must not
+  change, because a reorder there *does* move `led(i)`: LimeSDR Mini V2's alternating green and red
+  LEDs are real bi-color hardware, and the 1-pin and 4-pin "RGB" resources (`colorlight_i9plus`,
+  `sipeed_tang_nano_20k`, `modretro_chromatic`) are mono by the loader's rule and stay put.
 - New boards take stem-based file names (§4.1), e.g. Amaranth `versa_ecp5_5g.json`,
   `supercon19badge.json`, `upduino_v2.json`.
 - Phase 1b already fixed the prettifiers; add a display-name override only for a new name that
@@ -754,7 +872,9 @@ check; full `pytest`.
   `rf_switches` switch (defect 21 — no convention advertised it, and `NUM_SWITCHES` stays at its
   floor of 1); and `qmtech_wukong.json` (revision 2 identity) is now built from the instance — diff
   it against the committed file and review, expecting equal or additions only. No other existing
-  LiteX board changes LEDs/switches/buttons/clocks/conventions.
+  LiteX board changes LEDs/switches/buttons/clocks/conventions, except the order of `leds` on the 19
+  boards of defect 24: mono first, then RGB, with the same sites and an unchanged channel layout
+  (some of them also gain a `device`; re-count the overlap when the phase runs).
 - Amaranth 80 → **83** (Appendix B.1). The 5 Gowin boards gain a `device` from `part`; the six
   boards of defect 22 change `default_clock_hz` (Chameleon96 100 MHz, both MachXO2 breakouts
   2.08 MHz, QuickFeather 5 MHz, UPduino v1 48 MHz, Tang Nano 24 MHz — Tang Nano is in both sets);
@@ -777,8 +897,8 @@ check; full `pytest`.
   `uv run generate-board-images --boards-dir <dir> --formats png --output-dir <out>` — the
   product's own renderer, one command for any number of boards. The chip now prints a part number
   on 91 boards (`ui/components.py:67`; the longest, `GW5AST-LV138PG484AC1/I0` on the Tang Mega
-  138K, fits at 1024×700, checked 2026-10-31), a different clock on nine (defects 22–23), and
-  56 board files are new.
+  138K, fits at 1024×700, checked 2026-10-31), a different clock on nine (defects 22–23), the
+  LED order of 19 boards (defect 24), and 56 board files are new.
 
 **Quality gates:** as 1a. New boards inherit framework conventions automatically; run
 `uv run python scripts/sync_port_conventions.py --check` and `uv run python scripts/sync_led_colors.py --check`.
@@ -789,7 +909,9 @@ check; full `pytest`.
 
 **Do:**
 
-- Resolve `litex_boards.extensions.*` imports by exec'ing the upstream modules (§4.4).
+- Resolve `litex_boards.extensions.*` imports by reading the upstream modules with the reader
+  (§4.4): their `Pmod*` and dock classes become interpreted classes, so `add_extension(ext)` gets
+  data and no upstream code runs.
 - Mock `add_extension(ext)`: list/tuple → extend `_captured_io`; object → `ext.define_io(self)` if it
   returns a list (dynamic docks such as `TangMegaNeoDock`), else `ext.io`.
 - After construction, read `default_clk_name` / `default_clk_period` from the instance, falling back
@@ -832,8 +954,10 @@ It comes before the bump because the bump creates the first real orphans (the fi
 
 **Phase 4 — Bump to the upstream heads.**
 
-- **Do:** resolve each source's current default-branch head and re-sync in place at it, with a
-  no-scope token (§4.4) — this step executes upstream code nobody has reviewed. Update the
+- **Do:** resolve each source's current default-branch head with `git ls-remote` and re-sync in
+  place at it. The reader parses code nobody has reviewed and executes none of it (D-7); run
+  `exec_scope_scan.py` over the heads anyway and list anything it flags in the PR, as a candidate
+  upstream report. Update the
   `_sync_metadata.json` pins. The 2026-10-28 heads are in §2.1; upstream will have moved. The sync
   is now its own audit: read its ledger, its orphan list and the impact-matrix diff, and review
   anything not listed here. Add an accept-list entry only for an outcome a person has checked.
@@ -849,8 +973,8 @@ It comes before the bump because the bump creates the first real orphans (the fi
   changes on existing boards (measured for the 2026-10-28 heads); `tests/test_docs_board_counts.py`;
   full `pytest`; contact sheet of the new and changed boards → **visual review**.
 - **Effort:** S/M.
-- **Stop point.** After this phase the arc's safety and freshness goals are met; D-5 covers
-  releasing here and re-carding Phases 5–7.
+- **Checkpoint, not a release point** (D-5, revised): the arc's freshness goal is met here, and
+  Phases 5–7 ship in the same release.
 
 **Phase 5 — Multi-pin resources (D-3) and DIP switches (D-2).**
 
@@ -900,9 +1024,8 @@ It comes before the bump because the bump creates the first real orphans (the fi
 
 **Phase 8 — Closeout.** `CHANGELOG.md`; `README.md` / `docs/user_guide.md` / `docs/architecture.md`
 / `CLAUDE.md` counts and sync description; roadmap card → delivered (+ `docs/roadmap_delivered.md`
-entry); Icebox P35 closed as absorbed; this file's status → executed; release per D-5. If the arc
-stops after Phase 4 (D-5), run this phase there and re-card Phases 5–7 as a follow-up that cites
-this plan.
+entry); Icebox P35 closed as absorbed; this file's status → executed; release as v0.24.0 (D-5,
+revised: the whole arc, with no release at the Phase 4 checkpoint).
 
 ---
 
@@ -911,25 +1034,30 @@ this plan.
 | Phase | Scope | Visual review | Status |
 |---|---|---|---|
 | PR 0 | plan + card + ID + decisions | no | done 2026-10-31 (#465) |
-| early | `--board` by source (1a item 6); the no-scope sync-token recipe (§4.4) | no | `--board`: done 2026-10-31 (#466), outside the v0.26.0 slot (D-5). Token recipe: **dropped** 2026-10-31 — Rick decided no upstream code is executed, so `gh`'s own token is fine for our code; until the parse-only reader lands, the syncs that execute upstream files run only in CI (amendment to follow) |
-| 1a | identity, ledger, accept-list, orphan detection, credential-free parse, impact matrix with per-bank rows (`--board` re-checked) | no | not started |
+| early | `--board` by source (1a item 6); the no-scope sync-token recipe (§4.4) | no | `--board`: done 2026-10-31 (#466), ahead of the arc. Token recipe: **dropped** 2026-10-31 — Rick decided no upstream code is executed, so `gh`'s own token is fine for our code; until the parse-only reader lands, the syncs that execute upstream files run only in CI (amendment to follow) |
+| 0 | parse-only reader: no upstream code executed (D-7, §5a) | no | not started |
+| 1a | identity, ledger, accept-list, orphan detection, impact matrix with per-bank rows (`--board` re-checked) | no | not started |
 | 1b | display names (P35) | no (a before → after name table) | not started |
-| 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine) | not started |
+| 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | not started |
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | not started |
 | 3 | orphan UI | **yes** | not started |
-| 4 | bump to heads — **stop point** | **yes** (contact sheet of new and changed boards) | not started |
+| 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | not started |
 | 5 | multi-pin, DIP | **yes** | not started |
 | 6 | aliases | **yes** | not started |
 | 7 | versions | **yes** (selector) | not started |
-| 8 | closeout + release | no | not started |
+| 8 | closeout + release v0.24.0 | no | not started |
 
 ---
 
 ## 13. Traps checklist (read before every phase)
 
+- **Never execute, import or instantiate an upstream file** (D-7) — not in a sync, a test, an
+  audit or a one-off measurement. The exec-based scripts in `~/.claude/u56-audit/` must not be run;
+  read with the Phase 0 reader or the static scans.
 - **Re-sync in place at the recorded `source_commit`** — a fresh directory drops canonical
-  conventions (the U21 A1 trap). `GITHUB_TOKEN` is required — a token with **no scopes**, never
-  `gh auth token` (§4.4); an unauthenticated rate limit reads as false drift.
+  conventions (the U21 A1 trap). The drift check's port-convention step needs a token, and
+  `GITHUB_TOKEN="$(gh auth token)"` is fine (§4.4); an unauthenticated rate limit reads as false
+  drift.
 - **Re-sync in place a second time before opening the PR** and require a byte-identical result;
   the drift job will do the same.
 - **Never hand-edit generated board JSON** — change a parser or a registry, then re-sync.
@@ -953,8 +1081,9 @@ this plan.
 - **Visual review before merge** for phases 1c and 2–7. `--benchmark` exits before the session
   restores.
 - Tests: `set -o pipefail` around piped gates; CI mypy runs on Python 3.12 (#449).
-- Prove a projection before trusting it: rebuild the Appendix A baseline (no-fix harness reproduces
-  the committed boards exactly) before reading any "after" number.
+- Prove a projection before trusting it: the reader at the pins must reproduce the committed boards
+  exactly before any "after" number counts (Appendix A's harness executed upstream files and must
+  not be rebuilt, D-7).
 
 ## 14. Out of scope / follow-ups
 
@@ -968,8 +1097,7 @@ this plan.
 - 18-switch custom boards (DE2-115, VEEK-MT2) exceed the CPU designs' 16-bit switch window; the
   firmware reads only `sw(7:0)`; pre-existing and unrelated.
 - Cross-source disagreements (Appendix B.7) — kept per decision 1.
-- Full isolation of upstream code during syncs (filesystem, keyring, network) — a sandbox question
-  in the D16 family; §4.4 only keeps credentials out of the process.
+- ~~Full isolation of upstream code during syncs~~ — moot: nothing executes upstream code (D-7).
 
 ---
 
@@ -984,8 +1112,9 @@ generators — `sync_litex_boards.generate_all_json(board_files, sha)` /
 `board_files = {path.name: text for every *.py in the platforms dir}` — and write
 `{output file: board dict}`. The audit resolved undefined names by exec-retry (catch `NameError`,
 bind a stub, retry; for Amaranth bind a class from the sibling file that defines it) — Phase 1c
-replaces that with import-aware resolution (§4.4). Run it without credentials in the environment
-(§4.4).
+replaces that with import-aware reading (§4.4). **Superseded by D-7 (2026-10-31):** this harness
+executes upstream files and must not be run again; rebuild any evidence with the Phase 0 reader,
+which produces the same outputs without executing anything.
 
 **A.2 Comparison and baseline.** Diff harness output against `boards/<source>/` after normalizing:
 drop `$schema` and `source`; drop LED `color` (stamped at write time); keep only the parser's own
@@ -1187,5 +1316,6 @@ other new values — 5, 10, 20, 21 and 4 — already occur today. *2026-10-31.*)
 | Matcher/wrapper | `src/fpga_sim/conventions.py:105` `ConventionMatch` · `:478` `_convention_precedence` · `:521` `match_convention` · `src/fpga_sim/wrapper.py` `leds_rgb` packing (~`:171-218`) · `src/fpga_sim/vhdl_contract.py:306` pin-map path |
 | Runtime | `src/fpga_sim/controller.py:130` `build_generics` · `src/fpga_sim/pinmap.py:112-145` pin index · `:430` `_same_silicon` (`:450` empty = match) · `:576` wrong-board hint · `src/fpga_sim/session_config.py:129` `push_recent` · `src/fpga_sim/ui/components.py:67` chip `device` label |
 | CPU IO | `scripts/embedded_core/templates/cpu_io.vhd.tmpl:37` `LED_REG_WIDTH` · `:43-57` read mux and config registers |
-| Docs | `CONTRIBUTING.md:589,787` `gh auth token` recipes (replaced ahead of the arc, D-5) |
+| Exec sites (Phase 0 removes them) | `scripts/amaranth_parser.py:340-345` real `os`/`subprocess`/builtins · `:613` `exec` · `scripts/litex_parser.py:199-203` · `:499` `exec` · `:533` `platform_class()` |
+| Docs | `CONTRIBUTING.md` "Syncs that run upstream code" (#466; Phase 0 rewrites it) |
 | Tests | `tests/test_litex_parser.py` · `tests/test_digilent_parser.py` · `tests/test_sync_amaranth_boards.py` · `tests/test_sync_common.py` · `tests/test_check_board_drift.py` · `tests/test_board_schema.py` · `tests/test_serialization.py` · `tests/test_board_display_names.py` · `tests/test_docs_board_counts.py` · `tests/test_native_convention.py` · `tests/test_pinmap.py` · `tests/fixtures/pinmap/` · `tests/test_ui_map.py` (the pattern for the matrix test) · `tests/conftest.py:212` |

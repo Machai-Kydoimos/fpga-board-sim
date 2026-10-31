@@ -23,7 +23,19 @@ decided. Update it when an arc starts, ships, or changes order.*
 > why card IDs were being reserved by cross-references between plan docs. This rule and the
 > ID-allocation note below close that gap.)
 
-### Now — U48–U54 + D17, the pre-semester classroom arc
+### Now — U56, upstream board-sync repair (→ v0.24.0)
+
+> **Executing since 2026-10-31, the whole arc, ahead of the peripherals** (Rick: "U56 should come
+> next, and we need the full arc"). Its first phase is a security fix: the Amaranth and LiteX syncs
+> read upstream board files by *executing* them, and from now on **no upstream code is ever
+> executed** (plan decision D-7) — a reader that only parses replaces them. Then stable board
+> identity, a ledger of every skipped file, the parser fixes, upstream's extensions,
+> orphaned-board marking, the bump to today's upstream, multi-pin resources and DIP switches,
+> aliased LEDs, and every upstream-listed version. The early `--board <source>/<file>` fix shipped
+> in [#466](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/466). Plan: [u56_upstream_board_sync_plan.md](plans/u56_upstream_board_sync_plan.md); its
+> §12 ledger is the status source of truth. U39–U41 move to v0.25.0 and D16 to v0.26.0.
+
+### Still owed — U48–U54 + D17, the classroom arc's open tail
 
 > **Released as v0.23.0 on 2026-10-26, with an open tail.** Rick's doc review and the plan's two
 > interactive checks — §10.2 (the frozen board) and §10.3 (the fresh-profile walkthrough) — were
@@ -45,7 +57,8 @@ wrapper from it, which is their declared truth rather than a name heuristic.
 **This displaces the peripherals arc by one release.** U39–U41 serves the *in-lab* experience these
 courses already have in hardware, nothing has a hard dependency on it
 ([dependency table](#dependency-table)), and it stays approved and unstarted — so peripherals now
-target **v0.24.0** and D16 moves to **v0.25.0**.
+target **v0.24.0** and D16 moves to **v0.25.0** (renumbered again on 2026-10-31, when U56 moved
+ahead: **v0.25.0** and **v0.26.0**).
 
 Plan: [u48_classroom_arc_plan_v2.md](plans/u48_classroom_arc_plan_v2.md) — approved for execution
 2026-09-05, carrying 15 locked decisions, a `file:line` evidence map re-verified at `3213b39`, and
@@ -65,11 +78,16 @@ tagged ≥ 4 days before the first lab. Milestone and issues open per PR as the 
    are multi-file to the core); **U54** (testbench runner) stays out (D-11) and rides the next
    release. Graduates Icebox **P17** (into U48) and **P11** (into U52), and resolves **P13** /
    **P14** in its docs PR.
-2. **U39–U41 board peripherals** → v0.24.0 ([plan](plans/u39_peripherals_plan.md)) — plan **approved
-   2026-08-05** (its architecture decisions were locked 2026-07-27); displaced one release by the
-   arc above, unstarted either way. Full card: U39–U41 in Part 1 / Tier 4. **U54** rides this
-   release (**U51** moved back to v0.23.0 on 2026-09-06).
-3. **Docs & Assets round 2, PRs 3–6** — PRs 1–2 ✅ merged (2026-08-25 / 2026-08-31); 3–6 were
+2. **U56 — upstream board-sync repair** → v0.24.0, **executing**
+   ([plan](plans/u56_upstream_board_sync_plan.md)) — plan **approved 2026-10-31** and moved ahead
+   of the peripherals the same day as the whole arc (its decision D-5, revised). Its first phase
+   stops the syncs executing upstream code (D-7). The `--board <source>/<file>` fix shipped early
+   in [#466](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/466). Full card: U56 in Part 1 / Tier 2.
+3. **U39–U41 board peripherals** → v0.25.0 ([plan](plans/u39_peripherals_plan.md)) — plan **approved
+   2026-08-05** (its architecture decisions were locked 2026-07-27); displaced twice, by the
+   classroom arc (2026-09-05) and by U56 (2026-10-31), unstarted either way. Full card: U39–U41 in
+   Part 1 / Tier 4. **U54** rides this release (**U51** moved back to v0.23.0 on 2026-09-06).
+4. **Docs & Assets round 2, PRs 3–6** — PRs 1–2 ✅ merged (2026-08-25 / 2026-08-31); 3–6 were
    deferred *specifically* so the asset re-capture happened once, after peripherals, so they stay
    with peripherals. The classroom arc needs none of them: round-2 PR 2 already put
    `--screenshots` on the product renderer, so true-brightness stills exist today. One asset
@@ -78,15 +96,9 @@ tagged ≥ 4 days before the first lab. Milestone and issues open per PR as the 
    on top of the refreshed docs. Decisions resolved 2026-08-05: **A2 · B as recommended (RGB
    mixing + scan display + PWM brightness → README; themes + debug duty bars → user-guide stills)
    · C (re-capture the same hero storyboard)**.
-4. **D7 → D16 sandbox** → v0.25.0, "the trust release" — priority raised by the 2026-07-30 NVC
+5. **D7 → D16 sandbox** → v0.26.0, "the trust release" — priority raised by the 2026-07-30 NVC
    wontfix (see the D16 card in Part 2 / Tier 2); the interim README/user-guide warning shipped
-   2026-08-05.
-5. **U56 — upstream board-sync repair** → v0.26.0 ([plan](plans/u56_upstream_board_sync_plan.md))
-   — plan **approved 2026-10-31**; after D16 by its decision D-5: it changes nothing on the course
-   boards, and its phases run at the recorded upstream pins, so waiting costs little. Two items
-   land now, outside the slot: `--board <source>/<stem>` (14 boards cannot be named on the command
-   line today) and the no-scope sync-token recipe in `CONTRIBUTING.md`. Stop point after its
-   Phase 4, the pin bump. Full card: U56 in Part 1 / Tier 2.
+   2026-08-05. Moved from v0.25.0 on 2026-10-31, when U56 went ahead.
 
 **Between-arc filler:** ~~U47 LED PWM toggle~~ ✅ done 2026-09-04 · the Tier-3 usability sweep — U14 pause key · U16 minimum
 window size · U18 recent files (its retry-start-dir half moved to **U49**) · U19 metrics toggle. **Later:** U20 Verilog (the headline candidate once this
@@ -103,9 +115,9 @@ The live plans, then executed history (each file carries its own detailed status
 | Plan document | Status |
 |---|---|
 | [u48_classroom_arc_plan_v2.md](plans/u48_classroom_arc_plan_v2.md) | **LIVE — released as v0.23.0 2026-10-26**; open tail: the doc review, §10.2/§10.3, the delivered entries |
-| [u39_peripherals_plan.md](plans/u39_peripherals_plan.md) | **LIVE — approved 2026-08-05**; displaced one release by the classroom arc → v0.24.0 |
+| [u39_peripherals_plan.md](plans/u39_peripherals_plan.md) | **LIVE — approved 2026-08-05**; displaced twice (the classroom arc, then U56) → v0.25.0 |
 | [docs_assets_improvement_plan_v2.md](plans/docs_assets_improvement_plan_v2.md) | **LIVE — decisions resolved 2026-08-05**; split execution: PRs 1–2 ✅, PRs 3–6 with the peripherals arc |
-| [u56_upstream_board_sync_plan.md](plans/u56_upstream_board_sync_plan.md) | **LIVE — approved 2026-10-31**; queued → v0.26.0, after D16; `--board` by source and the sync-token recipe land early |
+| [u56_upstream_board_sync_plan.md](plans/u56_upstream_board_sync_plan.md) | **LIVE — executing** → v0.24.0, the whole arc; no upstream code is executed (D-7); `--board` by source shipped in #466 |
 | [u44_multi_input_plan_v1.md](plans/u44_multi_input_plan_v1.md) | executed → v0.21.0 |
 | [u22_7seg_scan_plan.md](plans/u22_7seg_scan_plan.md) | executed → v0.19.0 |
 | [u9_led_complete_plan.md](plans/u9_led_complete_plan.md) | executed → v0.17.0 + v0.18.0 |
@@ -787,14 +799,14 @@ This document inventories all viable improvements and ranks them by impact.
 - **Done when:** picking a course-shaped testbench runs it to completion and opens the dump, and a
   `severity failure` end is reported as a finished assertion rather than a crash.
 
-#### U56. Upstream board-sync repair — faithful parsers, stable board identity, orphaned boards (APPROVED → v0.26.0)
+#### U56. Upstream board-sync repair — faithful parsers, stable board identity, orphaned boards (EXECUTING → v0.24.0)
 
 - **Status:** plan **approved 2026-10-31** —
-  [u56_upstream_board_sync_plan.md](plans/u56_upstream_board_sync_plan.md); queued → **v0.26.0**,
-  after U39–U41 and D16 (its decision D-5), with a stop point after the pin bump. Two items land
-  early, outside that slot: `--board` by source and the no-scope sync-token recipe in
-  `CONTRIBUTING.md`. Absorbs Icebox **P35**, whose trigger fired on 2026-10-28; names **P15** as the
-  follow-up for cross-source twins.
+  [u56_upstream_board_sync_plan.md](plans/u56_upstream_board_sync_plan.md); **executing →
+  v0.24.0**, the whole arc, moved ahead of U39–U41 and D16 the same day (its decision D-5,
+  revised). **No upstream code is executed** (D-7): its Phase 0 replaces the parsers' `exec()` with
+  a parse-only reader. The early `--board` by source item shipped in [#466](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/466). Absorbs Icebox
+  **P35**, whose trigger fired on 2026-10-28; names **P15** as the follow-up for cross-source twins.
 - **Why:** an audit on 2026-10-28 found the LiteX and Amaranth mock-exec parsers swallow every
   failure, so upstream boards vanish silently: **54 LiteX and 4 Amaranth boards upstream defines
   were never synced**, and shipped boards are mis-modeled (Zybo Z7 has 0 buttons, 91 boards an
@@ -804,7 +816,8 @@ This document inventories all viable improvements and ranks them by impact.
   instead of 171, and because the sync never deletes, the other 31 would sit on disk frozen and
   unmarked. A board's file name is its display name, so P35 alone would rename ~20 files, and
   `--board` ignores the source folder, so 14 boards cannot be named on the command line at all.
-- **What:** fix only our parsers' misreadings of upstream, never upstream's data (decided
+- **What:** read upstream files without ever executing them (D-7); fix only our parsers'
+  misreadings of upstream, never upstream's data (decided
   2026-10-28: keep every definition within and between sources; upstream bugs are upstream's —
   the Acorn clock is [litex-hub/litex-boards#934](https://github.com/litex-hub/litex-boards/issues/934));
   give each board a stable identity from upstream so files and `class_name`s never change, and let
@@ -818,15 +831,17 @@ This document inventories all viable improvements and ranks them by impact.
   `boards/schema/board.schema.json`, `boards/*/` (regenerated), `board_loader.py`,
   `conventions.py`, `wrapper.py`, `pinmap.py`, `ui/board_selector.py` + the preview,
   `ui/components.py` (the chip's clock label, D-6), session log, `CONTRIBUTING.md`; new
-  `scripts/gen_board_design_matrix.py` + its committed matrix and test.
-- **Effort:** L — PR 0, the two early items, then one PR per phase (1a–8), with a stop point
-  after Phase 4 (the bump); Phases 1c and 2–7 need visual review.
-- **Dependencies:** none technically — U39–U41 makes no sync-tooling changes. Queued after U39–U41
-  and D16 by decision D-5.
+  `scripts/upstream_reader.py` (Phase 0) and `scripts/gen_board_design_matrix.py` + its committed
+  matrix and test.
+- **Effort:** L — PR 0, the early `--board` item, then one PR per phase (0, 1a–8), released
+  together as v0.24.0; Phases 1c and 2–7 need visual review.
+- **Dependencies:** none technically — U39–U41 makes no sync-tooling changes. Goes ahead of
+  U39–U41 and D16 by decision D-5, revised.
 - **Measured safety:** zero outcome changes for all 9 `hdl/native/*.vhd` and 24 `hdl/*.vhd`
   designs on existing boards; none of the 74 canonical-convention boards is touched; CPU-design
   generics stay inside today's ranges.
-- **Done when:** every upstream board is synced or listed with a reason, no sync renames or loses
+- **Done when:** no sync, drift check or test executes upstream code; every upstream board is
+  synced or listed with a reason, no sync renames or loses
   a board, every board can be named by a source-qualified `--board`, orphans are visible in the
   selector and preview, and `_sync_metadata.json` pins are at the then-current upstream heads with
   the drift check green.
@@ -900,9 +915,9 @@ was green with the two tests that matter most never running. Read the skip count
 #### U39–U41. Simulated board peripherals — framework + character LCD + SPI OLED (QUEUED)
 
 - **Status:** plan **approved 2026-08-05** (Rick; its architecture decisions were locked
-  2026-07-27) — target **v0.24.0**, displaced one release on 2026-09-05 by the pre-semester
-  classroom arc (see [Current focus](#current-focus)), which has a fixed external date and no
-  dependency on this work. Unstarted either way; milestone and issues open at arc start.
+  2026-07-27) — target **v0.25.0**: displaced on 2026-09-05 by the pre-semester classroom arc,
+  which had a fixed external date, and again on 2026-10-31 by U56 (see
+  [Current focus](#current-focus)); neither depends on this work. Unstarted either way; milestone and issues open at arc start.
   **U54** (testbench runner) rides this release alongside it; **U51** (multi-file designs) moved
   back to the classroom arc on 2026-09-06.
 - **Why:** the board model stops at LEDs / switches / buttons / 7-seg, but on real hardware the
@@ -1183,7 +1198,7 @@ See also **P1** (NVC elaborate-once / run-many) in the [Icebox](#icebox).
 
 #### D16. Sandbox the simulation subprocess (untrusted-VHDL isolation)
 
-- **Why:** A user-supplied `.vhd` is *executed*, not just parsed — the tool analyzes, elaborates, and **runs** it — so a downloaded design is a code-execution vector. On the **default GHDL** backend a design can read/write any file the user can via `std.textio` (enough to exfiltrate `~/.ssh/id_rsa` or overwrite `~/.bashrc`); on any **native-codegen** backend — NVC *and* GHDL-LLVM/JIT/GCC; only GHDL mcode blocks the route (scope corrected 2026-07-30; the earlier NVC-only framing was wrong) — it escalates to full native code execution: a `VHPIDIRECT` foreign binding resolves arbitrary libc symbols (`system`/`execve`/`socket`), empirically verified on NVC with a bare `.vhd` calling `getpid`/`geteuid`. It runs with the invoking user's privileges (not root — so not a direct kernel rootkit, but ample for data theft, tampering, a reverse shell, or fetching a second stage). Board **JSON is not a risk** (pure `json.loads` + typed coercion; values reach VHDL only as single `-g` argv elements — no shell, no injection). Reported to NVC via private disclosure (2026-07-04); **this card is the local mitigation and does not depend on an NVC fix** — it also closes the GHDL file-I/O vector that exists on the default backend. **Update 2026-07-30 → priority raised:** NVC closed the disclosure as intended behavior (wontfix), so this card is the **only** mitigation. Scheduled as v0.25.0, "the trust release" (see [Current focus](#current-focus); v0.24.0 → v0.25.0 on 2026-09-05 with the classroom-arc renumber); the interim README/user-guide warning that a design executes with the user's privileges shipped 2026-08-05. The classroom arc does not change the exposure either way — its students run designs they wrote themselves.
+- **Why:** A user-supplied `.vhd` is *executed*, not just parsed — the tool analyzes, elaborates, and **runs** it — so a downloaded design is a code-execution vector. On the **default GHDL** backend a design can read/write any file the user can via `std.textio` (enough to exfiltrate `~/.ssh/id_rsa` or overwrite `~/.bashrc`); on any **native-codegen** backend — NVC *and* GHDL-LLVM/JIT/GCC; only GHDL mcode blocks the route (scope corrected 2026-07-30; the earlier NVC-only framing was wrong) — it escalates to full native code execution: a `VHPIDIRECT` foreign binding resolves arbitrary libc symbols (`system`/`execve`/`socket`), empirically verified on NVC with a bare `.vhd` calling `getpid`/`geteuid`. It runs with the invoking user's privileges (not root — so not a direct kernel rootkit, but ample for data theft, tampering, a reverse shell, or fetching a second stage). Board **JSON is not a risk** (pure `json.loads` + typed coercion; values reach VHDL only as single `-g` argv elements — no shell, no injection). Reported to NVC via private disclosure (2026-07-04); **this card is the local mitigation and does not depend on an NVC fix** — it also closes the GHDL file-I/O vector that exists on the default backend. **Update 2026-07-30 → priority raised:** NVC closed the disclosure as intended behavior (wontfix), so this card is the **only** mitigation. Scheduled as v0.26.0, "the trust release" (see [Current focus](#current-focus); v0.24.0 → v0.25.0 on 2026-09-05 with the classroom-arc renumber, v0.25.0 → v0.26.0 on 2026-10-31 when U56 moved ahead); the interim README/user-guide warning that a design executes with the user's privileges shipped 2026-08-05. The classroom arc does not change the exposure either way — its students run designs they wrote themselves.
 - **What:** A new `sandbox.py` that wraps the sim **run** subprocess in **bubblewrap (`bwrap`)** when available. Policy: **auto-on when `bwrap` + unprivileged user namespaces are present; warn-and-continue otherwise** — encourage, never mandate (mandating breaks Windows/macOS, hardened-kernel Linux, and adoption). Override via `FPGA_SIM_SANDBOX=auto|off|require|bwrap` (and a toggle in the **U5 ✅** Settings dialog). The sim legitimately needs **zero network**, so `--unshare-net` is a zero-cost, high-value control that kills the NVC exfil path outright.
 - **Verified bind set** — *prototyped against `bwrap` 2026-07-04: a real headless `blinky` GHDL+cocotb run behaved identically sandboxed vs. unsandboxed (same `TESTS=4 PASS=3 FAIL=1`, VPI loaded); `pygame`+`cocotb`+`fpga_sim` imported fine inside; an in-sandbox network connect was blocked; a planted `$HOME` secret was hidden:*
   - **Strategy A (recommended default — robust, distro-agnostic):** `--ro-bind / /`, then *subtract* — `--dev /dev`, `--proc /proc`, `--tmpfs /tmp`, `--bind <work_dir> <work_dir>` (rw) + `--chdir <work_dir>`, `--tmpfs $HOME` (hides personal files), then re-expose **read-only** the two paths under `$HOME` the sim needs: the **project root** (`src/`, `sim/`, `.venv` incl. cocotb libs, `hdl/`) and the **uv interpreter root** `~/.local/share/uv/python` (venv-symlink target + libpython). Plus `--unshare-net --die-with-parent --new-session`.
@@ -1362,7 +1377,7 @@ A practical sequencing if all items were in flight (impact-weighted, with founda
 | **P10** | Committed T80 IM 1 (`irq_mode = "simple"`) reference design | A third core lands (completing the interrupt-mode matrix then has real demonstration value), or a user asks for an IM 1 reference | S/M | Z80 IM 1 is generator-supported today — the base `t80.vhd` adapter plus the same emitter branch `mx65_irq_counter_7seg` already exercises — but no committed `systems/*.toml` selects it, so the path is declared but unexercised by any shipped design. A 7th ~150 KB generated design + new firmware would complete the (core × `irq_mode` × `io_transport`) matrix, but Phase 7 of [`embedded_core_improvement_plan.md`](plans/embedded_core_improvement_plan.md) judged the pedagogical return too low to justify the size right now. |
 | **P11** ✅ | Traffic-light FSM teaching design | graduated 2026-09-05 → U52 | S/M | A classic labeled-states FSM (red → green → yellow → red) would round out the hand-written teaching examples, but `hdl/stopwatch_7seg.vhd` (Phase 7 of [`embedded_core_improvement_plan.md`](plans/embedded_core_improvement_plan.md)) already demonstrates FSM-ish control plus live user interaction, so adding a second, narrower FSM example was judged example sprawl for now rather than added teaching value. **Graduated 2026-09-05 → U52**, in spirit rather than in letter: the course's own Lab 2b makes a **code-lock FSM** the more relevant labeled-states example, so U52 ships that instead of a traffic light. Retired at U52's closeout. |
 | **P12** | Hex-counter firmware variant | Never, by design — unless the guide gains a solutions appendix | S | Deliberately **not** implemented: `docs/embedded_core_system_guide.md` §13 already names "hex vs BCD" as the reader's own first-firmware exercise (the walking counter's BCD ripple is the worked example to adapt). Implementing it here would remove the homework value it is meant to have. |
-| **P35** | Fix the display-name *parsers*, and re-sync | A board-data re-sync is happening anyway for another reason, or the override table passes ~25 entries | S/M | `_prettify_class_name` (`scripts/amaranth_parser.py`) and its copy in `scripts/litex_parser.py` build a display name by splitting an upstream class name on case and digit boundaries: `DE1SoC` → "DE1 So C", and a trailing underscore becomes a dangling hyphen (`ULX3S_45F_` → "ULX3 S-45 F-"). **U49 ✅ repaired the symptom at load time** (`board_loader._DISPLAY_NAME_OVERRIDES`, 20 entries, guarded by `tests/test_board_display_names.py`) because fixing the parsers forces a re-sync of every generated board that the CI drift job (`scripts/check_board_drift.py`) must then agree with byte for byte — real risk three weeks before a semester, for a cosmetic defect. Nothing is broken while this waits: the override table is authoritative and its guard fires on any *new* mangling, so the cost of deferring is a growing table, not a growing defect. **When it is done:** the parsers gain the same corrections, every source re-syncs **in place at its recorded `source_commit`**, and each override that the parser now emits on its own is deleted — `test_every_override_actually_changes_the_name` names them, so the cleanup is mechanical. Note the two names that only *look* mangled (`Genesys ZU-3EG-D` / `-5EV-D`, Digilent's own file naming): the parser must keep them, and the guard registers them as vendor spellings. **Trigger fired 2026-10-28** (a re-sync is now needed for other reasons): absorbed into **U56** Phase 1b (plan approved 2026-10-31, → v0.26.0), after U56 Phase 1a freezes board file names so the parser fix renames no file ([plan](plans/u56_upstream_board_sync_plan.md)). |
+| **P35** | Fix the display-name *parsers*, and re-sync | A board-data re-sync is happening anyway for another reason, or the override table passes ~25 entries | S/M | `_prettify_class_name` (`scripts/amaranth_parser.py`) and its copy in `scripts/litex_parser.py` build a display name by splitting an upstream class name on case and digit boundaries: `DE1SoC` → "DE1 So C", and a trailing underscore becomes a dangling hyphen (`ULX3S_45F_` → "ULX3 S-45 F-"). **U49 ✅ repaired the symptom at load time** (`board_loader._DISPLAY_NAME_OVERRIDES`, 20 entries, guarded by `tests/test_board_display_names.py`) because fixing the parsers forces a re-sync of every generated board that the CI drift job (`scripts/check_board_drift.py`) must then agree with byte for byte — real risk three weeks before a semester, for a cosmetic defect. Nothing is broken while this waits: the override table is authoritative and its guard fires on any *new* mangling, so the cost of deferring is a growing table, not a growing defect. **When it is done:** the parsers gain the same corrections, every source re-syncs **in place at its recorded `source_commit`**, and each override that the parser now emits on its own is deleted — `test_every_override_actually_changes_the_name` names them, so the cleanup is mechanical. Note the two names that only *look* mangled (`Genesys ZU-3EG-D` / `-5EV-D`, Digilent's own file naming): the parser must keep them, and the guard registers them as vendor spellings. **Trigger fired 2026-10-28** (a re-sync is now needed for other reasons): absorbed into **U56** Phase 1b (plan approved 2026-10-31, → v0.24.0), after U56 Phase 1a freezes board file names so the parser fix renames no file ([plan](plans/u56_upstream_board_sync_plan.md)). |
 | **P13** ✅ | Waveform capture is unbounded in size — weigh the consequences | fired 2026-09-07 | S/M | Native waveform capture (**U10 / U28 / U29**, now shipped) writes for the **entire** simulated run with **no size bound**. Concrete: ~1–2 s smoke runs produced **42–119 MB** VCDs; FST is ~10–20× leaner (2–5 MB) but still unbounded, and a mid-write `/tmp` `EDQUOT` **truncated** one dump (GTKWave then reads the torn VCD as "times range zero"). **Consequences to weigh:** filling `~/.fpga_simulator/waveforms/` / the disk / a tmpfs quota; torn dumps on `ENOSPC`; sluggish viewer loads; and that successive runs **accumulate** timestamped dumps with no retention/cleanup. **Candidate resolutions (open — decide at schedule time, not prescriptive):** a **size cap** (stop at *N* MB, keep + flag the partial); a **pre-/post-run "capture is ~N MB" heads-up** (Settings hint or an end-of-run line); nudging **FST as the leaner default**; a **retention sweep** of the waveforms dir; documenting the existing `FPGA_SIM_WAVEFORM_DIR` escape hatch; or something else we choose then. **Not a U29 bug** — capture works as designed; this is about the ergonomics/safety of the unbounded default. (The `/tmp` tmpfs per-user quota that triggered the truncation is a separate environmental footgun.) **Scheduled 2026-09-05 → the classroom arc's documentation PR** (decision D-14): **FST becomes the first non-off choice** when capture is enabled, an end-of-run line reports the dump's size, and the docs state sizes per simulated millisecond and where the files go. The retention sweep rides along only if that day has room. **Shipped 2026-09-07** (PR 12): the Settings cycle is now off → FST → VCD, and `_announce_waveform` prints the dump's size beside its path, with one extra line under VCD naming what the format costs and where to change it. The numbers are now measured rather than recalled — a 10 s run of `blinky.vhd` wrote **9 MB of FST against 190 MB of VCD** (21x file-to-file, 29x per simulated millisecond, the gap being that writing VCD is itself slow enough to cost the run simulated time) — and they are stated in `docs/troubleshooting.md` with the command that reproduces them. **The retention sweep was not taken:** nothing deletes a dump, deliberately, because a per-run size line puts the decision in front of the one person who knows whether the file still matters. Re-card it if dumps actually pile up. |
 | **P14** ✅ | GHDL-VCD + Memories=On is a silent dead-end — steer users to FST | fired 2026-09-07 | XS/S | U30's Memories toggle drives NVC `--dump-arrays` but is a **no-op under GHDL**: GHDL's VCD *writer* omits memories (its FST/GHW writers include them by default, no flag), so **GHDL + VCD + Memories=On silently yields nothing**, with no indication why. Correct-by-design, but a confusing combination. **Candidate resolutions (open):** a Settings hint when GHDL+VCD+Memories is selected ("memories need FST under GHDL"); auto-suggesting/switching to FST; or a one-line end-of-run note. Cosmetic/ergonomic only — the format matrix is documented (embedded-core guide §15, CHANGELOG, `WaveConfig` docstring). Sibling of **P13** (both waveform-capture ergonomics). **Scheduled 2026-09-05 → the same PR as P13:** a `docs/troubleshooting.md` entry, and the FST-first default that stops the combination arising by accident in the first place. **Shipped 2026-09-07** (PR 12), both halves. Reordering the cycle to off → FST → VCD is the structural fix: the dead-end combination is no longer on the path of anyone who clicks once. The entry (*"I enabled Memories and my arrays are still not there"*) is indexed by the symptom rather than by the cause, since a reader who knew the cause would not need it, and the end-of-run VCD line names memories as a second reason to switch — so the steer appears whether or not the toggle was ever touched. |
 | **P15** | Global cross-board convention *ambiguity* detection | A future board introduces a name+width-identical, polarity-*different* collision (today's `test_native_convention.py` invariant would fail loudly first), or a user reports a board-native file matching the "wrong" board | S/M | U21 ✅ resolves the wrong-board case safely by construction: a native file either near-misses on a differing port name or matches an electrically identical board (the only cross-board full match in the current data is DE23-Lite ↔ DE25-Standard, same polarity). What's **not** built is *global* ambiguity detection — "does this file also match another board *better* than the selected one?" Not needed for the current fleet (proven by the data-invariant regression test, which fails loudly if a name+width-identical, polarity-different pair ever appears), so it's deferred rather than speculatively built. **If triggered:** sweep the fleet's canonical conventions at match time and surface a "this also matches board X" note, or gate on a distinct discriminator (e.g. a unique clock name). See U21's plan §"Cross-board safety". **2026-10-28:** **U56** (approved 2026-10-31) keeps cross-source twins as separate boards and deliberately does not copy one entry's canonical conventions onto another, so a Terasic-native design matches the Amaranth DE10-Lite but near-misses on the new LiteX "Terasic De10lite"; this card's "also matches board X" note is the proposed remedy (U56 §14). |
