@@ -58,6 +58,7 @@ executed or are approved and queued; **executed** plans shipped in the release n
 | [u48_classroom_arc_plan_v2.md](plans/u48_classroom_arc_plan_v2.md) | **LIVE — released as v0.23.0** (2026-10-26); open tail: the doc review and §10.2/§10.3. The pre-semester classroom arc: U48–U54 + D17 |
 | [u39_peripherals_plan.md](plans/u39_peripherals_plan.md) | **LIVE — approved**, unstarted → v0.24.0. Character LCD + SPI OLED on a peripheral framework |
 | [docs_assets_improvement_plan_v2.md](plans/docs_assets_improvement_plan_v2.md) | **LIVE — split execution**; PRs 1–2 shipped, PRs 3–6 ride the peripherals arc |
+| [u56_upstream_board_sync_plan.md](plans/u56_upstream_board_sync_plan.md) | **DRAFT — under review** (drafted 2026-10-28, revised 2026-10-31), not approved. Upstream board-sync repair: faithful parsers, stable board identity, orphaned boards |
 | [u44_multi_input_plan_v1.md](plans/u44_multi_input_plan_v1.md) | executed → v0.21.0 — simultaneous holds, latched buttons, keyboard mapping |
 | [u22_7seg_scan_plan.md](plans/u22_7seg_scan_plan.md) | executed → v0.19.0 — the physical scan display interface |
 | [u9_led_complete_plan.md](plans/u9_led_complete_plan.md) | executed → v0.17.0 + v0.18.0 — duty-measured brightness, LED banks and colors, RGB |
