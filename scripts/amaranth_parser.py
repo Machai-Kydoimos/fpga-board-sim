@@ -2,11 +2,12 @@
 
 Upstream amaranth-boards files are written against the amaranth build DSL
 (``Resource``, ``Pins``, ``Connector``, platform base classes, …).  This module
-parses them *without* importing amaranth: :func:`load_board_from_source` strips
-their imports and ``exec``'s them in the namespace from :func:`_make_namespace`,
-where every DSL name resolves to a lightweight mock (or inert stub) defined here.
-The mocks capture just enough to extract LED / button / switch / 7-seg resources;
-everything else is stubbed.
+reads them *without* importing amaranth and without executing them (U56 decision
+D-7): :func:`load_board_from_source` blanks their imports and hands the source to
+:func:`upstream_reader.read_module`, which parses it and interprets it against the
+namespace from :func:`_make_namespace`, where every DSL name resolves to a
+lightweight mock (or inert stub) defined here.  The mocks capture just enough to
+extract LED / button / switch / 7-seg resources; everything else is stubbed.
 
 This is offline tooling used only by ``scripts/sync_amaranth_boards.py`` and the
 parser test suite.  It depends one-way on the :mod:`fpga_sim.board_loader` data
@@ -16,10 +17,12 @@ the two can evolve independently.
 """
 
 import re
+import sys
 from collections.abc import Sequence
 
 from framework_conventions import RoleEntry, build_convention
 from led_metadata import color_from_name
+from upstream_reader import ModuleStub, read_module
 
 from fpga_sim.board_loader import (
     _FALLBACK_CLOCK_HZ,
@@ -29,7 +32,7 @@ from fpga_sim.board_loader import (
 )
 
 # ═══════════════════════════════════════════════════════════════════════
-#  Mock amaranth.build classes (just enough to exec board files)
+#  Mock amaranth.build classes (just enough to read board files)
 # ═══════════════════════════════════════════════════════════════════════
 
 
@@ -273,7 +276,7 @@ def _display7seg_resource(
 
 
 # ═══════════════════════════════════════════════════════════════════════
-#  Exec namespace
+#  Reader namespace
 # ═══════════════════════════════════════════════════════════════════════
 
 _PLATFORM_VENDORS: dict[str, str] = {
@@ -291,15 +294,16 @@ _PLATFORM_VENDORS: dict[str, str] = {
 
 
 def _make_namespace() -> dict[str, object]:
-    """Build the global namespace used to ``exec`` an upstream board ``.py`` file.
+    """Build the namespace an upstream board ``.py`` file is read against.
 
     Maps every amaranth build-DSL name a board file might reference to a mock or
     stub in this module: the core DSL (``Resource``, ``Pins``, …), the resource
     helpers we actually parse (LEDs / buttons / switches / 7-seg), inert stubs for
-    interfaces and memories we don't simulate, a few stdlib modules, and a
-    dynamically generated platform base class per vendor.  ``__name__`` is set to
-    a sentinel so any ``if __name__ == "__main__"`` guard in the board file stays
-    dormant.
+    interfaces and memories we don't simulate, a ``unittest`` stub whose only
+    member is the ``TestCase`` base seven board files subclass, and a dynamically
+    generated platform base class per vendor.  ``__name__`` is set to a sentinel
+    so any ``if __name__ == "__main__"`` guard in the board file stays dormant.
+    No real module or builtin is in here: the reader supplies its own allowlist.
     """
     ns: dict[str, object] = {
         # Core build DSL
@@ -336,13 +340,12 @@ def _make_namespace() -> dict[str, object]:
         "SDRAMResource": _stub_single,
         "NORFlashResources": _stub_multi,
         "DDR3Resource": _stub_single,
-        # Stdlib modules used by board files
-        "os": __import__("os"),
-        "subprocess": __import__("subprocess"),
-        "unittest": __import__("unittest"),
+        # Seven board files define `class TestCase(unittest.TestCase)`; the class is
+        # skipped below, so its base only has to exist.  `os` and `subprocess` appear
+        # only inside programmer methods the reader never runs.
+        "unittest": ModuleStub("unittest", TestCase=type("TestCase", (), {})),
         # Prevent __main__ guard from running
         "__name__": "_board_loader_exec",
-        "__builtins__": __builtins__,
     }
     for name, vendor in _PLATFORM_VENDORS.items():
         ns[name] = type(
@@ -597,7 +600,7 @@ def _prettify_class_name(name: str) -> str:
 
 
 def load_board_from_source(source: str, filename: str = "<string>") -> list[BoardDef]:
-    """Parse a single board file's source and return a list of BoardDefs."""
+    """Read a single board file's source, without executing it, and return its BoardDefs."""
     # Strip import statements – we inject everything via namespace
     lines = source.split("\n")
     cleaned = []
@@ -610,8 +613,10 @@ def load_board_from_source(source: str, filename: str = "<string>") -> list[Boar
 
     ns = _make_namespace()
     try:
-        exec(compile("\n".join(cleaned), filename, "exec"), ns)
-    except Exception:
+        read_module("\n".join(cleaned), filename, ns)
+    except Exception as exc:
+        # Loud until U56 Phase 1a's ledger records it: a skipped file is never silent.
+        print(f"  skipped {filename}: {type(exc).__name__}: {exc}", file=sys.stderr)
         return []
 
     all_names: list[str] | None = ns.get("__all__")  # type: ignore[assignment]

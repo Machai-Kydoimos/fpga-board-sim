@@ -592,29 +592,34 @@ pipeline instead:
   ones below it is the easy mistake, and the validator fails on it.
 - **A parser/classifier fix** (the generated data is *wrong*) → fix the parser
   under `scripts/`, re-sync at the recorded pin
-  (`uv run python scripts/sync_digilent_xdc.py --ref <pinned sha>`; for the
-  Amaranth and LiteX parsers, see
-  [syncs that run upstream code](#syncs-that-run-upstream-code)), and commit the
+  (`uv run python scripts/sync_digilent_xdc.py --ref <pinned sha>` etc.; no token
+  needed, see [reading upstream files](#reading-upstream-files)), and commit the
   code + regenerated JSONs together; the drift job proves the pair is consistent.
 
-### Syncs that run upstream code
+### Reading upstream files
 
-The Amaranth and LiteX syncs (`sync_amaranth_boards.py`, `sync_litex_boards.py`)
-read each upstream board file by *executing* it against mock classes, and
-`check_board_drift.py` re-runs both. Executing someone else's code to read their
-data is a needless risk, so a reader that only parses the files is replacing them
-(roadmap U56). Until it lands, don't run those three scripts locally: CI's
-Board-data drift job runs the check on every pull request and every push to
-`main`, with GitHub's read-only token.
+The syncs **read** upstream files and never execute them. Amaranth's and LiteX's
+board definitions are Python, so `scripts/upstream_reader.py` parses each one and
+interprets just the Python board files use, calling into real Python only for the
+parsers' own mock classes and a short list of side-effect-free builtins. A file it
+cannot read is reported on stderr (`skipped <file>: …`) and is never run. Digilent's
+XDC files and the constraint files the port-convention registry cites are plain
+text. So every sync, and the drift check that re-runs them all, is safe to run on
+your machine.
 
-The rest of the pipeline only reads text and is safe to run. `sync_digilent_xdc.py`
-needs no token. `sync_port_conventions.py` resolves a pin for every cited file
-through the GitHub API, more requests than the 60 an hour allowed without a token,
-so give it the token `gh` already holds; only this project's code sees it:
+The source syncs need no token at a pinned commit. One step does:
+`sync_port_conventions.py` resolves a pin for every cited file through the GitHub
+API, more requests than the 60 an hour allowed without a token, and a rate-limited
+pin reads as false drift. Give it the token `gh` already holds; only this project's
+code sees it:
 
 ```bash
-GITHUB_TOKEN="$(gh auth token)" uv run python scripts/sync_port_conventions.py --check
+GITHUB_TOKEN="$(gh auth token)" uv run python scripts/check_board_drift.py
 ```
+
+**Never add an `exec`, `eval`, `compile`, `__import__` or `importlib` call under
+`scripts/`** (`tests/test_no_upstream_exec.py` fails on one): if the reader cannot
+read something upstream wrote, teach it the construct, or let the file be reported.
 
 `docs/architecture.md` covers the sync pipeline's structure;
 `docs/plans/u21_board_native_vhdl_plan.md` and `docs/plans/u22_7seg_scan_plan.md` are the
@@ -806,15 +811,19 @@ This project follows [Semantic Versioning](https://semver.org):
 ### Release checklist
 
 **Pre-flight** — before cutting the branch, confirm the generated artifacts and
-board data are in sync with their sources. Board data is CI's job: the Board-data
-drift job, which also runs the port-convention and LED-color checks, must be green
-on `main` (it does not run locally, for the reason in
-[syncs that run upstream code](#syncs-that-run-upstream-code)). Then check the
-embedded cores, which only reports drift and never writes:
+board data are in sync with their sources. Both commands only report drift; neither
+writes:
 
 ```bash
+GITHUB_TOKEN="$(gh auth token)" \
+uv run python scripts/check_board_drift.py    # boards/ vs pinned upstreams; chains
+                                              # sync_port_conventions --check +
+                                              # sync_led_colors --check
 uv run python scripts/regen_embedded_cores.py # embedded-core files vs specs (check only)
 ```
+
+(The token matters: unauthenticated GitHub API rate limits read as false drift. See
+[reading upstream files](#reading-upstream-files).)
 
 Investigate and resolve any reported drift before proceeding — with one known
 benign class: pure *retrieved-date / source-pin churn* from an upstream repo

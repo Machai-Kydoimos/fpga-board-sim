@@ -82,9 +82,10 @@ systems/                   TOML system specs consumed by the embedded-core gener
 firmware/                  CPU firmware: 6502 .s (ca65/ld65) + Z80 .asm (z80asm) sources + assembled .bin
 scripts/
   sync_amaranth_boards.py  Syncs board definitions from amaranth-boards
-  amaranth_parser.py       Mock-exec parser used by sync_amaranth_boards.py
+  amaranth_parser.py       Amaranth board-file parser used by sync_amaranth_boards.py
   sync_litex_boards.py     Syncs board definitions from litex-boards
-  litex_parser.py          Mock-exec parser used by sync_litex_boards.py
+  litex_parser.py          LiteX platform-file parser used by sync_litex_boards.py
+  upstream_reader.py       Reads upstream Python without executing it (both parsers use it)
   sync_digilent_xdc.py     Syncs board definitions from Digilent XDC files (with port_conventions)
   digilent_parser.py       XDC regex parser used by sync_digilent_xdc.py
   sync_common.py           Shared scaffolding (download/naming/output) for the sync scripts
@@ -136,9 +137,14 @@ uv run python scripts/sync_digilent_xdc.py     # Digilent XDC
 ```
 
 Each upstream source has a dedicated parser module imported by its thin `sync_*.py`
-script. `amaranth_parser.py` and `litex_parser.py` use **mock-exec** (strip imports,
-inject mock `Resource`/`Pins`/`Attrs` classes into a namespace, `exec()` the board
-file); `digilent_parser.py` uses section-aware **regex** over XDC text.
+script. `amaranth_parser.py` and `litex_parser.py` **read the board file without
+executing it** (U56 decision D-7): they blank its imports and hand it, with a
+namespace of mock `Resource`/`Pins`/`Attrs`/platform classes, to
+`upstream_reader.py`, which parses it with `ast.parse` and interprets only the
+Python board files use. It calls into real Python only for those mocks, classes it
+builds from upstream definitions (their methods stay interpreted), and allowlisted
+builtins; anything else is refused and the file reported. `digilent_parser.py` uses
+section-aware **regex** over XDC text.
 `sync_common.py` holds the shared download/naming/output scaffolding and merges
 `port_conventions` per sub-key on re-sync, so hand-authored or canonical blocks
 survive. The litex and amaranth parsers additionally emit framework-derived

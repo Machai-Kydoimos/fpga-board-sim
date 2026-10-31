@@ -5,8 +5,9 @@ definitions under ``boards/`` (one subdirectory per source) into
 :class:`BoardDef` objects, with no amaranth dependency.
 
 The complementary *offline* path — turning upstream amaranth-style board ``.py``
-files into ``BoardDef`` objects via a mock-exec namespace — lives in
-``scripts/amaranth_parser.py`` and is used only by the ``sync_*`` regenerators.
+files into ``BoardDef`` objects by reading them against a mock namespace, never
+executing them — lives in ``scripts/amaranth_parser.py`` and is used only by the
+``sync_*`` regenerators.
 That parser imports the data classes defined here; this module never imports the
 parser, so the runtime loader and the offline tooling evolve independently.
 """

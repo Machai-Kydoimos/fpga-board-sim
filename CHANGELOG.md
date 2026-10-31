@@ -6,6 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Board syncs no longer execute upstream code.** The Amaranth and LiteX syncs read
+  each upstream board file — Python — by executing it against mock classes, with the
+  real `os` and `subprocess` modules in reach: a compromised upstream file would have
+  run with your privileges, on your machine or in CI. They now parse each file and
+  interpret only the Python board files use (`scripts/upstream_reader.py`), calling
+  nothing but the parsers' own mocks and a short list of side-effect-free builtins;
+  anything else is refused and the file reported. Every committed board came out
+  byte for byte the same, and a static scan of every upstream revision the old
+  syncs ran found nothing that reached for the environment, a command or the
+  network. A test now forbids `exec`, `eval`, `compile`, `__import__` and
+  `importlib` in the sync tooling. (Roadmap U56, Phase 0.)
+
 ### Fixed
 
 - **`--board` can open every board.** Fourteen boards could not be opened from the
