@@ -348,6 +348,21 @@ class InterpretedFunction:
         """Run the function body in the interpreter."""
         return self.reader.call_function(self, args, kwargs)
 
+    def parameter_defaults(self) -> dict[str, object]:
+        """Return every parameter that has a default, with the value the ``def`` gave it.
+
+        This is ``inspect.signature``'s answer for a function that is never compiled:
+        the LiteX sync records a constructor's version parameters from it (U56 §4.1).
+        """
+        spec = self.args
+        positional = [a.arg for a in (*spec.posonlyargs, *spec.args)]
+        with_default = positional[len(positional) - len(self.defaults) :]
+        defaults: dict[str, object] = dict(zip(with_default, self.defaults, strict=True))
+        for arg, default in zip(spec.kwonlyargs, self.kw_defaults, strict=True):
+            if default is not _NO_DEFAULT:
+                defaults[arg.arg] = default
+        return defaults
+
     def __get__(self, instance: object, owner: type | None = None) -> object:
         """Bind to *instance* as a Python function would."""
         if instance is None:

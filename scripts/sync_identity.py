@@ -61,6 +61,21 @@ _CONTENT_KEYS = ("leds", "switches", "buttons", "seven_seg", "clocks", "device")
 Reader = Callable[[str, str, Mapping[str, Any] | None], ParseOutcome]
 
 
+def summarize(report: SyncReport) -> str:
+    """Return the one-paragraph summary a sync prints after writing."""
+    kinds: dict[str, int] = {}
+    for text in report.ledger.values():
+        kind = text.split(":")[0] if not text.startswith("skipped") else text.split(" (")[0]
+        kinds[kind] = kinds.get(kind, 0) + 1
+    parts = [f"{n} {kind}" for kind, n in sorted(kinds.items())]
+    warned = sum(len(w) for w in report.warnings.values())
+    return (
+        f"Ledger: {len(report.ledger)} upstream files -- {', '.join(parts) or 'none'}; "
+        f"{warned} warning(s); {len(report.written)} boards written "
+        f"({len(report.new)} new); {len(report.orphans)} orphaned."
+    )
+
+
 class SyncFailureError(Exception):
     """The sync cannot proceed without a person; nothing was written."""
 
@@ -119,7 +134,7 @@ def _args_match(recorded: Mapping[str, Any], produced: Mapping[str, Any]) -> boo
     return all(key in produced and produced[key] == value for key, value in recorded.items())
 
 
-def _load_existing(output_dir: Path, origin: str) -> list[_Existing]:
+def _load_existing(output_dir: Path, origin: str, classless: bool) -> list[_Existing]:
     existing: list[_Existing] = []
     if not output_dir.is_dir():
         return existing
@@ -135,7 +150,7 @@ def _load_existing(output_dir: Path, origin: str) -> list[_Existing]:
                 filename=path.name,
                 data=data,
                 upstream_file=str(source.get("upstream_file", "")),
-                upstream_class=source.get("upstream_class"),
+                upstream_class=source.get("upstream_class", "" if classless else None),
                 upstream_args=dict(source.get("upstream_args") or {}),
                 orphaned=source.get("upstream_status") == "orphaned",
             )
@@ -281,11 +296,16 @@ def run_sync(
     describe: Callable[[ProducedBoard], str] | None = None,
     schema_path: Path | None = None,
     color_registry: dict[str, Any] | None = None,
+    classless: bool = False,
 ) -> SyncReport:
-    """Read every upstream file, decide each board's file, and write (module docstring)."""
+    """Read every upstream file, decide each board's file, and write (module docstring).
+
+    ``classless`` is for a source whose files define no classes (Digilent XDC): its
+    identity is ``(origin, upstream_file)``, so every existing file already has one.
+    """
     acceptances = [a for a in (accept_list or []) if a.source == origin]
     used: set[Acceptance] = set()
-    existing = _load_existing(output_dir, origin)
+    existing = _load_existing(output_dir, origin, classless)
 
     outcomes: dict[str, ParseOutcome] = {}
     produced: list[ProducedBoard] = []

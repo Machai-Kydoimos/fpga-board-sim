@@ -11,19 +11,29 @@ import io
 import json
 import sys
 import tarfile
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 # Ensure the project src/ is importable
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from amaranth_parser import load_board_from_source  # noqa: E402
+from amaranth_parser import read_amaranth_file  # noqa: E402
 from sync_common import (  # noqa: E402
+    ParseOutcome,
+    ProducedBoard,
     download_archive,
     resolve_commit_sha,
     sanitize_filename,
     unique_name,
-    write_outputs,
+)
+from sync_identity import (  # noqa: E402
+    Reader,
+    SyncFailureError,
+    load_accept_list,
+    run_sync,
+    summarize,
 )
 
 _REPO = "amaranth-lang/amaranth-boards"
@@ -48,41 +58,57 @@ def extract_board_files(archive_bytes: bytes) -> dict[str, str]:
     return board_files
 
 
+_ORIGIN = "amaranth-boards"
+
+
+def make_reader(
+    commit_sha: str, schema_ref: str = "../schema/board.schema.json", timestamp: str = ""
+) -> Reader:
+    """Return the reader ``run_sync`` calls per upstream file: read it, then stamp ``source``.
+
+    Amaranth boards take no version arguments, so ``args`` is never needed; the identity
+    is the upstream class, recorded after ``upstream_file``.
+    """
+    stamp = timestamp or datetime.now(UTC).isoformat()
+
+    def read(filename: str, text: str, args: Mapping[str, Any] | None) -> ParseOutcome:
+        outcome = read_amaranth_file(text, filename)
+        for produced in outcome.boards:
+            produced.board["$schema"] = schema_ref
+            produced.board["source"] = {
+                "origin": _ORIGIN,
+                "upstream_file": filename,
+                "upstream_class": produced.upstream_class,
+                "sync_commit": commit_sha,
+                "sync_timestamp": stamp,
+            }
+        return outcome
+
+    return read
+
+
+def describe(produced: ProducedBoard) -> str:
+    """Name one board for the sync's progress line."""
+    return str(produced.board.get("name", ""))
+
+
 def generate_board_json(
     board_files: dict[str, str],
     commit_sha: str,
     schema_ref: str = "../schema/board.schema.json",
 ) -> dict[str, str]:
-    """Parse board files and generate JSON strings. Returns {output_filename: json_str}."""
+    """Read board files and return ``{file name: JSON}``, with no disk state.
+
+    For tests and audits only: the write path is ``sync_identity.run_sync``, which names
+    files by identity. This names them by display name, as syncs did before identities.
+    """
+    read = make_reader(commit_sha, schema_ref)
     seen: dict[str, int] = {}
     results: dict[str, str] = {}
-    timestamp = datetime.now(UTC).isoformat()
-
     for filename, source in sorted(board_files.items()):
-        try:
-            boards = load_board_from_source(source, filename)
-        except Exception as e:
-            print(f"  [skip] {filename}: {e}", file=sys.stderr)
-            continue
-
-        if not boards:
-            continue
-
-        for board in boards:
-            raw = json.loads(board.to_json())
-            raw["$schema"] = schema_ref
-            raw["source"] = {
-                "origin": "amaranth-boards",
-                "upstream_file": filename,
-                "sync_commit": commit_sha,
-                "sync_timestamp": timestamp,
-            }
-
-            base = sanitize_filename(board.name)
-            output_name = unique_name(base, seen)
-            results[f"{output_name}.json"] = json.dumps(raw, indent=2) + "\n"
-            print(f"  {filename} -> {output_name}.json ({board.name})")
-
+        for produced in read(filename, source, None).boards:
+            name = unique_name(sanitize_filename(str(produced.board["name"])), seen)
+            results[f"{name}.json"] = json.dumps(produced.board, indent=2) + "\n"
     return results
 
 
@@ -127,12 +153,25 @@ def main() -> int:
         print("No board files found in archive.", file=sys.stderr)
         return 1
 
-    print("Generating JSON definitions ...")
-    board_jsons = generate_board_json(board_files, commit_sha)
-    print(f"Generated {len(board_jsons)} board definitions.")
-
-    print(f"\nWriting to {args.output_dir} ...")
-    write_outputs(args.output_dir, board_jsons, commit_sha, _REPO, dry_run=args.dry_run)
+    print(f"Reading board files (parsed, never executed) into {args.output_dir} ...")
+    try:
+        report = run_sync(
+            origin=_ORIGIN,
+            repo=_REPO,
+            files=board_files,
+            commit_sha=commit_sha,
+            output_dir=args.output_dir,
+            read=make_reader(commit_sha),
+            accept_list=load_accept_list(),
+            dry_run=args.dry_run,
+            describe=describe,
+        )
+    except SyncFailureError as failure:
+        print("\nSync stopped; nothing was written:", file=sys.stderr)
+        for problem in failure.problems:
+            print(f"  - {problem}", file=sys.stderr)
+        return 1
+    print(summarize(report))
 
     print("\nDone.")
     return 0

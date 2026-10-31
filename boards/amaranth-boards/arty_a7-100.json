@@ -295,7 +295,8 @@
   "source": {
     "origin": "amaranth-boards",
     "upstream_file": "arty_a7.py",
-    "sync_commit": "fd2f0df811a8dbcf6aa0b94ac0788dc71ac79e1e",
-    "sync_timestamp": "2026-07-14T05:53:55.055741+00:00"
+    "upstream_class": "ArtyA7_100Platform",
+    "sync_commit": "be069dfd490b31df215337afac35711994a52418",
+    "sync_timestamp": "2026-10-31T23:32:50.118937+00:00"
   }
 }

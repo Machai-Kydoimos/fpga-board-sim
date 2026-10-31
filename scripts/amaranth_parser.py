@@ -16,12 +16,14 @@ classes (``BoardDef`` / ``ComponentInfo`` / ``SevenSegDef``) and the shared
 the two can evolve independently.
 """
 
+import json
 import re
 import sys
 from collections.abc import Sequence
 
 from framework_conventions import RoleEntry, build_convention
 from led_metadata import color_from_name
+from sync_common import ParseOutcome, ProducedBoard, normalize_error
 from upstream_reader import ModuleStub, read_module
 
 from fpga_sim.board_loader import (
@@ -601,6 +603,48 @@ def _prettify_class_name(name: str) -> str:
 
 def load_board_from_source(source: str, filename: str = "<string>") -> list[BoardDef]:
     """Read a single board file's source, without executing it, and return its BoardDefs."""
+    try:
+        boards, _ = _read_boards(source, filename)
+    except Exception as exc:
+        print(f"  skipped {filename}: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return []
+    return boards
+
+
+def read_amaranth_file(source: str, filename: str) -> ParseOutcome:
+    """Read one board file, without executing it, into a :class:`ParseOutcome`.
+
+    Each board's identity (U56 plan §4.1) is its upstream class; Amaranth boards take no
+    version arguments.  A file whose classes declare resources but none we simulate is
+    ``no_simulatable_io``; one with no such class is ``not_a_board``.
+    """
+    try:
+        boards, had_resources = _read_boards(source, filename)
+    except Exception as exc:
+        # Recorded in the ledger by the sync; said aloud here for a direct caller.
+        print(f"  skipped {filename}: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return ParseOutcome(outcome="error", detail=normalize_error(exc))
+    if not boards:
+        detail = "no_simulatable_io" if had_resources else "not_a_board"
+        return ParseOutcome(outcome="skipped", detail=detail)
+    return ParseOutcome(
+        boards=[
+            ProducedBoard(
+                board=json.loads(board.to_json()),
+                upstream_file=filename,
+                upstream_class=board.class_name,
+            )
+            for board in boards
+        ]
+    )
+
+
+def _read_boards(source: str, filename: str) -> tuple[list[BoardDef], bool]:
+    """Read *source*; return its boards and whether any class declared resources.
+
+    Raises whatever the read raises (a ``SyntaxError``, the reader's
+    ``UnsupportedConstructError``, a ``NameError`` for a name the mocks lack, ...).
+    """
     # Strip import statements – we inject everything via namespace
     lines = source.split("\n")
     cleaned = []
@@ -612,16 +656,12 @@ def load_board_from_source(source: str, filename: str = "<string>") -> list[Boar
             cleaned.append(line)
 
     ns = _make_namespace()
-    try:
-        read_module("\n".join(cleaned), filename, ns)
-    except Exception as exc:
-        # Loud until U56 Phase 1a's ledger records it: a skipped file is never silent.
-        print(f"  skipped {filename}: {type(exc).__name__}: {exc}", file=sys.stderr)
-        return []
+    read_module("\n".join(cleaned), filename, ns)
 
     all_names: list[str] | None = ns.get("__all__")  # type: ignore[assignment]
 
     boards = []
+    had_resources = False
     for obj_name, obj in list(ns.items()):
         if not isinstance(obj, type):
             continue
@@ -635,6 +675,7 @@ def load_board_from_source(source: str, filename: str = "<string>") -> list[Boar
         resources = getattr(obj, "resources", None)
         if not isinstance(resources, list) or not resources:
             continue
+        had_resources = True
 
         leds, buttons, switches = [], [], []
         for res in resources:
@@ -676,4 +717,4 @@ def load_board_from_source(source: str, filename: str = "<string>") -> list[Boar
             )
         )
 
-    return boards
+    return boards, had_resources

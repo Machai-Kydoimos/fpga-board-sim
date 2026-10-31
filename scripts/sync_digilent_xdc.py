@@ -7,25 +7,28 @@ port_conventions to boards/digilent-xdc/.
 
 import argparse
 import io
-import json
 import sys
 import tarfile
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from digilent_parser import build_board_json  # noqa: E402
 from sync_common import (  # noqa: E402
+    ParseOutcome,
+    ProducedBoard,
     download_archive,
+    normalize_error,
     resolve_commit_sha,
-    sanitize_filename,
-    unique_name,
-    write_outputs,
 )
+from sync_identity import SyncFailureError, load_accept_list, run_sync, summarize  # noqa: E402
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Archive handling
 # ═══════════════════════════════════════════════════════════════════════
 
 _REPO = "Digilent/digilent-xdc"
+_ORIGIN = "digilent-xdc"
 
 
 def extract_xdc_files(archive_bytes: bytes) -> dict[str, str]:
@@ -89,36 +92,46 @@ def main() -> int:
         print("No XDC files found in archive.", file=sys.stderr)
         return 1
 
-    print("Generating JSON definitions ...")
-    board_jsons: dict[str, str] = {}
-    seen: dict[str, int] = {}
-    for filename, content in sorted(xdc_files.items()):
+    def read(filename: str, text: str, args: Mapping[str, Any] | None) -> ParseOutcome:
+        # An XDC file defines no classes, so its identity is (origin, upstream_file) and
+        # its board dict -- `source` included -- is exactly what `build_board_json` builds.
         try:
-            board = build_board_json(content, filename, commit_sha)
-        except Exception as e:
-            print(f"  [skip] {filename}: {e}", file=sys.stderr)
-            continue
-
+            board = build_board_json(text, filename, commit_sha)
+        except Exception as exc:
+            return ParseOutcome(outcome="error", detail=normalize_error(exc))
         if board is None:
-            print(f"  [skip] {filename}: no simulatable resources")
-            continue
+            return ParseOutcome(outcome="skipped", detail="no_simulatable_io")
+        return ParseOutcome(boards=[ProducedBoard(board=board, upstream_file=filename)])
 
-        out_name = unique_name(sanitize_filename(board["name"]), seen)
-        board_jsons[f"{out_name}.json"] = json.dumps(board, indent=2) + "\n"
-        seg_info = ""
-        if board.get("seven_seg"):
-            seg_info = f", {board['seven_seg']['num_digits']}-digit 7seg"
-        conv_info = " +port_conventions" if board.get("port_conventions") else ""
-        print(
-            f"  {filename} -> {out_name}.json"
-            f" ({len(board['leds'])} LEDs, {len(board['switches'])} SW,"
-            f" {len(board['buttons'])} BTN{seg_info}{conv_info})"
+    def describe(produced: ProducedBoard) -> str:
+        board = produced.board
+        seg = f", {board['seven_seg']['num_digits']}-digit 7seg" if board.get("seven_seg") else ""
+        conv = " +port_conventions" if board.get("port_conventions") else ""
+        return (
+            f"{len(board['leds'])} LEDs, {len(board['switches'])} SW,"
+            f" {len(board['buttons'])} BTN{seg}{conv}"
         )
 
-    print(f"Generated {len(board_jsons)} board definitions.")
-
-    print(f"\nWriting to {args.output_dir} ...")
-    write_outputs(args.output_dir, board_jsons, commit_sha, _REPO, dry_run=args.dry_run)
+    print(f"Reading XDC files into {args.output_dir} ...")
+    try:
+        report = run_sync(
+            origin=_ORIGIN,
+            repo=_REPO,
+            files=xdc_files,
+            commit_sha=commit_sha,
+            output_dir=args.output_dir,
+            read=read,
+            accept_list=load_accept_list(),
+            dry_run=args.dry_run,
+            describe=describe,
+            classless=True,
+        )
+    except SyncFailureError as failure:
+        print("\nSync stopped; nothing was written:", file=sys.stderr)
+        for problem in failure.problems:
+            print(f"  - {problem}", file=sys.stderr)
+        return 1
+    print(summarize(report))
 
     print("\nDone.")
     return 0
