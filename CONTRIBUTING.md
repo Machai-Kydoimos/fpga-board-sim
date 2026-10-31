@@ -592,30 +592,37 @@ pipeline instead:
   ones below it is the easy mistake, and the validator fails on it.
 - **A parser/classifier fix** (the generated data is *wrong*) → fix the parser
   under `scripts/`, re-sync at the recorded pin
-  (`uv run python scripts/sync_digilent_xdc.py --ref <pinned sha>` etc., with
-  [the sync token](#the-sync-token) in `GITHUB_TOKEN`), and commit the code +
+  (`uv run python scripts/sync_digilent_xdc.py --ref <pinned sha>` etc., with no
+  token: see [the sync token](#the-sync-token)), and commit the code +
   regenerated JSONs together; the drift job proves the pair is consistent.
 
 ### The sync token
 
-The sync scripts and the drift check call the GitHub API to resolve refs, and an
-unauthenticated rate limit reads as false drift, so they need a token in
-`GITHUB_TOKEN`. Use one with **no scopes**: a fine-grained token with read-only
-access to public repositories and no permissions, or a classic token with no box
-ticked. Either lifts the rate limit and can do nothing else.
+One step needs a GitHub token: the port-convention check
+(`sync_port_conventions.py --check`, which the drift check runs). It resolves a
+pin for every cited file through the GitHub API, far more requests than the 60 an
+hour the API allows without a token, and a rate-limited pin reads as false drift.
+The source syncs (`sync_amaranth_boards.py`, `sync_litex_boards.py`,
+`sync_digilent_xdc.py`) make one API call each and work without a token at a
+pinned SHA, so run them with none.
 
-**Never use `gh auth token`.** A sync *executes* upstream Python — the LiteX and
-Amaranth board files, run under a mock — and the token `gh` holds for you
-carries the `repo` and `workflow` scopes: full control of your repositories and
-their CI. CI's drift job already uses its own read-only `github.token`.
+For that one step, use a token with **no scopes**: a fine-grained token with
+read-only access to public repositories and no permissions, or a classic token
+with no box ticked. Either lifts the rate limit and can do nothing else.
+
+**Never use `gh auth token`.** The LiteX and Amaranth syncs *execute* upstream
+Python (the board files, run against mock classes), the drift check runs them with
+the environment it was given, and the token `gh` holds for you carries the `repo`
+and `workflow` scopes: full control of your repositories and their CI. CI's drift
+job already uses its own read-only `github.token`.
 
 ```bash
 GITHUB_TOKEN=<your no-scope token> \
-uv run python scripts/sync_digilent_xdc.py --ref <pinned sha>
+uv run python scripts/check_board_drift.py
 ```
 
 Keep the token somewhere only you can read, such as a password manager or a file
-with mode 600, rather than in your shell history.
+with mode 600, and pass it per command rather than exporting it into your shell.
 
 `docs/architecture.md` covers the sync pipeline's structure;
 `docs/plans/u21_board_native_vhdl_plan.md` and `docs/plans/u22_7seg_scan_plan.md` are the
