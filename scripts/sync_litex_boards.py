@@ -1,8 +1,9 @@
 """Sync board definitions from litex-boards GitHub repository.
 
 Downloads the source archive, mocks the LiteX build system classes,
-executes each board platform file, and emits JSON board definitions
-to boards/litex-boards/.
+reads each board platform file against them (parsed and interpreted,
+never executed -- U56 D-7), and emits JSON board definitions to
+boards/litex-boards/.
 """
 
 import argparse

@@ -1,8 +1,9 @@
 """Sync board definitions from amaranth-boards GitHub repository.
 
-Downloads the source archive, parses each board Python file using the
-existing mock-exec loader, and emits JSON board definitions to the
-target directory (default: boards/amaranth-boards/).
+Downloads the source archive, reads each board Python file with the
+amaranth parser (parsed and interpreted, never executed -- U56 D-7), and
+emits JSON board definitions to the target directory (default:
+boards/amaranth-boards/).
 """
 
 import argparse

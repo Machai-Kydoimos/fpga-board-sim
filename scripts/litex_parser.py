@@ -1,17 +1,20 @@
-"""Parser for litex-boards platform files — mock-exec → board dicts.
+"""Parser for litex-boards platform files — read, never executed → board dicts.
 
-Mocks the LiteX build-system classes, executes each board ``platform`` file in
-that namespace, and extracts LED / button / switch / clock / 7-seg resources into
-plain board-definition dicts (the JSON schema shape).  Self-contained: no
-``fpga_sim`` dependency.  Used by ``scripts/sync_litex_boards.py`` and the parser
-test suite.
+Mocks the LiteX build-system classes, reads each board ``platform`` file against
+that namespace with :func:`upstream_reader.read_module` -- which parses the file
+and interprets it, never executing it (U56 decision D-7) -- and extracts LED /
+button / switch / clock / 7-seg resources into plain board-definition dicts (the
+JSON schema shape).  Self-contained: no ``fpga_sim`` dependency.  Used by
+``scripts/sync_litex_boards.py`` and the parser test suite.
 """
 
 import re
+import sys
 from typing import Any
 
 from framework_conventions import RoleEntry, build_convention
 from led_metadata import color_from_name
+from upstream_reader import read_module
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Mock LiteX build system classes
@@ -159,12 +162,12 @@ def _make_mock_platform(name: str, vendor: str) -> type:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-#  Exec namespace
+#  Reader namespace
 # ═══════════════════════════════════════════════════════════════════════
 
 
 def _make_litex_namespace() -> dict[str, object]:
-    """Build the mock namespace for executing litex board files."""
+    """Build the mock namespace litex board files are read against (no real modules)."""
     ns: dict[str, object] = {
         # generic_platform exports
         "Pins": _Pins,
@@ -195,12 +198,9 @@ def _make_litex_namespace() -> dict[str, object]:
                 "GenericProgrammer",
             )
         },
-        # Stdlib
-        "os": __import__("os"),
-        "subprocess": __import__("subprocess"),
+        # `os` and `subprocess` appear only inside methods the reader never runs.
         # Prevent __main__ guard from running
         "__name__": "_litex_board_loader_exec",
-        "__builtins__": __builtins__,
     }
 
     # Inject mock platform classes
@@ -484,7 +484,7 @@ def _make_class_name(filename: str) -> str:
 
 
 def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
-    """Parse a litex-boards platform file and return board definition dicts."""
+    """Read a litex-boards platform file, without executing it, and return board dicts."""
     lines = source.split("\n")
     cleaned = []
     for line in lines:
@@ -496,8 +496,10 @@ def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
 
     ns = _make_litex_namespace()
     try:
-        exec(compile("\n".join(cleaned), filename, "exec"), ns)
-    except Exception:
+        read_module("\n".join(cleaned), filename, ns)
+    except Exception as exc:
+        # Loud until U56 Phase 1a's ledger records it: a skipped file is never silent.
+        print(f"  skipped {filename}: {type(exc).__name__}: {exc}", file=sys.stderr)
         return []
 
     # Find the Platform class (skip injected mock base classes)
@@ -533,8 +535,15 @@ def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
         instance = platform_class()
         device = getattr(instance, "device", "")
         captured_io = getattr(instance, "_captured_io", [])
-    except Exception:
-        pass
+    except Exception as exc:
+        # The constructor ran in the reader and failed on a mock it needs (defect 6);
+        # the module-level I/O below stands in, with no device.  Said aloud (Phase 1a
+        # turns it into an `io_fallback` ledger warning).
+        print(
+            f"  {filename}: Platform() failed ({type(exc).__name__}: {exc});"
+            " using the module-level I/O",
+            file=sys.stderr,
+        )
 
     # Fallback: use module-level _io
     if not captured_io:
