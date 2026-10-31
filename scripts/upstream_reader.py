@@ -73,7 +73,9 @@ class ModuleStub:
         try:
             return self._attrs[attr]
         except KeyError:
-            raise AttributeError(f"module {self._name!r} has no attribute {attr!r}") from None
+            raise AttributeError(
+                f"module {self._name!r} has no attribute {attr!r}", name=attr
+            ) from None
 
     def classes(self) -> list[type]:
         """Every class among the stub's attributes."""
@@ -472,7 +474,7 @@ class _Reader:
         if isinstance(obj, BaseException) and attr == "args":
             return obj.args
         if obj is None:
-            raise AttributeError(f"'NoneType' object has no attribute {attr!r}")
+            raise AttributeError(f"'NoneType' object has no attribute {attr!r}", name=attr)
         raise self.refuse(node, f"attribute {attr!r} of {type(obj).__name__}")
 
     def set_attr(self, obj: object, attr: str, value: object, node: ast.AST) -> None:
@@ -688,7 +690,7 @@ class _Reader:
         if target.id in scope.names:
             del scope.names[target.id]
         else:
-            raise NameError(f"name {target.id!r} is not defined")
+            raise NameError(f"name {target.id!r} is not defined", name=target.id)
 
     # ── definitions ─────────────────────────────────────────────────────────
 
@@ -847,7 +849,7 @@ class _Reader:
             return self.globals[name]
         if name in _SAFE_BUILTINS:
             return _SAFE_BUILTINS[name]
-        raise NameError(f"name {name!r} is not defined")
+        raise NameError(f"name {name!r} is not defined", name=name)
 
     def eval(self, node: ast.expr, scope: _Scope) -> UpstreamValue:
         self.tick(node)

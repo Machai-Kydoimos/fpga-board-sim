@@ -1,0 +1,25 @@
+# Upstream outcomes a person has looked at and accepted (U56 plan §4.2–4.3).
+#
+# A board sync refuses to guess in two places, and fails instead:
+#
+# - our parser fails on an upstream file that used to produce boards, so going on would
+#   orphan boards upstream still has ("would orphan X because our parser failed on Y");
+# - an upstream file still parses but stops producing a board ("no_longer_defined") or
+#   produces it with no LEDs, switches or buttons ("no_simulatable_io") -- which is either
+#   upstream's doing (a renamed class) or our misreading, and only a person can tell.
+#
+# An entry records that a person checked one such case. An accepted "error" leaves that
+# file's existing boards on disk untouched and unmarked (upstream still has them; we cannot
+# read the current file). An accepted "orphan" lets the sync mark the board orphaned.
+# Upstream bugs are upstream's (decision 2): link the upstream issue when there is one.
+# An entry that no longer matches anything fails the sync, so this list cannot rot.
+# Schema: board_sync_accepted.schema.json (tests/test_sync_identity.py validates it).
+#
+# [[accept]]
+# source = "litex-boards"                # the boards/ folder
+# upstream_file = "foo.py"               # the file in the upstream archive
+# outcome = "orphan"                     # "error" or "orphan"
+# file = "foo.json"                      # orphans only: the board file
+# orphaned_reason = "no_longer_defined"  # orphans only: or "no_simulatable_io"
+# reason = "Upstream renamed Platform to FooPlatform in abc1234; the board moved to foo_v2.py."
+# issue = "https://github.com/litex-hub/litex-boards/issues/0"

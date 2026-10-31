@@ -9,8 +9,10 @@ Each parser lives in its own module (``amaranth_parser`` / ``litex_parser`` /
 import hashlib
 import json
 import os
+import re
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -18,6 +20,65 @@ from typing import Any
 from framework_conventions import reconcile_framework_polarity
 from jsonschema.validators import validator_for
 from led_metadata import ColorBank, colorize_content, load_color_registry
+
+
+@dataclass
+class ProducedBoard:
+    """One board a parser built from an upstream file, with its identity (U56 plan §4.1).
+
+    ``board`` is the complete board JSON dict exactly as the source's sync writes it
+    (its key order is part of each source's byte-stable output); its ``source`` block
+    already carries the identity fields below.
+    """
+
+    board: dict[str, Any]
+    upstream_file: str
+    upstream_class: str = ""
+    upstream_args: dict[str, Any] = field(default_factory=dict)
+    #: The default construction -- not a recorded non-default identity built on request.
+    default: bool = True
+
+
+@dataclass
+class ParseOutcome:
+    """What one upstream file yielded (U56 plan §4.2): its boards, or why it has none.
+
+    ``outcome`` is ``boards``, ``skipped`` (``detail`` = ``not_a_board`` or
+    ``no_simulatable_io``) or ``error`` (``detail`` = :func:`normalize_error`).
+    ``warnings`` are ledger warnings such as ``io_fallback: _io``.
+    """
+
+    boards: list[ProducedBoard] = field(default_factory=list)
+    outcome: str = "boards"
+    detail: str = ""
+    warnings: list[str] = field(default_factory=list)
+
+
+_NAME_ERROR_TEXT = re.compile(r"name '(\w+)' is not defined")
+
+
+def normalize_error(exc: BaseException) -> str:
+    """Return a ledger detail for *exc* that stays byte-stable across Python versions.
+
+    The ledger is committed, and CI (Python 3.12) and a local run (3.13+) word the
+    same exception differently, so only stable parts are kept (U56 plan §4.2): the
+    missing name of a ``NameError``, the attribute of an ``AttributeError``, the
+    reader's own description of a construct it refused, otherwise the type alone.
+    """
+    kind = type(exc).__name__
+    if isinstance(exc, NameError):
+        name = getattr(exc, "name", None)
+        if not name:
+            match = _NAME_ERROR_TEXT.search(str(exc))
+            name = match.group(1) if match else None
+        return f"{kind}: {name}" if name else kind
+    if isinstance(exc, AttributeError):
+        attr = getattr(exc, "name", None)
+        return f"{kind}: {attr}" if attr else kind
+    what = getattr(exc, "what", None)
+    if isinstance(what, str):
+        return f"{kind}: {what}"
+    return kind
 
 
 def sanitize_filename(name: str) -> str:
@@ -273,6 +334,8 @@ def write_outputs(
     dry_run: bool = False,
     schema_path: Path | None = None,
     color_registry: dict[str, list[ColorBank]] | None = None,
+    frozen: dict[str, str] | None = None,
+    extra_metadata: dict[str, Any] | None = None,
 ) -> None:
     """Fold forward unmanaged keys, stamp cited LED colors, validate, then write.
 
@@ -291,6 +354,10 @@ def write_outputs(
     invalid board aborts the whole sync with no partial output (and
     ``--dry-run`` doubles as a schema check). ``schema_path`` defaults to
     ``<output_dir>/../schema/board.schema.json``.
+
+    ``frozen`` maps file names to contents written verbatim after validation -- an
+    orphan's mark on its otherwise frozen file (U56 §4.3) -- and ``extra_metadata``
+    adds keys to ``_sync_metadata.json`` (the ledger, its warnings and the orphans).
     """
     if schema_path is None:
         schema_path = output_dir.parent / "schema" / "board.schema.json"
@@ -308,12 +375,13 @@ def write_outputs(
         )
         for filename, content in board_jsons.items()
     }
-    validate_board_jsons(board_jsons, schema_path)
+    frozen = frozen or {}
+    validate_board_jsons({**board_jsons, **frozen}, schema_path)
 
     if not dry_run:
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    for filename, content in sorted(board_jsons.items()):
+    for filename, content in sorted({**board_jsons, **frozen}.items()):
         out_path = output_dir / filename
         if dry_run:
             print(f"  [dry-run] Would write {out_path}")
@@ -326,6 +394,7 @@ def write_outputs(
         "sync_timestamp": datetime.now(UTC).isoformat(),
         "board_count": len(board_jsons),
         "files_written": sorted(board_jsons.keys()),
+        **(extra_metadata or {}),
     }
     meta_path = output_dir / "_sync_metadata.json"
     meta_content = json.dumps(metadata, indent=2) + "\n"
