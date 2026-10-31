@@ -151,6 +151,23 @@ survive. The litex and amaranth parsers additionally emit framework-derived
 conventions via the shared `framework_conventions.py` (see
 [How board-native works](#how-board-native-works)).
 
+**Identity, the ledger and orphans (U56).** A parser returns one `ParseOutcome` per
+upstream file: its boards, or why it has none (`skipped: not_a_board`,
+`skipped: no_simulatable_io`, `error: <type>: <name>`), plus warnings. Each board
+carries an identity, recorded in its file's `source` block: the upstream file, the
+platform class, and for LiteX the effective values of the constructor's
+version-selecting parameters (`upstream_args`, e.g. `{"variant": "au"}`).
+`sync_identity.run_sync`, the write path the three syncs share, pairs the produced
+boards with the existing files by identity, so **a board file keeps its name forever**:
+a new identity is named from its upstream file, never from its display name. An existing
+file that nothing produced is kept and marked orphaned when its upstream file is gone.
+When the file still parses but no longer yields that board, or our parser failed on it,
+the sync **stops** instead of guessing, unless the accept-list
+(`scripts/board_sync_accepted.toml`) records that a person checked. Every decision is
+made before anything is written. Each source's `_sync_metadata.json` carries the
+ledger (one outcome per upstream file), its warnings and the orphans, so the drift check
+fails on any change to them, and every PR shows ledger changes in its diff.
+
 ## The pygame UI (`fpga_sim/ui/`)
 
 The UI has four screens, each a class with a `run()` method:

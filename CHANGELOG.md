@@ -20,6 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   network. A test now forbids `exec`, `eval`, `compile`, `__import__` and
   `importlib` in the sync tooling. (Roadmap U56, Phase 0.)
 
+### Changed
+
+- **Every synced board now records where it came from, and every sync keeps a ledger.**
+  A board file's `source` block names its upstream file, its platform class and, for
+  LiteX, the constructor's version arguments (`{"variant": "au"}`). That identity keeps
+  each board's file name stable across syncs. Each source's `_sync_metadata.json` now
+  lists, for every upstream file, the boards it produced or why it produced none, so a
+  file the parsers cannot read is recorded, not silently skipped. A board that vanishes
+  upstream is kept and marked orphaned instead of lingering unnoticed. When only a
+  person can tell why a board vanished, the sync stops instead of guessing. No board's
+  contents changed. (Roadmap U56, Phase 1a.)
+
 ### Fixed
 
 - **`--board` can open every board.** Fourteen boards could not be opened from the
