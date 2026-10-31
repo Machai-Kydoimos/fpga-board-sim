@@ -1,9 +1,11 @@
 # U56 — Upstream board-sync repair: arc plan (faithful parsers, stable identity, orphaned boards)
 
-**Status:** **DRAFT — for Rick's review** (drafted 2026-10-28, revised 2026-10-31; nothing
-executed, nothing committed to `main`). Not approved; no milestone, no issues. On approval, PR 0
-commits this file and the roadmap card; issues open just-in-time per phase. Once execution starts,
-the phase ledger in §12 is the status source of truth.
+**Status:** **APPROVED 2026-10-31 (Rick)** — drafted 2026-10-28, revised twice on 2026-10-31.
+Queued → **v0.26.0**, after U39–U41 (v0.24.0) and D16 (v0.25.0) (D-5). Two items land early,
+outside that slot: Phase 1a item 6 (`--board` by source) and the no-scope sync-token recipe in
+`CONTRIBUTING.md` (§4.4). PR 0 ([#465](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/465))
+commits this file and the roadmap card; issues open just-in-time per phase. From here on, the phase
+ledger in §12 is the status source of truth.
 
 **Card ID:** **U56**, claimed 2026-10-28 in [`improvement_roadmap.md`](../improvement_roadmap.md)
 (ID allocation → next free **U57 · D18 · P38**). Card: Part 1 / Tier 2. This arc **absorbs Icebox
@@ -26,8 +28,12 @@ fired 2026-10-28) and names **Icebox P15** as the follow-up for cross-source twi
 4. **Cross-source duplicates stay separate.** They are not merged or hidden, and no entry receives
    another entry's canonical conventions without a citation for that specific entry.
 
-**Open decisions (for review — §3):** D-1 alias model · D-2 DIP switches · D-3 multi-pin
-resources · D-4 versions · D-5 release slot · D-6 boards with no upstream clock.
+**Decided 2026-10-31 (Rick) — every recommendation in §3 approved:** D-1 merge LEDs that upstream
+maps to the same pin, and accept every upstream name as a native port · D-2 DIP switches are
+switches · D-3 one component per pin, behind two prerequisites (defect 21; a split group never
+displaces today's bank) · D-4 emit every upstream-listed version · D-5 v0.26.0, after D16, with a
+stop point after Phase 4 · D-6 read every frequency upstream defines (defects 13, 22, 23), and mark
+the remaining four boards' clocks as assumed.
 
 **Revised 2026-10-31** after a review pass that checked this draft against the code, the saved
 audit data and a re-run of today's parser at the LiteX pin:
@@ -51,6 +57,22 @@ audit data and a re-run of today's parser at the LiteX pin:
 - **Decisions.** D-4 now recommends emitting every version; D-6 is new.
 - **Evidence.** Six more cross-source twins, found by comparing pins (47 physically new boards,
   not 53); 74 new files, not 73; 86 LiteX boards ship an empty `device`, not 84; new defects 18–20.
+
+**Revised again 2026-10-31, at approval**, after checking the evidence behind each decision:
+
+- **D-3 (§3, Phase 5).** LiteX's classifier reads any name containing "switch" as a user switch, so
+  both XTRX boards ship upstream's RF-path switch controls (`rf_switches`) as one (defect 21, fixed
+  in 1c). And the bank builder picks the widest group, so splitting the XTRX boards' 3-pin
+  `user_led2` would replace their `user_led` bank: a split group must never displace today's bank.
+- **D-6 (§3).** 13 boards show a default clock we invented, but upstream defines a frequency for 11
+  of them: on-chip oscillators the Amaranth parser ignores (defect 22), a Digilent frequency stated
+  only in a comment (defect 23), and LiteX clocks set in the constructor (defect 13, now two
+  boards). Four boards remain whose clock is marked as assumed.
+- **Phase 1a** now freezes every native port bank in the impact matrix (moved from Phase 6), since
+  Phase 5 can change one.
+- **D-5** now places the arc after D16, instead of before the peripherals.
+- **Wording.** D-2: `user_dip_btn` is an explicit button entry, not a substring accident. D-4: how
+  many versions §4.7's rules find.
 
 **Audience contract:** written to be executed phase by phase by a capable model without additional
 context. Every phase has **Do**, **Verify**, **Quality gates**. Do not start a phase until the
@@ -80,8 +102,10 @@ Three classes of problem, none of which is visible today:
   and a platform that fails to instantiate silently falls back to a module-level `_io` list
   (`scripts/litex_parser.py:541`). Result: **54 LiteX boards and 4 Amaranth boards upstream defines
   have never been synced**, and shipped boards are mis-modeled (Zybo Z7 ships with 0 buttons;
-  Red Pitaya with no clock; 91 boards with an empty `device` — 86 LiteX boards built from the
-  fallback and 5 Amaranth Gowin boards; 20 boards draw one upstream pin as two LEDs).
+  91 boards with an empty `device` — 86 LiteX boards built from the fallback and 5 Amaranth Gowin
+  boards; 11 boards simulate a default clock other than the one upstream defines, Red Pitaya's
+  among them; 20 boards draw one upstream pin as two LEDs; two XTRX boards draw an RF switch
+  control as a user switch).
 - **B. Unsafe identity and silent staleness.** A board's file name *is* its sanitized display name
   (`sync_common.sanitize_filename`, 277/277 synced files), with `_2`, `_3` appended in processing
   order on a collision (`sync_common.unique_name`). And the sync **never deletes** a file
@@ -154,14 +178,17 @@ such as `tiny_fpgabx` ↔ `tinyfpga_bx`.)*
 | 10 | Digilent parser classifies only by section headings; Avnet's ZedBoard XDC has none | `digilent_parser.py:206,261` | ZedBoard (8 LEDs/8 SW/5 BTN) skipped | 1c |
 | 11 | Display names mangled from class/file names (P35) | `amaranth_parser.py` `_prettify_class_name`; `litex_parser.py:467` | override table grows (`board_loader.py:54`) | 1b |
 | 12 | `add_extension` is a no-op; upstream extension objects not read | `litex_parser.py:149` | Zybo Z7 0 buttons; Tang dock I/O lost; Red Pitaya no clock | 2 |
-| 13 | Default clock read only from class attributes | `litex_parser.py:526-527` | Red Pitaya keeps a 12 MHz default (real `clk125` set in `__init__`) | 2 |
+| 13 | Default clock read only from class attributes | `litex_parser.py:526-527` | Red Pitaya (`clk125`, set in `__init__`) and Snickerdoodle (`default_clk_freq = 100e6`, applied in `__init__`) keep a 12 MHz default (*Snickerdoodle 2026-10-31*) | 2 |
 | 14 | Multi-pin non-RGB resources collapsed into one LED/switch/button | `litex_parser.py:289`; `amaranth_parser.py:436` | 12 shipped boards (Appendix B.4) | 5 |
-| 15 | `user_dip_btn` classified as button (name match on `btn`, from the first LiteX commit `d9c3caa`) | `litex_parser.py:239,312` | 9 shipped / 16 at head (Appendix B.3) | 5 (if D-2) |
-| 16 | Upstream aliases emitted as separate LEDs; only one alias group becomes a native bank | parsers + `framework_conventions.py:86-166` | 20 shipped / 29 at head draw one pin twice (Appendix B.2) | 6 (if D-1) |
+| 15 | `user_dip_btn` classified as button (an explicit, uncommented entry in the button list since the first LiteX commit `d9c3caa`) | `litex_parser.py:239,312` | 9 shipped / 16 at head (Appendix B.3) | 5 (D-2) |
+| 16 | Upstream aliases emitted as separate LEDs; only one alias group becomes a native bank | parsers + `framework_conventions.py:86-166` | 20 shipped / 29 at head draw one pin twice (Appendix B.2) | 6 (D-1) |
 | 17 | One board per platform file (default constructor only) | `litex_parser.py:649` | 59 upstream files define selectable versions | 7 (D-4) |
 | 18 | Amaranth reads the part only from `device`; its Gowin platforms name it `part` (`TangNano9kPlatform.part = "GW1NR-LV9QN88PC6/I5"`) | `amaranth_parser.py:662` | 5 shipped Gowin boards with an empty `device` (*2026-10-31*) | 1c |
 | 19 | `--board` matches class or display name, ignoring the source folder; the first match in load order wins | `board_loader.py:566` | 14 boards unreachable from the command line today, 18 after the bump (§2.6) (*2026-10-31*) | 1a |
-| 20 | A board with no upstream clock gets an invented frequency, which the chip draws as if upstream had stated it | `litex_parser.py:641` and `amaranth_parser.py:383` (12 MHz); `digilent_parser.py:864` (100 MHz) | 11 shipped boards (D-6) (*2026-10-31*) | 2 (if D-6) |
+| 20 | A board whose default clock frequency the parser cannot read gets an invented one, which the chip draws as if upstream had stated it | `litex_parser.py:641` and `amaranth_parser.py:383` (12 MHz); `digilent_parser.py:864` (100 MHz) | 13 shipped boards; upstream defines a frequency for 11 of them (defects 13, 22, 23), so 2 shipped and 2 new boards truly state none (D-6) (*2026-10-31*) | 2 (D-6) |
+| 21 | LiteX classifier treats any name containing "switch" as a user switch | `litex_parser.py:241` | `fairwaves_xtrx` and `limesdr_xtrx` draw `rf_switches` — upstream's control lines for the board's SKY13330/SKY13384 RF-path switches — as a user switch; the only such name at the pin (*2026-10-31*) | 1c |
+| 22 | Amaranth default clock ignores on-chip oscillators: it looks only for a `Clock` resource named by `default_clk` | `amaranth_parser.py:375` | 6 boards at 12 MHz whose frequency the board file and Amaranth's vendor platform define: Chameleon96 100 MHz (`cyclonev_oscillator`), both MachXO2 breakouts 2.08 MHz (`OSCH`, `osch_frequency`), QuickFeather 5 MHz (`osc_freq / osc_div`), UPduino v1 48 MHz (`SB_HFOSC`, `hfosc_div = 0`), Tang Nano 24 MHz (`OSC`, `osc_frequency`) (*2026-10-31*) | 1c |
+| 23 | Digilent reads a frequency only from `create_clock`, and a clock only under a clock heading | `digilent_parser.py:227`, `:825` | the three Genesys ZU boards have neither, but their comment above `sysclk` says "Sysclk is a 25 MHz PL reference clock"; they ship with no clock, at 100 MHz (*2026-10-31*) | 1c |
 
 ### 2.4 Instantiation audit (LiteX)
 
@@ -207,7 +234,8 @@ defaults to revision 1 (`__init__(self, revision=1, speedgrade=-2, toolchain='vi
   (`scripts/embedded_core/templates/cpu_io.vhd.tmpl:54-57`; firmware limits: 8-digit BCD buffer,
   16-bit `sw`/`btn` windows, 16 reachable LEDs). Projected generics stay inside today's ranges
   (Appendix B.8). Four existing boards change, all gaining real I/O: Zybo Z7 (`NUM_LEDS` 4→10,
-  `NUM_BUTTONS` 1→4), Tang Console / Mega 138K / Mega 138K Pro (`NUM_BUTTONS` 1→2–4). Phase 5/6
+  `NUM_BUTTONS` 1→4), Tang Console / Mega 138K / Mega 138K Pro (`NUM_BUTTONS` 1→2–4). The clock
+  fixes (defects 13, 22, 23) move `CLK_HALF_NS_INIT` on 11 boards, inside today's range. Phase 5/6
   effects: Appendix B.3 / B.2.
 - **Course boards.** DE10-Standard (`boards/custom/`) and Basys 3 (`boards/digilent-xdc/`) are
   boards this arc does not change: `custom/` is not synced, and Phase 1c's Digilent fallback may
@@ -243,11 +271,13 @@ defaults to revision 1 (`__init__(self, revision=1, speedgrade=-2, toolchain='vi
 
 ---
 
-## 3. Open decisions (recommendations)
+## 3. Decisions (approved 2026-10-31)
 
-All recommendations follow decision 1: be faithful to what upstream's own definition says.
+All recommendations follow decision 1: be faithful to what upstream's own definition says. **Rick
+approved every recommendation below on 2026-10-31.** Each *Alternative* stays as the record of what
+was weighed.
 
-**D-1 — Aliased LEDs (Phase 6).** Upstream deliberately aliases (Amaranth iCEBreaker:
+**D-1 — Aliased LEDs (Phase 6). Decided: as recommended.** Upstream deliberately aliases (Amaranth iCEBreaker:
 `# Semantic aliases` for `led_r`/`led_g`; LiteX Numato Tagus: `# … aliased here also`; OrangeCrab
 `user_led` tagged `# rgb_led.r/.g/.b`).
 *Recommend:* merge entries **only where upstream maps them to the identical pin**, and accept
@@ -256,54 +286,84 @@ hardware knowledge: their definition says `user_led0` and `rgb_led.r` are both p
 two lamps simulates an output their definition does not contain. Every alias stays usable — more
 than today, where only one alias group is a native bank. Colors carried by alias names (`led_r0`
 red) move onto the merged LED. A design that declares two aliases of the same LED is a near-miss
-naming the shared pin (two drivers on one pin). *Alternative:* leave aliases as separate LEDs.
+naming the shared pin (two drivers on one pin). No shipped board shares a pin between an LED and a
+switch or button (*2026-10-31*), so merging LED entries covers the fleet. *Alternative:* leave
+aliases as separate LEDs.
 
-**D-2 — DIP switches (Phase 5).** *Recommend:* classify `user_dip_btn` as **switches**. Upstream's
-own name contains "dip"; Amaranth defines the same Versa ECP5 parts as switches; a widget has to be
-chosen either way and today's choice is an unexplained substring match from the first commit. Cost
+**D-2 — DIP switches (Phase 5). Decided: as recommended.** *Recommend:* classify `user_dip_btn` as
+**switches**. Upstream's own name contains "dip"; Amaranth defines the same Versa ECP5 parts as
+switches; LiteX's own target files never use `user_dip_btn` (*2026-10-31*), so no upstream usage
+points the other way. A widget has to be chosen either way, and today's choice is an explicit,
+uncommented entry in the parser's button list (`litex_parser.py:239`) from the first LiteX commit.
+Cost
 to the CPU examples (Appendix B.3): Versa ECP5 and Antmicro SDI-MIPI lose reverse / lamp test /
 dice roll (0 real buttons); ECP5 EVN, ECP5 VIP, CertusPro-NX Versa lose the lamp test (1 button).
 Native designs are unaffected (`user_dip_btn` keeps its name and width; the bank moves from
 `buttons` to `switches`). *Alternative:* read "btn" as upstream's intent and keep buttons.
 
-**D-3 — Multi-pin resources (Phase 5).** *Recommend:* a plain multi-pin input or output resource
-becomes one component per pin (Trenz `gpio_leds`, 8 pins → 8 LEDs; Versa `alnum_led`, 15 pins →
-15 LEDs); a resource whose sub-signals are named `r`/`g`/`b` becomes one RGB site regardless of its
-name; bidirectional or multiplexed shapes (`rgb_leds_muxed`, `led_cathodes`, `swd`) keep today's
-representation in the board model but are listed in the sync ledger as "unsupported shape" (no
-silent change). *Alternative:* leave all multi-pin resources collapsed.
+**D-3 — Multi-pin resources (Phase 5). Decided: as recommended, with two prerequisites.**
+*Recommend:* a plain multi-pin input or output resource becomes one component per pin (Trenz
+`gpio_leds`, 8 pins → 8 LEDs; Versa `alnum_led`, 15 pins → 15 LEDs); a resource whose sub-signals
+are named `r`/`g`/`b` becomes one RGB site regardless of its name; bidirectional or multiplexed
+shapes (`rgb_leds_muxed`, `led_cathodes`, `swd`) keep today's representation in the board model but
+are listed in the sync ledger as "unsupported shape" (no silent change). *Prerequisites, found on
+approval (2026-10-31):* (1) defect 21 is fixed first (Phase 1c), or the split turns the XTRX boards'
+misread `rf_switches` into three user switches; (2) a group produced by splitting never displaces
+the bank chosen today. `framework_conventions.build_bank` picks the widest indexed group, so
+splitting the XTRX boards' 3-pin `user_led2` would replace their `user_led` bank (width 1 on
+`fairwaves_xtrx`, 2 on `limesdr_xtrx`) and break a design written to it — measured with the real
+builder on `fairwaves_xtrx`. Split groups stay out of bank selection until Phase 6 accepts every
+group as a bank, and the Phase 1a matrix's per-bank rows show any bank that changes.
+*Alternative:* leave all multi-pin resources collapsed.
 
-**D-4 — Versions (Phase 7).** *Recommend:* emit **one board per upstream-listed version**,
-including versions that differ only in FPGA part. The first draft recommended collapsing those as
-"indistinguishable in the simulator", but they are not: the chip draws `device`
-(`ui/components.py:67`) and the pin map's wrong-board hint compares it (`pinmap.py:576`). The
-other sources already ship part variants as separate boards — Amaranth turns 13 upstream files
-into 29 boards this way (ULX3S 12F/25F/45F/85F, Arty A7-35/-100, OrangeCrab r0.2 25F/85F…), and
-Digilent ships separate Arty A7-35 and A7-100 files — so collapsing only LiteX's would treat the
-sources differently and drop definitions upstream wrote (decision 1). *Alternative:* collapse
-versions whose LEDs, switches, buttons, 7-seg and clocks are identical, keeping the default
-version's part: fewer near-duplicate selector rows, at the cost of that inconsistency.
+**D-4 — Versions (Phase 7). Decided: as recommended.** *Recommend:* emit **one board per
+upstream-listed version**, including versions that differ only in FPGA part. The first draft
+recommended collapsing those as "indistinguishable in the simulator", but they are not: the chip
+draws `device` (`ui/components.py:67`) and the pin map's wrong-board hint compares it
+(`pinmap.py:576`). The other sources already ship part variants as separate boards — Amaranth turns
+13 upstream files into 29 boards this way (ULX3S 12F/25F/45F/85F, Arty A7-35/-100, OrangeCrab r0.2
+25F/85F…), and Digilent ships separate Arty A7-35 and A7-100 files — so collapsing only LiteX's
+would treat the sources differently and drop definitions upstream wrote (decision 1). *Scale
+(2026-10-31):* a static scan of the LiteX pin by §4.7's rules finds 35 files listing about 48 extra
+versions. 58 files take a version-selecting parameter; the rest list a single value or choose in
+ways §4.7 does not read (dynamic docks, a free-form `device=`). That is roughly 13% more selector
+rows, which the selector's filter and facets absorb. *Alternative:* collapse versions whose LEDs,
+switches, buttons, 7-seg and clocks are identical, keeping the default version's part: fewer
+near-duplicate selector rows, at the cost of that inconsistency.
 
-**D-5 — Release slot.** *Recommend:* its own MINOR before peripherals (this arc → v0.24.0,
-peripherals → v0.25.0, D16 → v0.26.0), after the classroom release's open tail (doc review,
-§10.2/§10.3). The arc has a **stop point after Phase 4**, the bump: identity, loud skips, orphans,
-the parser fixes and the new boards are then all in place, and Phases 5–7 are refinements that
-each wait on a decision (D-1…D-4) and a visual review. If they are not ready, run Phase 8 at the
-stop point, ship, and re-card Phases 5–7 as a follow-up whose spec is this plan. Note: an
-unplanned MINOR renumbers the roadmap in ~8 places (see the v0.22.0 precedent). *Alternative:*
-ship Phases 1a–1c as maintenance inside the peripherals release and the rest after it — the
-peripherals plan makes no sync-tooling changes
-([u39_peripherals_plan.md](u39_peripherals_plan.md) "no sync-tooling changes"), so either order works.
+**D-5 — Release slot. Decided: v0.26.0, after U39–U41 (v0.24.0) and D16 (v0.25.0).** This
+reverses the first recommendation (its own MINOR before the peripherals), for three reasons. The arc
+changes nothing on the course boards (§2.5: DE10-Standard and Basys 3 are untouched), while the
+peripherals serve the classroom directly, were approved first (2026-08-05) and had already moved
+back once, and D16 is the security release. Waiting costs little: Phases 1a–2 run at the recorded
+pins, which do not move, and Phase 4 audits whatever upstream heads exist when it runs. And the
+queue keeps the order already set, with no renumbering. The two items that cost something today
+land early, outside the slot: Phase 1a item 6 (`--board` by source) and the no-scope sync-token
+recipe in `CONTRIBUTING.md` (§4.4; the credential-free child stays in 1a). The arc has a **stop
+point after Phase 4**, the bump: identity, loud skips, orphans, the parser fixes and the new boards
+are then all in place, and Phases 5–7 are refinements that each wait on a visual review. If they
+are not ready, run Phase 8 at the stop point, ship, and re-card Phases 5–7 as a follow-up whose
+spec is this plan. Either order works technically: the peripherals plan makes no sync-tooling
+changes ([u39_peripherals_plan.md](u39_peripherals_plan.md) "no sync-tooling changes").
+*Alternatives (not taken):* its own MINOR before the peripherals, renumbering the roadmap in ~8
+places (the v0.22.0 precedent); or Phases 1a–1c as maintenance inside the peripherals release.
 
-**D-6 — Boards with no upstream clock (Phase 2).** 11 shipped boards have no clock frequency
-upstream (`clocks: []`): 5 Amaranth and 2 LiteX boards get a 12 MHz fallback
-(`amaranth_parser.py:383`, `litex_parser.py:641`), 4 Digilent boards a 100 MHz one
-(`digilent_parser.py:864`), and the chip draws that number as if upstream had stated it. Phase 2
-gives Red Pitaya its real clock; the Digilent ZedBoard and LiteX `quicklogic_quickfeather` (both
-new in Phase 1c) join the list. *Recommend:* keep a fallback — the simulator needs a clock — but
-record it as assumed: the parsers write `default_clock_assumed: true` whenever upstream states no
-frequency, and the chip marks the number ("12 MHz, assumed"). *Alternative:* leave today's
-behavior.
+**D-6 — Boards with no upstream clock (Phases 1c and 2). Decided: read every frequency upstream
+defines, then mark the rest as assumed.** 13 shipped boards show a default clock we invented —
+12 MHz from `amaranth_parser.py:383` and `litex_parser.py:641`, 100 MHz from
+`digilent_parser.py:864` — and the chip draws it as if upstream had stated it. The first draft
+counted the 11 with `clocks: []` and proposed marking them all as assumed, but upstream defines a
+frequency for 11 of the 13 (*2026-10-31*). Those are parser misreadings, fixed as defects: six
+Amaranth boards on on-chip oscillators (defect 22, Phase 1c), the three Genesys ZU boards whose
+comment states 25 MHz (defect 23, Phase 1c), and Red Pitaya and Snickerdoodle, whose constructors
+set the clock (defect 13, Phase 2). That leaves **four boards with no upstream frequency**:
+Digilent `genesys_2` (a differential `sysclk` with no period), LiteX `newae_cw305` (an SMA clock
+input), and two that arrive in Phase 1c — the Digilent ZedBoard (`GCLK`, no period) and LiteX
+`quicklogic_quickfeather` (no default clock). The simulator still needs a clock for them, so keep
+the fallback but record it as assumed: the parsers write `default_clock_assumed: true`, and the
+chip marks the number ("100 MHz, assumed"). The fallback values stay as they are — both are
+guesses, and changing one would change simulated timing for nothing. *Alternative (not taken):*
+mark all 13 as assumed, which would label our own misreadings as assumptions.
 
 ---
 
@@ -477,10 +537,10 @@ After generating, for each existing file whose identity was **not** produced:
 field lands in the schema first, in the same PR (the #346 rule): Phase 1a (`upstream_class`,
 `upstream_args`, `upstream_status` enum `["orphaned"]`, `orphaned_at_commit`, `orphaned_reason` enum
 `["file_removed", "no_longer_defined", "no_simulatable_io"]`, `successor`); Phase 2
-(`default_clock_assumed`, if D-6); Phase 6 (`leds[].aliases`, convention alias banks). The
+(`default_clock_assumed`, D-6); Phase 6 (`leds[].aliases`, convention alias banks). The
 accept-list gets a schema of its own (§4.2). Update `tests/test_board_schema.py`.
 
-### 4.6 Alias model (Phase 6, if D-1)
+### 4.6 Alias model (Phase 6, D-1)
 
 - **Board model:** merge LED entries that upstream maps to the identical pin(s): mono+mono on one
   pin → one mono entry; a mono entry whose single pin equals one channel of a 3-pin `rgb_led` → that
@@ -489,8 +549,9 @@ accept-list gets a schema of its own (§4.2). Update `tests/test_board_schema.py
   primary and lists the rest in a new `aliases: [{name, number, channel?}]`. Color: from an alias
   name via `led_metadata.color_from_name` unless the cited registry sets one.
 - **Conventions:** `framework_conventions.build_convention` currently keeps one primary LED group
-  (`framework_conventions.py:99`). Emit every alias group as an accepted bank, each carrying its
-  boundary-channel map. `ConventionMatch` (`conventions.py:105`) gains a general list of matched
+  (`framework_conventions.py:99`). Emit every alias group — and every group Phase 5 split from a
+  multi-pin resource, which Phase 5 keeps out of bank selection (D-3) — as an accepted bank, each
+  carrying its boundary-channel map. `ConventionMatch` (`conventions.py:105`) gains a general list of matched
   LED banks with channel maps (the fixed `leds` / `leds_green` / `leds_rgb` slots stay for existing
   conventions).
 - **Matcher:** a design may declare any subset of banks; two declared banks that reach the same
@@ -506,9 +567,8 @@ is a version-selecting parameter and whose value is a dict literal or a module-l
 a dict literal (Wukong `{1: _io_v1, 2: _io_v2}[revision]`; Tang `docks[dock]`; Zybo
 `{"z7-10": …, "z7-20": …, "original": …}[variant]`); plus `if param == "<literal>"` comparisons
 (ZTEX `expansion == "debug"` / `"sbus"`). Construct each version through the identity machinery
-(§4.1); the default version keeps the existing file. Under D-4's recommendation every version is
-emitted; under its alternative, versions identical in LEDs, switches, buttons, 7-seg and clocks
-fold into the default.
+(§4.1); the default version keeps the existing file. D-4 is decided: every version is emitted,
+including versions that differ only in FPGA part.
 
 ### 4.8 Orphans in the UI (Phase 3)
 
@@ -530,8 +590,9 @@ fold into the default.
 
 **Do:** commit this file; the roadmap card U56 (Part 1 / Tier 2); ID allocation → next free U57;
 plan-index rows in `docs/improvement_roadmap.md` and `docs/README.md`; Icebox P35 note
-("absorbed into U56 Phase 1b"); Icebox P15 note (follow-up for twins); a "Proposed" or ordered entry
-in *Current focus* per D-5. Record D-1…D-6 outcomes in this file's header.
+("absorbed into U56 Phase 1b"); Icebox P15 note (follow-up for twins); an ordered entry in
+*Current focus* per D-5 (queue item 5 → v0.26.0). Record D-1…D-6 outcomes in this file's header.
+**Done 2026-10-31** in #465, which carries the approval.
 **Verify:** `uv run rumdl check docs/`; `uv run pytest tests/test_docs_*.py`.
 **Quality gates:** documentation only.
 
@@ -551,8 +612,9 @@ in *Current focus* per D-5. Record D-1…D-6 outcomes in this file's header.
    stamping and schema validation.
 4. The Wukong migration entry (§4.1), kept until Phase 1c.
 5. Credentials (§4.4): run the step that executes upstream code in a credential-free child
-   process, with a test whose platform file reads `os.environ` and must see no token. Replace the
-   `GITHUB_TOKEN=$(gh auth token)` recipes (`CONTRIBUTING.md:589`, `:787`) with a no-scope token.
+   process, with a test whose platform file reads `os.environ` and must see no token. The
+   `GITHUB_TOKEN=$(gh auth token)` recipes (`CONTRIBUTING.md:589`, `:787`) become a no-scope token
+   ahead of the arc (D-5), so here only check that no recipe has come back.
 6. **`--board` by source** (defect 19). `find_board` accepts `<source>/<stem>` (e.g.
    `litex-boards/icebreaker`; `.json` optional) and resolves it exactly; the loader records each
    board's file stem (runtime only, not serialized — keep `tests/test_serialization.py` green). An
@@ -560,13 +622,20 @@ in *Current focus* per D-5. Record D-1…D-6 outcomes in this file's header.
    names their qualified spellings on stderr. Tests: every board on disk resolves by its qualified
    name; a snapshot of unqualified collisions, so a new one shows up in review. Docs:
    `docs/user_guide.md` (the `--board` row) and `CONTRIBUTING.md` ("Smoke-testing a board"). The
-   bug predates this arc; this item may land on its own, before 1a.
+   bug predates this arc, so this item **lands early, on its own** (D-5); Phase 1a only re-checks it.
 7. **The impact matrix, committed.** `scripts/gen_board_design_matrix.py` writes
    `tests/fixtures/board_design_matrix.json`: for every design in `hdl/native/*.vhd`, `hdl/*.vhd`
    and `tests/fixtures/pinmap/*/*.vhd` × every board on disk, `check_vhdl_contract`'s verdict and,
    when it passes, the `ConventionMatch` minus `board_name`; whether the pin map's wrong-board hint
-   fired; and `build_generics` per board (Appendix B.8). Keep it compact — for example, per design
-   the boards it runs on, with an "all except" form for the generic designs.
+   fired; and `build_generics` per board (Appendix B.8). **Plus one row per native bank** (moved
+   here from Phase 6 on 2026-10-31): for every board, every convention block and every LED,
+   switch and button bank in it, a synthesized minimal design (its clock + that bank, reusing the
+   helpers in `tests/test_native_convention.py` such as `_synth_board` at `:535`) and whether
+   `match_convention` matches it, with widths and polarity. The in-repo designs target few boards;
+   these rows freeze every native match a design could make today, so a phase that changes any
+   bank shows it (D-3's split would otherwise slip through: no in-repo design targets the XTRX
+   boards). Keep it compact — for example, per design the boards it runs on, with an "all except"
+   form for the generic designs.
    `tests/test_board_design_matrix.py` fails when the file and the product disagree, as
    `tests/test_ui_map.py` does. Every later phase that changes board data or matching regenerates
    it, and **its diff is that phase's impact evidence** (it replaces rebuilding Appendix A.3). It
@@ -634,7 +703,7 @@ check; full `pytest`.
 
 ## 8. Phase 1c — Fix the parsers' misreadings (at the current pins)
 
-**Do:** items 3–10 and 18 of §2.3, using the §4.4 principles:
+**Do:** items 3–10, 18 and 21–23 of §2.3, using the §4.4 principles:
 
 - `_Pins.__init__(self, *identifiers, dir="io", conn=None, assert_width=None)`; names = each string
   split on whitespace; set `self.identifiers`.
@@ -648,6 +717,21 @@ check; full `pytest`.
   match `sw`/`switch` as a whole token (e.g. `^(sw|switch)(_|\d|$)`), with a `swd` test; read the
   part from `part` when a class has no `device` (its Gowin platforms; `:662`), with a
   `GowinPlatform` fixture test.
+- LiteX `_classify_resource` (`:241`, defect 21): match `sw`/`switch` only as the leading token,
+  optionally after `user_` or `dip_` (e.g. `^(user_)?(dip_)?(sw|switch|switches)(_|\d|$)`), as the
+  Amaranth fix above does; an `rf_switches` test. Re-run the classifier over every resource name at
+  the pin and at head: `rf_switches` must be the only name that changes class.
+- Amaranth default clock (`_find_default_clock_hz`, `:375`, defect 22): when `default_clk` names no
+  `Clock` resource, apply the vendor platform's own rule, as Amaranth's `default_clk_constraint`
+  states it: `OSCH` → `osch_frequency` MHz; `OSCG` → 310 / `oscg_div` MHz; `OSCA` → 450 / `osca_div`
+  MHz; `SB_HFOSC` → 48 / 2^`hfosc_div` MHz; `SB_LFOSC` → 10 kHz; `cyclonev_oscillator` → 100 MHz;
+  QuickLogic `sys_clk0` → `osc_freq / osc_div`; Gowin `OSC` → `osc_frequency`. An on-chip oscillator
+  has no pin, so `clocks` stays as it is. A `default_clk` matching neither a resource nor a rule
+  keeps the fallback, which D-6 marks in Phase 2. A fixture test per rule.
+- Digilent (defect 23): when a file has no `create_clock`, a `<number> MHz` in the comment block
+  directly above a port, in a sentence naming that port (`# Sysclk is a 25 MHz PL reference clock …`
+  above `sysclk`), makes that port the board's clock at that frequency, even outside a clock-headed
+  section. A fixture test in the Genesys ZU shape.
 - Digilent: when no section heading classifies a port, fall back to port-name patterns
   `^LD\d+$` (LED), `^SW\d+$` (switch), `^BTN[CDLRU]$` (button), alongside the existing
   `_RE_LED_WORD` / channel patterns (`digilent_parser.py:206-213`). ZedBoard's clock `GCLK` (Y9) has
@@ -665,18 +749,26 @@ check; full `pytest`.
 - LiteX 171 → **223**: the 51 boards of Appendix B.1 plus `qmtech_wukong_revision-1.json`
   (2L/0S/1B; LEDs J6/H6, clock M22, button H7). The audit harness counted 222 because it rebuilt
   Wukong in place instead of keeping the revision-2 file. **86** existing LiteX boards gain a
-  `device` (`""` → part number): **85** change nothing else (*2026-10-31*; the first draft's 84
-  was the at-head figure), and `qmtech_wukong.json` (revision 2 identity) is now built from the
-  instance — diff it against the committed file and review, expecting equal or additions only. No
-  other existing board changes LEDs/switches/buttons/clocks/conventions.
-- Amaranth 80 → **83** (Appendix B.1); the 5 Gowin boards gain a `device` from `part` and nothing
-  else. Digilent 26 → **27** (ZedBoard: measure and record its LED/switch/button counts,
-  conventions and clock); the **26 existing Digilent boards are byte-identical**.
+  `device` (`""` → part number): **83** change nothing else (*2026-10-31*);
+  `litex-boards/fairwaves_xtrx.json` and `litex-boards/limesdr_xtrx.json` also lose the
+  `rf_switches` switch (defect 21 — no convention advertised it, and `NUM_SWITCHES` stays at its
+  floor of 1); and `qmtech_wukong.json` (revision 2 identity) is now built from the instance — diff
+  it against the committed file and review, expecting equal or additions only. No other existing
+  LiteX board changes LEDs/switches/buttons/clocks/conventions.
+- Amaranth 80 → **83** (Appendix B.1). The 5 Gowin boards gain a `device` from `part`; the six
+  boards of defect 22 change `default_clock_hz` (Chameleon96 100 MHz, both MachXO2 breakouts
+  2.08 MHz, QuickFeather 5 MHz, UPduino v1 48 MHz, Tang Nano 24 MHz — Tang Nano is in both sets);
+  nothing else changes. Digilent 26 → **27** (ZedBoard: measure and record its LED/switch/button
+  counts, conventions and clock). The three Genesys ZU boards (defect 23) gain `sysclk` at 25 MHz,
+  the matching `default_clock_hz` and a `clk` in their convention, and nothing else; the other
+  **23 existing Digilent boards are byte-identical**. `CLK_HALF_NS_INIT` moves on the nine boards
+  of defects 22–23, inside today's range (Appendix B.8).
 - Ledger: LiteX errors = 0 and no `io_fallback` warnings; the remaining skips are `not_a_board` (3)
   and `no_simulatable_io` (23 by subtraction: 248 files − 222 that produce boards − 3).
 - The regenerated impact matrix: zero outcome changes on existing boards; rows for the new boards,
   including Wukong revision 1 and the ZedBoard, which the 2026-10-28 audit never ran; wrong-board
-  hint changes only on boards that gained a `device`.
+  hint changes only on boards that gained a `device`; per-bank rows change only where the Genesys
+  ZU boards gained a clock.
 - `tests/test_litex_parser.py`, `tests/test_digilent_parser.py`, `tests/test_sync_amaranth_boards.py`
   gain a test per fix (each with a minimal upstream-shaped fixture); `tests/test_docs_board_counts.py`
   → update the documented counts it names; drift check green; full `pytest`.
@@ -685,7 +777,8 @@ check; full `pytest`.
   `uv run generate-board-images --boards-dir <dir> --formats png --output-dir <out>` — the
   product's own renderer, one command for any number of boards. The chip now prints a part number
   on 91 boards (`ui/components.py:67`; the longest, `GW5AST-LV138PG484AC1/I0` on the Tang Mega
-  138K, fits at 1024×700, checked 2026-10-31), and 56 board files are new.
+  138K, fits at 1024×700, checked 2026-10-31), a different clock on nine (defects 22–23), and
+  56 board files are new.
 
 **Quality gates:** as 1a. New boards inherit framework conventions automatically; run
 `uv run python scripts/sync_port_conventions.py --check` and `uv run python scripts/sync_led_colors.py --check`.
@@ -702,9 +795,9 @@ check; full `pytest`.
 - After construction, read `default_clk_name` / `default_clk_period` from the instance, falling back
   to class attributes (`litex_parser.py:526-527`).
 - List every LED/switch/button that arrives via an extension in the PR description for review.
-- If D-6 is approved: the three parsers write `default_clock_assumed: true` whenever upstream
-  states no frequency (schema first, §4.5), the loader reads it, and the chip marks the number
-  (`ui/components.py`, e.g. "12 MHz, assumed").
+- D-6: the three parsers write `default_clock_assumed: true` whenever upstream states no
+  frequency — after defects 13, 22 and 23, four boards (§3) — schema first (§4.5); the loader reads
+  it, and the chip marks the number (`ui/components.py`, e.g. "100 MHz, assumed").
 
 **Verify (in place at recorded pins):**
 
@@ -713,14 +806,16 @@ check; full `pytest`.
 - Changed: `digilent_zybo_z7` 4L/4S/0B → 4L+2rgb/4S/4B (default `variant="z7-20"`: `_io_z7` +
   `_io_z7_20`); `sipeed_tang_console` → 2L/0S/3B; `sipeed_tang_mega_138k` → 2L/0S/3B;
   `sipeed_tang_mega_138k_pro` 8L → 9L/0S/4B; `redpitaya` clocks `[]` → `clk125` @ 125 MHz — **measure
-  `default_clock_hz`** (12 MHz today; the audit did not read instance clock attributes).
-- No other existing board changes; the impact matrix shows zero outcome changes. If D-6: exactly
-  the boards upstream gives no frequency gain the field — 12 at this point (the 11 of D-6 less Red
-  Pitaya, plus the ZedBoard and LiteX `quicklogic_quickfeather`).
+  `default_clock_hz`** (12 MHz today; the audit did not read instance clock attributes);
+  `krtkl_snickerdoodle` `default_clock_hz` 12 → 100 MHz (`default_clk_freq`; its `clocks` already
+  lists 100 MHz) (*2026-10-31*).
+- No other existing board changes; the impact matrix shows zero outcome changes. D-6: exactly four
+  boards gain the field — `digilent-xdc/genesys_2.json`, `litex-boards/newae_cw305.json`, the
+  Digilent ZedBoard and `litex-boards/quicklogic_quickfeather.json`.
 - Contact sheet (the Phase 1c recipe) for `litex-boards/digilent_zybo_z7.json`,
   `litex-boards/sipeed_tang_mega_138k_pro.json`, `litex-boards/ztex213.json`,
-  `litex-boards/sipeed_tang_primer_20k.json`, `litex-boards/redpitaya.json` (plus one
-  assumed-clock board if D-6) → **Rick's visual review before merge**.
+  `litex-boards/sipeed_tang_primer_20k.json`, `litex-boards/redpitaya.json`, plus
+  `digilent-xdc/genesys_2.json` for the assumed-clock mark → **Rick's visual review before merge**.
 
 **Effort:** S/M.
 
@@ -760,33 +855,37 @@ It comes before the bump because the bump creates the first real orphans (the fi
 **Phase 5 — Multi-pin resources (D-3) and DIP switches (D-2).**
 
 - **Do:** the multi-pin rule of D-3 in `_parse_io_as_component` (`litex_parser.py:289`) and
-  `_to_component` (`amaranth_parser.py:436`), with `unsupported_shape` warnings. Before coding,
+  `_to_component` (`amaranth_parser.py:436`), with `unsupported_shape` warnings. **A group produced
+  by splitting never displaces the bank chosen today** (D-3): keep split groups out of
+  `build_bank`'s selection until Phase 6 accepts every group as a bank (defect 21, fixed in 1c,
+  already keeps `rf_switches` out). Before coding,
   list the boards with multi-pin non-RGB resources at the pin now in force (Appendix B.4 is from
   the old pins; the orphaned old Efinix Ti60 file stays frozen as it is, and its successor gets the
   rule), classify them by shape (plain multi-pin vs r/g/b sub-signals vs muxed/bidirectional) and
-  put the table in the PR. If D-2 is approved: in `_classify_resource` (`:239`) test `dip` before
+  put the table in the PR. D-2: in `_classify_resource` (`:239`) test `dip` before
   the `btn` substring and return `switch`; naming at `:312` → `switch`. The framework convention
   bank keeps name and width and moves from `buttons` to `switches` (verified on
   `lattice_versa_ecp5`, `lattice_ecp5_evn`, `lattice_certuspro_nx_evn`).
 - **Verify:** in-place re-sync; the diff touches only the listed multi-pin boards and the Appendix
   B.3 DIP boards; the impact matrix shows zero outcome changes for in-repo designs and generics
-  within the Appendix B.8 ranges; contact sheet for `litex-boards/lattice_versa_ecp5.json`,
+  within the Appendix B.8 ranges; its per-bank rows change only on the B.3 DIP boards — the
+  `user_dip_btn` bank moves from buttons to switches with the same name, width and polarity, and a
+  `user_btn` bank appears where the wider DIP group hid it — and on no multi-pin board; contact
+  sheet for `litex-boards/lattice_versa_ecp5.json`,
   `amaranth-boards/versa_ecp5.json`, `litex-boards/trenz_c10lprefkit.json`,
   `litex-boards/siglent_sds1104xe.json`, `litex-boards/hackaday_hadbadge.json` → **visual review**.
 - **Effort:** S.
 
 **Phase 6 — Aliases (D-1), §4.6.**
 
-- **Do, first:** a regression test that freezes every native match possible today: for every board
-  and every convention block and LED bank, synthesize a minimal design (clock + that bank, reusing
-  the helpers in `tests/test_native_convention.py` such as `_synth_board` at `:535`) and assert
-  `match_convention` still matches with the same widths and polarity. The Phase 1a matrix covers
-  only the in-repo designs; this covers every bank a design could target.
+- **Do, first:** confirm that the Phase 1a matrix's per-bank rows (moved there from this phase on
+  2026-10-31) still cover every bank a design could target, Phase 5's split groups included. They
+  freeze every native match possible before this phase.
 - **Then:** the board-model merge, the `aliases` schema field, alias banks in
   `framework_conventions`, the matcher and wrapper channel maps, the two-aliases near-miss, alias
   colors, pin-map indexing.
-- **Verify:** the 29 boards of Appendix B.2 reach the "pin-merged" column; every frozen match still
-  matches; GHDL + NVC e2e for one alias board per shape (mono+mono: `amaranth-boards/icebreaker.json`;
+- **Verify:** the 29 boards of Appendix B.2 reach the "pin-merged" column; every per-bank row that
+  matched before still matches, with the same widths and polarity; GHDL + NVC e2e for one alias board per shape (mono+mono: `amaranth-boards/icebreaker.json`;
   mono+RGB channel: `litex-boards/gsd_orangecrab.json`; triple:
   `litex-boards/lattice_ice40up5k_evn.json`); PNGs → **visual review**.
 - **Effort:** L.
@@ -811,10 +910,11 @@ this plan.
 
 | Phase | Scope | Visual review | Status |
 |---|---|---|---|
-| PR 0 | plan + card + ID | no | not started |
-| 1a | identity, ledger, accept-list, orphan detection, credential-free parse, `--board` by source, impact matrix | no | not started |
+| PR 0 | plan + card + ID + decisions | no | done 2026-10-31 (#465) |
+| early | `--board` by source (1a item 6); the no-scope sync-token recipe (§4.4) | no | not started — lands now, outside the v0.26.0 slot (D-5) |
+| 1a | identity, ledger, accept-list, orphan detection, credential-free parse, impact matrix with per-bank rows (`--board` re-checked) | no | not started |
 | 1b | display names (P35) | no (a before → after name table) | not started |
-| 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips) | not started |
+| 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine) | not started |
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | not started |
 | 3 | orphan UI | **yes** | not started |
 | 4 | bump to heads — **stop point** | **yes** (contact sheet of new and changed boards) | not started |
@@ -995,7 +1095,9 @@ litex `gsd_butterstick` `led`(3) · litex `hackaday_hadbadge` `led`(11), `led`(3
 `lattice_versa_ecp5` `alnum_led`(15) · litex `limesdr_xtrx` `led`(3), `switch`(3) · litex
 `siglent_sds1104xe` `led_frontpanel`(4), `button`(3) · litex `trenz_c10lprefkit` `gpio_leds`(8).
 (Shapes not yet classified — first task of Phase 5, which re-lists them at the pin then in force.
-Example: `fairwaves_xtrx` declares `("user_led2", 0, Pins("G3 M2 G2"))  # GPIO LED`.)
+Example: `fairwaves_xtrx` declares `("user_led2", 0, Pins("G3 M2 G2"))  # GPIO LED`. The XTRX
+boards' `switch`(3) is `rf_switches`, which defect 21 removes in Phase 1c, so Phase 5 never splits
+it; splitting their `user_led2` must not displace the `user_led` bank, D-3.)
 
 ### B.5 Upstream changes between the pins and the 2026-10-28 heads
 
@@ -1062,18 +1164,21 @@ LEDs and no buttons (D-3) · iCE40UP5K EVN: LiteX 4L+1rgb vs Amaranth 3L+1rgb (D
 | `NUM_SWITCHES` | 1..18 | 1..18 | — |
 | `NUM_BUTTONS` | 1..13 | 1..13 | — |
 | `NUM_SEGS` | 1..8 | 1..8 | — |
-| `CLK_HALF_NS_INIT` | 1..988142 | 1..988142 | 6 |
+| `CLK_HALF_NS_INIT` | 1..988142 | 1..988142 | 6; from the clock fixes, 240 (MachXO2 breakouts, 2.08 MHz) and 100 (QuickFeather, 5 MHz) |
 
-(988142 ns is the Acorn baseboard's upstream 506 Hz clock — decision 2.)
+(988142 ns is the Acorn baseboard's upstream 506 Hz clock — decision 2. The clock fixes of defects
+13, 22 and 23 move 11 boards' `CLK_HALF_NS_INIT`, `max(1, round(5e8 / default_clock_hz))`; the
+other new values — 5, 10, 20, 21 and 4 — already occur today. *2026-10-31.*)
 
 ## Appendix C — Code anchors (verified 2026-10-28; re-checked and extended 2026-10-31)
 
 | Concern | Anchor |
 |---|---|
 | LiteX mocks | `scripts/litex_parser.py:21` `_Pins` · `:99` `_PLATFORM_VENDORS` (`:109` iCE40 key) · `:124` `_make_mock_platform` (`:146` `add_connectors`, `:149` `add_extension`) · `:166` `_make_litex_namespace` (`:203` real builtins) |
-| LiteX classify/parse | `:226` `_classify_resource` (`:239` DIP) · `:289` `_parse_io_as_component` (`:312` DIP name) · `:439` `_build_litex_convention` · `:467` `_prettify_filename` · `:474` `_make_class_name` · `:486` `parse_litex_board` (`:500` exec except · `:526-527` class-level default clock · `:536` instantiate except · `:541` `_io` fallback · `:641` 12 MHz no-clock fallback · `:649` one board) |
-| Amaranth | `scripts/amaranth_parser.py:293` `_make_namespace` (`:345` real builtins) · `:383` 12 MHz no-clock fallback · `:422` `_classify` (`:431` `sw`) · `:436` `_to_component` · `:584` `_prettify_class_name` · `:599` `load_board_from_source` (`:614` except · `:662` `device` only) |
-| Digilent | `scripts/digilent_parser.py:206` `_RE_LED_WORD` · `:213` RGB channel pattern · `:261` heading classification · `:278` `parse_xdc` · `:864` 100 MHz no-period fallback |
+| LiteX classify/parse | `:226` `_classify_resource` (`:239` DIP · `:241` `"switch" in n`) · `:289` `_parse_io_as_component` (`:312` DIP name) · `:439` `_build_litex_convention` · `:467` `_prettify_filename` · `:474` `_make_class_name` · `:486` `parse_litex_board` (`:500` exec except · `:526-527` class-level default clock · `:536` instantiate except · `:541` `_io` fallback · `:641` 12 MHz no-clock fallback · `:649` one board) |
+| Amaranth | `scripts/amaranth_parser.py:293` `_make_namespace` (`:345` real builtins) · `:375` `_find_default_clock_hz` (`:383` 12 MHz fallback) · `:422` `_classify` (`:431` `sw`) · `:436` `_to_component` · `:584` `_prettify_class_name` · `:599` `load_board_from_source` (`:614` except · `:662` `device` only) |
+| Digilent | `scripts/digilent_parser.py:206` `_RE_LED_WORD` · `:213` RGB channel pattern · `:227` `_classify_section` · `:261` heading classification · `:278` `parse_xdc` · `:825` frequency only from `create_clock` · `:864` 100 MHz no-period fallback |
+| Amaranth upstream clock rules | `amaranth/vendor/_lattice.py` (`OSCH`, `OSCG`, `OSCA`) · `_siliconblue.py` (`SB_HFOSC`, `SB_LFOSC`) · `_altera.py` (`cyclonev_oscillator`) · `_quicklogic.py` (`sys_clk0`) · `_gowin.py` (`OSC`) — each in `default_clk_constraint` (checked on Amaranth `main`, 2026-10-31) |
 | Sync scripts | `scripts/sync_litex_boards.py:61` `generate_all_json` (`:80` silent skip, `:93` file name) · `scripts/sync_amaranth_boards.py:50` `generate_board_json` (`:67`, `:80`) · `scripts/sync_digilent_xdc.py:103,106` |
 | Sync common | `scripts/sync_common.py:23` `sanitize_filename` · `:34` `unique_name` · `:64` token from the environment · `:160` `_fold_forward_unmanaged_keys` · `:223` polarity reconcile · `:240` `_carry_forward_sync_stamp` · `:268` `write_outputs` |
 | Conventions | `scripts/framework_conventions.py:86` `build_bank` · `:99` primary-group rule · `:166` `build_convention` · `:225` `reconcile_framework_polarity` |
@@ -1082,5 +1187,5 @@ LEDs and no buttons (D-3) · iCE40UP5K EVN: LiteX 4L+1rgb vs Amaranth 3L+1rgb (D
 | Matcher/wrapper | `src/fpga_sim/conventions.py:105` `ConventionMatch` · `:478` `_convention_precedence` · `:521` `match_convention` · `src/fpga_sim/wrapper.py` `leds_rgb` packing (~`:171-218`) · `src/fpga_sim/vhdl_contract.py:306` pin-map path |
 | Runtime | `src/fpga_sim/controller.py:130` `build_generics` · `src/fpga_sim/pinmap.py:112-145` pin index · `:430` `_same_silicon` (`:450` empty = match) · `:576` wrong-board hint · `src/fpga_sim/session_config.py:129` `push_recent` · `src/fpga_sim/ui/components.py:67` chip `device` label |
 | CPU IO | `scripts/embedded_core/templates/cpu_io.vhd.tmpl:37` `LED_REG_WIDTH` · `:43-57` read mux and config registers |
-| Docs | `CONTRIBUTING.md:589,787` `gh auth token` recipes (Phase 1a replaces them) |
+| Docs | `CONTRIBUTING.md:589,787` `gh auth token` recipes (replaced ahead of the arc, D-5) |
 | Tests | `tests/test_litex_parser.py` · `tests/test_digilent_parser.py` · `tests/test_sync_amaranth_boards.py` · `tests/test_sync_common.py` · `tests/test_check_board_drift.py` · `tests/test_board_schema.py` · `tests/test_serialization.py` · `tests/test_board_display_names.py` · `tests/test_docs_board_counts.py` · `tests/test_native_convention.py` · `tests/test_pinmap.py` · `tests/fixtures/pinmap/` · `tests/test_ui_map.py` (the pattern for the matrix test) · `tests/conftest.py:212` |
