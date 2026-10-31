@@ -1,14 +1,18 @@
 """Tests for board_loader: discovery, parsing, and spot-checks."""
 
+import json
+
 import pytest
 from amaranth_parser import load_board_from_source
 
 from fpga_sim.board_loader import (
     BoardDef,
     ComponentInfo,
+    ambiguity_note,
     discover_boards,
     find_board,
     get_default_boards_path,
+    match_boards,
 )
 
 
@@ -603,3 +607,114 @@ def test_find_board_returns_none_for_a_miss():
     assert find_board(_fleet(), "NoSuchBoard") is None
     assert find_board(_fleet(), "") is None
     assert find_board([], "DE10-Standard") is None
+
+
+# ── --board by file: <source>/<file> names exactly one board (U56) ──────────────
+
+
+def _twins() -> list[BoardDef]:
+    """Amaranth's and Digilent's Nexys 4 DDR, in load order: one class name, two boards."""
+    return [
+        BoardDef(
+            name="Nexys4 DDR",
+            class_name="Nexys4DDRPlatform",
+            source="amaranth-boards",
+            file_stem="nexys4_ddr",
+        ),
+        BoardDef(
+            name="Nexys 4 DDR",
+            class_name="Nexys4DDRPlatform",
+            source="digilent-xdc",
+            file_stem="nexys_4_ddr",
+        ),
+    ]
+
+
+def test_a_shared_name_still_opens_the_first_board():
+    """An unqualified name keeps the answer every earlier release gave."""
+    twins = _twins()
+    assert find_board(twins, "Nexys 4 DDR") is twins[0]
+    assert match_boards(twins, "Nexys4DDRPlatform") == twins
+
+
+def test_the_file_names_exactly_one_board():
+    twins = _twins()
+    for spelling in (
+        "digilent-xdc/nexys_4_ddr",
+        "digilent-xdc/nexys_4_ddr.json",
+        "Digilent-XDC/Nexys_4_DDR",
+        "boards/digilent-xdc/nexys_4_ddr.json",
+        "digilent-xdc\\nexys_4_ddr",
+    ):
+        assert match_boards(twins, spelling) == [twins[1]], spelling
+        assert find_board(twins, spelling) is twins[1], spelling
+
+
+def test_a_file_that_does_not_exist_matches_nothing():
+    assert match_boards(_twins(), "digilent-xdc/no_such_board") == []
+    assert match_boards(_twins(), "litex-boards/nexys_4_ddr") == []
+    assert find_board(_twins(), "digilent-xdc/") is None
+
+
+def test_the_ambiguity_note_names_the_other_files():
+    twins = _twins()
+    note = ambiguity_note("Nexys 4 DDR", match_boards(twins, "Nexys 4 DDR"))
+    assert note is not None
+    assert "matches 2 boards" in note
+    assert "opening amaranth-boards/nexys4_ddr" in note
+    assert note.endswith("name its file: digilent-xdc/nexys_4_ddr")
+    assert ambiguity_note("Nexys 4 DDR", twins[:1]) is None
+    assert ambiguity_note("Nexys 4 DDR", []) is None
+
+
+def test_the_file_stem_is_never_serialized():
+    """Like ``source``, it describes where the board was found, not the board."""
+    board = _twins()[1]
+    assert board.qualified_name == "digilent-xdc/nexys_4_ddr"
+    payload = board.to_json()
+    assert "file_stem" not in json.loads(payload)
+    assert BoardDef.from_json(payload).qualified_name == ""
+
+
+@pytest.fixture(scope="module")
+def disk_boards(boards_path):
+    found = discover_boards(boards_path)
+    assert found, "no boards discovered; the checks below would pass vacuously"
+    return found
+
+
+def test_every_board_on_disk_opens_by_its_file(disk_boards):
+    for board in disk_boards:
+        assert board.file_stem, board.name
+        assert match_boards(disk_boards, board.qualified_name) == [board], board.qualified_name
+
+
+#: Boards no display name or class name opens, because a source earlier in load order
+#: ships a board under the same one (measured 2026-10-31).  Only their files reach
+#: them.  A re-sync that adds a collision fails here, so it is seen in review instead
+#: of in a smoke test or screenshot of the wrong board.
+_REACHABLE_ONLY_BY_FILE = [
+    "digilent-xdc/arty_a7-100",
+    "digilent-xdc/arty_a7-35",
+    "digilent-xdc/arty_s7-25",
+    "digilent-xdc/arty_s7-50",
+    "digilent-xdc/arty_z7-20",
+    "digilent-xdc/cora_z7-07s",
+    "digilent-xdc/cora_z7-10",
+    "digilent-xdc/genesys_2",
+    "digilent-xdc/nexys_4_ddr",
+    "litex-boards/alchitry_au",
+    "litex-boards/alchitry_pt_v2",
+    "litex-boards/ebaz4205",
+    "litex-boards/logicbone",
+    "litex-boards/mist",
+]
+
+
+def test_the_boards_only_a_file_can_open(disk_boards):
+    shadowed = sorted(
+        board.qualified_name
+        for board in disk_boards
+        if all(find_board(disk_boards, s) is not board for s in (board.name, board.class_name))
+    )
+    assert shadowed == _REACHABLE_ONLY_BY_FILE

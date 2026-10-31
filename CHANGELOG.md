@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`--board` can open every board.** Fourteen boards could not be opened from the
+  command line at all, because an Amaranth board earlier in load order has the same
+  name or class name: nine Digilent boards (Nexys 4 DDR, Arty A7, Arty S7, Arty
+  Z7-20, Cora Z7, Genesys 2) and five LiteX boards. `--board` now also
+  takes a board's file, `<source>/<file>` (`digilent-xdc/nexys_4_ddr`, `.json`
+  optional), which names exactly one board. A name still opens the first match, as
+  before, but now lists the other matches on the terminal, and the benchmark's
+  `Board:` line says which file ran — a smoke test or screenshot of the other
+  source's board used to look exactly like the one intended. (Roadmap U56, an early
+  item.)
+
 ## [0.23.0] - 2026-10-26
 
 ### Changed

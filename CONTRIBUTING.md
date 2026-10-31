@@ -450,8 +450,14 @@ uv run fpga-sim --benchmark 5 --board DE10LitePlatform --vhdl hdl/counter_7seg.v
 It runs the real pipeline headlessly (`SDL_VIDEODRIVER=dummy`) for the given
 number of seconds and prints a board / VHDL / simulator summary and a performance
 report; a clean exit with `PASS=1 FAIL=0` means the combination builds and runs.
-`--board` takes a board **class name** (e.g. `ArtyA7_35Platform`; omit it to use
-the first discovered board), `--vhdl` defaults to `hdl/blinky.vhd`, and `--sim`
+`--board` takes a board's class name or display name (e.g. `ArtyA7_35Platform`), or
+its file as `<source>/<file>` (e.g. `digilent-xdc/arty_a7-35`); omit it to use the
+first discovered board. Names are shared across sources — Amaranth and Digilent both
+ship an Arty A7-35 — so a name opens the first match in load order, names the others
+on stderr, and the `Board:` line of the report says which file ran. When the source
+matters, as in a smoke test or a screenshot, name the file: a run on the other
+source's board says nothing about the one you meant. `--vhdl` defaults to
+`hdl/blinky.vhd`, and `--sim`
 picks the backend — an engine (`ghdl`/`nvc`), a specific GHDL code generator
 (`ghdl-mcode`/`ghdl-llvm`/`ghdl-jit`), or an absolute binary path. Discover and
 register installs with `--list-sims` / `--add-sim PATH` (see the install guide's
@@ -586,9 +592,30 @@ pipeline instead:
   ones below it is the easy mistake, and the validator fails on it.
 - **A parser/classifier fix** (the generated data is *wrong*) → fix the parser
   under `scripts/`, re-sync at the recorded pin
-  (`GITHUB_TOKEN=$(gh auth token) uv run python scripts/sync_digilent_xdc.py
-  --ref <pinned sha>` etc.), and commit the code + regenerated JSONs together;
-  the drift job proves the pair is consistent.
+  (`uv run python scripts/sync_digilent_xdc.py --ref <pinned sha>` etc., with
+  [the sync token](#the-sync-token) in `GITHUB_TOKEN`), and commit the code +
+  regenerated JSONs together; the drift job proves the pair is consistent.
+
+### The sync token
+
+The sync scripts and the drift check call the GitHub API to resolve refs, and an
+unauthenticated rate limit reads as false drift, so they need a token in
+`GITHUB_TOKEN`. Use one with **no scopes**: a fine-grained token with read-only
+access to public repositories and no permissions, or a classic token with no box
+ticked. Either lifts the rate limit and can do nothing else.
+
+**Never use `gh auth token`.** A sync *executes* upstream Python — the LiteX and
+Amaranth board files, run under a mock — and the token `gh` holds for you
+carries the `repo` and `workflow` scopes: full control of your repositories and
+their CI. CI's drift job already uses its own read-only `github.token`.
+
+```bash
+GITHUB_TOKEN=<your no-scope token> \
+uv run python scripts/sync_digilent_xdc.py --ref <pinned sha>
+```
+
+Keep the token somewhere only you can read, such as a password manager or a file
+with mode 600, rather than in your shell history.
 
 `docs/architecture.md` covers the sync pipeline's structure;
 `docs/plans/u21_board_native_vhdl_plan.md` and `docs/plans/u22_7seg_scan_plan.md` are the
@@ -784,14 +811,16 @@ board data are in sync with their sources. Both commands only report drift; neit
 writes:
 
 ```bash
-GITHUB_TOKEN=$(gh auth token) \
+GITHUB_TOKEN=<your no-scope token> \
 uv run python scripts/check_board_drift.py    # boards/ vs pinned upstreams; chains
                                               # sync_port_conventions --check +
                                               # sync_led_colors --check
 uv run python scripts/regen_embedded_cores.py # embedded-core files vs specs (check only)
 ```
 
-(The token matters: unauthenticated GitHub API rate limits read as false drift.)
+(The token matters: unauthenticated GitHub API rate limits read as false drift.
+Use [the sync token](#the-sync-token), never `gh auth token`: the drift check
+executes upstream board files.)
 Investigate and resolve any reported drift before proceeding — with one known
 benign class: pure *retrieved-date / source-pin churn* from an upstream repo
 moving is cosmetic, committed separately, and not a release blocker.

@@ -1180,6 +1180,34 @@ def test_cli_board_accepts_the_name_shown_on_screen(headless_pygame):
     assert ctrl.board is not None and ctrl.board.name == "Arty A7-35"
 
 
+def _arty_twins() -> list[BoardDef]:
+    """Amaranth's and Digilent's Arty A7-35, in load order: one name, two boards."""
+    return [
+        _board(file_stem="arty_a7-35"),
+        BoardDef("Arty A7-35", "ArtyA735Platform", source="digilent-xdc", file_stem="arty_a7-35"),
+    ]
+
+
+def test_a_shared_cli_board_name_opens_the_first_and_names_the_other(headless_pygame, capsys):
+    """The first match opens, as before, but the other twin is no longer silent."""
+    twins = _arty_twins()
+    ctrl = _make_controller(headless_pygame, boards=twins, cli_board="Arty A7-35")
+    assert ctrl._seed_from_cli() is NextScreen.PREVIEW
+    assert ctrl.board is twins[0]
+    err = capsys.readouterr().err
+    assert "opening amaranth-boards/arty_a7-35" in err
+    assert "digilent-xdc/arty_a7-35" in err
+
+
+def test_a_cli_board_file_opens_exactly_that_board(headless_pygame, capsys):
+    """The board a shared name cannot reach is reachable by its file, with no note."""
+    twins = _arty_twins()
+    ctrl = _make_controller(headless_pygame, boards=twins, cli_board="digilent-xdc/arty_a7-35")
+    assert ctrl._seed_from_cli() is NextScreen.PREVIEW
+    assert ctrl.board is twins[1]
+    assert "matches" not in capsys.readouterr().err
+
+
 def test_unknown_cli_board_warns_and_still_launches(headless_pygame, capsys):
     """A shortcut with a stale board name must open the selector, not die."""
     ctrl = _make_controller(headless_pygame, cli_board="NoSuchBoard")
