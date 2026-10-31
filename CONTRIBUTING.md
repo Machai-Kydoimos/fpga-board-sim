@@ -592,37 +592,29 @@ pipeline instead:
   ones below it is the easy mistake, and the validator fails on it.
 - **A parser/classifier fix** (the generated data is *wrong*) → fix the parser
   under `scripts/`, re-sync at the recorded pin
-  (`uv run python scripts/sync_digilent_xdc.py --ref <pinned sha>` etc., with no
-  token: see [the sync token](#the-sync-token)), and commit the code +
-  regenerated JSONs together; the drift job proves the pair is consistent.
+  (`uv run python scripts/sync_digilent_xdc.py --ref <pinned sha>`; for the
+  Amaranth and LiteX parsers, see
+  [syncs that run upstream code](#syncs-that-run-upstream-code)), and commit the
+  code + regenerated JSONs together; the drift job proves the pair is consistent.
 
-### The sync token
+### Syncs that run upstream code
 
-One step needs a GitHub token: the port-convention check
-(`sync_port_conventions.py --check`, which the drift check runs). It resolves a
-pin for every cited file through the GitHub API, far more requests than the 60 an
-hour the API allows without a token, and a rate-limited pin reads as false drift.
-The source syncs (`sync_amaranth_boards.py`, `sync_litex_boards.py`,
-`sync_digilent_xdc.py`) make one API call each and work without a token at a
-pinned SHA, so run them with none.
+The Amaranth and LiteX syncs (`sync_amaranth_boards.py`, `sync_litex_boards.py`)
+read each upstream board file by *executing* it against mock classes, and
+`check_board_drift.py` re-runs both. Executing someone else's code to read their
+data is a needless risk, so a reader that only parses the files is replacing them
+(roadmap U56). Until it lands, don't run those three scripts locally: CI's
+Board-data drift job runs the check on every pull request and every push to
+`main`, with GitHub's read-only token.
 
-For that one step, use a token with **no scopes**: a fine-grained token with
-read-only access to public repositories and no permissions, or a classic token
-with no box ticked. Either lifts the rate limit and can do nothing else.
-
-**Never use `gh auth token`.** The LiteX and Amaranth syncs *execute* upstream
-Python (the board files, run against mock classes), the drift check runs them with
-the environment it was given, and the token `gh` holds for you carries the `repo`
-and `workflow` scopes: full control of your repositories and their CI. CI's drift
-job already uses its own read-only `github.token`.
+The rest of the pipeline only reads text and is safe to run. `sync_digilent_xdc.py`
+needs no token. `sync_port_conventions.py` resolves a pin for every cited file
+through the GitHub API, more requests than the 60 an hour allowed without a token,
+so give it the token `gh` already holds; only this project's code sees it:
 
 ```bash
-GITHUB_TOKEN=<your no-scope token> \
-uv run python scripts/check_board_drift.py
+GITHUB_TOKEN="$(gh auth token)" uv run python scripts/sync_port_conventions.py --check
 ```
-
-Keep the token somewhere only you can read, such as a password manager or a file
-with mode 600, and pass it per command rather than exporting it into your shell.
 
 `docs/architecture.md` covers the sync pipeline's structure;
 `docs/plans/u21_board_native_vhdl_plan.md` and `docs/plans/u22_7seg_scan_plan.md` are the
@@ -814,20 +806,16 @@ This project follows [Semantic Versioning](https://semver.org):
 ### Release checklist
 
 **Pre-flight** — before cutting the branch, confirm the generated artifacts and
-board data are in sync with their sources. Both commands only report drift; neither
-writes:
+board data are in sync with their sources. Board data is CI's job: the Board-data
+drift job, which also runs the port-convention and LED-color checks, must be green
+on `main` (it does not run locally, for the reason in
+[syncs that run upstream code](#syncs-that-run-upstream-code)). Then check the
+embedded cores, which only reports drift and never writes:
 
 ```bash
-GITHUB_TOKEN=<your no-scope token> \
-uv run python scripts/check_board_drift.py    # boards/ vs pinned upstreams; chains
-                                              # sync_port_conventions --check +
-                                              # sync_led_colors --check
 uv run python scripts/regen_embedded_cores.py # embedded-core files vs specs (check only)
 ```
 
-(The token matters: unauthenticated GitHub API rate limits read as false drift.
-Use [the sync token](#the-sync-token), never `gh auth token`: the drift check
-executes upstream board files.)
 Investigate and resolve any reported drift before proceeding — with one known
 benign class: pure *retrieved-date / source-pin churn* from an upstream repo
 moving is cosmetic, committed separately, and not a release blocker.
