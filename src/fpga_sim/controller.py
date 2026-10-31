@@ -34,7 +34,7 @@ from typing import Any
 
 import pygame
 
-from fpga_sim.board_loader import BoardDef, find_board
+from fpga_sim.board_loader import BoardDef, ambiguity_note, match_boards
 from fpga_sim.generics import GenericDef, design_generics, parse_cli_override, resolve
 from fpga_sim.paths import HDL_DIR
 from fpga_sim.pinmap import PinMapMatch
@@ -515,7 +515,11 @@ class ScreenController:
 
         nxt = NextScreen.SELECTOR
         if self._cli_board is not None:
-            board = find_board(self.boards, self._cli_board)
+            hits = match_boards(self.boards, self._cli_board)
+            board = hits[0] if hits else None
+            note = ambiguity_note(self._cli_board, hits)
+            if note:
+                print(f"[fpga-sim] {note}", file=sys.stderr)
             if board is None:
                 examples = ", ".join(b.class_name for b in self.boards[:4])
                 print(

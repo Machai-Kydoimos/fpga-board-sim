@@ -24,7 +24,7 @@ clicking while you iterate on a design.
 
 | Flag | What it does |
 |---|---|
-| `--board BOARD` | Open on this board. Either spelling works — the name on screen (`DE10-Standard`) or the class name (`DE10StandardPlatform`) — and case and punctuation are ignored, so `de10 standard` finds it too. |
+| `--board BOARD` | Open on this board. Either spelling works — the name on screen (`DE10-Standard`) or the class name (`DE10StandardPlatform`) — and case and punctuation are ignored, so `de10 standard` finds it too. Some boards come from two sources under the same name (Amaranth's and Digilent's Nexys 4 DDR); a name opens the first one found and the terminal lists the others. To pick one exactly, give its file instead: the folder under `boards/` and the file name, as in `digilent-xdc/nexys_4_ddr` (`.json` optional). |
 | `--vhdl PATH` | Load this design. Relative paths are resolved against the directory you ran the command from, so your files stay wherever you keep them. |
 | `--pinmap PATH` | Bind the design through this constraint file instead of the one beside it (see [one folder is one project](#bring-your-own-project-one-folder-is-one-project)). |
 | `--generic NAME=VALUE` | Override a generic on the design's top level; repeatable — the same thing [Generics…] does, at launch. See [below](#changing-a-generic-without-leaving-the-simulator). |

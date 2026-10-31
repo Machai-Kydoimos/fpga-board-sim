@@ -450,8 +450,14 @@ uv run fpga-sim --benchmark 5 --board DE10LitePlatform --vhdl hdl/counter_7seg.v
 It runs the real pipeline headlessly (`SDL_VIDEODRIVER=dummy`) for the given
 number of seconds and prints a board / VHDL / simulator summary and a performance
 report; a clean exit with `PASS=1 FAIL=0` means the combination builds and runs.
-`--board` takes a board **class name** (e.g. `ArtyA7_35Platform`; omit it to use
-the first discovered board), `--vhdl` defaults to `hdl/blinky.vhd`, and `--sim`
+`--board` takes a board's class name or display name (e.g. `ArtyA7_35Platform`), or
+its file as `<source>/<file>` (e.g. `digilent-xdc/arty_a7-35`); omit it to use the
+first discovered board. Names are shared across sources — Amaranth and Digilent both
+ship an Arty A7-35 — so a name opens the first match in load order, names the others
+on stderr, and the `Board:` line of the report says which file ran. When the source
+matters, as in a smoke test or a screenshot, name the file: a run on the other
+source's board says nothing about the one you meant. `--vhdl` defaults to
+`hdl/blinky.vhd`, and `--sim`
 picks the backend — an engine (`ghdl`/`nvc`), a specific GHDL code generator
 (`ghdl-mcode`/`ghdl-llvm`/`ghdl-jit`), or an absolute binary path. Discover and
 register installs with `--list-sims` / `--add-sim PATH` (see the install guide's
@@ -586,9 +592,29 @@ pipeline instead:
   ones below it is the easy mistake, and the validator fails on it.
 - **A parser/classifier fix** (the generated data is *wrong*) → fix the parser
   under `scripts/`, re-sync at the recorded pin
-  (`GITHUB_TOKEN=$(gh auth token) uv run python scripts/sync_digilent_xdc.py
-  --ref <pinned sha>` etc.), and commit the code + regenerated JSONs together;
-  the drift job proves the pair is consistent.
+  (`uv run python scripts/sync_digilent_xdc.py --ref <pinned sha>`; for the
+  Amaranth and LiteX parsers, see
+  [syncs that run upstream code](#syncs-that-run-upstream-code)), and commit the
+  code + regenerated JSONs together; the drift job proves the pair is consistent.
+
+### Syncs that run upstream code
+
+The Amaranth and LiteX syncs (`sync_amaranth_boards.py`, `sync_litex_boards.py`)
+read each upstream board file by *executing* it against mock classes, and
+`check_board_drift.py` re-runs both. Executing someone else's code to read their
+data is a needless risk, so a reader that only parses the files is replacing them
+(roadmap U56). Until it lands, don't run those three scripts locally: CI's
+Board-data drift job runs the check on every pull request and every push to
+`main`, with GitHub's read-only token.
+
+The rest of the pipeline only reads text and is safe to run. `sync_digilent_xdc.py`
+needs no token. `sync_port_conventions.py` resolves a pin for every cited file
+through the GitHub API, more requests than the 60 an hour allowed without a token,
+so give it the token `gh` already holds; only this project's code sees it:
+
+```bash
+GITHUB_TOKEN="$(gh auth token)" uv run python scripts/sync_port_conventions.py --check
+```
 
 `docs/architecture.md` covers the sync pipeline's structure;
 `docs/plans/u21_board_native_vhdl_plan.md` and `docs/plans/u22_7seg_scan_plan.md` are the
@@ -780,18 +806,16 @@ This project follows [Semantic Versioning](https://semver.org):
 ### Release checklist
 
 **Pre-flight** — before cutting the branch, confirm the generated artifacts and
-board data are in sync with their sources. Both commands only report drift; neither
-writes:
+board data are in sync with their sources. Board data is CI's job: the Board-data
+drift job, which also runs the port-convention and LED-color checks, must be green
+on `main` (it does not run locally, for the reason in
+[syncs that run upstream code](#syncs-that-run-upstream-code)). Then check the
+embedded cores, which only reports drift and never writes:
 
 ```bash
-GITHUB_TOKEN=$(gh auth token) \
-uv run python scripts/check_board_drift.py    # boards/ vs pinned upstreams; chains
-                                              # sync_port_conventions --check +
-                                              # sync_led_colors --check
 uv run python scripts/regen_embedded_cores.py # embedded-core files vs specs (check only)
 ```
 
-(The token matters: unauthenticated GitHub API rate limits read as false drift.)
 Investigate and resolve any reported drift before proceeding — with one known
 benign class: pure *retrieved-date / source-pin churn* from an upstream repo
 moving is cosmetic, committed separately, and not a release blocker.

@@ -29,7 +29,12 @@ from typing import TYPE_CHECKING, Any
 
 import pygame
 
-from fpga_sim.board_loader import discover_boards, find_board, get_default_boards_path
+from fpga_sim.board_loader import (
+    ambiguity_note,
+    discover_boards,
+    get_default_boards_path,
+    match_boards,
+)
 from fpga_sim.controller import ScreenController, build_generics
 from fpga_sim.generics import resolve_cli_overrides
 from fpga_sim.paths import HDL_DIR
@@ -69,8 +74,10 @@ def _parse_args() -> argparse.Namespace:
         "--board",
         metavar="BOARD",
         default=None,
-        help="Board to open on: class name or display name, e.g. "
-        "DE10StandardPlatform or 'DE10-Standard' (benchmark default: first available)",
+        help="Board to open on: display name or class name, e.g. 'DE10-Standard' or "
+        "DE10StandardPlatform, or its file as <source>/<file>, e.g. digilent-xdc/nexys_4_ddr, "
+        "which names exactly one board when two sources share a name "
+        "(benchmark default: first available)",
     )
     p.add_argument(
         "--vhdl",
@@ -207,13 +214,17 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
 
     # Board selection
     if args.board:
-        chosen = find_board(boards, args.board)
-        if chosen is None:
+        hits = match_boards(boards, args.board)
+        if not hits:
             names = ", ".join(b.class_name for b in boards[:6])
             print(
                 f"[benchmark] Board '{args.board}' not found. Examples: {names}...", file=sys.stderr
             )
             return 1
+        chosen = hits[0]
+        note = ambiguity_note(args.board, hits)
+        if note:
+            print(f"[benchmark] {note}", file=sys.stderr)
     else:
         chosen = boards[0]
 
@@ -236,7 +247,10 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
         return 1
 
     mode = "simulator only" if args.no_ui else "full system"
-    print(f"[benchmark] Board:    {chosen.name}")
+    # The file, not just the name: twins in two sources share a name, and a smoke test
+    # or a screenshot is only evidence about the board it actually opened.
+    where = f" ({chosen.qualified_name})" if chosen.qualified_name else ""
+    print(f"[benchmark] Board:    {chosen.name}{where}")
     print(f"[benchmark] VHDL:     {vhdl_path.name}")
     if res.pinmap is not None:
         print(f"[benchmark] Pin map:  {res.pinmap.source} -> {res.pinmap.board_name}")

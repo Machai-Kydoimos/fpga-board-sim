@@ -302,6 +302,22 @@ class BoardDef:
     seven_seg: "SevenSegDef | None" = None
     port_conventions: dict[str, Any] = field(default_factory=dict)
     source: str = ""
+    #: The board file's name without ``.json`` (``nexys_4_ddr``).  Set by discovery,
+    #: like ``source``, and like it never serialized: the pair is the one spelling
+    #: that names exactly one board (:attr:`qualified_name`).
+    file_stem: str = ""
+
+    @property
+    def qualified_name(self) -> str:
+        """``<source>/<file stem>``, e.g. ``digilent-xdc/nexys_4_ddr``; empty if unknown.
+
+        A display name or class name can be shared across sources -- Amaranth and
+        Digilent both ship a Nexys 4 DDR, with the same class name -- but a file
+        path cannot, so this is the ``--board`` spelling that is never ambiguous.
+        """
+        if not (self.source and self.file_stem):
+            return ""
+        return f"{self.source}/{self.file_stem}"
 
     @property
     def summary(self) -> str:
@@ -539,6 +555,7 @@ def _discover_boards_json(boards_dir: Path) -> list[BoardDef]:
             try:
                 board = BoardDef.from_json(json_file.read_text(encoding="utf-8"))
                 board.source = source_name
+                board.file_stem = json_file.stem
                 all_boards.append(board)
             except Exception:
                 continue
@@ -563,34 +580,79 @@ def get_default_boards_path() -> Path:
     return BOARDS_DIR
 
 
-def find_board(boards: list[BoardDef], wanted: str) -> BoardDef | None:
-    """Resolve a ``--board`` argument against *boards* by class name or name.
+def _board_key(text: str) -> str:
+    """Lowercase alphanumerics only: the spelling-insensitive form of a board name."""
+    return "".join(ch for ch in text.lower() if ch.isalnum())
 
-    Both spellings are accepted because both are visible to the user: the
-    selector shows ``name`` ("DE10-Standard") while the session file and every
-    example in the docs use ``class_name`` ("DE10StandardPlatform").  The match
-    is case-insensitive and ignores the separators the two spellings disagree
-    about, so ``de10-standard``, ``DE10 Standard`` and ``DE10StandardPlatform``
-    all find the same board -- a student typing a board name from the screen
-    should not have to guess its punctuation.
+
+def match_boards(boards: list[BoardDef], wanted: str) -> list[BoardDef]:
+    """Every board a ``--board`` argument names, in load order; the first is the answer.
+
+    Three spellings are accepted, because all three are visible to the user:
+
+    * the **display name** the selector shows ("DE10-Standard") and the **class
+      name** the session file and the docs use ("DE10StandardPlatform"), matched
+      case-insensitively and ignoring the separators the two disagree about, so
+      ``de10-standard``, ``DE10 Standard`` and ``DE10StandardPlatform`` find the
+      same board -- a student typing a name from the screen should not have to
+      guess its punctuation.  The ``Platform`` suffix is optional.
+    * the board's **file**, ``<source>/<file stem>`` (``digilent-xdc/nexys_4_ddr``;
+      ``.json`` and a leading ``boards/`` are optional, case is not significant).
+
+    Names are not unique: sources ship the same board under the same name --
+    Amaranth's and Digilent's Nexys 4 DDR even share a class name -- and a name
+    says nothing about its source, so a name can return several boards.  Load
+    order (source folders sorted, then files) decides which comes first, which
+    keeps the answer every earlier release gave.  A file names exactly one board,
+    which is what it is for: without it, a board whose name another source also
+    uses could not be reached from the command line at all.
+    """
+    text = wanted.strip()
+    if "/" in text or "\\" in text:
+        parts = [p for p in text.replace("\\", "/").split("/") if p]
+        if len(parts) >= 2:
+            source = parts[-2].lower()
+            stem = parts[-1].lower().removesuffix(".json")
+            hits = [b for b in boards if b.source.lower() == source and b.file_stem.lower() == stem]
+            if hits:
+                return hits
+        # No such file: fall through, so a name that contains a slash still matches.
+    target = _board_key(text)
+    if not target:
+        return []
+    hits = [b for b in boards if target in (_board_key(b.class_name), _board_key(b.name))]
+    if hits:
+        return hits
+    # The class names all end in "Platform", so let the suffix be optional rather
+    # than making it a thing to remember.
+    suffixed = _board_key(text + "Platform")
+    return [b for b in boards if _board_key(b.class_name) == suffixed]
+
+
+def find_board(boards: list[BoardDef], wanted: str) -> BoardDef | None:
+    """Resolve a ``--board`` argument to one board: the first of :func:`match_boards`.
 
     Returns ``None`` when nothing matches; the caller decides whether that is
     fatal (the benchmark) or a warning (the launcher, which falls back to the
-    selector).
+    selector).  A caller that talks to the user should also print
+    :func:`ambiguity_note`, so a name that matched several boards says so.
     """
+    hits = match_boards(boards, wanted)
+    return hits[0] if hits else None
 
-    def key(text: str) -> str:
-        return "".join(ch for ch in text.lower() if ch.isalnum())
 
-    target = key(wanted)
-    if not target:
+def ambiguity_note(wanted: str, hits: list[BoardDef]) -> str | None:
+    """Return the line to print when ``--board`` named several boards, else ``None``.
+
+    The first board is opened, as before; the note names it and the others by
+    their files, the spelling that picks one -- a screenshot or smoke test of the
+    other source's board otherwise looks exactly like a test of the one meant.
+    """
+    if len(hits) < 2:
         return None
-    for board in boards:
-        if key(board.class_name) == target or key(board.name) == target:
-            return board
-    # Second pass: the class names all end in "Platform", so let the suffix be
-    # optional rather than making it a thing to remember.
-    for board in boards:
-        if key(board.class_name) == key(wanted + "Platform"):
-            return board
-    return None
+    others = ", ".join(b.qualified_name or b.class_name for b in hits[1:])
+    first = hits[0].qualified_name or hits[0].class_name
+    return (
+        f"--board {wanted!r} matches {len(hits)} boards; opening {first}. "
+        f"To open another, name its file: {others}"
+    )
