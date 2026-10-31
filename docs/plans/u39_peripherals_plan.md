@@ -2,7 +2,8 @@
 
 **Status:** **APPROVED 2026-08-05** (Rick; drafted 2026-07-27, committed 2026-07-28 — the
 architecture decisions below were locked 2026-07-27). Queued **after the U44 multi-input arc** →
-target release **v0.24.0** (was v0.23.0; renumbered 2026-09-05 when the pre-semester classroom
+target release **v0.25.0** (renumbered again 2026-10-31, when the U56 upstream board-sync arc took
+v0.24.0 ahead of it; was v0.23.0, then v0.24.0 after 2026-09-05, when the pre-semester classroom
 arc — U48–U54 + D17, [u48_classroom_arc_plan_v2.md](u48_classroom_arc_plan_v2.md) — took v0.23.0
 ahead of it. That arc serves the *take-home* student before a fixed lab date; this one serves the
 in-lab experience the courses already have in hardware, and nothing here is blocked by the delay). Roadmap card filed 2026-08-05 (`improvement_roadmap.md` → Current
@@ -588,9 +589,9 @@ guardrail.
 | 7 | Soft-core firmware drives the LCD | M | — | not started |
 | 8 | HPS-side device as attachable module | XS–S | — | not started |
 
-Comparable to the U21 arc (9 phases) and the LED-complete arc. Target release **v0.24.0**
-(updated 2026-09-05: U44 → v0.21.0, the screenshots + preview-input-carry release → v0.22.0 and
-the classroom arc → v0.23.0 all precede this one).
+Comparable to the U21 arc (9 phases) and the LED-complete arc. Target release **v0.25.0**
+(updated 2026-10-31: U44 → v0.21.0, the screenshots + preview-input-carry release → v0.22.0, the
+classroom arc → v0.23.0 and the U56 board-sync arc → v0.24.0 all precede this one).
 
 | ID | Scope | Trigger |
 |---|---|---|
