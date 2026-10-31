@@ -267,3 +267,43 @@ def test_schema_rejects_malformed_hex_color(schema):
     board["leds"] = [{"name": "led", "number": 0, "color": "#12ff0"}]  # 5 hex digits
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(board, schema)
+
+
+# ── identity and orphan fields (U56 plan §4.1, §4.3) ───────────────────────────
+
+
+def _board_with_source(**fields: Any) -> dict[str, Any]:
+    board = _minimal_valid_board()
+    board["source"] = {"origin": "litex-boards", "upstream_file": "x.py", **fields}
+    return board
+
+
+def test_schema_accepts_identity_and_orphan_fields(schema):
+    jsonschema = pytest.importorskip("jsonschema")
+    jsonschema.validate(
+        _board_with_source(
+            upstream_class="Platform",
+            upstream_args={"revision": 2, "variant": "z7-20", "dock": None, "pro": True},
+            upstream_status="orphaned",
+            orphaned_at_commit="c705606",
+            orphaned_reason="file_removed",
+            successor="litex-boards/efinix_trion_t8f81_dev_kit.json",
+        ),
+        schema,
+    )
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"upstream_status": "gone"},
+        {"orphaned_reason": "renamed"},
+        {"successor": "efinix_trion_t8f81_dev_kit.json"},  # must name its source folder
+        {"upstream_args": {"revision": [1, 2]}},  # one effective value, never a list
+        {"upstream_klass": "Platform"},  # source stays closed to typos
+    ],
+)
+def test_schema_rejects_bad_identity_or_orphan_fields(schema, fields):
+    jsonschema = pytest.importorskip("jsonschema")
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(_board_with_source(**fields), schema)

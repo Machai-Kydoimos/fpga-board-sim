@@ -316,6 +316,48 @@
           "type": "string",
           "format": "uri",
           "description": "URL to board documentation or vendor page"
+        },
+        "upstream_class": {
+          "type": "string",
+          "description": "The platform class in upstream_file this board was built from (LiteX: the class the parser selects, usually 'Platform'; Amaranth: the class name). Omitted for files without classes (Digilent XDC). Part of the board's identity with origin, upstream_file and upstream_args (U56 plan \u00a74.1)."
+        },
+        "upstream_args": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "string",
+              "integer",
+              "number",
+              "boolean",
+              "null"
+            ]
+          },
+          "description": "Effective values of the upstream constructor's version-selecting parameters (variant, revision, board_version, ...) for this board, e.g. {\"revision\": 2}. Omitted when the constructor has none. Part of the board's identity (U56 plan \u00a74.1)."
+        },
+        "upstream_status": {
+          "type": "string",
+          "enum": [
+            "orphaned"
+          ],
+          "description": "'orphaned': upstream no longer defines this board. The file is kept, frozen at its last good sync, so designs written for it still run (U56 plan \u00a74.3). Absent for a board upstream still defines."
+        },
+        "orphaned_at_commit": {
+          "type": "string",
+          "description": "The upstream commit of the sync that found the board orphaned."
+        },
+        "orphaned_reason": {
+          "type": "string",
+          "enum": [
+            "file_removed",
+            "no_longer_defined",
+            "no_simulatable_io"
+          ],
+          "description": "Why the board is orphaned: its upstream file is gone; the file no longer defines this identity; or the file defines it with no simulatable I/O."
+        },
+        "successor": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\\.json$",
+          "description": "A hint, never an automatic migration: '<source>/<file>.json' of the board that most likely replaces an orphan."
         }
       },
       "additionalProperties": false

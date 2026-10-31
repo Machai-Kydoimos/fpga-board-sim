@@ -164,3 +164,74 @@ def test_color_survives_roundtrip():
 def test_missing_color_defaults_to_empty_string():
     raw = json.dumps({"name": "N", "class_name": "N", "leds": [{"name": "led", "number": 0}]})
     assert BoardDef.from_json(raw).leds[0].color == ""
+
+
+# ── orphan fields (U56 plan §4.3) ──────────────────────────────────────────────
+
+
+def test_a_board_upstream_still_defines_serializes_without_a_source_block(serialized):
+    assert "source" not in json.loads(serialized)
+
+
+def test_orphan_fields_are_read_from_the_board_files_source_block():
+    raw = json.dumps(
+        {
+            "name": "Efinix T8",
+            "class_name": "EfinixT8F81DevKitPlatform",
+            "source": {
+                "origin": "litex-boards",
+                "upstream_file": "efinix_t8f81_dev_kit.py",
+                "upstream_status": "orphaned",
+                "orphaned_at_commit": "c705606",
+                "orphaned_reason": "file_removed",
+                "successor": "litex-boards/efinix_trion_t8f81_dev_kit.json",
+            },
+        }
+    )
+    board = BoardDef.from_json(raw)
+    assert board.upstream_status == "orphaned"
+    assert board.orphaned_at_commit == "c705606"
+    assert board.orphaned_reason == "file_removed"
+    assert board.successor == "litex-boards/efinix_trion_t8f81_dev_kit.json"
+
+
+def test_orphan_fields_survive_a_roundtrip_and_nothing_else_rides_along():
+    board = BoardDef(
+        name="O",
+        class_name="OP",
+        upstream_status="orphaned",
+        orphaned_at_commit="abc",
+        orphaned_reason="no_longer_defined",
+    )
+    data = json.loads(board.to_json())
+    # Only the orphan fields travel: identity and stamps belong to the file, not the child.
+    assert data["source"] == {
+        "upstream_status": "orphaned",
+        "orphaned_at_commit": "abc",
+        "orphaned_reason": "no_longer_defined",
+    }
+    again = BoardDef.from_json(board.to_json())
+    assert (again.upstream_status, again.orphaned_at_commit, again.orphaned_reason) == (
+        "orphaned",
+        "abc",
+        "no_longer_defined",
+    )
+    assert again.successor == ""
+
+
+def test_identity_fields_in_a_source_block_do_not_disturb_loading():
+    raw = json.dumps(
+        {
+            "name": "W",
+            "class_name": "WP",
+            "source": {
+                "origin": "litex-boards",
+                "upstream_file": "qmtech_wukong.py",
+                "upstream_class": "Platform",
+                "upstream_args": {"revision": 2},
+            },
+        }
+    )
+    board = BoardDef.from_json(raw)
+    assert board.upstream_status == ""
+    assert "source" not in json.loads(board.to_json())
