@@ -573,7 +573,7 @@ After generating, for each existing file whose identity was **not** produced:
   `ord`); and allowlisted methods of `str`, `list` and `dict`. Upstream functions and classes are
   data the interpreter walks, never Python callables. A dunder attribute, a name nothing defines,
   `str.format` with an attribute or index field (it reads attributes without a call), and any
-  construct outside the list raise `UnsupportedConstruct` with file, line and construct. Budgets
+  construct outside the list raise `UnsupportedConstructError` with file, line and construct. Budgets
   cap steps, list length and string length.
 - **Classes stay classes.** A class definition becomes a real Python class built with `type()`: its
   bases are our mock classes or other classes from the same file, its attributes are the evaluated
@@ -598,6 +598,18 @@ After generating, for each existing file whose identity was **not** produced:
 - **Mock platform:** keep explicit `add_resources` / `add_extension` / `request`; add
   `toolchain = <stub>` and a `__getattr__` returning a no-op callable for every other platform method
   (`add_platform_command`, `add_connector`, `add_period_constraint`, `lookup_request`, …).
+- **Known growth (measured 2026-11-01).** The code that runs today needs nothing beyond the list.
+  At the pins, the 2026-10-28 heads and today's heads the reader refused nothing, and at the
+  2026-10-28 heads its output equals the old `exec` path's on every board (149 LiteX, 82 Amaranth),
+  so every skip there is a mock gap the later phases close. They also reach further. **Phase 1c:**
+  one LiteX platform calls `copy.deepcopy`, so the few standard-library calls board code makes need
+  safe stand-ins: a permissive stub would hand back the wrong data rather than fail. **Phase 2:**
+  LiteX's extension modules use a generator (`_pmod_indexes`, `extensions/pmod.py`) and
+  `type(self).__name__` (the deprecated `io`/`connectors` accessors, `extensions/qmtech.py:109,115`),
+  so add eager generators and a one-argument `type()` with a read-only `__name__`, or call the
+  non-deprecated API. Amaranth's programmer methods use `with` (68) and `.encode` (5), but the
+  parsers never call them. Grow the reader on this kind of evidence, in the phase that first needs
+  a construct, never ahead of it.
 - **Tokens.** Only `sync_port_conventions.py` needs one: it resolves a path-scoped pin per cited
   file, far past the 60 requests an hour the API allows without a token. It reads text and runs
   only our code, so `GITHUB_TOKEN="$(gh auth token)"` is fine. The source syncs make one API call
@@ -674,7 +686,7 @@ plan-index rows in `docs/improvement_roadmap.md` and `docs/README.md`; Icebox P3
 **Do:**
 
 1. `scripts/upstream_reader.py`: the reader of §4.4, standalone (no `fpga_sim` import), with
-   `UnsupportedConstruct`.
+   `UnsupportedConstructError`.
 2. `amaranth_parser.load_board_from_source` and the LiteX parser read through it instead of
    `exec(compile(…))` (`amaranth_parser.py:613`, `litex_parser.py:499`), and LiteX's
    `platform_class()` (`:533`) runs the interpreted constructor. Delete the real `os`,
@@ -822,7 +834,8 @@ check; full `pytest`.
 - `_PLATFORM_VENDORS`: `LatticeiCE40Platform`, `LatticePlatform` (Lattice), `MicrosemiPlatform`,
   `AnlogicPlatform`, `QuickLogicPlatform`; drop the misspelled key; add a regression test.
 - Permissive mock platform and stub (§4.4), import-aware reading (LiteX: stub
-  `litex_boards.extensions.*` for now; Amaranth: read sibling modules with the reader). Remove the module-`_io`
+  `litex_boards.extensions.*` for now; Amaranth: read sibling modules with the reader), and safe
+  stand-ins for the standard-library calls board code makes (`copy.deepcopy`; §4.4, Known growth). Remove the module-`_io`
   fallback **and the Wukong migration entry** together; from here on the sync builds `revision=2`
   from the on-disk identity (§4.1).
 - Amaranth: `DDR4Resource` → `_stub_single`; `DiffPairsN` → `_DiffPairs`; `_classify` (`:431`):
@@ -911,7 +924,8 @@ check; full `pytest`.
 
 - Resolve `litex_boards.extensions.*` imports by reading the upstream modules with the reader
   (§4.4): their `Pmod*` and dock classes become interpreted classes, so `add_extension(ext)` gets
-  data and no upstream code runs.
+  data and no upstream code runs. Teach the reader what those modules need first: eager generators
+  and a read-only one-argument `type()`/`__name__` (§4.4, Known growth).
 - Mock `add_extension(ext)`: list/tuple → extend `_captured_io`; object → `ext.define_io(self)` if it
   returns a list (dynamic docks such as `TangMegaNeoDock`), else `ext.io`.
 - After construction, read `default_clk_name` / `default_clk_period` from the instance, falling back
