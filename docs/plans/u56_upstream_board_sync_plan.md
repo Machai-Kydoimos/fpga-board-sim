@@ -911,7 +911,7 @@ this plan.
 | Phase | Scope | Visual review | Status |
 |---|---|---|---|
 | PR 0 | plan + card + ID + decisions | no | done 2026-10-31 (#465) |
-| early | `--board` by source (1a item 6); the no-scope sync-token recipe (§4.4) | no | not started — lands now, outside the v0.26.0 slot (D-5) |
+| early | `--board` by source (1a item 6); the no-scope sync-token recipe (§4.4) | no | done 2026-10-31 (#466), outside the v0.26.0 slot (D-5) |
 | 1a | identity, ledger, accept-list, orphan detection, credential-free parse, impact matrix with per-bank rows (`--board` re-checked) | no | not started |
 | 1b | display names (P35) | no (a before → after name table) | not started |
 | 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine) | not started |
