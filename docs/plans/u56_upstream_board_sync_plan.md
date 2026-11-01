@@ -941,6 +941,13 @@ check; full `pytest`.
 The matrix shows no contract outcome change on any existing board. On all 19 reordered boards,
 every `led(k)` drives the same LED and color.
 
+**Rick's visual review found one defect,** in the renderer rather than the data: 19 of the part
+numbers were wider than the chip at the default 1024×700 window and ran past its edges.
+`FPGAChip.fit_label` now breaks such a line at a dash, slash or space. It shrinks the font only
+where no break fits (three boards, by 1 px), and clips only in a window too small for either.
+The SVG export lays the label out the same way. Boards whose label already fit are drawn as
+before.
+
 ## 9. Phase 2 — Extensions, docks, default clock from the instance (and D-6)
 
 **Do:**
@@ -1075,7 +1082,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 0 | parse-only reader: no upstream code executed (D-7, §5a) | no | done 2026-11-01 (#469) |
 | 1a | identity, ledger, accept-list, orphan detection, impact matrix with per-bank rows (`--board` re-checked) | no | done 2026-11-01 (#470) |
 | 1b | display names (P35) | no (a before → after name table) | done 2026-11-01 (#471) |
-| 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | PR #472, awaiting visual review (2026-11-01) |
+| 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | done 2026-11-01 (#472); the review found long part numbers running past the chip, fixed in the PR |
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | not started |
 | 3 | orphan UI | **yes** | not started |
 | 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | not started |
