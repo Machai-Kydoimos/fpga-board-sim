@@ -1,8 +1,8 @@
 {
   "source_repo": "https://github.com/Digilent/digilent-xdc",
   "source_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-  "sync_timestamp": "2026-10-31T23:32:48.905875+00:00",
-  "board_count": 26,
+  "sync_timestamp": "2026-11-01T03:02:00.390915+00:00",
+  "board_count": 27,
   "files_written": [
     "arty.json",
     "arty_a7-100.json",
@@ -28,6 +28,7 @@
     "nexys_video.json",
     "sword.json",
     "usb104_a7-100t.json",
+    "zedboard.json",
     "zybo.json",
     "zybo_z7.json"
   ],
@@ -56,7 +57,7 @@
     "Nexys-Video-Master.xdc": "boards: nexys_video.json",
     "Sword-Master.xdc": "boards: sword.json",
     "USB104-A7-100T-Master.xdc": "boards: usb104_a7-100t.json",
-    "Zedboard-Master.xdc": "skipped: no_simulatable_io",
+    "Zedboard-Master.xdc": "boards: zedboard.json",
     "Zybo-Master.xdc": "boards: zybo.json",
     "Zybo-Z7-Master.xdc": "boards: zybo_z7.json"
   },

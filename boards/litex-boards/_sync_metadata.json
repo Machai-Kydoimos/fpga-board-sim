@@ -1,15 +1,17 @@
 {
   "source_repo": "https://github.com/litex-hub/litex-boards",
   "source_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-  "sync_timestamp": "2026-10-31T23:32:52.018864+00:00",
-  "board_count": 171,
+  "sync_timestamp": "2026-11-01T03:02:03.625058+00:00",
+  "board_count": 223,
   "files_written": [
     "adi_adrv2crr_fmc.json",
     "adiuvo_forgix.json",
     "alchitry_au.json",
     "alchitry_au_v2.json",
+    "alchitry_cu.json",
     "alchitry_mojo.json",
     "alchitry_pt_v2.json",
+    "alibaba_vu13p.json",
     "alibaba_xcku3p.json",
     "alientek_davincipro.json",
     "aliexpress_xc7k420t.json",
@@ -21,12 +23,14 @@
     "alinx_axu2cga.json",
     "altera_agilex5e_065b_premium_devkit.json",
     "antmicro_artix_dc_scm.json",
+    "antmicro_datacenter_ddr4_test_board.json",
     "antmicro_ddr5_test_board.json",
     "antmicro_ddr5_tester.json",
     "antmicro_lpddr4_test_board.json",
     "antmicro_sdi_mipi_video_converter.json",
     "antmicro_sodimm_ddr5_tester.json",
     "arrow_axe5000.json",
+    "avalanche.json",
     "berkeleylab_marble.json",
     "bochenjingxin_kintex7_basec.json",
     "brisbanesilicon_brs_100_gw1nr9.json",
@@ -34,6 +38,7 @@
     "colognechip_gatemate_evb.json",
     "colorlight_5a_75b.json",
     "colorlight_5a_75e.json",
+    "colorlight_i5.json",
     "colorlight_i5a_907.json",
     "colorlight_i9plus.json",
     "digilent_arty.json",
@@ -43,9 +48,12 @@
     "digilent_basys3.json",
     "digilent_cmod_a7.json",
     "digilent_genesys2.json",
+    "digilent_netfpga_sume.json",
     "digilent_nexys4.json",
     "digilent_nexys4ddr.json",
     "digilent_nexys_video.json",
+    "digilent_pynq_z1.json",
+    "digilent_zedboard.json",
     "digilent_zybo_z7.json",
     "ebaz4205.json",
     "efinix_t8f81_dev_kit.json",
@@ -58,10 +66,12 @@
     "efinix_xyloni_dev_kit.json",
     "ego1.json",
     "embedfire_rise_pro.json",
+    "enclustra_mercury_kx2.json",
     "enclustra_mercury_xu5.json",
     "enclustra_mercury_xu8_pe3.json",
     "fairwaves_xtrx.json",
     "fpc_iii.json",
+    "fpgawars_alhambra2.json",
     "gadgetfactory_papilio_pro.json",
     "gmm7550.json",
     "gsd_butterstick.json",
@@ -69,10 +79,16 @@
     "hackaday_hadbadge.json",
     "hseda_xc7a35t.json",
     "hyvision_pcie_opt01_revf.json",
+    "ice_v_wireless.json",
+    "icebreaker.json",
+    "icebreaker_bitsy.json",
     "icepi_zero.json",
     "intergalaktik_ulx5m_gs.json",
     "isx_im1283.json",
     "jungle_electronics_fireant.json",
+    "kosagi_fomu_evt.json",
+    "kosagi_fomu_hacker.json",
+    "kosagi_fomu_pvt.json",
     "kosagi_netv2.json",
     "krtkl_snickerdoodle.json",
     "lambdaconcept_ecpix5.json",
@@ -85,6 +101,8 @@
     "lattice_crosslink_nx_vip.json",
     "lattice_ecp5_evn.json",
     "lattice_ecp5_vip.json",
+    "lattice_ice40up5k_evn.json",
+    "lattice_machxo3.json",
     "lattice_versa_ecp5.json",
     "lckfb_ljpi.json",
     "limesdr_mini_v2.json",
@@ -95,6 +113,7 @@
     "machdyne_kolsch.json",
     "machdyne_konfekt.json",
     "machdyne_kopflos.json",
+    "machdyne_krote.json",
     "machdyne_lakritz.json",
     "machdyne_minze.json",
     "machdyne_noir.json",
@@ -104,13 +123,16 @@
     "microphase_a7_lite.json",
     "microsoft_catapult_v3.json",
     "mist.json",
+    "mlkpai_fs01_dr1v90m.json",
     "modretro_chromatic.json",
+    "muselab_icesugar.json",
     "muselab_icesugar_pro.json",
     "myir_myc_j7a100t.json",
     "myminieye_runber.json",
     "newae_cw305.json",
     "numato_aller.json",
     "numato_mimas_a7.json",
+    "numato_nereid.json",
     "numato_tagus.json",
     "ocp_tap_timecard.json",
     "olimex_gatemate_a1_evb.json",
@@ -130,8 +152,11 @@
     "qmtech_ep4cgx150.json",
     "qmtech_kintex7_devboard.json",
     "qmtech_wukong.json",
+    "qmtech_wukong_revision-1.json",
     "qmtech_xc7a35t.json",
     "qmtech_xc7k325t.json",
+    "quicklogic_quickfeather.json",
+    "qwertyembedded_beaglewire.json",
     "radiona_ulx3s.json",
     "radiona_ulx4m_ld_v2.json",
     "radiona_ulx4m_ls_v2.json",
@@ -141,6 +166,7 @@
     "scarabhardware_minispartan6.json",
     "seeedstudio_spartan_edge_accelerator.json",
     "siglent_sds1104xe.json",
+    "signaloid_c0_microsd.json",
     "sipeed_tang_console.json",
     "sipeed_tang_mega_138k.json",
     "sipeed_tang_mega_138k_pro.json",
@@ -148,13 +174,23 @@
     "sipeed_tang_nano_20k.json",
     "sipeed_tang_nano_4k.json",
     "sipeed_tang_nano_9k.json",
+    "sipeed_tang_primer.json",
     "sitlinv_a_e115fb.json",
+    "sitlinv_stlv7325_v1.json",
+    "sitlinv_stlv7325_v2.json",
+    "sitlinv_xc7k420t.json",
     "sqrl_acorn.json",
     "sqrl_fk33.json",
+    "sqrl_xcu1525.json",
     "terasic_atum_a3_nano.json",
+    "terasic_de0nano.json",
+    "terasic_de10lite.json",
     "terasic_de10nano.json",
+    "terasic_de1soc.json",
     "terasic_de2_115.json",
+    "terasic_deca.json",
     "terasic_sockit.json",
+    "tinyfpga_bx.json",
     "trellisboard.json",
     "trenz_c10lpek.json",
     "trenz_c10lprefkit.json",
@@ -162,7 +198,9 @@
     "trenz_cyc1000.json",
     "trenz_max1000.json",
     "trenz_mega65.json",
+    "trenz_mf_c10lp_001.json",
     "trenz_s7mini.json",
+    "trenz_smf2000.json",
     "trenz_te0710.json",
     "trenz_te0711.json",
     "trenz_te0725.json",
@@ -170,11 +208,25 @@
     "trenz_te0890.json",
     "trenz_tec0117.json",
     "trenz_tel0025.json",
+    "trenz_tem0006.json",
     "tul_pynq_z2.json",
+    "xilinx_ac701.json",
+    "xilinx_alveo_u200.json",
+    "xilinx_alveo_u250.json",
+    "xilinx_alveo_u280.json",
+    "xilinx_kc705.json",
+    "xilinx_kcu105.json",
     "xilinx_kcu116.json",
     "xilinx_sp605.json",
+    "xilinx_vc707.json",
+    "xilinx_vcu118.json",
+    "xilinx_vcu128.json",
+    "xilinx_zc706.json",
     "xilinx_zcu102.json",
-    "xilinx_zcu216.json"
+    "xilinx_zcu104.json",
+    "xilinx_zcu106.json",
+    "xilinx_zcu216.json",
+    "ypcb_00338_1p1.json"
   ],
   "ledger": {
     "adi_adrv2crr_fmc.py": "boards: adi_adrv2crr_fmc.json",
@@ -182,10 +234,10 @@
     "adiuvo_forgix.py": "boards: adiuvo_forgix.json",
     "alchitry_au.py": "boards: alchitry_au.json",
     "alchitry_au_v2.py": "boards: alchitry_au_v2.json",
-    "alchitry_cu.py": "error: NameError: LatticeiCE40Platform",
+    "alchitry_cu.py": "boards: alchitry_cu.json",
     "alchitry_mojo.py": "boards: alchitry_mojo.json",
     "alchitry_pt_v2.py": "boards: alchitry_pt_v2.json",
-    "alibaba_vu13p.py": "error: TypeError",
+    "alibaba_vu13p.py": "boards: alibaba_vu13p.json",
     "alibaba_xcku3p.py": "boards: alibaba_xcku3p.json",
     "alientek_davincipro.py": "boards: alientek_davincipro.json",
     "aliexpress_xc7k420t.py": "boards: aliexpress_xc7k420t.json",
@@ -198,7 +250,7 @@
     "altera_agilex5e_065b_premium_devkit.py": "boards: altera_agilex5e_065b_premium_devkit.json",
     "analog_pocket.py": "skipped: no_simulatable_io",
     "antmicro_artix_dc_scm.py": "boards: antmicro_artix_dc_scm.json",
-    "antmicro_datacenter_ddr4_test_board.py": "error: TypeError",
+    "antmicro_datacenter_ddr4_test_board.py": "boards: antmicro_datacenter_ddr4_test_board.json",
     "antmicro_ddr5_test_board.py": "boards: antmicro_ddr5_test_board.json",
     "antmicro_ddr5_tester.py": "boards: antmicro_ddr5_tester.json",
     "antmicro_lpddr4_test_board.py": "boards: antmicro_lpddr4_test_board.json",
@@ -206,10 +258,10 @@
     "antmicro_sodimm_ddr5_tester.py": "boards: antmicro_sodimm_ddr5_tester.json",
     "arduino_mkrvidor4000.py": "skipped: no_simulatable_io",
     "arrow_axe5000.py": "boards: arrow_axe5000.json",
-    "avalanche.py": "error: NameError: MicrosemiPlatform",
+    "avalanche.py": "boards: avalanche.json",
     "avnet_aesku40.py": "skipped: no_simulatable_io",
     "berkeleylab_marble.py": "boards: berkeleylab_marble.json",
-    "berkeleylab_marblemini.py": "error: TypeError",
+    "berkeleylab_marblemini.py": "skipped: no_simulatable_io",
     "berkeleylab_obsidian.py": "skipped: no_simulatable_io",
     "bochenjingxin_kintex7_basec.py": "boards: bochenjingxin_kintex7_basec.json",
     "brisbaneSilicon_brs_100_gw1nr9.py": "boards: brisbanesilicon_brs_100_gw1nr9.json",
@@ -217,12 +269,12 @@
     "colognechip_gatemate_evb.py": "boards: colognechip_gatemate_evb.json",
     "colorlight_5a_75b.py": "boards: colorlight_5a_75b.json",
     "colorlight_5a_75e.py": "boards: colorlight_5a_75e.json",
-    "colorlight_i5.py": "error: NameError: copy",
+    "colorlight_i5.py": "boards: colorlight_i5.json",
     "colorlight_i5a_907.py": "boards: colorlight_i5a_907.json",
     "colorlight_i9plus.py": "boards: colorlight_i9plus.json",
     "decklink_intensity_pro_4k.py": "skipped: no_simulatable_io",
     "decklink_mini_4k.py": "skipped: no_simulatable_io",
-    "decklink_quad_hdmi_recorder.py": "error: TypeError",
+    "decklink_quad_hdmi_recorder.py": "skipped: no_simulatable_io",
     "digilent_arty.py": "boards: digilent_arty.json",
     "digilent_arty_s7.py": "boards: digilent_arty_s7.json",
     "digilent_arty_z7.py": "boards: digilent_arty_z7.json",
@@ -230,12 +282,12 @@
     "digilent_basys3.py": "boards: digilent_basys3.json",
     "digilent_cmod_a7.py": "boards: digilent_cmod_a7.json",
     "digilent_genesys2.py": "boards: digilent_genesys2.json",
-    "digilent_netfpga_sume.py": "error: TypeError",
+    "digilent_netfpga_sume.py": "boards: digilent_netfpga_sume.json",
     "digilent_nexys4.py": "boards: digilent_nexys4.json",
     "digilent_nexys4ddr.py": "boards: digilent_nexys4ddr.json",
     "digilent_nexys_video.py": "boards: digilent_nexys_video.json",
-    "digilent_pynq_z1.py": "error: TypeError",
-    "digilent_zedboard.py": "error: TypeError",
+    "digilent_pynq_z1.py": "boards: digilent_pynq_z1.json",
+    "digilent_zedboard.py": "boards: digilent_zedboard.json",
     "digilent_zybo_z7.py": "boards: digilent_zybo_z7.json",
     "ebaz4205.py": "boards: ebaz4205.json",
     "efinix_t8f81_dev_kit.py": "boards: efinix_t8f81_dev_kit.json",
@@ -248,13 +300,13 @@
     "efinix_xyloni_dev_kit.py": "boards: efinix_xyloni_dev_kit.json",
     "ego1.py": "boards: ego1.json",
     "embedfire_rise_pro.py": "boards: embedfire_rise_pro.json",
-    "enclustra_mercury_kx2.py": "error: TypeError",
+    "enclustra_mercury_kx2.py": "boards: enclustra_mercury_kx2.json",
     "enclustra_mercury_xu5.py": "boards: enclustra_mercury_xu5.json",
     "enclustra_mercury_xu8_pe3.py": "boards: enclustra_mercury_xu8_pe3.json",
     "enclustra_st1.py": "skipped: not_a_board",
     "fairwaves_xtrx.py": "boards: fairwaves_xtrx.json",
     "fpc_iii.py": "boards: fpc_iii.json",
-    "fpgawars_alhambra2.py": "error: NameError: LatticeiCE40Platform",
+    "fpgawars_alhambra2.py": "boards: fpgawars_alhambra2.json",
     "gadgetfactory_papilio_pro.py": "boards: gadgetfactory_papilio_pro.json",
     "gmm7550.py": "boards: gmm7550.json",
     "gsd_butterstick.py": "boards: gsd_butterstick.json",
@@ -262,16 +314,16 @@
     "hackaday_hadbadge.py": "boards: hackaday_hadbadge.json",
     "hseda_xc7a35t.py": "boards: hseda_xc7a35t.json",
     "hyvision_pcie_opt01_revf.py": "boards: hyvision_pcie_opt01_revf.json",
-    "ice_v_wireless.py": "error: NameError: LatticeiCE40Platform",
-    "icebreaker.py": "error: NameError: LatticeiCE40Platform",
-    "icebreaker_bitsy.py": "error: NameError: LatticeiCE40Platform",
+    "ice_v_wireless.py": "boards: ice_v_wireless.json",
+    "icebreaker.py": "boards: icebreaker.json",
+    "icebreaker_bitsy.py": "boards: icebreaker_bitsy.json",
     "icepi_zero.py": "boards: icepi_zero.json",
     "intergalaktik_ulx5m_gs.py": "boards: intergalaktik_ulx5m_gs.json",
     "isx_im1283.py": "boards: isx_im1283.json",
     "jungle_electronics_fireant.py": "boards: jungle_electronics_fireant.json",
-    "kosagi_fomu_evt.py": "error: NameError: LatticeiCE40Platform",
-    "kosagi_fomu_hacker.py": "error: NameError: LatticeiCE40Platform",
-    "kosagi_fomu_pvt.py": "error: NameError: LatticeiCE40Platform",
+    "kosagi_fomu_evt.py": "boards: kosagi_fomu_evt.json",
+    "kosagi_fomu_hacker.py": "boards: kosagi_fomu_hacker.json",
+    "kosagi_fomu_pvt.py": "boards: kosagi_fomu_pvt.json",
     "kosagi_netv2.py": "boards: kosagi_netv2.json",
     "krtkl_snickerdoodle.py": "boards: krtkl_snickerdoodle.json",
     "lambdaconcept_ecpix5.py": "boards: lambdaconcept_ecpix5.json",
@@ -284,8 +336,8 @@
     "lattice_crosslink_nx_vip.py": "boards: lattice_crosslink_nx_vip.json",
     "lattice_ecp5_evn.py": "boards: lattice_ecp5_evn.json",
     "lattice_ecp5_vip.py": "boards: lattice_ecp5_vip.json",
-    "lattice_ice40up5k_evn.py": "error: NameError: LatticeiCE40Platform",
-    "lattice_machxo3.py": "error: NameError: LatticePlatform",
+    "lattice_ice40up5k_evn.py": "boards: lattice_ice40up5k_evn.json",
+    "lattice_machxo3.py": "boards: lattice_machxo3.json",
     "lattice_versa_ecp5.py": "boards: lattice_versa_ecp5.json",
     "lckfb_ljpi.py": "boards: lckfb_ljpi.json",
     "limesdr_mini_v2.py": "boards: limesdr_mini_v2.json",
@@ -296,13 +348,13 @@
     "machdyne_kolsch.py": "boards: machdyne_kolsch.json",
     "machdyne_konfekt.py": "boards: machdyne_konfekt.json",
     "machdyne_kopflos.py": "boards: machdyne_kopflos.json",
-    "machdyne_krote.py": "error: NameError: LatticeiCE40Platform",
+    "machdyne_krote.py": "boards: machdyne_krote.json",
     "machdyne_lakritz.py": "boards: machdyne_lakritz.json",
     "machdyne_minze.py": "boards: machdyne_minze.json",
     "machdyne_mozart_ml1.py": "skipped: no_simulatable_io",
     "machdyne_mozart_ml2.py": "skipped: no_simulatable_io",
-    "machdyne_mozart_mx1.py": "skipped: not_a_board",
-    "machdyne_mozart_mx2.py": "skipped: not_a_board",
+    "machdyne_mozart_mx1.py": "skipped: no_simulatable_io",
+    "machdyne_mozart_mx2.py": "skipped: no_simulatable_io",
     "machdyne_noir.py": "boards: machdyne_noir.json",
     "machdyne_schoko.py": "boards: machdyne_schoko.json",
     "machdyne_vanille.py": "boards: machdyne_vanille.json",
@@ -311,17 +363,17 @@
     "microphase_a7_lite.py": "boards: microphase_a7_lite.json",
     "microsoft_catapult_v3.py": "boards: microsoft_catapult_v3.json",
     "mist.py": "boards: mist.json",
-    "mlkpai_fs01_dr1v90m.py": "error: NameError: AnlogicPlatform",
+    "mlkpai_fs01_dr1v90m.py": "boards: mlkpai_fs01_dr1v90m.json",
     "mnt_rkx7.py": "skipped: no_simulatable_io",
     "modretro_chromatic.py": "boards: modretro_chromatic.json",
-    "muselab_icesugar.py": "error: NameError: LatticeiCE40Platform",
+    "muselab_icesugar.py": "boards: muselab_icesugar.json",
     "muselab_icesugar_pro.py": "boards: muselab_icesugar_pro.json",
     "myir_myc_j7a100t.py": "boards: myir_myc_j7a100t.json",
     "myminieye_runber.py": "boards: myminieye_runber.json",
     "newae_cw305.py": "boards: newae_cw305.json",
     "numato_aller.py": "boards: numato_aller.json",
     "numato_mimas_a7.py": "boards: numato_mimas_a7.json",
-    "numato_nereid.py": "error: TypeError",
+    "numato_nereid.py": "boards: numato_nereid.json",
     "numato_tagus.py": "boards: numato_tagus.json",
     "ocp_tap_timecard.py": "boards: ocp_tap_timecard.json",
     "olimex_gatemate_a1_evb.py": "boards: olimex_gatemate_a1_evb.json",
@@ -336,17 +388,17 @@
     "qmtech_artix7_fbg484.py": "boards: qmtech_artix7_fbg484.json",
     "qmtech_artix7_fgg676.py": "boards: qmtech_artix7_fgg676.json",
     "qmtech_cyclone10_starterkit.py": "boards: qmtech_cyclone10_starterkit.json",
-    "qmtech_daughterboard.py": "error: NameError: Module",
+    "qmtech_daughterboard.py": "skipped: not_a_board",
     "qmtech_ep4ce15_starter_kit.py": "boards: qmtech_ep4ce15_starter_kit.json",
     "qmtech_ep4cex5.py": "boards: qmtech_ep4cex5.json",
     "qmtech_ep4cgx150.py": "boards: qmtech_ep4cgx150.json",
     "qmtech_kintex7_devboard.py": "boards: qmtech_kintex7_devboard.json",
     "qmtech_rp2040_daughterboard.py": "skipped: not_a_board",
-    "qmtech_wukong.py": "boards: qmtech_wukong.json",
+    "qmtech_wukong.py": "boards: qmtech_wukong.json, qmtech_wukong_revision-1.json",
     "qmtech_xc7a35t.py": "boards: qmtech_xc7a35t.json",
     "qmtech_xc7k325t.py": "boards: qmtech_xc7k325t.json",
-    "quicklogic_quickfeather.py": "error: NameError: QuickLogicPlatform",
-    "qwertyembedded_beaglewire.py": "error: NameError: LatticeiCE40Platform",
+    "quicklogic_quickfeather.py": "boards: quicklogic_quickfeather.json",
+    "qwertyembedded_beaglewire.py": "boards: qwertyembedded_beaglewire.json",
     "radiona_ulx3s.py": "boards: radiona_ulx3s.json",
     "radiona_ulx4m_ld_v2.py": "boards: radiona_ulx4m_ld_v2.json",
     "radiona_ulx4m_ls_v2.py": "boards: radiona_ulx4m_ls_v2.json",
@@ -357,7 +409,7 @@
     "scarabhardware_minispartan6.py": "boards: scarabhardware_minispartan6.json",
     "seeedstudio_spartan_edge_accelerator.py": "boards: seeedstudio_spartan_edge_accelerator.json",
     "siglent_sds1104xe.py": "boards: siglent_sds1104xe.json",
-    "signaloid_c0_microsd.py": "error: NameError: LatticeiCE40Platform",
+    "signaloid_c0_microsd.py": "boards: signaloid_c0_microsd.json",
     "sipeed_slogic16u3.py": "skipped: no_simulatable_io",
     "sipeed_tang_console.py": "boards: sipeed_tang_console.json",
     "sipeed_tang_mega_138k.py": "boards: sipeed_tang_mega_138k.json",
@@ -366,25 +418,25 @@
     "sipeed_tang_nano_20k.py": "boards: sipeed_tang_nano_20k.json",
     "sipeed_tang_nano_4k.py": "boards: sipeed_tang_nano_4k.json",
     "sipeed_tang_nano_9k.py": "boards: sipeed_tang_nano_9k.json",
-    "sipeed_tang_primer.py": "error: NameError: AnlogicPlatform",
+    "sipeed_tang_primer.py": "boards: sipeed_tang_primer.json",
     "sipeed_tang_primer_20k.py": "skipped: no_simulatable_io",
     "sipeed_tang_primer_25k.py": "skipped: no_simulatable_io",
     "sitlinv_a_e115fb.py": "boards: sitlinv_a_e115fb.json",
-    "sitlinv_stlv7325_v1.py": "skipped: not_a_board",
-    "sitlinv_stlv7325_v2.py": "skipped: not_a_board",
-    "sitlinv_xc7k420t.py": "skipped: not_a_board",
+    "sitlinv_stlv7325_v1.py": "boards: sitlinv_stlv7325_v1.json",
+    "sitlinv_stlv7325_v2.py": "boards: sitlinv_stlv7325_v2.json",
+    "sitlinv_xc7k420t.py": "boards: sitlinv_xc7k420t.json",
     "sqrl_acorn.py": "boards: sqrl_acorn.json",
     "sqrl_fk33.py": "boards: sqrl_fk33.json",
-    "sqrl_xcu1525.py": "error: TypeError",
+    "sqrl_xcu1525.py": "boards: sqrl_xcu1525.json",
     "terasic_atum_a3_nano.py": "boards: terasic_atum_a3_nano.json",
-    "terasic_de0nano.py": "error: TypeError",
-    "terasic_de10lite.py": "error: TypeError",
+    "terasic_de0nano.py": "boards: terasic_de0nano.json",
+    "terasic_de10lite.py": "boards: terasic_de10lite.json",
     "terasic_de10nano.py": "boards: terasic_de10nano.json",
-    "terasic_de1soc.py": "error: TypeError",
+    "terasic_de1soc.py": "boards: terasic_de1soc.json",
     "terasic_de2_115.py": "boards: terasic_de2_115.json",
-    "terasic_deca.py": "error: TypeError",
+    "terasic_deca.py": "boards: terasic_deca.json",
     "terasic_sockit.py": "boards: terasic_sockit.json",
-    "tinyfpga_bx.py": "error: NameError: LatticeiCE40Platform",
+    "tinyfpga_bx.py": "boards: tinyfpga_bx.json",
     "trellisboard.py": "boards: trellisboard.json",
     "trenz_c10lpek.py": "boards: trenz_c10lpek.json",
     "trenz_c10lprefkit.py": "boards: trenz_c10lprefkit.json",
@@ -392,11 +444,11 @@
     "trenz_cyc1000.py": "boards: trenz_cyc1000.json",
     "trenz_max1000.py": "boards: trenz_max1000.json",
     "trenz_mega65.py": "boards: trenz_mega65.json",
-    "trenz_mf001_intel.py": "error: TypeError",
-    "trenz_mf_c10lp_001.py": "error: TypeError",
-    "trenz_mf_max10_001.py": "error: TypeError",
+    "trenz_mf001_intel.py": "skipped: no_simulatable_io",
+    "trenz_mf_c10lp_001.py": "boards: trenz_mf_c10lp_001.json",
+    "trenz_mf_max10_001.py": "skipped: no_simulatable_io",
     "trenz_s7mini.py": "boards: trenz_s7mini.json",
-    "trenz_smf2000.py": "error: NameError: MicrosemiPlatform",
+    "trenz_smf2000.py": "boards: trenz_smf2000.json",
     "trenz_te0710.py": "boards: trenz_te0710.json",
     "trenz_te0711.py": "boards: trenz_te0711.json",
     "trenz_te0725.py": "boards: trenz_te0725.json",
@@ -404,287 +456,28 @@
     "trenz_te0890.py": "boards: trenz_te0890.json",
     "trenz_tec0117.py": "boards: trenz_tec0117.json",
     "trenz_tel0025.py": "boards: trenz_tel0025.json",
-    "trenz_tem0006.py": "error: NameError: MicrosemiPlatform",
+    "trenz_tem0006.py": "boards: trenz_tem0006.json",
     "tul_pynq_z2.py": "boards: tul_pynq_z2.json",
-    "xilinx_ac701.py": "error: TypeError",
-    "xilinx_alveo_u200.py": "error: TypeError",
-    "xilinx_alveo_u250.py": "error: TypeError",
-    "xilinx_alveo_u280.py": "error: TypeError",
-    "xilinx_kc705.py": "error: TypeError",
-    "xilinx_kcu105.py": "error: TypeError",
+    "xilinx_ac701.py": "boards: xilinx_ac701.json",
+    "xilinx_alveo_u200.py": "boards: xilinx_alveo_u200.json",
+    "xilinx_alveo_u250.py": "boards: xilinx_alveo_u250.json",
+    "xilinx_alveo_u280.py": "boards: xilinx_alveo_u280.json",
+    "xilinx_kc705.py": "boards: xilinx_kc705.json",
+    "xilinx_kcu105.py": "boards: xilinx_kcu105.json",
     "xilinx_kcu116.py": "boards: xilinx_kcu116.json",
     "xilinx_kv260.py": "skipped: no_simulatable_io",
     "xilinx_sp605.py": "boards: xilinx_sp605.json",
-    "xilinx_vc707.py": "error: TypeError",
-    "xilinx_vcu118.py": "error: TypeError",
-    "xilinx_vcu128.py": "error: TypeError",
-    "xilinx_zc706.py": "error: TypeError",
+    "xilinx_vc707.py": "boards: xilinx_vc707.json",
+    "xilinx_vcu118.py": "boards: xilinx_vcu118.json",
+    "xilinx_vcu128.py": "boards: xilinx_vcu128.json",
+    "xilinx_zc706.py": "boards: xilinx_zc706.json",
     "xilinx_zcu102.py": "boards: xilinx_zcu102.json",
-    "xilinx_zcu104.py": "error: TypeError",
-    "xilinx_zcu106.py": "error: TypeError",
+    "xilinx_zcu104.py": "boards: xilinx_zcu104.json",
+    "xilinx_zcu106.py": "boards: xilinx_zcu106.json",
     "xilinx_zcu216.py": "boards: xilinx_zcu216.json",
-    "ypcb_00338_1p1.py": "error: TypeError",
+    "ypcb_00338_1p1.py": "boards: ypcb_00338_1p1.json",
     "ztex213.py": "skipped: no_simulatable_io"
   },
-  "warnings": {
-    "alchitry_au.py": [
-      "io_fallback: _io"
-    ],
-    "alchitry_au_v2.py": [
-      "io_fallback: _io"
-    ],
-    "alchitry_mojo.py": [
-      "io_fallback: _io"
-    ],
-    "alchitry_pt_v2.py": [
-      "io_fallback: _io"
-    ],
-    "alientek_davincipro.py": [
-      "io_fallback: _io"
-    ],
-    "aliexpress_xc7k70t.py": [
-      "io_fallback: _io"
-    ],
-    "alinx_ax7203.py": [
-      "io_fallback: _io"
-    ],
-    "altera_agilex5e_065b_premium_devkit.py": [
-      "io_fallback: _io"
-    ],
-    "antmicro_artix_dc_scm.py": [
-      "io_fallback: _io"
-    ],
-    "antmicro_ddr5_test_board.py": [
-      "io_fallback: _io"
-    ],
-    "antmicro_ddr5_tester.py": [
-      "io_fallback: _io"
-    ],
-    "antmicro_lpddr4_test_board.py": [
-      "io_fallback: _io"
-    ],
-    "antmicro_sodimm_ddr5_tester.py": [
-      "io_fallback: _io"
-    ],
-    "arrow_axe5000.py": [
-      "io_fallback: _io"
-    ],
-    "berkeleylab_marble.py": [
-      "io_fallback: _io"
-    ],
-    "brisbaneSilicon_brs_100_gw1nr9.py": [
-      "io_fallback: _io"
-    ],
-    "colorlight_i9plus.py": [
-      "io_fallback: _io"
-    ],
-    "digilent_arty.py": [
-      "io_fallback: _io"
-    ],
-    "digilent_arty_s7.py": [
-      "io_fallback: _io"
-    ],
-    "digilent_atlys.py": [
-      "io_fallback: _io"
-    ],
-    "digilent_cmod_a7.py": [
-      "io_fallback: _io"
-    ],
-    "digilent_genesys2.py": [
-      "io_fallback: _io"
-    ],
-    "digilent_nexys4.py": [
-      "io_fallback: _io"
-    ],
-    "digilent_nexys4ddr.py": [
-      "io_fallback: _io"
-    ],
-    "digilent_nexys_video.py": [
-      "io_fallback: _io"
-    ],
-    "digilent_zybo_z7.py": [
-      "io_fallback: _io"
-    ],
-    "ego1.py": [
-      "io_fallback: _io"
-    ],
-    "embedfire_rise_pro.py": [
-      "io_fallback: _io"
-    ],
-    "fairwaves_xtrx.py": [
-      "io_fallback: _io"
-    ],
-    "hseda_xc7a35t.py": [
-      "io_fallback: _io"
-    ],
-    "isx_im1283.py": [
-      "io_fallback: _io"
-    ],
-    "krtkl_snickerdoodle.py": [
-      "io_fallback: _io"
-    ],
-    "lambdaconcept_pcie_screamer.py": [
-      "io_fallback: _io"
-    ],
-    "lambdaconcept_pcie_screamer_m2.py": [
-      "io_fallback: _io"
-    ],
-    "lattice_certuspro_nx_evn.py": [
-      "io_fallback: _io"
-    ],
-    "lattice_certuspro_nx_versa.py": [
-      "io_fallback: _io"
-    ],
-    "lattice_certuspro_nx_vvml.py": [
-      "io_fallback: _io"
-    ],
-    "lckfb_ljpi.py": [
-      "io_fallback: _io"
-    ],
-    "limesdr_xtrx.py": [
-      "io_fallback: _io"
-    ],
-    "microphase_a7_lite.py": [
-      "io_fallback: _io"
-    ],
-    "microsoft_catapult_v3.py": [
-      "io_fallback: _io"
-    ],
-    "mist.py": [
-      "io_fallback: _io"
-    ],
-    "modretro_chromatic.py": [
-      "io_fallback: _io"
-    ],
-    "myir_myc_j7a100t.py": [
-      "io_fallback: _io"
-    ],
-    "myminieye_runber.py": [
-      "io_fallback: _io"
-    ],
-    "numato_aller.py": [
-      "io_fallback: _io"
-    ],
-    "numato_mimas_a7.py": [
-      "io_fallback: _io"
-    ],
-    "numato_tagus.py": [
-      "io_fallback: _io"
-    ],
-    "ocp_tap_timecard.py": [
-      "io_fallback: _io"
-    ],
-    "opensourcesdrlab_kintex7.py": [
-      "io_fallback: _io"
-    ],
-    "pano_logic_g2.py": [
-      "io_fallback: _io"
-    ],
-    "puzhi_pz_a7xxt_kfb.py": [
-      "io_fallback: _io"
-    ],
-    "qmtech_10cl006.py": [
-      "io_fallback: _io"
-    ],
-    "qmtech_5cefa2.py": [
-      "io_fallback: _io"
-    ],
-    "qmtech_5cefa5.py": [
-      "io_fallback: _io"
-    ],
-    "qmtech_artix7_fbg484.py": [
-      "io_fallback: _io"
-    ],
-    "qmtech_artix7_fgg676.py": [
-      "io_fallback: _io"
-    ],
-    "qmtech_cyclone10_starterkit.py": [
-      "io_fallback: _io"
-    ],
-    "qmtech_ep4ce15_starter_kit.py": [
-      "io_fallback: _io"
-    ],
-    "qmtech_kintex7_devboard.py": [
-      "io_fallback: _io"
-    ],
-    "qmtech_wukong.py": [
-      "io_fallback: _io_v2"
-    ],
-    "qmtech_xc7a35t.py": [
-      "io_fallback: _io"
-    ],
-    "qmtech_xc7k325t.py": [
-      "io_fallback: _io"
-    ],
-    "saanlima_pipistrello.py": [
-      "io_fallback: _io"
-    ],
-    "siglent_sds1104xe.py": [
-      "io_fallback: _io"
-    ],
-    "sipeed_tang_console.py": [
-      "io_fallback: _io"
-    ],
-    "sipeed_tang_mega_138k.py": [
-      "io_fallback: _io"
-    ],
-    "sipeed_tang_mega_138k_pro.py": [
-      "io_fallback: _io"
-    ],
-    "sipeed_tang_nano.py": [
-      "io_fallback: _io"
-    ],
-    "sipeed_tang_nano_20k.py": [
-      "io_fallback: _io"
-    ],
-    "sipeed_tang_nano_4k.py": [
-      "io_fallback: _io"
-    ],
-    "sipeed_tang_nano_9k.py": [
-      "io_fallback: _io"
-    ],
-    "sqrl_acorn.py": [
-      "io_fallback: _io"
-    ],
-    "terasic_atum_a3_nano.py": [
-      "io_fallback: _io"
-    ],
-    "trenz_c10lpek.py": [
-      "io_fallback: _io"
-    ],
-    "trenz_cr00010.py": [
-      "io_fallback: _io"
-    ],
-    "trenz_max1000.py": [
-      "io_fallback: _io"
-    ],
-    "trenz_mega65.py": [
-      "io_fallback: _io"
-    ],
-    "trenz_s7mini.py": [
-      "io_fallback: _io"
-    ],
-    "trenz_te0710.py": [
-      "io_fallback: _io"
-    ],
-    "trenz_te0711.py": [
-      "io_fallback: _io"
-    ],
-    "trenz_te0725.py": [
-      "io_fallback: _io"
-    ],
-    "trenz_te0741.py": [
-      "io_fallback: _io"
-    ],
-    "trenz_te0890.py": [
-      "io_fallback: _io"
-    ],
-    "trenz_tel0025.py": [
-      "io_fallback: _io"
-    ],
-    "xilinx_zcu216.py": [
-      "io_fallback: _io"
-    ]
-  },
+  "warnings": {},
   "orphans": []
 }

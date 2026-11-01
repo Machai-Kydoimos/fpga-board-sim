@@ -2,7 +2,7 @@
   "name": "Numato Tagus",
   "class_name": "NumatoTagusPlatform",
   "vendor": "Xilinx",
-  "device": "",
+  "device": "xc7a200t-fbg484-2",
   "package": "",
   "clocks": [
     {
@@ -19,21 +19,6 @@
       "number": 0,
       "pins": [
         "W21"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "rgb_led",
-      "number": 0,
-      "pins": [
-        "W21",
-        "W22",
-        "AA20"
       ],
       "direction": "o",
       "inverted": false,
@@ -67,6 +52,21 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
       }
+    },
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "W21",
+        "W22",
+        "AA20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
     }
   ],
   "buttons": [],
@@ -89,6 +89,6 @@
     "upstream_file": "numato_tagus.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }

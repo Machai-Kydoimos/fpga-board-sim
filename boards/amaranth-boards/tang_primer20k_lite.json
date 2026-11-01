@@ -2,7 +2,7 @@
   "name": "Tang Primer20k Lite",
   "class_name": "TangPrimer20kLitePlatform",
   "vendor": "Gowin",
-  "device": "",
+  "device": "GW2A-LV18PG256C8/I7",
   "package": "",
   "clocks": [
     27000000.0
@@ -75,6 +75,6 @@
     "upstream_file": "tang_primer_20k.py",
     "upstream_class": "TangPrimer20kLitePlatform",
     "sync_commit": "be069dfd490b31df215337afac35711994a52418",
-    "sync_timestamp": "2026-10-31T23:32:50.118937+00:00"
+    "sync_timestamp": "2026-11-01T03:02:01.378669+00:00"
   }
 }

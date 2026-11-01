@@ -5,7 +5,7 @@
   "device": "5CSEBA6",
   "package": "U19",
   "clocks": [],
-  "default_clock_hz": 12000000.0,
+  "default_clock_hz": 100000000.0,
   "leds": [
     {
       "name": "led",
@@ -54,6 +54,6 @@
     "upstream_file": "chameleon96.py",
     "upstream_class": "Chameleon96Platform",
     "sync_commit": "be069dfd490b31df215337afac35711994a52418",
-    "sync_timestamp": "2026-10-31T23:32:50.118937+00:00"
+    "sync_timestamp": "2026-11-01T03:02:01.378669+00:00"
   }
 }

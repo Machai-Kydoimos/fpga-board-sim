@@ -706,8 +706,12 @@ _REACHABLE_ONLY_BY_FILE = [
     "litex-boards/alchitry_au",
     "litex-boards/alchitry_pt_v2",
     "litex-boards/ebaz4205",
+    # Recovered by U56 Phase 1c (LiteX iCE40 vendor key); each shares its Amaranth twin's name.
+    "litex-boards/icebreaker",
+    "litex-boards/icebreaker_bitsy",
     "litex-boards/logicbone",
     "litex-boards/mist",
+    "litex-boards/tinyfpga_bx",
 ]
 
 

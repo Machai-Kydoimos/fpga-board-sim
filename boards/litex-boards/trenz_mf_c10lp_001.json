@@ -1,0 +1,53 @@
+{
+  "name": "Trenz Mf C10lp 001",
+  "class_name": "TrenzMfC10lp001Platform",
+  "vendor": "Intel",
+  "device": "10CL055YU484A7G",
+  "package": "",
+  "clocks": [
+    {
+      "name": "sys_clk",
+      "hz": 80000000.0,
+      "pin": "",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 80000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "C18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "sys_clk",
+      "leds": {
+        "name": "user_led",
+        "width": 1
+      },
+      "naming": "framework-derived"
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "trenz_mf_c10lp_001.py",
+    "upstream_class": "Platform",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

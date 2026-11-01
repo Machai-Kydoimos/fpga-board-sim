@@ -2,7 +2,7 @@
   "name": "Lattice Certuspro Nx Vvml",
   "class_name": "LatticeCertusproNxVvmlPlatform",
   "vendor": "Lattice",
-  "device": "",
+  "device": "LFCPNX-100-9BBG484I",
   "package": "",
   "clocks": [
     {
@@ -33,40 +33,10 @@
       }
     },
     {
-      "name": "rgb_led",
-      "number": 0,
-      "pins": [
-        "P2",
-        "P1",
-        "P3"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "led",
       "number": 1,
       "pins": [
         "M7"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "rgb_led",
-      "number": 1,
-      "pins": [
-        "R3",
-        "R4",
-        "P4"
       ],
       "direction": "o",
       "inverted": false,
@@ -93,6 +63,36 @@
       "number": 3,
       "pins": [
         "N5"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "P2",
+        "P1",
+        "P3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 1,
+      "pins": [
+        "R3",
+        "R4",
+        "P4"
       ],
       "direction": "o",
       "inverted": false,
@@ -205,6 +205,6 @@
     "upstream_file": "lattice_certuspro_nx_vvml.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }

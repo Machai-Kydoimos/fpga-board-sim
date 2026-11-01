@@ -2,7 +2,7 @@
   "name": "Tang Nano9k",
   "class_name": "TangNano9kPlatform",
   "vendor": "Gowin",
-  "device": "",
+  "device": "GW1NR-LV9QN88PC6/I5",
   "package": "",
   "clocks": [
     27000000.0
@@ -157,6 +157,6 @@
     "upstream_file": "tang_nano_9k.py",
     "upstream_class": "TangNano9kPlatform",
     "sync_commit": "be069dfd490b31df215337afac35711994a52418",
-    "sync_timestamp": "2026-10-31T23:32:50.118937+00:00"
+    "sync_timestamp": "2026-11-01T03:02:01.378669+00:00"
   }
 }

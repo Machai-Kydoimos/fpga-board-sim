@@ -2,7 +2,7 @@
   "name": "Qmtech Wukong",
   "class_name": "QmtechWukongPlatform",
   "vendor": "Xilinx",
-  "device": "",
+  "device": "xc7a100t-2fgg676",
   "package": "",
   "clocks": [
     {
@@ -41,7 +41,21 @@
       }
     }
   ],
-  "buttons": [],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "H7"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
   "switches": [],
   "seven_seg": null,
   "port_conventions": {
@@ -52,7 +66,11 @@
         "name": "user_led",
         "width": 2
       },
-      "naming": "framework-derived"
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "user_btn",
+        "width": 1
+      }
     }
   },
   "$schema": "../schema/board.schema.json",
@@ -64,6 +82,6 @@
       "revision": 2
     },
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }

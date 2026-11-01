@@ -2,7 +2,7 @@
   "name": "Myir Myc J7a100t",
   "class_name": "MyirMycJ7a100tPlatform",
   "vendor": "Xilinx",
-  "device": "",
+  "device": "xc7a100tfgg484-2",
   "package": "",
   "clocks": [
     {
@@ -92,6 +92,6 @@
     "upstream_file": "myir_myc_j7a100t.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }

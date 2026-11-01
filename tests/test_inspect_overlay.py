@@ -637,11 +637,12 @@ def test_the_led_index_is_a_widget_index_not_a_channel_index(
 ) -> None:
     """The address indexes widgets; the screenshot manifest indexes channels.
 
-    They coincide only while a board is all-mono, and the docs used to claim
+    They coincide only up to the first RGB site, and the docs used to claim
     they always did -- caught by working a real report against the 8-mono +
-    4-RGB Myminieye Runber, where ``board.led[7]`` is the fourth RGB site and
-    the manifest's channel 7 is the eighth mono LED. A reader who mixed them up
-    would file a report against the wrong LED.
+    4-RGB Myminieye Runber.  Its LEDs are drawn mono first since U56 defect 24,
+    so ``board.led[9]`` is the second RGB site while the manifest's channel 9
+    is the *first* site's green channel. A reader who mixed them up would file
+    a report against the wrong LED.
     """
     from fpga_sim.board_loader import discover_boards, find_board, get_default_boards_path
     from fpga_sim.manifest import led_legend
@@ -656,9 +657,9 @@ def test_the_led_index_is_a_widget_index_not_a_channel_index(
     inspect.set_inspect(True)
     board._draw(flip=False)
 
-    region = next(r for r in inspect.regions() if r.path.endswith("board.led[7]"))
-    # Widget 7 is an RGB site, so the value carries three channels.
-    assert isinstance(board.leds[7], RGBLED)
+    region = next(r for r in inspect.regions() if r.path.endswith("board.led[9]"))
+    # Widget 9 is an RGB site, so the value carries three channels.
+    assert isinstance(board.leds[9], RGBLED)
     assert {k for k, _ in region.value} == {
         "r_duty_pct",
         "r_displayed_pct",
@@ -667,8 +668,8 @@ def test_the_led_index_is_a_widget_index_not_a_channel_index(
         "b_duty_pct",
         "b_displayed_pct",
     }
-    # Channel 7 in the manifest's numbering is a different LED entirely.
-    assert led_legend(board_def)[7]["role"] == "mono"
+    # Channel 9 in the manifest's numbering is a different LED: the first site's green.
+    assert led_legend(board_def)[9]["role"] == "g"
     assert len(board.leds) != board_def.num_led_channels, (
         "this board cannot distinguish the two numberings"
     )

@@ -13,7 +13,7 @@ boundary-channel numbering `manifest.json`'s LED legend uses: an RGB site is one
 widget but three channels, so on a 8-mono + 4-RGB board `sim.board.led[7]` is the
 fourth RGB site while the legend's index 7 is the eighth mono LED.
 
-79 addresses.
+80 addresses.
 
 | Address | Kind | Registered at |
 | --- | --- | --- |
@@ -67,6 +67,7 @@ fourth RGB site while the legend's index 7 is the eighth mono LED.
 | `select.header.chip.vendor.gowin` | widget | `fpga_sim/ui/board_selector.py:572` |
 | `select.header.chip.vendor.intel` | widget | `fpga_sim/ui/board_selector.py:572` |
 | `select.header.chip.vendor.lattice` | widget | `fpga_sim/ui/board_selector.py:572` |
+| `select.header.chip.vendor.microsemi` | widget | `fpga_sim/ui/board_selector.py:572` |
 | `select.header.chip.vendor.other` | widget | `fpga_sim/ui/board_selector.py:572` |
 | `select.header.chip.vendor.xilinx` | widget | `fpga_sim/ui/board_selector.py:572` |
 | `select.header.help` | item | `fpga_sim/ui/help_dialog.py:337` |

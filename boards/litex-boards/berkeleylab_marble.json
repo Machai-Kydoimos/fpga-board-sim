@@ -2,7 +2,7 @@
   "name": "Berkeleylab Marble",
   "class_name": "BerkeleylabMarblePlatform",
   "vendor": "Xilinx",
-  "device": "",
+  "device": "xc7k160t-ffg676-2",
   "package": "",
   "clocks": [
     {
@@ -71,6 +71,6 @@
     "upstream_file": "berkeleylab_marble.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }

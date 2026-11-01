@@ -157,6 +157,16 @@ def test_a_recorded_identity_keeps_its_file_when_upstream_changes_the_default(tm
     assert _load(folder, "qmtech_wukong_revision-1.json")["source"]["upstream_args"] == {
         "revision": 1
     }
+    revision_1 = _load(folder, "qmtech_wukong_revision-1.json")
+    # (class_name, source) stays unique for recents: the version joins both names (§4.1).
+    assert revision_1["class_name"] == "QmtechWukongRevision1Platform"
+    assert revision_1["name"] == "Qmtech Wukong (revision 1)"
+    assert _load(folder, "qmtech_wukong.json")["class_name"] == "QmtechWukongPlatform"
+
+    # A second sync pairs both files by identity, and each keeps its own names.
+    snapshot = {p.name: p.read_bytes() for p in folder.glob("*.json")}
+    _sync(folder, {"qmtech_wukong.py": wukong})
+    assert {p.name: p.read_bytes() for p in folder.glob("*.json")} == snapshot
 
 
 def test_new_boards_are_named_from_their_upstream_file_never_their_display_name(tmp_path):
@@ -290,12 +300,12 @@ def test_the_ledger_and_its_warnings_land_in_the_metadata(tmp_path):
         "b.py": lambda args: ParseOutcome(outcome="skipped", detail="not_a_board"),
         "c.py": lambda args: ParseOutcome(outcome="error", detail="TypeError"),
     }
-    _sync(folder, table)
+    _sync(folder, table, [Acceptance(ORIGIN, "c.py", "error", "Upstream's file is broken.")])
     meta = _meta(folder)
     assert meta["ledger"] == {
         "a.py": "boards: a.json",
         "b.py": "skipped: not_a_board",
-        "c.py": "error: TypeError",
+        "c.py": "error: TypeError (accepted)",
     }
     assert meta["warnings"] == {"a.py": ["io_fallback: _io"]}
     assert meta["orphans"] == []
@@ -307,8 +317,10 @@ def test_a_parser_that_raises_still_reaches_the_ledger(tmp_path):
     def boom(args):
         raise KeyError("unexpected")
 
-    _sync(folder, {"k.py": boom})
-    assert _meta(folder)["ledger"] == {"k.py": "error: KeyError"}
+    with pytest.raises(SyncFailureError, match="our parser failed on k.py \\(KeyError\\)"):
+        _sync(folder, {"k.py": boom})
+    _sync(folder, {"k.py": boom}, [Acceptance(ORIGIN, "k.py", "error", "Accepted for the test.")])
+    assert _meta(folder)["ledger"] == {"k.py": "error: KeyError (accepted)"}
 
 
 def test_error_details_stay_stable_across_python_versions():
@@ -427,3 +439,11 @@ def test_a_file_the_sync_does_not_own_is_never_overwritten(tmp_path):
     with pytest.raises(SyncFailureError, match="already taken by a file this sync does not own"):
         _sync(folder, {"solo.py": _boards(_produced("Solo", "solo.py"))})
     assert (folder / "solo.json").read_bytes() == before
+
+
+def test_two_boards_never_share_a_class_name(tmp_path):
+    folder = tmp_path / ORIGIN
+    _write(folder, "a.json", _board("Same", "a.py"))
+    clash = _produced("Same", "b.py")  # a different file whose board has the same class_name
+    with pytest.raises(SyncFailureError, match="would share class_name SamePlatform"):
+        _sync(folder, {"a.py": _boards(_produced("Same", "a.py")), "b.py": _boards(clash)})

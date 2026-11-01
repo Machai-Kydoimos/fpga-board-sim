@@ -2,12 +2,12 @@
   "name": "Tang Nano",
   "class_name": "TangNanoPlatform",
   "vendor": "Gowin",
-  "device": "",
+  "device": "GW1N-LV1QN48C6/I5",
   "package": "",
   "clocks": [
     24000000
   ],
-  "default_clock_hz": 12000000.0,
+  "default_clock_hz": 24000000.0,
   "leds": [
     {
       "name": "rgb_led",
@@ -62,6 +62,6 @@
     "upstream_file": "tang_nano.py",
     "upstream_class": "TangNanoPlatform",
     "sync_commit": "be069dfd490b31df215337afac35711994a52418",
-    "sync_timestamp": "2026-10-31T23:32:50.118937+00:00"
+    "sync_timestamp": "2026-11-01T03:02:01.378669+00:00"
   }
 }

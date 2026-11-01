@@ -1,0 +1,230 @@
+{
+  "name": "Xilinx Ac701",
+  "class_name": "XilinxAc701Platform",
+  "vendor": "Xilinx",
+  "device": "xc7a200t-fbg676-2",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk200",
+      "hz": 200000000.0,
+      "pin": "R3"
+    },
+    {
+      "name": "clk156",
+      "hz": 156250000.0,
+      "pin": "M21",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 156250000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "M26"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "T24"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "T25"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "R26"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "P6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL15"
+      }
+    },
+    {
+      "name": "button__e",
+      "number": 0,
+      "pins": [
+        "U5"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL15"
+      }
+    },
+    {
+      "name": "button__s",
+      "number": 0,
+      "pins": [
+        "T5"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL15"
+      }
+    },
+    {
+      "name": "button__w",
+      "number": 0,
+      "pins": [
+        "R5"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL15"
+      }
+    },
+    {
+      "name": "button__c",
+      "number": 0,
+      "pins": [
+        "U6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL15"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "R8"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL15"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "P8"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL15"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "R7"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL15"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "R6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL15"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk156",
+      "leds": {
+        "name": "user_led",
+        "width": 4
+      },
+      "naming": "framework-derived",
+      "switches": {
+        "name": "user_sw",
+        "width": 4
+      },
+      "buttons": {
+        "names": [
+          "user_btn_c",
+          "user_btn_e",
+          "user_btn_n",
+          "user_btn_s",
+          "user_btn_w"
+        ],
+        "width": 5
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "xilinx_ac701.py",
+    "upstream_class": "Platform",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

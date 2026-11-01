@@ -5,7 +5,7 @@
   "device": "ql-eos-s3_wlcsp",
   "package": "PU64",
   "clocks": [],
-  "default_clock_hz": 12000000.0,
+  "default_clock_hz": 5000000.0,
   "leds": [
     {
       "name": "rgb_led",
@@ -34,20 +34,7 @@
       "attrs": {}
     }
   ],
-  "switches": [
-    {
-      "name": "swd",
-      "number": 0,
-      "pins": [
-        "54",
-        "53"
-      ],
-      "direction": "io",
-      "inverted": false,
-      "connector": null,
-      "attrs": {}
-    }
-  ],
+  "switches": [],
   "seven_seg": null,
   "port_conventions": {},
   "$schema": "../schema/board.schema.json",
@@ -56,6 +43,6 @@
     "upstream_file": "quickfeather.py",
     "upstream_class": "QuickfeatherPlatform",
     "sync_commit": "be069dfd490b31df215337afac35711994a52418",
-    "sync_timestamp": "2026-10-31T23:32:50.118937+00:00"
+    "sync_timestamp": "2026-11-01T03:02:01.378669+00:00"
   }
 }

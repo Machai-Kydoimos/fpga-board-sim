@@ -1,0 +1,90 @@
+{
+  "name": "Upduino V2",
+  "class_name": "UpduinoV2Platform",
+  "vendor": "Lattice",
+  "device": "iCE40UP5K",
+  "package": "SG48",
+  "clocks": [
+    12000000.0
+  ],
+  "default_clock_hz": 48000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "39"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "40"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "41"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "41",
+        "39",
+        "40"
+      ],
+      "direction": "o",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_STANDARD": "SB_LVCMOS"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "amaranth": {
+      "description": "amaranth-boards platform port names (auto-derived from the board .py file)",
+      "clk": "SB_HFOSC",
+      "leds": {
+        "name": "led",
+        "width": 3,
+        "active_low": true
+      },
+      "naming": "framework-derived"
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "upduino_v2.py",
+    "upstream_class": "UpduinoV2Platform",
+    "sync_commit": "be069dfd490b31df215337afac35711994a52418",
+    "sync_timestamp": "2026-11-01T03:02:01.378669+00:00"
+  }
+}

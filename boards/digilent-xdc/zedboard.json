@@ -1,0 +1,277 @@
+{
+  "$schema": "../schema/board.schema.json",
+  "name": "Zedboard",
+  "class_name": "ZedboardPlatform",
+  "vendor": "Xilinx",
+  "device": "xc7z020",
+  "package": "clg484",
+  "clocks": [],
+  "default_clock_hz": 100000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "T22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "T21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "U22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "U21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "V22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "W22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "U19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "U14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button_center",
+      "number": 0,
+      "pins": [
+        "P16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button_up",
+      "number": 1,
+      "pins": [
+        "T18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button_down",
+      "number": 2,
+      "pins": [
+        "R16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button_left",
+      "number": 3,
+      "pins": [
+        "N15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "button_right",
+      "number": 4,
+      "pins": [
+        "R18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "F22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "G22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "H22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "F21"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 4,
+      "pins": [
+        "H19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 5,
+      "pins": [
+        "H18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 6,
+      "pins": [
+        "H17"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    },
+    {
+      "name": "switch",
+      "number": 7,
+      "pins": [
+        "M15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {}
+    }
+  ],
+  "seven_seg": null,
+  "source": {
+    "origin": "digilent-xdc",
+    "upstream_file": "Zedboard-Master.xdc",
+    "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
+    "sync_timestamp": "2026-11-01T03:02:00.347565+00:00"
+  },
+  "port_conventions": {
+    "digilent": {
+      "description": "Digilent Zedboard Master XDC port names",
+      "leds": {
+        "name": "LD0",
+        "width": 8
+      },
+      "switches": {
+        "name": "SW0",
+        "width": 8
+      },
+      "buttons": {
+        "names": [
+          "BTNC",
+          "BTNU",
+          "BTND",
+          "BTNL",
+          "BTNR"
+        ],
+        "active_low": false
+      }
+    }
+  }
+}

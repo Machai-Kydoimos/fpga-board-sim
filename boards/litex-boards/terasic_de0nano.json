@@ -1,0 +1,232 @@
+{
+  "name": "Terasic De0nano",
+  "class_name": "TerasicDe0nanoPlatform",
+  "vendor": "Intel",
+  "device": "EP4CE22F17C6",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk50",
+      "hz": 50000000.0,
+      "pin": "R8",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 50000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "A15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "A13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "B13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "A11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "D1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "F3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "B1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "L3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "J15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "E1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "M1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "T8"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "B9"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "M15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk50",
+      "leds": {
+        "name": "user_led",
+        "width": 8
+      },
+      "naming": "framework-derived",
+      "switches": {
+        "name": "sw",
+        "width": 4
+      },
+      "buttons": {
+        "name": "key",
+        "width": 2
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "terasic_de0nano.py",
+    "upstream_class": "Platform",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

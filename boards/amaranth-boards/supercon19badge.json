@@ -1,0 +1,310 @@
+{
+  "name": "Supercon19 Badge",
+  "class_name": "Supercon19BadgePlatform",
+  "vendor": "Lattice",
+  "device": "LFE5U-45F",
+  "package": "BG381",
+  "clocks": [
+    8000000.0
+  ],
+  "default_clock_hz": 8000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "E3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "D3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "C3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "C4"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "C2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "B1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "B20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "B19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 8,
+      "pins": [
+        "A18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 9,
+      "pins": [
+        "K20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 10,
+      "pins": [
+        "K19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led_cathodes",
+      "number": 0,
+      "pins": [
+        "P19",
+        "L18",
+        "K18"
+      ],
+      "direction": "io",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "G2"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "UP"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "F2"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "UP"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "F1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "UP"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "C1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "UP"
+      }
+    },
+    {
+      "name": "button",
+      "number": 4,
+      "pins": [
+        "E1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "UP"
+      }
+    },
+    {
+      "name": "button",
+      "number": 5,
+      "pins": [
+        "D2"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "UP"
+      }
+    },
+    {
+      "name": "button",
+      "number": 6,
+      "pins": [
+        "D1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "UP"
+      }
+    },
+    {
+      "name": "button",
+      "number": 7,
+      "pins": [
+        "E2"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33",
+        "PULLMODE": "UP"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "amaranth": {
+      "description": "amaranth-boards platform port names (auto-derived from the board .py file)",
+      "clk": "clk8",
+      "leds": {
+        "name": "led",
+        "width": 11
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "button",
+        "width": 8
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "supercon19badge.py",
+    "upstream_class": "Supercon19BadgePlatform",
+    "sync_commit": "be069dfd490b31df215337afac35711994a52418",
+    "sync_timestamp": "2026-11-01T03:02:01.378669+00:00"
+  }
+}

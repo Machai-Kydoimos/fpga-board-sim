@@ -5,8 +5,15 @@
   "vendor": "Xilinx",
   "device": "xczu3eg",
   "package": "sfvc784",
-  "clocks": [],
-  "default_clock_hz": 100000000.0,
+  "clocks": [
+    {
+      "name": "sysclk",
+      "hz": 25000000.0,
+      "pin": "E12",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 25000000.0,
   "leds": [
     {
       "name": "led",
@@ -206,11 +213,12 @@
     "origin": "digilent-xdc",
     "upstream_file": "Genesys-ZU-3EG-D-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-07-22T14:00:30.004965+00:00"
+    "sync_timestamp": "2026-11-01T03:02:00.330075+00:00"
   },
   "port_conventions": {
     "digilent": {
       "description": "Digilent Genesys-ZU-3EG-D Master XDC port names",
+      "clk": "sysclk",
       "leds": {
         "name": "ld",
         "width": 4

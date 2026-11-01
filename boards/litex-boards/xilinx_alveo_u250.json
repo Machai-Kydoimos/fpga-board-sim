@@ -1,0 +1,154 @@
+{
+  "name": "Xilinx Alveo U250",
+  "class_name": "XilinxAlveoU250Platform",
+  "vendor": "Xilinx",
+  "device": "xcu250-figd2104-2L-e",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk300",
+      "hz": 300000000.0,
+      "pin": "AY38",
+      "is_default": true
+    },
+    {
+      "name": "clk300",
+      "hz": 300000000.0,
+      "pin": "AW19",
+      "is_default": true
+    },
+    {
+      "name": "clk300",
+      "hz": 300000000.0,
+      "pin": "E32",
+      "is_default": true
+    },
+    {
+      "name": "clk300",
+      "hz": 300000000.0,
+      "pin": "H16",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 300000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "BC21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "BB21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "BA20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "AN22"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "AM19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "AL19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "AP20"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk300",
+      "leds": {
+        "name": "user_led",
+        "width": 3
+      },
+      "naming": "framework-derived",
+      "switches": {
+        "name": "user_sw",
+        "width": 4
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "xilinx_alveo_u250.py",
+    "upstream_class": "Platform",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

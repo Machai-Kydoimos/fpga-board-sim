@@ -1,0 +1,154 @@
+{
+  "name": "Xilinx Vcu128",
+  "class_name": "XilinxVcu128Platform",
+  "vendor": "Xilinx",
+  "device": "xcvu37p-fsvh2892-2L-e",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk100_ddr4",
+      "hz": 100000000.0,
+      "pin": "BH51",
+      "is_default": true
+    },
+    {
+      "name": "clk100_qdr4",
+      "hz": 100000000.0,
+      "pin": "BJ4"
+    },
+    {
+      "name": "clk100_rld3",
+      "hz": 100000000.0,
+      "pin": "F35"
+    }
+  ],
+  "default_clock_hz": 100000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "BH24"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "BG24"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "BG25"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "BF25"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "BF26"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "BF27"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "BG27"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "BG28"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk100_ddr4",
+      "leds": {
+        "name": "user_led",
+        "width": 8
+      },
+      "naming": "framework-derived"
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "xilinx_vcu128.py",
+    "upstream_class": "Platform",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

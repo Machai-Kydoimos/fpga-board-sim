@@ -1,0 +1,58 @@
+{
+  "name": "Colorlight I5",
+  "class_name": "ColorlightI5Platform",
+  "vendor": "Lattice",
+  "device": "LFE5U-25F-6BG381C",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk25",
+      "hz": 25000000.0,
+      "pin": "P3",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 25000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "U16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk25",
+      "leds": {
+        "name": "user_led_n",
+        "width": 1,
+        "active_low": true
+      },
+      "naming": "framework-derived"
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "colorlight_i5.py",
+    "upstream_class": "Platform",
+    "upstream_args": {
+      "revision": "7.0",
+      "board": "i5"
+    },
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

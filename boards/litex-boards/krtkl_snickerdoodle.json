@@ -2,7 +2,7 @@
   "name": "Krtkl Snickerdoodle",
   "class_name": "KrtklSnickerdoodlePlatform",
   "vendor": "Xilinx",
-  "device": "",
+  "device": "xc7z010-clg400-1",
   "package": "",
   "clocks": [
     {
@@ -51,6 +51,6 @@
       "variant": "z7-10"
     },
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }
