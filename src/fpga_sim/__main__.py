@@ -226,7 +226,10 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
         if note:
             print(f"[benchmark] {note}", file=sys.stderr)
         if orphan := chosen.orphan_note():
-            print(f"[benchmark] {chosen.qualified_name}: {orphan}", file=sys.stderr)
+            lead, *rows = orphan.split("\n")
+            print(f"[benchmark] {chosen.qualified_name}: {lead}", file=sys.stderr)
+            for row in rows:
+                print(f"[benchmark]   {row}", file=sys.stderr)
     else:
         chosen = boards[0]
 

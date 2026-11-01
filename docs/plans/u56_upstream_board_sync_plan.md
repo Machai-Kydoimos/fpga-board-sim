@@ -545,10 +545,14 @@ After generating, for each existing file whose identity was **not** produced:
   the file stays frozen, including `sync_commit` (the last good sync).
 - **Stable:** a re-sync at the same pin re-derives the same mark (keep `orphaned_at_commit` from the
   existing file if already set), so the drift check stays byte-identical.
-- **Successor** (a hint, never an automatic migration): among identities *new in this run*, (a) one
-  from the same `upstream_file`, else (b) the unique one whose normalized content (`leds`,
-  `switches`, `buttons`, `seven_seg`, `clocks`, `device`) equals the orphan's. The 5 Efinix renames
-  match by (b) (verified identical).
+- **Successor** (a hint, never an automatic migration): among identities *new in this run*, the
+  unique one whose normalized content (`leds`, `switches`, `buttons`, `seven_seg`, `clocks`,
+  `device`) equals the orphan's. Among several identical ones, the one from the orphan's own
+  `upstream_file` breaks the tie; otherwise none is named. *Amended 2026-11-01 (Rick: "we should
+  be fairly confident about the possible successor or it may cause confusion"):* a new identity
+  from the same file used to qualify on that alone. With other I/O it is another version, and
+  naming it would send someone to a different board. The 5 Efinix renames match on identical
+  content (verified at the 2026-11-01 heads, each from a renamed file).
 - **Un-orphan:** when an orphaned identity is produced again, the sync overwrites the file and the
   mark disappears.
 - `_sync_metadata.json` gains an `orphans` list.
@@ -663,7 +667,10 @@ including versions that differ only in FPGA part.
   commit\>)."; `no_longer_defined` — "\<source\> no longer defines this version since \<date\>
   (\<short commit\>)."; `no_simulatable_io` — "\<source\> lists no LED, switch or button for this
   board since \<date\> (\<short commit\>)." Each continues: "Your design still runs on this saved
-  copy; it will not receive upstream fixes." plus "Possible successor: \<display name\>" when set.
+  copy; it will not receive upstream fixes." With a successor, two aligned rows follow, so the
+  names can be compared: "This board: \<source\>/\<file\>" and "Successor: \<source\>/\<file\>
+  (same FPGA, clocks and I/O)". Both use the file spelling, because display names repeat across
+  sources (*amended 2026-11-01*: Rick asked for the loaded board's file beside the successor's).
 - `--board` resolution prints the same note to stderr.
 - Session log field `board_upstream_status` (+ `board_successor`).
 - Never blocks a run.

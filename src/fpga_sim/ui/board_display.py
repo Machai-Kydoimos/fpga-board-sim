@@ -321,8 +321,11 @@ class FPGABoard:
         self._led_label_pos: list[tuple[str, int, int]] = []
         # An orphaned board says so above everything else (U56 §4.8); _layout wraps
         # the note to the window and places it, and only then does the board start.
-        self._orphan_note = board_def.orphan_note() if board_def else ""
+        self._orphan_lead, self._orphan_pairs = board_def.orphan_parts() if board_def else ("", [])
         self._orphan_lines: list[str] = []
+        # (label, wrapped value lines): this board's file, then its successor's.
+        self._orphan_rows: list[tuple[str, list[str]]] = []
+        self._orphan_value_x = 0  # the value column, from the banner's left edge
         self._orphan_rect: pygame.Rect | None = None
 
         if board_def and board_def.seven_seg:
@@ -669,16 +672,26 @@ class FPGABoard:
         Only an orphan has one (U56 §4.8), so every other board lays out exactly as
         before.  The note is wrapped to the window rather than truncated: it is the
         one place a person learns that this board will not receive upstream fixes.
+        A successor's two rows share one value column, so this board's file and the
+        successor's start at the same x and can be compared at a glance.
         """
         self._orphan_lines = []
+        self._orphan_rows = []
         self._orphan_rect = None
-        if not self._orphan_note:
+        if not self._orphan_lead:
             return margin
         font = get_font(max(10, round(13 * s)))
         top = max(12, round(16 * s)) + max(24, round(30 * s)) + max(4, round(6 * s))
         width = self.width - 2 * margin
-        self._orphan_lines = _wrap_words(self._orphan_note, font, width)
-        height = len(self._orphan_lines) * font.get_linesize()
+        self._orphan_lines = _wrap_words(self._orphan_lead, font, width)
+        labels = [label for label, _ in self._orphan_pairs]
+        self._orphan_value_x = max((font.size(f"{label} ")[0] for label in labels), default=0)
+        value_w = max(1, width - self._orphan_value_x)
+        self._orphan_rows = [
+            (label, _wrap_words(value, font, value_w)) for label, value in self._orphan_pairs
+        ]
+        lines = len(self._orphan_lines) + sum(len(values) for _, values in self._orphan_rows)
+        height = lines * font.get_linesize()
         self._orphan_rect = pygame.Rect(margin, top, width, height)
         return top + height + gap
 
@@ -1325,11 +1338,17 @@ class FPGABoard:
 
         if self._orphan_rect is not None:
             note_f = get_font(max(10, round(13 * s)))
-            for k, line in enumerate(self._orphan_lines):
-                t = note_f.render(line, True, THEME.warning)
-                self.screen.blit(
-                    t, (self._orphan_rect.x, self._orphan_rect.y + k * note_f.get_linesize())
-                )
+            line_h = note_f.get_linesize()
+            note_x, note_y = self._orphan_rect.topleft
+            for line in self._orphan_lines:
+                self.screen.blit(note_f.render(line, True, THEME.warning), (note_x, note_y))
+                note_y += line_h
+            for label, values in self._orphan_rows:
+                self.screen.blit(note_f.render(label, True, THEME.warning), (note_x, note_y))
+                for value in values:
+                    t = note_f.render(value, True, THEME.warning)
+                    self.screen.blit(t, (note_x + self._orphan_value_x, note_y))
+                    note_y += line_h
 
         for _bank_label, _lx, _ly in self._led_label_pos:
             t = title_font.render(_bank_label, True, WHITE)

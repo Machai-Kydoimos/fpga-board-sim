@@ -311,8 +311,9 @@ class BoardDef:
     orphaned_at_date: str = ""
     #: ``file_removed`` / ``no_longer_defined`` / ``no_simulatable_io``.
     orphaned_reason: str = ""
-    #: ``<source>/<file>.json`` of the board that most likely replaces an orphan (a
-    #: hint, never an automatic migration).
+    #: ``<source>/<file>.json`` of the board that replaces an orphan.  The sync names
+    #: one only when its FPGA, clocks and I/O are identical to the orphan's.  It is a
+    #: hint, never an automatic migration.
     successor: str = ""
 
     @property
@@ -499,28 +500,45 @@ class BoardDef:
     def orphan_note(self) -> str:
         """Return what to tell someone about an orphaned board, else ``""`` (U56 §4.8).
 
-        Why upstream dropped it and since when, that a design still runs on this
-        saved copy, and the board that most likely replaces it -- named by its
-        ``<source>/<file>``, the spelling ``--board`` takes and the one that names
-        exactly one board (display names repeat across sources).  The preview, the
-        ``--board`` resolution and the tests all read this one sentence set.
+        :meth:`orphan_parts` as text: the lead, then one line per row, with the labels
+        padded so the two file names line up in a terminal.  ``--board`` prints it.
+        """
+        lead, rows = self.orphan_parts()
+        if not lead:
+            return ""
+        width = max(len(label) for label, _ in rows) if rows else 0
+        return "\n".join([lead, *(f"{label:<{width}} {value}" for label, value in rows)])
+
+    def orphan_parts(self) -> tuple[str, list[tuple[str, str]]]:
+        """Return an orphan's note as a lead and label/value rows, else ``("", [])``.
+
+        The lead says why upstream dropped the board, since when, and that a design
+        still runs on this saved copy.  With a successor, two rows follow, this
+        board's file and then the successor's, so a reader can compare the names.
+        Both use the ``<source>/<file>`` spelling that ``--board`` takes, the one name
+        that picks exactly one board (display names repeat across sources).  The sync
+        names a successor only when its FPGA, clocks and I/O are identical (§4.3),
+        and the row says so.
         """
         if self.upstream_status != "orphaned":
-            return ""
+            return "", []
         when = [part for part in (self.orphaned_at_date, self.orphaned_at_commit[:7]) if part]
         since = (
             f" since {when[0]} ({when[1]})"
             if len(when) == 2
             else "".join(f" since {part}" for part in when)
         )
-        lead = _ORPHAN_LEADS.get(self.orphaned_reason, "{source} no longer defines it{since}.")
-        parts = [
-            lead.format(source=self.source or "Upstream", since=since),
-            "Your design still runs on this saved copy; it will not receive upstream fixes.",
+        why = _ORPHAN_LEADS.get(self.orphaned_reason, "{source} no longer defines it{since}.")
+        lead = (
+            why.format(source=self.source or "Upstream", since=since)
+            + " Your design still runs on this saved copy; it will not receive upstream fixes."
+        )
+        if not self.successor:
+            return lead, []
+        return lead, [
+            ("This board:", self.qualified_name or self.name),
+            ("Successor:", f"{self.successor.removesuffix('.json')} (same FPGA, clocks and I/O)"),
         ]
-        if self.successor:
-            parts.append(f"Possible successor: {self.successor.removesuffix('.json')}.")
-        return " ".join(parts)
 
     def _orphan_source(self) -> dict[str, str]:
         """Return the orphan fields of the board file's ``source`` block, for ``to_json``."""

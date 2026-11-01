@@ -65,9 +65,26 @@ def test_the_note_says_why_since_when_and_that_the_design_still_runs(reason, lea
     )
 
 
-def test_the_note_names_a_successor_by_the_file_that_opens_it():
-    note = _board(**_ORPHAN, orphaned_reason="file_removed", successor="litex-boards/new.json")
-    assert note.orphan_note().endswith("Possible successor: litex-boards/new.")
+_SUCCESSOR = {**_ORPHAN, "orphaned_reason": "file_removed", "successor": "litex-boards/new.json"}
+
+
+def test_a_successor_is_named_under_this_boards_own_file():
+    # Both by the file that opens them, one above the other, so they can be compared;
+    # the sync names a successor only when its FPGA, clocks and I/O are identical.
+    lead, rows = _board(**_SUCCESSOR).orphan_parts()
+    assert lead.startswith("No longer in litex-boards since 2026-11-02 (97186cf).")
+    assert rows == [
+        ("This board:", "litex-boards/old_board"),
+        ("Successor:", "litex-boards/new (same FPGA, clocks and I/O)"),
+    ]
+
+
+def test_the_printed_note_lines_the_two_files_up():
+    note = _board(**_SUCCESSOR).orphan_note()
+    assert note.split("\n")[1:] == [
+        "This board: litex-boards/old_board",
+        "Successor:  litex-boards/new (same FPGA, clocks and I/O)",
+    ]
 
 
 def test_the_note_drops_a_date_or_commit_it_does_not_have():
@@ -98,7 +115,7 @@ def test_an_orphan_preview_shows_its_note_above_the_board(headless_pygame: Modul
     fb = _preview(headless_pygame, board)
     banner, help_button = fb._orphan_rect, fb._help_btn_rect
     assert banner is not None and help_button is not None
-    assert " ".join(fb._orphan_lines) == board.orphan_note()
+    assert " ".join(fb._orphan_lines) == board.orphan_note()  # no successor: the lead only
     assert banner.top >= help_button.bottom, "below the help and settings icons"
     assert banner.bottom <= fb.fpga_chip.rect.top, "the board starts below it"
     # Drawn, not just laid out: the note's amber is inside the banner.
@@ -108,6 +125,32 @@ def test_an_orphan_preview_shows_its_note_above_the_board(headless_pygame: Modul
         for y in range(banner.top, banner.bottom, 2)
     ]
     assert tuple(THEME.warning) in pixels
+
+
+def test_the_two_file_names_start_in_one_column(headless_pygame: ModuleType) -> None:
+    """This board's file and the successor's are drawn one above the other, aligned."""
+    from fpga_sim.ui.theme import THEME
+
+    fb = _preview(headless_pygame, _board(**_SUCCESSOR))
+    banner = fb._orphan_rect
+    assert banner is not None
+    assert [label for label, _ in fb._orphan_rows] == ["This board:", "Successor:"]
+    line_h = banner.height // (len(fb._orphan_lines) + 2)
+    warn = tuple(THEME.warning)[:3]
+
+    def inked(x: int, y: int) -> bool:  # an anti-aliased glyph pixel near the note's amber
+        pixel = fb.screen.get_at((x, y))[:3]
+        return sum(abs(a - b) for a, b in zip(pixel, warn, strict=True)) < 60
+
+    starts = []
+    for row in range(2):
+        top = banner.top + (len(fb._orphan_lines) + row) * line_h
+        start = banner.left + fb._orphan_value_x - 2  # inside the space after the label
+        band = range(top, top + line_h)
+        cols = [x for x in range(start, banner.right) for y in band if inked(x, y)]
+        assert cols, f"row {row} draws a file name"
+        starts.append(min(cols))
+    assert starts[0] == starts[1], "both file names start at the same x"
 
 
 def test_a_board_upstream_still_defines_has_no_banner(headless_pygame: ModuleType) -> None:
