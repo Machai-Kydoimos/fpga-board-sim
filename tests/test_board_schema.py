@@ -286,6 +286,7 @@ def test_schema_accepts_identity_and_orphan_fields(schema):
             upstream_args={"revision": 2, "variant": "z7-20", "dock": None, "pro": True},
             upstream_status="orphaned",
             orphaned_at_commit="c705606",
+            orphaned_at_date="2026-11-02",
             orphaned_reason="file_removed",
             successor="litex-boards/efinix_trion_t8f81_dev_kit.json",
         ),
@@ -301,6 +302,7 @@ def test_schema_accepts_identity_and_orphan_fields(schema):
         {"successor": "efinix_trion_t8f81_dev_kit.json"},  # must name its source folder
         {"upstream_args": {"revision": [1, 2]}},  # one effective value, never a list
         {"upstream_klass": "Platform"},  # source stays closed to typos
+        {"orphaned_at_date": "2026/11/02"},  # an ISO date, YYYY-MM-DD
     ],
 )
 def test_schema_rejects_bad_identity_or_orphan_fields(schema, fields):

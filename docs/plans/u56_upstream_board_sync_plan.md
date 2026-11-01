@@ -546,10 +546,14 @@ After generating, for each existing file whose identity was **not** produced:
   the file stays frozen, including `sync_commit` (the last good sync).
 - **Stable:** a re-sync at the same pin re-derives the same mark (keep `orphaned_at_commit` from the
   existing file if already set), so the drift check stays byte-identical.
-- **Successor** (a hint, never an automatic migration): among identities *new in this run*, (a) one
-  from the same `upstream_file`, else (b) the unique one whose normalized content (`leds`,
-  `switches`, `buttons`, `seven_seg`, `clocks`, `device`) equals the orphan's. The 5 Efinix renames
-  match by (b) (verified identical).
+- **Successor** (a hint, never an automatic migration): among identities *new in this run*, the
+  unique one whose normalized content (`leds`, `switches`, `buttons`, `seven_seg`, `clocks`,
+  `device`) equals the orphan's. Among several identical ones, the one from the orphan's own
+  `upstream_file` breaks the tie; otherwise none is named. *Amended 2026-11-01 (Rick: "we should
+  be fairly confident about the possible successor or it may cause confusion"):* a new identity
+  from the same file used to qualify on that alone. With other I/O it is another version, and
+  naming it would send someone to a different board. The 5 Efinix renames match on identical
+  content (verified at the 2026-11-01 heads, each from a renamed file).
 - **Un-orphan:** when an orphaned identity is produced again, the sync overwrites the file and the
   mark disappears.
 - `_sync_metadata.json` gains an `orphans` list.
@@ -624,7 +628,7 @@ After generating, for each existing file whose identity was **not** produced:
 field lands in the schema first, in the same PR (the #346 rule): Phase 1a (`upstream_class`,
 `upstream_args`, `upstream_status` enum `["orphaned"]`, `orphaned_at_commit`, `orphaned_reason` enum
 `["file_removed", "no_longer_defined", "no_simulatable_io"]`, `successor`); Phase 2
-(`default_clock_assumed`, D-6); Phase 6 (`leds[].aliases`, convention alias banks). The
+(`default_clock_assumed`, D-6); Phase 3 (`orphaned_at_date`); Phase 6 (`leds[].aliases`, convention alias banks). The
 accept-list gets a schema of its own (§4.2). Update `tests/test_board_schema.py`.
 
 ### 4.6 Alias model (Phase 6, D-1)
@@ -664,7 +668,10 @@ including versions that differ only in FPGA part.
   commit\>)."; `no_longer_defined` — "\<source\> no longer defines this version since \<date\>
   (\<short commit\>)."; `no_simulatable_io` — "\<source\> lists no LED, switch or button for this
   board since \<date\> (\<short commit\>)." Each continues: "Your design still runs on this saved
-  copy; it will not receive upstream fixes." plus "Possible successor: \<display name\>" when set.
+  copy; it will not receive upstream fixes." With a successor, two aligned rows follow, so the
+  names can be compared: "This board: \<source\>/\<file\>" and "Successor: \<source\>/\<file\>
+  (same FPGA, clocks and I/O)". Both use the file spelling, because display names repeat across
+  sources (*amended 2026-11-01*: Rick asked for the loaded board's file beside the successor's).
 - `--board` resolution prints the same note to stderr.
 - Session log field `board_upstream_status` (+ `board_successor`).
 - Never blocks a run.
@@ -1031,6 +1038,23 @@ It comes before the bump because the bump creates the first real orphans (the fi
 **Verify:** PNGs → **visual review**; full `pytest`.
 **Effort:** S/M.
 
+**Measured when Phase 3 ran (2026-11-01).** Built as §4.8 describes, with three refinements:
+
+- **A date the note can show.** §4.8's "since \<date\>" had no field to read: an orphan recorded
+  only `orphaned_at_commit`. The sync now also writes `orphaned_at_date`, the UTC date of the sync
+  that found the board orphaned. Both are kept by later re-syncs, so the mark stays stable, and
+  the schema gains the field first. No board is orphaned yet, so nothing needed migrating.
+- **The successor is named by its file** (`litex-boards/efinix_trion_t8f81_dev_kit`), not its
+  display name. That is the spelling `--board` takes and the one that names exactly one board;
+  display names repeat across sources (§2.6). It also needs no lookup of another board's file.
+- **Where the note goes.** The preview draws it in amber across the top, below the help and
+  settings icons, and the board starts below it. Only an orphan has one, so every other board
+  lays out exactly as before. The simulation screen shows it too, since it draws the same board.
+  The selector tags the row "orphaned upstream" on its name line. `BoardDef.orphan_note()` is
+  the one source of the text, used by the banner, `--board` (the launcher and the benchmark)
+  and the tests. `gen_ui_map.py` renders a synthetic orphan, so both new regions are in the
+  map: `preview.board.orphan-note` and `select.list.row[i].orphaned`.
+
 ## 11. Phases 4–8
 
 **Phase 4 — Bump to the upstream heads.**
@@ -1139,8 +1163,8 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 1a | identity, ledger, accept-list, orphan detection, impact matrix with per-bank rows (`--board` re-checked) | no | done 2026-11-01 (#470) |
 | 1b | display names (P35) | no (a before → after name table) | done 2026-11-01 (#471) |
 | 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | done 2026-11-01 (#472); the review found long part numbers running past the chip, fixed in the PR |
-| 2 | extensions, docks, instance clock (+ D-6) | **yes** | PR #474, awaiting visual review (2026-11-01); reading the extension modules moved to Phase 4 |
-| 3 | orphan UI | **yes** | not started |
+| 2 | extensions, docks, instance clock (+ D-6) | **yes** | done 2026-11-01 (#474); the review found differently named LEDs interleaving, so a board-native bank drove the wrong LED, fixed in the PR; reading the extension modules moved to Phase 4 |
+| 3 | orphan UI | **yes** | done 2026-11-01 (#475); the review asked for the saved copy's own file beside the successor, and for a successor only when the match is certain, both done in the PR |
 | 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | not started |
 | 5 | multi-pin, DIP | **yes** | not started |
 | 6 | aliases | **yes** | not started |

@@ -8,6 +8,7 @@ names, the ``source`` blocks, the orphan marks and ``_sync_metadata.json``.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -214,6 +215,7 @@ def test_a_removed_upstream_file_orphans_its_board_and_names_a_successor(tmp_pat
     source = _load(folder, "old.json")["source"]
     assert source["upstream_status"] == "orphaned"
     assert source["orphaned_at_commit"] == COMMIT
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", source["orphaned_at_date"])
     assert source["orphaned_reason"] == "file_removed"
     assert source["successor"] == "litex-boards/new.json"
     assert source["sync_commit"] == "old"  # everything else stays frozen
@@ -225,6 +227,44 @@ def test_a_removed_upstream_file_orphans_its_board_and_names_a_successor(tmp_pat
     assert {
         p.name: p.read_bytes() for p in folder.glob("*.json") if not p.name.startswith("_")
     } == snapshot
+
+
+def _accept_gone(file, board, reason="no_longer_defined"):
+    return [Acceptance(ORIGIN, file, "orphan", "Checked: upstream dropped it.", board, reason)]
+
+
+def test_a_new_board_with_other_io_from_the_same_file_is_no_successor(tmp_path):
+    # Same upstream file, but another version with other I/O: naming it would send
+    # someone to a different board, so the orphan names none (Rick, 2026-11-01).
+    folder = tmp_path / ORIGIN
+    _write(folder, "w.json", _board("W", "w.py", args={"revision": 2}))
+    table = {"w.py": _boards(_produced("W", "w.py", args={"revision": 3}, leds=2))}
+    _sync(folder, table, _accept_gone("w.py", "w.json"))
+    source = _load(folder, "w.json")["source"]
+    assert source["upstream_status"] == "orphaned"
+    assert "successor" not in source
+
+
+def test_identical_boards_tie_break_on_the_orphans_own_file(tmp_path):
+    folder = tmp_path / ORIGIN
+    _write(folder, "w.json", _board("W", "w.py", args={"revision": 2}))
+    table = {
+        "w.py": _boards(_produced("W", "w.py", args={"revision": 1})),
+        "copy.py": _boards(_produced("Copy", "copy.py")),  # identical I/O, another file
+    }
+    _sync(folder, table, _accept_gone("w.py", "w.json"))
+    assert _load(folder, "w.json")["source"]["successor"] == "litex-boards/w_revision-1.json"
+
+
+def test_identical_boards_from_other_files_name_no_successor(tmp_path):
+    folder = tmp_path / ORIGIN
+    _write(folder, "old.json", _board("Old", "old.py"))
+    table = {
+        "a.py": _boards(_produced("A", "a.py")),
+        "b.py": _boards(_produced("B", "b.py")),
+    }
+    _sync(folder, table)
+    assert "successor" not in _load(folder, "old.json")["source"]
 
 
 def test_an_orphan_returns_when_upstream_defines_it_again(tmp_path):

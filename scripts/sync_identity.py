@@ -28,6 +28,7 @@ import re
 import tomllib
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -468,15 +469,21 @@ def run_sync(
                 )
                 continue
             used.add(acceptance)
-        same_file = [n for n, b in new_names.items() if b.upstream_file == entry.upstream_file]
-        if len(same_file) == 1:
-            successor = same_file[0]
-        else:
-            matches = [n for n, b in new_names.items() if _content(b.board) == _content(entry.data)]
-            successor = matches[0] if len(matches) == 1 else ""
+        # A successor is named only when nothing tells it apart from the orphan: the
+        # same FPGA, clocks and I/O (§4.3).  Coming from the same upstream file only
+        # breaks a tie between identical boards.  A new board from the same file with
+        # other I/O is another version, and naming it would send someone to a
+        # different board (Rick, 2026-11-01: "we should be fairly confident").
+        identical = [n for n, b in new_names.items() if _content(b.board) == _content(entry.data)]
+        same_file = [n for n in identical if new_names[n].upstream_file == entry.upstream_file]
+        successor = next((group[0] for group in (identical, same_file) if len(group) == 1), "")
         source = dict(entry.data["source"])
         source["upstream_status"] = "orphaned"
         source["orphaned_at_commit"] = source.get("orphaned_at_commit") or commit_sha
+        # The first sync to find it gone keeps both: later re-syncs leave the mark alone.
+        source["orphaned_at_date"] = (
+            source.get("orphaned_at_date") or datetime.now(UTC).date().isoformat()
+        )
         source["orphaned_reason"] = reason
         if successor:
             source["successor"] = f"{origin}/{successor}"

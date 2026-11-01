@@ -135,3 +135,20 @@ def test_simulator_backend_and_path_default_empty(session_dir):
     data = json.loads(_call().read_text(encoding="utf-8"))
     assert data["simulator_backend"] == ""
     assert data["simulator_path"] == ""
+
+
+def test_an_orphaned_board_is_recorded_with_its_successor(session_dir):
+    """U56 §4.8: a run on a saved copy that will not receive upstream fixes."""
+    data = json.loads(
+        _call(board_upstream_status="orphaned", board_successor="litex-boards/new.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert data["board_upstream_status"] == "orphaned"
+    assert data["board_successor"] == "litex-boards/new.json"
+
+
+def test_a_current_board_records_null_upstream_status(session_dir):
+    data = json.loads(_call().read_text(encoding="utf-8"))
+    assert data["board_upstream_status"] is None
+    assert data["board_successor"] is None

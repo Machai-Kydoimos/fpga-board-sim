@@ -63,6 +63,8 @@ def save_session_stats(
     synopsys: tuple[str, ...] | None = None,
     simulator_backend: str = "",
     simulator_path: str = "",
+    board_upstream_status: str = "",
+    board_successor: str = "",
 ) -> Path:
     """Write a compact JSON performance summary for the just-completed session.
 
@@ -110,6 +112,11 @@ def save_session_stats(
         ``"llvm-jit"`` / ``"nvc"``.  Empty when unknown (older callers).
     simulator_path:
         Resolved binary of the install that ran (U35).  Empty when unknown.
+    board_upstream_status:
+        ``"orphaned"`` when upstream no longer defines the board (U56 §4.8); written
+        as ``null`` otherwise.
+    board_successor:
+        The orphan's likely replacement, ``<source>/<file>.json``; ``null`` when none.
 
     Returns
     -------
@@ -143,6 +150,10 @@ def save_session_stats(
         "convention": convention,
         "pinmap": pinmap,
         "synopsys": list(synopsys or ()),
+        # "orphaned" when upstream no longer defines the board (U56 §4.8): a run on a
+        # saved copy that will not receive upstream fixes, worth knowing in a report.
+        "board_upstream_status": board_upstream_status or None,
+        "board_successor": board_successor or None,
     }
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     print(f"[session] Stats saved → {path}")

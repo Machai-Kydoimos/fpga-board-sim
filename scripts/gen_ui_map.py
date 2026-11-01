@@ -23,6 +23,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import os
 import re
 import sys
@@ -147,8 +148,20 @@ def collect() -> list[Region]:
 
     out: list[Region] = []
 
+    # No real board is orphaned yet (U56 §4.3), so render a synthetic one -- alone in
+    # a selector (sorted into a full list it scrolls out of view) and as a preview --
+    # so its regions register.
+    assert board_def is not None, f"no board named {_BOARD!r}"
+    orphan = dataclasses.replace(
+        board_def,
+        upstream_status="orphaned",
+        orphaned_at_commit="0000000",
+        orphaned_at_date="2026-01-01",
+        orphaned_reason="file_removed",
+    )
     selector = BoardSelector(boards, screen)
     out += _collect_screen(selector._draw, "select")
+    out += _collect_screen(BoardSelector([orphan], screen)._draw, "select (orphan)")
 
     preview = FPGABoard(
         board_def=board_def,
@@ -161,6 +174,10 @@ def collect() -> list[Region]:
     )
     preview.generics_hook = lambda: None
     out += _collect_screen(lambda: preview._draw(flip=False), "preview")
+    orphan_preview = FPGABoard(
+        board_def=orphan, screen=screen, width=_SIZE[0], height=_SIZE[1], sim=sim
+    )
+    out += _collect_screen(lambda: orphan_preview._draw(flip=False), "preview (orphan)")
 
     picker = VHDLFilePicker(screen, str(REPO_ROOT / "hdl"))
     out += _collect_screen(picker._draw, "pick")

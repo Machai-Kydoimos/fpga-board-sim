@@ -21,6 +21,13 @@ from fpga_sim.paths import BOARDS_DIR
 
 _FALLBACK_CLOCK_HZ: float = 12e6  # most common across 80 surveyed boards
 
+#: The first sentence of an orphaned board's note, by why upstream dropped it (U56 §4.8).
+_ORPHAN_LEADS: dict[str, str] = {
+    "file_removed": "No longer in {source}{since}.",
+    "no_longer_defined": "{source} no longer defines this version{since}.",
+    "no_simulatable_io": "{source} lists no LED, switch or button for this board{since}.",
+}
+
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Display-name overrides (U49)
@@ -303,10 +310,13 @@ class BoardDef:
     upstream_status: str = ""
     #: The upstream commit of the sync that found the board orphaned.
     orphaned_at_commit: str = ""
+    #: The UTC date (``YYYY-MM-DD``) of that sync, which the preview shows.
+    orphaned_at_date: str = ""
     #: ``file_removed`` / ``no_longer_defined`` / ``no_simulatable_io``.
     orphaned_reason: str = ""
-    #: ``<source>/<file>.json`` of the board that most likely replaces an orphan (a
-    #: hint, never an automatic migration).
+    #: ``<source>/<file>.json`` of the board that replaces an orphan.  The sync names
+    #: one only when its FPGA, clocks and I/O are identical to the orphan's.  It is a
+    #: hint, never an automatic migration.
     successor: str = ""
 
     @property
@@ -493,11 +503,55 @@ class BoardDef:
             }
         )
 
+    def orphan_note(self) -> str:
+        """Return what to tell someone about an orphaned board, else ``""`` (U56 §4.8).
+
+        :meth:`orphan_parts` as text: the lead, then one line per row, with the labels
+        padded so the two file names line up in a terminal.  ``--board`` prints it.
+        """
+        lead, rows = self.orphan_parts()
+        if not lead:
+            return ""
+        width = max(len(label) for label, _ in rows) if rows else 0
+        return "\n".join([lead, *(f"{label:<{width}} {value}" for label, value in rows)])
+
+    def orphan_parts(self) -> tuple[str, list[tuple[str, str]]]:
+        """Return an orphan's note as a lead and label/value rows, else ``("", [])``.
+
+        The lead says why upstream dropped the board, since when, and that a design
+        still runs on this saved copy.  With a successor, two rows follow, this
+        board's file and then the successor's, so a reader can compare the names.
+        Both use the ``<source>/<file>`` spelling that ``--board`` takes, the one name
+        that picks exactly one board (display names repeat across sources).  The sync
+        names a successor only when its FPGA, clocks and I/O are identical (§4.3),
+        and the row says so.
+        """
+        if self.upstream_status != "orphaned":
+            return "", []
+        when = [part for part in (self.orphaned_at_date, self.orphaned_at_commit[:7]) if part]
+        since = (
+            f" since {when[0]} ({when[1]})"
+            if len(when) == 2
+            else "".join(f" since {part}" for part in when)
+        )
+        why = _ORPHAN_LEADS.get(self.orphaned_reason, "{source} no longer defines it{since}.")
+        lead = (
+            why.format(source=self.source or "Upstream", since=since)
+            + " Your design still runs on this saved copy; it will not receive upstream fixes."
+        )
+        if not self.successor:
+            return lead, []
+        return lead, [
+            ("This board:", self.qualified_name or self.name),
+            ("Successor:", f"{self.successor.removesuffix('.json')} (same FPGA, clocks and I/O)"),
+        ]
+
     def _orphan_source(self) -> dict[str, str]:
         """Return the orphan fields of the board file's ``source`` block, for ``to_json``."""
         fields = {
             "upstream_status": self.upstream_status,
             "orphaned_at_commit": self.orphaned_at_commit,
+            "orphaned_at_date": self.orphaned_at_date,
             "orphaned_reason": self.orphaned_reason,
             "successor": self.successor,
         }
@@ -554,6 +608,7 @@ class BoardDef:
             port_conventions=data.get("port_conventions") or {},
             upstream_status=str(source.get("upstream_status", "")),
             orphaned_at_commit=str(source.get("orphaned_at_commit", "")),
+            orphaned_at_date=str(source.get("orphaned_at_date", "")),
             orphaned_reason=str(source.get("orphaned_reason", "")),
             successor=str(source.get("successor", "")),
         )
