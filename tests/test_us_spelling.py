@@ -5,7 +5,7 @@ enforced it, so the tree drifted: by the time this guard was written there were
 **21 British spellings across 19 files** — nine of them one template's word,
 copied into eight generated designs.
 
-Two rules shape the word list, both learned the hard way:
+Three rules shape the word list, all learned the hard way:
 
 1. **Exact words, never prefixes.** ``analys*`` looks like a tidy pattern and is
    wrong: ``analysis`` and ``analyses`` are correct US English, and the naive
@@ -16,6 +16,11 @@ Two rules shape the word list, both learned the hard way:
    have hidden a real ``signalling`` further down the same file — which is
    exactly what happened when this was first surveyed. Only the two
    counterexample lines are exempt, so the rest of the file stays covered.
+3. **List every inflection, not just the stem.** Exact words cut both ways:
+   ``neighbour`` does not catch ``neighbours``, and a later sweep found 12
+   British spellings the list had missed that way (``neighbours``,
+   ``synthesises``, ``levelled``, ``Centralising``, ...). Add a new word's
+   plural, ``-ed``, ``-ing`` and ``-isation`` forms with it.
 
 This is a **suite-level** check rather than a pre-commit hook, per the #348
 lesson: hooks fire only on staged files, so a hook and a test catch different
@@ -36,68 +41,112 @@ PROJECT = Path(__file__).resolve().parent.parent
 #: British spellings, as whole words. Case-insensitive at match time, so
 #: ``Colour`` and ``COLOUR`` are caught too.
 BRITISH_SPELLINGS: tuple[str, ...] = (
+    "analogue",
+    "analogues",
     "analyse",
     "analysed",
     "analysing",
     "behaviour",
+    "behavioural",
     "behaviours",
     "cancelled",
     "cancelling",
     "catalogue",
+    "centralise",
+    "centralised",
+    "centralising",
     "centre",
     "centred",
     "centres",
+    "cheque",
+    "cheques",
     "colour",
     "coloured",
+    "colouring",
     "colours",
     "defence",
+    "favour",
+    "favoured",
     "favourite",
+    "favours",
     "fibre",
     "flavour",
+    "flavours",
     "fuelled",
     "grey",
     "greyed",
     "greys",
+    "initialisation",
     "initialise",
     "initialised",
     "initialises",
     "initialising",
     "labelled",
     "labelling",
+    "levelled",
+    "levelling",
     "licence",
     "litre",
     "metre",
     "modelled",
     "modelling",
+    "modernise",
+    "modernised",
+    "modernising",
     "neighbour",
+    "neighbourhood",
+    "neighbouring",
+    "neighbours",
+    "normalisation",
     "normalise",
     "normalised",
+    "normalising",
+    "optimisation",
     "optimise",
     "optimised",
+    "optimises",
     "optimising",
     "organisation",
+    "organisations",
     "organise",
     "organised",
+    "organising",
     "parametrise",
     "parametrised",
     "parametrising",
     "programme",
+    "realisation",
     "realise",
     "realised",
+    "realising",
     "recognise",
     "recognised",
+    "recognising",
+    "serialisation",
     "serialise",
     "serialised",
+    "serialising",
+    "signalled",
     "signalling",
+    "standardisation",
     "standardise",
     "standardised",
+    "standardising",
+    "synthesise",
+    "synthesised",
+    "synthesises",
+    "synthesising",
     "theatre",
     "travelled",
     "travelling",
+    "utilisation",
     "utilise",
     "utilised",
+    "utilising",
+    "visualisation",
     "visualise",
     "visualised",
+    "visualising",
 )
 
 #: Deliberately absent: ``analyses`` and ``analysis`` are correct US English

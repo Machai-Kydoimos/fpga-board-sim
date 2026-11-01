@@ -1,7 +1,7 @@
 """Parser for Digilent master XDC files — section-aware regex → board dicts.
 
 Parses ``*-Master.xdc`` constraint files into board-definition dicts (JSON schema
-shape), including ``port_conventions`` synthesised from the XDC port names.
+shape), including ``port_conventions`` synthesized from the XDC port names.
 Self-contained: no ``fpga_sim`` dependency.  Used by
 ``scripts/sync_digilent_xdc.py`` and the parser test suite.
 """

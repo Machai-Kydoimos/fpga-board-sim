@@ -3,7 +3,7 @@
 --
 -- One self-contained VHDL file: a vendored mx65 6502 CPU core (below, verbatim,
 -- MIT) + ROM + RAM + memory-mapped IO + a top that wires it to the board's
--- sw/btn/led/seg and synthesises a power-on reset.  The CPU runs a program held
+-- sw/btn/led/seg and synthesizes a power-on reset.  The CPU runs a program held
 -- in the embedded ROM and drives the outputs through its IO interface.
 --
 -- The ROM holds the walking-counter firmware (assembled by ca65/ld65 from
