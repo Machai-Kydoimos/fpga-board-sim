@@ -92,14 +92,24 @@ class FPGAChip:
     #: The smallest font the label shrinks to; below it the label is clipped.
     _LABEL_MIN_SIZE = 8
 
-    def __init__(
-        self, vendor: str = "", device: str = "", package: str = "", clock_hz: float = 0.0
+    def __init__(  # noqa: PLR0913
+        self,
+        vendor: str = "",
+        device: str = "",
+        package: str = "",
+        clock_hz: float = 0.0,
+        clock_assumed: bool = False,
     ) -> None:
-        """Initialize the chip with optional vendor, device, package, and clock metadata."""
+        """Initialize the chip with optional vendor, device, package, and clock metadata.
+
+        *clock_assumed* marks a clock upstream never stated: the label then reads
+        "100 MHz, assumed" rather than presenting the sync's fallback as fact (U56 D-6).
+        """
         self.vendor = vendor
         self.device = device
         self.package = package
         self.clock_hz = clock_hz
+        self.clock_assumed = clock_assumed
         self.rect = pygame.Rect(0, 0, 0, 0)
         self._label_cache: tuple[tuple[object, ...], ChipLabel] | None = None
 
@@ -120,7 +130,8 @@ class FPGAChip:
             ("package", self.package.upper()),
         ]
         if self.clock_hz:
-            lines.append(("clock", self._fmt_clock(self.clock_hz)))
+            clock = self._fmt_clock(self.clock_hz)
+            lines.append(("clock", f"{clock}, assumed" if self.clock_assumed else clock))
         return [(role, text) for role, text in lines if text]
 
     @staticmethod

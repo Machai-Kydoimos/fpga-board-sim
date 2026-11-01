@@ -258,3 +258,45 @@ def test_read_amaranth_file_tells_an_empty_board_from_a_non_board():
     assert read_amaranth_file(no_io, "uart_only.py").detail == "no_simulatable_io"
     broken = read_amaranth_file("class X(Missing):\n    pass\n", "broken.py")
     assert (broken.outcome, broken.detail) == ("error", "NameError: Missing")
+
+
+# ── The default clock: on-chip oscillators and D-6 (U56 Phases 1c and 2) ─────
+
+_OSCILLATOR_BOARD = """
+from amaranth.build import *
+from amaranth.vendor import {base}
+__all__ = ["OscTestPlatform"]
+class OscTestPlatform({base}):
+    default_clk = "{clk}"
+{attrs}
+    resources = [*LEDResources(pins="A B", attrs=Attrs(IO="TEST"))]
+"""
+
+
+@pytest.mark.parametrize(
+    ("base", "clk", "attrs", "hz"),
+    [
+        ("LatticeECP5Platform", "OSCG", "    oscg_div = 2", 155e6),
+        ("LatticeMachXO2Platform", "OSCH", "    osch_frequency = 2.08", 2.08e6),
+        ("LatticeECP5Platform", "OSCA", "    osca_div = 9", 50e6),
+        ("LatticeICE40Platform", "SB_HFOSC", "    hfosc_div = 2", 12e6),
+        ("LatticeICE40Platform", "SB_LFOSC", "", 10e3),
+        ("IntelPlatform", "cyclonev_oscillator", "", 100e6),
+        ("QuicklogicPlatform", "sys_clk0", "    osc_freq = 60e6\n    osc_div = 2", 30e6),
+        ("GowinPlatform", "OSC", "    osc_frequency = 27e6", 27e6),
+    ],
+)
+def test_an_on_chip_oscillator_sets_the_default_clock(base, clk, attrs, hz):
+    """Each ``default_clk`` that names an oscillator reads its frequency from the class."""
+    source = _OSCILLATOR_BOARD.format(base=base, clk=clk, attrs=attrs)
+    data = json.loads(next(iter(generate_board_json({"osc_test.py": source}, "c0ffee").values())))
+    assert data["default_clock_hz"] == pytest.approx(hz)
+    assert "default_clock_assumed" not in data, "upstream states this frequency"
+
+
+def test_a_default_clock_upstream_gives_no_frequency_is_marked_assumed():
+    """The oscillator's divider is unset, so 12 MHz is our fallback, and says so (D-6)."""
+    source = _OSCILLATOR_BOARD.format(base="LatticeICE40Platform", clk="SB_HFOSC", attrs="")
+    data = json.loads(next(iter(generate_board_json({"osc_test.py": source}, "c0ffee").values())))
+    assert data["default_clock_hz"] == 12e6
+    assert data["default_clock_assumed"] is True

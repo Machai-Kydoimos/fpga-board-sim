@@ -917,6 +917,8 @@ def build_board_json(
         "package": meta.get("package", ""),
         "clocks": clocks,
         "default_clock_hz": clock_hz or 100e6,
+        # No period in the file: 100 MHz is our fallback, and says so (U56 D-6).
+        **({} if clock_hz else {"default_clock_assumed": True}),
         "leds": leds + rgb_leds,
         "buttons": buttons,
         "switches": switches,

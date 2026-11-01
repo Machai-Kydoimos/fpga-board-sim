@@ -399,11 +399,12 @@ _OSCILLATOR_HZ: dict[str, Callable[[Any], float]] = {
 
 def _find_default_clock_hz(
     resources: list[_Resource], default_clk: str | None, cls: type | None = None
-) -> float:
+) -> float | None:
     """Return the default clock in Hz: its ``Clock`` resource, else its on-chip oscillator.
 
-    A ``default_clk`` that names neither, or an oscillator whose parameters the class
-    does not set, keeps ``_FALLBACK_CLOCK_HZ`` (which U56 D-6 marks as assumed).
+    ``None`` when upstream states no frequency -- a ``default_clk`` that names
+    neither, or an oscillator whose parameters the class does not set.  The board
+    then runs at ``_FALLBACK_CLOCK_HZ``, marked as assumed (U56 D-6).
     """
     if default_clk:
         for res in resources:
@@ -417,7 +418,7 @@ def _find_default_clock_hz(
                 return float(rule(cls))
             except (AttributeError, TypeError, ValueError, ZeroDivisionError):
                 pass
-    return _FALLBACK_CLOCK_HZ
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -790,6 +791,7 @@ def _read_boards(
             "",
         )
         default_clk = getattr(obj, "default_clk", None)
+        clock_hz = _find_default_clock_hz(resources, default_clk, obj)
         boards.append(
             BoardDef(
                 name=_prettify_class_name(obj_name),
@@ -798,7 +800,8 @@ def _read_boards(
                 device=getattr(obj, "device", "") or getattr(obj, "part", ""),
                 package=getattr(obj, "package", ""),
                 clocks=_extract_clocks(resources),
-                default_clock_hz=_find_default_clock_hz(resources, default_clk, obj),
+                default_clock_hz=_FALLBACK_CLOCK_HZ if clock_hz is None else clock_hz,
+                default_clock_assumed=clock_hz is None,
                 leds=leds,
                 buttons=buttons,
                 switches=switches,

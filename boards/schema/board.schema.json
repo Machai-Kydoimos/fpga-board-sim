@@ -59,6 +59,10 @@
       "type": "number",
       "description": "Default clock frequency in Hz used by the simulator"
     },
+    "default_clock_assumed": {
+      "const": true,
+      "description": "Upstream states no frequency for this board's clock, so default_clock_hz is the sync's fallback rather than upstream data, and the chip says so (U56 D-6). Written only when true."
+    },
     "leds": {
       "type": "array",
       "items": {

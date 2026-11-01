@@ -309,8 +309,19 @@ def _make_mock_platform(name: str, vendor: str) -> type:
         def add_connectors(self, connectors: object) -> None:
             pass
 
-        def add_extension(self, *args: object, **kwargs: object) -> None:
-            pass
+        def add_extension(self, extension: object, *args: object, **kwargs: object) -> None:
+            # LiteX's add_extension(io) extends the platform's I/O just as
+            # add_resources does; it used to be a no-op here, which dropped every
+            # LED, switch and button a dock or a board variant adds (U56 Phase 2,
+            # defect 1).  An extension *object* (litex_boards.extensions' docks and
+            # Pmods, at upstream heads) builds its I/O in define_io(platform), or
+            # holds it as .io -- both interpreted, never executed.
+            io = extension
+            if not isinstance(io, (list, tuple)):
+                define_io = getattr(extension, "define_io", None)
+                io = define_io(self) if callable(define_io) else getattr(extension, "io", None)
+            if isinstance(io, (list, tuple)):
+                self._captured_io.extend(io)
 
         def request(self, *args: object, **kwargs: object) -> None:
             pass
@@ -688,6 +699,18 @@ def _version_args(platform_class: type) -> dict[str, Any]:
     return {}
 
 
+def _platform_attr(instance: object, platform_class: type, name: str) -> object:
+    """Return *name* as the constructor left it on *instance*, else the class's, else ``None``.
+
+    Never ``getattr(instance, name)`` alone: the mock platform answers every public
+    name it lacks with a no-op method, which would read as a clock name.
+    """
+    attrs = vars(instance)
+    if name in attrs:
+        return attrs[name]
+    return getattr(platform_class, name, None)
+
+
 def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
     """Read a litex-boards platform file, without executing it, and return board dicts."""
     return [produced.board for produced in read_litex_file(source, filename).boards]
@@ -768,10 +791,6 @@ def _read_once(
         return ParseOutcome(outcome="skipped", detail="not_a_board")
     version = {**_version_args(platform_class), **(args or {})}
 
-    # Get class-level attributes
-    default_clk_name = getattr(platform_class, "default_clk_name", None)
-    default_clk_period = getattr(platform_class, "default_clk_period", None)
-
     # Instantiate: the constructor runs in the reader, against the permissive mock
     # platform, and hands the base class its device and I/O.  A constructor that still
     # fails is an `error` -- the module-level fallback that used to stand in, with no
@@ -785,6 +804,12 @@ def _read_once(
         print(f"  {filename}: Platform() failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         return ParseOutcome(outcome="error", detail=normalize_error(exc))
     device = getattr(instance, "device", "")
+    # A constructor may set the default clock on the instance -- Red Pitaya picks
+    # clk125 or clk122 by board, and the Snickerdoodle derives its period from a
+    # class-level frequency -- so read what it left, then the class (U56 Phase 2,
+    # defect 13).
+    default_clk_name = _platform_attr(instance, platform_class, "default_clk_name")
+    default_clk_period = _platform_attr(instance, platform_class, "default_clk_period")
     captured_io: list[tuple[Any, ...]] = list(getattr(instance, "_captured_io", []))
     if not captured_io:
         return ParseOutcome(outcome="skipped", detail="not_a_board")
@@ -881,6 +906,8 @@ def _read_once(
         "package": "",
         "clocks": clocks,
         "default_clock_hz": default_clock_hz or 12e6,
+        # Upstream states no frequency: 12 MHz is our fallback, and says so (U56 D-6).
+        **({} if default_clock_hz else {"default_clock_assumed": True}),
         "leds": _mono_then_rgb(sorted(leds, key=lambda c: c["number"])),
         "buttons": sorted(buttons, key=lambda c: c["number"]),
         "switches": sorted(switches, key=lambda c: c["number"]),

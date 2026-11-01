@@ -362,3 +362,126 @@ def test_the_vendor_table_uses_upstreams_spellings():
     assert "LatticeICE40Platform" not in vendors  # the old misspelling locked out iCE40
     for name in ("LatticePlatform", "MicrosemiPlatform", "AnlogicPlatform", "QuickLogicPlatform"):
         assert name in vendors
+
+
+# ── Extensions and the constructor's clock (U56 Phase 2) ─────────────────────
+
+_DOCKED = """
+from litex.build.generic_platform import *
+from litex.build.gowin.platform import GowinPlatform
+
+_io = [
+    ("clk27", 0, Pins("H11"), IOStandard("LVCMOS33")),
+    ("user_led", 0, Pins("A1"), IOStandard("LVCMOS33")),
+]
+
+_dock_io = [
+    ("user_led", 1, Pins("A2"), IOStandard("LVCMOS33")),
+    ("user_btn", 0, Pins("B1"), IOStandard("LVCMOS33")),
+]
+
+_dock_lite_io = [("user_btn", 0, Pins("B1"), IOStandard("LVCMOS33"))]
+
+
+class Platform(GowinPlatform):
+    default_clk_name = "clk27"
+    default_clk_period = 1e9 / 27e6
+
+    def __init__(self, dock="standard"):
+        GowinPlatform.__init__(self, "GW2A-LV18PG256C8/I7", _io)
+        self.add_extension(_dock_io if dock == "standard" else _dock_lite_io)
+"""
+
+
+def test_add_extension_adds_the_io_it_is_given():
+    """It used to be a no-op, which dropped every LED and button a dock adds."""
+    b = parse_litex_board(_DOCKED, "docked.py")[0]
+    assert len(b["leds"]) == 2
+    assert len(b["buttons"]) == 1
+
+
+_EXTENSION_OBJECTS = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io = [("clk100", 0, Pins("E3")), ("user_led", 0, Pins("A1"))]
+
+
+class BuildsItsIO:
+    def define_io(self, platform):
+        return [("user_btn", n, Pins(f"B{n}")) for n in range(2)]
+
+
+class HoldsItsIO:
+    io = [("user_sw", 0, Pins("C1"))]
+
+
+class Platform(Xilinx7SeriesPlatform):
+    default_clk_name = "clk100"
+    default_clk_period = 1e9 / 100e6
+
+    def __init__(self):
+        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)
+        self.add_extension(BuildsItsIO())
+        self.add_extension(HoldsItsIO())
+"""
+
+
+def test_add_extension_reads_an_extension_object_without_executing_it():
+    """A dock builds its I/O in ``define_io(platform)`` -- interpreted -- or holds ``.io``."""
+    b = parse_litex_board(_EXTENSION_OBJECTS, "objects.py")[0]
+    assert len(b["buttons"]) == 2
+    assert len(b["switches"]) == 1
+
+
+_CLOCK_SET_BY_THE_CONSTRUCTOR = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io = [
+    ("clk125", 0, Pins("U18")),
+    ("clk122", 0, Pins("U19")),
+    ("user_led", 0, Pins("F16")),
+]
+
+
+class Platform(Xilinx7SeriesPlatform):
+    def __init__(self, board="redpitaya14"):
+        Xilinx7SeriesPlatform.__init__(self, "xc7z010clg400-1", _io)
+        if board == "redpitaya14":
+            self.default_clk_name = "clk125"
+            self.default_clk_freq = 125e6
+        else:
+            self.default_clk_name = "clk122"
+            self.default_clk_freq = 122e6
+        self.default_clk_period = 1e9 / self.default_clk_freq
+"""
+
+
+def test_the_default_clock_is_what_the_constructor_set():
+    """Red Pitaya's shape: the board picks its clock in ``__init__``."""
+    b = parse_litex_board(_CLOCK_SET_BY_THE_CONSTRUCTOR, "red_pitaya_like.py")[0]
+    assert b["default_clock_hz"] == 125e6
+    assert [c["name"] for c in b["clocks"] if c.get("is_default")] == ["clk125"]
+    assert "default_clock_assumed" not in b
+
+
+def test_a_class_level_frequency_the_constructor_turns_into_a_period():
+    """Snickerdoodle's shape: ``default_clk_freq`` on the class, the period set in ``__init__``."""
+    source = _BASIC.replace(
+        "    default_clk_period = 1e9 / 100e6\n", "    default_clk_freq = 50e6\n"
+    ).replace(
+        '        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)',
+        '        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)\n'
+        "        self.default_clk_period = 1e9 / self.default_clk_freq",
+    )
+    assert parse_litex_board(source, "snickerdoodle_like.py")[0]["default_clock_hz"] == 50e6
+
+
+def test_a_board_whose_upstream_states_no_frequency_says_its_clock_is_assumed():
+    """12 MHz is our fallback, never upstream data (U56 D-6)."""
+    source = _BASIC.replace("    default_clk_period = 1e9 / 100e6\n", "")
+    b = parse_litex_board(source, "no_period.py")[0]
+    assert b["default_clock_hz"] == 12e6
+    assert b["default_clock_assumed"] is True
+    assert "default_clock_assumed" not in parse_litex_board(_BASIC, "test_board.py")[0]
