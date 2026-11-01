@@ -1113,7 +1113,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 1a | identity, ledger, accept-list, orphan detection, impact matrix with per-bank rows (`--board` re-checked) | no | done 2026-11-01 (#470) |
 | 1b | display names (P35) | no (a before → after name table) | done 2026-11-01 (#471) |
 | 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | done 2026-11-01 (#472); the review found long part numbers running past the chip, fixed in the PR |
-| 2 | extensions, docks, instance clock (+ D-6) | **yes** | PR open, awaiting visual review (2026-11-01); reading the extension modules moved to Phase 4 |
+| 2 | extensions, docks, instance clock (+ D-6) | **yes** | PR #474, awaiting visual review (2026-11-01); reading the extension modules moved to Phase 4 |
 | 3 | orphan UI | **yes** | not started |
 | 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | not started |
 | 5 | multi-pin, DIP | **yes** | not started |
