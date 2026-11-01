@@ -291,3 +291,54 @@ def test_svg_segments_at_rest_are_all_the_off_color(headless_pygame):
     svg = build_svg(board, 1024, 700)
     fills = set(re.findall(r'<polygon points="[^"]+" fill="(#[0-9a-f]{6})"', svg))
     assert fills == {_svg_color(THEME.seg_off)}
+
+
+# ── SVG chip label agrees with the window ────────────────────────────────────
+#
+# Same rule as the LEDs above: the SVG used to lay the chip's label out itself,
+# so a part number too wide for the chip ran past it in both renderers.  Both now
+# take FPGAChip.fit_label's lines, which is what these tests check.
+
+
+def _long_part_board(headless_pygame: ModuleType, device: str, w: int, h: int) -> FPGABoard:
+    from fpga_sim.board_loader import BoardDef, ComponentInfo
+    from fpga_sim.ui import FPGABoard
+
+    bd = BoardDef(
+        name="Long Part",
+        class_name="LongPart",
+        vendor="Xilinx",
+        device=device,
+        leds=[ComponentInfo("led", "led", 0, [])],
+    )
+    return FPGABoard(board_def=bd, width=w, height=h)
+
+
+def _svg_chip_size(w: int, h: int) -> int:
+    from fpga_sim.ui.constants import _ui_scale
+
+    return max(11, max(9, round(12 * _ui_scale(w, h))) + 1)  # as build_svg
+
+
+def test_svg_chip_label_breaks_where_the_window_does(headless_pygame):
+    from fpga_sim.generate_board_images import build_svg
+
+    device = "-".join(["ABCDEFGHI"] * 6)  # 59 characters: wider than any chip here
+    board = _long_part_board(headless_pygame, device, 1024, 700)
+    label = board.fpga_chip.fit_label(_svg_chip_size(1024, 700))
+    lines = [text for _, text in label.lines]
+    assert len(lines) > len(board.fpga_chip.label_lines()), "the part number broke"
+
+    texts = re.findall(r"<text [^>]*>([^<]*)</text>", build_svg(board, 1024, 700))
+    assert device not in texts
+    for line in lines:
+        assert line in texts
+    assert "clip-path" not in build_svg(board, 1024, 700), "it fits, so nothing is clipped"
+
+
+def test_svg_clips_a_label_no_size_can_fit(headless_pygame):
+    from fpga_sim.generate_board_images import build_svg
+
+    board = _long_part_board(headless_pygame, "A" * 120, 1024, 700)  # nowhere to break
+    assert not board.fpga_chip.fit_label(_svg_chip_size(1024, 700)).fits
+    assert 'clip-path="url(#chip-label-clip)"' in build_svg(board, 1024, 700)

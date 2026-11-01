@@ -370,7 +370,9 @@ def _svg_draw_fpga_chip(
     fpga_sim/ui/components.py:
       - Vendor-colored rounded rectangle with gray border
       - Short tick marks along all four edges (simulated IC package pins)
-      - Three centered text labels: vendor name, device ID, package code
+      - The centered label -- vendor, device, package, clock -- laid out by the
+        same ``FPGAChip.fit_label`` the window uses, so a part number too wide
+        for the chip breaks onto two lines here too instead of running past it
 
     Colors are read from THEME at render time (like FPGAChip.draw itself), so
     the --theme option and any palette additions are automatically reflected.
@@ -398,30 +400,30 @@ def _svg_draw_fpga_chip(
         _svg_line(parent, r.left, y, r.left - ln, y, THEME.chip_pin)  # left edge
         _svg_line(parent, r.right, y, r.right + ln, y, THEME.chip_pin)  # right edge
 
-    # Centered text labels — mirrors the dynamic layout in FPGAChip.draw().
-    # 1.2× is the standard approximation for a monospace font's line height.
-    chip_font_size = max(11, font_size + 1)
-    line_h = round(chip_font_size * 1.2)
+    # Centered label — the lines and size FPGAChip.draw() would use, measured by
+    # FPGAChip.fit_label with the bold font (never narrower than the regular one
+    # most lines are drawn in here).  1.2× is the standard approximation for a
+    # monospace font's line height.
+    label = chip.fit_label(max(11, font_size + 1))
+    line_h = round(label.size * 1.2)
     cx, cy = r.centerx, r.centery
 
-    lines: list[tuple[str, tuple[int, int, int], bool]] = [
-        (chip.vendor, WHITE, True),
-        (chip.device.upper(), THEME.chip_device, False),
-        (chip.package.upper(), THEME.chip_package, False),
-    ]
-    if chip.clock_hz:
-        lines.append((FPGAChip._fmt_clock(chip.clock_hz), THEME.chip_clock, False))
-    active = [(t, c, b) for t, c, b in lines if t]
-    offset = -(len(active) - 1) / 2 * line_h
-    for text, color, bold in active:
+    target = parent
+    if not label.fits:
+        clip_id = "chip-label-clip"
+        clip = ET.SubElement(parent, "clipPath", {"id": clip_id})
+        _svg_rect(clip, r.inflate(-4, -4), THEME.chip_default)
+        target = ET.SubElement(parent, "g", {"clip-path": f"url(#{clip_id})"})
+    offset = -(len(label.lines) - 1) / 2 * line_h
+    for role, text in label.lines:
         _svg_text(
-            parent,
+            target,
             cx,
             cy + offset,
             text,
-            size=chip_font_size,
-            color=color,
-            bold=bold,
+            size=label.size,
+            color=FPGAChip.label_color(role),
+            bold=role == "vendor",
             anchor="middle",
             baseline="middle",
         )

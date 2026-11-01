@@ -4,7 +4,9 @@ These are the building blocks placed on the board canvas by FPGABoard.
 """
 
 import abc
+import functools
 from collections.abc import Callable, Sequence
+from typing import Literal, NamedTuple
 
 import pygame
 
@@ -14,6 +16,65 @@ from fpga_sim.ui.constants import get_font as _get_font
 from fpga_sim.ui.icons import latch_icon
 from fpga_sim.ui.keymap import badge_for
 from fpga_sim.ui.theme import THEME
+
+# ── Chip label fitting ───────────────────────────────────────────────
+
+#: Characters a chip label may break *after*; they end the first line, so a part
+#: number splits where its own punctuation does (``XCZU11EG-`` / ``FFVF1517-2-I``,
+#: ``GW2A-`` / ``LV18PG256C8/I7``).  A space is a break point too, and the break
+#: drops it.
+_LABEL_BREAK_AFTER = "-/_,"
+
+#: What a chip label line shows; the role picks its color when it is drawn.
+ChipLabelRole = Literal["vendor", "device", "package", "clock"]
+
+
+def wrap_label(text: str, width: Callable[[str], int], max_w: int) -> list[str] | None:
+    """Lay *text* out as one line, or as two, each no wider than *max_w* pixels.
+
+    *width* measures a string in pixels.  Text that fits stays whole.  Text that
+    does not breaks once, at a natural place -- after a ``-``, ``/``, ``_`` or
+    ``,``, which ends the first line, or at a space, which the break drops --
+    choosing the break whose wider line is narrowest, so the two lines balance;
+    a tie goes to the longer first line.  ``None`` when no single break lets
+    both lines fit.
+    """
+    if width(text) <= max_w:
+        return [text]
+    candidates: list[tuple[int, int, str, str]] = []
+    for i, ch in enumerate(text):
+        if ch == " ":
+            head, tail = text[:i].rstrip(), text[i + 1 :].lstrip()
+        elif ch in _LABEL_BREAK_AFTER:
+            head, tail = text[: i + 1], text[i + 1 :].lstrip()
+        else:
+            continue
+        if head and tail:
+            widest = max(width(head), width(tail))
+            if widest <= max_w:
+                candidates.append((widest, -len(head), head, tail))
+    if not candidates:
+        return None
+    _, _, head, tail = min(candidates)
+    return [head, tail]
+
+
+def _text_width(font: pygame.font.Font, text: str) -> int:
+    return font.size(text)[0]
+
+
+class ChipLabel(NamedTuple):
+    """The chip's label as drawn: every line in one bold font of ``size`` px.
+
+    ``lines`` holds ``(role, text)`` per drawn line, after any breaks.  ``fits``
+    is ``False`` only when even the smallest font cannot keep the label inside
+    the chip, in which case the label is clipped to it.
+    """
+
+    size: int
+    lines: tuple[tuple[ChipLabelRole, str], ...]
+    fits: bool
+
 
 # ── Component classes ────────────────────────────────────────────────
 
@@ -25,6 +86,11 @@ class FPGAChip:
     # set_theme() swap restyles the chip; geometry and the neutral border stay.
     _BORDER_COLOR = GRAY
     _PIN_LENGTH = 5
+    #: Room kept between the label and the chip's edge: its 2 px border plus air.
+    _LABEL_PAD_X = 6
+    _LABEL_PAD_Y = 3
+    #: The smallest font the label shrinks to; below it the label is clipped.
+    _LABEL_MIN_SIZE = 8
 
     def __init__(
         self, vendor: str = "", device: str = "", package: str = "", clock_hz: float = 0.0
@@ -35,6 +101,7 @@ class FPGAChip:
         self.package = package
         self.clock_hz = clock_hz
         self.rect = pygame.Rect(0, 0, 0, 0)
+        self._label_cache: tuple[tuple[object, ...], ChipLabel] | None = None
 
     @staticmethod
     def _fmt_clock(hz: float) -> str:
@@ -45,8 +112,81 @@ class FPGAChip:
             return f"{hz / 1e3:g} kHz"
         return f"{hz:g} Hz"
 
-    def draw(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
-        """Draw the FPGA chip package with vendor color, pin marks, and text labels."""
+    def label_lines(self) -> list[tuple[ChipLabelRole, str]]:
+        """Return the label before fitting: vendor, device, package, clock; empty ones dropped."""
+        lines: list[tuple[ChipLabelRole, str]] = [
+            ("vendor", self.vendor),
+            ("device", self.device.upper()),
+            ("package", self.package.upper()),
+        ]
+        if self.clock_hz:
+            lines.append(("clock", self._fmt_clock(self.clock_hz)))
+        return [(role, text) for role, text in lines if text]
+
+    @staticmethod
+    def label_color(role: ChipLabelRole) -> tuple[int, int, int]:
+        """Return the color a label line of *role* is drawn in, read from THEME now."""
+        colors: dict[ChipLabelRole, tuple[int, int, int]] = {
+            "vendor": WHITE,
+            "device": THEME.chip_device,
+            "package": THEME.chip_package,
+            "clock": THEME.chip_clock,
+        }
+        return colors[role]
+
+    def fit_label(self, size: int) -> ChipLabel:
+        """Fit the label inside the chip, starting from a bold font of *size* px.
+
+        A line too wide for the chip breaks onto two (:func:`wrap_label`).  The
+        font shrinks only when breaking is not enough -- a line with no break
+        that fits, or more lines than the chip is tall -- one pixel at a time
+        down to ``_LABEL_MIN_SIZE``, where the label is laid out as well as it
+        can be and ``fits`` is ``False``.  Every line shares one size, so a
+        shrunken label still reads as one block.  Both renderers use this: the
+        window (``draw``) and the SVG export.
+
+        Cached on the chip's size, so a frame that changes nothing measures nothing.
+        """
+        inner = self.rect.inflate(-2 * self._LABEL_PAD_X, -2 * self._LABEL_PAD_Y)
+        source = self.label_lines()
+        key = (inner.size, size, tuple(source))
+        if self._label_cache is not None and self._label_cache[0] == key:
+            return self._label_cache[1]
+        label = self._fit_label(source, inner.width, inner.height, size)
+        self._label_cache = (key, label)
+        return label
+
+    def _fit_label(
+        self, source: list[tuple[ChipLabelRole, str]], max_w: int, max_h: int, size: int
+    ) -> ChipLabel:
+        floor = min(size, self._LABEL_MIN_SIZE)
+        for sz in range(size, floor - 1, -1):
+            font = _get_font(sz, bold=True)
+            width = functools.partial(_text_width, font)
+            lines: list[tuple[ChipLabelRole, str]] = []
+            for role, text in source:
+                wrapped = wrap_label(text, width, max_w)
+                if wrapped is None:
+                    break
+                lines.extend((role, part) for part in wrapped)
+            else:
+                if len(lines) * font.get_linesize() <= max_h:
+                    return ChipLabel(sz, tuple(lines), fits=True)
+        # Nothing fits, even at the floor: break where it helps; draw() clips the rest.
+        width = functools.partial(_text_width, _get_font(floor, bold=True))
+        lines = [
+            (role, part)
+            for role, text in source
+            for part in (wrap_label(text, width, max_w) or [text])
+        ]
+        return ChipLabel(floor, tuple(lines), fits=False)
+
+    def draw(self, surface: pygame.Surface, font_size: int) -> None:
+        """Draw the chip package with vendor color, pin marks, and its label.
+
+        *font_size* is the label's starting size; :meth:`fit_label` keeps the
+        label inside the chip.
+        """
         if self.rect.width < 20:
             return
         r = self.rect
@@ -56,30 +196,19 @@ class FPGAChip:
         pygame.draw.rect(surface, self._BORDER_COLOR, r, 2, border_radius=6)
         self._draw_pin_marks(surface, r)
 
-        cx, cy = r.centerx, r.centery
+        label = self.fit_label(font_size)
+        font = _get_font(label.size, bold=True)
         line_h = font.get_linesize()
-        lines = [
-            (
-                self.vendor,
-                WHITE,
-            ),
-            (
-                self.device.upper(),
-                THEME.chip_device,
-            ),
-            (
-                self.package.upper(),
-                THEME.chip_package,
-            ),
-        ]
-        if self.clock_hz:
-            lines.append((self._fmt_clock(self.clock_hz), THEME.chip_clock))
-        active = [(t, c) for t, c in lines if t]
-        offset = -(len(active) - 1) / 2 * line_h
-        for text, color in active:
-            s = render_text(font, text, color)
+        cx, cy = r.centerx, r.centery
+        offset = -(len(label.lines) - 1) / 2 * line_h
+        clip = surface.get_clip()
+        if not label.fits:
+            surface.set_clip(r.inflate(-4, -4).clip(clip))
+        for role, text in label.lines:
+            s = render_text(font, text, self.label_color(role))
             surface.blit(s, s.get_rect(centerx=cx, centery=cy + offset))
             offset += line_h
+        surface.set_clip(clip)
 
     def _draw_pin_marks(self, surface: pygame.Surface, r: pygame.Rect) -> None:
         color = THEME.chip_pin

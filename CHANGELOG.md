@@ -49,6 +49,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one bank, and every `led(i)` drives the same LED as before. The XTRX boards' RF-path
   switch controls and QuickFeather's debug port are no longer drawn as user switches.
   (Roadmap U56, Phase 1c.)
+- **A chip's label stays inside the chip.** Some of those part numbers are wider than
+  the chip — `XCZU11EG-FFVF1517-2-I` on `litex-boards/adi_adrv2crr_fmc`,
+  `LFE5UM5G-85F-8BG381C` on `litex-boards/radiona_ulx4m_ld_v2` — so they ran past its
+  edges. A line too wide now breaks onto two at a dash, slash or space. The text
+  shrinks only when breaking is not enough, and in a window too small for that, it is
+  clipped at the chip's edge. The SVG export lays the label out the same way. Boards
+  whose label already fit look exactly as before.
+  (Roadmap U56, Phase 1c.)
 - **Board names no longer come out of the sync mangled.** The Amaranth parser broke part
   numbers apart ("ULX3 S-12 F-", "AX7325 B", "DE1 So C") and the LiteX one lowered
   upstream's capitals ("Brisbanesilicon"). Both now keep a name as upstream wrote it,

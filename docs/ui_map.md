@@ -50,11 +50,11 @@ fourth RGB site while the legend's index 7 is the eighth mono LED.
 | `preview.board.leds.ledr` | zone | `fpga_sim/ui/board_display.py:1132` |
 | `preview.board.seg[i]` | widget | `fpga_sim/ui/board_display.py:1120` |
 | `preview.board.sw[i]` | widget | `fpga_sim/ui/board_display.py:1112` |
-| `preview.footer.load-vhdl` | item | `fpga_sim/ui/board_display.py:1383` |
-| `preview.footer.select-board` | item | `fpga_sim/ui/board_display.py:1370` |
-| `preview.footer.sim-toggle` | item | `fpga_sim/ui/board_display.py:1421` |
-| `preview.footer.simulate` | item | `fpga_sim/ui/board_display.py:1398` |
-| `preview.header.generics` | item | `fpga_sim/ui/board_display.py:1353` |
+| `preview.footer.load-vhdl` | item | `fpga_sim/ui/board_display.py:1384` |
+| `preview.footer.select-board` | item | `fpga_sim/ui/board_display.py:1371` |
+| `preview.footer.sim-toggle` | item | `fpga_sim/ui/board_display.py:1422` |
+| `preview.footer.simulate` | item | `fpga_sim/ui/board_display.py:1399` |
+| `preview.header.generics` | item | `fpga_sim/ui/board_display.py:1354` |
 | `preview.header.help` | item | `fpga_sim/ui/help_dialog.py:337` |
 | `preview.header.settings` | item | `fpga_sim/ui/settings_dialog.py:136` |
 | `select.header` | zone | `fpga_sim/ui/board_selector.py:451` |
