@@ -31,6 +31,16 @@ _REPO = "Digilent/digilent-xdc"
 _ORIGIN = "digilent-xdc"
 
 
+def digilent_stem(upstream_file: str) -> str:
+    """Return the stem a new Digilent board's file is named after.
+
+    Every Digilent XDC file is called ``<Board>-Master.xdc``, so the suffix says nothing:
+    a new ZedBoard is ``zedboard.json``, in the style of the existing ``basys_3.json``
+    (decided 2026-11-01, Rick). Existing files keep their names forever (U56 §4.1).
+    """
+    return Path(upstream_file).stem.removesuffix("-Master")
+
+
 def extract_xdc_files(archive_bytes: bytes) -> dict[str, str]:
     """Extract .xdc files from the tarball. Returns {filename: source}."""
     xdc_files: dict[str, str] = {}
@@ -125,6 +135,7 @@ def main() -> int:
             dry_run=args.dry_run,
             describe=describe,
             classless=True,
+            file_stem=digilent_stem,
         )
     except SyncFailureError as failure:
         print("\nSync stopped; nothing was written:", file=sys.stderr)

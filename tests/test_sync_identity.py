@@ -391,3 +391,28 @@ def test_a_parser_that_raises_on_a_recorded_identity_reports_it_as_failed(tmp_pa
     assert report.warnings == {"w.py": ['version_failed: {"revision": 2}: RuntimeError']}
     assert _load(folder, "w.json")["source"]["orphaned_reason"] == "no_longer_defined"
     assert _load(folder, "w.json")["source"]["successor"] == "litex-boards/w_revision-1.json"
+
+
+def test_a_source_can_shape_the_stem_new_boards_are_named_after(tmp_path):
+    # Digilent: every XDC file is <Board>-Master.xdc, so the suffix is dropped.
+    from sync_digilent_xdc import digilent_stem
+
+    folder = tmp_path / ORIGIN
+
+    def read(filename, text, args):
+        return ParseOutcome(boards=[_produced("Zedboard", filename, cls="")])
+
+    report = run_sync(
+        origin=ORIGIN,
+        repo="example/repo",
+        files={"Zedboard-Master.xdc": ""},
+        commit_sha=COMMIT,
+        output_dir=folder,
+        read=read,
+        schema_path=SCHEMA,
+        color_registry={},
+        classless=True,
+        file_stem=digilent_stem,
+    )
+    assert report.new == ["zedboard.json"]
+    assert digilent_stem("Arty-A7-35-Master.xdc") == "Arty-A7-35"

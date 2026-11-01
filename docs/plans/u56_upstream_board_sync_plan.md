@@ -463,7 +463,8 @@ Identity key = `(origin, upstream_file, upstream_class, upstream_args)`.
   default construction on a tie, and use each file and each board once. Growing the parameter
   list therefore never orphans a file.
 - **File-name assignment.** An identity that already has a file keeps it forever. A new identity
-  gets `<sanitized upstream file stem>`, plus `_<sanitized class minus "Platform">` when the file
+  gets `<sanitized upstream file stem>` (Digilent drops the `-Master` every XDC file name ends in,
+  so a new ZedBoard is `zedboard.json`; decided 2026-11-01, Rick), plus `_<sanitized class minus "Platform">` when the file
   defines more than one board, plus `_<param>-<value>` for each version parameter whose value is
   not the default. If that name is held by another identity of the same upstream file and class,
   append `_<param>-<value>` for every version parameter instead: the default revision 1 of Wukong
@@ -872,7 +873,8 @@ check; full `pytest`.
   change, because a reorder there *does* move `led(i)`: LimeSDR Mini V2's alternating green and red
   LEDs are real bi-color hardware, and the 1-pin and 4-pin "RGB" resources (`colorlight_i9plus`,
   `sipeed_tang_nano_20k`, `modretro_chromatic`) are mono by the loader's rule and stay put.
-- New boards take stem-based file names (§4.1), e.g. Amaranth `versa_ecp5_5g.json`,
+- New boards take stem-based file names (§4.1), e.g. Digilent `zedboard.json` (from
+  `Zedboard-Master.xdc`), Amaranth `versa_ecp5_5g.json`,
   `supercon19badge.json`, `upduino_v2.json`.
 - Phase 1b already fixed the prettifiers; add a display-name override only for a new name that
   `tests/test_board_display_names.py` still flags.
@@ -1052,7 +1054,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | PR 0 | plan + card + ID + decisions | no | done 2026-10-31 (#465) |
 | early | `--board` by source (1a item 6); the no-scope sync-token recipe (§4.4) | no | `--board`: done 2026-10-31 (#466), ahead of the arc. Token recipe: **dropped** 2026-10-31 — Rick decided no upstream code is executed, so `gh`'s own token is fine for our code; until the parse-only reader lands, the syncs that execute upstream files run only in CI (amendment to follow) |
 | 0 | parse-only reader: no upstream code executed (D-7, §5a) | no | done 2026-11-01 (#469) |
-| 1a | identity, ledger, accept-list, orphan detection, impact matrix with per-bank rows (`--board` re-checked) | no | in progress 2026-11-01: identity, ledger, orphans, accept-list done; matrix pending |
+| 1a | identity, ledger, accept-list, orphan detection, impact matrix with per-bank rows (`--board` re-checked) | no | done 2026-11-01 (#470) |
 | 1b | display names (P35) | no (a before → after name table) | not started |
 | 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | not started |
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | not started |

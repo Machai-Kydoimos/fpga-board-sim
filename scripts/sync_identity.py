@@ -240,14 +240,20 @@ def _version_suffix(board: ProducedBoard, keys: list[str]) -> str:
     )
 
 
+def _plain_stem(upstream_file: str) -> str:
+    return Path(upstream_file).stem
+
+
 def _name_new(
     board: ProducedBoard,
     produced: list[ProducedBoard],
     taken: dict[str, tuple[str, str]],
+    file_stem: Callable[[str], str] = _plain_stem,
 ) -> str:
     """Return the file name for a new identity (§4.1), or raise a clash."""
     same_file = [b for b in produced if b.upstream_file == board.upstream_file]
-    name = sanitize_filename(Path(board.upstream_file).stem)
+    stem = sanitize_filename(file_stem(board.upstream_file))
+    name = stem
     if len({b.upstream_class for b in same_file}) > 1:
         cls = sanitize_filename(board.upstream_class.removesuffix("Platform"))
         if cls:
@@ -263,7 +269,7 @@ def _name_new(
     if owner == (board.upstream_file, board.upstream_class):
         # Held by another identity of the same file and class (Wukong's default revision 1
         # arriving after revision 2 holds qmtech_wukong.json): spell every version key.
-        name = sanitize_filename(Path(board.upstream_file).stem) + _version_suffix(board, params)
+        name = stem + _version_suffix(board, params)
         owner = taken.get(f"{name}.json")
     if owner is not None:
         raise SyncFailureError(
@@ -300,11 +306,14 @@ def run_sync(
     schema_path: Path | None = None,
     color_registry: dict[str, Any] | None = None,
     classless: bool = False,
+    file_stem: Callable[[str], str] = _plain_stem,
 ) -> SyncReport:
     """Read every upstream file, decide each board's file, and write (module docstring).
 
     ``classless`` is for a source whose files define no classes (Digilent XDC): its
     identity is ``(origin, upstream_file)``, so every existing file already has one.
+    ``file_stem`` turns an upstream file name into the stem a new board's file is named
+    after (Digilent drops the ``-Master`` every XDC file name ends in).
     """
     acceptances = [a for a in (accept_list or []) if a.source == origin]
     used: set[Acceptance] = set()
@@ -328,7 +337,7 @@ def run_sync(
     new_names: dict[str, ProducedBoard] = {}
     for board in unpaired:
         try:
-            name = _name_new(board, produced, taken)
+            name = _name_new(board, produced, taken, file_stem)
         except SyncFailureError as failure:
             problems.extend(failure.problems)
             continue
