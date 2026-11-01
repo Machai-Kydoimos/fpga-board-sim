@@ -307,7 +307,7 @@ help overlay covering the workflow, keyboard shortcuts, and the VHDL design cont
 
 ### 1. Select a board
 
-A list of 285 FPGA boards appears, **sorted by name**. Type to filter, click or
+A list of 341 FPGA boards appears, **sorted by name**. Type to filter, click or
 press **Enter** to select — the cursor starts on the first row, so the keyboard
 alone works from the first frame.
 
@@ -352,7 +352,7 @@ channels into one color.
   do with its single cursor. The **numpad** digits work too, so a numeric keypad
   becomes a button pad. Each bound button shows its key on its face, and the
   hover tooltip names it as well. Hex covers the whole fleet: the largest board
-  has 13 buttons, and only 6 of 285 have more than 10
+  has 13 buttons, and only 7 of 341 have more than 10
 - **Right-click a button** to **latch** it down hands-free; right-click again to
   release it. A latched button draws in its own color with a small padlock in
   its top-right corner, and combines freely with a live hold — hold it with the mouse *as well*, let the

@@ -60,6 +60,7 @@ _EDGE_SEPARATOR = re.compile(r"^[\s-]|[\s-]$")
 _VENDOR_SPELLINGS: dict[str, str] = {
     "Genesys ZU-3EG-D": "Digilent ships Genesys-ZU-3EG-D-Master.xdc; the -D is theirs",
     "Genesys ZU-5EV-D": "Digilent ships Genesys-ZU-5EV-D-Master.xdc; the -D is theirs",
+    "ICE-V Wireless": "litex-boards' ice_v_wireless.py names it in its header: '# ICE-V wireless'",
 }
 
 

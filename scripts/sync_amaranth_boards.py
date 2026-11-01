@@ -62,7 +62,10 @@ _ORIGIN = "amaranth-boards"
 
 
 def make_reader(
-    commit_sha: str, schema_ref: str = "../schema/board.schema.json", timestamp: str = ""
+    commit_sha: str,
+    schema_ref: str = "../schema/board.schema.json",
+    timestamp: str = "",
+    siblings: Mapping[str, str] | None = None,
 ) -> Reader:
     """Return the reader ``run_sync`` calls per upstream file: read it, then stamp ``source``.
 
@@ -72,7 +75,7 @@ def make_reader(
     stamp = timestamp or datetime.now(UTC).isoformat()
 
     def read(filename: str, text: str, args: Mapping[str, Any] | None) -> ParseOutcome:
-        outcome = read_amaranth_file(text, filename)
+        outcome = read_amaranth_file(text, filename, siblings)
         for produced in outcome.boards:
             produced.board["$schema"] = schema_ref
             produced.board["source"] = {
@@ -102,7 +105,7 @@ def generate_board_json(
     For tests and audits only: the write path is ``sync_identity.run_sync``, which names
     files by identity. This names them by display name, as syncs did before identities.
     """
-    read = make_reader(commit_sha, schema_ref)
+    read = make_reader(commit_sha, schema_ref, siblings=board_files)
     seen: dict[str, int] = {}
     results: dict[str, str] = {}
     for filename, source in sorted(board_files.items()):
@@ -161,7 +164,7 @@ def main() -> int:
             files=board_files,
             commit_sha=commit_sha,
             output_dir=args.output_dir,
-            read=make_reader(commit_sha),
+            read=make_reader(commit_sha, siblings=board_files),
             accept_list=load_accept_list(),
             dry_run=args.dry_run,
             describe=describe,

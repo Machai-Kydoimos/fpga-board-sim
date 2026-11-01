@@ -2,7 +2,7 @@
   "name": "Qmtech Ep4ce15 Starter Kit",
   "class_name": "QmtechEp4ce15StarterKitPlatform",
   "vendor": "Intel",
-  "device": "",
+  "device": "EP4CE15F23C8",
   "package": "",
   "clocks": [
     {
@@ -66,6 +66,6 @@
     "upstream_file": "qmtech_ep4ce15_starter_kit.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }

@@ -22,7 +22,9 @@ untouched. Self-contained: no ``fpga_sim`` dependency.
 
 from __future__ import annotations
 
+import itertools
 import json
+import re
 import tomllib
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -249,8 +251,12 @@ def _name_new(
     produced: list[ProducedBoard],
     taken: dict[str, tuple[str, str]],
     file_stem: Callable[[str], str] = _plain_stem,
-) -> str:
-    """Return the file name for a new identity (§4.1), or raise a clash."""
+) -> tuple[str, list[str]]:
+    """Return the file name for a new identity (§4.1) and the version keys it spells.
+
+    Raises a clash.  A non-empty key list means the name carries a version, so the
+    board's ``class_name`` and display name must carry it too (:func:`_mark_version`).
+    """
     same_file = [b for b in produced if b.upstream_file == board.upstream_file]
     stem = sanitize_filename(file_stem(board.upstream_file))
     name = stem
@@ -262,14 +268,17 @@ def _name_new(
         (b for b in same_file if b.default and b.upstream_class == board.upstream_class), None
     )
     params = [k for k in VERSION_PARAMS if k in board.upstream_args]
+    spelled: list[str] = []
     if default is not None and default is not board:
         changed = [k for k in params if default.upstream_args.get(k) != board.upstream_args[k]]
         name += _version_suffix(board, changed)
+        spelled = changed
     owner = taken.get(f"{name}.json")
     if owner == (board.upstream_file, board.upstream_class):
         # Held by another identity of the same file and class (Wukong's default revision 1
         # arriving after revision 2 holds qmtech_wukong.json): spell every version key.
         name = stem + _version_suffix(board, params)
+        spelled = params
         owner = taken.get(f"{name}.json")
     if owner is not None:
         raise SyncFailureError(
@@ -278,7 +287,50 @@ def _name_new(
                 f"{owner[0]} ({owner[1] or 'no class'})"
             ]
         )
-    return f"{name}.json"
+    return f"{name}.json", spelled
+
+
+def _mark_version(board: ProducedBoard, keys: list[str]) -> None:
+    """Append the version to a new versioned board's ``class_name`` and display name.
+
+    Recents and the session key boards by ``(class_name, source)``, so two versions of
+    one upstream class must differ there too (§4.1): ``QmtechWukongRevision1Platform``,
+    "Qmtech Wukong (revision 1)".
+    """
+    data = board.board
+    tag = "".join(
+        key.title().replace("_", "") + re.sub(r"[^0-9A-Za-z]", "", str(board.upstream_args[key]))
+        for key in keys
+    )
+    data["class_name"] = f"{str(data.get('class_name', '')).removesuffix('Platform')}{tag}Platform"
+    spelled = ", ".join(f"{key} {board.upstream_args[key]}" for key in keys)
+    data["name"] = f"{data.get('name', '')} ({spelled})"
+
+
+def _restore_version(board: ProducedBoard, existing_class: str) -> None:
+    """Give a paired board back the version its file was named with (§4.1).
+
+    The parser emits the base class name; a versioned file holds
+    ``QmtechWukongRevision1Platform``.  The version keys whose spelling reproduces the
+    file's class name are re-applied, keeping the display name in step.  A class name
+    is never changed (§2.6), so one no spelling explains is kept as it is.
+    """
+    produced = str(board.board.get("class_name", ""))
+    if not existing_class or existing_class == produced:
+        return
+    keys = [k for k in VERSION_PARAMS if k in board.upstream_args]
+    base = produced.removesuffix("Platform")
+    for size in range(1, len(keys) + 1):
+        for combo in itertools.combinations(keys, size):
+            tag = "".join(
+                key.title().replace("_", "")
+                + re.sub(r"[^0-9A-Za-z]", "", str(board.upstream_args[key]))
+                for key in combo
+            )
+            if f"{base}{tag}Platform" == existing_class:
+                _mark_version(board, list(combo))
+                return
+    board.board["class_name"] = existing_class
 
 
 def _content(data: Mapping[str, Any]) -> str:
@@ -331,6 +383,9 @@ def run_sync(
         outcomes[filename] = outcome
 
     pairs, unpaired = _pair(existing, produced)
+    by_filename = {e.filename: e for e in existing}
+    for filename, board in pairs.items():
+        _restore_version(board, str(by_filename[filename].data.get("class_name", "")))
     report = SyncReport()
     problems: list[str] = []
     taken = {e.filename: (e.upstream_file, e.upstream_class or "") for e in existing}
@@ -341,10 +396,12 @@ def run_sync(
     new_names: dict[str, ProducedBoard] = {}
     for board in unpaired:
         try:
-            name = _name_new(board, produced, taken, file_stem)
+            name, spelled = _name_new(board, produced, taken, file_stem)
         except SyncFailureError as failure:
             problems.extend(failure.problems)
             continue
+        if spelled:
+            _mark_version(board, spelled)
         taken[name] = (board.upstream_file, board.upstream_class)
         new_names[name] = board
 
@@ -427,16 +484,45 @@ def run_sync(
         orphan_jsons[entry.filename] = json.dumps(marked, indent=2) + "\n"
         report.orphans.append(entry.filename)
 
+    # From Phase 1c a parser error is fatal: a file we cannot read is our bug to fix,
+    # unless a person accepted it as upstream's (decision 2).
+    for filename, outcome in sorted(outcomes.items()):
+        if outcome.outcome != "error":
+            continue
+        acceptance = next(
+            (a for a in acceptances if a.outcome == "error" and a.upstream_file == filename), None
+        )
+        if acceptance is None:
+            problems.append(
+                f"our parser failed on {filename} ({outcome.detail}): fix the parser, or accept "
+                "it in scripts/board_sync_accepted.toml if the file is upstream's to fix"
+            )
+        else:
+            used.add(acceptance)
+
     for acceptance in acceptances:
-        if acceptance.outcome == "error":
-            seen = outcomes.get(acceptance.upstream_file)
-            if seen is not None and seen.outcome == "error":
-                used.add(acceptance)
         if acceptance not in used:
             problems.append(
                 f"stale acceptance: {acceptance.upstream_file} {acceptance.outcome} "
                 f"{acceptance.file} no longer matches anything; remove it"
             )
+    holders: dict[str, str] = {}
+    written = {n: b.board for n, b in [*pairs.items(), *new_names.items()]}
+    # Orphans may share a class with their successor (an Amaranth class that moved files
+    # keeps its name); the check is for a new identity colliding with a live board.
+    kept = {
+        e.filename: e.data
+        for e in existing
+        if e.filename not in written and not e.orphaned and e.filename not in orphan_jsons
+    }
+    for filename, data in sorted({**kept, **written}.items()):
+        cls = str(data.get("class_name", ""))
+        if cls in holders:
+            problems.append(
+                f"{filename} and {holders[cls]} would share class_name {cls}: recents and the "
+                "session key boards by (class_name, source)"
+            )
+        holders.setdefault(cls, filename)
     if problems:
         raise SyncFailureError(sorted(problems))
 

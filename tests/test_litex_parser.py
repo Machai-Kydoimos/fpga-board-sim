@@ -285,24 +285,52 @@ def test_a_version_upstream_no_longer_accepts_is_an_error_not_a_fallback():
     assert (outcome.outcome, outcome.detail, outcome.boards) == ("error", "ValueError", [])
 
 
-def test_the_module_level_fallback_is_a_warning_and_wukong_keeps_revision_2():
-    source = (
-        _VERSIONED.replace(
-            '        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", io, toolchain=toolchain)',
-            "        self.toolchain.additional_commands = []  # a mock gap: the constructor fails",
-        )
-        .replace("_io_r1 =", "_io_v1 =")
-        .replace("_io_r2 =", "_io_v2 =")
-        .replace(
-            "io = _io_r1 if revision == 1 else _io_r2", "io = _io_v1 if revision == 1 else _io_v2"
-        )
+def test_a_constructor_that_fails_is_an_error_not_a_fallback():
+    # Phase 1c removed the module-level fallback: a failing constructor reports itself.
+    source = _VERSIONED.replace(
+        '        if revision not in (1, 2):\n            raise ValueError("unknown revision")',
+        '        raise ValueError("this constructor always fails")',
     )
-    outcome = read_litex_file(source, "qmtech_wukong.py")
-    assert outcome.warnings == ["io_fallback: _io_v2"]  # the fallback tries _io_v2 before _io_v1
-    (board,) = outcome.boards
-    assert board.upstream_args == {"revision": 2}  # the migration entry (plan §4.1)
-    elsewhere = read_litex_file(source, "another_board.py")
-    assert elsewhere.boards[0].upstream_args == {"revision": 1}  # the default's identity
+    outcome = read_litex_file(source, "always_fails.py")
+    assert (outcome.outcome, outcome.detail, outcome.boards) == ("error", "ValueError", [])
+
+
+def test_the_permissive_platform_absorbs_toolchain_options_and_unknown_methods():
+    source = _VERSIONED.replace(
+        '        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", io, toolchain=toolchain)',
+        '        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", io, toolchain=toolchain)\n'
+        '        self.toolchain.bitstream_commands = ["set_property CFGBVS VCCO"]\n'
+        '        self.toolchain.additional_commands += ["write_cfgmem"]\n'
+        '        self.add_platform_command("set_property INTERNAL_VREF 0.675")\n'
+        '        self.add_period_constraint(self.lookup_request("clk100"), 10.0)',
+    )
+    outcome = read_litex_file(source, "permissive.py")
+    assert outcome.outcome == "boards" and outcome.boards[0].board["device"] == "xc7a35t"
+
+
+def test_an_imported_helper_we_do_not_model_is_a_stand_in():
+    source = _VERSIONED.replace(
+        "_io_r1 =", "from litex_boards.extensions.pmod import PmodUSBUART\n\n_io_r1 ="
+    ).replace(
+        '        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", io, toolchain=toolchain)',
+        '        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", io, toolchain=toolchain)\n'
+        '        self.add_extension(PmodUSBUART("pmoda").get_io())',
+    )
+    outcome = read_litex_file(source, "with_pmod.py")
+    assert outcome.outcome == "boards" and len(outcome.boards[0].board["leds"]) == 1
+
+
+def test_a_name_from_an_unmocked_star_import_gets_a_stand_in_but_a_stray_name_does_not():
+    star = "from migen import *\n" + _VERSIONED.replace(
+        "        io = _io_r1 if revision == 1 else _io_r2",
+        "        io = _io_r1 if revision == 1 else _io_r2\n        helper = Module()",
+    )
+    assert read_litex_file(star, "migen_user.py").outcome == "boards"
+    stray = _VERSIONED.replace(
+        "        io = _io_r1 if revision == 1 else _io_r2",
+        "        io = _io_r1 if revision == 1 else _io_r2\n        helper = Module()",
+    )
+    assert read_litex_file(stray, "stray.py").detail == "NameError: Module"
 
 
 def test_outcomes_say_why_a_file_has_no_board():
@@ -313,3 +341,24 @@ def test_outcomes_say_why_a_file_has_no_board():
     assert read_litex_file(no_io, "no_io.py").detail == "no_simulatable_io"
     broken = read_litex_file("class Platform(Undefined):\n    pass\n", "broken.py")
     assert (broken.outcome, broken.detail) == ("error", "NameError: Undefined")
+
+
+# ── Phase 1c: mocks that read what upstream writes (U56 defects 3–5) ───────────
+
+
+def test_pins_takes_several_identifier_strings():
+    import litex_parser
+
+    pins = litex_parser._Pins("A1 B2", "C3", dir="o")
+    assert pins.identifiers == ["A1", "B2", "C3"] and pins.names == pins.identifiers
+    assert pins.dir == "o"
+
+
+def test_the_vendor_table_uses_upstreams_spellings():
+    import litex_parser
+
+    vendors = litex_parser._PLATFORM_VENDORS
+    assert vendors["LatticeiCE40Platform"] == "Lattice"
+    assert "LatticeICE40Platform" not in vendors  # the old misspelling locked out iCE40
+    for name in ("LatticePlatform", "MicrosemiPlatform", "AnlogicPlatform", "QuickLogicPlatform"):
+        assert name in vendors

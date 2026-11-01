@@ -275,12 +275,51 @@ def _parse_port_name(port: str) -> tuple[str, int | None]:
     return port.strip(), None
 
 
+#: Port-name fallbacks for a file whose section headings classify nothing (Avnet's
+#: ZedBoard XDC uses single-``#`` headings) -- the Digilent board names (U56 defect 10).
+_PORT_NAME_TYPES: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"^LD\d+$"), "led"),
+    (re.compile(r"^SW\d+$"), "switch"),
+    (re.compile(r"^BTN[CDLRU]$"), "button"),
+)
+_RE_MHZ = re.compile(r"(\d+(?:\.\d+)?)\s*MHz", re.IGNORECASE)
+
+
+def _port_name_type(port: str) -> str | None:
+    """Return the resource type a port's own name gives it, when no heading did."""
+    return next((kind for rx, kind in _PORT_NAME_TYPES if rx.match(port)), None)
+
+
+def _comment_clock_mhz(block: list[str], port: str) -> float | None:
+    """Return the MHz a comment line directly above *port* states for it (U56 defect 23).
+
+    ``# Sysclk is a 25 MHz PL reference clock ...`` above ``sysclk`` (the Genesys ZU
+    files, which have no ``create_clock``): the line must name the port and a frequency.
+    """
+    named = re.compile(rf"\b{re.escape(port)}\b", re.IGNORECASE)
+    for line in block:
+        mhz = _RE_MHZ.search(line)
+        if mhz and named.search(line):
+            return float(mhz.group(1))
+    return None
+
+
 def parse_xdc(content: str) -> dict[str, Any]:
     """Parse an XDC file into structured pin data grouped by section type."""
     pins: dict[str, list[dict[str, Any]]] = {}
     clock_period_ns: float | None = None
     current_type: str | None = None
     port_iostandard: dict[str, str] = {}
+    comment_block: list[str] = []
+    comment_clocks: list[tuple[dict[str, Any], float]] = []
+
+    def take(entry: dict[str, Any]) -> None:
+        mhz = _comment_clock_mhz(comment_block, entry["port"])
+        if mhz:
+            comment_clocks.append((dict(entry), mhz))
+        kind = current_type or _port_name_type(entry["port"])
+        if kind:
+            pins.setdefault(kind, []).append(entry)
 
     for line in content.split("\n"):
         sec_match = _RE_SECTION.match(line)
@@ -291,35 +330,39 @@ def parse_xdc(content: str) -> dict[str, Any]:
                 current_type = classified
             elif "=" not in header:
                 current_type = None
+            comment_block = []
             continue
 
         # Try -dict format (combined pin + iostandard on one line)
         prop_match = _RE_SET_PROP_BRACES.search(line) or _RE_SET_PROP_BARE.search(line)
-        if prop_match and current_type:
+        if prop_match:
             dict_content = prop_match.group(1)
             port_raw = prop_match.group(2).strip()
             pin_m = _RE_PACKAGE_PIN.search(dict_content)
             ios_m = _RE_IOSTANDARD.search(dict_content)
             if pin_m:
-                entry = {
-                    "pin": pin_m.group(1),
-                    "iostandard": ios_m.group(1) if ios_m else "",
-                    "port": port_raw,
-                }
-                pins.setdefault(current_type, []).append(entry)
+                take(
+                    {
+                        "pin": pin_m.group(1),
+                        "iostandard": ios_m.group(1) if ios_m else "",
+                        "port": port_raw,
+                    }
+                )
+            comment_block = []
             continue
 
         # Try separate-line PACKAGE_PIN format
         pkg_match = _RE_PKG_PIN_BRACES.search(line) or _RE_PKG_PIN_BARE.search(line)
-        if pkg_match and current_type:
-            pin = pkg_match.group(1)
+        if pkg_match:
             port_raw = pkg_match.group(2).strip()
-            entry = {
-                "pin": pin,
-                "iostandard": port_iostandard.get(port_raw, ""),
-                "port": port_raw,
-            }
-            pins.setdefault(current_type, []).append(entry)
+            take(
+                {
+                    "pin": pkg_match.group(1),
+                    "iostandard": port_iostandard.get(port_raw, ""),
+                    "port": port_raw,
+                }
+            )
+            comment_block = []
             continue
 
         # Try separate-line IOSTANDARD format
@@ -337,6 +380,18 @@ def parse_xdc(content: str) -> dict[str, Any]:
         clk_match = _RE_CLOCK_PERIOD.search(line)
         if clk_match:
             clock_period_ns = float(clk_match.group(1))
+            continue
+
+        stripped = line.strip()
+        comment_block = (
+            [*comment_block, stripped.lstrip("#").strip()] if stripped.startswith("#") else []
+        )
+
+    # A file with no create_clock: a port whose comment states its frequency is the clock.
+    if clock_period_ns is None and comment_clocks and not pins.get("clock"):
+        entry, mhz = comment_clocks[0]
+        pins.setdefault("clock", []).append(entry)
+        clock_period_ns = 1000.0 / mhz
 
     return {"pins": pins, "clock_period_ns": clock_period_ns}
 

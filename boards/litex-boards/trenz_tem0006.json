@@ -1,0 +1,71 @@
+{
+  "name": "Trenz Tem0006",
+  "class_name": "TrenzTem0006Platform",
+  "vendor": "Microsemi",
+  "device": "MPF100T-1FCVG484",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk12",
+      "hz": 12048192.771084337,
+      "pin": "A2",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 12048192.771084337,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "A3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "A6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk12",
+      "leds": {
+        "name": "user_led",
+        "width": 1
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "user_btn",
+        "width": 1
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "trenz_tem0006.py",
+    "upstream_class": "Platform",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

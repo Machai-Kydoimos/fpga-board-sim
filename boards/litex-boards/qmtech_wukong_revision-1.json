@@ -1,0 +1,87 @@
+{
+  "name": "Qmtech Wukong (revision 1)",
+  "class_name": "QmtechWukongRevision1Platform",
+  "vendor": "Xilinx",
+  "device": "xc7a100t-2fgg676",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk50",
+      "hz": 50000000.0,
+      "pin": "M22",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 50000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "J6"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "H6"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "H7"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk50",
+      "leds": {
+        "name": "user_led",
+        "width": 2
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "user_btn",
+        "width": 1
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "qmtech_wukong.py",
+    "upstream_class": "Platform",
+    "upstream_args": {
+      "revision": 1
+    },
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

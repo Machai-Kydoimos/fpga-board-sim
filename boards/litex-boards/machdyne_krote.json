@@ -1,0 +1,45 @@
+{
+  "name": "Machdyne Krote",
+  "class_name": "MachdyneKrotePlatform",
+  "vendor": "Lattice",
+  "device": "ice40-hx8k-bg121",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk100",
+      "hz": 100000000.0,
+      "pin": "B6",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 100000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "E2",
+        "F1",
+        "G2",
+        "J2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "machdyne_krote.py",
+    "upstream_class": "Platform",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

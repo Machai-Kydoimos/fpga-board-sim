@@ -56,7 +56,7 @@ _CLAIMS: tuple[tuple[str, str], ...] = (
     ("README.md", "narrow the {boards}-board list"),
     ("README.md", "**{conv} of the {boards} boards**"),
     ("docs/user_guide.md", "A list of {boards} FPGA boards"),
-    ("docs/user_guide.md", "only 6 of {boards} have more than 10"),
+    ("docs/user_guide.md", "only 7 of {boards} have more than 10"),
     ("docs/writing_designs.md", "**{conv} of the {boards} boards**"),
     # The sample --doctor report, in both documents that print one.
     ("docs/install.md", "Boards         {boards} definitions in {sources} sources"),

@@ -1,0 +1,69 @@
+{
+  "name": "Kosagi Fomu Pvt",
+  "class_name": "KosagiFomuPvtPlatform",
+  "vendor": "Lattice",
+  "device": "ice40-up5k-uwg30",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk48",
+      "hz": 48000000.0,
+      "pin": "F4",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 48000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "A5"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "B5",
+        "A5",
+        "C5"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk48",
+      "leds": {
+        "name": "user_led_n",
+        "width": 1,
+        "active_low": true
+      },
+      "naming": "framework-derived"
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "kosagi_fomu_pvt.py",
+    "upstream_class": "Platform",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

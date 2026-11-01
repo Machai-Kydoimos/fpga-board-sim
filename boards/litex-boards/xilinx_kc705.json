@@ -1,0 +1,271 @@
+{
+  "name": "Xilinx Kc705",
+  "class_name": "XilinxKc705Platform",
+  "vendor": "Xilinx",
+  "device": "xc7k325t-ffg900-2",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk200",
+      "hz": 200000000.0,
+      "pin": "AD12"
+    },
+    {
+      "name": "clk156",
+      "hz": 156250000.0,
+      "pin": "K28",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 156250000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "AB8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "AA8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "AC9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "AB9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "AE26"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "G19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "E18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "F16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button__c",
+      "number": 0,
+      "pins": [
+        "G12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "AA12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "button__s",
+      "number": 0,
+      "pins": [
+        "AB12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "button__w",
+      "number": 0,
+      "pins": [
+        "AC6"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "button__e",
+      "number": 0,
+      "pins": [
+        "AG5"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "Y29"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "W29"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "AA28"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "Y28"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk156",
+      "leds": {
+        "name": "user_led",
+        "width": 8
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "user_dip_btn",
+        "width": 4
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "xilinx_kc705.py",
+    "upstream_class": "Platform",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

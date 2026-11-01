@@ -1,8 +1,8 @@
 {
   "source_repo": "https://github.com/amaranth-lang/amaranth-boards",
   "source_commit": "be069dfd490b31df215337afac35711994a52418",
-  "sync_timestamp": "2026-10-31T23:32:50.244304+00:00",
-  "board_count": 80,
+  "sync_timestamp": "2026-11-01T03:02:01.519411+00:00",
+  "board_count": 83,
   "files_written": [
     "alchitry_au.json",
     "alchitry_pt_v2.json",
@@ -70,6 +70,7 @@
     "red_pitaya14.json",
     "rzeasy_fpgaa2-2.json",
     "step_mxo2.json",
+    "supercon19badge.json",
     "tang_mega138k_pro_dock.json",
     "tang_nano.json",
     "tang_nano9k.json",
@@ -82,8 +83,10 @@
     "ulx3_s-45_f.json",
     "ulx3_s-85_f.json",
     "upduino_v1.json",
+    "upduino_v2.json",
     "upduino_v3.json",
-    "versa_ecp5.json"
+    "versa_ecp5.json",
+    "versa_ecp5_5g.json"
   ],
   "ledger": {
     "alchitry_au.py": "boards: alchitry_au.json",
@@ -143,7 +146,7 @@
     "rz_easyfpga_a2_2.py": "boards: rzeasy_fpgaa2-2.json",
     "sk_xc6slx9.py": "skipped: no_simulatable_io",
     "stepmxo2.py": "boards: step_mxo2.json",
-    "supercon19badge.py": "error: NameError: DiffPairsN",
+    "supercon19badge.py": "boards: supercon19badge.json",
     "tang_mega_138k_pro_dock.py": "boards: tang_mega138k_pro_dock.json",
     "tang_nano.py": "boards: tang_nano.json",
     "tang_nano_9k.py": "boards: tang_nano9k.json",
@@ -154,12 +157,12 @@
     "tinyfpga_bx.py": "boards: tiny_fpgabx.json",
     "ulx3s.py": "boards: ulx3_s-12_f.json, ulx3_s-25_f.json, ulx3_s-45_f.json, ulx3_s-85_f.json",
     "upduino_v1.py": "boards: upduino_v1.json",
-    "upduino_v2.py": "error: NameError: UpduinoV1Platform",
+    "upduino_v2.py": "boards: upduino_v2.json",
     "upduino_v3.py": "boards: upduino_v3.json",
     "versa_ecp5.py": "boards: versa_ecp5.json",
-    "versa_ecp5_5g.py": "error: NameError: VersaECP5Platform",
+    "versa_ecp5_5g.py": "boards: versa_ecp5_5g.json",
     "zturn_lite_z007s.py": "skipped: not_a_board",
-    "zturn_lite_z010.py": "error: NameError: ZTurnLiteZ007SPlatform"
+    "zturn_lite_z010.py": "skipped: not_a_board"
   },
   "warnings": {},
   "orphans": []

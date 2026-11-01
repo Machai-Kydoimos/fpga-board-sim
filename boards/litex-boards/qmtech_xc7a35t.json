@@ -2,7 +2,7 @@
   "name": "Qmtech Xc7a35t",
   "class_name": "QmtechXc7a35tPlatform",
   "vendor": "Xilinx",
-  "device": "",
+  "device": "xc7a35tftg256-1",
   "package": "",
   "clocks": [
     {
@@ -48,6 +48,6 @@
     "upstream_file": "qmtech_xc7a35t.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }

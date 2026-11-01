@@ -1,0 +1,158 @@
+{
+  "name": "Digilent Netfpga Sume",
+  "class_name": "DigilentNetfpgaSumePlatform",
+  "vendor": "Xilinx",
+  "device": "xc7vx690tffg1761-3",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk200",
+      "hz": 200000000.0,
+      "pin": "H19",
+      "is_default": true
+    },
+    {
+      "name": "clk233",
+      "hz": 233000000.0,
+      "pin": "E34"
+    }
+  ],
+  "default_clock_hz": 200000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "AR22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "sfp_led",
+      "number": 0,
+      "pins": [
+        "G13",
+        "L15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "AR23"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "sfp_led",
+      "number": 1,
+      "pins": [
+        "AL22",
+        "BA20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "sfp_led",
+      "number": 2,
+      "pins": [
+        "AY18",
+        "AY17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "sfp_led",
+      "number": 3,
+      "pins": [
+        "P31",
+        "K32"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "BB12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "AR13"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk200",
+      "leds": {
+        "name": "user_led",
+        "width": 2
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "user_btn",
+        "width": 2
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "digilent_netfpga_sume.py",
+    "upstream_class": "Platform",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

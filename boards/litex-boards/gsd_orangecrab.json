@@ -28,21 +28,6 @@
       }
     },
     {
-      "name": "rgb_led",
-      "number": 0,
-      "pins": [
-        "K4",
-        "M3",
-        "J3"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "led",
       "number": 1,
       "pins": [
@@ -59,6 +44,21 @@
       "name": "led",
       "number": 2,
       "pins": [
+        "J3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "K4",
+        "M3",
         "J3"
       ],
       "direction": "o",
@@ -110,6 +110,6 @@
       "revision": "0.2"
     },
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }

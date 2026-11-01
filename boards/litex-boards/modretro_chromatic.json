@@ -2,7 +2,7 @@
   "name": "Modretro Chromatic",
   "class_name": "ModretroChromaticPlatform",
   "vendor": "Gowin",
-  "device": "",
+  "device": "GW5A-LV25PG256C1/I0",
   "package": "",
   "clocks": [
     {
@@ -50,6 +50,6 @@
     "upstream_file": "modretro_chromatic.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }

@@ -1,0 +1,192 @@
+{
+  "name": "Sitlinv Stlv7325 V2",
+  "class_name": "SitlinvStlv7325V2Platform",
+  "vendor": "Xilinx",
+  "device": "xc7k325t-ffg676-2",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk50",
+      "hz": 50000000.0,
+      "pin": "F17"
+    },
+    {
+      "name": "clk200",
+      "hz": 200000000.0,
+      "pin": "AB11",
+      "is_default": true
+    },
+    {
+      "name": "clk156",
+      "hz": 156000000.0,
+      "pin": "D6"
+    },
+    {
+      "name": "clk150",
+      "hz": 150000000.0,
+      "pin": "F6"
+    }
+  ],
+  "default_clock_hz": 200000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "AA2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "AD5"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "W10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "Y10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "AE10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "W11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "V11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "Y12"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "AC16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 1,
+      "pins": [
+        "C24"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk200",
+      "leds": {
+        "name": "user_led_n",
+        "width": 8,
+        "active_low": true
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "user_btn_n",
+        "width": 2,
+        "active_low": true
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "sitlinv_stlv7325_v2.py",
+    "upstream_class": "Platform",
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+  }
+}

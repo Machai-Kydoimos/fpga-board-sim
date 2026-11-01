@@ -2,7 +2,7 @@
   "name": "Digilent Nexys4",
   "class_name": "DigilentNexys4Platform",
   "vendor": "Xilinx",
-  "device": "",
+  "device": "xc7a100tcsg324-1",
   "package": "",
   "clocks": [
     {
@@ -28,40 +28,10 @@
       }
     },
     {
-      "name": "rgb_led",
-      "number": 0,
-      "pins": [
-        "K6",
-        "H6",
-        "L16"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "led",
       "number": 1,
       "pins": [
         "V9"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "rgb_led",
-      "number": 1,
-      "pins": [
-        "K5",
-        "F13",
-        "F6"
       ],
       "direction": "o",
       "inverted": false,
@@ -244,6 +214,36 @@
       "number": 15,
       "pins": [
         "P2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "K6",
+        "H6",
+        "L16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 1,
+      "pins": [
+        "K5",
+        "F13",
+        "F6"
       ],
       "direction": "o",
       "inverted": false,
@@ -612,6 +612,6 @@
     "upstream_file": "digilent_nexys4.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }

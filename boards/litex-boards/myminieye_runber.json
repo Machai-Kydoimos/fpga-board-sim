@@ -2,7 +2,7 @@
   "name": "Myminieye Runber",
   "class_name": "MyminieyeRunberPlatform",
   "vendor": "Gowin",
-  "device": "",
+  "device": "GW1N-UV4LQ144C6/I5",
   "package": "",
   "clocks": [
     {
@@ -28,40 +28,10 @@
       }
     },
     {
-      "name": "rgb_led",
-      "number": 0,
-      "pins": [
-        "112",
-        "114",
-        "113"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "led",
       "number": 1,
       "pins": [
         "24"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "rgb_led",
-      "number": 1,
-      "pins": [
-        "106",
-        "111",
-        "110"
       ],
       "direction": "o",
       "inverted": false,
@@ -84,40 +54,10 @@
       }
     },
     {
-      "name": "rgb_led",
-      "number": 2,
-      "pins": [
-        "101",
-        "104",
-        "102"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "led",
       "number": 3,
       "pins": [
         "26"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "rgb_led",
-      "number": 3,
-      "pins": [
-        "98",
-        "100",
-        "99"
       ],
       "direction": "o",
       "inverted": false,
@@ -170,6 +110,66 @@
       "number": 7,
       "pins": [
         "30"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "112",
+        "114",
+        "113"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 1,
+      "pins": [
+        "106",
+        "111",
+        "110"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 2,
+      "pins": [
+        "101",
+        "104",
+        "102"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 3,
+      "pins": [
+        "98",
+        "100",
+        "99"
       ],
       "direction": "o",
       "inverted": false,
@@ -424,6 +424,6 @@
     "upstream_file": "myminieye_runber.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }

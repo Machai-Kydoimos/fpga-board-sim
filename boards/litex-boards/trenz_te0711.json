@@ -2,7 +2,7 @@
   "name": "Trenz Te0711",
   "class_name": "TrenzTe0711Platform",
   "vendor": "Xilinx",
-  "device": "",
+  "device": "xc7a35tcsg324-2",
   "package": "",
   "clocks": [
     {
@@ -77,6 +77,6 @@
       "variant": "a7-35-2c"
     },
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
   }
 }

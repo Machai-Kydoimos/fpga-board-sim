@@ -1251,19 +1251,20 @@ class FPGABoard:
         font = get_font(font_size)
         title_font = get_font(font_size + 5, bold=True)
 
-        chip_font = get_font(max(13, font_size + 3), bold=True)
+        chip_size = max(13, font_size + 3)
+        chip_font = get_font(chip_size, bold=True)
         if self.fpga_chip.rect.width >= 20:
             t = title_font.render("FPGA", True, WHITE)
             self.screen.blit(t, (20, self.fpga_chip.rect.top - font_size - 10))
-        self.fpga_chip.draw(self.screen, chip_font)
+        self.fpga_chip.draw(self.screen, chip_size)
 
         if self._seven_segs and self.fpga_chip.rect.width >= 20:
             t = title_font.render("7-Seg", True, WHITE)
             self.screen.blit(t, (self._seg_panel_x, self._seven_segs[0].rect.top - font_size - 14))
 
-        # Component count summary below the chip.
-        # Offset by chip_font.get_linesize() so the count clears the chip's
-        # bottom text line (clock freq) even when the chip rect is small.
+        # Component count summary, one chip-font line below the chip.  The gap
+        # once kept it clear of a label spilling out of a small chip; fit_label
+        # keeps the label inside now, and the gap stays as the board's spacing.
         if self.board_def and self.fpga_chip.rect.width >= 20:
             _parts = []
             if self.leds:
@@ -1282,8 +1283,8 @@ class FPGABoard:
                 count_surf = count_f.render("  \u00b7  ".join(_parts), True, THEME.info_green)
                 _chip_r = self.fpga_chip.rect
                 count_x = _chip_r.centerx - count_surf.get_width() // 2
-                # Start below the chip rect plus a gap equal to one chip-font line
-                # so the count never overlaps the clock-frequency text inside the chip.
+                # Below the chip rect plus one chip-font line: the spacing the
+                # summary has always had (see above).
                 count_y = _chip_r.bottom + chip_font.get_linesize() + max(2, round(3 * s))
                 self.screen.blit(count_surf, (count_x, count_y))
 
