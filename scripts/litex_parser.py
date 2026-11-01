@@ -309,17 +309,17 @@ def _make_mock_platform(name: str, vendor: str) -> type:
         def add_connectors(self, connectors: object) -> None:
             pass
 
-        def add_extension(self, extension: object, *args: object, **kwargs: object) -> None:
+        def add_extension(self, io: object, *args: object, **kwargs: object) -> None:
             # LiteX's add_extension(io) extends the platform's I/O just as
             # add_resources does; it used to be a no-op here, which dropped every
             # LED, switch and button a dock or a board variant adds (U56 Phase 2,
-            # defect 1).  An extension *object* (litex_boards.extensions' docks and
-            # Pmods, at upstream heads) builds its I/O in define_io(platform), or
-            # holds it as .io -- both interpreted, never executed.
-            io = extension
-            if not isinstance(io, (list, tuple)):
-                define_io = getattr(extension, "define_io", None)
-                io = define_io(self) if callable(define_io) else getattr(extension, "io", None)
+            # defect 1).  Like LiteX's, it asks an extension *object* (upstream's
+            # litex_boards.extensions, at heads) for get_io(platform), its I/O with
+            # slot pins remapped onto the host's connectors -- interpreted, never
+            # executed.
+            get_io = getattr(io, "get_io", None)
+            if not isinstance(io, (list, tuple)) and callable(get_io):
+                io = get_io(self)
             if isinstance(io, (list, tuple)):
                 self._captured_io.extend(io)
 

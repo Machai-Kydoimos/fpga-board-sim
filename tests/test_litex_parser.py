@@ -407,12 +407,12 @@ from litex.build.xilinx import Xilinx7SeriesPlatform
 _io = [("clk100", 0, Pins("E3")), ("user_led", 0, Pins("A1"))]
 
 
-class BuildsItsIO:
-    def define_io(self, platform):
+class Dock:
+    def get_io(self, platform):
         return [("user_btn", n, Pins(f"B{n}")) for n in range(2)]
 
 
-class HoldsItsIO:
+class NotAnExtension:
     io = [("user_sw", 0, Pins("C1"))]
 
 
@@ -422,16 +422,16 @@ class Platform(Xilinx7SeriesPlatform):
 
     def __init__(self):
         Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)
-        self.add_extension(BuildsItsIO())
-        self.add_extension(HoldsItsIO())
+        self.add_extension(Dock())
+        self.add_extension(NotAnExtension())
 """
 
 
-def test_add_extension_reads_an_extension_object_without_executing_it():
-    """A dock builds its I/O in ``define_io(platform)`` -- interpreted -- or holds ``.io``."""
+def test_add_extension_asks_an_extension_object_for_its_io_as_litex_does():
+    """``get_io(platform)``, interpreted; an object without one adds nothing (LiteX rejects it)."""
     b = parse_litex_board(_EXTENSION_OBJECTS, "objects.py")[0]
     assert len(b["buttons"]) == 2
-    assert len(b["switches"]) == 1
+    assert b["switches"] == []
 
 
 _CLOCK_SET_BY_THE_CONSTRUCTOR = """
