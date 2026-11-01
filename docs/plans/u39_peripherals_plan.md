@@ -548,7 +548,7 @@ identically; a deliberate overflow burst reports the exact `lost` count.
 → `--stop-time` → assert exact `PASS=n`/`FAIL=0`, parameterized over `ghdl`/`nvc`, marked
 `@pytest.mark.slow`.
 
-**`sim/lcd_probe.vhd` / `sim/oled_probe.vhd`** — the `sim/duty_probe.vhd` analogue: satisfies the generic
+**`sim/lcd_probe.vhd` / `sim/oled_probe.vhd`** — the `sim/duty_probe.vhd` analog: satisfies the generic
 contract, lives under `sim/` so the file picker never lists it, `generate`-guarded so it elaborates under
 the wrapper's **default** generics, ground truth documented in the header. Selectors: `sw(0)` 8-bit vs
 4-bit · `sw(1)` row-2 via `Set DDRAM 0x40` · `sw(2)` 20-char off-screen wrap · `sw(3)` minimum-period
