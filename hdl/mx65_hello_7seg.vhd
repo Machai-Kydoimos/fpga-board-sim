@@ -3,7 +3,7 @@
 --
 -- The smallest embedded-core design: a vendored mx65 6502 CPU core (below,
 -- verbatim, MIT) + ROM + RAM + memory-mapped IO + a top that wires it to the
--- board's sw/btn/led/seg and synthesises a power-on reset -- the same skeleton
+-- board's sw/btn/led/seg and synthesizes a power-on reset -- the same skeleton
 -- every embedded-core design uses, with the simplest possible firmware.
 --
 -- The ROM holds a ~20-line hello program (assembled by ca65/ld65 from

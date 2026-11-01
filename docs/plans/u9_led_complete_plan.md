@@ -234,7 +234,7 @@ of the old scheme is structurally impossible.
 > incremented in a clocked process, exposed as a port and read by each channel to stamp
 > `t_chg` in cycles), with `on_ns`→`on_cyc` a cycle subtract. Cycle-exact under a mid-run
 > frequency change; costs a fixed per-cycle counter tax (+17-108%). Host math is the cycle
-> analogue of §2.3 (`Δon_cyc / Δcy_tot`).
+> analog of §2.3 (`Δon_cyc / Δcy_tot`).
 
 ### 2.3 Child-side duty math (`sim/sim_testbench.py`) — `T_on` differencing
 

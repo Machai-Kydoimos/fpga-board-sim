@@ -25,7 +25,7 @@ LEVELS = (0.0, 0.01, 0.1, 0.25, 0.5, 0.75, 0.99, 1.0)
 
 
 def _rendered(widget: LED) -> pygame.Surface:
-    """Draw an already-levelled *widget* onto a fresh board-colored surface."""
+    """Draw an already-leveled *widget* onto a fresh board-colored surface."""
     surface = pygame.Surface((240, 240))
     surface.fill(THEME.pcb_bg)
     widget.rect = pygame.Rect(90, 80, 44, 44)
