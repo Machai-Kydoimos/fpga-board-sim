@@ -922,6 +922,25 @@ check; full `pytest`.
 
 **Effort:** M.
 
+**Measured when Phase 1c ran (2026-11-01).** Every number above held, with five differences.
+
+- **Seven Amaranth clocks change, not six:** UPduino v3 inherits v1's `SB_HFOSC`.
+- **LiteX's switch rule is narrower than the example regex above.** It keeps today's rule and
+  anchors only `"switch"` to the leading word. The example would also have made `sw1`, `sw2_pd`,
+  `sw_en` and `sw_sel` user switches, and `rf_switches` is the one name that may change class.
+- **Imports and stand-ins.** Names that a file imports from modules we do not model bind inert
+  stand-ins. A name used after an unmocked `from migen import *` gets a stand-in on a re-read.
+  `copy` and `math` keep their real, pure functions.
+- **Versioned identities** carry the version in `class_name` and display name
+  (`QmtechWukongRevision1Platform`, "Qmtech Wukong (revision 1)"). A paired board keeps the
+  names its file holds, and the sync fails if two live boards in a source would share a
+  `class_name`.
+- **The ZedBoard** has 8 LEDs, 8 switches and 5 buttons, and keeps the no-period 100 MHz
+  fallback with `clocks: []`. D-6 marks it as assumed in Phase 2.
+
+The matrix shows no contract outcome change on any existing board. On all 19 reordered boards,
+every `led(k)` drives the same LED and color.
+
 ## 9. Phase 2 — Extensions, docks, default clock from the instance (and D-6)
 
 **Do:**
