@@ -309,3 +309,14 @@ def test_schema_rejects_bad_identity_or_orphan_fields(schema, fields):
     jsonschema = pytest.importorskip("jsonschema")
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(_board_with_source(**fields), schema)
+
+
+# ── an assumed default clock (U56 D-6) ──────────────────────────────────────────
+
+
+def test_schema_accepts_an_assumed_clock_only_as_true(schema):
+    jsonschema = pytest.importorskip("jsonschema")
+    board = _minimal_valid_board()
+    jsonschema.validate({**board, "default_clock_assumed": True}, schema)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate({**board, "default_clock_assumed": False}, schema)

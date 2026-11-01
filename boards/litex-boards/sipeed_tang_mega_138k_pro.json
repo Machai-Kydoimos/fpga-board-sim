@@ -28,32 +28,6 @@
       }
     },
     {
-      "name": "led_done",
-      "number": 0,
-      "pins": [
-        "W10"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led_ready",
-      "number": 0,
-      "pins": [
-        "V11"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "led_n",
       "number": 1,
       "pins": [
@@ -117,9 +91,101 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
       }
+    },
+    {
+      "name": "led_done",
+      "number": 0,
+      "pins": [
+        "W10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led_ready",
+      "number": 0,
+      "pins": [
+        "V11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led_ws2812",
+      "number": 0,
+      "pins": [
+        "H16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
     }
   ],
-  "buttons": [],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "J3:60"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "J3:62"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "J3:64"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "J3:66"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
   "switches": [],
   "seven_seg": null,
   "port_conventions": {
@@ -131,7 +197,12 @@
         "width": 6,
         "active_low": true
       },
-      "naming": "framework-derived"
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "btn_n",
+        "width": 4,
+        "active_low": true
+      }
     }
   },
   "$schema": "../schema/board.schema.json",
@@ -143,6 +214,6 @@
       "dock": "standard"
     },
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
   }
 }

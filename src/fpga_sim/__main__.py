@@ -563,7 +563,8 @@ def _print_benchmark_report(
     print(bar)
     print(f"  Board     : {board.name}")
     print(f"  Simulator : {sim.label}  ({sim.backend})")
-    print(f"  Clock     : {board.default_clock_hz / 1e6:.4g} MHz")
+    assumed = " (assumed: upstream states none)" if board.default_clock_assumed else ""
+    print(f"  Clock     : {board.default_clock_hz / 1e6:.4g} MHz{assumed}")
     if ui:
         skipped = frames - frames_drawn
         pct = 100.0 * skipped / frames if frames else 0.0

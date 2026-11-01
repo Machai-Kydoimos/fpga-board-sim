@@ -29,20 +29,6 @@
       "color": "green"
     },
     {
-      "name": "led_r_n",
-      "number": 0,
-      "pins": [
-        "V17"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      },
-      "color": "red"
-    },
-    {
       "name": "led_g_n",
       "number": 1,
       "pins": [
@@ -57,20 +43,6 @@
       "color": "green"
     },
     {
-      "name": "led_r_n",
-      "number": 1,
-      "pins": [
-        "R18"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      },
-      "color": "red"
-    },
-    {
       "name": "led_g_n",
       "number": 2,
       "pins": [
@@ -83,6 +55,34 @@
         "IOSTANDARD": "LVCMOS33"
       },
       "color": "green"
+    },
+    {
+      "name": "led_r_n",
+      "number": 0,
+      "pins": [
+        "V17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      },
+      "color": "red"
+    },
+    {
+      "name": "led_r_n",
+      "number": 1,
+      "pins": [
+        "R18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      },
+      "color": "red"
     },
     {
       "name": "led_r_n",
@@ -120,6 +120,6 @@
     "upstream_file": "limesdr_mini_v2.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
   }
 }

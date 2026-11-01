@@ -352,19 +352,6 @@
       }
     },
     {
-      "name": "button",
-      "number": 0,
-      "pins": [
-        "K8"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS18"
-      }
-    },
-    {
       "name": "button__n",
       "number": 1,
       "pins": [
@@ -378,10 +365,10 @@
       }
     },
     {
-      "name": "button",
-      "number": 1,
+      "name": "button__n",
+      "number": 2,
       "pins": [
-        "K7"
+        "J3"
       ],
       "direction": "i",
       "inverted": false,
@@ -391,10 +378,23 @@
       }
     },
     {
-      "name": "button__n",
-      "number": 2,
+      "name": "button",
+      "number": 0,
       "pins": [
-        "J3"
+        "K8"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "K7"
       ],
       "direction": "i",
       "inverted": false,
@@ -505,6 +505,6 @@
     "upstream_file": "lattice_certuspro_nx_evn.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
   }
 }

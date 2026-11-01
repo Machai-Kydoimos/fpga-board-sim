@@ -77,6 +77,34 @@ class RgbPlatform(Xilinx7SeriesPlatform):
 """
 
 
+# U56 Phase 2: a dock's `led` bank, declared out of number order and followed by a
+# 1-pin WS2812 (the Tang Primer 20K), and DIP positions declared ahead of directional
+# buttons (the VC707).  Sorting by number alone interleaved both.
+_DOCK = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io = [
+    ("clk27", 0, Pins("H11"), IOStandard("LVCMOS33")),
+    ("led", 0, Pins("C13"), IOStandard("LVCMOS33")),
+    ("led", 1, Pins("A13"), IOStandard("LVCMOS33")),
+    ("led", 3, Pins("N14"), IOStandard("LVCMOS33")),
+    ("led", 2, Pins("N16"), IOStandard("LVCMOS33")),
+    ("rgb_led", 0, Pins("T9"), IOStandard("LVCMOS33")),
+    ("user_dip_btn", 0, Pins("D1"), IOStandard("LVCMOS33")),
+    ("user_dip_btn", 1, Pins("D2"), IOStandard("LVCMOS33")),
+    ("user_btn_c", 0, Pins("E1"), IOStandard("LVCMOS33")),
+    ("user_btn_n", 0, Pins("E2"), IOStandard("LVCMOS33")),
+]
+
+class DockPlatform(Xilinx7SeriesPlatform):
+    default_clk_name = "clk27"
+    default_clk_period = 1e9 / 27e6
+    def __init__(self):
+        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)
+"""
+
+
 # U33 Wave 4: `oled*` (OLED display buses) and `segled_*` (7-seg lines) merely
 # *contain* "led" and must not be user LEDs; `m2led` (M.2 status LED -- a digit
 # precedes "led") must stay one.
@@ -203,6 +231,24 @@ def test_port_conventions_primary_group_and_cluster():
         "names": ["user_btnc", "user_btnd", "user_btnu"],
         "width": 3,
     }
+
+
+def test_each_upstream_name_stays_together_in_number_order():
+    # U56 Phase 2: the board shows a name's LEDs side by side, as the Dock has them.
+    b = parse_litex_board(_DOCK, "dock_board.py")[0]
+    assert [c["pins"] for c in b["leds"]] == [["C13"], ["A13"], ["N16"], ["N14"], ["T9"]]
+    assert [c["pins"] for c in b["buttons"]] == [["D1"], ["D2"], ["E1"], ["E2"]]
+
+
+def test_a_native_bank_is_the_first_bits_of_its_role():
+    # The native wrapper puts a bank's bit k on boundary bit k, so the bank's own
+    # resources must come first, in number order -- or `led(1)` lights the WS2812.
+    b = parse_litex_board(_DOCK, "dock_board.py")[0]
+    conv = b["port_conventions"]["litex"]
+    assert conv["leds"] == {"name": "led", "width": 4}
+    assert [c["pins"] for c in b["leds"][:4]] == [["C13"], ["A13"], ["N16"], ["N14"]]
+    assert conv["buttons"] == {"name": "user_dip_btn", "width": 2}
+    assert [c["pins"] for c in b["buttons"][:2]] == [["D1"], ["D2"]]
 
 
 def test_no_simulatable_resources_skipped():
@@ -362,3 +408,126 @@ def test_the_vendor_table_uses_upstreams_spellings():
     assert "LatticeICE40Platform" not in vendors  # the old misspelling locked out iCE40
     for name in ("LatticePlatform", "MicrosemiPlatform", "AnlogicPlatform", "QuickLogicPlatform"):
         assert name in vendors
+
+
+# ── Extensions and the constructor's clock (U56 Phase 2) ─────────────────────
+
+_DOCKED = """
+from litex.build.generic_platform import *
+from litex.build.gowin.platform import GowinPlatform
+
+_io = [
+    ("clk27", 0, Pins("H11"), IOStandard("LVCMOS33")),
+    ("user_led", 0, Pins("A1"), IOStandard("LVCMOS33")),
+]
+
+_dock_io = [
+    ("user_led", 1, Pins("A2"), IOStandard("LVCMOS33")),
+    ("user_btn", 0, Pins("B1"), IOStandard("LVCMOS33")),
+]
+
+_dock_lite_io = [("user_btn", 0, Pins("B1"), IOStandard("LVCMOS33"))]
+
+
+class Platform(GowinPlatform):
+    default_clk_name = "clk27"
+    default_clk_period = 1e9 / 27e6
+
+    def __init__(self, dock="standard"):
+        GowinPlatform.__init__(self, "GW2A-LV18PG256C8/I7", _io)
+        self.add_extension(_dock_io if dock == "standard" else _dock_lite_io)
+"""
+
+
+def test_add_extension_adds_the_io_it_is_given():
+    """It used to be a no-op, which dropped every LED and button a dock adds."""
+    b = parse_litex_board(_DOCKED, "docked.py")[0]
+    assert len(b["leds"]) == 2
+    assert len(b["buttons"]) == 1
+
+
+_EXTENSION_OBJECTS = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io = [("clk100", 0, Pins("E3")), ("user_led", 0, Pins("A1"))]
+
+
+class Dock:
+    def get_io(self, platform):
+        return [("user_btn", n, Pins(f"B{n}")) for n in range(2)]
+
+
+class NotAnExtension:
+    io = [("user_sw", 0, Pins("C1"))]
+
+
+class Platform(Xilinx7SeriesPlatform):
+    default_clk_name = "clk100"
+    default_clk_period = 1e9 / 100e6
+
+    def __init__(self):
+        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)
+        self.add_extension(Dock())
+        self.add_extension(NotAnExtension())
+"""
+
+
+def test_add_extension_asks_an_extension_object_for_its_io_as_litex_does():
+    """``get_io(platform)``, interpreted; an object without one adds nothing (LiteX rejects it)."""
+    b = parse_litex_board(_EXTENSION_OBJECTS, "objects.py")[0]
+    assert len(b["buttons"]) == 2
+    assert b["switches"] == []
+
+
+_CLOCK_SET_BY_THE_CONSTRUCTOR = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io = [
+    ("clk125", 0, Pins("U18")),
+    ("clk122", 0, Pins("U19")),
+    ("user_led", 0, Pins("F16")),
+]
+
+
+class Platform(Xilinx7SeriesPlatform):
+    def __init__(self, board="redpitaya14"):
+        Xilinx7SeriesPlatform.__init__(self, "xc7z010clg400-1", _io)
+        if board == "redpitaya14":
+            self.default_clk_name = "clk125"
+            self.default_clk_freq = 125e6
+        else:
+            self.default_clk_name = "clk122"
+            self.default_clk_freq = 122e6
+        self.default_clk_period = 1e9 / self.default_clk_freq
+"""
+
+
+def test_the_default_clock_is_what_the_constructor_set():
+    """Red Pitaya's shape: the board picks its clock in ``__init__``."""
+    b = parse_litex_board(_CLOCK_SET_BY_THE_CONSTRUCTOR, "red_pitaya_like.py")[0]
+    assert b["default_clock_hz"] == 125e6
+    assert [c["name"] for c in b["clocks"] if c.get("is_default")] == ["clk125"]
+    assert "default_clock_assumed" not in b
+
+
+def test_a_class_level_frequency_the_constructor_turns_into_a_period():
+    """Snickerdoodle's shape: ``default_clk_freq`` on the class, the period set in ``__init__``."""
+    source = _BASIC.replace(
+        "    default_clk_period = 1e9 / 100e6\n", "    default_clk_freq = 50e6\n"
+    ).replace(
+        '        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)',
+        '        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)\n'
+        "        self.default_clk_period = 1e9 / self.default_clk_freq",
+    )
+    assert parse_litex_board(source, "snickerdoodle_like.py")[0]["default_clock_hz"] == 50e6
+
+
+def test_a_board_whose_upstream_states_no_frequency_says_its_clock_is_assumed():
+    """12 MHz is our fallback, never upstream data (U56 D-6)."""
+    source = _BASIC.replace("    default_clk_period = 1e9 / 100e6\n", "")
+    b = parse_litex_board(source, "no_period.py")[0]
+    assert b["default_clock_hz"] == 12e6
+    assert b["default_clock_assumed"] is True
+    assert "default_clock_assumed" not in parse_litex_board(_BASIC, "test_board.py")[0]

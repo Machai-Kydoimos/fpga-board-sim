@@ -8,7 +8,7 @@
     {
       "name": "clk125",
       "hz": 125000000.0,
-      "pin": "",
+      "pin": "K17",
       "is_default": true
     }
   ],
@@ -65,9 +65,92 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
       }
+    },
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "V16",
+        "F17",
+        "M17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 1,
+      "pins": [
+        "Y11",
+        "T5",
+        "Y12"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
     }
   ],
-  "buttons": [],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "K18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "P16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "K19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "Y16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
   "switches": [
     {
       "name": "switch",
@@ -135,6 +218,43 @@
       "switches": {
         "name": "user_sw",
         "width": 4
+      },
+      "buttons": {
+        "name": "user_btn",
+        "width": 4
+      }
+    },
+    "digilent": {
+      "description": "Digilent Zybo-Z7 Master XDC port names",
+      "clk": "sysclk",
+      "leds": {
+        "name": "led",
+        "width": 4
+      },
+      "leds_rgb": {
+        "names": [
+          "led5_r",
+          "led5_g",
+          "led5_b",
+          "led6_r",
+          "led6_g",
+          "led6_b"
+        ],
+        "active_low": false
+      },
+      "switches": {
+        "name": "sw",
+        "width": 4
+      },
+      "buttons": {
+        "name": "btn",
+        "width": 4,
+        "active_low": false
+      },
+      "source": {
+        "url": "https://raw.githubusercontent.com/Digilent/digilent-xdc/00a3404901f35aa9567b01ecb3f2c233b6efe9f4/Zybo-Z7-Master.xdc",
+        "retrieved": "2026-05-25",
+        "registry_board": "Zybo Z7"
       }
     }
   },
@@ -147,6 +267,6 @@
       "variant": "z7-20"
     },
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+    "sync_timestamp": "2026-11-01T13:29:49.593723+00:00"
   }
 }

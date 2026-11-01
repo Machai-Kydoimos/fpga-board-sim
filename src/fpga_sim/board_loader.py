@@ -290,6 +290,9 @@ class BoardDef:
     #: reads.  Empty for a board whose JSON lists bare numbers.
     clock_defs: list[ClockDef] = field(default_factory=list)
     default_clock_hz: float = _FALLBACK_CLOCK_HZ  # Hz; drives cocotb Clock()
+    #: ``True`` when upstream states no frequency, so ``default_clock_hz`` is the
+    #: sync's fallback rather than upstream data (U56 D-6); the chip says "assumed".
+    default_clock_assumed: bool = False
     leds: list[ComponentInfo] = field(default_factory=list)
     buttons: list[ComponentInfo] = field(default_factory=list)
     switches: list[ComponentInfo] = field(default_factory=list)
@@ -482,6 +485,9 @@ class BoardDef:
                     [c.to_dict() for c in self.clock_defs] if self.clock_defs else self.clocks
                 ),
                 "default_clock_hz": self.default_clock_hz,
+                # Emitted only when set, like an LED's color: every other board
+                # serializes exactly as before (U56 D-6).
+                **({"default_clock_assumed": True} if self.default_clock_assumed else {}),
                 "leds": [_comp(c) for c in self.leds],
                 "buttons": [_comp(c) for c in self.buttons],
                 "switches": [_comp(c) for c in self.switches],
@@ -592,6 +598,7 @@ class BoardDef:
             clocks=raw_clocks,
             clock_defs=clock_defs,
             default_clock_hz=data.get("default_clock_hz", _FALLBACK_CLOCK_HZ),
+            default_clock_assumed=data.get("default_clock_assumed") is True,
             leds=_make(data.get("leds", []), "led"),
             buttons=_make(data.get("buttons", []), "button"),
             switches=_make(data.get("switches", []), "switch"),

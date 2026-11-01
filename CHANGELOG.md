@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from 171), three more Amaranth boards (83), and the Digilent ZedBoard (27). A board
   whose name another source also uses opens by its file, e.g.
   `--board litex-boards/icebreaker`. (Roadmap U56, Phase 1c.)
+- **Three more LiteX boards whose I/O arrives through a dock or variant:** the Sipeed
+  Tang Primer 20K and 25K and the ZTEX 2.13 (226 LiteX boards). (Roadmap U56, Phase 2.)
+- **A clock upstream never states is marked as assumed.** Four boards define no clock
+  frequency upstream (the Genesys 2, the ZedBoard, the NewAE CW305 and the QuickFeather),
+  so the sync falls back to 100 MHz (Digilent) or 12 MHz (LiteX). The chip now reads
+  "100 MHz, assumed" instead of presenting the guess as the board's, and the benchmark
+  report says so too. The fallback values are unchanged. (Roadmap U56, Phase 2, D-6.)
 - **A board upstream no longer defines says so.** When a source removes a board, or a
   version of it, or stops listing its LEDs, switches and buttons, the sync keeps the
   board file as a saved copy instead of deleting it. The selector now tags its row
@@ -59,6 +66,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one bank, and every `led(i)` drives the same LED as before. The XTRX boards' RF-path
   switch controls and QuickFeather's debug port are no longer drawn as user switches.
   (Roadmap U56, Phase 1c.)
+- **Docks and board variants add their LEDs, switches and buttons.** The LiteX sync
+  ignored `add_extension`, so whatever a dock or a variant adds was missing: the Zybo Z7
+  gains its 4 buttons and 2 RGB LEDs, and the Tang Console, Mega 138K and Mega 138K Pro
+  their dock's buttons. The Zybo Z7 now also takes designs written to Digilent's own port
+  names, as the Digilent copy of the board does. (Roadmap U56, Phase 2.)
+- **Red Pitaya and Snickerdoodle run at their own clocks.** Both set the clock in their
+  constructor, which the sync never read: Red Pitaya now runs at 125 MHz and the
+  Snickerdoodle at 100 MHz, instead of an invented 12 MHz. (Roadmap U56, Phase 2.)
+- **Each group of LEDs, buttons and switches stays together, and a native design drives
+  the LED it names.** The LiteX sync sorted them by number alone, so differently named
+  groups interleaved: the Tang Primer 20K showed LED0, its WS2812, then LED1–5, while on
+  the board the six LEDs form one row and the WS2812 sits in a corner. Where a design
+  written to LiteX's own port names was split this way, it drove the wrong LED: on the
+  Tang Primer 20K, `led(1)` lit the WS2812 and LED5 never lit. This affected 17 boards,
+  the Tang Nano 20K and Tang Mega 138K Pro among them. Each name's resources now stay
+  together, in number order, and the Amaranth Nexys 4 DDR's switches follow their
+  numbers instead of putting 8 and 9 after 15. On the 25 boards whose order changed, a
+  generic design's `led(k)`, `btn(k)` or `sw(k)` can now reach a different LED, button
+  or switch than before: it follows the order the board shows. (Roadmap U56, Phase 2.)
 - **A chip's label stays inside the chip.** Some of those part numbers are wider than
   the chip — `XCZU11EG-FFVF1517-2-I` on `litex-boards/adi_adrv2crr_fmc`,
   `LFE5UM5G-85F-8BG381C` on `litex-boards/radiona_ulx4m_ld_v2` — so they ran past its

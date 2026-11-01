@@ -154,6 +154,45 @@
       }
     },
     {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "G16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "J16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "D21"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
       "name": "button__c",
       "number": 0,
       "pins": [
@@ -217,45 +256,6 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS18"
       }
-    },
-    {
-      "name": "button",
-      "number": 1,
-      "pins": [
-        "G16"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS12"
-      }
-    },
-    {
-      "name": "button",
-      "number": 2,
-      "pins": [
-        "J16"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS12"
-      }
-    },
-    {
-      "name": "button",
-      "number": 3,
-      "pins": [
-        "D21"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS12"
-      }
     }
   ],
   "switches": [],
@@ -281,6 +281,6 @@
     "upstream_file": "xilinx_vcu118.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
   }
 }

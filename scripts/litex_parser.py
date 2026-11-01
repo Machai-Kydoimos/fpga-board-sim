@@ -16,7 +16,7 @@ import sys
 from collections.abc import Iterator, Mapping
 from typing import Any
 
-from framework_conventions import RoleEntry, build_convention
+from framework_conventions import RoleEntry, build_convention, group_by_name
 from led_metadata import color_from_name
 from sync_common import ParseOutcome, ProducedBoard, normalize_error
 from sync_identity import VERSION_PARAMS
@@ -309,8 +309,19 @@ def _make_mock_platform(name: str, vendor: str) -> type:
         def add_connectors(self, connectors: object) -> None:
             pass
 
-        def add_extension(self, *args: object, **kwargs: object) -> None:
-            pass
+        def add_extension(self, io: object, *args: object, **kwargs: object) -> None:
+            # LiteX's add_extension(io) extends the platform's I/O just as
+            # add_resources does; it used to be a no-op here, which dropped every
+            # LED, switch and button a dock or a board variant adds (U56 Phase 2,
+            # defect 1).  Like LiteX's, it asks an extension *object* (upstream's
+            # litex_boards.extensions, at heads) for get_io(platform), its I/O with
+            # slot pins remapped onto the host's connectors -- interpreted, never
+            # executed.
+            get_io = getattr(io, "get_io", None)
+            if not isinstance(io, (list, tuple)) and callable(get_io):
+                io = get_io(self)
+            if isinstance(io, (list, tuple)):
+                self._captured_io.extend(io)
 
         def request(self, *args: object, **kwargs: object) -> None:
             pass
@@ -663,6 +674,16 @@ def _make_class_name(filename: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════
 
 
+def _upstream_order(components: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Group components by their LiteX port name, in number order (U56 Phase 2).
+
+    Keyed on ``raw_name`` (``user_led``), not the display name (``led``): two port
+    names can share a display name, as the OCP TAP Timecard's ``user_led`` and
+    ``led`` do.
+    """
+    return group_by_name(components, lambda c: str(c["raw_name"]), lambda c: int(c["number"]))
+
+
 def _mono_then_rgb(leds: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Stable-partition LEDs into mono, then 3-pin RGB sites (U56 defect 24).
 
@@ -686,6 +707,18 @@ def _version_args(platform_class: type) -> dict[str, Any]:
             defaults = init.parameter_defaults()
             return {key: defaults[key] for key in VERSION_PARAMS if key in defaults}
     return {}
+
+
+def _platform_attr(instance: object, platform_class: type, name: str) -> object:
+    """Return *name* as the constructor left it on *instance*, else the class's, else ``None``.
+
+    Never ``getattr(instance, name)`` alone: the mock platform answers every public
+    name it lacks with a no-op method, which would read as a clock name.
+    """
+    attrs = vars(instance)
+    if name in attrs:
+        return attrs[name]
+    return getattr(platform_class, name, None)
 
 
 def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
@@ -768,10 +801,6 @@ def _read_once(
         return ParseOutcome(outcome="skipped", detail="not_a_board")
     version = {**_version_args(platform_class), **(args or {})}
 
-    # Get class-level attributes
-    default_clk_name = getattr(platform_class, "default_clk_name", None)
-    default_clk_period = getattr(platform_class, "default_clk_period", None)
-
     # Instantiate: the constructor runs in the reader, against the permissive mock
     # platform, and hands the base class its device and I/O.  A constructor that still
     # fails is an `error` -- the module-level fallback that used to stand in, with no
@@ -785,6 +814,12 @@ def _read_once(
         print(f"  {filename}: Platform() failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         return ParseOutcome(outcome="error", detail=normalize_error(exc))
     device = getattr(instance, "device", "")
+    # A constructor may set the default clock on the instance -- Red Pitaya picks
+    # clk125 or clk122 by board, and the Snickerdoodle derives its period from a
+    # class-level frequency -- so read what it left, then the class (U56 Phase 2,
+    # defect 13).
+    default_clk_name = _platform_attr(instance, platform_class, "default_clk_name")
+    default_clk_period = _platform_attr(instance, platform_class, "default_clk_period")
     captured_io: list[tuple[Any, ...]] = list(getattr(instance, "_captured_io", []))
     if not captured_io:
         return ParseOutcome(outcome="skipped", detail="not_a_board")
@@ -868,8 +903,11 @@ def _read_once(
     class_name = _make_class_name(filename)
 
     port_conventions = _build_litex_convention(clocks, leds, buttons, switches)
-    # `raw_name` exists only to build the convention above; keep it out of the
-    # persisted component JSON so the serialized led/btn/sw shape is unchanged.
+    leds = _mono_then_rgb(_upstream_order(leds))
+    buttons = _upstream_order(buttons)
+    switches = _upstream_order(switches)
+    # `raw_name` exists only to build the convention and the order above; keep it out
+    # of the persisted component JSON so the serialized led/btn/sw shape is unchanged.
     for comp in (*leds, *buttons, *switches):
         comp.pop("raw_name", None)
 
@@ -881,9 +919,11 @@ def _read_once(
         "package": "",
         "clocks": clocks,
         "default_clock_hz": default_clock_hz or 12e6,
-        "leds": _mono_then_rgb(sorted(leds, key=lambda c: c["number"])),
-        "buttons": sorted(buttons, key=lambda c: c["number"]),
-        "switches": sorted(switches, key=lambda c: c["number"]),
+        # Upstream states no frequency: 12 MHz is our fallback, and says so (U56 D-6).
+        **({} if default_clock_hz else {"default_clock_assumed": True}),
+        "leds": leds,
+        "buttons": buttons,
+        "switches": switches,
         "seven_seg": seven_seg,
     }
     if port_conventions:

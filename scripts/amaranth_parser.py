@@ -23,7 +23,7 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from framework_conventions import RoleEntry, build_convention
+from framework_conventions import RoleEntry, build_convention, group_by_name
 from led_metadata import color_from_name
 from sync_common import ParseOutcome, ProducedBoard, normalize_error
 from upstream_reader import ModuleStub, read_module
@@ -399,11 +399,12 @@ _OSCILLATOR_HZ: dict[str, Callable[[Any], float]] = {
 
 def _find_default_clock_hz(
     resources: list[_Resource], default_clk: str | None, cls: type | None = None
-) -> float:
+) -> float | None:
     """Return the default clock in Hz: its ``Clock`` resource, else its on-chip oscillator.
 
-    A ``default_clk`` that names neither, or an oscillator whose parameters the class
-    does not set, keeps ``_FALLBACK_CLOCK_HZ`` (which U56 D-6 marks as assumed).
+    ``None`` when upstream states no frequency -- a ``default_clk`` that names
+    neither, or an oscillator whose parameters the class does not set.  The board
+    then runs at ``_FALLBACK_CLOCK_HZ``, marked as assumed (U56 D-6).
     """
     if default_clk:
         for res in resources:
@@ -417,7 +418,7 @@ def _find_default_clock_hz(
                 return float(rule(cls))
             except (AttributeError, TypeError, ValueError, ZeroDivisionError):
                 pass
-    return _FALLBACK_CLOCK_HZ
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -485,6 +486,14 @@ def _to_component(resource: _Resource, kind: str) -> ComponentInfo:
         attrs={k: v for k, v in resource.attrs.items() if not callable(v)},
         color=color_from_name(resource.name) if kind == "led" else "",
     )
+
+
+def _upstream_order(components: list[ComponentInfo]) -> list[ComponentInfo]:
+    """Group components by resource name, in number order (U56 Phase 2).
+
+    Declaration order alone put the Nexys 4 DDR's switches 8 and 9 after 15.
+    """
+    return group_by_name(components, lambda c: c.name, lambda c: c.number)
 
 
 def _coalesce_rgb_trio(leds: list[ComponentInfo]) -> list[ComponentInfo]:
@@ -779,7 +788,9 @@ def _read_boards(
             elif kind == "switch":
                 switches.append(_to_component(res, "switch"))
 
-        leds = _coalesce_rgb_trio(leds)
+        leds = _upstream_order(_coalesce_rgb_trio(leds))
+        buttons = _upstream_order(buttons)
+        switches = _upstream_order(switches)
         seven_seg = _extract_sevenseg(resources)
 
         if not (leds or buttons or switches):
@@ -790,6 +801,7 @@ def _read_boards(
             "",
         )
         default_clk = getattr(obj, "default_clk", None)
+        clock_hz = _find_default_clock_hz(resources, default_clk, obj)
         boards.append(
             BoardDef(
                 name=_prettify_class_name(obj_name),
@@ -798,7 +810,8 @@ def _read_boards(
                 device=getattr(obj, "device", "") or getattr(obj, "part", ""),
                 package=getattr(obj, "package", ""),
                 clocks=_extract_clocks(resources),
-                default_clock_hz=_find_default_clock_hz(resources, default_clk, obj),
+                default_clock_hz=_FALLBACK_CLOCK_HZ if clock_hz is None else clock_hz,
+                default_clock_assumed=clock_hz is None,
                 leds=leds,
                 buttons=buttons,
                 switches=switches,
