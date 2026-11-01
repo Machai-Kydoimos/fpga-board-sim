@@ -12,7 +12,7 @@
       "is_default": true
     }
   ],
-  "default_clock_hz": 12000000.0,
+  "default_clock_hz": 100000000.0,
   "leds": [
     {
       "name": "led",
@@ -51,6 +51,6 @@
       "variant": "z7-10"
     },
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+    "sync_timestamp": "2026-11-01T13:29:49.593723+00:00"
   }
 }

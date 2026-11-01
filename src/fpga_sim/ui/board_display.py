@@ -285,6 +285,7 @@ class FPGABoard:
                 device=board_def.device,
                 package=board_def.package,
                 clock_hz=board_def.default_clock_hz,
+                clock_assumed=board_def.default_clock_assumed,
             )
             # A 3-pin rgb_led renders as a tri-color puck (U37); everything else
             # is a plain LED (incl. the 1-pin serial impostors is_rgb rejects).

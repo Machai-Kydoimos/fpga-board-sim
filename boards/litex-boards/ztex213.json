@@ -1,0 +1,434 @@
+{
+  "name": "Ztex213",
+  "class_name": "Ztex213Platform",
+  "vendor": "Xilinx",
+  "device": "xc7a35tcsg324-1",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk48",
+      "hz": 48000000.0,
+      "pin": "P15",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 48000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "H15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "J13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "J14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "H14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "H17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "G14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "G17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "G16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 8,
+      "pins": [
+        "G18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 9,
+      "pins": [
+        "H16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 10,
+      "pins": [
+        "U9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 11,
+      "pins": [
+        "V9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 12,
+      "pins": [
+        "U8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 13,
+      "pins": [
+        "V7"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 14,
+      "pins": [
+        "U7"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 15,
+      "pins": [
+        "V6"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 16,
+      "pins": [
+        "U6"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 17,
+      "pins": [
+        "V5"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 18,
+      "pins": [
+        "T8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 19,
+      "pins": [
+        "V4"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 20,
+      "pins": [
+        "R8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 21,
+      "pins": [
+        "T5"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 22,
+      "pins": [
+        "R7"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 23,
+      "pins": [
+        "T4"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 24,
+      "pins": [
+        "T6"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 25,
+      "pins": [
+        "U4"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 26,
+      "pins": [
+        "R6"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 27,
+      "pins": [
+        "U3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 28,
+      "pins": [
+        "R5"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 29,
+      "pins": [
+        "V1"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "lvcmos33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk48",
+      "leds": {
+        "name": "user_led",
+        "width": 30
+      },
+      "naming": "framework-derived"
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "ztex213.py",
+    "upstream_class": "Platform",
+    "upstream_args": {
+      "variant": "ztex2.13a",
+      "expansion": "debug"
+    },
+    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
+    "sync_timestamp": "2026-11-01T13:29:49.593723+00:00"
+  }
+}

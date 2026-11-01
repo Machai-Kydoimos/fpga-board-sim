@@ -190,3 +190,24 @@ def test_every_board_label_fits_its_chip(
         if len(label.lines) > len(chip.label_lines()):
             broken.append(board.qualified_name)
     assert broken, "the fleet has part numbers wider than their chips; none broke"
+
+
+# ── An assumed clock says so (U56 D-6) ───────────────────────────────────────
+
+
+def test_an_assumed_clock_is_marked_on_the_chip(headless_pygame: ModuleType) -> None:
+    chip = _chip("XC7Z020", 400, 200)
+    chip.clock_assumed = True
+    assert ("clock", "100 MHz, assumed") in chip.fit_label(16).lines
+
+
+def test_an_assumed_clock_breaks_at_its_comma_when_the_chip_is_narrow(
+    headless_pygame: ModuleType,
+) -> None:
+    font = _font(16)
+    chip = _chip("XC7Z020", 0, 200)
+    chip.clock_assumed = True
+    chip.rect.width = max(font.size("100 MHz,")[0], font.size("XC7Z020")[0]) + 2 * _PAD_X
+    label = chip.fit_label(16)
+    assert ("clock", "100 MHz,") in label.lines
+    assert ("clock", "assumed") in label.lines

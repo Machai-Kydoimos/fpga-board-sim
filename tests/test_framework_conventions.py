@@ -12,12 +12,33 @@ from framework_conventions import (
     RoleEntry,
     build_bank,
     build_convention,
+    group_by_name,
     reconcile_framework_polarity,
 )
 
 
 def _entries(*specs: tuple[str, str, int, bool]) -> list[RoleEntry]:
     return [RoleEntry(*s) for s in specs]
+
+
+# ── group_by_name: the order a board lists its resources in (U56 Phase 2) ──
+
+
+def _grouped(items: list[tuple[str, int]]) -> list[tuple[str, int]]:
+    return group_by_name(items, lambda i: i[0], lambda i: i[1])
+
+
+def test_group_by_name_keeps_a_name_together_in_number_order():
+    # The Tang Primer 20K dock declares `led` 3 before `led` 2, and its WS2812 last;
+    # sorting by number alone put the WS2812 between `led` 0 and `led` 1.
+    dock = [("led", 0), ("led", 1), ("led", 3), ("led", 2), ("rgb_led", 0)]
+    assert _grouped(dock) == [("led", 0), ("led", 1), ("led", 2), ("led", 3), ("rgb_led", 0)]
+
+
+def test_group_by_name_keeps_upstream_declaration_order_of_names():
+    # Names are not sorted: the first-declared name leads even when it sorts last.
+    items = [("user_led", 1), ("run_led", 0), ("user_led", 0), ("alnum_led", 0)]
+    assert _grouped(items) == [("user_led", 0), ("user_led", 1), ("run_led", 0), ("alnum_led", 0)]
 
 
 # ── build_bank: shape ───────────────────────────────────────────────────

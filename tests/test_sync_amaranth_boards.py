@@ -89,6 +89,31 @@ def test_generate_board_json_emits_amaranth_convention():
     assert conv["naming"] == "framework-derived"
 
 
+# U56 Phase 2: the Nexys 4 DDR declares switches 8 and 9 in a second call (they sit
+# on a 1.8 V bank), after 10-15.
+_SWITCHES_SPLIT_SOURCE = """
+from amaranth.build import *
+from amaranth.vendor import XilinxPlatform
+__all__ = ["SwitchSplitPlatform"]
+class SwitchSplitPlatform(XilinxPlatform):
+    default_clk = "clk100"
+    resources = [
+        Resource("clk100", 0, Pins("E3", dir="i"), Clock(100e6), Attrs(IO="LVCMOS")),
+        *LEDResources(pins="A B", attrs=Attrs(IO="TEST")),
+        *SwitchResources(pins={0: "S0", 1: "S1", 10: "S10"}, attrs=Attrs(IO="LVCMOS33")),
+        *SwitchResources(pins={8: "S8", 9: "S9"}, attrs=Attrs(IO="LVCMOS18")),
+    ]
+"""
+
+
+def test_switches_follow_their_numbers_not_their_declaration():
+    """A design's sw(8) is switch 8: the board lists a name's switches in number order."""
+    results = generate_board_json({"split.py": _SWITCHES_SPLIT_SOURCE}, "abc123def")
+    data = json.loads(next(iter(results.values())))
+    assert [c["number"] for c in data["switches"]] == [0, 1, 8, 9, 10]
+    assert [c["pins"] for c in data["switches"]] == [["S0"], ["S1"], ["S8"], ["S9"], ["S10"]]
+
+
 _OLED_SOURCE = """
 from amaranth.build import *
 from amaranth.vendor import XilinxPlatform
@@ -258,3 +283,45 @@ def test_read_amaranth_file_tells_an_empty_board_from_a_non_board():
     assert read_amaranth_file(no_io, "uart_only.py").detail == "no_simulatable_io"
     broken = read_amaranth_file("class X(Missing):\n    pass\n", "broken.py")
     assert (broken.outcome, broken.detail) == ("error", "NameError: Missing")
+
+
+# ── The default clock: on-chip oscillators and D-6 (U56 Phases 1c and 2) ─────
+
+_OSCILLATOR_BOARD = """
+from amaranth.build import *
+from amaranth.vendor import {base}
+__all__ = ["OscTestPlatform"]
+class OscTestPlatform({base}):
+    default_clk = "{clk}"
+{attrs}
+    resources = [*LEDResources(pins="A B", attrs=Attrs(IO="TEST"))]
+"""
+
+
+@pytest.mark.parametrize(
+    ("base", "clk", "attrs", "hz"),
+    [
+        ("LatticeECP5Platform", "OSCG", "    oscg_div = 2", 155e6),
+        ("LatticeMachXO2Platform", "OSCH", "    osch_frequency = 2.08", 2.08e6),
+        ("LatticeECP5Platform", "OSCA", "    osca_div = 9", 50e6),
+        ("LatticeICE40Platform", "SB_HFOSC", "    hfosc_div = 2", 12e6),
+        ("LatticeICE40Platform", "SB_LFOSC", "", 10e3),
+        ("IntelPlatform", "cyclonev_oscillator", "", 100e6),
+        ("QuicklogicPlatform", "sys_clk0", "    osc_freq = 60e6\n    osc_div = 2", 30e6),
+        ("GowinPlatform", "OSC", "    osc_frequency = 27e6", 27e6),
+    ],
+)
+def test_an_on_chip_oscillator_sets_the_default_clock(base, clk, attrs, hz):
+    """Each ``default_clk`` that names an oscillator reads its frequency from the class."""
+    source = _OSCILLATOR_BOARD.format(base=base, clk=clk, attrs=attrs)
+    data = json.loads(next(iter(generate_board_json({"osc_test.py": source}, "c0ffee").values())))
+    assert data["default_clock_hz"] == pytest.approx(hz)
+    assert "default_clock_assumed" not in data, "upstream states this frequency"
+
+
+def test_a_default_clock_upstream_gives_no_frequency_is_marked_assumed():
+    """The oscillator's divider is unset, so 12 MHz is our fallback, and says so (D-6)."""
+    source = _OSCILLATOR_BOARD.format(base="LatticeICE40Platform", clk="SB_HFOSC", attrs="")
+    data = json.loads(next(iter(generate_board_json({"osc_test.py": source}, "c0ffee").values())))
+    assert data["default_clock_hz"] == 12e6
+    assert data["default_clock_assumed"] is True

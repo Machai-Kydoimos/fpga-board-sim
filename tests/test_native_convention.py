@@ -462,6 +462,23 @@ def test_every_canonical_board_matches_its_own_synthesized_interface() -> None:
     assert not failures, f"boards that fail to match their own native interface: {failures}"
 
 
+def test_tang_primer_20k_native_led_bank_drives_its_own_leds() -> None:
+    """On the committed board, a native ``led(k)`` reaches LED k, not the WS2812.
+
+    The native wrapper puts the bank's bit k on boundary bit k (``resize``), and
+    ``led_channels[k]`` is the LED that boundary bit lights.  Until U56 Phase 2 the
+    LiteX parser sorted by number alone and listed the dock's WS2812 second, so a
+    native ``led(1)`` lit it and LED 5 never lit -- a run's own screenshots showed it.
+    """
+    path = PROJECT / "boards" / "litex-boards" / "sipeed_tang_primer_20k.json"
+    bd = BoardDef.from_json(path.read_text(encoding="utf-8"))
+    m = match_convention(synth_interface(bd.port_conventions["litex"]), [], bd)
+    assert m is not None and m.leds is not None and m.leds.width == 6
+    lit = [bd.led_channels[k][0] for k in range(m.leds.width)]
+    assert [(c.name, c.number) for c in lit] == [("led", k) for k in range(6)]
+    assert [(name, len(group)) for name, group in bd.led_banks] == [("led", 6), ("rgb_led", 1)]
+
+
 def test_de10_native_file_on_de25_board_is_near_miss_not_silent_run() -> None:
     # The concrete case: a DE10-Standard native file selected against a DE25 board.
     # The clock names differ (CLOCK_50 vs CLOCK0_50) so it is a near-miss, rejected

@@ -29,50 +29,9 @@
     },
     {
       "name": "led",
-      "number": 0,
-      "pins": [
-        "A13",
-        "A12",
-        "B9"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "sfp_led",
-      "number": 0,
-      "pins": [
-        "B12"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led",
       "number": 1,
       "pins": [
         "C11"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "sfp_led",
-      "number": 1,
-      "pins": [
-        "C12"
       ],
       "direction": "o",
       "inverted": false,
@@ -106,6 +65,47 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
       }
+    },
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "A13",
+        "A12",
+        "B9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "sfp_led",
+      "number": 0,
+      "pins": [
+        "B12"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "sfp_led",
+      "number": 1,
+      "pins": [
+        "C12"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
     }
   ],
   "buttons": [],
@@ -128,6 +128,6 @@
     "upstream_file": "alibaba_xcku3p.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
   }
 }

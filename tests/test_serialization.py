@@ -235,3 +235,20 @@ def test_identity_fields_in_a_source_block_do_not_disturb_loading():
     board = BoardDef.from_json(raw)
     assert board.upstream_status == ""
     assert "source" not in json.loads(board.to_json())
+
+
+# ── An assumed default clock (U56 D-6) ────────────────────────────────────────
+
+
+def test_an_assumed_clock_is_read_and_survives_a_roundtrip():
+    raw = json.dumps({"name": "Z", "class_name": "ZedBoard", "default_clock_assumed": True})
+    board = BoardDef.from_json(raw)
+    assert board.default_clock_assumed is True
+    assert BoardDef.from_json(board.to_json()).default_clock_assumed is True
+
+
+def test_a_stated_clock_serializes_exactly_as_before():
+    """The field rides only when set, like an LED's color."""
+    data = json.loads(BoardDef(name="A", class_name="AP").to_json())
+    assert "default_clock_assumed" not in data
+    assert BoardDef.from_json(json.dumps(data)).default_clock_assumed is False

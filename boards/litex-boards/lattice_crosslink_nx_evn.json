@@ -218,9 +218,9 @@
     },
     {
       "name": "button",
-      "number": 0,
+      "number": 1,
       "pins": [
-        "N14"
+        "G15"
       ],
       "direction": "i",
       "inverted": false,
@@ -231,9 +231,9 @@
     },
     {
       "name": "button",
-      "number": 1,
+      "number": 0,
       "pins": [
-        "G15"
+        "N14"
       ],
       "direction": "i",
       "inverted": false,
@@ -357,6 +357,6 @@
     "upstream_file": "lattice_crosslink_nx_evn.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
   }
 }

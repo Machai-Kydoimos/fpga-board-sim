@@ -126,19 +126,6 @@
   ],
   "buttons": [
     {
-      "name": "button_1",
-      "number": 0,
-      "pins": [
-        "P4"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS25"
-      }
-    },
-    {
       "name": "button",
       "number": 1,
       "pins": [
@@ -241,6 +228,19 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS25"
       }
+    },
+    {
+      "name": "button_1",
+      "number": 0,
+      "pins": [
+        "P4"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
     }
   ],
   "switches": [],
@@ -266,6 +266,6 @@
     "upstream_file": "lattice_ecp5_evn.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
   }
 }

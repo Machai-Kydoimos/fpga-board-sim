@@ -456,3 +456,15 @@ def test_seg_vector_without_anodes_stays_packed_vector():
     assert conv["style"] == "packed_vector"
     assert "digit_enable" not in conv
     assert "dp" not in conv
+
+
+def test_a_clock_with_no_period_is_marked_assumed():
+    """No ``create_clock`` period: 100 MHz is our fallback, and says so (U56 D-6)."""
+    no_period = "\n".join(line for line in _XDC.splitlines() if "create_clock" not in line)
+    board = build_board_json(no_period, "Test-Master.xdc", "deadbeef")
+    assert board is not None
+    assert board["default_clock_hz"] == 100e6
+    assert board["default_clock_assumed"] is True
+    stated = build_board_json(_XDC, "Test-Master.xdc", "deadbeef")
+    assert stated is not None
+    assert "default_clock_assumed" not in stated
