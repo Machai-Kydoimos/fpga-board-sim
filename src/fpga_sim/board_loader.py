@@ -62,6 +62,7 @@ _DISPLAY_NAME_OVERRIDES: dict[str, str] = {
     "OrangeCrabR0_2_85FPlatform": "OrangeCrab R0.2 85F",  # orangecrab_r0_2.py
     "SitlinvAE115fbPlatform": "Sitlinv AE115fb",  # sitlinv_a_e115fb.py
     "IceVWirelessPlatform": "ICE-V Wireless",  # ice_v_wireless.py; its header: "ICE-V wireless"
+    "RFSoC4x2Platform": "RFSoC 4x2",  # rfsoc4x2.py; AMD and Real Digital: "RFSoC 4x2"
     # ── A space where the vendor uses a hyphen ────────────────────────────
     # Not caught by the guard below -- "DE0 CV" breaks no mechanical rule --
     # but wrong all the same, and these are the boards this project's own
