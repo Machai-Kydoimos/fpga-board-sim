@@ -604,7 +604,7 @@ After generating, for each existing file whose identity was **not** produced:
   2026-10-28 heads its output equals the old `exec` path's on every board (149 LiteX, 82 Amaranth),
   so every skip there is a mock gap the later phases close. They also reach further. **Phase 1c:**
   one LiteX platform calls `copy.deepcopy`, so the few standard-library calls board code makes need
-  safe stand-ins: a permissive stub would hand back the wrong data rather than fail. **Phase 2:**
+  safe stand-ins: a permissive stub would hand back the wrong data rather than fail. **Phase 4** (moved from 2):
   LiteX's extension modules use a generator (`_pmod_indexes`, `extensions/pmod.py`) and
   `type(self).__name__` (the deprecated `io`/`connectors` accessors, `extensions/qmtech.py:109,115`),
   so add eager generators and a one-argument `type()` with a read-only `__name__`, or call the
@@ -985,6 +985,30 @@ before.
 
 **Effort:** S/M.
 
+**Measured when Phase 2 ran (2026-11-01).** Every number above held: LiteX 223 → 226, the six
+changed boards exactly as listed (Red Pitaya measures 125 MHz), and exactly four boards gain
+`default_clock_assumed`. A second re-sync is byte-identical. Four differences:
+
+- **Reading `litex_boards.extensions.*` moves to Phase 4.** At the pins that directory does not
+  exist (upstream added it later), so nothing at the pins exercises it and Phase 2 could not
+  verify it. It is also bigger than "eager generators and `type().__name__`": at today's head
+  (`97186cf`, 50 platform files import it) every extension class derives from
+  `litex.build.extension.Extension`, a class in the LiteX *framework* repo, so reading the modules
+  first needs a faithful mock of that class (`slots`, `bindings`, `iostandard(platform)`, the
+  connector-relative `pmod:N` pins). The `add_extension` mock already takes extension objects, so
+  Phase 4 adds the module reading and the base-class mock, and verifies them against the heads.
+- **The LiteX Zybo Z7 gains the cited Digilent convention.** With its buttons and RGB LEDs read,
+  its banks match the Digilent Zybo-Z7 master XDC, and `sync_port_conventions` adds
+  `port_conventions.digilent` (the drift check caught the missing block). The impact matrix
+  gains its four `digilent.*` bank rows; no design's outcome changes on any other board.
+- **Phase 1c's oscillator rules had no tests.** §8 asked for a fixture test per rule; Phase 2
+  adds one for each of the eight, plus the assumed case.
+- **LED order across names (for review).** The LiteX parser sorts LEDs by number alone, so
+  differently named LEDs interleave: the Tang Mega 138K Pro splits its `led_n` bank around
+  `led_done`/`led_ready` (as before this phase), and the new Tang Primer 20K shows `led0`, its
+  1-pin WS2812 `rgb_led`, then `led1`–`led5`. Defect 24 partitioned only 3-pin RGB LEDs.
+  Grouping by name would move `led(k)` on existing boards, so it waits for a decision.
+
 ## 10. Phase 3 — Orphans in the UI, §4.8
 
 **Do:** use synthetic orphan fixtures, one per reason; assert on what is rendered (tag text, the
@@ -1005,6 +1029,12 @@ It comes before the bump because the bump creates the first real orphans (the fi
   `_sync_metadata.json` pins. The 2026-10-28 heads are in §2.1; upstream will have moved. The sync
   is now its own audit: read its ledger, its orphan list and the impact-matrix diff, and review
   anything not listed here. Add an accept-list entry only for an outcome a person has checked.
+- **Also (moved from Phase 2, see its measured notes):** read `litex_boards.extensions.*` from
+  the archive with the reader, recursively and cycle-guarded. Before that, mock
+  `litex.build.extension.Extension` from its source, and grow the reader by what the modules use:
+  eager generators (`_pmod_indexes`) and a one-argument `type()` with a read-only `__name__`.
+  Without this, a board whose dock moved into an extension module (the Tang Primer 20K's
+  `TangPrimer20KDock`) loses that dock's I/O at the bump.
 - **Expected** (vs 2026-10-28 heads): LiteX produces 233 boards — 12 new files (Appendix B.5: 7 new
   boards and the 5 Efinix rename targets); the 5 old Efinix files → **kept, marked orphaned
   (`file_removed`), successor = the new file** (identical I/O and device, verified);
@@ -1083,7 +1113,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 1a | identity, ledger, accept-list, orphan detection, impact matrix with per-bank rows (`--board` re-checked) | no | done 2026-11-01 (#470) |
 | 1b | display names (P35) | no (a before → after name table) | done 2026-11-01 (#471) |
 | 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | done 2026-11-01 (#472); the review found long part numbers running past the chip, fixed in the PR |
-| 2 | extensions, docks, instance clock (+ D-6) | **yes** | not started |
+| 2 | extensions, docks, instance clock (+ D-6) | **yes** | PR open, awaiting visual review (2026-11-01); reading the extension modules moved to Phase 4 |
 | 3 | orphan UI | **yes** | not started |
 | 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | not started |
 | 5 | multi-pin, DIP | **yes** | not started |

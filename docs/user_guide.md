@@ -336,6 +336,13 @@ board data cites a vendor source (reference-manual figure or prose). A 3-pin
 **RGB LED** draws as a single puck (`RGB0`, `RGB1`, …) that mixes its three
 channels into one color.
 
+The **chip** shows the vendor, the part number and package, and the board's default
+clock. A part number too wide for the chip breaks onto a second line at a dash, slash or
+space. A clock that reads **`100 MHz, assumed`** is one upstream never states: the board
+data falls back to a common value (100 MHz for Digilent boards, 12 MHz for LiteX and
+Amaranth ones) so a design has a clock to run on, and the chip says so rather than
+presenting the guess as the board's.
+
 - **Click switches** to toggle them, or **press and sweep across a row** to set
   a whole bank in one gesture. The sweep *paints* rather than toggles: the
   switch you press on decides the value, and every switch the drag crosses is
@@ -564,7 +571,7 @@ zones. Toggle it with **S**.
 
 | Stat | Description |
 |------|-------------|
-| Board clk | Native clock frequency of the selected board |
+| Board clk | Native clock frequency of the selected board (when the chip says *assumed*, the fallback the board data chose because upstream states none) |
 | Sim time | Total simulated time elapsed this session |
 | Clk/frame | Clock cycles advanced in the last simulation step |
 | Eff. rate | Actual measured throughput (clocks/frame × GUI fps) |
