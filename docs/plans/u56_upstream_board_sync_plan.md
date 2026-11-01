@@ -1035,6 +1035,20 @@ It comes before the bump because the bump creates the first real orphans (the fi
   eager generators (`_pmod_indexes`) and a one-argument `type()` with a read-only `__name__`.
   Without this, a board whose dock moved into an extension module (the Tang Primer 20K's
   `TangPrimer20KDock`) loses that dock's I/O at the bump.
+- **Prepared 2026-11-01 (branch `feat/u56-phase4-prep`, stacked on #474), measured at LiteX
+  head `97186cf` in a scratch copy, nothing committed:**
+  - The sync hands the parser `litex_boards/extensions/*` and nothing else: never another board
+    file, whose `Platform` could pass for the importer's own, and not `compat`, whose helpers
+    only emit deprecation warnings.
+  - Our `Extension`/`IOExtension` mirror upstream's `litex/build/extension.py` (LiteX
+    `57dc334`). `add_extension` asks an object for `get_io`, as LiteX's does. `get_io_attr` is a
+    classmethod, as upstream's is, because deprecated shims call `get_io` on the platform class.
+  - Grown on evidence: the reader needed neither generators nor `type().__name__`. Both sit in
+    command-line helpers that building a platform never calls.
+  - Result: 256 files, 233 boards, 0 errors, 14 new files, and 5 orphans (the Efinix renames,
+    each with its successor). The Tang Primer 20K keeps its 7 LEDs and 5 buttons from its dock
+    module; without it, the board would have no simulatable I/O. The Tang Console goes 3 → 2
+    buttons, as predicted above.
 - **Expected** (vs 2026-10-28 heads): LiteX produces 233 boards — 12 new files (Appendix B.5: 7 new
   boards and the 5 Efinix rename targets); the 5 old Efinix files → **kept, marked orphaned
   (`file_removed`), successor = the new file** (identical I/O and device, verified);

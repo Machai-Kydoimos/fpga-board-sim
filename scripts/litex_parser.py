@@ -20,7 +20,7 @@ from framework_conventions import RoleEntry, build_convention
 from led_metadata import color_from_name
 from sync_common import ParseOutcome, ProducedBoard, normalize_error
 from sync_identity import VERSION_PARAMS
-from upstream_reader import InterpretedFunction, ModuleStub, read_module
+from upstream_reader import InterpretedFunction, ModuleStub, UpstreamValue, read_module
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Mock LiteX build system classes
@@ -59,11 +59,151 @@ class _Subsignal:
     def __init__(self, name: str, *ios: object, **kwargs: object) -> None:
         self.name = name
         self.ios = list(ios)
+        self.constraints = self.ios  # upstream's attribute name, which extension code reads
 
 
 class _Misc:
     def __init__(self, *args: object, **kwargs: object) -> None:
         pass
+
+
+class _Extension:
+    """Mock of LiteX's ``litex.build.extension.Extension`` (U56 Phase 4).
+
+    Hardware plugged on a host's connectors ("slots"): a Pmod, a dock, a daughterboard.
+    It mirrors upstream (``litex/build/extension.py`` at ``57dc334``): slots bind to host
+    connectors positionally or by name, and ``get_io`` is ``define_io`` with every
+    ``"slot:pin"`` remapped to ``"connector:pin"``, plus the number offset, renames and
+    misc constraints.  The subclasses are upstream's ``litex_boards.extensions``, read by
+    the reader, so their ``define_io`` is interpreted, never executed.  Upstream raises
+    on a bad binding; so does this, and the reader reports it as the file's error.
+    """
+
+    slots: dict[str, object] = {"default": None}
+    connector_type: object = None
+
+    def __init__(
+        self,
+        *args: object,
+        number: int | None = None,
+        name: object = None,
+        iostandard: object = None,
+        misc: object = None,
+        **bindings: object,
+    ) -> None:
+        slots = list(self.slots)
+        if len(args) > len(slots):
+            raise ValueError("too many connectors for the extension's slots")
+        self.bindings = dict(self.slots)
+        for slot, conn in zip(slots, args, strict=False):
+            self.bindings[slot] = conn
+        for slot, conn in bindings.items():
+            if slot not in self.slots:
+                raise ValueError(f"unknown slot {slot!r}")
+            self.bindings[slot] = conn
+        for slot, conn in self.bindings.items():
+            if conn is None:
+                raise ValueError(f"no connector bound to slot {slot!r}")
+        self.number = number
+        self.name = name
+        self.misc = [] if misc is None else list(misc) if isinstance(misc, list | tuple) else [misc]
+        self._iostandard = _IOStandard(iostandard) if isinstance(iostandard, str) else iostandard
+
+    def iostandard(self, platform: object) -> list[object]:
+        if self._iostandard is not None:
+            return [self._iostandard]
+        return _io_attr(platform, "iostandard_3v3")
+
+    # Upstream's are staticmethods; classmethods behave the same for a caller and are
+    # bound to our own class, which is what lets the reader call them.
+    @classmethod
+    def pullup(cls, platform: object) -> list[object]:
+        return _io_attr(platform, "pullup")
+
+    @classmethod
+    def slew_fast(cls, platform: object) -> list[object]:
+        return _io_attr(platform, "slew_fast")
+
+    def define_io(self, platform: object) -> list[object]:
+        return []
+
+    def define_connectors(self, platform: object) -> list[object]:
+        return []
+
+    def get_io(self, platform: object) -> list[tuple[object, ...]]:
+        resources = self.define_io(platform)
+        if not isinstance(resources, list | tuple):
+            return []
+        names = self._get_names(resources)
+        io: list[tuple[object, ...]] = []
+        for resource in resources:
+            if not isinstance(resource, tuple) or len(resource) < 2:
+                continue
+            name, number, *elements = resource
+            if self.number is not None and isinstance(number, int):
+                number += self.number
+            remapped = [self._remap_constraint(e) for e in elements]
+            io.append((names.get(name, name), number, *remapped, *self.misc))
+        return io
+
+    def get_connectors(self, platform: object) -> list[object]:
+        return []  # connectors carry no LED, switch or button
+
+    def _get_names(self, resources: list[object] | tuple[object, ...]) -> dict[object, object]:
+        if self.name is None:
+            return {}
+        if isinstance(self.name, dict):
+            return dict(self.name)
+        found = sorted({r[0] for r in resources if isinstance(r, tuple) and r})
+        if len(found) != 1:
+            raise ValueError("a string name needs a single resource name; use a dict")
+        return {found[0]: self.name}
+
+    def _remap_identifier(self, identifier: object) -> object:
+        if not isinstance(identifier, str) or ":" not in identifier:
+            return identifier
+        conn, pin = identifier.split(":", 1)
+        if conn in self.bindings:
+            return f"{self.bindings[conn]}:{pin}"
+        return identifier
+
+    def _remap_constraint(self, constraint: object) -> object:
+        if isinstance(constraint, _Pins):
+            return _Pins(" ".join(str(self._remap_identifier(i)) for i in constraint.identifiers))
+        if isinstance(constraint, _Subsignal):
+            return _Subsignal(constraint.name, *[self._remap_constraint(c) for c in constraint.ios])
+        return constraint
+
+
+class _IOExtension(_Extension):
+    """Mock of LiteX's ``IOExtension``: an extension built from static I/O lists."""
+
+    def __init__(
+        self,
+        *args: object,
+        io: object = (),
+        connectors: object = (),
+        slots: dict[str, object] | None = None,
+        **kwargs: UpstreamValue,
+    ) -> None:
+        if slots is not None:
+            self.slots = slots
+        self._io = list(io) if isinstance(io, list | tuple) else []
+        self._connectors = list(connectors) if isinstance(connectors, list | tuple) else []
+        _Extension.__init__(self, *args, **kwargs)
+
+    def define_io(self, platform: object) -> list[object]:
+        return self._io
+
+    def define_connectors(self, platform: object) -> list[object]:
+        return self._connectors
+
+
+def _io_attr(platform: object, name: str) -> list[object]:
+    """``platform.get_io_attr(name)`` as a list: vendor IO attributes carry no I/O for us."""
+    get = getattr(platform, "get_io_attr", None)
+    attr = get(name) if callable(get) else None
+    return list(attr) if isinstance(attr, list | tuple) else []
 
 
 class _DiffPairs:
@@ -199,11 +339,53 @@ class _StarNameError(Exception):
         self.name = name
 
 
-def _fresh_namespace(source: str, stand_ins: Mapping[str, object]) -> dict[str, object]:
+def _fresh_namespace(
+    source: str,
+    stand_ins: Mapping[str, object],
+    modules: Mapping[str, str] | None = None,
+    reading: frozenset[str] = frozenset(),
+) -> dict[str, object]:
     ns = _make_litex_namespace()
-    _bind_imports(source, ns)
+    _bind_imports(source, ns, modules, reading)
     ns.update({k: v for k, v in stand_ins.items() if k not in ns})
     return ns
+
+
+def _blank_import_lines(source: str) -> str:
+    """Return *source* with each import line blanked, so line numbers still match."""
+    return "\n".join(
+        "" if line.strip().startswith(("import ", "from ")) else line for line in source.split("\n")
+    )
+
+
+def _read_module(
+    name: str, modules: Mapping[str, str], reading: frozenset[str]
+) -> dict[str, object] | None:
+    """Read upstream module *name* from the archive, never executing it (U56 Phase 4).
+
+    For ``litex_boards.extensions.*`` and its helpers: an extension class must be a real
+    interpreted class for ``add_extension`` to get its I/O, where a stand-in has none.
+    The module is read like a board file -- its own imports bound the same way, so the
+    read is recursive -- and freshly for each board file, so one board's reading never
+    leaks into another's.  ``None`` for a module already being read (an import cycle):
+    its names stay stand-ins.  A module that cannot be read fails the board file that
+    imports it, as a failing import would upstream.
+    """
+    if name in reading:
+        return None
+    source = modules[name]
+    allow = _unmocked_star_import(source)
+    stand_ins: dict[str, object] = {}
+    for _attempt in range(32):
+        ns = _fresh_namespace(source, stand_ins, modules, reading | {name})
+        try:
+            return read_module(_blank_import_lines(source), name.replace(".", "/") + ".py", ns)
+        except Exception as exc:
+            missing = _star_name(exc, allow, stand_ins)
+            if missing is None:
+                raise
+            stand_ins[missing] = _stub_class(missing)
+    raise RuntimeError(f"{name}: too many star-imported names")
 
 
 def _star_name(exc: BaseException, allow: bool, stand_ins: Mapping[str, object]) -> str | None:
@@ -214,14 +396,22 @@ def _star_name(exc: BaseException, allow: bool, stand_ins: Mapping[str, object])
     return None
 
 
-def _bind_imports(source: str, ns: dict[str, object]) -> None:
+def _bind_imports(
+    source: str,
+    ns: dict[str, object],
+    modules: Mapping[str, str] | None = None,
+    reading: frozenset[str] = frozenset(),
+) -> None:
     """Bind every name the file imports and the mocks do not provide (U56 §4.4).
 
     Import lines are blanked before the file is read; this walks the original file's
     syntax tree -- module level and inside functions -- so each imported name still
-    means something: a vetted module function, or a stand-in.  ``from x import *`` is
-    what the mocks cover.  A name imported nowhere stays undefined, a genuine gap.
+    means something: a name from an upstream module in *modules*, read by
+    :func:`_read_module`; a vetted module function; or a stand-in.  ``from x import *``
+    is what the mocks cover.  A name imported nowhere stays undefined, a genuine gap.
     """
+    known = modules or {}
+    read: dict[str, dict[str, object] | None] = {}
     try:
         tree = ast.parse(source)
     except SyntaxError:
@@ -236,14 +426,20 @@ def _bind_imports(source: str, ns: dict[str, object]) -> None:
                 safe = _SAFE_MODULES.get(alias.name if alias.asname else top)
                 ns[bound] = ModuleStub(top, **safe) if safe is not None else _stub_class(bound)
         elif isinstance(node, ast.ImportFrom):
-            safe = _SAFE_MODULES.get(node.module or "")
+            module = node.module or ""
+            safe = _SAFE_MODULES.get(module)
+            if module in known and module not in read:
+                read[module] = _read_module(module, known, reading)
+            upstream = read.get(module)
             for alias in node.names:
                 if alias.name == "*":
                     continue
                 bound = alias.asname or alias.name
                 if bound in ns:
                     continue
-                if safe is not None and alias.name in safe:
+                if upstream is not None and alias.name in upstream:
+                    ns[bound] = upstream[alias.name]
+                elif safe is not None and alias.name in safe:
                     ns[bound] = safe[alias.name]
                 else:
                     ns[bound] = _stub_class(bound)
@@ -326,6 +522,13 @@ def _make_mock_platform(name: str, vendor: str) -> type:
         def request(self, *args: object, **kwargs: object) -> None:
             pass
 
+        @classmethod
+        def get_io_attr(cls, name: str) -> list[object]:
+            # Upstream returns a vendor's IOStandard/pull-up/slew constraints; none of
+            # them carries I/O, so an extension's resources get none (U56 Phase 4).
+            # A classmethod, as upstream's is: shims call it on the platform class.
+            return []
+
         def _noop(self, *args: object, **kwargs: object) -> None:
             return None
 
@@ -361,6 +564,9 @@ def _make_litex_namespace() -> dict[str, object]:
         "Drive": _Drive,
         "PlatformInfo": _PlatformInfo,
         "AutoPins": _Pins,
+        # litex.build.extension (U56 Phase 4): upstream's extension classes derive from these.
+        "Extension": _Extension,
+        "IOExtension": _IOExtension,
         # Programmer stubs
         **{
             name: type(name, (), {"__init__": lambda self, *a, **kw: None})
@@ -717,7 +923,10 @@ def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
 
 
 def read_litex_file(
-    source: str, filename: str, args: Mapping[str, Any] | None = None
+    source: str,
+    filename: str,
+    args: Mapping[str, Any] | None = None,
+    modules: Mapping[str, str] | None = None,
 ) -> ParseOutcome:
     """Read one platform file, without executing it, into a :class:`ParseOutcome`.
 
@@ -725,22 +934,17 @@ def read_litex_file(
     values of the constructor's version parameters.  ``args`` builds a recorded
     non-default identity, ``Platform(**args)``, instead of the default construction; a
     constructor that fails then is an ``error``, never the module-level fallback, so the
-    sync can report that version as no longer defined.
+    sync can report that version as no longer defined.  ``modules`` maps dotted names to
+    the upstream modules a board file may import and the reader reads rather than stubs
+    (``litex_boards.extensions.*``, U56 Phase 4).
     """
-    lines = source.split("\n")
-    cleaned = []
-    for line in lines:
-        s = line.strip()
-        if s.startswith(("import ", "from ")):
-            cleaned.append("")
-        else:
-            cleaned.append(line)
+    cleaned = _blank_import_lines(source)
 
     allow = _unmocked_star_import(source)
     stand_ins: dict[str, object] = {}
     for _attempt in range(32):
         try:
-            return _read_once(source, "\n".join(cleaned), filename, args, allow, stand_ins)
+            return _read_once(source, cleaned, filename, args, allow, stand_ins, modules)
         except _StarNameError as missing:
             # A name from `from migen import *` is imported, just not one we mock: stand
             # in for it and read again (reading is cheap and runs nothing).
@@ -755,10 +959,11 @@ def _read_once(
     args: Mapping[str, Any] | None,
     allow: bool,
     stand_ins: Mapping[str, object],
+    modules: Mapping[str, str] | None = None,
 ) -> ParseOutcome:
     """Read the file and build its board once, with the given stand-ins bound."""
-    ns = _fresh_namespace(source, stand_ins)
     try:
+        ns = _fresh_namespace(source, stand_ins, modules)  # may read upstream modules
         read_module(cleaned, filename, ns)
     except Exception as exc:
         name = _star_name(exc, allow, stand_ins)
