@@ -16,7 +16,7 @@ import sys
 from collections.abc import Iterator, Mapping
 from typing import Any
 
-from framework_conventions import RoleEntry, build_convention
+from framework_conventions import RoleEntry, build_convention, group_by_name
 from led_metadata import color_from_name
 from sync_common import ParseOutcome, ProducedBoard, normalize_error
 from sync_identity import VERSION_PARAMS
@@ -674,6 +674,16 @@ def _make_class_name(filename: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════
 
 
+def _upstream_order(components: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Group components by their LiteX port name, in number order (U56 Phase 2).
+
+    Keyed on ``raw_name`` (``user_led``), not the display name (``led``): two port
+    names can share a display name, as the OCP TAP Timecard's ``user_led`` and
+    ``led`` do.
+    """
+    return group_by_name(components, lambda c: str(c["raw_name"]), lambda c: int(c["number"]))
+
+
 def _mono_then_rgb(leds: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Stable-partition LEDs into mono, then 3-pin RGB sites (U56 defect 24).
 
@@ -893,8 +903,11 @@ def _read_once(
     class_name = _make_class_name(filename)
 
     port_conventions = _build_litex_convention(clocks, leds, buttons, switches)
-    # `raw_name` exists only to build the convention above; keep it out of the
-    # persisted component JSON so the serialized led/btn/sw shape is unchanged.
+    leds = _mono_then_rgb(_upstream_order(leds))
+    buttons = _upstream_order(buttons)
+    switches = _upstream_order(switches)
+    # `raw_name` exists only to build the convention and the order above; keep it out
+    # of the persisted component JSON so the serialized led/btn/sw shape is unchanged.
     for comp in (*leds, *buttons, *switches):
         comp.pop("raw_name", None)
 
@@ -908,9 +921,9 @@ def _read_once(
         "default_clock_hz": default_clock_hz or 12e6,
         # Upstream states no frequency: 12 MHz is our fallback, and says so (U56 D-6).
         **({} if default_clock_hz else {"default_clock_assumed": True}),
-        "leds": _mono_then_rgb(sorted(leds, key=lambda c: c["number"])),
-        "buttons": sorted(buttons, key=lambda c: c["number"]),
-        "switches": sorted(switches, key=lambda c: c["number"]),
+        "leds": leds,
+        "buttons": buttons,
+        "switches": switches,
         "seven_seg": seven_seg,
     }
     if port_conventions:

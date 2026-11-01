@@ -77,6 +77,34 @@ class RgbPlatform(Xilinx7SeriesPlatform):
 """
 
 
+# U56 Phase 2: a dock's `led` bank, declared out of number order and followed by a
+# 1-pin WS2812 (the Tang Primer 20K), and DIP positions declared ahead of directional
+# buttons (the VC707).  Sorting by number alone interleaved both.
+_DOCK = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io = [
+    ("clk27", 0, Pins("H11"), IOStandard("LVCMOS33")),
+    ("led", 0, Pins("C13"), IOStandard("LVCMOS33")),
+    ("led", 1, Pins("A13"), IOStandard("LVCMOS33")),
+    ("led", 3, Pins("N14"), IOStandard("LVCMOS33")),
+    ("led", 2, Pins("N16"), IOStandard("LVCMOS33")),
+    ("rgb_led", 0, Pins("T9"), IOStandard("LVCMOS33")),
+    ("user_dip_btn", 0, Pins("D1"), IOStandard("LVCMOS33")),
+    ("user_dip_btn", 1, Pins("D2"), IOStandard("LVCMOS33")),
+    ("user_btn_c", 0, Pins("E1"), IOStandard("LVCMOS33")),
+    ("user_btn_n", 0, Pins("E2"), IOStandard("LVCMOS33")),
+]
+
+class DockPlatform(Xilinx7SeriesPlatform):
+    default_clk_name = "clk27"
+    default_clk_period = 1e9 / 27e6
+    def __init__(self):
+        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)
+"""
+
+
 # U33 Wave 4: `oled*` (OLED display buses) and `segled_*` (7-seg lines) merely
 # *contain* "led" and must not be user LEDs; `m2led` (M.2 status LED -- a digit
 # precedes "led") must stay one.
@@ -203,6 +231,24 @@ def test_port_conventions_primary_group_and_cluster():
         "names": ["user_btnc", "user_btnd", "user_btnu"],
         "width": 3,
     }
+
+
+def test_each_upstream_name_stays_together_in_number_order():
+    # U56 Phase 2: the board shows a name's LEDs side by side, as the Dock has them.
+    b = parse_litex_board(_DOCK, "dock_board.py")[0]
+    assert [c["pins"] for c in b["leds"]] == [["C13"], ["A13"], ["N16"], ["N14"], ["T9"]]
+    assert [c["pins"] for c in b["buttons"]] == [["D1"], ["D2"], ["E1"], ["E2"]]
+
+
+def test_a_native_bank_is_the_first_bits_of_its_role():
+    # The native wrapper puts a bank's bit k on boundary bit k, so the bank's own
+    # resources must come first, in number order -- or `led(1)` lights the WS2812.
+    b = parse_litex_board(_DOCK, "dock_board.py")[0]
+    conv = b["port_conventions"]["litex"]
+    assert conv["leds"] == {"name": "led", "width": 4}
+    assert [c["pins"] for c in b["leds"][:4]] == [["C13"], ["A13"], ["N16"], ["N14"]]
+    assert conv["buttons"] == {"name": "user_dip_btn", "width": 2}
+    assert [c["pins"] for c in b["buttons"][:2]] == [["D1"], ["D2"]]
 
 
 def test_no_simulatable_resources_skipped():

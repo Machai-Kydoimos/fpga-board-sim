@@ -89,6 +89,31 @@ def test_generate_board_json_emits_amaranth_convention():
     assert conv["naming"] == "framework-derived"
 
 
+# U56 Phase 2: the Nexys 4 DDR declares switches 8 and 9 in a second call (they sit
+# on a 1.8 V bank), after 10-15.
+_SWITCHES_SPLIT_SOURCE = """
+from amaranth.build import *
+from amaranth.vendor import XilinxPlatform
+__all__ = ["SwitchSplitPlatform"]
+class SwitchSplitPlatform(XilinxPlatform):
+    default_clk = "clk100"
+    resources = [
+        Resource("clk100", 0, Pins("E3", dir="i"), Clock(100e6), Attrs(IO="LVCMOS")),
+        *LEDResources(pins="A B", attrs=Attrs(IO="TEST")),
+        *SwitchResources(pins={0: "S0", 1: "S1", 10: "S10"}, attrs=Attrs(IO="LVCMOS33")),
+        *SwitchResources(pins={8: "S8", 9: "S9"}, attrs=Attrs(IO="LVCMOS18")),
+    ]
+"""
+
+
+def test_switches_follow_their_numbers_not_their_declaration():
+    """A design's sw(8) is switch 8: the board lists a name's switches in number order."""
+    results = generate_board_json({"split.py": _SWITCHES_SPLIT_SOURCE}, "abc123def")
+    data = json.loads(next(iter(results.values())))
+    assert [c["number"] for c in data["switches"]] == [0, 1, 8, 9, 10]
+    assert [c["pins"] for c in data["switches"]] == [["S0"], ["S1"], ["S8"], ["S9"], ["S10"]]
+
+
 _OLED_SOURCE = """
 from amaranth.build import *
 from amaranth.vendor import XilinxPlatform

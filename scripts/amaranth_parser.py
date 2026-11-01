@@ -23,7 +23,7 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from framework_conventions import RoleEntry, build_convention
+from framework_conventions import RoleEntry, build_convention, group_by_name
 from led_metadata import color_from_name
 from sync_common import ParseOutcome, ProducedBoard, normalize_error
 from upstream_reader import ModuleStub, read_module
@@ -488,6 +488,14 @@ def _to_component(resource: _Resource, kind: str) -> ComponentInfo:
     )
 
 
+def _upstream_order(components: list[ComponentInfo]) -> list[ComponentInfo]:
+    """Group components by resource name, in number order (U56 Phase 2).
+
+    Declaration order alone put the Nexys 4 DDR's switches 8 and 9 after 15.
+    """
+    return group_by_name(components, lambda c: c.name, lambda c: c.number)
+
+
 def _coalesce_rgb_trio(leds: list[ComponentInfo]) -> list[ComponentInfo]:
     """Fold a scalar ``led_r``/``led_g``/``led_b`` trio into one 3-pin ``rgb_led`` (U36).
 
@@ -780,7 +788,9 @@ def _read_boards(
             elif kind == "switch":
                 switches.append(_to_component(res, "switch"))
 
-        leds = _coalesce_rgb_trio(leds)
+        leds = _upstream_order(_coalesce_rgb_trio(leds))
+        buttons = _upstream_order(buttons)
+        switches = _upstream_order(switches)
         seven_seg = _extract_sevenseg(resources)
 
         if not (leds or buttons or switches):

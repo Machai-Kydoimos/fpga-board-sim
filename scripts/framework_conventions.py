@@ -25,7 +25,10 @@ from __future__ import annotations
 
 import copy
 import re
-from typing import Any, NamedTuple
+from collections.abc import Callable, Sequence
+from typing import Any, NamedTuple, TypeVar
+
+_T = TypeVar("_T")
 
 # Net-name suffix that flags an active-low bank even when the source carries no
 # explicit polarity flag (e.g. litex ``led_n`` / ``rgb_led_n``).
@@ -54,6 +57,27 @@ def _compass_norths(names: list[str]) -> set[str]:
         for name in names
         if name.lower().endswith("_n") and len(by_prefix.get(name[:-2].lower(), set())) >= 2
     }
+
+
+def group_by_name(
+    items: Sequence[_T], name: Callable[[_T], str], number: Callable[[_T], int]
+) -> list[_T]:
+    """Return *items* with each upstream name's resources together, in number order.
+
+    Names keep the order upstream first declares them in.  This order is both what
+    the board shows and the order of the boundary bits.  The native wrapper puts a
+    bank's bit k on boundary bit k (``resize`` in ``wrapper.py``), so a bank that
+    another name's resource splits drives the wrong LED.  Sorting by number alone
+    did exactly that: the Tang Primer 20K dock's WS2812 landed between ``led`` 0
+    and ``led`` 1, so a native design's ``led(1)`` lit the WS2812, each higher bit
+    lit the LED one below its own, and LED 5 never lit.  Amaranth's Nexys 4 DDR
+    lists switches 8 and 9 last, which put switch 10 on boundary bit 8 (U56
+    Phase 2).
+    """
+    first: dict[str, int] = {}
+    for item in items:
+        first.setdefault(name(item), len(first))
+    return sorted(items, key=lambda item: (first[name(item)], number(item)))
 
 
 # Normalized net-names that name a "primary" bank -- preferred over a decorated
