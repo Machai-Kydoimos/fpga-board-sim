@@ -1,5 +1,5 @@
 {
-  "name": "DE1 So C",
+  "name": "DE1 SoC",
   "class_name": "DE1SoCPlatform",
   "vendor": "Intel",
   "device": "5CSEMA5",
@@ -406,6 +406,6 @@
     "upstream_file": "de1_soc.py",
     "upstream_class": "DE1SoCPlatform",
     "sync_commit": "be069dfd490b31df215337afac35711994a52418",
-    "sync_timestamp": "2026-10-31T23:32:50.118937+00:00"
+    "sync_timestamp": "2026-11-01T02:42:20.699452+00:00"
   }
 }

@@ -468,10 +468,15 @@ def _build_litex_convention(
 
 
 def _prettify_filename(filename: str) -> str:
-    """Convert 'digilent_arty.py' to 'Digilent Arty'."""
+    """Convert 'digilent_arty.py' to 'Digilent Arty'.
+
+    Each word's first letter is raised and the rest kept as upstream wrote it:
+    ``str.capitalize`` lowered it, turning ``brisbaneSilicon`` into "Brisbanesilicon"
+    and ``2I`` into "2i" (P35, U56 Phase 1b).  ``_make_class_name`` keeps the old
+    spelling, because a board's ``class_name`` must never change.
+    """
     name = filename.replace(".py", "")
-    parts = name.split("_")
-    return " ".join(p.capitalize() for p in parts)
+    return " ".join(p[:1].upper() + p[1:] for p in name.split("_") if p)
 
 
 def _make_class_name(filename: str) -> str:

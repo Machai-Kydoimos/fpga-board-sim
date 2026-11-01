@@ -1,5 +1,5 @@
 {
-  "name": "ULX3 S-85 F-",
+  "name": "ULX3S-85F",
   "class_name": "ULX3S_85F_Platform",
   "vendor": "Lattice",
   "device": "LFE5U-85F",
@@ -390,6 +390,6 @@
     "upstream_file": "ulx3s.py",
     "upstream_class": "ULX3S_85F_Platform",
     "sync_commit": "be069dfd490b31df215337afac35711994a52418",
-    "sync_timestamp": "2026-10-31T23:32:50.118937+00:00"
+    "sync_timestamp": "2026-11-01T02:42:20.699452+00:00"
   }
 }

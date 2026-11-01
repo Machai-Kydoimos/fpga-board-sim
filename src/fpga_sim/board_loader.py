@@ -29,19 +29,14 @@ _FALLBACK_CLOCK_HZ: float = 12e6  # most common across 80 surveyed boards
 #: Corrected display names, keyed by ``class_name``.
 #:
 #: The two sync parsers derive a board's display name from its upstream class
-#: name by splitting on case and digit boundaries
-#: (``scripts/amaranth_parser._prettify_class_name``, and a second copy in
-#: ``scripts/litex_parser``).  The heuristic is right for most of the fleet and
-#: wrong for the names that matter here: it splits ``DE1SoC`` into "DE1 So C"
-#: and turns ``ULX3S_45F_``'s trailing underscore into a dangling hyphen,
-#: "ULX3 S-45 F-".
-#:
-#: **This table is the cheap half of the fix, on purpose.**  Correcting the
-#: parsers would mean re-syncing every generated board, which the CI drift job
-#: (``scripts/check_board_drift.py``) then has to agree with byte for byte --
-#: real risk, three weeks before a semester, for a cosmetic defect.  Applied at
-#: load time nothing regenerates and no board JSON changes, so there is nothing
-#: for the drift job to disagree with.  The parser fix stays carded.
+#: or file name (``scripts/amaranth_parser._prettify_class_name``,
+#: ``scripts/litex_parser._prettify_filename``).  Since U56 Phase 1b (P35) they
+#: no longer mangle part numbers or leave dangling hyphens -- ``ULX3S_45F_`` reads
+#: "ULX3S-45F", ``DE1SoC`` "DE1 SoC" -- so this table holds only what no rule can
+#: derive: a vendor's hyphen ("DE1-SoC", "DE0-CV"), a space before a part
+#: ("Logicbone 85F"), a brand's own styling ("OrangeCrab R0.2 25F", "iCEstick").
+#: ``tests/test_board_display_names.py`` fails on an entry the parsers now emit
+#: on their own, so the table shrinks whenever they improve.
 #:
 #: Every entry is grounded in data already in the tree rather than in what a
 #: board "should" be called: the ``source.upstream_file`` recorded in each board
@@ -54,21 +49,11 @@ _FALLBACK_CLOCK_HZ: float = 12e6  # most common across 80 surveyed boards
 #: ``class_name``), or a documented example.
 _DISPLAY_NAME_OVERRIDES: dict[str, str] = {
     # ── Mangled by the case/digit split (F7) ──────────────────────────────
-    "AX7325BPlatform": "AX7325B",  # alinx_ax7325b.py
-    "Colorlight_5A75B_R70Platform": "Colorlight-5A75B-R70",  # colorlight_5a75b_r7_0.py
-    "CoraZ7_07SPlatform": "Cora Z7-07S",  # class CoraZ7_07S; Digilent's variant suffix
     "DE1SoCPlatform": "DE1-SoC",  # de1_soc.py
     "Logicbone85FPlatform": "Logicbone 85F",  # logicbone.py; 85F is the ECP5 part
     "OrangeCrabR0_2_25FPlatform": "OrangeCrab R0.2 25F",  # orangecrab_r0_2.py
     "OrangeCrabR0_2_85FPlatform": "OrangeCrab R0.2 85F",  # orangecrab_r0_2.py
     "SitlinvAE115fbPlatform": "Sitlinv AE115fb",  # sitlinv_a_e115fb.py
-    "TE0714_03_50_2IPlatform": "TE0714-03-50-2I",  # te0714_03_50_2I.py
-    # ── Trailing underscore turned into a dangling separator ──────────────
-    "CmodS7_Platform": "Cmod S7",  # cmod_s7.py
-    "ULX3S_12F_Platform": "ULX3S-12F",  # ulx3s.py
-    "ULX3S_25F_Platform": "ULX3S-25F",  # ulx3s.py
-    "ULX3S_45F_Platform": "ULX3S-45F",  # ulx3s.py
-    "ULX3S_85F_Platform": "ULX3S-85F",  # ulx3s.py
     # ── A space where the vendor uses a hyphen ────────────────────────────
     # Not caught by the guard below -- "DE0 CV" breaks no mechanical rule --
     # but wrong all the same, and these are the boards this project's own

@@ -1,5 +1,5 @@
 {
-  "name": "Brisbanesilicon Brs 100 Gw1nr9",
+  "name": "BrisbaneSilicon Brs 100 Gw1nr9",
   "class_name": "BrisbanesiliconBrs100Gw1nr9Platform",
   "vendor": "Gowin",
   "device": "",
@@ -130,6 +130,6 @@
     "upstream_file": "brisbaneSilicon_brs_100_gw1nr9.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T02:42:22.110921+00:00"
   }
 }
