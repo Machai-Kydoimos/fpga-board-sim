@@ -3,6 +3,8 @@
 Hermetic: exercises parse_litex_board() with inline platform-file source, no network.
 """
 
+from pathlib import Path
+
 from litex_parser import parse_litex_board, read_litex_file
 
 _BASIC = """
@@ -324,6 +326,71 @@ def test_a_recorded_identity_is_built_with_its_arguments():
     (board,) = outcome.boards
     assert board.upstream_args == {"revision": 2} and board.default is False
     assert len(board.board["leds"]) == 2
+
+
+# LiteX head's Colorlight i5 (U56 Phase 4): the default is None, settled in the body.
+_RESOLVED = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io_r1 = [("clk100", 0, Pins("E3")), ("user_led", 0, Pins("H5"))]
+_io_r2 = [("clk100", 0, Pins("E3")), ("user_led", 0, Pins("H5")), ("user_led", 1, Pins("J5"))]
+
+class Platform(Xilinx7SeriesPlatform):
+    default_clk_name = "clk100"
+    default_clk_period = 1e9/100e6
+    revisions = [1, 2]  # the first one is the default
+    def __init__(self, revision=None, toolchain="vivado"):
+        if revision is None:
+            revision = self.revisions[0]
+        self.revision = revision
+        io = _io_r1 if revision == 1 else _io_r2
+        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", io, toolchain=toolchain)
+"""
+
+
+def test_a_default_the_constructor_settles_is_recorded_as_settled():
+    # Recording the signature's None would make the default construction a new identity.
+    (board,) = read_litex_file(_RESOLVED, "resolved_board.py").boards
+    assert board.upstream_args == {"revision": 1} and board.default is True
+    (explicit,) = read_litex_file(_RESOLVED, "resolved_board.py", {"revision": 1}).boards
+    assert explicit.upstream_args == board.upstream_args
+
+
+def test_a_stored_value_that_is_not_plain_leaves_the_default_standing():
+    # The Arty Z7 keeps a dict in self.board: not a version, so the signature's value stands.
+    source = _VERSIONED.replace(
+        "        io = _io_r1", "        self.revision = {1: 'r1', 2: 'r2'}\n        io = _io_r1"
+    )
+    (board,) = read_litex_file(source, "dict_board.py").boards
+    assert board.upstream_args == {"revision": 1}
+
+
+def test_a_default_moved_into_the_body_keeps_the_board_s_file(tmp_path):
+    """The whole write path: the new default pairs with the file the old default wrote."""
+    from sync_identity import run_sync
+    from sync_litex_boards import make_reader
+
+    folder = tmp_path / "litex-boards"
+    schema = Path(__file__).resolve().parents[1] / "boards" / "schema" / "board.schema.json"
+    before = _RESOLVED.replace("revision=None,", "revision=1,")
+    for source in (before, _RESOLVED):
+        report = run_sync(
+            origin="litex-boards",
+            repo="litex-hub/litex-boards",
+            files={"resolved_board.py": source},
+            commit_sha="c0ffee",
+            output_dir=folder,
+            read=make_reader("c0ffee", timestamp="2026-11-01T00:00:00+00:00"),
+            accept_list=[],
+            schema_path=schema,
+            color_registry={},
+        )
+    assert (report.new, report.orphans) == ([], [])
+    assert sorted(p.name for p in folder.glob("*.json")) == [
+        "_sync_metadata.json",
+        "resolved_board.json",
+    ]
 
 
 def test_a_version_upstream_no_longer_accepts_is_an_error_not_a_fallback():

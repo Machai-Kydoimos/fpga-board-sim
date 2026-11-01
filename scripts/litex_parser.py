@@ -915,6 +915,24 @@ def _version_args(platform_class: type) -> dict[str, Any]:
     return {}
 
 
+def _effective_version(version: Mapping[str, Any], instance: object) -> dict[str, Any]:
+    """Return each version parameter as the constructor resolved it (plan §4.1, U56 Phase 4).
+
+    A constructor may settle a parameter before it uses it: at LiteX head the Colorlight
+    i5 takes ``revision=None`` and stores ``self.revision = "7.0"``, its first supported
+    revision.  The signature's ``None`` would make the default construction a new
+    identity -- a second file, identical to ``colorlight_i5.json`` -- each time upstream
+    moved a default into the body.  So a plain value the constructor left on the
+    instance under the parameter's own name wins.  Anything else leaves the signature
+    default, or the value passed, standing: the Arty Z7 keeps a dict in ``self.board``.
+    """
+    stored = vars(instance)
+    return {
+        key: stored[key] if isinstance(stored.get(key), str | int | float) else value
+        for key, value in version.items()
+    }
+
+
 def _platform_attr(instance: object, platform_class: type, name: str) -> object:
     """Return *name* as the constructor left it on *instance*, else the class's, else ``None``.
 
@@ -1018,6 +1036,7 @@ def _read_once(
             raise _StarNameError(name) from exc
         print(f"  {filename}: Platform() failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         return ParseOutcome(outcome="error", detail=normalize_error(exc))
+    version = _effective_version(version, instance)
     device = getattr(instance, "device", "")
     # A constructor may set the default clock on the instance -- Red Pitaya picks
     # clk125 or clk122 by board, and the Snickerdoodle derives its period from a
