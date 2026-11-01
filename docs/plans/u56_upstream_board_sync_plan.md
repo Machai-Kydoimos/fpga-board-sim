@@ -1101,7 +1101,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 1b | display names (P35) | no (a before → after name table) | done 2026-11-01 (#471) |
 | 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | done 2026-11-01 (#472); the review found long part numbers running past the chip, fixed in the PR |
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | not started |
-| 3 | orphan UI | **yes** | PR open, awaiting visual review (2026-11-01) |
+| 3 | orphan UI | **yes** | PR #475, awaiting visual review (2026-11-01) |
 | 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | not started |
 | 5 | multi-pin, DIP | **yes** | not started |
 | 6 | aliases | **yes** | not started |
