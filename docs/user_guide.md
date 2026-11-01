@@ -327,8 +327,9 @@ was removed, the version is gone, or it lists no LED, switch or button any more.
 board whose upstream file was only renamed is not orphaned: it keeps its file, so
 `--board` and your sessions still find it, and takes upstream's new name. An orphaned
 board stays in the list as a saved copy, so a design written for it still runs, but
-it will not receive upstream fixes. Its preview says why and since when, and names
-the board that replaces it, when upstream has one with the same FPGA, clocks and I/O.
+it will not receive upstream fixes. Its preview says why and when the sync noticed,
+and names the board that replaces it, when upstream has one with the same FPGA,
+clocks and I/O.
 
 ### 2. Preview the board
 
@@ -337,8 +338,8 @@ The board renders with LEDs, buttons, switches, and — on supported boards — 
 opens with an amber note across the top, for example:
 
 ```text
-litex-boards no longer defines this version since <date> (<commit>). Your design
-still runs on this saved copy; it will not receive upstream fixes.
+litex-boards no longer defines this version (noticed <date>, at <commit>). Your
+design still runs on this saved copy; it will not receive upstream fixes.
 This board: litex-boards/<this board's file>
 Successor:  litex-boards/<the successor's file> (same FPGA, clocks and I/O)
 ```

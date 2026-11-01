@@ -678,10 +678,12 @@ including versions that differ only in FPGA part.
 ### 4.8 Orphans in the UI (Phase 3)
 
 - Selector row tag "orphaned upstream".
-- Preview info line, by reason: `file_removed` — "No longer in \<source\> since \<date\> (\<short
-  commit\>)."; `no_longer_defined` — "\<source\> no longer defines this version since \<date\>
-  (\<short commit\>)."; `no_simulatable_io` — "\<source\> lists no LED, switch or button for this
-  board since \<date\> (\<short commit\>)." Each continues: "Your design still runs on this saved
+- Preview info line, by reason: `file_removed` — "No longer in \<source\> (noticed \<date\>, at
+  \<short commit\>)."; `no_longer_defined` — "\<source\> no longer defines this version (noticed
+  \<date\>, at \<short commit\>)."; `no_simulatable_io` — "\<source\> lists no LED, switch or
+  button for this board (noticed \<date\>, at \<short commit\>)." *Amended 2026-11-02:* "noticed",
+  not "since": a sync reads one snapshot and cannot know when upstream dropped the board (the
+  Efinix renames were upstream's of 2026-07-27, found 2026-11-01). Each continues: "Your design still runs on this saved
   copy; it will not receive upstream fixes." With a successor, two aligned rows follow, so the
   names can be compared: "This board: \<source\>/\<file\>" and "Successor: \<source\>/\<file\>
   (same FPGA, clocks and I/O)". Both use the file spelling, because display names repeat across

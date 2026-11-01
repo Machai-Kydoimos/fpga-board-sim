@@ -23,12 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A board upstream no longer defines says so.** When a source removes a board, or a
   version of it, or stops listing its LEDs, switches and buttons, the sync keeps the
   board file as a saved copy instead of deleting it. The selector now tags its row
-  "orphaned upstream". The preview opens with a note saying why and since when. When
-  upstream has a board with the same FPGA, clocks and I/O, the note names it as the
-  successor, right under the saved copy's own file, so the two names can be compared.
-  `--board` prints the same note, and the session log records `board_upstream_status`
-  and `board_successor`. A design still runs on the saved copy; nothing is blocked. No
-  board is orphaned yet. (Roadmap U56, Phase 3.)
+  "orphaned upstream". The preview opens with a note saying why, and when the sync
+  noticed. When upstream has a board with the same FPGA, clocks and I/O, the note names
+  it as the successor, right under the saved copy's own file, so the two names can be
+  compared. `--board` prints the same note, and the session log records
+  `board_upstream_status` and `board_successor`. A design still runs on the saved copy;
+  nothing is blocked. No board is orphaned yet. (Roadmap U56, Phase 3.)
 - **Eleven boards from upstream as it stands today.** The syncs now read each source at
   its current head instead of the commits they were pinned to; for LiteX that is 399
   commits later, October 30 instead of July 20. LiteX adds eight boards, among them the
