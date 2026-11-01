@@ -410,7 +410,10 @@ def _classify_resource(name: str) -> str | None:
         return "led"
     if n in ("user_btn", "key", "usr_btn", "user_dip_btn", "button_1") or "btn" in n:
         return "button"
-    if n in ("user_sw", "sw") or "switch" in n or "dip_sw" in n:
+    # "switch" only as the leading word: `rf_switches` (the XTRX boards' RF-path switch
+    # controls) is no user switch (U56 defect 21) -- the one name upstream writes that
+    # the old `"switch" in n` test misread.
+    if n in ("user_sw", "sw") or re.match(r"(user_|dip_)*switch", n) or "dip_sw" in n:
         return "switch"
     if n.startswith("clk") or n == "sys_clk" or n == "ext_clk":
         return "clock"
@@ -660,6 +663,21 @@ def _make_class_name(filename: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════
 
 
+def _mono_then_rgb(leds: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Stable-partition LEDs into mono, then 3-pin RGB sites (U56 defect 24).
+
+    Sorting every LED by its upstream index interleaved ``user_led`` *n* with ``rgb_led``
+    *n*.  This is the partition ``BoardDef.led_channels`` already applies to channels,
+    so no ``led(i)`` moves; the order within each group is untouched (a reorder among
+    the mono LEDs *would* move ``led(i)``).
+    """
+
+    def is_rgb(led: dict[str, Any]) -> bool:
+        return led.get("name") == "rgb_led" and len(led.get("pins", [])) == 3
+
+    return [c for c in leds if not is_rgb(c)] + [c for c in leds if is_rgb(c)]
+
+
 def _version_args(platform_class: type) -> dict[str, Any]:
     """Return the defaults of the constructor's version parameters (plan §4.1)."""
     for klass in platform_class.__mro__:
@@ -863,7 +881,7 @@ def _read_once(
         "package": "",
         "clocks": clocks,
         "default_clock_hz": default_clock_hz or 12e6,
-        "leds": sorted(leds, key=lambda c: c["number"]),
+        "leds": _mono_then_rgb(sorted(leds, key=lambda c: c["number"])),
         "buttons": sorted(buttons, key=lambda c: c["number"]),
         "switches": sorted(switches, key=lambda c: c["number"]),
         "seven_seg": seven_seg,

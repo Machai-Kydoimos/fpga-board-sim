@@ -16,10 +16,12 @@ classes (``BoardDef`` / ``ComponentInfo`` / ``SevenSegDef``) and the shared
 the two can evolve independently.
 """
 
+import ast
 import json
 import re
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
 from framework_conventions import RoleEntry, build_convention
 from led_metadata import color_from_name
@@ -314,6 +316,7 @@ def _make_namespace() -> dict[str, object]:
         "Pins": _Pins,
         "PinsN": _PinsN,
         "DiffPairs": _DiffPairs,
+        "DiffPairsN": _DiffPairs,  # the Supercon badge (U56 defect 8)
         "Attrs": _Attrs,
         "Clock": _Clock,
         "Connector": _Connector,
@@ -342,6 +345,7 @@ def _make_namespace() -> dict[str, object]:
         "SDRAMResource": _stub_single,
         "NORFlashResources": _stub_multi,
         "DDR3Resource": _stub_single,
+        "DDR4Resource": _stub_single,  # RFSoC 4x2 (U56 defect 8)
         # Seven board files define `class TestCase(unittest.TestCase)`; the class is
         # skipped below, so its base only has to exist.  `os` and `subprocess` appear
         # only inside programmer methods the reader never runs.
@@ -377,14 +381,42 @@ def _extract_clocks(resources: list[_Resource]) -> list[float]:
     return sorted(seen)
 
 
-def _find_default_clock_hz(resources: list[_Resource], default_clk: str | None) -> float:
-    """Return Hz for the named default_clk resource, or _FALLBACK_CLOCK_HZ."""
+#: Amaranth's ``default_clk_constraint`` for each on-chip oscillator a ``default_clk`` can
+#: name instead of a ``Clock`` resource (``amaranth/vendor/_lattice.py``,
+#: ``_siliconblue.py``, ``_altera.py``, ``_quicklogic.py``, ``_gowin.py``), reading the
+#: parameters the board class itself sets (U56 defect 22).  Hz.
+_OSCILLATOR_HZ: dict[str, Callable[[Any], float]] = {
+    "OSCG": lambda cls: 310e6 / cls.oscg_div,  # ECP5
+    "OSCH": lambda cls: cls.osch_frequency * 1e6,  # MachXO2/3L
+    "OSCA": lambda cls: 450e6 / cls.osca_div,  # Nexus
+    "SB_HFOSC": lambda cls: 48e6 / 2**cls.hfosc_div,  # iCE40
+    "SB_LFOSC": lambda cls: 10e3,
+    "cyclonev_oscillator": lambda cls: 100e6,
+    "sys_clk0": lambda cls: cls.osc_freq / cls.osc_div,  # EOS S3
+    "OSC": lambda cls: cls.osc_frequency,  # Gowin, in Hz
+}
+
+
+def _find_default_clock_hz(
+    resources: list[_Resource], default_clk: str | None, cls: type | None = None
+) -> float:
+    """Return the default clock in Hz: its ``Clock`` resource, else its on-chip oscillator.
+
+    A ``default_clk`` that names neither, or an oscillator whose parameters the class
+    does not set, keeps ``_FALLBACK_CLOCK_HZ`` (which U56 D-6 marks as assumed).
+    """
     if default_clk:
         for res in resources:
             if res.name == default_clk:
                 for io in res.ios:
                     if isinstance(io, _Clock):
                         return float(io.freq)
+        rule = _OSCILLATOR_HZ.get(default_clk)
+        if rule is not None and cls is not None:
+            try:
+                return float(rule(cls))
+            except (AttributeError, TypeError, ValueError, ZeroDivisionError):
+                pass
     return _FALLBACK_CLOCK_HZ
 
 
@@ -433,7 +465,9 @@ def _classify(resource: _Resource) -> str | None:
         return "led"
     if "button" in n or n.startswith("btn"):
         return "button"
-    if "switch" in n or n.startswith("sw"):
+    # "sw"/"switch" as a whole word: `swd` (QuickFeather's 2-pin debug port) is no switch
+    # (U56 defect 9) -- the one name upstream writes that `startswith("sw")` misread.
+    if re.search(r"(?:^|[_\-0-9])(?:sw|switch|switches)(?:$|[_\-0-9])", n):
         return "switch"
     return None
 
@@ -609,25 +643,30 @@ def _prettify_class_name(name: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-def load_board_from_source(source: str, filename: str = "<string>") -> list[BoardDef]:
+def load_board_from_source(
+    source: str, filename: str = "<string>", siblings: Mapping[str, str] | None = None
+) -> list[BoardDef]:
     """Read a single board file's source, without executing it, and return its BoardDefs."""
     try:
-        boards, _ = _read_boards(source, filename)
+        boards, _ = _read_boards(source, filename, siblings)
     except Exception as exc:
         print(f"  skipped {filename}: {type(exc).__name__}: {exc}", file=sys.stderr)
         return []
     return boards
 
 
-def read_amaranth_file(source: str, filename: str) -> ParseOutcome:
+def read_amaranth_file(
+    source: str, filename: str, siblings: Mapping[str, str] | None = None
+) -> ParseOutcome:
     """Read one board file, without executing it, into a :class:`ParseOutcome`.
 
     Each board's identity (U56 plan §4.1) is its upstream class; Amaranth boards take no
     version arguments.  A file whose classes declare resources but none we simulate is
-    ``no_simulatable_io``; one with no such class is ``not_a_board``.
+    ``no_simulatable_io``; one with no such class is ``not_a_board``.  ``siblings`` is the
+    archive's other board files, for a class imported from one of them.
     """
     try:
-        boards, had_resources = _read_boards(source, filename)
+        boards, had_resources = _read_boards(source, filename, siblings)
     except Exception as exc:
         # Recorded in the ledger by the sync; said aloud here for a direct caller.
         print(f"  skipped {filename}: {type(exc).__name__}: {exc}", file=sys.stderr)
@@ -647,24 +686,67 @@ def read_amaranth_file(source: str, filename: str) -> ParseOutcome:
     )
 
 
-def _read_boards(source: str, filename: str) -> tuple[list[BoardDef], bool]:
+def _blank_imports(source: str) -> str:
+    """Blank every import line: the namespace and :func:`_bind_siblings` stand in for them."""
+    return "\n".join(
+        "" if line.strip().startswith(("import ", "from ")) else line for line in source.split("\n")
+    )
+
+
+def _bind_siblings(
+    source: str, ns: dict[str, object], siblings: Mapping[str, str], seen: frozenset[str]
+) -> set[str]:
+    """Bind the names this file imports from another board file in the archive (U56 §4.4).
+
+    ``from .upduino_v1 import UpduinoV1Platform`` reads ``upduino_v1.py`` -- with the same
+    reader, so it is never executed either -- and binds the class.  Cycle-guarded by
+    *seen*.  Returns the names bound, which are never boards of *this* file.
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return set()
+    bound: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        module = node.module or ""
+        if node.level == 0 and not module.startswith("amaranth_boards."):
+            continue
+        sibling = f"{module.removeprefix('amaranth_boards.').split('.')[-1]}.py" if module else ""
+        if sibling not in siblings or sibling in seen:
+            continue
+        sibling_ns = _make_namespace()
+        _bind_siblings(siblings[sibling], sibling_ns, siblings, seen | {sibling})
+        try:
+            read_module(_blank_imports(siblings[sibling]), sibling, sibling_ns)
+        except Exception:
+            continue  # its own read reports it, as that file's ledger outcome
+        for alias in node.names:
+            wanted = (
+                [k for k, v in sibling_ns.items() if isinstance(v, type) and not k.startswith("_")]
+                if alias.name == "*"
+                else [alias.name]
+            )
+            for key in wanted:
+                name = key if alias.name == "*" else (alias.asname or key)
+                if key in sibling_ns and name not in ns:
+                    ns[name] = sibling_ns[key]
+                    bound.add(name)
+    return bound
+
+
+def _read_boards(
+    source: str, filename: str, siblings: Mapping[str, str] | None = None
+) -> tuple[list[BoardDef], bool]:
     """Read *source*; return its boards and whether any class declared resources.
 
     Raises whatever the read raises (a ``SyntaxError``, the reader's
     ``UnsupportedConstructError``, a ``NameError`` for a name the mocks lack, ...).
     """
-    # Strip import statements – we inject everything via namespace
-    lines = source.split("\n")
-    cleaned = []
-    for line in lines:
-        s = line.strip()
-        if s.startswith(("import ", "from ")):
-            cleaned.append("")
-        else:
-            cleaned.append(line)
-
     ns = _make_namespace()
-    read_module("\n".join(cleaned), filename, ns)
+    imported = _bind_siblings(source, ns, siblings or {}, frozenset({filename}))
+    read_module(_blank_imports(source), filename, ns)
 
     all_names: list[str] | None = ns.get("__all__")  # type: ignore[assignment]
 
@@ -673,7 +755,7 @@ def _read_boards(source: str, filename: str) -> tuple[list[BoardDef], bool]:
     for obj_name, obj in list(ns.items()):
         if not isinstance(obj, type):
             continue
-        if obj_name.startswith("_"):
+        if obj_name.startswith("_") or obj_name in imported:
             continue
         if "Test" in obj_name and "Platform" not in obj_name:
             continue
@@ -713,10 +795,10 @@ def _read_boards(source: str, filename: str) -> tuple[list[BoardDef], bool]:
                 name=_prettify_class_name(obj_name),
                 class_name=obj_name,
                 vendor=vendor,
-                device=getattr(obj, "device", ""),
+                device=getattr(obj, "device", "") or getattr(obj, "part", ""),
                 package=getattr(obj, "package", ""),
                 clocks=_extract_clocks(resources),
-                default_clock_hz=_find_default_clock_hz(resources, default_clk),
+                default_clock_hz=_find_default_clock_hz(resources, default_clk, obj),
                 leds=leds,
                 buttons=buttons,
                 switches=switches,
