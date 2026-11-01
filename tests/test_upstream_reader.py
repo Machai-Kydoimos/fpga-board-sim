@@ -174,6 +174,8 @@ def test_a_module_stub_offers_only_its_members():
         "x = ().__class__.__base__.__subclasses__()",  # the classic escape
         "x = Base.__dict__",
         "x = Base.mro()",
+        "x = getattr(Base, '__dict__')",  # getattr applies the same rules as a written name
+        "x = getattr((), '__class__')",
         "x = '{0.__class__}'.format(Base)",  # str.format reads attributes without a call
         "x = '{0[0]}'.format(['a'])",
         "x = 1; import os",  # an import the parsers' line blanking cannot see
@@ -193,7 +195,6 @@ def test_refused_constructs(source):
     [
         "x = open('/etc/hostname')",
         "x = __import__('os')",
-        "x = getattr(Base, '__init__')",
         "x = type('X', (), {})",
         "x = eval('1')",
         "x = exec('y = 1')",
@@ -302,9 +303,8 @@ def test_planted_litex_constructor_payload_never_runs(tmp_path, capsys):
         "        Xilinx7SeriesPlatform.__init__(self, 'xc7a35t', _io, toolchain=toolchain)\n"
         f"        os.system('touch ' + {str(marker)!r})\n"
     )
-    boards = litex_parser.parse_litex_board(source, "evil_board.py")
+    outcome = litex_parser.read_litex_file(source, "evil_board.py")
     assert not marker.exists()
-    # The constructor failed before its payload could run, so the board is built from the
-    # module-level I/O -- exactly as a constructor failing on a missing mock is today.
-    assert len(boards) == 1 and boards[0]["device"] == ""
-    assert "Platform() failed (NameError" in capsys.readouterr().err
+    # The file imports `os`, so `os` is an inert stand-in: `os.system(...)` does nothing at
+    # all, and the board's own resources still read.
+    assert outcome.outcome == "boards" and len(outcome.boards[0].board["leds"]) == 1

@@ -8,16 +8,19 @@ JSON schema shape).  Self-contained: no ``fpga_sim`` dependency.  Used by
 ``scripts/sync_litex_boards.py`` and the parser test suite.
 """
 
+import ast
+import copy
+import math
 import re
 import sys
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from typing import Any
 
 from framework_conventions import RoleEntry, build_convention
 from led_metadata import color_from_name
 from sync_common import ParseOutcome, ProducedBoard, normalize_error
 from sync_identity import VERSION_PARAMS
-from upstream_reader import InterpretedFunction, read_module
+from upstream_reader import InterpretedFunction, ModuleStub, read_module
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Mock LiteX build system classes
@@ -25,14 +28,24 @@ from upstream_reader import InterpretedFunction, read_module
 
 
 class _Pins:
+    """Mock of LiteX ``Pins``: any number of whitespace-separated identifier strings.
+
+    Upstream's signature is ``Pins(*identifiers)``; the old mock took one string and
+    read a second as ``dir``, so ``Pins("A1", "B2")`` lost a pin and longer calls raised
+    (U56 defect 3).
+    """
+
     def __init__(
         self,
-        pins_str: str = "",
+        *identifiers: object,
         dir: str = "io",
         conn: object = None,
         assert_width: int | None = None,
     ) -> None:
-        self.names = pins_str.split() if isinstance(pins_str, str) else []
+        self.identifiers = [
+            name for item in identifiers if isinstance(item, str) for name in item.split()
+        ]
+        self.names = self.identifiers
         self.dir = dir
         self.conn = conn
 
@@ -98,6 +111,144 @@ class _PlatformInfo:
         pass
 
 
+class _StubMeta(type):
+    """Metaclass of a stand-in class: any public class attribute is a stand-in too.
+
+    So ``MachdyneML1.revisions`` reads.  Underscore names raise, so a stand-in never
+    answers ``_vendor`` and is never taken for a platform class.
+    """
+
+    def __getattr__(cls, name: str) -> object:
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return _Stub()
+
+
+class _Stub(metaclass=_StubMeta):
+    """An inert stand-in for a name we do not model (U56 plan §4.4).
+
+    Callable, any public attribute, indexable, ``+=``-able, and iterates as empty, so
+    a file that touches an extension or helper we do not read still yields the
+    resources it declares itself.
+    """
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        pass
+
+    def __call__(self, *args: object, **kwargs: object) -> "_Stub":
+        return _Stub()
+
+    def __getattr__(self, name: str) -> "_Stub":
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return _Stub()
+
+    def __getitem__(self, key: object) -> "_Stub":
+        return _Stub()
+
+    def __setitem__(self, key: object, value: object) -> None:
+        pass
+
+    def __iadd__(self, other: object) -> "_Stub":
+        return self
+
+    def __iter__(self) -> Iterator[object]:
+        return iter(())
+
+
+def _stub_class(name: str) -> type:
+    """Return a stand-in class named *name* (each imported name gets its own)."""
+    return _StubMeta(name, (_Stub,), {})
+
+
+#: Standard-library modules whose functions board code calls on data it then uses.
+#: A stand-in would hand back the wrong data silently, so these are the real, pure
+#: functions (U56 plan §4.4, Known growth: ``copy.deepcopy``).
+_SAFE_MODULES: dict[str, dict[str, object]] = {
+    "copy": {"copy": copy.copy, "deepcopy": copy.deepcopy},
+    "math": {
+        name: getattr(math, name)
+        for name in ("ceil", "floor", "log2", "log10", "sqrt", "pi", "e", "gcd", "isclose")
+    },
+}
+
+
+#: Modules whose star imports the mock namespace covers.
+_MOCKED_STAR_MODULES = ("litex.build",)
+
+
+def _unmocked_star_import(source: str) -> bool:
+    """Return whether *source* star-imports a module the mocks do not cover (``migen``)."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return False
+    return any(
+        isinstance(node, ast.ImportFrom)
+        and any(alias.name == "*" for alias in node.names)
+        and not (node.module or "").startswith(_MOCKED_STAR_MODULES)
+        for node in ast.walk(tree)
+    )
+
+
+class _StarNameError(Exception):
+    """A name the file uses after an unmocked ``from x import *``: retry with a stand-in."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(name)
+        self.name = name
+
+
+def _fresh_namespace(source: str, stand_ins: Mapping[str, object]) -> dict[str, object]:
+    ns = _make_litex_namespace()
+    _bind_imports(source, ns)
+    ns.update({k: v for k, v in stand_ins.items() if k not in ns})
+    return ns
+
+
+def _star_name(exc: BaseException, allow: bool, stand_ins: Mapping[str, object]) -> str | None:
+    """Return the missing name to stand in for, when *exc* is a star-imported name."""
+    name = getattr(exc, "name", None)
+    if isinstance(exc, NameError) and allow and isinstance(name, str) and name not in stand_ins:
+        return name
+    return None
+
+
+def _bind_imports(source: str, ns: dict[str, object]) -> None:
+    """Bind every name the file imports and the mocks do not provide (U56 §4.4).
+
+    Import lines are blanked before the file is read; this walks the original file's
+    syntax tree -- module level and inside functions -- so each imported name still
+    means something: a vetted module function, or a stand-in.  ``from x import *`` is
+    what the mocks cover.  A name imported nowhere stays undefined, a genuine gap.
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return  # the read reports it
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                top = alias.name.split(".")[0]
+                bound = alias.asname or top
+                if bound in ns:
+                    continue
+                safe = _SAFE_MODULES.get(alias.name if alias.asname else top)
+                ns[bound] = ModuleStub(top, **safe) if safe is not None else _stub_class(bound)
+        elif isinstance(node, ast.ImportFrom):
+            safe = _SAFE_MODULES.get(node.module or "")
+            for alias in node.names:
+                if alias.name == "*":
+                    continue
+                bound = alias.asname or alias.name
+                if bound in ns:
+                    continue
+                if safe is not None and alias.name in safe:
+                    ns[bound] = safe[alias.name]
+                else:
+                    ns[bound] = _stub_class(bound)
+
+
 # ═══════════════════════════════════════════════════════════════════════
 #  Mock vendor platform base classes
 # ═══════════════════════════════════════════════════════════════════════
@@ -112,7 +263,11 @@ _PLATFORM_VENDORS: dict[str, str] = {
     "AlteraPlatform": "Intel",
     "IntelPlatform": "Intel",
     "LatticeECP5Platform": "Lattice",
-    "LatticeICE40Platform": "Lattice",
+    "LatticeiCE40Platform": "Lattice",  # upstream's spelling (U56 defect 4)
+    "LatticePlatform": "Lattice",
+    "MicrosemiPlatform": "Microsemi",
+    "AnlogicPlatform": "Anlogic",
+    "QuickLogicPlatform": "QuickLogic",
     "LatticeMachXO2Platform": "Lattice",
     "LatticeMachXO3Platform": "Lattice",
     "LatticeMachXO3LPlatform": "Lattice",
@@ -132,6 +287,8 @@ def _make_mock_platform(name: str, vendor: str) -> type:
 
     class MockPlatform:
         _vendor = vendor
+        #: Upstream sets toolchain options in constructors; a stand-in absorbs them.
+        toolchain = _Stub()
 
         def __init__(
             self,
@@ -157,6 +314,16 @@ def _make_mock_platform(name: str, vendor: str) -> type:
 
         def request(self, *args: object, **kwargs: object) -> None:
             pass
+
+        def _noop(self, *args: object, **kwargs: object) -> None:
+            return None
+
+        def __getattr__(self, name: str) -> object:
+            # Every other platform method (add_platform_command, add_period_constraint,
+            # add_connector, lookup_request, ...) is a no-op: none declares I/O.
+            if name.startswith("_"):
+                raise AttributeError(name)
+            return self._noop
 
     MockPlatform.__name__ = name
     MockPlatform.__qualname__ = name
@@ -201,6 +368,8 @@ def _make_litex_namespace() -> dict[str, object]:
                 "GenericProgrammer",
             )
         },
+        # The stand-in base, so the reader trusts every stand-in instance (toolchain, ...).
+        "_LitexStub": _Stub,
         # `os` and `subprocess` appear only inside methods the reader never runs.
         # Prevent __main__ guard from running
         "__name__": "_litex_board_loader_exec",
@@ -491,12 +660,6 @@ def _make_class_name(filename: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════
 
 
-#: While the module-level fallback exists (until U56 Phase 1c), the board it builds takes the
-#: default construction's identity -- except Wukong's: its fallback reads ``_io_v2``
-#: (revision 2) although the constructor defaults to revision 1 (plan §4.1).
-_FALLBACK_IDENTITY: dict[str, dict[str, Any]] = {"qmtech_wukong.py": {"revision": 2}}
-
-
 def _version_args(platform_class: type) -> dict[str, Any]:
     """Return the defaults of the constructor's version parameters (plan §4.1)."""
     for klass in platform_class.__mro__:
@@ -532,10 +695,34 @@ def read_litex_file(
         else:
             cleaned.append(line)
 
-    ns = _make_litex_namespace()
+    allow = _unmocked_star_import(source)
+    stand_ins: dict[str, object] = {}
+    for _attempt in range(32):
+        try:
+            return _read_once(source, "\n".join(cleaned), filename, args, allow, stand_ins)
+        except _StarNameError as missing:
+            # A name from `from migen import *` is imported, just not one we mock: stand
+            # in for it and read again (reading is cheap and runs nothing).
+            stand_ins[missing.name] = _stub_class(missing.name)
+    return ParseOutcome(outcome="error", detail="RuntimeError")
+
+
+def _read_once(
+    source: str,
+    cleaned: str,
+    filename: str,
+    args: Mapping[str, Any] | None,
+    allow: bool,
+    stand_ins: Mapping[str, object],
+) -> ParseOutcome:
+    """Read the file and build its board once, with the given stand-ins bound."""
+    ns = _fresh_namespace(source, stand_ins)
     try:
-        read_module("\n".join(cleaned), filename, ns)
+        read_module(cleaned, filename, ns)
     except Exception as exc:
+        name = _star_name(exc, allow, stand_ins)
+        if name is not None:
+            raise _StarNameError(name) from exc
         # Recorded in the ledger by the sync; said aloud here for a direct caller.
         print(f"  skipped {filename}: {type(exc).__name__}: {exc}", file=sys.stderr)
         return ParseOutcome(outcome="error", detail=normalize_error(exc))
@@ -567,39 +754,22 @@ def read_litex_file(
     default_clk_name = getattr(platform_class, "default_clk_name", None)
     default_clk_period = getattr(platform_class, "default_clk_period", None)
 
-    # Try to instantiate to get device and IO
-    device = ""
-    captured_io: list[tuple[Any, ...]] = []
+    # Instantiate: the constructor runs in the reader, against the permissive mock
+    # platform, and hands the base class its device and I/O.  A constructor that still
+    # fails is an `error` -- the module-level fallback that used to stand in, with no
+    # device, is gone (U56 Phase 1c, defect 6).
     try:
         instance = platform_class(**(args or {}))
-        device = getattr(instance, "device", "")
-        captured_io = getattr(instance, "_captured_io", [])
     except Exception as exc:
-        if args is not None:
-            return ParseOutcome(outcome="error", detail=normalize_error(exc))
-        # The constructor ran in the reader and failed on a mock it needs (defect 6);
-        # the module-level I/O below stands in, with no device -- an `io_fallback`
-        # warning in the ledger until Phase 1c removes the fallback.
-        print(
-            f"  {filename}: Platform() failed ({type(exc).__name__}: {exc});"
-            " using the module-level I/O",
-            file=sys.stderr,
-        )
-
-    # Fallback: use module-level _io
-    fallback = ""
-    if not captured_io:
-        for var_name in ("_io", "_io_v2", "_io_v1", "_io_common"):
-            val = ns.get(var_name)
-            if isinstance(val, list) and val:
-                captured_io = val
-                fallback = var_name
-                break
-
+        name = _star_name(exc, allow, stand_ins)
+        if name is not None:
+            raise _StarNameError(name) from exc
+        print(f"  {filename}: Platform() failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return ParseOutcome(outcome="error", detail=normalize_error(exc))
+    device = getattr(instance, "device", "")
+    captured_io: list[tuple[Any, ...]] = list(getattr(instance, "_captured_io", []))
     if not captured_io:
         return ParseOutcome(outcome="skipped", detail="not_a_board")
-    if fallback and filename in _FALLBACK_IDENTITY:
-        version = dict(_FALLBACK_IDENTITY[filename])
 
     # Get vendor from class hierarchy
     vendor = ""
@@ -707,6 +877,4 @@ def read_litex_file(
         upstream_args=version,
         default=args is None,
     )
-    return ParseOutcome(
-        boards=[produced], warnings=[f"io_fallback: {fallback}"] if fallback else []
-    )
+    return ParseOutcome(boards=[produced])

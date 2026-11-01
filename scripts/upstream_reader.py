@@ -81,6 +81,14 @@ class ModuleStub:
         """Every class among the stub's attributes."""
         return [v for v in self._attrs.values() if isinstance(v, type)]
 
+    def callables(self) -> list[object]:
+        """Every callable among the stub's attributes that is not a class.
+
+        A parser puts only vetted functions here (``copy.deepcopy``, ``math.ceil``), so
+        the reader may call them.
+        """
+        return [v for v in self._attrs.values() if callable(v) and not isinstance(v, type)]
+
 
 _NO_DEFAULT = object()
 
@@ -224,6 +232,9 @@ _SAFE_BUILTINS: dict[str, object] = {
     **{exc.__name__: exc for exc in _ALLOWED_EXCEPTIONS},
 }
 _SAFE_CALLABLE_IDS = frozenset(id(v) for v in _SAFE_BUILTINS.values() if callable(v))
+#: ``getattr`` / ``hasattr`` are answered by the reader itself, through ``get_attr``, so a
+#: computed name gets the same rules as a written one (no dunders, our objects only).
+_READER_BUILTINS = frozenset({"getattr", "hasattr"})
 
 _BINOPS: dict[type[ast.operator], Callable[[Any, Any], Any]] = {
     ast.Add: operator.add,
@@ -411,6 +422,7 @@ class _Reader:
         for value in namespace.values():
             if isinstance(value, ModuleStub):
                 own_classes.extend(value.classes())
+                own_callables.extend(value.callables())
             elif isinstance(value, type):
                 own_classes.append(value)
             elif callable(value):
@@ -459,6 +471,8 @@ class _Reader:
                 return
         if isinstance(func, _CheckedFormat):
             return
+        if not isinstance(func, type) and callable(func) and self.is_own_object(func):
+            return  # an instance of one of our classes: its __call__ is ours
         raise self.refuse(node, f"call to {type(func).__name__} {getattr(func, '__name__', '')!r}")
 
     def get_attr(self, obj: object, attr: str, node: ast.AST) -> object:
@@ -824,6 +838,12 @@ class _Reader:
     def eval_call(self, node: ast.Call, scope: _Scope) -> object:
         if isinstance(node.func, ast.Name) and node.func.id == "super" and not node.args:
             return self.eval_super(node, scope)
+        if (
+            isinstance(node.func, ast.Name)
+            and node.func.id in _READER_BUILTINS
+            and not self._shadowed(node.func.id, scope)
+        ):
+            return self.eval_attr_builtin(node, scope)
         func = self.eval(node.func, scope)
         args: list[object] = []
         for arg in node.args:
@@ -846,6 +866,29 @@ class _Reader:
         except _SizeError as exc:
             raise self.refuse(node, f"size budget exceeded: {exc}") from None
         return self.sized(result, node)
+
+    def _shadowed(self, name: str, scope: _Scope) -> bool:
+        return any(name in frame.names for frame in scope.lookup_chain()) or name in self.globals
+
+    def eval_attr_builtin(self, node: ast.Call, scope: _Scope) -> object:
+        """``getattr(obj, name[, default])`` / ``hasattr(obj, name)`` under ``get_attr``'s rules."""
+        func = node.func
+        assert isinstance(func, ast.Name)
+        if node.keywords or any(isinstance(a, ast.Starred) for a in node.args):
+            raise self.refuse(node, f"{func.id}() with keyword or starred arguments")
+        args = [self.eval(a, scope) for a in node.args]
+        wanted = 3 if func.id == "getattr" else 2
+        if not (2 <= len(args) <= wanted) or not isinstance(args[1], str):
+            raise self.refuse(node, f"{func.id}() with these arguments")
+        try:
+            value = self.get_attr(args[0], args[1], node)
+        except AttributeError:
+            if func.id == "hasattr":
+                return False
+            if len(args) == 3:
+                return args[2]
+            raise
+        return True if func.id == "hasattr" else value
 
     def eval_super(self, node: ast.Call, scope: _Scope) -> object:
         frame = scope.enclosing_function()
