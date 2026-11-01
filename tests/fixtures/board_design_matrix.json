@@ -177,13 +177,8 @@
     "litex-boards/digilent_zedboard": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "5", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "8"},
     "litex-boards/digilent_zybo_z7": {"CLK_HALF_NS_INIT": "4", "COUNTER_BITS": "17", "NUM_BUTTONS": "4", "NUM_LEDS": "10", "NUM_RGB_LEDS": "2", "NUM_SWITCHES": "4"},
     "litex-boards/ebaz4205": {"CLK_HALF_NS_INIT": "15", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/efinix_t120_f576_dev_kit": {"CLK_HALF_NS_INIT": "12", "COUNTER_BITS": "17", "NUM_BUTTONS": "4", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
-    "litex-boards/efinix_t20_f256_dev_kit": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "3", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "3"},
-    "litex-boards/efinix_t20_mipi_dev_kit": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/efinix_t8_f81_dev_kit": {"CLK_HALF_NS_INIT": "15", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "5", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/efinix_t8f81_dev_kit": {"CLK_HALF_NS_INIT": "15", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "5", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/efinix_ti375_c529_dev_kit": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "5", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/efinix_ti60_f225_dev_kit": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "4", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "2"},
     "litex-boards/efinix_titanium_ti60_f225_dev_kit": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "4", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "2"},
     "litex-boards/efinix_trion_t120_bga576_dev_kit": {"CLK_HALF_NS_INIT": "12", "COUNTER_BITS": "17", "NUM_BUTTONS": "4", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
     "litex-boards/efinix_trion_t20_bga256_dev_kit": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "3", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "3"},
@@ -363,11 +358,11 @@
     "litex-boards/ztex213": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "30", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"}
   },
   "counts": {
-    "board_files": 360,
-    "boards_loaded": 360,
-    "contract_checks": 12600,
+    "board_files": 355,
+    "boards_loaded": 355,
+    "contract_checks": 12425,
     "designs": 35,
-    "native_banks": 798
+    "native_banks": 788
   },
   "designs": {
     "hdl/blinky.vhd": {
@@ -1624,24 +1619,6 @@
     },
     "litex-boards/ebaz4205": {
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 2}
-    },
-    "litex-boards/efinix_t120_f576_dev_kit": {
-      "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 4},
-      "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
-      "litex.switches": {"active_low": false, "match": "litex", "names": ["user_sw"], "scalar_ports": false, "width": 4}
-    },
-    "litex-boards/efinix_t20_f256_dev_kit": {
-      "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 3},
-      "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
-      "litex.switches": {"active_low": false, "match": "litex", "names": ["user_sw"], "scalar_ports": false, "width": 3}
-    },
-    "litex-boards/efinix_t20_mipi_dev_kit": {
-      "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 2},
-      "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 2}
-    },
-    "litex-boards/efinix_t8_f81_dev_kit": {
-      "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 2},
-      "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 5}
     },
     "litex-boards/efinix_t8f81_dev_kit": {
       "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 2},

@@ -292,7 +292,8 @@ defaults to revision 1 (`__init__(self, revision=1, speedgrade=-2, toolchain='vi
   same as Amaranth's), `arty_a7-35`, `arty_a7-100`, `arty_s7-25`, `arty_s7-50`, `arty_z7-20`,
   `cora_z7-07s`, `cora_z7-10`, `genesys_2`; LiteX `alchitry_au`, `alchitry_pt_v2`, `ebaz4205`,
   `logicbone`, `mist`. The projected fleet adds 4: LiteX `icebreaker`, `icebreaker_bitsy`,
-  `tinyfpga_bx`, and the orphaned `efinix_t8f81_dev_kit`, behind its own successor. A
+  `tinyfpga_bx`, and the orphaned `efinix_t8f81_dev_kit`, behind its own successor (not since
+  2026-11-02: the rename is followed, §4.3, so there is one board). A
   `--benchmark --board` run of a cross-source twin can therefore show the other source's board.
   Display-name overrides are keyed by `class_name` (`board_loader.py:54`, applied at `:502`).
 - The loader skips a board file it cannot read without saying so (`board_loader.py:543`), so a
@@ -466,7 +467,8 @@ Identity key = `(origin, upstream_file, upstream_class, upstream_args)`.
   written on the rewrite. Pair the most specific files first (most recorded keys), prefer the
   default construction on a tie, and use each file and each board once. Growing the parameter
   list therefore never orphans a file.
-- **File-name assignment.** An identity that already has a file keeps it forever. A new identity
+- **File-name assignment.** An identity that already has a file keeps it forever, and a board
+  whose upstream file is renamed takes its file along (§4.3, 2026-11-02). A new identity
   gets `<sanitized upstream file stem>` (Digilent drops the `-Master` every XDC file name ends in,
   so a new ZedBoard is `zedboard.json`; decided 2026-11-01, Rick), plus `_<sanitized class minus "Platform">` when the file
   defines more than one board, plus `_<param>-<value>` for each version parameter whose value is
@@ -540,7 +542,7 @@ After generating, for each existing file whose identity was **not** produced:
 | Situation | Action |
 |---|---|
 | its `upstream_file` had an `error` outcome | **sync fails**: "would orphan X because our parser failed on Y"; files untouched. If that error is accepted (§4.2): files untouched and unmarked |
-| `upstream_file` absent from the archive | mark orphaned, reason `file_removed` |
+| `upstream_file` absent from the archive | **follow the rename** when exactly one new identity is identical (below); otherwise mark orphaned, reason `file_removed` |
 | file parsed cleanly but no longer defines this identity | mark orphaned, reason `no_longer_defined` — **only if accepted**, otherwise the sync fails naming it: a renamed class is upstream's doing, our class selection picking a different class is a misreading, and only a person can tell which |
 | file parsed cleanly with zero simulatable I/O | mark orphaned, reason `no_simulatable_io` — **only if accepted**, otherwise the sync fails naming it: a board that loses all its I/O is what a parser misreading looks like (class A, §1) |
 
@@ -557,13 +559,22 @@ After generating, for each existing file whose identity was **not** produced:
   from the same file used to qualify on that alone. With other I/O it is another version, and
   naming it would send someone to a different board. The 5 Efinix renames match on identical
   content (verified at the 2026-11-01 heads, each from a renamed file).
+- **Renames are followed, not orphaned.** *Decided 2026-11-02 (Rick: "Option A, follow the
+  rename"), after the Phase 4 review found the five Efinix "orphans" were upstream renames
+  (`9e28f5a`, "normalize Efinix development kit names").* A file whose `upstream_file` is
+  absent pairs with the new identity whose content is identical by the successor's test, when
+  the match is single on both sides. The file keeps its name and its `class_name`, so
+  `--board`, sessions and recents keep working. Its `upstream_file` and display name become
+  upstream's new ones, and it keeps receiving upstream fixes. Two candidates, or two files gone
+  into one board, stay orphans: only a person could pick. A file already orphaned follows too,
+  if its board comes back under a new name. The ledger maps the renamed upstream file to the
+  board file it fills.
 - **Un-orphan:** when an orphaned identity is produced again, the sync overwrites the file and the
   mark disappears.
 - `_sync_metadata.json` gains an `orphans` list.
 - Orphans keep working everywhere: the loader reads them, native designs match their frozen
   conventions, recents (keyed by `class_name` + source) still resolve, and `--board` reaches them
-  by their qualified name (an unqualified name can be shadowed by the successor's — the Efinix T8
-  case, §2.6).
+  by their qualified name (an unqualified name can be shadowed by the successor's, §2.6).
 
 ### 4.4 Reading upstream files without executing them (D-7)
 
@@ -1092,11 +1103,13 @@ It comes before the bump because the bump creates the first real orphans (the fi
     `detect_ftdi_chip` (4, `subprocess`), three `request` docstrings, a programmer's URL, and the
     target-side `add_pmods` (a computed `getattr`). Nothing to report upstream.
   - LiteX: 256 files, 234 boards from 233 of them, 20 `no_simulatable_io`, 3 `not_a_board`,
-    0 errors, 0 warnings. 13 new files: the 12 of Appendix B.5 and `sipeed_slogic16u3`
+    0 errors, 0 warnings. 8 new files: the 7 new boards of Appendix B.5 and `sipeed_slogic16u3`
     (upstream #935, 2026-10-30; it states no clock, so 12 MHz is marked assumed, D-6). The 5
-    old Efinix files are orphaned (`file_removed`), each naming its renamed successor, whose
-    FPGA, clocks, I/O and conventions are identical. The content changes are exactly the three
-    expected below; the Tang Console's reads "J2:60 (EX_KEY.0) is used as rst" upstream. The
+    Efinix files follow upstream's renames (§4.3, decided at this phase's review): each keeps
+    its file and class name and takes the renamed `upstream_file` and display name; FPGA,
+    clocks, I/O and conventions are unchanged. No orphans. The PR first marked them orphaned
+    with the renamed files as successors; the review found they were renames, not removals.
+    The content changes are exactly the three expected below; the Tang Console's reads "J2:60 (EX_KEY.0) is used as rst" upstream. The
     Tang Primer 25K records `{"dock": "standard"}`, a parameter its constructor gained; its
     content is unchanged (§4.1: a key the file lacks is written on the rewrite).
   - Found and fixed: at head the Colorlight i5 takes `revision=None` and settles it in the body
@@ -1111,12 +1124,14 @@ It comes before the bump because the bump creates the first real orphans (the fi
     (AMD's and Real Digital's styling), and the guard gained a third shape rule, an acronym
     split before its last capital.
   - Amaranth: 86 boards (the expected 3 new), 0 errors. Digilent: 27, unchanged.
-  - Impact matrix: 360 board files (344 + 16); every design's outcome unchanged; 25 new
-    per-bank rows on new boards; the Tang Console's `NUM_BUTTONS` and `btn_n` bank 3 → 2.
-    Fleet: 360 boards, 334 with conventions. The Acorn keeps 506 Hz; upstream #934 is open.
+  - Impact matrix: 355 board files (344 + 11); every design's outcome unchanged; 15 new
+    per-bank rows on new boards; the Tang Console's `NUM_BUTTONS` and `btn_n` bank 3 → 2; the
+    renamed Efinix boards' rows unchanged. Fleet: 355 boards, 330 with conventions. The Acorn
+    keeps 506 Hz; upstream #934 is open.
 - **Expected** (vs 2026-10-28 heads): LiteX produces 233 boards — 12 new files (Appendix B.5: 7 new
   boards and the 5 Efinix rename targets); the 5 old Efinix files → **kept, marked orphaned
-  (`file_removed`), successor = the new file** (identical I/O and device, verified);
+  (`file_removed`), successor = the new file** (identical I/O and device, verified) — *superseded
+  2026-11-02: each old file follows its rename instead (§4.3)*;
   `sipeed_tang_console` 3 → 2 buttons (upstream made `EX_KEY.0` the reset); `alinx_ax7010` buttons
   2/3 swap pins R17/T17 (upstream edit); `modretro_chromatic` device `GW5A-LV25PG256C1/I0` →
   `GW5A-EV25UG256CC1/I0` (upstream). Amaranth +3 (`butterstick`, `icesugar_pro`, `rfsoc4x2`).
@@ -1208,7 +1223,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | done 2026-11-01 (#472); the review found long part numbers running past the chip, fixed in the PR |
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | done 2026-11-01 (#474); the review found differently named LEDs interleaving, so a board-native bank drove the wrong LED, fixed in the PR; reading the extension modules moved to Phase 4 |
 | 3 | orphan UI | **yes** | done 2026-11-01 (#475); the review asked for the saved copy's own file beside the successor, and for a successor only when the match is certain, both done in the PR |
-| 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | PR #476, awaiting visual review (2026-11-01) |
+| 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | PR #476 (2026-11-01); the review found the five Efinix orphans were upstream renames, so renames are now followed (Rick, 2026-11-02), done in the PR |
 | 5 | multi-pin, DIP | **yes** | not started |
 | 6 | aliases | **yes** | not started |
 | 7 | versions | **yes** (selector) | not started |
