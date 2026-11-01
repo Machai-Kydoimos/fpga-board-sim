@@ -13,7 +13,7 @@ boundary-channel numbering `manifest.json`'s LED legend uses: an RGB site is one
 widget but three channels, so on a 8-mono + 4-RGB board `sim.board.led[7]` is the
 fourth RGB site while the legend's index 7 is the eighth mono LED.
 
-80 addresses.
+82 addresses.
 
 | Address | Kind | Registered at |
 | --- | --- | --- |
@@ -44,42 +44,44 @@ fourth RGB site while the legend's index 7 is the eighth mono LED.
 | `pick.header.help` | item | `fpga_sim/ui/help_dialog.py:337` |
 | `pick.list` | zone | `fpga_sim/ui/vhdl_picker.py:222` |
 | `pick.list.row[i]` | widget | `fpga_sim/ui/vhdl_picker.py:237` |
-| `preview.board.btn[i]` | widget | `fpga_sim/ui/board_display.py:1114` |
-| `preview.board.chip` | widget | `fpga_sim/ui/board_display.py:1108` |
-| `preview.board.led[i]` | widget | `fpga_sim/ui/board_display.py:1110` |
-| `preview.board.leds.ledr` | zone | `fpga_sim/ui/board_display.py:1132` |
-| `preview.board.seg[i]` | widget | `fpga_sim/ui/board_display.py:1120` |
-| `preview.board.sw[i]` | widget | `fpga_sim/ui/board_display.py:1112` |
-| `preview.footer.load-vhdl` | item | `fpga_sim/ui/board_display.py:1384` |
-| `preview.footer.select-board` | item | `fpga_sim/ui/board_display.py:1371` |
-| `preview.footer.sim-toggle` | item | `fpga_sim/ui/board_display.py:1422` |
-| `preview.footer.simulate` | item | `fpga_sim/ui/board_display.py:1399` |
-| `preview.header.generics` | item | `fpga_sim/ui/board_display.py:1354` |
+| `preview.board.btn[i]` | widget | `fpga_sim/ui/board_display.py:1149` |
+| `preview.board.chip` | widget | `fpga_sim/ui/board_display.py:1134` |
+| `preview.board.led[i]` | widget | `fpga_sim/ui/board_display.py:1145` |
+| `preview.board.leds.ledr` | zone | `fpga_sim/ui/board_display.py:1167` |
+| `preview.board.orphan-note` | widget | `fpga_sim/ui/board_display.py:1136` |
+| `preview.board.seg[i]` | widget | `fpga_sim/ui/board_display.py:1155` |
+| `preview.board.sw[i]` | widget | `fpga_sim/ui/board_display.py:1147` |
+| `preview.footer.load-vhdl` | item | `fpga_sim/ui/board_display.py:1427` |
+| `preview.footer.select-board` | item | `fpga_sim/ui/board_display.py:1414` |
+| `preview.footer.sim-toggle` | item | `fpga_sim/ui/board_display.py:1465` |
+| `preview.footer.simulate` | item | `fpga_sim/ui/board_display.py:1442` |
+| `preview.header.generics` | item | `fpga_sim/ui/board_display.py:1397` |
 | `preview.header.help` | item | `fpga_sim/ui/help_dialog.py:337` |
 | `preview.header.settings` | item | `fpga_sim/ui/settings_dialog.py:136` |
 | `select.header` | zone | `fpga_sim/ui/board_selector.py:451` |
-| `select.header.chip.component.has-7seg` | widget | `fpga_sim/ui/board_selector.py:572` |
-| `select.header.chip.component.has-buttons` | widget | `fpga_sim/ui/board_selector.py:572` |
-| `select.header.chip.component.has-leds` | widget | `fpga_sim/ui/board_selector.py:572` |
-| `select.header.chip.component.has-switches` | widget | `fpga_sim/ui/board_selector.py:572` |
-| `select.header.chip.vendor.colognechip` | widget | `fpga_sim/ui/board_selector.py:572` |
-| `select.header.chip.vendor.efinix` | widget | `fpga_sim/ui/board_selector.py:572` |
-| `select.header.chip.vendor.gowin` | widget | `fpga_sim/ui/board_selector.py:572` |
-| `select.header.chip.vendor.intel` | widget | `fpga_sim/ui/board_selector.py:572` |
-| `select.header.chip.vendor.lattice` | widget | `fpga_sim/ui/board_selector.py:572` |
-| `select.header.chip.vendor.microsemi` | widget | `fpga_sim/ui/board_selector.py:572` |
-| `select.header.chip.vendor.other` | widget | `fpga_sim/ui/board_selector.py:572` |
-| `select.header.chip.vendor.xilinx` | widget | `fpga_sim/ui/board_selector.py:572` |
+| `select.header.chip.component.has-7seg` | widget | `fpga_sim/ui/board_selector.py:576` |
+| `select.header.chip.component.has-buttons` | widget | `fpga_sim/ui/board_selector.py:576` |
+| `select.header.chip.component.has-leds` | widget | `fpga_sim/ui/board_selector.py:576` |
+| `select.header.chip.component.has-switches` | widget | `fpga_sim/ui/board_selector.py:576` |
+| `select.header.chip.vendor.colognechip` | widget | `fpga_sim/ui/board_selector.py:576` |
+| `select.header.chip.vendor.efinix` | widget | `fpga_sim/ui/board_selector.py:576` |
+| `select.header.chip.vendor.gowin` | widget | `fpga_sim/ui/board_selector.py:576` |
+| `select.header.chip.vendor.intel` | widget | `fpga_sim/ui/board_selector.py:576` |
+| `select.header.chip.vendor.lattice` | widget | `fpga_sim/ui/board_selector.py:576` |
+| `select.header.chip.vendor.microsemi` | widget | `fpga_sim/ui/board_selector.py:576` |
+| `select.header.chip.vendor.other` | widget | `fpga_sim/ui/board_selector.py:576` |
+| `select.header.chip.vendor.xilinx` | widget | `fpga_sim/ui/board_selector.py:576` |
 | `select.header.help` | item | `fpga_sim/ui/help_dialog.py:337` |
-| `select.header.sort` | item | `fpga_sim/ui/board_selector.py:543` |
+| `select.header.sort` | item | `fpga_sim/ui/board_selector.py:547` |
 | `select.list` | zone | `fpga_sim/ui/board_selector.py:452` |
 | `select.list.row[i]` | widget | `fpga_sim/ui/board_selector.py:474` |
-| `sim.board.btn[i]` | widget | `fpga_sim/ui/board_display.py:1114` |
-| `sim.board.chip` | widget | `fpga_sim/ui/board_display.py:1108` |
-| `sim.board.led[i]` | widget | `fpga_sim/ui/board_display.py:1110` |
-| `sim.board.leds.ledr` | zone | `fpga_sim/ui/board_display.py:1132` |
-| `sim.board.seg[i]` | widget | `fpga_sim/ui/board_display.py:1120` |
-| `sim.board.sw[i]` | widget | `fpga_sim/ui/board_display.py:1112` |
+| `select.list.row[i].orphaned` | widget | `fpga_sim/ui/board_selector.py:480` |
+| `sim.board.btn[i]` | widget | `fpga_sim/ui/board_display.py:1149` |
+| `sim.board.chip` | widget | `fpga_sim/ui/board_display.py:1134` |
+| `sim.board.led[i]` | widget | `fpga_sim/ui/board_display.py:1145` |
+| `sim.board.leds.ledr` | zone | `fpga_sim/ui/board_display.py:1167` |
+| `sim.board.seg[i]` | widget | `fpga_sim/ui/board_display.py:1155` |
+| `sim.board.sw[i]` | widget | `fpga_sim/ui/board_display.py:1147` |
 | `sim.overlay.pause` | item | `fpga_sim/ui/simulation_screen.py:1111` |
 | `sim.overlay.stop` | item | `fpga_sim/ui/simulation_screen.py:1100` |
 | `sim.panel` | zone | `fpga_sim/ui/sim_panel.py:387` |

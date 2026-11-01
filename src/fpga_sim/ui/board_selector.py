@@ -474,6 +474,10 @@ class BoardSelector(RowCursorMixin):
             inspect.widget(f"list.row[{i}]", row_rect, (("board", b.name),))
             nm = item_f.render(b.name, True, THEME.board_name)
             self.screen.blit(nm, (20, y + 4))
+            if b.upstream_status == "orphaned":  # U56 §4.8: the preview says why
+                tag = detail_f.render("orphaned upstream", True, THEME.warning)
+                tag_rect = self.screen.blit(tag, (self.width - 26 - tag.get_width(), y + 4))
+                inspect.widget(f"list.row[{i}].orphaned", tag_rect, (("board", b.name),))
             sub_y = y + 4 + item_f.get_height() + 2
             sm = detail_f.render(b.summary, True, THEME.muted_text)
             self.screen.blit(sm, (20, sub_y))

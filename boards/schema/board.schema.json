@@ -345,6 +345,11 @@
           "type": "string",
           "description": "The upstream commit of the sync that found the board orphaned."
         },
+        "orphaned_at_date": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "The UTC date of the sync that found the board orphaned, which the preview shows (U56 Phase 3)."
+        },
         "orphaned_reason": {
           "type": "string",
           "enum": [

@@ -656,3 +656,25 @@ class TestFindingABoard:
         sel.filter_text = "no-such-board"
         assert sel._filtered() == []
         assert sel._default_cursor() == -1
+
+
+def test_an_orphaned_board_row_is_tagged(screen, boards):
+    """U56 §4.8: an orphan's row says "orphaned upstream" in the warning color; no other does."""
+    import dataclasses
+
+    from fpga_sim.ui import inspect
+    from fpga_sim.ui.theme import THEME
+
+    orphan = dataclasses.replace(boards[0], upstream_status="orphaned")
+    sel = BoardSelector([orphan, *boards[1:]], screen)
+    inspect.set_inspect(True)
+    sel._draw()
+    tags = [r for r in inspect.regions() if r.path.endswith(".orphaned")]
+    assert len(tags) == 1, "one tag, on the orphan's row only"
+    rect = tags[0].rect
+    pixels = {
+        screen.get_at((x, y))[:3]
+        for x in range(rect.left, rect.right)
+        for y in range(rect.top, rect.bottom)
+    }
+    assert tuple(THEME.warning) in pixels, "drawn, not just registered"

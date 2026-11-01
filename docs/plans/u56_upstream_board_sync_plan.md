@@ -623,7 +623,7 @@ After generating, for each existing file whose identity was **not** produced:
 field lands in the schema first, in the same PR (the #346 rule): Phase 1a (`upstream_class`,
 `upstream_args`, `upstream_status` enum `["orphaned"]`, `orphaned_at_commit`, `orphaned_reason` enum
 `["file_removed", "no_longer_defined", "no_simulatable_io"]`, `successor`); Phase 2
-(`default_clock_assumed`, D-6); Phase 6 (`leds[].aliases`, convention alias banks). The
+(`default_clock_assumed`, D-6); Phase 3 (`orphaned_at_date`); Phase 6 (`leds[].aliases`, convention alias banks). The
 accept-list gets a schema of its own (§4.2). Update `tests/test_board_schema.py`.
 
 ### 4.6 Alias model (Phase 6, D-1)
@@ -994,6 +994,23 @@ It comes before the bump because the bump creates the first real orphans (the fi
 **Verify:** PNGs → **visual review**; full `pytest`.
 **Effort:** S/M.
 
+**Measured when Phase 3 ran (2026-11-01).** Built as §4.8 describes, with three refinements:
+
+- **A date the note can show.** §4.8's "since \<date\>" had no field to read: an orphan recorded
+  only `orphaned_at_commit`. The sync now also writes `orphaned_at_date`, the UTC date of the sync
+  that found the board orphaned. Both are kept by later re-syncs, so the mark stays stable, and
+  the schema gains the field first. No board is orphaned yet, so nothing needed migrating.
+- **The successor is named by its file** (`litex-boards/efinix_trion_t8f81_dev_kit`), not its
+  display name. That is the spelling `--board` takes and the one that names exactly one board;
+  display names repeat across sources (§2.6). It also needs no lookup of another board's file.
+- **Where the note goes.** The preview draws it in amber across the top, below the help and
+  settings icons, and the board starts below it. Only an orphan has one, so every other board
+  lays out exactly as before. The simulation screen shows it too, since it draws the same board.
+  The selector tags the row "orphaned upstream" on its name line. `BoardDef.orphan_note()` is
+  the one source of the text, used by the banner, `--board` (the launcher and the benchmark)
+  and the tests. `gen_ui_map.py` renders a synthetic orphan, so both new regions are in the
+  map: `preview.board.orphan-note` and `select.list.row[i].orphaned`.
+
 ## 11. Phases 4–8
 
 **Phase 4 — Bump to the upstream heads.**
@@ -1084,7 +1101,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 1b | display names (P35) | no (a before → after name table) | done 2026-11-01 (#471) |
 | 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | done 2026-11-01 (#472); the review found long part numbers running past the chip, fixed in the PR |
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | not started |
-| 3 | orphan UI | **yes** | not started |
+| 3 | orphan UI | **yes** | PR open, awaiting visual review (2026-11-01) |
 | 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | not started |
 | 5 | multi-pin, DIP | **yes** | not started |
 | 6 | aliases | **yes** | not started |

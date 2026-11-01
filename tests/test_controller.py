@@ -1404,3 +1404,17 @@ def test_the_load_vhdl_button_still_opens_the_picker(headless_pygame, monkeypatc
     _install_preview(monkeypatch, ScreenResult.LOAD_VHDL)
     monkeypatch.setattr(ctrl, "_run_vhdl_picker", lambda: NextScreen.PREVIEW)
     assert ctrl._run_preview() is NextScreen.PREVIEW
+
+
+def test_a_cli_board_that_is_orphaned_says_so_and_still_opens(headless_pygame, capsys):
+    """U56 §4.8: an orphan never blocks a run; the note goes to stderr."""
+    orphan = _board(
+        file_stem="arty_a7-35",
+        upstream_status="orphaned",
+        orphaned_at_commit="97186cf",
+        orphaned_reason="file_removed",
+    )
+    ctrl = _make_controller(headless_pygame, boards=[orphan], cli_board="Arty A7-35")
+    assert ctrl._seed_from_cli() is NextScreen.PREVIEW
+    err = capsys.readouterr().err
+    assert "amaranth-boards/arty_a7-35: No longer in amaranth-boards since 97186cf." in err

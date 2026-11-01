@@ -21,6 +21,13 @@ from fpga_sim.paths import BOARDS_DIR
 
 _FALLBACK_CLOCK_HZ: float = 12e6  # most common across 80 surveyed boards
 
+#: The first sentence of an orphaned board's note, by why upstream dropped it (U56 §4.8).
+_ORPHAN_LEADS: dict[str, str] = {
+    "file_removed": "No longer in {source}{since}.",
+    "no_longer_defined": "{source} no longer defines this version{since}.",
+    "no_simulatable_io": "{source} lists no LED, switch or button for this board{since}.",
+}
+
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Display-name overrides (U49)
@@ -300,6 +307,8 @@ class BoardDef:
     upstream_status: str = ""
     #: The upstream commit of the sync that found the board orphaned.
     orphaned_at_commit: str = ""
+    #: The UTC date (``YYYY-MM-DD``) of that sync, which the preview shows.
+    orphaned_at_date: str = ""
     #: ``file_removed`` / ``no_longer_defined`` / ``no_simulatable_io``.
     orphaned_reason: str = ""
     #: ``<source>/<file>.json`` of the board that most likely replaces an orphan (a
@@ -487,11 +496,38 @@ class BoardDef:
             }
         )
 
+    def orphan_note(self) -> str:
+        """Return what to tell someone about an orphaned board, else ``""`` (U56 §4.8).
+
+        Why upstream dropped it and since when, that a design still runs on this
+        saved copy, and the board that most likely replaces it -- named by its
+        ``<source>/<file>``, the spelling ``--board`` takes and the one that names
+        exactly one board (display names repeat across sources).  The preview, the
+        ``--board`` resolution and the tests all read this one sentence set.
+        """
+        if self.upstream_status != "orphaned":
+            return ""
+        when = [part for part in (self.orphaned_at_date, self.orphaned_at_commit[:7]) if part]
+        since = (
+            f" since {when[0]} ({when[1]})"
+            if len(when) == 2
+            else "".join(f" since {part}" for part in when)
+        )
+        lead = _ORPHAN_LEADS.get(self.orphaned_reason, "{source} no longer defines it{since}.")
+        parts = [
+            lead.format(source=self.source or "Upstream", since=since),
+            "Your design still runs on this saved copy; it will not receive upstream fixes.",
+        ]
+        if self.successor:
+            parts.append(f"Possible successor: {self.successor.removesuffix('.json')}.")
+        return " ".join(parts)
+
     def _orphan_source(self) -> dict[str, str]:
         """Return the orphan fields of the board file's ``source`` block, for ``to_json``."""
         fields = {
             "upstream_status": self.upstream_status,
             "orphaned_at_commit": self.orphaned_at_commit,
+            "orphaned_at_date": self.orphaned_at_date,
             "orphaned_reason": self.orphaned_reason,
             "successor": self.successor,
         }
@@ -547,6 +583,7 @@ class BoardDef:
             port_conventions=data.get("port_conventions") or {},
             upstream_status=str(source.get("upstream_status", "")),
             orphaned_at_commit=str(source.get("orphaned_at_commit", "")),
+            orphaned_at_date=str(source.get("orphaned_at_date", "")),
             orphaned_reason=str(source.get("orphaned_reason", "")),
             successor=str(source.get("successor", "")),
         )

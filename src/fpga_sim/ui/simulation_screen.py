@@ -1231,5 +1231,7 @@ class SimulationScreen:
                 convention=self.match.maker if self.match else None,
                 synopsys=self.synopsys,
                 pinmap=self.pinmap.source if self.pinmap else None,
+                board_upstream_status=self.board_def.upstream_status if self.board_def else "",
+                board_successor=self.board_def.successor if self.board_def else "",
             )
         print(f"Simulation stopped ({exit_intent.value}).")

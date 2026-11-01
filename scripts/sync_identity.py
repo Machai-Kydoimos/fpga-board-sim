@@ -28,6 +28,7 @@ import re
 import tomllib
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -477,6 +478,10 @@ def run_sync(
         source = dict(entry.data["source"])
         source["upstream_status"] = "orphaned"
         source["orphaned_at_commit"] = source.get("orphaned_at_commit") or commit_sha
+        # The first sync to find it gone keeps both: later re-syncs leave the mark alone.
+        source["orphaned_at_date"] = (
+            source.get("orphaned_at_date") or datetime.now(UTC).date().isoformat()
+        )
         source["orphaned_reason"] = reason
         if successor:
             source["successor"] = f"{origin}/{successor}"

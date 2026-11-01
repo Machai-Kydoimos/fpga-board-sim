@@ -8,6 +8,7 @@ names, the ``source`` blocks, the orphan marks and ``_sync_metadata.json``.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -214,6 +215,7 @@ def test_a_removed_upstream_file_orphans_its_board_and_names_a_successor(tmp_pat
     source = _load(folder, "old.json")["source"]
     assert source["upstream_status"] == "orphaned"
     assert source["orphaned_at_commit"] == COMMIT
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", source["orphaned_at_date"])
     assert source["orphaned_reason"] == "file_removed"
     assert source["successor"] == "litex-boards/new.json"
     assert source["sync_commit"] == "old"  # everything else stays frozen

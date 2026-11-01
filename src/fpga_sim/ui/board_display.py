@@ -36,6 +36,7 @@ from fpga_sim.ui import inspect, keymap
 from fpga_sim.ui.components import LED, RGBLED, Button, FPGAChip, SevenSeg, Switch, UIComponent
 from fpga_sim.ui.constants import WHITE, _ui_scale, get_font
 from fpga_sim.ui.help_dialog import HelpDialog, draw_help_button
+from fpga_sim.ui.help_dialog import _wrap as _wrap_words
 from fpga_sim.ui.results import ScreenResult
 from fpga_sim.ui.settings_dialog import SettingsDialog, draw_settings_button
 from fpga_sim.ui.theme import THEME
@@ -318,6 +319,11 @@ class FPGABoard:
             self._led_banks = [("LEDs", self.leds)]
         # Bank label anchors (label, x, y), filled by _place_led_banks (U36).
         self._led_label_pos: list[tuple[str, int, int]] = []
+        # An orphaned board says so above everything else (U56 §4.8); _layout wraps
+        # the note to the window and places it, and only then does the board start.
+        self._orphan_note = board_def.orphan_note() if board_def else ""
+        self._orphan_lines: list[str] = []
+        self._orphan_rect: pygame.Rect | None = None
 
         if board_def and board_def.seven_seg:
             ssd = board_def.seven_seg
@@ -622,10 +628,11 @@ class FPGABoard:
             return
 
         total_weight = sum(sec[2] for sec in sections)
-        usable_h = h - 2 * margin - section_pad * (len(sections) - 1) - bottom_reserve
+        top = self._layout_orphan_banner(s, margin, section_pad)
+        usable_h = h - top - margin - section_pad * (len(sections) - 1) - bottom_reserve
 
         self._seg_panel_x = 0
-        y: float = margin
+        y: float = top
         for name, items, weight in sections:
             sec_h = usable_h * weight / total_weight
             content_h = sec_h - title_h  # per-item labels are budgeted inside the placers
@@ -655,6 +662,25 @@ class FPGABoard:
                 self._place_items(items, margin, y + title_h, avail_w, content_h, name, scale=s)
 
             y += sec_h + section_pad
+
+    def _layout_orphan_banner(self, s: float, margin: int, gap: int) -> int:
+        """Place an orphan's note below the help/settings row; return where the board starts.
+
+        Only an orphan has one (U56 §4.8), so every other board lays out exactly as
+        before.  The note is wrapped to the window rather than truncated: it is the
+        one place a person learns that this board will not receive upstream fixes.
+        """
+        self._orphan_lines = []
+        self._orphan_rect = None
+        if not self._orphan_note:
+            return margin
+        font = get_font(max(10, round(13 * s)))
+        top = max(12, round(16 * s)) + max(24, round(30 * s)) + max(4, round(6 * s))
+        width = self.width - 2 * margin
+        self._orphan_lines = _wrap_words(self._orphan_note, font, width)
+        height = len(self._orphan_lines) * font.get_linesize()
+        self._orphan_rect = pygame.Rect(margin, top, width, height)
+        return top + height + gap
 
     @staticmethod
     def _grid_rows(n: int, avail_w: float, scale: float) -> int:
@@ -1106,6 +1132,15 @@ class FPGABoard:
         if not inspect.inspect_enabled():
             return
         inspect.widget("board.chip", self.fpga_chip.rect)
+        if self._orphan_rect is not None and self.board_def is not None:
+            inspect.widget(
+                "board.orphan-note",
+                self._orphan_rect,
+                (
+                    ("reason", self.board_def.orphaned_reason),
+                    ("successor", self.board_def.successor),
+                ),
+            )
         for i, led in enumerate(self.leds):
             inspect.widget(f"board.led[{i}]", led.rect, _led_value(led))
         for sw in self.switches:
@@ -1287,6 +1322,14 @@ class FPGABoard:
                 # summary has always had (see above).
                 count_y = _chip_r.bottom + chip_font.get_linesize() + max(2, round(3 * s))
                 self.screen.blit(count_surf, (count_x, count_y))
+
+        if self._orphan_rect is not None:
+            note_f = get_font(max(10, round(13 * s)))
+            for k, line in enumerate(self._orphan_lines):
+                t = note_f.render(line, True, THEME.warning)
+                self.screen.blit(
+                    t, (self._orphan_rect.x, self._orphan_rect.y + k * note_f.get_linesize())
+                )
 
         for _bank_label, _lx, _ly in self._led_label_pos:
             t = title_font.render(_bank_label, True, WHITE)

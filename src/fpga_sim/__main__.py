@@ -225,6 +225,8 @@ def _run_benchmark(args: argparse.Namespace, discovered: list[SimulatorInfo]) ->
         note = ambiguity_note(args.board, hits)
         if note:
             print(f"[benchmark] {note}", file=sys.stderr)
+        if orphan := chosen.orphan_note():
+            print(f"[benchmark] {chosen.qualified_name}: {orphan}", file=sys.stderr)
     else:
         chosen = boards[0]
 
@@ -528,6 +530,8 @@ def _benchmark_no_ui(
         clock_hz=board.default_clock_hz,
         mode="native" if match else "generic",
         convention=match.maker if match else None,
+        board_upstream_status=board.upstream_status,
+        board_successor=board.successor,
     )
     return 0
 

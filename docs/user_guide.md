@@ -322,10 +322,22 @@ manufacturers, so they do not match this way.)
 The **Sort** dropdown and the component / vendor chips narrow the list further;
 both, and the filter text, persist across sessions.
 
+A board tagged **orphaned upstream** is one its source no longer defines: the file
+was removed, the version is gone, or it lists no LED, switch or button any more. The
+board stays in the list as a saved copy, so a design written for it still runs, but
+it will not receive upstream fixes. Its preview says why and since when, and names
+the board that most likely replaces it.
+
 ### 2. Preview the board
 
 The board renders with LEDs, buttons, switches, and — on supported boards — a
-7-segment display, all matching the real hardware. Each component is labeled with
+7-segment display, all matching the real hardware. An **orphaned** board (see above)
+opens with an amber note across the top, for example "No longer in litex-boards since
+2026-11-02 (97186cf). Your design still runs on this saved copy; it will not receive
+upstream fixes. Possible successor: litex-boards/efinix_trion_t8f81_dev_kit." The
+successor is named by its file, the spelling `--board` takes, because a display name
+can belong to boards in more than one source. Nothing is blocked: the board runs as
+before, and opening it with `--board` prints the same note. Each component is labeled with
 its resource name; **hover** any LED, switch, or button for a moment to reveal its
 net name, pin, and direction.
 

@@ -528,6 +528,8 @@ class ScreenController:
                     file=sys.stderr,
                 )
             else:
+                if orphan := board.orphan_note():
+                    print(f"[fpga-sim] {board.qualified_name}: {orphan}", file=sys.stderr)
                 nxt = self.on_board_selected(board)
 
         if self._cli_vhdl is not None:
