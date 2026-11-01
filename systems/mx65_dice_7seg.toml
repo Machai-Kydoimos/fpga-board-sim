@@ -12,7 +12,7 @@ peripherals = ["lfsr"]
 description = """
 One self-contained VHDL file: a vendored mx65 6502 CPU core (below, verbatim,
 MIT) + ROM + RAM + memory-mapped IO (extended with an LFSR peripheral) + a
-top that wires it to the board's sw/btn/led/seg and synthesises a power-on
+top that wires it to the board's sw/btn/led/seg and synthesizes a power-on
 reset.
 
 The ROM holds a dice-roller firmware (assembled by ca65/ld65 from

@@ -104,7 +104,7 @@ exclude = ["amaranth-boards/", "boards/"]
 
 [tool.ruff.lint]
 # PLW1514 is still a preview rule, so preview mode has to be on to select it.
-# `explicit-preview-rules` keeps that from being a blank cheque: only preview
+# `explicit-preview-rules` keeps that from being a blank check: only preview
 # rules named in `select` below activate, so turning this on does not silently
 # enrol the repo in every other preview rule (6 unrelated ones fire without it).
 # Scoped to [lint] rather than [tool.ruff] so the *formatter* stays on stable
@@ -115,7 +115,7 @@ select = [
     "E", "W",   # pycodestyle
     "F",        # pyflakes
     "I",        # isort
-    "UP",       # pyupgrade – modernise syntax
+    "UP",       # pyupgrade – modernize syntax
     "N",        # pep8-naming
     "B",        # flake8-bugbear – common bugs
     "ANN",      # missing type annotations

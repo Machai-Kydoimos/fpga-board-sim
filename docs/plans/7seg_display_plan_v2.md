@@ -314,7 +314,7 @@ class SevenSegDef:
 ```
 
 `num_digits`, `has_dp`, `is_multiplexed` use strict `d[key]` access (not `.get()`)
-because their absence indicates a serialisation bug, not a version difference.
+because their absence indicates a serialization bug, not a version difference.
 
 ### 4.2 `BoardDef` extension
 

@@ -67,7 +67,7 @@ def _isolate_session_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
 def headless_pygame() -> Iterator[ModuleType]:
     """Initialize pygame once per session with the dummy SDL drivers.
 
-    Centralising init/quit here (rather than per-module) keeps pygame alive
+    Centralizing init/quit here (rather than per-module) keeps pygame alive
     for the whole session, so the module-global ``get_font`` LRU cache never
     holds ``Font`` objects across a ``pygame.quit()`` / ``init()`` boundary —
     a stale ``Font`` rendered after a re-init segfaults the interpreter.  The
@@ -180,7 +180,7 @@ def restore_debug_view() -> Iterator[None]:
 def restore_inspect() -> Iterator[None]:
     """Reset inspect mode (U55) after every test, whether or not it touched it.
 
-    Autouse, unlike its two neighbours above, because leaking this one is not
+    Autouse, unlike its two neighbors above, because leaking this one is not
     merely cosmetic: while the overlay is on it joins the U23 frame signature
     and pulls the cursor position in with it, so a leaked "on" would make every
     later redraw-skip test see a frame that changes when the mouse does.  It
