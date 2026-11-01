@@ -334,6 +334,10 @@ def run_sync(
     report = SyncReport()
     problems: list[str] = []
     taken = {e.filename: (e.upstream_file, e.upstream_class or "") for e in existing}
+    if output_dir.is_dir():  # a file this sync does not own is never overwritten either
+        for path in output_dir.glob("*.json"):
+            if not path.name.startswith("_") and path.name not in taken:
+                taken[path.name] = ("a file this sync does not own", "")
     new_names: dict[str, ProducedBoard] = {}
     for board in unpaired:
         try:

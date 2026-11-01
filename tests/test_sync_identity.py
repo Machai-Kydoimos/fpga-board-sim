@@ -416,3 +416,14 @@ def test_a_source_can_shape_the_stem_new_boards_are_named_after(tmp_path):
     )
     assert report.new == ["zedboard.json"]
     assert digilent_stem("Arty-A7-35-Master.xdc") == "Arty-A7-35"
+
+
+def test_a_file_the_sync_does_not_own_is_never_overwritten(tmp_path):
+    folder = tmp_path / ORIGIN
+    foreign = _board("Solo", "solo.py")
+    del foreign["source"]  # hand-placed: no source block, so not this sync's file
+    _write(folder, "solo.json", foreign)
+    before = (folder / "solo.json").read_bytes()
+    with pytest.raises(SyncFailureError, match="already taken by a file this sync does not own"):
+        _sync(folder, {"solo.py": _boards(_produced("Solo", "solo.py"))})
+    assert (folder / "solo.json").read_bytes() == before
