@@ -531,3 +531,130 @@ def test_a_board_whose_upstream_states_no_frequency_says_its_clock_is_assumed():
     assert b["default_clock_hz"] == 12e6
     assert b["default_clock_assumed"] is True
     assert "default_clock_assumed" not in parse_litex_board(_BASIC, "test_board.py")[0]
+
+
+# ── Reading upstream's extension modules (U56 Phase 4) ───────────────────────
+
+_SIPEED_LIKE = """
+from litex.build.generic_platform import Pins, Subsignal
+from litex.build.extension import Extension
+
+
+class Dock(Extension):
+    slots = {"card": "CARD1"}
+
+    def define_io(self, platform):
+        return [
+            ("user_led", 0, Pins("card:44"), *self.iostandard(platform)),
+            ("user_led", 1, Pins("card:46"), *self.pullup(platform)),
+            ("user_btn", 0, Pins("card:15")),
+        ]
+
+
+class Pmod(Extension):
+    slots = {"pmod": None}
+
+    def define_io(self, platform):
+        return [("user_sw", n, Pins(f"pmod:{n}")) for n in range(2)]
+"""
+
+_DOCKED_AT_HEAD = """
+from litex.build.generic_platform import *
+from litex.build.gowin.platform import GowinPlatform
+from litex_boards.extensions.sipeed_like import Dock, Pmod
+
+_io = [("clk27", 0, Pins("H11"))]
+
+
+class Platform(GowinPlatform):
+    default_clk_name = "clk27"
+    default_clk_period = 1e9 / 27e6
+
+    def __init__(self):
+        GowinPlatform.__init__(self, "GW2A-LV18PG256C8/I7", _io)
+        self.add_extension(Dock())
+        self.add_extension(Pmod("pmodb", number=4))
+"""
+
+_MODULES = {"litex_boards.extensions.sipeed_like": _SIPEED_LIKE}
+
+
+def _pins(board, kind):
+    return [(c["number"], c["pins"]) for c in board[kind]]
+
+
+def test_an_extension_module_is_read_and_its_slots_remapped():
+    """The dock's ``card:N`` pins land on the host's ``CARD1:N``; the Pmod's numbers shift."""
+    b = read_litex_file(_DOCKED_AT_HEAD, "docked.py", modules=_MODULES).boards[0].board
+    assert _pins(b, "leds") == [(0, ["CARD1:44"]), (1, ["CARD1:46"])]
+    assert _pins(b, "buttons") == [(0, ["CARD1:15"])]
+    assert _pins(b, "switches") == [(4, ["pmodb:0"]), (5, ["pmodb:1"])]
+
+
+def test_without_the_module_the_dock_is_a_stand_in_with_no_io():
+    """What the bump would lose without reading extensions (Phase 1c stubbed them)."""
+    outcome = read_litex_file(_DOCKED_AT_HEAD, "docked.py")
+    assert outcome.outcome == "skipped" and outcome.detail == "no_simulatable_io"
+
+
+def test_an_extension_rejects_a_bad_binding_as_upstream_does():
+    unbound = _DOCKED_AT_HEAD.replace('Pmod("pmodb", number=4)', "Pmod()")
+    outcome = read_litex_file(unbound, "unbound.py", modules=_MODULES)
+    assert outcome.outcome == "error" and outcome.detail == "ValueError"
+
+
+def test_an_extension_can_rename_its_resources():
+    renamed = _DOCKED_AT_HEAD.replace(
+        'Pmod("pmodb", number=4)', 'Pmod("pmodb", name={"user_sw": "user_btn"})'
+    )
+    b = read_litex_file(renamed, "renamed.py", modules=_MODULES).boards[0].board
+    assert _pins(b, "buttons") == [(0, ["CARD1:15"]), (0, ["pmodb:0"]), (1, ["pmodb:1"])]
+
+
+def test_modules_import_each_other_and_a_cycle_ends():
+    """A module's own imports are read the same way; a cycle leaves stand-ins, never loops."""
+    base = """
+from litex.build.extension import Extension
+from litex_boards.extensions.b import Unused
+
+
+class Base(Extension):
+    slots = {"j": "J2"}
+"""
+    child = """
+from litex.build.generic_platform import Pins
+from litex_boards.extensions.a import Base
+
+
+class Unused(Base):
+    pass
+
+
+class Board(Base):
+    def define_io(self, platform):
+        return [("user_led", 0, Pins("j:1"))]
+"""
+    modules = {"litex_boards.extensions.a": base, "litex_boards.extensions.b": child}
+    source = (
+        _DOCKED_AT_HEAD.replace(
+            "from litex_boards.extensions.sipeed_like import Dock, Pmod",
+            "from litex_boards.extensions.b import Board",
+        )
+        .replace("self.add_extension(Dock())", "self.add_extension(Board())")
+        .replace('        self.add_extension(Pmod("pmodb", number=4))\n', "")
+    )
+    b = read_litex_file(source, "chained.py", modules=modules).boards[0].board
+    assert _pins(b, "leds") == [(0, ["J2:1"])]
+
+
+def test_a_module_with_an_unmocked_star_import_gets_stand_ins():
+    """qmtech's shape: ``from migen import *``, then ``Module`` at module level."""
+    with_migen = "from migen import *\n" + _SIPEED_LIKE + "\nhelper = Module\n"
+    modules = {"litex_boards.extensions.sipeed_like": with_migen}
+    assert read_litex_file(_DOCKED_AT_HEAD, "docked.py", modules=modules).outcome == "boards"
+
+
+def test_a_shim_calling_get_io_on_the_platform_class_works():
+    """Upstream's deprecated helpers call ``Ext(...).get_io(PlatformClass)`` at module level."""
+    shim = _DOCKED_AT_HEAD + '\n_compat = Pmod("pmoda").get_io(GowinPlatform)\n'
+    assert read_litex_file(shim, "shim.py", modules=_MODULES).outcome == "boards"

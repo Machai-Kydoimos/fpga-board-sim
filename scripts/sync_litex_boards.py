@@ -64,6 +64,32 @@ def extract_board_files(archive_bytes: bytes) -> dict[str, str]:
     return board_files
 
 
+#: The upstream modules a board file may import that the parser reads (never runs)
+#: rather than stubs: the extension classes, whose I/O add_extension needs.  Never
+#: another board file, whose Platform class could pass for the importer's own; and
+#: not ``compat``, whose helpers only emit deprecation warnings (U56 Phase 4).
+_READ_MODULES = ("extensions",)
+
+
+def extract_modules(archive_bytes: bytes) -> dict[str, str]:
+    """Extract the importable upstream modules as ``{dotted name: source}``."""
+    modules: dict[str, str] = {}
+    with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:gz") as tar:
+        for member in tar.getmembers():
+            parts = Path(member.name).parts
+            if not member.isfile() or len(parts) < 3 or parts[1] != "litex_boards":
+                continue
+            inside = parts[2:]
+            if inside[0] not in _READ_MODULES or not inside[-1].endswith(".py"):
+                continue
+            dotted = ".".join(("litex_boards", *inside)).removesuffix(".py")
+            dotted = dotted.removesuffix(".__init__")
+            f = tar.extractfile(member)
+            if f is not None:
+                modules[dotted] = f.read().decode("utf-8")
+    return modules
+
+
 # ═══════════════════════════════════════════════════════════════════════
 #  Output
 # ═══════════════════════════════════════════════════════════════════════
@@ -73,17 +99,21 @@ _ORIGIN = "litex-boards"
 
 
 def make_reader(
-    commit_sha: str, schema_ref: str = "../schema/board.schema.json", timestamp: str = ""
+    commit_sha: str,
+    schema_ref: str = "../schema/board.schema.json",
+    timestamp: str = "",
+    modules: Mapping[str, str] | None = None,
 ) -> Reader:
     """Return the reader ``run_sync`` calls per upstream file: read it, then stamp ``source``.
 
     The identity fields sit after ``upstream_file`` and the board keys keep today's order,
-    so a re-sync rewrites a board only where its content really changed.
+    so a re-sync rewrites a board only where its content really changed.  ``modules`` are
+    the upstream modules a board file may import (:func:`extract_modules`).
     """
     stamp = timestamp or datetime.now(UTC).isoformat()
 
     def read(filename: str, text: str, args: Mapping[str, Any] | None) -> ParseOutcome:
-        outcome = read_litex_file(text, filename, args)
+        outcome = read_litex_file(text, filename, args, modules)
         for produced in outcome.boards:
             source: dict[str, Any] = {
                 "origin": _ORIGIN,
@@ -185,7 +215,7 @@ def main() -> int:
             files=board_files,
             commit_sha=commit_sha,
             output_dir=args.output_dir,
-            read=make_reader(commit_sha),
+            read=make_reader(commit_sha, modules=extract_modules(archive_bytes)),
             accept_list=load_accept_list(),
             dry_run=args.dry_run,
             describe=describe,
