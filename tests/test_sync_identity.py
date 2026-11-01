@@ -207,17 +207,44 @@ def test_a_name_clash_with_another_identity_fails_and_writes_nothing(tmp_path):
 # ── orphans (§4.3) ─────────────────────────────────────────────────────────────
 
 
-def test_a_removed_upstream_file_orphans_its_board_and_names_a_successor(tmp_path):
+def _snapshot(folder):
+    return {p.name: p.read_bytes() for p in folder.glob("*.json")}
+
+
+def test_a_renamed_upstream_file_keeps_its_board_and_its_file(tmp_path):
+    # Upstream renamed the file and nothing else (LiteX's Efinix kits, 9e28f5a): the same
+    # board, so its file follows it -- no orphan, no second file (Rick, 2026-11-02).
     folder = tmp_path / ORIGIN
     _write(folder, "old.json", _board("Old", "old.py"))
-    table = {"new.py": _boards(_produced("Old", "new.py"))}  # same content, renamed upstream
+    table = {"new.py": _boards(_produced("New", "new.py"))}  # identical FPGA, clocks, I/O
     report, _ = _sync(folder, table)
+    assert (report.new, report.orphans, report.renamed) == ([], [], {"old.json": "new.py"})
+    data = _load(folder, "old.json")
+    assert data["source"]["upstream_file"] == "new.py"
+    assert "upstream_status" not in data["source"]
+    assert data["name"] == "New"  # upstream's new name
+    assert data["class_name"] == "OldPlatform"  # a class name never changes (§2.6)
+    assert sorted(p.name for p in folder.glob("*.json")) == ["_sync_metadata.json", "old.json"]
+    assert _meta(folder)["ledger"] == {"new.py": "boards: old.json"}
+
+    # From now on it pairs by identity: a second run at the same pin changes nothing.
+    snapshot = _snapshot(folder)
+    report, _ = _sync(folder, table)
+    assert report.renamed == {} and _snapshot(folder) == snapshot
+
+
+def test_a_removed_upstream_file_orphans_its_board(tmp_path):
+    folder = tmp_path / ORIGIN
+    _write(folder, "old.json", _board("Old", "old.py"))
+    table = {"new.py": _boards(_produced("New", "new.py", leds=2))}  # another board
+    report, _ = _sync(folder, table)
+    assert (report.new, report.renamed) == (["new.json"], {})
     source = _load(folder, "old.json")["source"]
     assert source["upstream_status"] == "orphaned"
     assert source["orphaned_at_commit"] == COMMIT
     assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", source["orphaned_at_date"])
     assert source["orphaned_reason"] == "file_removed"
-    assert source["successor"] == "litex-boards/new.json"
+    assert "successor" not in source  # other I/O: not the same board
     assert source["sync_commit"] == "old"  # everything else stays frozen
     assert _meta(folder)["orphans"] == ["old.json"]
 
@@ -257,14 +284,40 @@ def test_identical_boards_tie_break_on_the_orphans_own_file(tmp_path):
 
 
 def test_identical_boards_from_other_files_name_no_successor(tmp_path):
+    # Two candidates: neither is followed, and neither is named. Only a person could pick.
     folder = tmp_path / ORIGIN
     _write(folder, "old.json", _board("Old", "old.py"))
     table = {
         "a.py": _boards(_produced("A", "a.py")),
         "b.py": _boards(_produced("B", "b.py")),
     }
-    _sync(folder, table)
+    report, _ = _sync(folder, table)
+    assert (report.new, report.orphans, report.renamed) == (["a.json", "b.json"], ["old.json"], {})
     assert "successor" not in _load(folder, "old.json")["source"]
+
+
+def test_two_files_gone_into_one_board_stay_orphans_and_name_it(tmp_path):
+    # Upstream merged two identical boards into one file: neither old file can claim it.
+    folder = tmp_path / ORIGIN
+    _write(folder, "a.json", _board("A", "a.py"))
+    _write(folder, "b.json", _board("B", "b.py"))
+    report, _ = _sync(folder, {"ab.py": _boards(_produced("AB", "ab.py"))})
+    assert (report.new, report.orphans, report.renamed) == (["ab.json"], ["a.json", "b.json"], {})
+    for name in ("a.json", "b.json"):
+        assert _load(folder, name)["source"]["successor"] == "litex-boards/ab.json"
+
+
+def test_an_orphan_follows_its_board_back_under_a_new_name(tmp_path):
+    folder = tmp_path / ORIGIN
+    orphan = _board("Old", "old.py")
+    orphan["source"].update(
+        upstream_status="orphaned", orphaned_at_commit="x", orphaned_reason="file_removed"
+    )
+    _write(folder, "old.json", orphan)
+    report, _ = _sync(folder, {"new.py": _boards(_produced("New", "new.py"))})
+    assert (report.new, report.orphans, report.renamed) == ([], [], {"old.json": "new.py"})
+    source = _load(folder, "old.json")["source"]
+    assert source["upstream_file"] == "new.py" and "upstream_status" not in source
 
 
 def test_an_orphan_returns_when_upstream_defines_it_again(tmp_path):

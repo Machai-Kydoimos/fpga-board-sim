@@ -8,7 +8,8 @@ name forever once it has one. :func:`run_sync` is the write path all three syncs
    build the identities already on disk that the default construction does not cover;
 2. pair the produced boards with the existing files by identity -- most specific first,
    the default construction preferred -- or, for a file written before identities
-   existed, by the file name today's naming gives it;
+   existed, by the file name today's naming gives it; then follow renames: a file whose
+   upstream file is gone pairs with the one new board identical to it;
 3. name each new identity from its upstream file (never from its display name);
 4. find the existing files nothing produced, and decide per §4.3: mark an orphan, leave
    it untouched, or **fail the sync** when only a person can tell a renamed upstream
@@ -58,7 +59,8 @@ VERSION_PARAMS = (
 ACCEPT_LIST = Path(__file__).with_name("board_sync_accepted.toml")
 ACCEPT_SCHEMA = Path(__file__).with_name("board_sync_accepted.schema.json")
 
-#: Fields compared when looking for an orphan's successor by content (§4.3).
+#: What makes two boards the same board: compared to follow a renamed upstream file
+#: (§4.1) and to name an orphan's successor (§4.3).
 _CONTENT_KEYS = ("leds", "switches", "buttons", "seven_seg", "clocks", "device")
 
 Reader = Callable[[str, str, Mapping[str, Any] | None], ParseOutcome]
@@ -72,10 +74,11 @@ def summarize(report: SyncReport) -> str:
         kinds[kind] = kinds.get(kind, 0) + 1
     parts = [f"{n} {kind}" for kind, n in sorted(kinds.items())]
     warned = sum(len(w) for w in report.warnings.values())
+    renamed = f", {len(report.renamed)} renamed upstream" if report.renamed else ""
     return (
         f"Ledger: {len(report.ledger)} upstream files -- {', '.join(parts) or 'none'}; "
         f"{warned} warning(s); {len(report.written)} boards written "
-        f"({len(report.new)} new); {len(report.orphans)} orphaned."
+        f"({len(report.new)} new{renamed}); {len(report.orphans)} orphaned."
     )
 
 
@@ -130,6 +133,8 @@ class SyncReport:
     written: dict[str, ProducedBoard] = field(default_factory=dict)
     new: list[str] = field(default_factory=list)
     orphans: list[str] = field(default_factory=list)
+    #: Board file -> the upstream file it now reads, for each rename followed this sync.
+    renamed: dict[str, str] = field(default_factory=dict)
 
 
 def _args_match(recorded: Mapping[str, Any], produced: Mapping[str, Any]) -> bool:
@@ -234,6 +239,39 @@ def _pair(
             pairs[name] = board
             free.remove(board)
     return pairs, free
+
+
+def _follow_renames(
+    existing: list[_Existing],
+    pairs: Mapping[str, ProducedBoard],
+    free: list[ProducedBoard],
+    upstream_files: Mapping[str, object],
+) -> dict[str, ProducedBoard]:
+    """Pair each file whose upstream file is gone with the one new board identical to it.
+
+    Upstream renames files: LiteX renamed five Efinix dev kits in one commit (``9e28f5a``,
+    "normalize Efinix development kit names").  The board is the same, so its file follows
+    it (Rick, 2026-11-02: "follow the rename").  The file keeps its name, and with it
+    ``--board``, sessions and recents.  It reads the renamed upstream file from now on,
+    and it keeps getting upstream's fixes, which an orphan's frozen copy would not.
+
+    Identical means what naming a successor needs (§4.3): the same FPGA, clocks and I/O.
+    Only a match that is single on both sides is followed.  Two candidates, or two files
+    gone into one board, stay orphans: only a person could pick.  A file already orphaned
+    follows too, if its board comes back under a new name.
+    """
+    gone = [
+        e for e in existing if e.filename not in pairs and e.upstream_file not in upstream_files
+    ]
+    candidates = {
+        e.filename: [b for b in free if _content(b.board) == _content(e.data)] for e in gone
+    }
+    claimed = [id(found[0]) for found in candidates.values() if len(found) == 1]
+    return {
+        filename: found[0]
+        for filename, found in candidates.items()
+        if len(found) == 1 and claimed.count(id(found[0])) == 1
+    }
 
 
 def _version_suffix(board: ProducedBoard, keys: list[str]) -> str:
@@ -384,10 +422,16 @@ def run_sync(
         outcomes[filename] = outcome
 
     pairs, unpaired = _pair(existing, produced)
+    renamed = _follow_renames(existing, pairs, unpaired, files)
+    for filename, board in renamed.items():
+        pairs[filename] = board
+        unpaired.remove(board)
     by_filename = {e.filename: e for e in existing}
     for filename, board in pairs.items():
+        # A class name never changes (§2.6), a followed rename's included.
         _restore_version(board, str(by_filename[filename].data.get("class_name", "")))
     report = SyncReport()
+    report.renamed = {name: board.upstream_file for name, board in sorted(renamed.items())}
     problems: list[str] = []
     taken = {e.filename: (e.upstream_file, e.upstream_class or "") for e in existing}
     if output_dir.is_dir():  # a file this sync does not own is never overwritten either

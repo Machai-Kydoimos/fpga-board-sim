@@ -1,7 +1,7 @@
 {
   "source_repo": "https://github.com/litex-hub/litex-boards",
   "source_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
-  "sync_timestamp": "2026-11-01T22:24:44.723426+00:00",
+  "sync_timestamp": "2026-11-01T23:31:01.246418+00:00",
   "board_count": 234,
   "files_written": [
     "adi_adrv2crr_fmc.json",
@@ -59,12 +59,12 @@
     "digilent_zedboard.json",
     "digilent_zybo_z7.json",
     "ebaz4205.json",
-    "efinix_t120_f576_dev_kit.json",
-    "efinix_t20_f256_dev_kit.json",
-    "efinix_t20_mipi_dev_kit.json",
-    "efinix_t8_f81_dev_kit.json",
+    "efinix_t8f81_dev_kit.json",
     "efinix_ti375_c529_dev_kit.json",
-    "efinix_ti60_f225_dev_kit.json",
+    "efinix_titanium_ti60_f225_dev_kit.json",
+    "efinix_trion_t120_bga576_dev_kit.json",
+    "efinix_trion_t20_bga256_dev_kit.json",
+    "efinix_trion_t20_mipi_dev_kit.json",
     "efinix_tz170_j484_dev_kit.json",
     "efinix_xyloni_dev_kit.json",
     "ego1.json",
@@ -304,12 +304,12 @@
     "digilent_zedboard.py": "boards: digilent_zedboard.json",
     "digilent_zybo_z7.py": "boards: digilent_zybo_z7.json",
     "ebaz4205.py": "boards: ebaz4205.json",
-    "efinix_t120_f576_dev_kit.py": "boards: efinix_t120_f576_dev_kit.json",
-    "efinix_t20_f256_dev_kit.py": "boards: efinix_t20_f256_dev_kit.json",
-    "efinix_t20_mipi_dev_kit.py": "boards: efinix_t20_mipi_dev_kit.json",
-    "efinix_t8_f81_dev_kit.py": "boards: efinix_t8_f81_dev_kit.json",
+    "efinix_t120_f576_dev_kit.py": "boards: efinix_trion_t120_bga576_dev_kit.json",
+    "efinix_t20_f256_dev_kit.py": "boards: efinix_trion_t20_bga256_dev_kit.json",
+    "efinix_t20_mipi_dev_kit.py": "boards: efinix_trion_t20_mipi_dev_kit.json",
+    "efinix_t8_f81_dev_kit.py": "boards: efinix_t8f81_dev_kit.json",
     "efinix_ti375_c529_dev_kit.py": "boards: efinix_ti375_c529_dev_kit.json",
-    "efinix_ti60_f225_dev_kit.py": "boards: efinix_ti60_f225_dev_kit.json",
+    "efinix_ti60_f225_dev_kit.py": "boards: efinix_titanium_ti60_f225_dev_kit.json",
     "efinix_tz170_j484_dev_kit.py": "boards: efinix_tz170_j484_dev_kit.json",
     "efinix_xyloni_dev_kit.py": "boards: efinix_xyloni_dev_kit.json",
     "ego1.py": "boards: ego1.json",
@@ -498,11 +498,5 @@
     "ztex213.py": "boards: ztex213.json"
   },
   "warnings": {},
-  "orphans": [
-    "efinix_t8f81_dev_kit.json",
-    "efinix_titanium_ti60_f225_dev_kit.json",
-    "efinix_trion_t120_bga576_dev_kit.json",
-    "efinix_trion_t20_bga256_dev_kit.json",
-    "efinix_trion_t20_mipi_dev_kit.json"
-  ]
+  "orphans": []
 }
