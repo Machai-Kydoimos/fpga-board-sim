@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Board names no longer come out of the sync mangled.** The Amaranth parser broke part
+  numbers apart ("ULX3 S-12 F-", "AX7325 B", "DE1 So C") and the LiteX one lowered
+  upstream's capitals ("Brisbanesilicon"). Both now keep a name as upstream wrote it,
+  and nine load-time name corrections that existed only to undo them are gone. No board
+  file was renamed. (Roadmap U56, Phase 1b; Icebox P35.)
 - **`--board` can open every board.** Fourteen boards could not be opened from the
   command line at all, because an Amaranth board earlier in load order has the same
   name or class name: nine Digilent boards (Nexys 4 DDR, Arty A7, Arty S7, Arty
