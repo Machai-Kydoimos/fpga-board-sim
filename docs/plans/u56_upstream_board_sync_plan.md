@@ -448,7 +448,10 @@ Identity key = `(origin, upstream_file, upstream_class, upstream_args)`.
   `version`, `dock`, `expansion`, `baseboard`, `som`, `board`. Not `device`, `toolchain`,
   `speedgrade` (D-4 governs part variants). Effective value = the `inspect.signature(cls.__init__)`
   default when not passed, so the default construction and an explicit `revision=1` are one
-  identity. The list may grow — Phase 7 can meet a parameter it lacks, and upstream adds new
+  identity. **Amended 2026-11-01 (Phase 4):** a plain value the constructor stores under the
+  parameter's own name (`self.revision = revision`) wins over the signature's, because a
+  constructor may settle a default in its body: at LiteX head the Colorlight i5 takes
+  `revision=None` and stores `"7.0"`, its first supported revision. The list may grow — Phase 7 can meet a parameter it lacks, and upstream adds new
   ones — so matching must not depend on it (below).
 - **What a sync constructs.** For each upstream file: the default construction, **every identity
   already on disk for that file** (constructed with its recorded `upstream_args`), and from Phase
@@ -1072,8 +1075,9 @@ It comes before the bump because the bump creates the first real orphans (the fi
   eager generators (`_pmod_indexes`) and a one-argument `type()` with a read-only `__name__`.
   Without this, a board whose dock moved into an extension module (the Tang Primer 20K's
   `TangPrimer20KDock`) loses that dock's I/O at the bump.
-- **Prepared 2026-11-01 (branch `feat/u56-phase4-prep`, stacked on #474), measured at LiteX
-  head `97186cf` in a scratch copy, nothing committed:**
+- **Done 2026-11-01, measured at the heads** (LiteX `97186cf`, 2026-10-30, 399 commits past the
+  pin; Amaranth `f270d21`, 2026-08-13, 5 commits; Digilent `c8644a9`, 2026-10-13, `SECURITY.md`
+  only):
   - The sync hands the parser `litex_boards/extensions/*` and nothing else: never another board
     file, whose `Platform` could pass for the importer's own, and not `compat`, whose helpers
     only emit deprecation warnings.
@@ -1082,10 +1086,34 @@ It comes before the bump because the bump creates the first real orphans (the fi
     classmethod, as upstream's is, because deprecated shims call `get_io` on the platform class.
   - Grown on evidence: the reader needed neither generators nor `type().__name__`. Both sit in
     command-line helpers that building a platform never calls.
-  - Result: 256 files, 233 boards, 0 errors, 14 new files, and 5 orphans (the Efinix renames,
-    each with its successor). The Tang Primer 20K keeps its 7 LEDs and 5 buttons from its dock
-    module; without it, the board would have no simulatable I/O. The Tang Console goes 3 → 2
-    buttons, as predicted above.
+  - `exec_scope_scan.py`: 0 flags in the scope the reader interprets, over 257 LiteX platform
+    files, 9 extension modules and 78 Amaranth files. The 134 elsewhere are all in functions
+    the reader never runs: Amaranth's `toolchain_program` (117) and `find_loader` (7); LiteX's
+    `detect_ftdi_chip` (4, `subprocess`), three `request` docstrings, a programmer's URL, and the
+    target-side `add_pmods` (a computed `getattr`). Nothing to report upstream.
+  - LiteX: 256 files, 234 boards from 233 of them, 20 `no_simulatable_io`, 3 `not_a_board`,
+    0 errors, 0 warnings. 13 new files: the 12 of Appendix B.5 and `sipeed_slogic16u3`
+    (upstream #935, 2026-10-30; it states no clock, so 12 MHz is marked assumed, D-6). The 5
+    old Efinix files are orphaned (`file_removed`), each naming its renamed successor, whose
+    FPGA, clocks, I/O and conventions are identical. The content changes are exactly the three
+    expected below; the Tang Console's reads "J2:60 (EX_KEY.0) is used as rst" upstream. The
+    Tang Primer 25K records `{"dock": "standard"}`, a parameter its constructor gained; its
+    content is unchanged (§4.1: a key the file lacks is written on the rewrite).
+  - Found and fixed: at head the Colorlight i5 takes `revision=None` and settles it in the body
+    (`self.revision = "7.0"`). Under §4.1's signature-default rule the default construction was
+    a new identity, and the sync wrote `colorlight_i5_revision-none_board-i5.json`, identical to
+    `colorlight_i5.json`. §4.1 is amended: a plain value the constructor stores under the
+    parameter's name is the effective value. Every platform that stores one stores it unchanged
+    (pin and head), except the Arty Z7's dict in `self.board`, which leaves the default standing.
+    The drift check at the old pins stayed green.
+  - Found and fixed: the Amaranth case split read `RFSoC4x2Platform` as "RFSo C4x2", which the
+    name guard did not catch (a digit follows the C). A load-time override gives "RFSoC 4x2"
+    (AMD's and Real Digital's styling), and the guard gained a third shape rule, an acronym
+    split before its last capital.
+  - Amaranth: 86 boards (the expected 3 new), 0 errors. Digilent: 27, unchanged.
+  - Impact matrix: 360 board files (344 + 16); every design's outcome unchanged; 25 new
+    per-bank rows on new boards; the Tang Console's `NUM_BUTTONS` and `btn_n` bank 3 → 2.
+    Fleet: 360 boards, 334 with conventions. The Acorn keeps 506 Hz; upstream #934 is open.
 - **Expected** (vs 2026-10-28 heads): LiteX produces 233 boards — 12 new files (Appendix B.5: 7 new
   boards and the 5 Efinix rename targets); the 5 old Efinix files → **kept, marked orphaned
   (`file_removed`), successor = the new file** (identical I/O and device, verified);
@@ -1161,7 +1189,8 @@ It comes before the bump because the bump creates the first real orphans (the fi
 - **Effort:** M.
 
 **Phase 8 — Closeout.** `CHANGELOG.md`; `README.md` / `docs/user_guide.md` / `docs/architecture.md`
-/ `CLAUDE.md` counts and sync description; roadmap card → delivered (+ `docs/roadmap_delivered.md`
+/ `CLAUDE.md` counts and sync description (found in Phase 4: the README's filter example says "9
+Intel boards", as its GIF shows, but it has been 11 since v0.20.0 and 13 since Phase 1c); roadmap card → delivered (+ `docs/roadmap_delivered.md`
 entry); Icebox P35 closed as absorbed; this file's status → executed; release as v0.24.0 (D-5,
 revised: the whole arc, with no release at the Phase 4 checkpoint).
 
@@ -1179,7 +1208,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | done 2026-11-01 (#472); the review found long part numbers running past the chip, fixed in the PR |
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | done 2026-11-01 (#474); the review found differently named LEDs interleaving, so a board-native bank drove the wrong LED, fixed in the PR; reading the extension modules moved to Phase 4 |
 | 3 | orphan UI | **yes** | done 2026-11-01 (#475); the review asked for the saved copy's own file beside the successor, and for a successor only when the match is certain, both done in the PR |
-| 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | not started |
+| 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | awaiting visual review (2026-11-01) |
 | 5 | multi-pin, DIP | **yes** | not started |
 | 6 | aliases | **yes** | not started |
 | 7 | versions | **yes** (selector) | not started |

@@ -30,6 +30,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and `board_successor`. A design still runs on the saved copy; nothing is blocked. No
   board is orphaned yet: the first ones arrive with the bump to upstream's current
   heads. (Roadmap U56, Phase 3.)
+- **Sixteen boards from upstream as it stands today.** The syncs now read each source at
+  its current head instead of the commits they were pinned to; for LiteX that is 399
+  commits later, October 30 instead of July 20. LiteX adds eight boards, among them the
+  Sipeed Tang Mega 60K, the Alinx AX7035 with its 7-segment digit, the Lattice Certus-NX
+  Versa and LiteX's own Digilent Eclypse Z7. Amaranth adds the ButterStick, the iCESugar
+  Pro and the RFSoC 4x2. The other five are Efinix dev kits that upstream renamed (360
+  boards in all). Nothing upstream wrote was executed, and a static scan of the three
+  heads found nothing that reaches for the environment, a command or the network.
+  (Roadmap U56, Phase 4.)
 
 ### Security
 
@@ -56,6 +65,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   upstream is kept and marked orphaned instead of lingering unnoticed. When only a
   person can tell why a board vanished, the sync stops instead of guessing. No board's
   contents changed. (Roadmap U56, Phase 1a.)
+- **The first orphaned boards, and three boards changed upstream.** Upstream renamed five
+  Efinix dev kits; `efinix_trion_t20_bga256_dev_kit`, for one, is now
+  `efinix_t20_f256_dev_kit`. Each old file stays as a saved copy, marked orphaned, and
+  names its successor, whose FPGA, clocks and I/O are identical. Three boards follow
+  upstream's edits: the Sipeed Tang Console has 2 buttons instead of 3, because upstream
+  now uses the first one (EX_KEY.0) as the reset; the Alinx AX7010's buttons 2 and 3 swap
+  pins; and the ModRetro Chromatic's part number is now `GW5A-EV25UG256CC1/I0`.
+  (Roadmap U56, Phase 4.)
 
 ### Fixed
 
