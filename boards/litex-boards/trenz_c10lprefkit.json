@@ -33,26 +33,6 @@
       }
     },
     {
-      "name": "gpio_leds",
-      "number": 0,
-      "pins": [
-        "AB10",
-        "AA10",
-        "AA9",
-        "Y10",
-        "W10",
-        "U9",
-        "U8",
-        "U7"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "3.3-V LVTTL"
-      }
-    },
-    {
       "name": "led",
       "number": 1,
       "pins": [
@@ -96,6 +76,26 @@
       "number": 4,
       "pins": [
         "D18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "gpio_leds",
+      "number": 0,
+      "pins": [
+        "AB10",
+        "AA10",
+        "AA9",
+        "Y10",
+        "W10",
+        "U9",
+        "U8",
+        "U7"
       ],
       "direction": "o",
       "inverted": false,
@@ -195,6 +195,6 @@
     "upstream_file": "trenz_c10lprefkit.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
   }
 }

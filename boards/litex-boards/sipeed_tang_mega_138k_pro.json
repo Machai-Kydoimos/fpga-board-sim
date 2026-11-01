@@ -28,45 +28,6 @@
       }
     },
     {
-      "name": "led_done",
-      "number": 0,
-      "pins": [
-        "W10"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led_ready",
-      "number": 0,
-      "pins": [
-        "V11"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led_ws2812",
-      "number": 0,
-      "pins": [
-        "H16"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "led_n",
       "number": 1,
       "pins": [
@@ -123,6 +84,45 @@
       "number": 5,
       "pins": [
         "N23"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led_done",
+      "number": 0,
+      "pins": [
+        "W10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led_ready",
+      "number": 0,
+      "pins": [
+        "V11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led_ws2812",
+      "number": 0,
+      "pins": [
+        "H16"
       ],
       "direction": "o",
       "inverted": false,
@@ -214,6 +214,6 @@
       "dock": "standard"
     },
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T13:29:49.593723+00:00"
+    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
   }
 }

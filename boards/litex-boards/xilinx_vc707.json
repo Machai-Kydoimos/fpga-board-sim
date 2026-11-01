@@ -139,71 +139,6 @@
       }
     },
     {
-      "name": "button__c",
-      "number": 0,
-      "pins": [
-        "AV39"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS18"
-      }
-    },
-    {
-      "name": "button__n",
-      "number": 0,
-      "pins": [
-        "AR40"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS18"
-      }
-    },
-    {
-      "name": "button__e",
-      "number": 0,
-      "pins": [
-        "AU38"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS18"
-      }
-    },
-    {
-      "name": "button__s",
-      "number": 0,
-      "pins": [
-        "AP40"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS18"
-      }
-    },
-    {
-      "name": "button__w",
-      "number": 0,
-      "pins": [
-        "AW40"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS18"
-      }
-    },
-    {
       "name": "button",
       "number": 1,
       "pins": [
@@ -293,6 +228,71 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS18"
       }
+    },
+    {
+      "name": "button__c",
+      "number": 0,
+      "pins": [
+        "AV39"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "AR40"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button__e",
+      "number": 0,
+      "pins": [
+        "AU38"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button__s",
+      "number": 0,
+      "pins": [
+        "AP40"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button__w",
+      "number": 0,
+      "pins": [
+        "AW40"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
     }
   ],
   "switches": [],
@@ -318,6 +318,6 @@
     "upstream_file": "xilinx_vc707.py",
     "upstream_class": "Platform",
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
   }
 }
