@@ -26,6 +26,10 @@ from typing import Any
 
 import pytest
 
+# The interface a native design for a convention block declares -- shared with
+# scripts/gen_board_design_matrix.py, which builds one per native bank.
+from native_synth import synth_interface
+
 from fpga_sim.board_loader import BoardDef, ComponentInfo
 from fpga_sim.sim_bridge import (
     ConventionMatch,
@@ -372,59 +376,8 @@ def _canonical_block(bd: BoardDef) -> dict[str, Any] | None:
     return None
 
 
-def _synth_iface(block: dict[str, Any]) -> list[_IfaceDecl]:
-    """The toplevel interface a native design for *block* would declare.
-
-    Some boards carry only a partial convention (e.g. buttons only, from an XDC
-    sync); the clock/role is simply omitted, so such a board never full-matches.
-    """
-    ports: list[_IfaceDecl] = []
-    if isinstance(block.get("clk"), str):
-        ports.append(_IfaceDecl([block["clk"].lower()], "in", False, None))
-
-    def add(role: str, mode: str) -> None:
-        m = block.get(role)
-        if not isinstance(m, dict):
-            return
-        if m.get("names"):
-            ports.extend(_IfaceDecl([str(n).lower()], mode, False, None) for n in m["names"])
-        elif "name" in m and "width" in m:
-            ports.append(_IfaceDecl([str(m["name"]).lower()], mode, False, int(m["width"])))
-
-    add("leds", "out")
-    add("switches", "in")
-    add("buttons", "in")
-    add("leds_green", "out")
-    ss = block.get("seven_seg")
-    if isinstance(ss, dict):
-        style = ss.get("style")
-        if style == "individual" and ss.get("names"):
-            # One width_per_digit-bit vector port per digit (HEX0..n).
-            wpd = int(ss["width_per_digit"])
-            ports.extend(_IfaceDecl([str(n).lower()], "out", False, wpd) for n in ss["names"])
-        elif style == "scan":
-            # U22 physical scan interface: shared segment lines (one vector or
-            # per-segment scalars) + digit_enable vector + optional dp scalar.
-            if ss.get("names"):
-                ports.extend(_IfaceDecl([str(n).lower()], "out", False, None) for n in ss["names"])
-            elif "name" in ss:
-                ports.append(
-                    _IfaceDecl([str(ss["name"]).lower()], "out", False, int(ss["width_per_digit"]))
-                )
-            if isinstance(ss.get("dp"), str):
-                ports.append(_IfaceDecl([ss["dp"].lower()], "out", False, None))
-            en = ss.get("digit_enable")
-            if isinstance(en, dict) and "name" in en and "width" in en:
-                ports.append(_IfaceDecl([str(en["name"]).lower()], "out", False, int(en["width"])))
-        elif style == "serial" and ss.get("names"):
-            # Shift-register lines (Sword's sseg_clk/sseg_en/sseg_sdo): scalar
-            # outputs; the style carries no width_per_digit.
-            ports.extend(_IfaceDecl([str(n).lower()], "out", False, None) for n in ss["names"])
-    return ports
-
-
 def _synth_iface_scalar_width1_leds(block: dict[str, Any]) -> list[_IfaceDecl] | None:
-    """``_synth_iface`` variant spelling a width-1 shared-vector LED bank as a
+    """``synth_interface`` variant spelling a width-1 shared-vector LED bank as a
     plain scalar (``led : out std_logic``) rather than std_logic_vector(0 downto 0).
 
     Returns None when the primary LED bank is not a width-1 ``name``+``width``
@@ -436,7 +389,7 @@ def _synth_iface_scalar_width1_leds(block: dict[str, Any]) -> list[_IfaceDecl] |
     name = str(leds["name"]).lower()
     return [
         _IfaceDecl(d.names, d.mode, d.has_default, None) if d.names == [name] else d
-        for d in _synth_iface(block)
+        for d in synth_interface(block)
     ]
 
 
@@ -456,7 +409,7 @@ def test_no_cross_board_native_match_flips_polarity() -> None:
         block = _canonical_block(bd)
         if block is None:
             continue
-        ports = _synth_iface(block)
+        ports = synth_interface(block)
         for other in boards:
             if other.name == bd.name:
                 continue
@@ -498,7 +451,7 @@ def test_every_canonical_board_matches_its_own_synthesized_interface() -> None:
             # family) must self-match, physical display interface included.
             continue
         checked += 1
-        if match_convention(_synth_iface(block), [], bd) is None:
+        if match_convention(synth_interface(block), [], bd) is None:
             failures.append(bd.name)
         # F1: a width-1 LED bank must also match the natural scalar spelling
         # (`led : out std_logic`), not only std_logic_vector(0 downto 0).
@@ -666,7 +619,7 @@ end architecture;
 
 
 def test_partial_convention_led_only_matches() -> None:
-    m = match_convention(_synth_iface(_LED_ONLY_BLOCK), [], _synth_board(_LED_ONLY_BLOCK))
+    m = match_convention(synth_interface(_LED_ONLY_BLOCK), [], _synth_board(_LED_ONLY_BLOCK))
     assert m is not None
     assert m.leds == NativePort(("LEDR",), 10, False)
     assert m.switches is None
@@ -674,14 +627,14 @@ def test_partial_convention_led_only_matches() -> None:
 
 
 def test_partial_convention_led_plus_button_matches() -> None:
-    m = match_convention(_synth_iface(_LED_BTN_BLOCK), [], _synth_board(_LED_BTN_BLOCK))
+    m = match_convention(synth_interface(_LED_BTN_BLOCK), [], _synth_board(_LED_BTN_BLOCK))
     assert m is not None
     assert m.buttons == NativePort(("KEY",), 2, True)
     assert m.switches is None
 
 
 def test_partial_convention_led_plus_switch_matches() -> None:
-    m = match_convention(_synth_iface(_LED_SW_BLOCK), [], _synth_board(_LED_SW_BLOCK))
+    m = match_convention(synth_interface(_LED_SW_BLOCK), [], _synth_board(_LED_SW_BLOCK))
     assert m is not None
     assert m.switches == NativePort(("SW",), 4, False)
     assert m.buttons is None
@@ -704,7 +657,7 @@ def test_canonical_convention_wins_over_framework_derived() -> None:
         # framework block deliberately first in insertion order
         port_conventions={"litex": framework, "terasic": canonical},
     )
-    m = match_convention(_synth_iface(canonical), [], bd)
+    m = match_convention(synth_interface(canonical), [], bd)
     assert m is not None
     assert m.maker == "terasic"  # authoritative block chosen over the framework guess
     assert (
@@ -716,7 +669,7 @@ def test_partial_convention_extra_input_is_near_miss() -> None:
     # The convention declares no switches; a design that adds a *default-less* `sw`
     # input would be left unbound in the wrapper's uut port map, so it must NOT
     # full-match.
-    ports = [*_synth_iface(_LED_ONLY_BLOCK), _IfaceDecl(["sw"], "in", False, 4)]
+    ports = [*synth_interface(_LED_ONLY_BLOCK), _IfaceDecl(["sw"], "in", False, 4)]
     assert match_convention(ports, [], _synth_board(_LED_ONLY_BLOCK)) is None
 
 
@@ -724,7 +677,7 @@ def test_partial_convention_extra_input_with_default_matches() -> None:
     # F3: an extra input carrying a default expression is legal unassociated in
     # both GHDL and NVC (as the generic path allows), so it does NOT block a
     # native match -- consistent with `_check_parsed_contract`.
-    ports = [*_synth_iface(_LED_ONLY_BLOCK), _IfaceDecl(["uart_rx"], "in", True, None)]
+    ports = [*synth_interface(_LED_ONLY_BLOCK), _IfaceDecl(["uart_rx"], "in", True, None)]
     assert match_convention(ports, [], _synth_board(_LED_ONLY_BLOCK)) is not None
 
 
@@ -734,7 +687,7 @@ def test_partial_convention_extra_non_input_still_matches(mode: str) -> None:
     # unassociated out/inout/buffer `open` at elaboration (verified against both
     # toolchains), so the wrapper simply omits it -- like the DE0 example's
     # split-DP HEXn_DP outputs.  Only an unmapped `in` is an unbound port.
-    ports = [*_synth_iface(_LED_ONLY_BLOCK), _IfaceDecl(["dbg"], mode, False, 1)]
+    ports = [*synth_interface(_LED_ONLY_BLOCK), _IfaceDecl(["dbg"], mode, False, 1)]
     assert match_convention(ports, [], _synth_board(_LED_ONLY_BLOCK)) is not None
 
 

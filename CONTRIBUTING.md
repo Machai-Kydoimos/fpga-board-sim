@@ -596,6 +596,13 @@ pipeline instead:
   needed, see [reading upstream files](#reading-upstream-files)), and commit the
   code + regenerated JSONs together; the drift job proves the pair is consistent.
 
+Whichever route it takes, a change to board data or to how designs match boards
+regenerates the design × board impact matrix in the same PR, with
+`uv run python scripts/gen_board_design_matrix.py` (`tests/test_board_design_matrix.py`
+fails until you do), and the diff of `tests/fixtures/board_design_matrix.json` is that
+change's impact evidence: which designs gained or lost a board, and which native
+banks or generics moved.
+
 ### Reading upstream files
 
 The syncs **read** upstream files and never execute them. Amaranth's and LiteX's
