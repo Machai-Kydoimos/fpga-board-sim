@@ -351,7 +351,7 @@
     "boards_loaded": 344,
     "contract_checks": 12040,
     "designs": 35,
-    "native_banks": 769
+    "native_banks": 773
   },
   "designs": {
     "hdl/blinky.vhd": {
@@ -1585,6 +1585,10 @@
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_sw"], "scalar_ports": false, "width": 8}
     },
     "litex-boards/digilent_zybo_z7": {
+      "digilent.buttons": {"active_low": false, "match": "digilent", "names": ["btn"], "scalar_ports": false, "width": 4},
+      "digilent.leds": {"active_low": false, "match": "digilent", "names": ["led"], "scalar_ports": false, "width": 4},
+      "digilent.leds_rgb": {"active_low": false, "match": "digilent", "names": ["led5_r", "led5_g", "led5_b", "led6_r", "led6_g", "led6_b"], "scalar_ports": true, "width": 6},
+      "digilent.switches": {"active_low": false, "match": "digilent", "names": ["sw"], "scalar_ports": false, "width": 4},
       "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn"], "scalar_ports": false, "width": 4},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 4},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_sw"], "scalar_ports": false, "width": 4}
