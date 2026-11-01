@@ -230,3 +230,31 @@ def test_plain_led_bank_has_no_color():
 def test_led_generation_is_deterministic():
     """U36: color + reclassification are pure -> identical LED output across runs."""
     assert _leds_of(_RGB_TRIO_SOURCE) == _leds_of(_RGB_TRIO_SOURCE)
+
+
+# ── identity and outcomes (U56 plan §4.1–4.2) ──────────────────────────────────
+
+
+def test_read_amaranth_file_records_each_class_as_identity():
+    from amaranth_parser import read_amaranth_file
+
+    outcome = read_amaranth_file(_INLINE_BOARD_SOURCE, "sync_test.py")
+    assert outcome.outcome == "boards"
+    assert [b.upstream_class for b in outcome.boards] == [
+        b.board["class_name"] for b in outcome.boards
+    ]
+    assert all(b.upstream_args == {} for b in outcome.boards)
+
+
+def test_read_amaranth_file_tells_an_empty_board_from_a_non_board():
+    from amaranth_parser import read_amaranth_file
+
+    empty = "class BarePlatform(LatticeICE40Platform):\n    resources = []\n"
+    assert read_amaranth_file(empty, "bare.py").detail == "not_a_board"
+    no_io = (
+        "class UartOnlyPlatform(LatticeICE40Platform):\n"
+        "    resources = [UARTResource(0, rx='1', tx='2')]\n"
+    )
+    assert read_amaranth_file(no_io, "uart_only.py").detail == "no_simulatable_io"
+    broken = read_amaranth_file("class X(Missing):\n    pass\n", "broken.py")
+    assert (broken.outcome, broken.detail) == ("error", "NameError: Missing")

@@ -11,16 +11,26 @@ import io
 import json
 import sys
 import tarfile
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
-from litex_parser import parse_litex_board  # noqa: E402
+from litex_parser import read_litex_file  # noqa: E402
 from sync_common import (  # noqa: E402
+    ParseOutcome,
+    ProducedBoard,
     download_archive,
     resolve_commit_sha,
     sanitize_filename,
     unique_name,
-    write_outputs,
+)
+from sync_identity import (  # noqa: E402
+    Reader,
+    SyncFailureError,
+    load_accept_list,
+    run_sync,
+    summarize,
 )
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -59,55 +69,65 @@ def extract_board_files(archive_bytes: bytes) -> dict[str, str]:
 # ═══════════════════════════════════════════════════════════════════════
 
 
+_ORIGIN = "litex-boards"
+
+
+def make_reader(
+    commit_sha: str, schema_ref: str = "../schema/board.schema.json", timestamp: str = ""
+) -> Reader:
+    """Return the reader ``run_sync`` calls per upstream file: read it, then stamp ``source``.
+
+    The identity fields sit after ``upstream_file`` and the board keys keep today's order,
+    so a re-sync rewrites a board only where its content really changed.
+    """
+    stamp = timestamp or datetime.now(UTC).isoformat()
+
+    def read(filename: str, text: str, args: Mapping[str, Any] | None) -> ParseOutcome:
+        outcome = read_litex_file(text, filename, args)
+        for produced in outcome.boards:
+            source: dict[str, Any] = {
+                "origin": _ORIGIN,
+                "upstream_file": filename,
+                "upstream_class": produced.upstream_class,
+            }
+            if produced.upstream_args:
+                source["upstream_args"] = dict(produced.upstream_args)
+            source["sync_commit"] = commit_sha
+            source["sync_timestamp"] = stamp
+            produced.board["$schema"] = schema_ref
+            produced.board["source"] = source
+        return outcome
+
+    return read
+
+
+def describe(produced: ProducedBoard) -> str:
+    """Summarize one board for the sync's progress line."""
+    board = produced.board
+    seg = f", {board['seven_seg']['num_digits']}-digit 7seg" if board.get("seven_seg") else ""
+    return (
+        f"{len(board.get('leds', []))} LEDs, {len(board.get('switches', []))} SW,"
+        f" {len(board.get('buttons', []))} BTN{seg}"
+    )
+
+
 def generate_all_json(
     board_files: dict[str, str],
     commit_sha: str,
     schema_ref: str = "../schema/board.schema.json",
 ) -> dict[str, str]:
-    """Parse all board files and generate JSON strings."""
+    """Read every board file and return ``{file name: JSON}``, with no disk state.
+
+    For tests and audits only: the write path is ``sync_identity.run_sync``, which names
+    files by identity. This names them by display name, as syncs did before identities.
+    """
+    read = make_reader(commit_sha, schema_ref)
     seen: dict[str, int] = {}
     results: dict[str, str] = {}
-    timestamp = datetime.now(UTC).isoformat()
-    skipped = 0
-
     for filename, source in sorted(board_files.items()):
-        try:
-            boards = parse_litex_board(source, filename)
-        except Exception as e:
-            print(f"  [skip] {filename}: {e}", file=sys.stderr)
-            skipped += 1
-            continue
-
-        if not boards:
-            skipped += 1
-            continue
-
-        for board in boards:
-            board["$schema"] = schema_ref
-            board["source"] = {
-                "origin": "litex-boards",
-                "upstream_file": filename,
-                "sync_commit": commit_sha,
-                "sync_timestamp": timestamp,
-            }
-
-            base = sanitize_filename(board["name"])
-            output_name = unique_name(base, seen)
-            results[f"{output_name}.json"] = json.dumps(board, indent=2) + "\n"
-
-            n_leds = len(board.get("leds", []))
-            n_btns = len(board.get("buttons", []))
-            n_sw = len(board.get("switches", []))
-            seg_info = ""
-            if board.get("seven_seg"):
-                seg_info = f", {board['seven_seg']['num_digits']}-digit 7seg"
-            print(
-                f"  {filename} -> {output_name}.json"
-                f" ({n_leds} LEDs, {n_sw} SW, {n_btns} BTN{seg_info})"
-            )
-
-    if skipped:
-        print(f"  ({skipped} files skipped — no simulatable resources or parse errors)")
+        for produced in read(filename, source, None).boards:
+            name = unique_name(sanitize_filename(str(produced.board["name"])), seen)
+            results[f"{name}.json"] = json.dumps(produced.board, indent=2) + "\n"
     return results
 
 
@@ -157,12 +177,25 @@ def main() -> int:
         print("No board files found in archive.", file=sys.stderr)
         return 1
 
-    print("Generating JSON definitions ...")
-    board_jsons = generate_all_json(board_files, commit_sha)
-    print(f"Generated {len(board_jsons)} board definitions.")
-
-    print(f"\nWriting to {args.output_dir} ...")
-    write_outputs(args.output_dir, board_jsons, commit_sha, _REPO, dry_run=args.dry_run)
+    print(f"Reading board files (parsed, never executed) into {args.output_dir} ...")
+    try:
+        report = run_sync(
+            origin=_ORIGIN,
+            repo=_REPO,
+            files=board_files,
+            commit_sha=commit_sha,
+            output_dir=args.output_dir,
+            read=make_reader(commit_sha),
+            accept_list=load_accept_list(),
+            dry_run=args.dry_run,
+            describe=describe,
+        )
+    except SyncFailureError as failure:
+        print("\nSync stopped; nothing was written:", file=sys.stderr)
+        for problem in failure.problems:
+            print(f"  - {problem}", file=sys.stderr)
+        return 1
+    print(summarize(report))
 
     print("\nDone.")
     return 0

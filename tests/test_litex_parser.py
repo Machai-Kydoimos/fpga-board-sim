@@ -3,7 +3,7 @@
 Hermetic: exercises parse_litex_board() with inline platform-file source, no network.
 """
 
-from litex_parser import parse_litex_board
+from litex_parser import parse_litex_board, read_litex_file
 
 _BASIC = """
 from litex.build.generic_platform import *
@@ -239,3 +239,77 @@ def test_led_name_color_heuristic():
     assert by_name["led_g_n"]["color"] == "green"
     assert by_name["led_r_n"]["color"] == "red"
     assert "color" not in by_name["led"]  # user_led -> led, no name-derived color
+
+
+# ── identity and outcomes (U56 plan §4.1–4.2) ──────────────────────────────────
+
+
+_VERSIONED = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io_r1 = [("clk100", 0, Pins("E3")), ("user_led", 0, Pins("H5"))]
+_io_r2 = [("clk100", 0, Pins("E3")), ("user_led", 0, Pins("H5")), ("user_led", 1, Pins("J5"))]
+
+class Platform(Xilinx7SeriesPlatform):
+    default_clk_name = "clk100"
+    default_clk_period = 1e9/100e6
+    def __init__(self, revision=1, toolchain="vivado", speedgrade=-1):
+        if revision not in (1, 2):
+            raise ValueError("unknown revision")
+        io = _io_r1 if revision == 1 else _io_r2
+        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", io, toolchain=toolchain)
+"""
+
+
+def test_the_board_records_its_class_and_version_defaults():
+    outcome = read_litex_file(_VERSIONED, "versioned_board.py")
+    assert outcome.outcome == "boards" and outcome.warnings == []
+    (board,) = outcome.boards
+    assert board.upstream_class == "Platform"
+    # Only version-selecting parameters: toolchain and speedgrade are not identity.
+    assert board.upstream_args == {"revision": 1}
+    assert board.default is True
+    assert len(board.board["leds"]) == 1
+
+
+def test_a_recorded_identity_is_built_with_its_arguments():
+    outcome = read_litex_file(_VERSIONED, "versioned_board.py", {"revision": 2})
+    (board,) = outcome.boards
+    assert board.upstream_args == {"revision": 2} and board.default is False
+    assert len(board.board["leds"]) == 2
+
+
+def test_a_version_upstream_no_longer_accepts_is_an_error_not_a_fallback():
+    outcome = read_litex_file(_VERSIONED, "versioned_board.py", {"revision": 3})
+    assert (outcome.outcome, outcome.detail, outcome.boards) == ("error", "ValueError", [])
+
+
+def test_the_module_level_fallback_is_a_warning_and_wukong_keeps_revision_2():
+    source = (
+        _VERSIONED.replace(
+            '        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", io, toolchain=toolchain)',
+            "        self.toolchain.additional_commands = []  # a mock gap: the constructor fails",
+        )
+        .replace("_io_r1 =", "_io_v1 =")
+        .replace("_io_r2 =", "_io_v2 =")
+        .replace(
+            "io = _io_r1 if revision == 1 else _io_r2", "io = _io_v1 if revision == 1 else _io_v2"
+        )
+    )
+    outcome = read_litex_file(source, "qmtech_wukong.py")
+    assert outcome.warnings == ["io_fallback: _io_v2"]  # the fallback tries _io_v2 before _io_v1
+    (board,) = outcome.boards
+    assert board.upstream_args == {"revision": 2}  # the migration entry (plan §4.1)
+    elsewhere = read_litex_file(source, "another_board.py")
+    assert elsewhere.boards[0].upstream_args == {"revision": 1}  # the default's identity
+
+
+def test_outcomes_say_why_a_file_has_no_board():
+    assert read_litex_file("x = 1\n", "helpers.py").detail == "not_a_board"
+    no_io = _VERSIONED.replace('("user_led", 0, Pins("H5"))', '("serial", 0, Pins("H5"))').replace(
+        ', ("user_led", 1, Pins("J5"))', ""
+    )
+    assert read_litex_file(no_io, "no_io.py").detail == "no_simulatable_io"
+    broken = read_litex_file("class Platform(Undefined):\n    pass\n", "broken.py")
+    assert (broken.outcome, broken.detail) == ("error", "NameError: Undefined")

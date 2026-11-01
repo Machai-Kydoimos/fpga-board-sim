@@ -463,7 +463,8 @@ Identity key = `(origin, upstream_file, upstream_class, upstream_args)`.
   default construction on a tie, and use each file and each board once. Growing the parameter
   list therefore never orphans a file.
 - **File-name assignment.** An identity that already has a file keeps it forever. A new identity
-  gets `<sanitized upstream file stem>`, plus `_<sanitized class minus "Platform">` when the file
+  gets `<sanitized upstream file stem>` (Digilent drops the `-Master` every XDC file name ends in,
+  so a new ZedBoard is `zedboard.json`; decided 2026-11-01, Rick), plus `_<sanitized class minus "Platform">` when the file
   defines more than one board, plus `_<param>-<value>` for each version parameter whose value is
   not the default. If that name is held by another identity of the same upstream file and class,
   append `_<param>-<value>` for every version parameter instead: the default revision 1 of Wukong
@@ -785,8 +786,10 @@ plan-index rows in `docs/improvement_roadmap.md` and `docs/README.md`; Icebox P3
   and it is the check that catches a self-orphaning identity such as Wukong's.
 - Ledger lists exactly today's skips: LiteX 77 of 248 platform files (24 `not_a_board` or
   `no_simulatable_io` + 53 errors in the classes of §2.3/§2.4), plus **86** `io_fallback`
-  warnings, one of them `_io_v2` (Wukong); Amaranth 10 (`microzed_z010`, `microzed_z020`,
-  `sk_xc6slx9`, `tinyfpga_ax1`, `tinyfpga_ax2`, `zturn_lite_z007s` → no simulatable I/O;
+  warnings, one of them `_io_v2` (Wukong); Amaranth 10 (`not_a_board` for the five whose class
+  declares `resources = []` — `microzed_z010`, `microzed_z020`, `tinyfpga_ax1`, `tinyfpga_ax2`,
+  `zturn_lite_z007s` — and `no_simulatable_io` for `sk_xc6slx9`, whose three resources are none we
+  simulate (measured 2026-11-01);
   `supercon19badge` `DiffPairsN`, `upduino_v2` `UpduinoV1Platform`, `versa_ecp5_5g`
   `VersaECP5Platform`, `zturn_lite_z010` `ZTurnLiteZ007SPlatform` → errors); Digilent 1
   (`Zedboard-Master.xdc`, no simulatable I/O). In 1a and 1b, `error` outcomes are reported but do
@@ -870,7 +873,8 @@ check; full `pytest`.
   change, because a reorder there *does* move `led(i)`: LimeSDR Mini V2's alternating green and red
   LEDs are real bi-color hardware, and the 1-pin and 4-pin "RGB" resources (`colorlight_i9plus`,
   `sipeed_tang_nano_20k`, `modretro_chromatic`) are mono by the loader's rule and stay put.
-- New boards take stem-based file names (§4.1), e.g. Amaranth `versa_ecp5_5g.json`,
+- New boards take stem-based file names (§4.1), e.g. Digilent `zedboard.json` (from
+  `Zedboard-Master.xdc`), Amaranth `versa_ecp5_5g.json`,
   `supercon19badge.json`, `upduino_v2.json`.
 - Phase 1b already fixed the prettifiers; add a display-name override only for a new name that
   `tests/test_board_display_names.py` still flags.
@@ -1049,8 +1053,8 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 |---|---|---|---|
 | PR 0 | plan + card + ID + decisions | no | done 2026-10-31 (#465) |
 | early | `--board` by source (1a item 6); the no-scope sync-token recipe (§4.4) | no | `--board`: done 2026-10-31 (#466), ahead of the arc. Token recipe: **dropped** 2026-10-31 — Rick decided no upstream code is executed, so `gh`'s own token is fine for our code; until the parse-only reader lands, the syncs that execute upstream files run only in CI (amendment to follow) |
-| 0 | parse-only reader: no upstream code executed (D-7, §5a) | no | not started |
-| 1a | identity, ledger, accept-list, orphan detection, impact matrix with per-bank rows (`--board` re-checked) | no | not started |
+| 0 | parse-only reader: no upstream code executed (D-7, §5a) | no | done 2026-11-01 (#469) |
+| 1a | identity, ledger, accept-list, orphan detection, impact matrix with per-bank rows (`--board` re-checked) | no | done 2026-11-01 (#470) |
 | 1b | display names (P35) | no (a before → after name table) | not started |
 | 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | not started |
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | not started |

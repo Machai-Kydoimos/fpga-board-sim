@@ -596,6 +596,13 @@ pipeline instead:
   needed, see [reading upstream files](#reading-upstream-files)), and commit the
   code + regenerated JSONs together; the drift job proves the pair is consistent.
 
+Whichever route it takes, a change to board data or to how designs match boards
+regenerates the design × board impact matrix in the same PR, with
+`uv run python scripts/gen_board_design_matrix.py` (`tests/test_board_design_matrix.py`
+fails until you do), and the diff of `tests/fixtures/board_design_matrix.json` is that
+change's impact evidence: which designs gained or lost a board, and which native
+banks or generics moved.
+
 ### Reading upstream files
 
 The syncs **read** upstream files and never execute them. Amaranth's and LiteX's
@@ -620,6 +627,36 @@ GITHUB_TOKEN="$(gh auth token)" uv run python scripts/check_board_drift.py
 **Never add an `exec`, `eval`, `compile`, `__import__` or `importlib` call under
 `scripts/`** (`tests/test_no_upstream_exec.py` fails on one): if the reader cannot
 read something upstream wrote, teach it the construct, or let the file be reported.
+
+### Board identity, the ledger and the accept-list
+
+Every synced board records its identity in its file's `source` block (the upstream
+file, the platform class, and for LiteX the constructor's version arguments), and **a
+board file keeps its name forever**. The cited registries key boards by file path, and
+recent runs by class name, so never rename a generated board file or change its
+`class_name`. A board that is new upstream is named after its upstream file, not its
+display name.
+
+Each sync prints a ledger, and writes it into the source's `_sync_metadata.json`. It
+records one outcome per upstream file (`boards: …`, `skipped: not_a_board`,
+`skipped: no_simulatable_io`, or `error: <type>: <name>`), plus warnings such as
+`io_fallback`. A PR's diff therefore shows every change in what a sync could read.
+
+A sync **stops, and writes nothing**, rather than guess:
+
+- when our parser fails on an upstream file whose boards are already on disk (going on
+  would orphan boards upstream still has);
+- when a file still parses but no longer yields a board we have, or yields it with no
+  LEDs, switches or buttons. A renamed upstream class and our own misreading look the
+  same, so a person has to look.
+
+If the cause is upstream's (decision 2: we never correct upstream data), record it in
+`scripts/board_sync_accepted.toml` (the file explains the fields; link the upstream
+issue) and re-run: the board is then marked orphaned, or left untouched for an accepted
+error. If the cause is ours, fix the parser instead. An entry that stops matching fails
+the sync, so remove it once upstream fixes the file. A board whose upstream file is
+deleted is marked orphaned automatically: it stays on disk, frozen, so designs written
+for it keep running.
 
 `docs/architecture.md` covers the sync pipeline's structure;
 `docs/plans/u21_board_native_vhdl_plan.md` and `docs/plans/u22_7seg_scan_plan.md` are the

@@ -10,11 +10,14 @@ JSON schema shape).  Self-contained: no ``fpga_sim`` dependency.  Used by
 
 import re
 import sys
+from collections.abc import Mapping
 from typing import Any
 
 from framework_conventions import RoleEntry, build_convention
 from led_metadata import color_from_name
-from upstream_reader import read_module
+from sync_common import ParseOutcome, ProducedBoard, normalize_error
+from sync_identity import VERSION_PARAMS
+from upstream_reader import InterpretedFunction, read_module
 
 # ═══════════════════════════════════════════════════════════════════════
 #  Mock LiteX build system classes
@@ -483,8 +486,38 @@ def _make_class_name(filename: str) -> str:
 # ═══════════════════════════════════════════════════════════════════════
 
 
+#: While the module-level fallback exists (until U56 Phase 1c), the board it builds takes the
+#: default construction's identity -- except Wukong's: its fallback reads ``_io_v2``
+#: (revision 2) although the constructor defaults to revision 1 (plan §4.1).
+_FALLBACK_IDENTITY: dict[str, dict[str, Any]] = {"qmtech_wukong.py": {"revision": 2}}
+
+
+def _version_args(platform_class: type) -> dict[str, Any]:
+    """Return the defaults of the constructor's version parameters (plan §4.1)."""
+    for klass in platform_class.__mro__:
+        init = vars(klass).get("__init__")
+        if isinstance(init, InterpretedFunction):
+            defaults = init.parameter_defaults()
+            return {key: defaults[key] for key in VERSION_PARAMS if key in defaults}
+    return {}
+
+
 def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
     """Read a litex-boards platform file, without executing it, and return board dicts."""
+    return [produced.board for produced in read_litex_file(source, filename).boards]
+
+
+def read_litex_file(
+    source: str, filename: str, args: Mapping[str, Any] | None = None
+) -> ParseOutcome:
+    """Read one platform file, without executing it, into a :class:`ParseOutcome`.
+
+    The board carries its identity (U56 plan §4.1): the platform class and the effective
+    values of the constructor's version parameters.  ``args`` builds a recorded
+    non-default identity, ``Platform(**args)``, instead of the default construction; a
+    constructor that fails then is an ``error``, never the module-level fallback, so the
+    sync can report that version as no longer defined.
+    """
     lines = source.split("\n")
     cleaned = []
     for line in lines:
@@ -498,9 +531,9 @@ def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
     try:
         read_module("\n".join(cleaned), filename, ns)
     except Exception as exc:
-        # Loud until U56 Phase 1a's ledger records it: a skipped file is never silent.
+        # Recorded in the ledger by the sync; said aloud here for a direct caller.
         print(f"  skipped {filename}: {type(exc).__name__}: {exc}", file=sys.stderr)
-        return []
+        return ParseOutcome(outcome="error", detail=normalize_error(exc))
 
     # Find the Platform class (skip injected mock base classes)
     platform_class = None
@@ -522,7 +555,8 @@ def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
             break
 
     if platform_class is None:
-        return []
+        return ParseOutcome(outcome="skipped", detail="not_a_board")
+    version = {**_version_args(platform_class), **(args or {})}
 
     # Get class-level attributes
     default_clk_name = getattr(platform_class, "default_clk_name", None)
@@ -532,13 +566,15 @@ def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
     device = ""
     captured_io: list[tuple[Any, ...]] = []
     try:
-        instance = platform_class()
+        instance = platform_class(**(args or {}))
         device = getattr(instance, "device", "")
         captured_io = getattr(instance, "_captured_io", [])
     except Exception as exc:
+        if args is not None:
+            return ParseOutcome(outcome="error", detail=normalize_error(exc))
         # The constructor ran in the reader and failed on a mock it needs (defect 6);
-        # the module-level I/O below stands in, with no device.  Said aloud (Phase 1a
-        # turns it into an `io_fallback` ledger warning).
+        # the module-level I/O below stands in, with no device -- an `io_fallback`
+        # warning in the ledger until Phase 1c removes the fallback.
         print(
             f"  {filename}: Platform() failed ({type(exc).__name__}: {exc});"
             " using the module-level I/O",
@@ -546,15 +582,19 @@ def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
         )
 
     # Fallback: use module-level _io
+    fallback = ""
     if not captured_io:
         for var_name in ("_io", "_io_v2", "_io_v1", "_io_common"):
             val = ns.get(var_name)
             if isinstance(val, list) and val:
                 captured_io = val
+                fallback = var_name
                 break
 
     if not captured_io:
-        return []
+        return ParseOutcome(outcome="skipped", detail="not_a_board")
+    if fallback and filename in _FALLBACK_IDENTITY:
+        version = dict(_FALLBACK_IDENTITY[filename])
 
     # Get vendor from class hierarchy
     vendor = ""
@@ -598,7 +638,7 @@ def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
             seg_ctrl_tuples.append(io_tuple)
 
     if not (leds or buttons or switches):
-        return []
+        return ParseOutcome(outcome="skipped", detail="no_simulatable_io")
 
     # Calculate clock frequency
     default_clock_hz: float | None = None
@@ -655,4 +695,13 @@ def parse_litex_board(source: str, filename: str) -> list[dict[str, Any]]:
     }
     if port_conventions:
         board["port_conventions"] = port_conventions
-    return [board]
+    produced = ProducedBoard(
+        board=board,
+        upstream_file=filename,
+        upstream_class=platform_class.__name__,
+        upstream_args=version,
+        default=args is None,
+    )
+    return ParseOutcome(
+        boards=[produced], warnings=[f"io_fallback: {fallback}"] if fallback else []
+    )

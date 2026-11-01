@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Board-sync accept-list (scripts/board_sync_accepted.toml)",
+  "description": "Upstream outcomes a person has looked at and accepted, so a board sync that would otherwise fail can proceed (U56 plan \u00a74.2\u20134.3).",
+  "type": "object",
+  "properties": {
+    "accept": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entry"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "enum": [
+            "amaranth-boards",
+            "digilent-xdc",
+            "litex-boards"
+          ]
+        },
+        "upstream_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "enum": [
+            "error",
+            "orphan"
+          ]
+        },
+        "file": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+\\.json$"
+        },
+        "orphaned_reason": {
+          "enum": [
+            "no_longer_defined",
+            "no_simulatable_io"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 10
+        },
+        "issue": {
+          "type": "string",
+          "pattern": "^https://"
+        }
+      },
+      "required": [
+        "source",
+        "upstream_file",
+        "outcome",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "orphan"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "file",
+          "orphaned_reason"
+        ]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "file"
+              ]
+            },
+            {
+              "required": [
+                "orphaned_reason"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

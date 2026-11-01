@@ -1,7 +1,7 @@
 {
   "source_repo": "https://github.com/Digilent/digilent-xdc",
   "source_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-  "sync_timestamp": "2026-05-25T04:03:40.988354+00:00",
+  "sync_timestamp": "2026-10-31T23:32:48.905875+00:00",
   "board_count": 26,
   "files_written": [
     "arty.json",
@@ -30,5 +30,36 @@
     "usb104_a7-100t.json",
     "zybo.json",
     "zybo_z7.json"
-  ]
+  ],
+  "ledger": {
+    "Arty-A7-100-Master.xdc": "boards: arty_a7-100.json",
+    "Arty-A7-35-Master.xdc": "boards: arty_a7-35.json",
+    "Arty-Master.xdc": "boards: arty.json",
+    "Arty-S7-25-Master.xdc": "boards: arty_s7-25.json",
+    "Arty-S7-50-Master.xdc": "boards: arty_s7-50.json",
+    "Arty-Z7-10-Master.xdc": "boards: arty_z7-10.json",
+    "Arty-Z7-20-Master.xdc": "boards: arty_z7-20.json",
+    "Basys-3-Master.xdc": "boards: basys_3.json",
+    "Cmod-A7-Master.xdc": "boards: cmod_a7.json",
+    "Cmod-S7-25-Master.xdc": "boards: cmod_s7-25.json",
+    "Cora-Z7-07S-Master.xdc": "boards: cora_z7-07s.json",
+    "Cora-Z7-10-Master.xdc": "boards: cora_z7-10.json",
+    "Eclypse-Z7-Master.xdc": "boards: eclypse_z7.json",
+    "Genesys-2-Master.xdc": "boards: genesys_2.json",
+    "Genesys-ZU-3EG-D-Master.xdc": "boards: genesys_zu-3eg-d.json",
+    "Genesys-ZU-3EG-Master.xdc": "boards: genesys_zu-3eg.json",
+    "Genesys-ZU-5EV-D-Master.xdc": "boards: genesys_zu-5ev-d.json",
+    "Nexys-4-DDR-Master.xdc": "boards: nexys_4_ddr.json",
+    "Nexys-4-Master.xdc": "boards: nexys_4.json",
+    "Nexys-A7-100T-Master.xdc": "boards: nexys_a7-100t.json",
+    "Nexys-A7-50T-Master.xdc": "boards: nexys_a7-50t.json",
+    "Nexys-Video-Master.xdc": "boards: nexys_video.json",
+    "Sword-Master.xdc": "boards: sword.json",
+    "USB104-A7-100T-Master.xdc": "boards: usb104_a7-100t.json",
+    "Zedboard-Master.xdc": "skipped: no_simulatable_io",
+    "Zybo-Master.xdc": "boards: zybo.json",
+    "Zybo-Z7-Master.xdc": "boards: zybo_z7.json"
+  },
+  "warnings": {},
+  "orphans": []
 }

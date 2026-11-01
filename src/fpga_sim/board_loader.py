@@ -307,6 +307,18 @@ class BoardDef:
     #: like ``source``, and like it never serialized: the pair is the one spelling
     #: that names exactly one board (:attr:`qualified_name`).
     file_stem: str = ""
+    #: ``"orphaned"`` when upstream no longer defines this board (U56 plan §4.3): the
+    #: file is kept, frozen at its last good sync, so designs written for it still
+    #: run.  Empty for a board upstream still defines.  Read from the board file's
+    #: ``source`` block, like the three fields below.
+    upstream_status: str = ""
+    #: The upstream commit of the sync that found the board orphaned.
+    orphaned_at_commit: str = ""
+    #: ``file_removed`` / ``no_longer_defined`` / ``no_simulatable_io``.
+    orphaned_reason: str = ""
+    #: ``<source>/<file>.json`` of the board that most likely replaces an orphan (a
+    #: hint, never an automatic migration).
+    successor: str = ""
 
     @property
     def qualified_name(self) -> str:
@@ -483,8 +495,21 @@ class BoardDef:
                 # matcher + native wrapper), so it rides to the subprocess
                 # harmlessly and needs no typed round-trip here.
                 "port_conventions": self.port_conventions,
+                # Only an orphaned board carries a source block, so every other
+                # board's serialization stays exactly as it was (U56 §4.3).
+                **({"source": self._orphan_source()} if self.upstream_status else {}),
             }
         )
+
+    def _orphan_source(self) -> dict[str, str]:
+        """Return the orphan fields of the board file's ``source`` block, for ``to_json``."""
+        fields = {
+            "upstream_status": self.upstream_status,
+            "orphaned_at_commit": self.orphaned_at_commit,
+            "orphaned_reason": self.orphaned_reason,
+            "successor": self.successor,
+        }
+        return {k: v for k, v in fields.items() if v}
 
     @classmethod
     def from_json(cls, raw: str) -> "BoardDef":
@@ -512,6 +537,9 @@ class BoardDef:
 
         raw_7seg = data.get("seven_seg")
         class_name = data["class_name"]
+        source = data.get("source")
+        if not isinstance(source, dict):
+            source = {}
         return cls(
             # U49: repair the sync parsers' name heuristic at load time, so the
             # correction reaches every consumer -- selector, session log, and
@@ -531,6 +559,10 @@ class BoardDef:
             # `or {}` also covers an explicit ``"port_conventions": null``, not
             # just an absent key -- a board without conventions gets an empty mapping.
             port_conventions=data.get("port_conventions") or {},
+            upstream_status=str(source.get("upstream_status", "")),
+            orphaned_at_commit=str(source.get("orphaned_at_commit", "")),
+            orphaned_reason=str(source.get("orphaned_reason", "")),
+            successor=str(source.get("successor", "")),
         )
 
 

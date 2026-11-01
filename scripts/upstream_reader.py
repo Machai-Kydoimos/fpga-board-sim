@@ -73,7 +73,9 @@ class ModuleStub:
         try:
             return self._attrs[attr]
         except KeyError:
-            raise AttributeError(f"module {self._name!r} has no attribute {attr!r}") from None
+            raise AttributeError(
+                f"module {self._name!r} has no attribute {attr!r}", name=attr
+            ) from None
 
     def classes(self) -> list[type]:
         """Every class among the stub's attributes."""
@@ -346,6 +348,21 @@ class InterpretedFunction:
         """Run the function body in the interpreter."""
         return self.reader.call_function(self, args, kwargs)
 
+    def parameter_defaults(self) -> dict[str, object]:
+        """Return every parameter that has a default, with the value the ``def`` gave it.
+
+        This is ``inspect.signature``'s answer for a function that is never compiled:
+        the LiteX sync records a constructor's version parameters from it (U56 §4.1).
+        """
+        spec = self.args
+        positional = [a.arg for a in (*spec.posonlyargs, *spec.args)]
+        with_default = positional[len(positional) - len(self.defaults) :]
+        defaults: dict[str, object] = dict(zip(with_default, self.defaults, strict=True))
+        for arg, default in zip(spec.kwonlyargs, self.kw_defaults, strict=True):
+            if default is not _NO_DEFAULT:
+                defaults[arg.arg] = default
+        return defaults
+
     def __get__(self, instance: object, owner: type | None = None) -> object:
         """Bind to *instance* as a Python function would."""
         if instance is None:
@@ -472,7 +489,7 @@ class _Reader:
         if isinstance(obj, BaseException) and attr == "args":
             return obj.args
         if obj is None:
-            raise AttributeError(f"'NoneType' object has no attribute {attr!r}")
+            raise AttributeError(f"'NoneType' object has no attribute {attr!r}", name=attr)
         raise self.refuse(node, f"attribute {attr!r} of {type(obj).__name__}")
 
     def set_attr(self, obj: object, attr: str, value: object, node: ast.AST) -> None:
@@ -688,7 +705,7 @@ class _Reader:
         if target.id in scope.names:
             del scope.names[target.id]
         else:
-            raise NameError(f"name {target.id!r} is not defined")
+            raise NameError(f"name {target.id!r} is not defined", name=target.id)
 
     # ── definitions ─────────────────────────────────────────────────────────
 
@@ -847,7 +864,7 @@ class _Reader:
             return self.globals[name]
         if name in _SAFE_BUILTINS:
             return _SAFE_BUILTINS[name]
-        raise NameError(f"name {name!r} is not defined")
+        raise NameError(f"name {name!r} is not defined", name=name)
 
     def eval(self, node: ast.expr, scope: _Scope) -> UpstreamValue:
         self.tick(node)
