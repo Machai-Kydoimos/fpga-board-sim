@@ -1055,7 +1055,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | early | `--board` by source (1a item 6); the no-scope sync-token recipe (§4.4) | no | `--board`: done 2026-10-31 (#466), ahead of the arc. Token recipe: **dropped** 2026-10-31 — Rick decided no upstream code is executed, so `gh`'s own token is fine for our code; until the parse-only reader lands, the syncs that execute upstream files run only in CI (amendment to follow) |
 | 0 | parse-only reader: no upstream code executed (D-7, §5a) | no | done 2026-11-01 (#469) |
 | 1a | identity, ledger, accept-list, orphan detection, impact matrix with per-bank rows (`--board` re-checked) | no | done 2026-11-01 (#470) |
-| 1b | display names (P35) | no (a before → after name table) | not started |
+| 1b | display names (P35) | no (a before → after name table) | done 2026-11-01 (#471) |
 | 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | not started |
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | not started |
 | 3 | orphan UI | **yes** | not started |

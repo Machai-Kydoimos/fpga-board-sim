@@ -1,5 +1,5 @@
 {
-  "name": "Cora Z7-07 S",
+  "name": "Cora Z7-07S",
   "class_name": "CoraZ7_07SPlatform",
   "vendor": "Xilinx",
   "device": "xc7z007s",
@@ -103,6 +103,6 @@
     "upstream_file": "cora_z7.py",
     "upstream_class": "CoraZ7_07SPlatform",
     "sync_commit": "be069dfd490b31df215337afac35711994a52418",
-    "sync_timestamp": "2026-10-31T23:32:50.118937+00:00"
+    "sync_timestamp": "2026-11-01T02:42:20.699452+00:00"
   }
 }

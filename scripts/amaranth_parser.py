@@ -587,13 +587,21 @@ def _extract_sevenseg(resources: list[_Resource]) -> "SevenSegDef | None":
 
 
 def _prettify_class_name(name: str) -> str:
-    """Convert 'ArtyA7_35Platform' → 'Arty A7-35'."""
-    name = re.sub(r"Platform$", "", name)
-    name = name.lstrip("_")
-    # Insert space between camelCase boundaries
-    name = re.sub(r"([a-z\d])([A-Z])", r"\1 \2", name)
-    name = name.replace("_", "-")
-    return name
+    """Convert 'ArtyA7_35Platform' → 'Arty A7-35' (P35, U56 Phase 1b).
+
+    A capital after a lowercase letter starts a word (``ArtyA7`` → ``Arty A7``,
+    ``MachXO2`` → ``Mach XO2``) unless it is a lone trailing capital (``SoC`` stays
+    whole). A capital after a digit starts a word only when another letter follows
+    (``Nexys4DDR`` → ``Nexys4 DDR``, ``DE10Lite`` → ``DE10 Lite``): a single trailing
+    letter belongs to a part number (``AX7325B``, ``ULX3S``, ``07S``, ``5A75B``).
+    Leading and trailing underscores are dropped, so no name ends in a hyphen
+    (``ULX3S_12F_`` → ``ULX3S-12F``); the others become hyphens.  Vendor styling no
+    rule can derive (``DE0-CV``, ``iCEstick``) stays in ``board_loader``'s overrides.
+    """
+    name = re.sub(r"Platform$", "", name).strip("_")
+    name = re.sub(r"(?<=[a-z])(?=[A-Z])(?![A-Z](?:_|$))", " ", name)
+    name = re.sub(r"(?<=\d)(?=[A-Z][A-Za-z])", " ", name)
+    return name.replace("_", "-")
 
 
 # ═══════════════════════════════════════════════════════════════════════
