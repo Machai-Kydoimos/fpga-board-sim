@@ -1,0 +1,149 @@
+{
+  "name": "Efinix Ti60 F225 Dev Kit",
+  "class_name": "EfinixTi60F225DevKitPlatform",
+  "vendor": "Efinix",
+  "device": "Ti60F225C3",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk25",
+      "hz": 25000000.0,
+      "pin": "B2",
+      "is_default": true
+    },
+    {
+      "name": "clk33",
+      "hz": 33000000.0,
+      "pin": "P2"
+    },
+    {
+      "name": "clk74_25",
+      "hz": 74000000.0,
+      "pin": "A11"
+    }
+  ],
+  "default_clock_hz": 25000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "J15",
+        "H10",
+        "K14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8_V_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "H15",
+        "H11",
+        "J14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8_V_LVCMOS"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "K13"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8_V_LVCMOS"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 1,
+      "pins": [
+        "J13"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8_V_LVCMOS"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 2,
+      "pins": [
+        "C5"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8_V_LVCMOS"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 3,
+      "pins": [
+        "R13"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8_V_LVCMOS"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "F3"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8_V_LVCMOS"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "E3"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "1.8_V_LVCMOS"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "efinix_ti60_f225_dev_kit.py",
+    "upstream_class": "Platform",
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-01T22:24:43.342916+00:00"
+  }
+}

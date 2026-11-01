@@ -706,6 +706,10 @@ _REACHABLE_ONLY_BY_FILE = [
     "litex-boards/alchitry_au",
     "litex-boards/alchitry_pt_v2",
     "litex-boards/ebaz4205",
+    # Orphaned by U56 Phase 4: upstream renamed the file, and the successor's name differs
+    # only in case and spacing ("Efinix T8 F81 Dev Kit"). The live successor answering to
+    # the name is right; the note on the orphan names its file.
+    "litex-boards/efinix_t8f81_dev_kit",
     # Recovered by U56 Phase 1c (LiteX iCE40 vendor key); each shares its Amaranth twin's name.
     "litex-boards/icebreaker",
     "litex-boards/icebreaker_bitsy",

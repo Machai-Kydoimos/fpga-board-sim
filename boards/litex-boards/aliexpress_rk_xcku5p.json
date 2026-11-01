@@ -1,0 +1,149 @@
+{
+  "name": "Aliexpress Rk Xcku5p",
+  "class_name": "AliexpressRkXcku5pPlatform",
+  "vendor": "Xilinx",
+  "device": "xcku5p-ffvb676-2-i",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk200",
+      "hz": 200000000.0,
+      "pin": "T24",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 200000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "H9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "J9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "G11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "H11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "K9"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "K10"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "J10"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "J11"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk200",
+      "leds": {
+        "name": "user_led",
+        "width": 4
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "user_btn",
+        "width": 4
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "aliexpress_rk_xcku5p.py",
+    "upstream_class": "Platform",
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-01T22:24:43.342916+00:00"
+  }
+}

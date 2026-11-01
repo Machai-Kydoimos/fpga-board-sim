@@ -1,0 +1,271 @@
+{
+  "name": "Lattice Certus Nx Versa",
+  "class_name": "LatticeCertusNxVersaPlatform",
+  "vendor": "Lattice",
+  "device": "LFD2NX-40-8BG256C",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk12",
+      "hz": 12000000.0,
+      "pin": "G13",
+      "is_default": true
+    },
+    {
+      "name": "clk25",
+      "hz": 25000000.0,
+      "pin": "F16"
+    },
+    {
+      "name": "clk27",
+      "hz": 27000000.0,
+      "pin": "G15"
+    },
+    {
+      "name": "clk100",
+      "hz": 100000000.0,
+      "pin": "P1"
+    },
+    {
+      "name": "clk125",
+      "hz": 125000000.0,
+      "pin": "L6"
+    },
+    {
+      "name": "clk100_clk_dis",
+      "hz": 100000000.0,
+      "pin": "F15"
+    },
+    {
+      "name": "clk125_clk_dis",
+      "hz": 125000000.0,
+      "pin": "H10"
+    }
+  ],
+  "default_clock_hz": 12000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "B3"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "A2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "H16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "B2"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "H15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "H14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "H12"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "J15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "G4"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 1,
+      "pins": [
+        "G2"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 2,
+      "pins": [
+        "J16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "L10"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15H"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "E16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "L11"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15H"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "R3"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15H"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk12",
+      "leds": {
+        "name": "user_led_n",
+        "width": 8,
+        "active_low": true
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "user_dip_btn",
+        "width": 4
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "lattice_certus_nx_versa.py",
+    "upstream_class": "Platform",
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-01T22:24:43.342916+00:00"
+  }
+}

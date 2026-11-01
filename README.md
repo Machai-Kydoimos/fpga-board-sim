@@ -12,7 +12,7 @@
 Go straight to **[docs/first_design.md](docs/first_design.md)** — install, run it, and
 understand why a correct design can look frozen, in one pass.
 
-Interactive FPGA board simulator for VHDL. Pick from **344 real FPGA board
+Interactive FPGA board simulator for VHDL. Pick from **360 real FPGA board
 definitions** (sourced from [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards),
 [litex-boards](https://github.com/litex-hub/litex-boards),
 [Digilent XDC](https://github.com/Digilent/digilent-xdc), and custom JSON), then run a
@@ -22,9 +22,9 @@ displays — compiled and simulated live by [GHDL](https://github.com/ghdl/ghdl)
 
 ![Live VHDL simulation on a virtual DE10-Lite: a snake of light crawls across the six 7-segment displays while buttons are pressed — reversing it, then lighting every segment, and a switch speeds it up — and finally the inputs are restored so the loop plays seamlessly](docs/assets/demo.gif)
 
-*Above — one of **344 boards** (the DE10-Lite) running one example design, [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), live on GHDL / NVC + cocotb — not a pre-rendered animation. Every switch and button is a **real input to the running VHDL**; the design reads them and computes the LED and 7-segment **outputs** you see. So **BTN0** makes the design reverse the snake, **BTN1** makes it light every segment, and **SW0** makes it run faster — cause and effect, exactly as on real hardware — and finally the inputs are restored so the loop plays seamlessly. Captured headlessly via [`scripts/capture_demo.py`](scripts/capture_demo.py). ▶ [Watch the full talk](https://youtu.be/v4Fc6HctK1E).*
+*Above — one of **360 boards** (the DE10-Lite) running one example design, [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), live on GHDL / NVC + cocotb — not a pre-rendered animation. Every switch and button is a **real input to the running VHDL**; the design reads them and computes the LED and 7-segment **outputs** you see. So **BTN0** makes the design reverse the snake, **BTN1** makes it light every segment, and **SW0** makes it run faster — cause and effect, exactly as on real hardware — and finally the inputs are restored so the loop plays seamlessly. Captured headlessly via [`scripts/capture_demo.py`](scripts/capture_demo.py). ▶ [Watch the full talk](https://youtu.be/v4Fc6HctK1E).*
 
-Choose from **344 real FPGA boards** (Xilinx, Intel, Lattice, Gowin, Efinix, and more). Filter live by component and vendor — here the catalog narrows from the full list down to the 9 Intel boards that have LEDs, switches, buttons, *and* a 7-segment display:
+Choose from **360 real FPGA boards** (Xilinx, Intel, Lattice, Gowin, Efinix, and more). Filter live by component and vendor — here the catalog narrows from the full list down to the 9 Intel boards that have LEDs, switches, buttons, *and* a 7-segment display:
 
 ![The board selector filtering live: clicking the Has LEDs / Switches / Buttons / 7-seg and Intel chips narrows the board list to 9, the count updating on each click](docs/assets/board_selector.gif)
 
@@ -131,7 +131,7 @@ issue if you get stuck.
 ## Try it
 
 1. **Launch** `uv run fpga-sim`. The board selector opens.
-2. **Filter** to the **DE10-Lite** (type to narrow the 344-board list) and select it.
+2. **Filter** to the **DE10-Lite** (type to narrow the 360-board list) and select it.
 3. **Preview** the board — click switches, hold buttons, hover any component for its
    net name and pin.
 4. **Load VHDL File** and pick [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), then click
@@ -215,7 +215,7 @@ on a match, runs it unmodified — inverting active-low pins and packing the 7-s
 digits for you. That includes **physically multiplexed scan displays**: a design
 driving the Basys 3's shared `seg`/`dp`/`an` or a Nexys 4 DDR's `CA..CG`/`DP`/`AN`
 exactly as on real hardware is demultiplexed live, each digit rendered at its honest
-1/N scan brightness. **322 of the 344 boards** carry a convention (vendor-canonical
+1/N scan brightness. **334 of the 360 boards** carry a convention (vendor-canonical
 names where cited, litex/amaranth framework names elsewhere; canonical wins when both
 exist). Full guide: [docs/writing_designs.md](docs/writing_designs.md#board-native-designs).
 

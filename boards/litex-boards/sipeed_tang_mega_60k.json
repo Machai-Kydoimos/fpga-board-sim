@@ -1,0 +1,178 @@
+{
+  "name": "Sipeed Tang Mega 60k",
+  "class_name": "SipeedTangMega60kPlatform",
+  "vendor": "Gowin",
+  "device": "GW5AT-LV60PG484AC1/I0",
+  "package": "",
+  "clocks": [
+    {
+      "name": "sys_clk",
+      "hz": 50000000.0,
+      "pin": "V22",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 50000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "J0:12"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "J0:14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "J0:18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "J0:20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "J0:13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "J0:15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "J0:23"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "J0:25"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "J2:64"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "J2:62"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "sys_clk",
+      "leds": {
+        "name": "led",
+        "width": 8
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "btn",
+        "width": 2
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "sipeed_tang_mega_60k.py",
+    "upstream_class": "Platform",
+    "upstream_args": {
+      "dock": "neo"
+    },
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-01T22:24:43.342916+00:00"
+  }
+}

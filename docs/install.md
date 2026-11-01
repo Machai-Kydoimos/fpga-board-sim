@@ -279,7 +279,7 @@ fpga-sim doctor - Fedora Linux 43 - x86_64
   [ ok ] uv             uv 0.12.10
   [ ok ] pygame-ce      2.5.8 (SDL 2.32.10)
   [ ok ] cocotb         2.1.0
-  [ ok ] Boards         344 definitions in 4 sources
+  [ ok ] Boards         360 definitions in 4 sources
   [ ok ] Profile        writable: /home/you/.fpga_simulator
   [ ok ] Simulators     2 found
   [ ok ] cocotb plugin  ghdl -> libcocotbvpi_ghdl.so, nvc -> libcocotbvhpi_nvc.so

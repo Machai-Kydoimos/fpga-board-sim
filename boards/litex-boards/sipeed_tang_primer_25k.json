@@ -92,7 +92,10 @@
     "origin": "litex-boards",
     "upstream_file": "sipeed_tang_primer_25k.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T13:29:49.593723+00:00"
+    "upstream_args": {
+      "dock": "standard"
+    },
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-01T22:24:43.342916+00:00"
   }
 }

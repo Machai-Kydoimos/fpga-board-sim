@@ -1,0 +1,233 @@
+{
+  "name": "Efinix T20 F256 Dev Kit",
+  "class_name": "EfinixT20F256DevKitPlatform",
+  "vendor": "Efinix",
+  "device": "T20F256C4",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk50",
+      "hz": 50000000.0,
+      "pin": "L13",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 50000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "D14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "E13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "G13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "F14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 4,
+      "pins": [
+        "N14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 5,
+      "pins": [
+        "N16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 6,
+      "pins": [
+        "P15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "led",
+      "number": 7,
+      "pins": [
+        "M14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "P2"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 1,
+      "pins": [
+        "N3"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "button__n",
+      "number": 2,
+      "pins": [
+        "L4"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "H14"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "H15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "H16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3_V_LVTTL_/_LVCMOS"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk50",
+      "leds": {
+        "name": "user_led",
+        "width": 8
+      },
+      "naming": "framework-derived",
+      "switches": {
+        "name": "user_sw",
+        "width": 3
+      },
+      "buttons": {
+        "name": "user_btn_n",
+        "width": 3,
+        "active_low": true
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "efinix_t20_f256_dev_kit.py",
+    "upstream_class": "Platform",
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-01T22:24:43.342916+00:00"
+  }
+}
