@@ -1,8 +1,8 @@
 {
   "source_repo": "https://github.com/litex-hub/litex-boards",
   "source_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-  "sync_timestamp": "2026-11-01T03:02:03.625058+00:00",
-  "board_count": 223,
+  "sync_timestamp": "2026-11-01T13:29:50.771223+00:00",
+  "board_count": 226,
   "files_written": [
     "adi_adrv2crr_fmc.json",
     "adiuvo_forgix.json",
@@ -175,6 +175,8 @@
     "sipeed_tang_nano_4k.json",
     "sipeed_tang_nano_9k.json",
     "sipeed_tang_primer.json",
+    "sipeed_tang_primer_20k.json",
+    "sipeed_tang_primer_25k.json",
     "sitlinv_a_e115fb.json",
     "sitlinv_stlv7325_v1.json",
     "sitlinv_stlv7325_v2.json",
@@ -226,7 +228,8 @@
     "xilinx_zcu104.json",
     "xilinx_zcu106.json",
     "xilinx_zcu216.json",
-    "ypcb_00338_1p1.json"
+    "ypcb_00338_1p1.json",
+    "ztex213.json"
   ],
   "ledger": {
     "adi_adrv2crr_fmc.py": "boards: adi_adrv2crr_fmc.json",
@@ -419,8 +422,8 @@
     "sipeed_tang_nano_4k.py": "boards: sipeed_tang_nano_4k.json",
     "sipeed_tang_nano_9k.py": "boards: sipeed_tang_nano_9k.json",
     "sipeed_tang_primer.py": "boards: sipeed_tang_primer.json",
-    "sipeed_tang_primer_20k.py": "skipped: no_simulatable_io",
-    "sipeed_tang_primer_25k.py": "skipped: no_simulatable_io",
+    "sipeed_tang_primer_20k.py": "boards: sipeed_tang_primer_20k.json",
+    "sipeed_tang_primer_25k.py": "boards: sipeed_tang_primer_25k.json",
     "sitlinv_a_e115fb.py": "boards: sitlinv_a_e115fb.json",
     "sitlinv_stlv7325_v1.py": "boards: sitlinv_stlv7325_v1.json",
     "sitlinv_stlv7325_v2.py": "boards: sitlinv_stlv7325_v2.json",
@@ -476,7 +479,7 @@
     "xilinx_zcu106.py": "boards: xilinx_zcu106.json",
     "xilinx_zcu216.py": "boards: xilinx_zcu216.json",
     "ypcb_00338_1p1.py": "boards: ypcb_00338_1p1.json",
-    "ztex213.py": "skipped: no_simulatable_io"
+    "ztex213.py": "boards: ztex213.json"
   },
   "warnings": {},
   "orphans": []

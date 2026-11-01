@@ -8,7 +8,7 @@
     {
       "name": "clk125",
       "hz": 125000000.0,
-      "pin": "",
+      "pin": "K17",
       "is_default": true
     }
   ],
@@ -65,9 +65,92 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
       }
+    },
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "V16",
+        "F17",
+        "M17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 1,
+      "pins": [
+        "Y11",
+        "T5",
+        "Y12"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
     }
   ],
-  "buttons": [],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "K18"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "P16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "K19"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "Y16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
   "switches": [
     {
       "name": "switch",
@@ -135,6 +218,10 @@
       "switches": {
         "name": "user_sw",
         "width": 4
+      },
+      "buttons": {
+        "name": "user_btn",
+        "width": 4
       }
     }
   },
@@ -147,6 +234,6 @@
       "variant": "z7-20"
     },
     "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+    "sync_timestamp": "2026-11-01T13:29:49.593723+00:00"
   }
 }

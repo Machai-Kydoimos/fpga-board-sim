@@ -7,6 +7,7 @@
   "package": "ffg900",
   "clocks": [],
   "default_clock_hz": 100000000.0,
+  "default_clock_assumed": true,
   "leds": [
     {
       "name": "led",
@@ -312,7 +313,7 @@
     "origin": "digilent-xdc",
     "upstream_file": "Genesys-2-Master.xdc",
     "sync_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-    "sync_timestamp": "2026-07-22T14:00:30.004418+00:00"
+    "sync_timestamp": "2026-11-01T13:32:10.446165+00:00"
   },
   "port_conventions": {
     "digilent": {
