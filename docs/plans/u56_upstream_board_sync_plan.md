@@ -219,6 +219,7 @@ such as `tiny_fpgabx` ↔ `tinyfpga_bx`.)*
 | 22 | Amaranth default clock ignores on-chip oscillators: it looks only for a `Clock` resource named by `default_clk` | `amaranth_parser.py:375` | 6 boards at 12 MHz whose frequency the board file and Amaranth's vendor platform define: Chameleon96 100 MHz (`cyclonev_oscillator`), both MachXO2 breakouts 2.08 MHz (`OSCH`, `osch_frequency`), QuickFeather 5 MHz (`osc_freq / osc_div`), UPduino v1 48 MHz (`SB_HFOSC`, `hfosc_div = 0`), Tang Nano 24 MHz (`OSC`, `osc_frequency`) (*2026-10-31*) | 1c |
 | 23 | Digilent reads a frequency only from `create_clock`, and a clock only under a clock heading | `digilent_parser.py:227`, `:825` | the three Genesys ZU boards have neither, but their comment above `sysclk` says "Sysclk is a 25 MHz PL reference clock"; they ship with no clock, at 100 MHz (*2026-10-31*) | 1c |
 | 24 | LiteX sorts all LEDs by their upstream index across resource names, so `user_led` *n* and `rgb_led` *n* interleave | `litex_parser.py:642` | 19 boards draw mono and RGB LEDs alternately (ZCU216: 16 captioned banks for 16 LEDs); `led(i)` is unaffected, because `BoardDef.led_channels` already puts every mono channel before the RGB ones (external review R2, 2026-09-22) | 1c |
+| 25 | Each role's resources are sorted by number alone across names (LiteX) or kept in declaration order (Amaranth). The native wrapper puts a bank's bit k on boundary bit k (`wrapper.py`), so a bank that is not its role's first run, in number order, drives the wrong LED or reads the wrong button | `litex_parser.py` (the number sort); `amaranth_parser.py` (declaration order); `framework_conventions.py:145` (`names[]` sorted alphabetically) | 35 LiteX native banks miss boundary bit 0 at the pin: the Tang Primer 20K's `led(1)` lights its WS2812, and the Tang Nano 20K, Tang Mega 138K Pro and Basys 3's directional buttons are among the rest; Amaranth Nexys 4 DDR lists switches 8 and 9 after 15 (*2026-11-01*) | 2 (17 banks + Nexys 4 DDR); 5 (DIP banks); 6 (the rest) |
 
 ### 2.4 Instantiation audit (LiteX)
 
@@ -1003,11 +1004,23 @@ changed boards exactly as listed (Red Pitaya measures 125 MHz), and exactly four
   gains its four `digilent.*` bank rows; no design's outcome changes on any other board.
 - **Phase 1c's oscillator rules had no tests.** §8 asked for a fixture test per rule; Phase 2
   adds one for each of the eight, plus the assumed case.
-- **LED order across names (for review).** The LiteX parser sorts LEDs by number alone, so
-  differently named LEDs interleave: the Tang Mega 138K Pro splits its `led_n` bank around
-  `led_done`/`led_ready` (as before this phase), and the new Tang Primer 20K shows `led0`, its
-  1-pin WS2812 `rgb_led`, then `led1`–`led5`. Defect 24 partitioned only 3-pin RGB LEDs.
-  Grouping by name would move `led(k)` on existing boards, so it waits for a decision.
+- **Each name's resources stay together (defect 25; Rick, 2026-11-01).** The LiteX parser
+  sorted LEDs, buttons and switches by number alone, so differently named ones interleaved:
+  the new Tang Primer 20K showed `led0`, its 1-pin WS2812 `rgb_led`, then `led1`–`led5`. Rick's
+  rule: a board's LEDs stay grouped unless the physical board shows otherwise. The Dock's back
+  silkscreen lists "LEDs×6" as one row 0–5 and marks the RGB LED in another corner, and the
+  front photo shows the same. It was also a native-mode bug. The wrapper puts a bank's bit k
+  on boundary bit k, so a split bank drove the wrong LED. A headless run of a native design
+  driving only `led(1)` lit the WS2812. Both parsers now order each role by upstream name, in
+  first-declaration order, then by number (`framework_conventions.group_by_name`). Measured at
+  the pins:
+  - 25 boards reorder: 16 LiteX LED lists, 8 LiteX button lists, and Amaranth `nexys4_ddr`,
+    whose upstream declares switches 8 and 9 after 15. Every diff is a pure reorder.
+  - Of 35 LiteX native banks that missed boundary bit 0, 17 now start there, and no bank that
+    already did stops.
+  - The impact matrix does not change: it records which designs match, not which LED a bit
+    lights.
+  - The other 18 banks are older. Phases 5 and 6 own them.
 
 ## 10. Phase 3 — Orphans in the UI, §4.8
 
@@ -1082,8 +1095,21 @@ It comes before the bump because the bump creates the first real orphans (the fi
 - **Then:** the board-model merge, the `aliases` schema field, alias banks in
   `framework_conventions`, the matcher and wrapper channel maps, the two-aliases near-miss, alias
   colors, pin-map indexing.
+- **Also (defect 25, found in Phase 2):** a native bank's bit k must reach upstream resource k of
+  that bank. Phase 2's grouping fixed every bank an order can fix. Give every framework bank the
+  channel map this phase introduces, so the rest stop depending on the bank being first. Before
+  Phase 5, the rest are:
+  - the `names[]` clusters, which list names alphabetically while the board lists them in
+    declaration order: Basys 3, AC701, KCU116, ZCU106, ZCU216, AliExpress XC7K420T;
+  - the OCP TAP Timecard's `led` bank, declared after `user_led`;
+  - the DECA's `user_btn` bank, behind `power_btn`;
+  - the ECP5 EVN and VIP `user_dip_btn` banks, numbered from 1 (width 9, no bit 0);
+  - the DIP-as-button banks of the CertusPro-NX, CrossLink-NX, KC705, KCU105 and ZC706, declared
+    after other buttons. Phase 5's D-2 moves them to switches; measure which of their button
+    banks are then still behind another name.
 - **Verify:** the 29 boards of Appendix B.2 reach the "pin-merged" column; every per-bank row that
-  matched before still matches, with the same widths and polarity; GHDL + NVC e2e for one alias board per shape (mono+mono: `amaranth-boards/icebreaker.json`;
+  matched before still matches, with the same widths and polarity; every framework bank's bit k
+  lights upstream resource k (defect 25); GHDL + NVC e2e for one alias board per shape (mono+mono: `amaranth-boards/icebreaker.json`;
   mono+RGB channel: `litex-boards/gsd_orangecrab.json`; triple:
   `litex-boards/lattice_ice40up5k_evn.json`); PNGs → **visual review**.
 - **Effort:** L.
