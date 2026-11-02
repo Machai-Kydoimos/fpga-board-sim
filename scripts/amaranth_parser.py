@@ -24,7 +24,14 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from framework_conventions import RoleEntry, build_convention, group_by_name, multi_pin_shape
+from framework_conventions import (
+    LedView,
+    RoleEntry,
+    build_convention,
+    group_by_name,
+    multi_pin_shape,
+    plan_led_aliases,
+)
 from led_metadata import color_from_name
 from sync_common import ParseOutcome, ProducedBoard, normalize_error
 from upstream_reader import ModuleStub, read_module
@@ -544,6 +551,62 @@ def _number_split_groups(components: list[ComponentInfo], split: set[int]) -> No
             comp.number = number
 
 
+def _merge_led_aliases(
+    leds: list[ComponentInfo],
+) -> tuple[list[ComponentInfo], list[tuple[ComponentInfo, ComponentInfo, int | None]], list[str]]:
+    """Fold the LED resources upstream lists under another name into one LED (D-1).
+
+    As :func:`litex_parser._merge_led_aliases`: the iCEBreaker's "semantic aliases"
+    ``led_r``/``led_g`` are ``led`` 0 and 1, so it draws two LEDs, red and green.
+    Returns the LEDs, each folded resource with the LED it lands on and the RGB
+    channel (or ``None``), and an ``alias_overlap`` note for any other shared pin.
+    """
+    plan, overlaps = plan_led_aliases([LedView(tuple(c.pins), c.is_rgb) for c in leds])
+    folded: list[tuple[ComponentInfo, ComponentInfo, int | None]] = []
+    for i in sorted(plan):
+        target, offset = plan[i]
+        alias, primary = leds[i], leds[target]
+        record: dict[str, Any] = {"name": alias.name, "number": alias.number}
+        if offset is not None:
+            record["channel"] = "rgb"[offset]
+        primary.aliases.append(record)
+        color = color_from_name(alias.name)
+        if offset is None and color and not primary.color:
+            primary.color = color
+        folded.append((alias, primary, offset))
+    notes = [
+        f"alias_overlap: {leds[i].name} {leds[i].number} (shares a pin, not as a name)"
+        for i in overlaps
+    ]
+    return [c for i, c in enumerate(leds) if i not in plan], folded, notes
+
+
+def _number_channels(
+    leds: list[ComponentInfo],
+    aliases: list[tuple[ComponentInfo, ComponentInfo, int | None]],
+    buttons: list[ComponentInfo],
+    switches: list[ComponentInfo],
+) -> dict[int, int]:
+    """Return the boundary channel each component and alias reaches, by ``id`` (Phase 6).
+
+    The board's own layout (``BoardDef.led_channels``): mono LEDs in order, then r,
+    g, b per RGB site; an alias reaches its LED's channel, or its site's.
+    Switches and buttons reach their place in the board's list.
+    """
+    channel: dict[int, int] = {}
+    mono = [c for c in leds if not c.is_rgb]
+    for k, c in enumerate(mono):
+        channel[id(c)] = k
+    for j, c in enumerate(c for c in leds if c.is_rgb):
+        channel[id(c)] = len(mono) + 3 * j
+    for alias, primary, offset in aliases:
+        channel[id(alias)] = channel[id(primary)] + (offset or 0)
+    for group in (buttons, switches):
+        for k, c in enumerate(group):
+            channel[id(c)] = k
+    return channel
+
+
 def _upstream_order(components: list[ComponentInfo]) -> list[ComponentInfo]:
     """Group components by resource name, in number order (U56 Phase 2).
 
@@ -599,7 +662,9 @@ def _coalesce_rgb_trio(leds: list[ComponentInfo]) -> list[ComponentInfo]:
 
 
 def _amaranth_role_entries(
-    components: list[ComponentInfo], split: set[int] | None = None
+    components: list[ComponentInfo],
+    split: set[int] | None = None,
+    channels: dict[int, int] | None = None,
 ) -> list[RoleEntry]:
     """Adapt amaranth ``ComponentInfo`` to the shared ``RoleEntry`` shape.
 
@@ -617,7 +682,8 @@ def _amaranth_role_entries(
             bit=c.number,
             inverted=c.inverted,
             pins_per_bit=len(c.pins),
-            split=id(c) in (split or set()),  # kept out of bank selection (D-3)
+            split=id(c) in (split or set()),  # never the primary bank (D-3)
+            channel=(channels or {}).get(id(c)),  # the boundary channel it reaches (Phase 6)
         )
         for c in components
     ]
@@ -629,6 +695,7 @@ def _build_amaranth_convention(
     buttons: list[ComponentInfo],
     switches: list[ComponentInfo],
     split: set[int] | None = None,
+    channels: dict[int, int] | None = None,
 ) -> dict[str, object]:
     """Assemble a framework-derived ``port_conventions.amaranth`` block, or ``{}``.
 
@@ -642,9 +709,9 @@ def _build_amaranth_convention(
         build_convention(
             "amaranth",
             default_clk if isinstance(default_clk, str) else None,
-            _amaranth_role_entries(leds, split),
-            _amaranth_role_entries(switches, split),
-            _amaranth_role_entries(buttons, split),
+            _amaranth_role_entries(leds, split, channels),
+            _amaranth_role_entries(switches, split, channels),
+            _amaranth_role_entries(buttons, split, channels),
             description=desc,
         )
         or {}
@@ -862,6 +929,9 @@ def _read_boards(
         leds = _upstream_order(_coalesce_rgb_trio(leds))
         buttons = _upstream_order(buttons)
         switches = _upstream_order(switches)
+        leds, aliases, overlaps = _merge_led_aliases(leds)
+        notes.extend(f"{obj_name}: {note}" for note in overlaps)
+        channels = _number_channels(leds, aliases, buttons, switches)
         seven_seg = _extract_sevenseg(resources)
 
         if not (leds or buttons or switches):
@@ -888,7 +958,12 @@ def _read_boards(
                 switches=switches,
                 seven_seg=seven_seg,
                 port_conventions=_build_amaranth_convention(
-                    default_clk, leds, buttons, switches, split
+                    default_clk,
+                    leds + [a for a, _, _ in aliases],
+                    buttons,
+                    switches,
+                    split,
+                    channels,
                 ),
             )
         )

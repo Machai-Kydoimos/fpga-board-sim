@@ -116,6 +116,64 @@ def multi_pin_shape(subsignals: Sequence[tuple[str, int]], direction: str) -> st
     return "unsupported"
 
 
+class LedView(NamedTuple):
+    """What :func:`plan_led_aliases` needs to know of one LED entry."""
+
+    pins: tuple[str, ...]
+    rgb: bool  # a 3-pin RGB site
+
+
+def plan_led_aliases(
+    leds: Sequence[LedView],
+) -> tuple[dict[int, tuple[int, int | None]], list[int]]:
+    """Find the LED entries that are other names for an LED (U56 Phase 6, D-1).
+
+    Upstream lists some LEDs twice on purpose: Amaranth's iCEBreaker adds
+    ``led_r``/``led_g`` as "semantic aliases" of ``led`` 0 and 1, and the
+    OrangeCrab's ``user_led`` 0-2 are its ``rgb_led``'s r, g and b.  The evidence
+    is upstream's own pin assignment: two entries on one pin are one LED.
+
+    Returns ``{alias: (primary, channel)}`` and the entries that overlap in any
+    other way.  A one-pin entry on an RGB site's pin is that site's channel
+    (``channel`` 0-2 for r, g, b); one on an earlier one-pin entry's pin is that
+    LED (``channel`` ``None``).  The first-declared entry stays the LED.  Nothing
+    else merges -- two RGB sites sharing a pin, or a whole multi-pin resource
+    sharing one -- and those come back as overlaps, kept separate.
+    """
+    rgb_pin: dict[str, tuple[int, int]] = {}
+    overlaps: set[int] = set()
+    for i, led in enumerate(leds):
+        if not led.rgb:
+            continue
+        if any(pin in rgb_pin for pin in led.pins):
+            overlaps.add(i)
+            continue
+        for c, pin in enumerate(led.pins):
+            rgb_pin[pin] = (i, c)
+    plan: dict[int, tuple[int, int | None]] = {}
+    mono: dict[str, int] = {}
+    for i, led in enumerate(leds):
+        if led.rgb or len(led.pins) != 1:
+            continue
+        pin = led.pins[0]
+        if pin in rgb_pin:
+            plan[i] = rgb_pin[pin]
+        elif pin in mono:
+            plan[i] = (mono[pin], None)
+        else:
+            mono[pin] = i
+    owners: dict[str, list[int]] = {}
+    for i, led in enumerate(leds):
+        for pin in led.pins:
+            owners.setdefault(pin, []).append(i)
+    for i, led in enumerate(leds):
+        if led.rgb or len(led.pins) <= 1:
+            continue
+        if any(len(owners[pin]) > 1 for pin in led.pins):
+            overlaps.add(i)
+    return plan, sorted(overlaps)
+
+
 # Normalized net-names that name a "primary" bank -- preferred over a decorated
 # sibling such as ``rgb_led`` when choosing the group a convention advertises.
 _PRIMARY_NETS = ("led", "switch", "button")
@@ -135,9 +193,13 @@ class RoleEntry(NamedTuple):
         RGBW's r/g/b/w), so it is not emittable as a native port -- see
         :func:`build_bank`.
     ``split`` -- the bit came from splitting a multi-pin resource (U56 Phase 5,
-        D-3).  Split groups stay out of bank selection until Phase 6 makes every
-        group a bank: splitting the XTRX boards' 3-pin ``user_led2`` would
-        otherwise replace the ``user_led`` bank a design is written to.
+        D-3).  A split group never becomes the primary bank: splitting the XTRX
+        boards' 3-pin ``user_led2`` would otherwise replace the ``user_led`` bank
+        a design is written to.  It is one of the ``led_banks`` instead (Phase 6).
+    ``channel`` -- the boundary channel this bit reaches: an LED channel (mono LEDs
+        first, then r, g, b per RGB site) or the switch's or button's place in the
+        board's list (U56 Phase 6).  A bank whose bit k does not reach channel k
+        carries a ``channels`` map; ``None`` means the parser does not say.
     """
 
     normalized: str
@@ -146,6 +208,7 @@ class RoleEntry(NamedTuple):
     inverted: bool
     pins_per_bit: int = 1
     split: bool = False
+    channel: int | None = None
 
 
 def build_bank(entries: list[RoleEntry]) -> dict[str, Any] | None:
@@ -186,7 +249,11 @@ def build_bank(entries: list[RoleEntry]) -> dict[str, Any] | None:
     # Basys3's directional `button_c/u/l/r/d`), keep every entry as peers.
     plain = [e for e in entries if e.normalized in _PRIMARY_NETS]
     pool = plain or entries
+    return _shape_bank(pool)
 
+
+def _shape_bank(pool: list[RoleEntry]) -> dict[str, Any] | None:
+    """Shape role entries into one bank by their raw names (step B of :func:`build_bank`)."""
     # (B) Shape the survivors by their raw port names.
     raw_groups: dict[str, list[RoleEntry]] = {}
     for entry in pool:
@@ -206,8 +273,19 @@ def build_bank(entries: list[RoleEntry]) -> dict[str, Any] | None:
         emitted_names = [raw]
         bank = {"name": raw, "width": width_of(raw)}
     else:
-        # Several distinct single-bit ports: a scalar cluster (schema `names[]`).
-        emitted_names = sorted(raw_groups)
+        # Several distinct single-bit ports: a scalar cluster (schema `names[]`).  Two
+        # names on one LED are aliases (U56 Phase 6): the first keeps the cluster's
+        # place and the other stays a bank of its own, so no design drives one LED
+        # twice through a single bank.
+        emitted_names = []
+        seen: set[int] = set()
+        for raw in sorted(raw_groups):
+            channel = raw_groups[raw][0].channel
+            if channel is not None and channel in seen:
+                continue
+            if channel is not None:
+                seen.add(channel)
+            emitted_names.append(raw)
         bank = {"names": emitted_names, "width": len(emitted_names)}
 
     # Per-name polarity: an explicit inverted flag on any backing bit, or an
@@ -226,7 +304,60 @@ def build_bank(entries: list[RoleEntry]) -> dict[str, Any] | None:
         # truth for both names, so the bank is not advertised at all -- truth
         # over coverage, exactly like the multi-pin rule above.
         return None
+    channels = _bank_channels(bank, raw_groups)
+    if channels is not None:
+        bank["channels"] = channels
     return bank
+
+
+def _bank_channels(
+    bank: dict[str, Any], raw_groups: dict[str, list[RoleEntry]]
+) -> list[int | None] | None:
+    """Return the bank's ``channels`` map, or ``None`` when bit k reaches channel k.
+
+    Bit k of a vector is its entry numbered k (a bit with no entry reaches no
+    resource: the ECP5 EVN numbers its DIP switches from 1); member k of a cluster
+    is its k-th name.  A parser that gives no channels gets no map.
+    """
+    if "names" in bank:
+        channels = [raw_groups[name][0].channel for name in bank["names"]]
+    else:
+        by_bit = {e.bit: e.channel for e in raw_groups[bank["name"]]}
+        channels = [by_bit.get(k) for k in range(bank["width"])]
+    if all(c is None for c in channels):
+        return None
+    if channels == list(range(len(channels))):
+        return None
+    return channels
+
+
+def build_led_banks(
+    entries: list[RoleEntry], primary: dict[str, Any] | None
+) -> list[dict[str, Any]]:
+    """Return every other LED bank a design may declare, one per upstream name (U56 Phase 6).
+
+    D-1 accepts every upstream name as a native port: an alias of an LED, a group
+    split from a multi-pin resource (D-3), another named group.  Each is one bank
+    with its ``channels`` map, so a design may use any of them -- the matcher turns
+    away two that reach one LED.  The primary bank's own vector is not repeated; a
+    primary cluster's names are, so a design may use some of them.
+    """
+    usable = [e for e in entries if e.pins_per_bit <= 1 and e.channel is not None]
+    by_raw: dict[str, list[RoleEntry]] = {}
+    for entry in usable:
+        by_raw.setdefault(entry.raw, []).append(entry)
+    primary_vector = primary.get("name") if primary else None
+    banks = []
+    for raw, group in by_raw.items():
+        if raw == primary_vector:
+            continue
+        bank = _shape_bank(group)
+        if bank is None:
+            continue
+        if "channels" not in bank:
+            bank["channels"] = list(range(bank["width"]))
+        banks.append(bank)
+    return banks
 
 
 def build_convention(
@@ -246,14 +377,15 @@ def build_convention(
     added for the board later stays distinguishable and wins at match time.
     """
     leds_bank = build_bank(leds)
-    if not (clk_name and leds_bank):
+    led_banks = build_led_banks(leds, leds_bank)
+    if not (clk_name and (leds_bank or led_banks)):
         return None
-    block: dict[str, Any] = {
-        "description": description,
-        "clk": clk_name,
-        "leds": leds_bank,
-        "naming": "framework-derived",
-    }
+    block: dict[str, Any] = {"description": description, "clk": clk_name}
+    if leds_bank:
+        block["leds"] = leds_bank
+    if led_banks:
+        block["led_banks"] = led_banks
+    block["naming"] = "framework-derived"
     switches_bank = build_bank(switches)
     if switches_bank:
         block["switches"] = switches_bank

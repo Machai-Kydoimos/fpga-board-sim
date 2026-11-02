@@ -398,8 +398,16 @@ board JSON — the cocotb testbench boundary never changes.
    LED bank narrower than the board's LED count onto the `led` boundary
    (`resize(...)`; uncovered LEDs stay dark), packs an `individual`-style 7-seg per
    digit, **demultiplexes** a `scan`-style 7-seg (U22 — see below), and **ties off**
-   absent input banks. The wrapper's default generics mirror the board's resource
-   counts, so analysis validates the same widths the run passes.
+   absent input banks. A bank whose bit k is not the board's resource k carries a
+   **`channels` map** (U56 Phase 6), and the wrapper wires it bit by bit: an alias
+   of an RGB LED's channel, a group split from a multi-pin resource, a names
+   cluster listed alphabetically, a bank behind another (DECA's `user_btn`), a bit
+   with no resource (the ECP5 EVN's DIP switches, numbered from 1, idle released).
+   Framework conventions also list every other LED name as a **`led_banks`** entry, so
+   a design may drive an LED by any name upstream gives it; two names of one LED in
+   one design are a near-miss naming the shared pin. The wrapper's default generics
+   mirror the board's resource counts, so analysis validates the same widths the run
+   passes.
 4. **Scan displays (U22).** On boards whose display is physically multiplexed
    (Basys 3's shared `seg[6:0]` + `dp` + `an[3:0]`; the Nexys 4 DDR / A7 family's
    `CA..CG` + `DP` + `AN[7:0]` scalars), the convention's `seven_seg` carries

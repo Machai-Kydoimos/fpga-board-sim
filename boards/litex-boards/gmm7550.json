@@ -42,12 +42,36 @@
   "buttons": [],
   "switches": [],
   "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "ser_clk",
+      "led_banks": [
+        {
+          "name": "led_red_n",
+          "width": 1,
+          "active_low": true,
+          "channels": [
+            0
+          ]
+        },
+        {
+          "name": "led_green",
+          "width": 1,
+          "channels": [
+            1
+          ]
+        }
+      ],
+      "naming": "framework-derived"
+    }
+  },
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "litex-boards",
     "upstream_file": "gmm7550.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T01:02:17.841769+00:00"
   }
 }

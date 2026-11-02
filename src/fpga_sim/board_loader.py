@@ -232,6 +232,10 @@ class ComponentInfo:
     connector: tuple[str, int] | None = None
     attrs: dict[str, str] = field(default_factory=dict)
     color: str = ""  # LED color when known ("red" / "#ff0000"); "" => theme fallback (U36)
+    # Other upstream names for this same LED (U56 Phase 6, D-1): each a dict of its
+    # ``name``, ``number`` and, on an RGB site, the ``channel`` it drives.  Upstream
+    # maps them to this LED's pin; the sync draws one LED and lists the rest here.
+    aliases: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def is_rgb(self) -> bool:
@@ -473,6 +477,8 @@ class BoardDef:
             }
             if c.color:  # emit only when set -- keep JSON diffs minimal (U36)
                 d["color"] = c.color
+            if c.aliases:  # likewise (U56 Phase 6)
+                d["aliases"] = c.aliases
             return d
 
         return json.dumps(
@@ -577,6 +583,7 @@ class BoardDef:
                     connector=tuple(c["connector"]) if c.get("connector") else None,
                     attrs=c.get("attrs", {}),
                     color=c.get("color", ""),
+                    aliases=list(c.get("aliases", [])),
                 )
                 for c in items
             ]

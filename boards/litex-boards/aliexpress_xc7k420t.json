@@ -163,7 +163,11 @@
           "user_btn_k2",
           "user_btn_k3"
         ],
-        "width": 2
+        "width": 2,
+        "channels": [
+          1,
+          0
+        ]
       }
     }
   },
@@ -172,7 +176,7 @@
     "origin": "litex-boards",
     "upstream_file": "aliexpress_xc7k420t.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T01:02:17.841769+00:00"
   }
 }

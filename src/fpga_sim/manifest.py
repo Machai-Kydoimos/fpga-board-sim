@@ -37,8 +37,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from fpga_sim.board_loader import BoardDef
-    from fpga_sim.conventions import ConventionMatch
+    from fpga_sim.conventions import ConventionMatch, NativePort
     from fpga_sim.pinmap import PinMapMatch
 
 #: Name of the sidecar written beside the PNGs.
@@ -116,17 +118,33 @@ def _native_sources(match: ConventionMatch, mono: int) -> dict[int, tuple[str, b
             return names[i] if i < len(names) else ""
         return f"{names[0]}({i})"
 
-    if match.leds is not None:
+    if match.leds is not None and match.leds.channels is None and not match.led_banks:
         for i in range(min(match.leds.width, mono)):
             name = _name(match.leds, i)
             if name:
                 out[i] = (name, match.leds.active_low)
+    elif match.leds is not None:
+        _channel_sources(out, match.leds, None, _name)
     if match.leds_rgb is not None:
-        for k in range(match.leds_rgb.width):
-            name = _name(match.leds_rgb, k)
-            if name:
-                out[mono + k] = (name, match.leds_rgb.active_low)
+        _channel_sources(out, match.leds_rgb, mono, _name)
+    for bank in match.led_banks:  # each reaches the channels its map names (U56 Phase 6)
+        _channel_sources(out, bank, None, _name)
     return out
+
+
+def _channel_sources(
+    out: dict[int, tuple[str, bool]],
+    port: NativePort,
+    rgb_block: int | None,
+    name_of: Callable[[NativePort, int], str],
+) -> None:
+    """Record which design signal drives each boundary channel a bank reaches."""
+    from fpga_sim.conventions import led_port_channels
+
+    for k, channel in enumerate(led_port_channels(port, rgb_block)):
+        name = name_of(port, k)
+        if channel is not None and name:
+            out[channel] = (name, port.active_low)
 
 
 def led_legend(

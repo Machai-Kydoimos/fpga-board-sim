@@ -430,6 +430,29 @@
         "name": "user_led",
         "width": 8
       },
+      "led_banks": [
+        {
+          "name": "alnum_led",
+          "width": 15,
+          "channels": [
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22
+          ]
+        }
+      ],
       "naming": "framework-derived",
       "switches": {
         "name": "user_dip_btn",
@@ -443,6 +466,6 @@
     "upstream_file": "lattice_versa_ecp5.py",
     "upstream_class": "Platform",
     "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
-    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
+    "sync_timestamp": "2026-11-02T01:02:17.841769+00:00"
   }
 }

@@ -66,6 +66,11 @@ class NativePort:
     width: int
     active_low: bool = False
     scalar_ports: bool = False
+    # Bit k reaches boundary channel ``channels[k]`` (``None``: no board resource
+    # behind that bit), from the convention's ``channels`` map (U56 Phase 6).
+    # ``None`` for the whole tuple means the role's implicit layout: bit k ->
+    # channel k (``leds_rgb``: the RGB block's channel k).
+    channels: tuple[int | None, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -125,6 +130,9 @@ class ConventionMatch:
     # RGB channel scalar bank (U38): names in (r,g,b) order per site, packed
     # onto the boundary's RGB channel block `led(MONO + 3i + c)`.
     leds_rgb: NativePort | None = None
+    # More LED banks the design declared (U56 Phase 6): aliases of an LED, groups
+    # split from a multi-pin resource, other named groups -- each with a channel map.
+    led_banks: tuple[NativePort, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -185,6 +193,12 @@ def _match_native_port(
     vector, so both forms work.
     """
     active_low = bool(mapping.get("active_low", False))
+    raw_channels = mapping.get("channels")
+    channels = (
+        tuple(c if isinstance(c, int) else None for c in raw_channels)
+        if isinstance(raw_channels, list)
+        else None
+    )
     scalar_names = mapping.get("names")
     if isinstance(scalar_names, list) and scalar_names:
         for nm in scalar_names:
@@ -195,7 +209,11 @@ def _match_native_port(
             if decl is None or decl.mode != mode or decl.literal_width is not None:
                 return None
         return NativePort(
-            tuple(str(n) for n in scalar_names), len(scalar_names), active_low, scalar_ports=True
+            tuple(str(n) for n in scalar_names),
+            len(scalar_names),
+            active_low,
+            scalar_ports=True,
+            channels=channels,
         )
     name = mapping.get("name")
     width = mapping.get("width")
@@ -205,11 +223,11 @@ def _match_native_port(
     if decl is None or decl.mode != mode:
         return None  # absent or wrong direction
     if decl.literal_width == width:
-        return NativePort((name,), width, active_low)  # exact fixed-width vector
+        return NativePort((name,), width, active_low, channels=channels)  # exact-width vector
     if width == 1 and decl.literal_width is None:
         # A one-bit bank declared as a plain scalar (`led : out std_logic`):
         # associate it per element in the wrapper (`led => led_uut(0)`).
-        return NativePort((name,), 1, active_low, scalar_ports=True)
+        return NativePort((name,), 1, active_low, scalar_ports=True, channels=channels)
     return None  # width mismatch
 
 
@@ -321,6 +339,70 @@ def _match_native_seg(
     )
 
 
+def mono_led_channels(board_def: BoardDef) -> int:
+    """Where the boundary's RGB channel block starts: the board's mono LED count (U37)."""
+    return board_def.num_led_channels - 3 * board_def.num_rgb_leds
+
+
+def led_port_channels(port: NativePort, rgb_block: int | None = None) -> tuple[int | None, ...]:
+    """Return the boundary LED channel each bit of a matched LED bank reaches (U56 Phase 6).
+
+    The bank's own ``channels`` map when the convention gives one; else bit k ->
+    channel k, or -- for the ``leds_rgb`` bank, whose block starts at *rgb_block* --
+    the RGB block's channel k.
+    """
+    if port.channels is not None:
+        return port.channels
+    base = rgb_block or 0
+    return tuple(base + k for k in range(port.width))
+
+
+def _bit_label(port: NativePort, k: int) -> str:
+    """How a design names bit *k* of a matched bank: ``user_led(2)`` or ``led_r``."""
+    if port.scalar_ports:
+        return port.names[k] if k < len(port.names) else port.names[0]
+    return f"{port.names[0]}({k})"
+
+
+def _led_channel_pin(board_def: BoardDef, channel: int) -> str:
+    """Return the pin behind boundary LED *channel*: an LED's pin, or one of an RGB site's."""
+    targets = board_def.led_channel_targets
+    if not 0 <= channel < len(targets):
+        return ""
+    led_i = targets[channel]
+    pins = board_def.leds[led_i].pins
+    nth = targets[:channel].count(led_i)  # an RGB site's channels run r, g, b
+    return pins[nth] if nth < len(pins) else ""
+
+
+def _shared_led_channel(
+    board_def: BoardDef,
+    leds: NativePort | None,
+    leds_rgb: NativePort | None,
+    led_banks: tuple[NativePort, ...],
+) -> str:
+    """Name the first LED two matched ports both drive, or return ``""`` (U56 Phase 6).
+
+    Upstream lists some LEDs under two names (D-1).  A design may use either; one
+    that declares both drives the pin twice, which the board cannot do.
+    """
+    rgb_block = mono_led_channels(board_def)
+    owner: dict[int, str] = {}
+    for port, base in ((leds, None), (leds_rgb, rgb_block), *((b, None) for b in led_banks)):
+        if port is None:
+            continue
+        for k, channel in enumerate(led_port_channels(port, base)):
+            if channel is None:
+                continue
+            label = _bit_label(port, k)
+            if channel in owner:
+                pin = _led_channel_pin(board_def, channel)
+                where = f" (pin {pin})" if pin else ""
+                return f"{owner[channel]} and {label} drive the same LED{where}"
+            owner[channel] = label
+    return ""
+
+
 def _attempt_convention(
     maker: str,
     block: dict[str, Any],
@@ -352,11 +434,27 @@ def _attempt_convention(
     leds_rgb = (
         _match_native_port(rgb_decl, port_by_name, "out") if isinstance(rgb_decl, dict) else None
     )
+    # Every other LED bank (U56 Phase 6): matched when the design declares it,
+    # never required -- like leds_green, but each reaches its own channels.  A port
+    # belongs to the first bank that claims it: a design that declares a whole
+    # names cluster does not also match each name's own bank.
+    claimed = {n.lower() for p in (leds, leds_rgb) if p is not None for n in p.names}
+    banks: list[NativePort] = []
+    for mapping in block.get("led_banks") or []:
+        if not isinstance(mapping, dict):
+            continue
+        port = _match_native_port(mapping, port_by_name, "out")
+        if port is None or any(n.lower() in claimed for n in port.names):
+            continue
+        banks.append(port)
+        claimed.update(n.lower() for n in port.names)
+    led_banks = tuple(banks)
     if leds is not None:
         matched.append("led")
     if leds_rgb is not None:
         matched.append("rgb-led")
-    if leds is None and leds_rgb is None:
+    matched.extend("led-bank" for _ in led_banks)
+    if leds is None and leds_rgb is None and not led_banks:
         problems.append("LEDs")
 
     # Switches / buttons are matched only when the convention declares the role
@@ -418,6 +516,12 @@ def _attempt_convention(
     if isinstance(green, dict):
         leds_green = _match_native_port(green, port_by_name, "out")
 
+    # Two declared ports that reach one LED drive one pin (U56 Phase 6, D-1): upstream
+    # lists the LED under both names, and the design drives it twice.
+    clash = _shared_led_channel(board_def, leds, leds_rgb, led_banks)
+    if clash:
+        problems.append(clash)
+
     # U31: a *default-less* input the convention does not map would be left
     # unbound in the wrapper's uut port map (an elaboration error), so a native
     # design that declares one is a near-miss.  An extra input carrying a default
@@ -427,7 +531,7 @@ def _attempt_convention(
     # (dark), as the DE0 example leaves its split-DP HEXn_DP scalars open.
     # (Names in port_by_name are already lowercased.)
     consumed = {clk_port.lower()} if clk_port is not None else set()
-    for port in (leds, switches, buttons, leds_green, leds_rgb):
+    for port in (leds, switches, buttons, leds_green, leds_rgb, *led_banks):
         if port is not None:
             consumed.update(n.lower() for n in port.names)
     if seven_seg is not None:
@@ -447,7 +551,8 @@ def _attempt_convention(
     match: ConventionMatch | None = None
     if (
         clk_port is not None
-        and (leds is not None or leds_rgb is not None)
+        and (leds is not None or leds_rgb is not None or led_banks)
+        and not clash
         and (not sw_declared or switches is not None)
         and (not btn_declared or buttons is not None)
         and seg_ok
@@ -463,6 +568,7 @@ def _attempt_convention(
             seven_seg=seven_seg,
             leds_green=leds_green,
             leds_rgb=leds_rgb,
+            led_banks=led_banks,
         )
     return _ConventionAttempt(maker, board_def.name, match, tuple(matched), tuple(problems))
 
@@ -558,6 +664,7 @@ def _native_convention_message(match: ConventionMatch, filename: str) -> str:
         parts.append(_role_span(match.leds))
     if match.leds_rgb is not None:
         parts.append(_role_span(match.leds_rgb))
+    parts.extend(_role_span(bank) for bank in match.led_banks)
     if match.seven_seg is not None:
         segs = match.seven_seg.names
         span = segs[0] if len(segs) == 1 else f"{segs[0]}..{segs[-1]}"

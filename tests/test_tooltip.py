@@ -77,3 +77,22 @@ def test_draw_header_only_is_shorter_than_full(surface):
     full = Tooltip().draw(surface, (100, 100), "BTN1", _info())
     header_only = Tooltip().draw(surface, (100, 100), "BTN1", None)
     assert header_only.height < full.height
+
+
+def test_an_led_lists_the_other_names_upstream_gives_it():
+    # U56 Phase 6: the names a board-native design may drive this LED by.
+    mono = ComponentInfo("led", "led", 0, ["11"], aliases=[{"name": "led_r", "number": 0}])
+    assert ("Also", "led_r") in tooltip_rows("LED0", mono)
+    rgb = ComponentInfo(
+        "led",
+        "rgb_led",
+        0,
+        ["K4", "M3", "J3"],
+        aliases=[{"name": "user_led", "number": k, "channel": "rgb"[k]} for k in range(3)],
+    )
+    assert ("Also", "user_led(0) (r), user_led(1) (g), user_led(2) (b)") in tooltip_rows(
+        "RGB0", rgb
+    )
+    assert all(
+        prefix != "Also" for prefix, _ in tooltip_rows("LED0", ComponentInfo("led", "led", 0))
+    )

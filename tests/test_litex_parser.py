@@ -232,6 +232,9 @@ def test_port_conventions_primary_group_and_cluster():
     assert conv["buttons"] == {  # distinct directional buttons -> names[] cluster
         "names": ["user_btnc", "user_btnd", "user_btnu"],
         "width": 3,
+        # The cluster lists names alphabetically and the board in upstream's order,
+        # so member k reaches the board's button channels[k] (U56 Phase 6, defect 25).
+        "channels": [2, 1, 0],
     }
 
 
@@ -834,3 +837,41 @@ def test_a_multiplexed_resource_upstream_names_plainly_stays_whole():
         "unsupported_shape: user_led_color 0 (the color lines of the seven user LEDs)"
         in outcome.warnings
     )
+
+
+# ── LED aliases (U56 Phase 6, D-1) ──────────────────────────────────────────────
+
+_ORANGECRAB_LIKE = """
+from litex.build.generic_platform import *
+from litex.build.lattice import LatticeECP5Platform
+
+_io = [
+    ("clk48", 0, Pins("A9")),
+    ("rgb_led", 0,
+        Subsignal("r", Pins("K4")), Subsignal("g", Pins("M3")), Subsignal("b", Pins("J3"))),
+    ("user_led", 0, Pins("K4")),  # rgb_led.r
+    ("user_led", 1, Pins("M3")),  # rgb_led.g
+    ("user_led", 2, Pins("J3")),  # rgb_led.b
+]
+
+class Platform(LatticeECP5Platform):
+    default_clk_name = "clk48"
+    default_clk_period = 1e9/48e6
+    def __init__(self):
+        LatticeECP5Platform.__init__(self, "LFE5U-25F-8MG285C", _io)
+"""
+
+
+def test_names_upstream_gives_an_rgb_leds_pins_are_its_channels():
+    # Upstream's own words: `user_led` 0-2 are `rgb_led.r/.g/.b`, one LED, not four.
+    outcome = read_litex_file(_ORANGECRAB_LIKE, "orangecrab_like.py")
+    (board,) = [p.board for p in outcome.boards]
+    assert [(c["name"], c["pins"]) for c in board["leds"]] == [("rgb_led", ["K4", "M3", "J3"])]
+    assert board["leds"][0]["aliases"] == [
+        {"name": "user_led", "number": 0, "channel": "r"},
+        {"name": "user_led", "number": 1, "channel": "g"},
+        {"name": "user_led", "number": 2, "channel": "b"},
+    ]
+    # `user_led` still drives them, bit k the RGB block's channel k.
+    assert board["port_conventions"]["litex"]["leds"] == {"name": "user_led", "width": 3}
+    assert outcome.warnings == []

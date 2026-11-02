@@ -342,7 +342,7 @@ class MultiPinPlatform(LatticeECP5Platform):
             Subsignal("a", PinsN("M20", dir="o")),
             Subsignal("b", PinsN("L18", dir="o")),
             Subsignal("dp", Pins("U1", dir="o"))),
-        Resource("led_cathodes", 0, Pins("P19 L18 K18")),
+        Resource("led_cathodes", 0, Pins("P19 R18 K18")),
         Resource("mic_led", 0,
             Subsignal("clk", Pins("P9", dir="o")),
             Subsignal("dat", Pins("T9", dir="o"))),
@@ -363,7 +363,7 @@ def test_multi_pin_resources_split_or_stay_whole_by_shape():
         ("alnum_led", 1, ["L18"], True),
         ("alnum_led", 2, ["U1"], False),
         # Bidirectional (Amaranth's default direction) and a bus: whole, as before.
-        ("led_cathodes", 0, ["P19", "L18", "K18"], False),
+        ("led_cathodes", 0, ["P19", "R18", "K18"], False),
         ("mic_led", 0, ["P9", "T9"], False),
     ]
     assert outcome.warnings == [
@@ -373,3 +373,40 @@ def test_multi_pin_resources_split_or_stay_whole_by_shape():
     # The split segments never become the LED bank (D-3); `led` stays it.
     conv = outcome.boards[0].board["port_conventions"]["amaranth"]
     assert conv["leds"] == {"name": "led", "width": 2, "active_low": True}
+
+
+# ── LED aliases (U56 Phase 6, D-1) ──────────────────────────────────────────────
+
+_ICEBREAKER_LIKE = """
+from amaranth.build import *
+from amaranth.vendor import LatticeICE40Platform
+__all__ = ["AliasPlatform"]
+class AliasPlatform(LatticeICE40Platform):
+    default_clk = "clk12"
+    resources = [
+        Resource("clk12", 0, Pins("35", dir="i"), Clock(12e6)),
+        *LEDResources(pins="11 37", invert=True),
+        # Semantic aliases
+        Resource("led_r", 0, PinsN("11", dir="o")),
+        Resource("led_g", 0, PinsN("37", dir="o")),
+    ]
+"""
+
+
+def test_semantic_aliases_are_the_leds_they_name():
+    from amaranth_parser import read_amaranth_file
+
+    outcome = read_amaranth_file(_ICEBREAKER_LIKE, "alias.py")
+    board = outcome.boards[0].board
+    leds = board["leds"]
+    assert [(c["name"], c["number"], c["pins"], c.get("color")) for c in leds] == [
+        ("led", 0, ["11"], "red"),  # the alias names the color
+        ("led", 1, ["37"], "green"),
+    ]
+    assert leds[0]["aliases"] == [{"name": "led_r", "number": 0}]
+    conv = board["port_conventions"]["amaranth"]
+    assert conv["leds"] == {"name": "led", "width": 2, "active_low": True}
+    assert conv["led_banks"] == [
+        {"name": "led_r", "width": 1, "active_low": True, "channels": [0]},
+        {"name": "led_g", "width": 1, "active_low": True, "channels": [1]},
+    ]

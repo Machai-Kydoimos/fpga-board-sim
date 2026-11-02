@@ -50,6 +50,19 @@ def synth_interface(block: Mapping[str, Any]) -> list[_IfaceDecl]:
     add("leds_green", "out")
     # The RGB channel bank (U38): scalar outputs in (r, g, b) order per site.
     add("leds_rgb", "out")
+    # The other LED banks (U56 Phase 6) are alternatives: aliases of the LEDs the
+    # primary bank already drives, which together would drive an LED twice.  A
+    # block with no primary bank declares its first one, for the LED floor; to ask
+    # about any one of them, pass a block holding only that bank.
+    banks = block.get("led_banks")
+    if not isinstance(block.get("leds"), dict) and isinstance(banks, list) and banks:
+        first = banks[0]
+        if first.get("names"):
+            ports.extend(_IfaceDecl([str(n).lower()], "out", False, None) for n in first["names"])
+        elif "name" in first and "width" in first:
+            ports.append(
+                _IfaceDecl([str(first["name"]).lower()], "out", False, int(first["width"]))
+            )
     ss = block.get("seven_seg")
     if isinstance(ss, dict):
         style = ss.get("style")
