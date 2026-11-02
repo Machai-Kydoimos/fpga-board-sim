@@ -1347,7 +1347,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | done 2026-11-02 (#476); the review found the five Efinix orphans were upstream renames, so renames are now followed (Rick, 2026-11-02), done in the PR |
 | 5 | multi-pin, DIP | **yes** | done 2026-11-02 (#477) |
 | 6 | aliases | **yes** | done 2026-11-02 (#478); the review settled one LED under two names: refused, with a message of its own, done in the PR. The same rule for constraint files (one port per pin) follows in its own PR |
-| 7 | versions | **yes** (selector) | built 2026-11-02, awaiting visual review; the report settled six decisions (§4.1, §4.7 amended) |
+| 7 | versions | **yes** (selector) | PR #482, awaiting visual review (2026-11-02); the report settled six decisions (§4.1, §4.7 amended) |
 | 8 | closeout + release v0.24.0 | no | not started |
 
 ---
