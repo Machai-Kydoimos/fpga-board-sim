@@ -8,36 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **156 more boards: 441 in all, up from 285.** LiteX goes from 171 boards to 320,
+  Amaranth from 80 to 86 and Digilent from 26 to 27; the eight custom boards are
+  unchanged. The next four entries say where the new boards come from. Where an entry
+  under Changed or Fixed counts the boards a change reached, it counts the 285 that
+  v0.23.0 shipped; the new boards arrive with every change applied. (Roadmap U56.)
 - **56 more boards from the existing sources**, which the sync could not read before:
-  LiteX's iCE40, Microsemi and QuickLogic boards and many others (223 LiteX boards, up
-  from 171), three more Amaranth boards (83), and the Digilent ZedBoard (27). A board
-  whose name another source also uses opens by its file, e.g.
-  `--board litex-boards/icebreaker`. (Roadmap U56, Phase 1c.)
+  52 LiteX boards, its iCE40, Microsemi and QuickLogic boards among them, three more
+  Amaranth boards, and the Digilent ZedBoard. Three of them share a name with an
+  Amaranth board and open by their file, e.g. `--board litex-boards/icebreaker`.
+  (Roadmap U56, Phase 1c.)
 - **Three more LiteX boards whose I/O arrives through a dock or variant:** the Sipeed
-  Tang Primer 20K and 25K and the ZTEX 2.13 (226 LiteX boards). (Roadmap U56, Phase 2.)
-- **A clock upstream never states is marked as assumed.** Four boards define no clock
-  frequency upstream (the Genesys 2, the ZedBoard, the NewAE CW305 and the QuickFeather),
-  so the sync falls back to 100 MHz (Digilent) or 12 MHz (LiteX). The chip now reads
-  "100 MHz, assumed" instead of presenting the guess as the board's, and the benchmark
-  report says so too. The fallback values are unchanged. (Roadmap U56, Phase 2, D-6.)
-- **A board upstream no longer defines says so.** When a source removes a board, or a
-  version of it, or stops listing its LEDs, switches and buttons, the sync keeps the
-  board file as a saved copy instead of deleting it. The selector now tags its row
-  "orphaned upstream". The preview opens with a note saying why, and when the sync
-  noticed. When upstream has a board with the same FPGA, clocks and I/O, the note names
-  it as the successor, right under the saved copy's own file, so the two names can be
-  compared. `--board` prints the same note, and the session log records
-  `board_upstream_status` and `board_successor`. A design still runs on the saved copy;
-  nothing is blocked. No board is orphaned yet. (Roadmap U56, Phase 3.)
+  Tang Primer 20K and 25K and the ZTEX 2.13. (Roadmap U56, Phase 2.)
 - **Eleven boards from upstream as it stands today.** The syncs now read each source at
   its current head instead of the commits they were pinned to; for LiteX that is 399
   commits later, October 30 instead of July 20. LiteX adds eight boards, among them the
   Sipeed Tang Mega 60K, the Alinx AX7035 with its 7-segment digit, the Lattice Certus-NX
   Versa and LiteX's own Digilent Eclypse Z7. Amaranth adds the ButterStick, the iCESugar
-  Pro and the RFSoC 4x2 (355 boards in all). Nothing upstream wrote was executed, and a
-  static scan of the three heads found nothing that reaches for the environment, a
-  command or the network. (Roadmap U56, Phase 4.)
-- **Every version LiteX lists is a board of its own: 86 more (441 boards in all).**
+  Pro and the RFSoC 4x2. Nothing upstream wrote was executed, and a static scan of the
+  three heads found nothing that reaches for the environment, a command or the network.
+  (Roadmap U56, Phase 4.)
+- **Every version LiteX lists is a board of its own: 86 more.**
   A LiteX platform file can describe several versions of a board, chosen by a
   constructor argument, and the sync used to read only the default. It now reads every
   value upstream's own code lists, one argument at a time, and each version gets its
@@ -48,6 +39,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   match their default in everything the simulator models, and differ upstream in I/O
   it does not. A board setting such as an I/O-voltage jumper is not a version. Every
   existing board keeps its file and name. (Roadmap U56, Phase 7, D-4.)
+- **A clock upstream never states is marked as assumed.** Five boards define no clock
+  frequency upstream (the Genesys 2, the ZedBoard, the NewAE CW305, the QuickFeather and
+  the Sipeed SLogic16U3), so the sync falls back to 100 MHz (Digilent) or 12 MHz
+  (LiteX). The chip now reads "100 MHz, assumed" instead of presenting the guess as the
+  board's, and the benchmark report says so too. The fallback values are unchanged.
+  (Roadmap U56, Phase 2, D-6.)
+- **A board upstream no longer defines says so.** When a source removes a board, or a
+  version of it, or stops listing its LEDs, switches and buttons, the sync keeps the
+  board file as a saved copy instead of deleting it. The selector now tags its row
+  "orphaned upstream". The preview opens with a note saying why, and when the sync
+  noticed. When upstream has a board with the same FPGA, clocks and I/O, the note names
+  it as the successor, right under the saved copy's own file, so the two names can be
+  compared. `--board` prints the same note, and the session log records
+  `board_upstream_status` and `board_successor`. A design still runs on the saved copy;
+  nothing is blocked. No board is orphaned yet. (Roadmap U56, Phase 3.)
 
 ### Security
 
@@ -93,6 +99,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one bank, and every `led(i)` drives the same LED as before. The XTRX boards' RF-path
   switch controls and QuickFeather's debug port are no longer drawn as user switches.
   (Roadmap U56, Phase 1c.)
+- **A chip's label stays inside the chip.** Some of those part numbers are wider than
+  the chip, such as `XCZU11EG-FFVF1517-2-I` on `litex-boards/adi_adrv2crr_fmc` and
+  `LFE5UM5G-85F-8BG381C` on `litex-boards/radiona_ulx4m_ld_v2`, so a line too wide now
+  breaks onto two at a dash, slash or space. The text shrinks only when breaking is not
+  enough, and in a window too small for that, it is clipped at the chip's edge. The SVG
+  export lays the label out the same way. Boards whose label already fit look exactly
+  as before. (Roadmap U56, Phase 1c.)
 - **Docks and board variants add their LEDs, switches and buttons.** The LiteX sync
   ignored `add_extension`, so whatever a dock or a variant adds was missing: the Zybo Z7
   gains its 4 buttons and 2 RGB LEDs, and the Tang Console, Mega 138K and Mega 138K Pro
@@ -103,40 +116,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Snickerdoodle at 100 MHz, instead of an invented 12 MHz. (Roadmap U56, Phase 2.)
 - **Each group of LEDs, buttons and switches stays together, and a native design drives
   the LED it names.** The LiteX sync sorted them by number alone, so differently named
-  groups interleaved: the Tang Primer 20K showed LED0, its WS2812, then LED1–5, while on
-  the board the six LEDs form one row and the WS2812 sits in a corner. Where a design
-  written to LiteX's own port names was split this way, it drove the wrong LED: on the
-  Tang Primer 20K, `led(1)` lit the WS2812 and LED5 never lit. This affected 17 boards,
-  the Tang Nano 20K and Tang Mega 138K Pro among them. Each name's resources now stay
-  together, in number order, and the Amaranth Nexys 4 DDR's switches follow their
-  numbers instead of putting 8 and 9 after 15. On the 25 boards whose order changed, a
-  generic design's `led(k)`, `btn(k)` or `sw(k)` can now reach a different LED, button
-  or switch than before: it follows the order the board shows. (Roadmap U56, Phase 2.)
-- **DIP switches are switches.** LiteX names its DIP switches `user_dip_btn`, so 16
+  groups interleaved: the Tang Nano 20K showed LED0, its WS2812, then LED1–5. Where a
+  design written to LiteX's own port names was split this way, it drove the wrong LED:
+  on the Tang Nano 20K, `led_n(1)` lit the WS2812 and LED5 never lit. This affected 10
+  boards, the Tang Mega 138K Pro among them. Each name's resources now stay together, in
+  number order, and the Amaranth Nexys 4 DDR's switches follow their numbers instead of
+  putting 8 and 9 after 15. On the 18 boards whose order changed, a generic design's
+  `led(k)`, `btn(k)` or `sw(k)` can now reach a different LED, button or switch than
+  before: it follows the order the board shows. (Roadmap U56, Phase 2.)
+- **DIP switches are switches.** LiteX names its DIP switches `user_dip_btn`, so nine
   boards drew them as buttons: the Lattice Versa ECP5's eight DIP switches were its eight
-  "buttons", and the VC707 showed 13 buttons where it has 5. They are switches now. Four
-  boards whose DIP switches the sync dropped altogether (`user_dip`) get them back: the
-  TrellisBoard, ZCU102, ZCU104 and ZCU216. On these boards a generic design's `sw(k)` now
-  reaches the DIP switches and its `btn(k)` the real buttons only; the Versa ECP5, the
-  MachXO3 and the Antmicro SDI-MIPI converter have no real button. A design written to
-  LiteX's own names keeps its `user_dip_btn` port, which keeps its width. (Roadmap U56,
-  Phase 5, D-2.)
-- **A resource with several pins shows each of its LEDs.** Twelve boards drew several
-  LEDs as one: the Versa ECP5's 14-segment display was a single "LED", the Trenz C10LP
-  RefKit's eight GPIO LEDs one more, the NetFPGA SUME's eight SFP LEDs four. Each pin is
-  its own LED now, and the Efinix Ti60's two RGB LEDs light in color. What is really a
-  bus or a multiplexed array (the Siglent front panel, the Hackaday badge's LED cathodes,
-  the ButterStick's color lines) stays as it was, and the sync's ledger lists it.
-  (Roadmap U56, Phase 5, D-3.)
-- **LED labels no longer print over each other.** Where a bank's labels are wider than
-  the space between its LEDs, as the Versa ECP5's "ALNUM_LED0" to "ALNUM_LED14" are, each
-  LED shows its number under the bank's own label, and hover still shows the full name.
-  The Alibaba XCKU3P, the Puzhi PZ-A7xxT-KFB and the Alveo U280 had this already.
-  (Roadmap U56, Phase 5.)
+  "buttons", and the CertusPro-NX evaluation board showed 11 buttons where it has 3. They
+  are switches now. Three boards whose DIP switches the sync dropped altogether
+  (`user_dip`) get them back: the TrellisBoard, ZCU102 and ZCU216. On these boards a
+  generic design's `sw(k)` now reaches the DIP switches and its `btn(k)` the real buttons
+  only; the Versa ECP5 and the Antmicro SDI-MIPI converter have no real button. A design
+  written to LiteX's own names keeps its `user_dip_btn` port, which keeps its width.
+  (Roadmap U56, Phase 5, D-2.)
+- **A resource with several pins shows each of its LEDs.** Eight boards drew several
+  LEDs as one: the Versa ECP5's 14-segment display was a single "LED", and the Trenz
+  C10LP RefKit's eight GPIO LEDs one more. Each pin is its own LED now, and the Efinix
+  Ti60's two RGB LEDs light in color. Where a bank's labels are wider than the space
+  between its LEDs, as the Versa ECP5's "ALNUM_LED0" to "ALNUM_LED14" are, each LED shows
+  its number under the bank's own label, and hover still shows the full name. What is
+  really a bus or a multiplexed array (the Siglent front panel, the Hackaday badge's LED
+  cathodes, the ButterStick's color lines) stays as it was, and the sync's ledger lists
+  it. (Roadmap U56, Phase 5, D-3.)
 - **One LED per pin.** Upstream lists some LEDs under several names: the OrangeCrab's
   `user_led` 0-2 are its RGB LED's red, green and blue, and Amaranth's iCEBreaker adds
   `led_r` and `led_g` as "semantic aliases" of its two LEDs. The sync drew every name as
-  an LED of its own. 29 boards now draw one LED per pin: the OrangeCrab one RGB LED
+  an LED of its own. 20 boards now draw one LED per pin: the OrangeCrab one RGB LED
   instead of three more LEDs beside it, the ZCU216 8 RGB LEDs instead of 8 more LEDs,
   the Black Ice 4 colored LEDs instead of 8. A generic design's `led(k)` follows: on a
   board whose only LED is now an RGB LED, `led(0)` to `led(2)` are its red, green and
@@ -144,32 +153,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A design written to a board's own port names may use any name upstream gives.**
   Each of an LED's names is a port (`led_r` on the iCEBreaker, `user_ledr_n` on the
   iCE40UP5K EVN), and so is every LED group: the XTRX's `user_led2`, the Versa ECP5's
-  `alnum_led` segments, the OCP Timecard's `user_led`. The GMM-7550, the Hackaday
-  badge, the Machdyne Krote and the BeagleWire, which had no such convention, get one.
-  A design that drives one LED under two names is refused with a message naming both
-  and the pin they share, the way FPGA toolchains refuse a pin driven twice.
-  (Roadmap U56, Phase 6.)
+  `alnum_led` segments, the OCP Timecard's `user_led`. The GMM-7550 and the Hackaday
+  badge, which had no such convention, get one. A design that drives one LED under two
+  names is refused with a message naming both and the pin they share, the way FPGA
+  toolchains refuse a pin driven twice. (Roadmap U56, Phase 6.)
 - **A board-native bank's bit k reaches the resource it names.** Banks of separately
   named buttons listed the names alphabetically while the board lists the buttons in
   upstream's order, so on the Basys 3 a design's `user_btnc` answered to the board's
-  `user_btnu`. On the DECA, `user_btn(0)` answered to the power button; on the ECP5
-  EVN and VIP, whose DIP switches upstream numbers from 1, every switch was one off.
-  Each bank now maps its bits to the board's resources, and every bit of every
-  framework bank was checked against upstream's own pins (2,722 bits on 319 boards);
-  16 boards' banks change. (Roadmap U56, Phase 6.)
+  `user_btnu`. On the ECP5 EVN and VIP, whose DIP switches upstream numbers from 1,
+  every switch was one off. Each bank now maps its bits to the board's resources; eight
+  boards' banks change. Every bit of every framework bank in this release was checked
+  against upstream's own pins: 3,252 bits on the 406 LiteX and Amaranth boards.
+  (Roadmap U56, Phase 6.)
 - **A constraint file that puts two ports on one pin is refused, naming both and the
   pin.** The later port used to win silently: on an LED or a display segment the
   earlier output went nowhere, and two inputs on one pin both read the same switch. No
   FPGA build places two ports on one pin (Quartus stops with Error 176310), so the
   file would not have built for the board either. (Roadmap U56, Phase 6.)
-- **A chip's label stays inside the chip.** Some of those part numbers are wider than
-  the chip — `XCZU11EG-FFVF1517-2-I` on `litex-boards/adi_adrv2crr_fmc`,
-  `LFE5UM5G-85F-8BG381C` on `litex-boards/radiona_ulx4m_ld_v2` — so they ran past its
-  edges. A line too wide now breaks onto two at a dash, slash or space. The text
-  shrinks only when breaking is not enough, and in a window too small for that, it is
-  clipped at the chip's edge. The SVG export lays the label out the same way. Boards
-  whose label already fit look exactly as before.
-  (Roadmap U56, Phase 1c.)
 - **Board names no longer come out of the sync mangled.** The Amaranth parser broke part
   numbers apart ("ULX3 S-12 F-", "AX7325 B", "DE1 So C") and the LiteX one lowered
   upstream's capitals ("Brisbanesilicon"). Both now keep a name as upstream wrote it,
