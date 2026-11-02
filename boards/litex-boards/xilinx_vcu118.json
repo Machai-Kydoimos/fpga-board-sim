@@ -141,58 +141,6 @@
   ],
   "buttons": [
     {
-      "name": "button",
-      "number": 0,
-      "pins": [
-        "B17"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS12"
-      }
-    },
-    {
-      "name": "button",
-      "number": 1,
-      "pins": [
-        "G16"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS12"
-      }
-    },
-    {
-      "name": "button",
-      "number": 2,
-      "pins": [
-        "J16"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS12"
-      }
-    },
-    {
-      "name": "button",
-      "number": 3,
-      "pins": [
-        "D21"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS12"
-      }
-    },
-    {
       "name": "button__c",
       "number": 0,
       "pins": [
@@ -258,7 +206,60 @@
       }
     }
   ],
-  "switches": [],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "B17"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "G16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "J16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "D21"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS12"
+      }
+    }
+  ],
   "seven_seg": null,
   "port_conventions": {
     "litex": {
@@ -269,9 +270,19 @@
         "width": 8
       },
       "naming": "framework-derived",
-      "buttons": {
+      "switches": {
         "name": "user_dip_btn",
         "width": 4
+      },
+      "buttons": {
+        "names": [
+          "user_btn_c",
+          "user_btn_e",
+          "user_btn_n",
+          "user_btn_s",
+          "user_btn_w"
+        ],
+        "width": 5
       }
     }
   },
@@ -280,7 +291,7 @@
     "origin": "litex-boards",
     "upstream_file": "xilinx_vcu118.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
   }
 }

@@ -189,9 +189,11 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS18"
       }
-    },
+    }
+  ],
+  "switches": [
     {
-      "name": "button",
+      "name": "switch",
       "number": 0,
       "pins": [
         "AN16"
@@ -204,7 +206,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 1,
       "pins": [
         "AN19"
@@ -217,7 +219,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 2,
       "pins": [
         "AP18"
@@ -230,7 +232,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 3,
       "pins": [
         "AN14"
@@ -243,7 +245,6 @@
       }
     }
   ],
-  "switches": [],
   "seven_seg": null,
   "port_conventions": {
     "litex": {
@@ -254,9 +255,19 @@
         "width": 8
       },
       "naming": "framework-derived",
-      "buttons": {
+      "switches": {
         "name": "user_dip_btn",
         "width": 4
+      },
+      "buttons": {
+        "names": [
+          "user_btn_c",
+          "user_btn_e",
+          "user_btn_n",
+          "user_btn_s",
+          "user_btn_w"
+        ],
+        "width": 5
       }
     }
   },
@@ -265,7 +276,7 @@
     "origin": "litex-boards",
     "upstream_file": "xilinx_kcu105.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
   }
 }

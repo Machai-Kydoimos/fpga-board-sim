@@ -8,11 +8,13 @@ the litex and amaranth sync parsers feed.
 
 import copy
 
+import pytest
 from framework_conventions import (
     RoleEntry,
     build_bank,
     build_convention,
     group_by_name,
+    multi_pin_shape,
     reconcile_framework_polarity,
 )
 
@@ -335,3 +337,34 @@ def test_reconcile_is_idempotent_and_pure():
     assert once == twice
     assert once["litex"]["leds"]["active_low"] is True
     assert pc == before  # input not mutated
+
+
+# ── multi-pin shapes (U56 Phase 5, D-3) ────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("subsignals", "direction", "shape"),
+    [
+        ([], "o", "split"),  # Trenz `gpio_leds`: Pins("AB10 AA10 ...")
+        ([("r", 1), ("g", 1), ("b", 1)], "o", "rgb"),  # the Efinix Ti60's `user_led`
+        ([("g", 1), ("b", 1), ("r", 1)], "o", "rgb"),  # in any order
+        ([("a", 1), ("b", 1), ("dp", 1)], "o", "split"),  # the Versa's `alnum_led`
+        ([("r", 1), ("g", 1), ("h", 1)], "o", "split"),  # the Alibaba XCKU3P's three LEDs
+        ([("cs_n", 1), ("clk", 1), ("mosi", 1), ("oe", 1)], "o", "unsupported"),  # Siglent
+        ([("clk", 1), ("dat", 1)], "o", "unsupported"),  # the Tang Primer 20K's `mic_led`
+        ([("en", 1), ("r", 1), ("g", 1), ("b", 1)], "o", "unsupported"),  # Chromatic
+        ([("leds", 7), ("r", 1), ("g", 1), ("b", 1)], "io", "unsupported"),  # ButterStick
+        ([("leds", 7), ("r", 1), ("g", 1), ("b", 1)], "o", "unsupported"),
+        ([], "io", "unsupported"),  # bidirectional: Supercon badge `led_cathodes`
+    ],
+)
+def test_a_multi_pin_resource_has_one_of_three_shapes(subsignals, direction, shape):
+    assert multi_pin_shape(subsignals, direction) == shape
+
+
+def test_split_bits_never_choose_the_bank():
+    entries = [RoleEntry("led", "user_led", 0, False)] + [
+        RoleEntry("led", "user_led2", bit, False, split=True) for bit in range(1, 4)
+    ]
+    assert build_bank(entries) == {"name": "user_led", "width": 1}
+    assert build_bank([e for e in entries if e.split]) is None

@@ -56,7 +56,12 @@ _CLAIMS: tuple[tuple[str, str], ...] = (
     ("README.md", "narrow the {boards}-board list"),
     ("README.md", "**{conv} of the {boards} boards**"),
     ("docs/user_guide.md", "A list of {boards} FPGA boards"),
-    ("docs/user_guide.md", "only 7 of {boards} have more than 10"),
+    # The keyboard section's hex keys: re-measured by hand twice in U56 before it was
+    # registered (DIP switches stopped counting as buttons in Phase 5).
+    (
+        "docs/user_guide.md",
+        "has {max_buttons} buttons, and only {over_ten} of {boards} have more than 10",
+    ),
     ("docs/writing_designs.md", "**{conv} of the {boards} boards**"),
     # The sample --doctor report, in both documents that print one.
     ("docs/install.md", "Boards         {boards} definitions in {sources} sources"),
@@ -75,6 +80,8 @@ def fleet() -> dict[str, int]:
     return {
         "boards": len(boards),
         "conv": sum(1 for b in boards if b.port_conventions),
+        "max_buttons": max(len(b.buttons) for b in boards),
+        "over_ten": sum(1 for b in boards if len(b.buttons) > 10),
         # How ``doctor.check_boards`` counts them, so a new boards/ subdirectory
         # ages the sample report here rather than in front of a student.
         "sources": len({b.source for b in boards if b.source}),
@@ -93,7 +100,7 @@ def test_registered_claim_quotes_the_live_count(rel, template, fleet):
         return
     # Say *why* it is missing: a stale number reads very differently from a
     # rewritten sentence, and the fixes are different.
-    loose = re.escape(template).replace(r"\{boards\}", r"\d+").replace(r"\{conv\}", r"\d+")
+    loose = re.sub(r"\\\{\w+\\\}", r"\\d+", re.escape(template))
     found = re.search(loose, _read(rel))
     if found:
         pytest.fail(

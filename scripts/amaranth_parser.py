@@ -17,13 +17,14 @@ the two can evolve independently.
 """
 
 import ast
+import dataclasses
 import json
 import re
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from framework_conventions import RoleEntry, build_convention, group_by_name
+from framework_conventions import RoleEntry, build_convention, group_by_name, multi_pin_shape
 from led_metadata import color_from_name
 from sync_common import ParseOutcome, ProducedBoard, normalize_error
 from upstream_reader import ModuleStub, read_module
@@ -488,6 +489,61 @@ def _to_component(resource: _Resource, kind: str) -> ComponentInfo:
     )
 
 
+def _to_components(resource: _Resource, kind: str) -> tuple[list[ComponentInfo], str]:
+    """Turn one resource into its components; say why when its shape is unsupported.
+
+    The LiteX parser's rule, from :func:`framework_conventions.multi_pin_shape` (U56
+    Phase 5, D-3): a resource of one pin is one component; one of several pins is one
+    RGB site (r, g, b), one component per pin, or -- for a bus, bidirectional pins or
+    a multiplexed array -- one component as before, with a note for the ledger.  Each
+    split part keeps its own pins' polarity: the Versa's ``alnum_led`` segments are
+    ``PinsN``.  Parts keep the resource's number until :func:`_number_split_groups`.
+    """
+    comp = _to_component(resource, kind)
+    if len(comp.pins) <= 1:
+        return [comp], ""
+    subs = [io for io in resource.ios if isinstance(io, _Subsignal)]
+    sub_pins = {s.name: [p for p in s.ios if isinstance(p, _Pins)] for s in subs}
+    counts = {name: sum(len(p.names) for p in pins) for name, pins in sub_pins.items()}
+    shape = multi_pin_shape(list(counts.items()), comp.direction)
+    if shape == "unsupported":
+        if any(n != 1 for n in counts.values()):
+            why = "a sub-signal of several pins"
+        elif counts:
+            why = f"sub-signals {', '.join(counts)}"
+        else:
+            why = "bidirectional"
+        return [comp], f"unsupported_shape: {resource.name} {resource.number} ({why})"
+    if shape == "rgb":
+        rgb = {name.lower(): pins[0].names[0] for name, pins in sub_pins.items()}
+        pins = [rgb["r"], rgb["g"], rgb["b"]]
+        return [dataclasses.replace(comp, name="rgb_led", pins=pins, color="")], ""
+    sets = (
+        [p for pins in sub_pins.values() for p in pins]
+        if subs
+        else [io for io in resource.ios if isinstance(io, _Pins)]
+    )
+    return [
+        dataclasses.replace(comp, pins=[pin], inverted=pin_set.invert, attrs=dict(comp.attrs))
+        for pin_set in sets
+        for pin in pin_set.names
+    ], ""
+
+
+def _number_split_groups(components: list[ComponentInfo], split: set[int]) -> None:
+    """Renumber each split resource's name group in upstream's order (D-3).
+
+    Upstream numbers the resource, not its pins, so the numbers are ours: a split
+    resource's pins count up from 0, in number order and then pin order, and the
+    name's other resources follow in the same run.  An Amaranth resource's name is
+    also its label, so no other name shares the run (unlike LiteX's ``user_*``).
+    """
+    for name in dict.fromkeys(c.name for c in components if id(c) in split):
+        group = sorted((c for c in components if c.name == name), key=lambda c: c.number)
+        for number, comp in enumerate(group):
+            comp.number = number
+
+
 def _upstream_order(components: list[ComponentInfo]) -> list[ComponentInfo]:
     """Group components by resource name, in number order (U56 Phase 2).
 
@@ -542,7 +598,9 @@ def _coalesce_rgb_trio(leds: list[ComponentInfo]) -> list[ComponentInfo]:
     return out
 
 
-def _amaranth_role_entries(components: list[ComponentInfo]) -> list[RoleEntry]:
+def _amaranth_role_entries(
+    components: list[ComponentInfo], split: set[int] | None = None
+) -> list[RoleEntry]:
     """Adapt amaranth ``ComponentInfo`` to the shared ``RoleEntry`` shape.
 
     amaranth's resource names are already the framework's own port names (``led`` /
@@ -559,6 +617,7 @@ def _amaranth_role_entries(components: list[ComponentInfo]) -> list[RoleEntry]:
             bit=c.number,
             inverted=c.inverted,
             pins_per_bit=len(c.pins),
+            split=id(c) in (split or set()),  # kept out of bank selection (D-3)
         )
         for c in components
     ]
@@ -569,6 +628,7 @@ def _build_amaranth_convention(
     leds: list[ComponentInfo],
     buttons: list[ComponentInfo],
     switches: list[ComponentInfo],
+    split: set[int] | None = None,
 ) -> dict[str, object]:
     """Assemble a framework-derived ``port_conventions.amaranth`` block, or ``{}``.
 
@@ -582,9 +642,9 @@ def _build_amaranth_convention(
         build_convention(
             "amaranth",
             default_clk if isinstance(default_clk, str) else None,
-            _amaranth_role_entries(leds),
-            _amaranth_role_entries(switches),
-            _amaranth_role_entries(buttons),
+            _amaranth_role_entries(leds, split),
+            _amaranth_role_entries(switches, split),
+            _amaranth_role_entries(buttons, split),
             description=desc,
         )
         or {}
@@ -657,7 +717,7 @@ def load_board_from_source(
 ) -> list[BoardDef]:
     """Read a single board file's source, without executing it, and return its BoardDefs."""
     try:
-        boards, _ = _read_boards(source, filename, siblings)
+        boards, _, _ = _read_boards(source, filename, siblings)
     except Exception as exc:
         print(f"  skipped {filename}: {type(exc).__name__}: {exc}", file=sys.stderr)
         return []
@@ -675,7 +735,7 @@ def read_amaranth_file(
     archive's other board files, for a class imported from one of them.
     """
     try:
-        boards, had_resources = _read_boards(source, filename, siblings)
+        boards, had_resources, notes = _read_boards(source, filename, siblings)
     except Exception as exc:
         # Recorded in the ledger by the sync; said aloud here for a direct caller.
         print(f"  skipped {filename}: {type(exc).__name__}: {exc}", file=sys.stderr)
@@ -691,7 +751,8 @@ def read_amaranth_file(
                 upstream_class=board.class_name,
             )
             for board in boards
-        ]
+        ],
+        warnings=notes,
     )
 
 
@@ -747,8 +808,11 @@ def _bind_siblings(
 
 def _read_boards(
     source: str, filename: str, siblings: Mapping[str, str] | None = None
-) -> tuple[list[BoardDef], bool]:
-    """Read *source*; return its boards and whether any class declared resources.
+) -> tuple[list[BoardDef], bool, list[str]]:
+    """Read *source*; return its boards, whether any class declared resources, and notes.
+
+    The notes are the ledger's warnings: each multi-pin resource kept whole because
+    its shape is unsupported (U56 Phase 5, D-3), prefixed with its board's class.
 
     Raises whatever the read raises (a ``SyntaxError``, the reader's
     ``UnsupportedConstructError``, a ``NameError`` for a name the mocks lack, ...).
@@ -761,6 +825,7 @@ def _read_boards(
 
     boards = []
     had_resources = False
+    notes: list[str] = []
     for obj_name, obj in list(ns.items()):
         if not isinstance(obj, type):
             continue
@@ -776,17 +841,23 @@ def _read_boards(
             continue
         had_resources = True
 
-        leds, buttons, switches = [], [], []
+        leds: list[ComponentInfo] = []
+        buttons: list[ComponentInfo] = []
+        switches: list[ComponentInfo] = []
+        split: set[int] = set()  # ids of components split from a multi-pin resource
         for res in resources:
             if not isinstance(res, _Resource):
                 continue
             kind = _classify(res)
-            if kind == "led":
-                leds.append(_to_component(res, "led"))
-            elif kind == "button":
-                buttons.append(_to_component(res, "button"))
-            elif kind == "switch":
-                switches.append(_to_component(res, "switch"))
+            if kind in ("led", "button", "switch"):
+                comps, note = _to_components(res, kind)
+                {"led": leds, "button": buttons, "switch": switches}[kind].extend(comps)
+                if len(comps) > 1:
+                    split.update(id(c) for c in comps)
+                if note:
+                    notes.append(f"{obj_name}: {note}")
+        for group in (leds, buttons, switches):
+            _number_split_groups(group, split)
 
         leds = _upstream_order(_coalesce_rgb_trio(leds))
         buttons = _upstream_order(buttons)
@@ -816,8 +887,10 @@ def _read_boards(
                 buttons=buttons,
                 switches=switches,
                 seven_seg=seven_seg,
-                port_conventions=_build_amaranth_convention(default_clk, leds, buttons, switches),
+                port_conventions=_build_amaranth_convention(
+                    default_clk, leds, buttons, switches, split
+                ),
             )
         )
 
-    return boards, had_resources
+    return boards, had_resources, notes

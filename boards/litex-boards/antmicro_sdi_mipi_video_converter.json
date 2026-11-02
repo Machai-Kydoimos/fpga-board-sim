@@ -41,9 +41,10 @@
       }
     }
   ],
-  "buttons": [
+  "buttons": [],
+  "switches": [
     {
-      "name": "button",
+      "name": "switch",
       "number": 0,
       "pins": [
         "F15"
@@ -56,7 +57,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 1,
       "pins": [
         "H10"
@@ -69,7 +70,6 @@
       }
     }
   ],
-  "switches": [],
   "seven_seg": null,
   "port_conventions": {
     "litex": {
@@ -80,7 +80,7 @@
         "width": 2
       },
       "naming": "framework-derived",
-      "buttons": {
+      "switches": {
         "name": "user_dip_btn",
         "width": 2
       }
@@ -91,7 +91,7 @@
     "origin": "litex-boards",
     "upstream_file": "antmicro_sdi_mipi_video_converter.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
   }
 }

@@ -16,7 +16,7 @@ import sys
 from collections.abc import Iterator, Mapping
 from typing import Any
 
-from framework_conventions import RoleEntry, build_convention, group_by_name
+from framework_conventions import RoleEntry, build_convention, group_by_name, multi_pin_shape
 from led_metadata import color_from_name
 from sync_common import ParseOutcome, ProducedBoard, normalize_error
 from sync_identity import VERSION_PARAMS
@@ -625,7 +625,12 @@ def _classify_resource(name: str) -> str | None:
         return "seven_seg"
     if n in ("user_led", "led") or (_LED_TOKEN.search(n) and "ctrl" not in n):
         return "led"
-    if n in ("user_btn", "key", "usr_btn", "user_dip_btn", "button_1") or "btn" in n:
+    # A DIP switch is a switch, though LiteX names it `user_dip_btn` (U56 D-2, Phase 5):
+    # upstream's own name says "dip", and Amaranth declares the same Versa parts as
+    # switches.  Tested before "btn", which the name also contains.
+    if "dip" in n:
+        return "switch"
+    if n in ("user_btn", "key", "usr_btn", "button_1") or "btn" in n:
         return "button"
     # "switch" only as the leading word: `rf_switches` (the XTRX boards' RF-path switch
     # controls) is no user switch (U56 defect 21) -- the one name upstream writes that
@@ -701,8 +706,6 @@ def _parse_io_as_component(
             name = "button"
         elif res_name == "key":
             name = "button"
-        elif res_name == "user_dip_btn":
-            name = "button"
         elif res_name.startswith("user_btn"):
             suffix = res_name[len("user_btn") :]
             if suffix:
@@ -730,6 +733,91 @@ def _parse_io_as_component(
     if color:  # emit only when the name encodes a color (schema forbids "") (U36)
         comp["color"] = color
     return comp
+
+
+#: Multiplexed resources whose shape and name do not say so; upstream's own words do
+#: (U56 Phase 5, D-3).  Each stays one component, as before, and the ledger lists it.
+_MULTIPLEXED: dict[tuple[str, str, int], str] = {
+    # Upstream's comment: "Cathodes via FET".  `led` 0, "Anodes", splits into 11 LEDs,
+    # as the Amaranth twin (supercon19badge) declares them.
+    ("hackaday_hadbadge.py", "led", 1): "the cathodes of an LED matrix",
+    # The target drives it with one constant, 0b010 ("Blue"): the color of all seven
+    # user LEDs, which the Amaranth twin declares together as `rgb_leds_muxed`.
+    ("gsd_butterstick.py", "user_led_color", 0): "the color lines of the seven user LEDs",
+}
+
+
+def _resource_components(
+    filename: str, res_name: str, res_num: int, ios: tuple[Any, ...], kind: str
+) -> tuple[list[dict[str, Any]], str]:
+    """Turn one resource into its components; say why when its shape is unsupported.
+
+    A resource of one pin is one component, as always.  One of several pins follows
+    :func:`framework_conventions.multi_pin_shape` (U56 Phase 5, D-3): one RGB site, in
+    r, g, b order; one component per pin, marked ``_split`` and numbered later by
+    :func:`_number_split_groups`; or, for a bus or a multiplexed array, one component
+    as before, with a note for the ledger.
+    """
+    comp = _parse_io_as_component(res_name, res_num, ios, kind)
+    if len(comp["pins"]) <= 1:
+        return [comp], ""
+    subsignals = [item for item in ios if isinstance(item, _Subsignal)]
+    sub_pins = {
+        sub.name: [n for p in sub.ios if isinstance(p, _Pins) for n in p.names]
+        for sub in subsignals
+    }
+    known = _MULTIPLEXED.get((filename, res_name, res_num))
+    shape = (
+        "unsupported"
+        if known
+        else multi_pin_shape([(n, len(p)) for n, p in sub_pins.items()], comp["direction"])
+    )
+    if shape == "unsupported":
+        why = known or (
+            f"sub-signals {', '.join(sub_pins)}"
+            if all(len(p) == 1 for p in sub_pins.values())
+            else "a sub-signal of several pins"
+        )
+        return [comp], f"unsupported_shape: {res_name} {res_num} ({why})"
+    if shape == "rgb":
+        pins = {name.lower(): p[0] for name, p in sub_pins.items()}
+        comp["name"] = "rgb_led"
+        comp["pins"] = [pins["r"], pins["g"], pins["b"]]
+        comp.pop("color", None)
+        return [comp], ""
+    parts = []
+    for k, pin in enumerate(comp["pins"]):
+        part = dict(comp, pins=[pin], attrs=dict(comp["attrs"]), _split=True, _order=(res_num, k))
+        if comp["connector"] is not None:
+            part["connector"] = list(comp["connector"])
+        parts.append(part)
+    return parts, ""
+
+
+def _number_split_groups(components: list[dict[str, Any]]) -> None:
+    """Renumber a split resource's components after the labels already in use (D-3).
+
+    Upstream numbers the resource, not its pins, so these numbers are ours.  They
+    run in upstream's order, after the highest number another port name shows under
+    the same label: the XTRX's `user_led2` pins become LED1-LED3 after `user_led`'s
+    LED0, instead of three more LED0-LED2.  A port name with a split numbers its
+    other resources in the same run (the Hadbadge's cathodes become LED11).
+    """
+    split = [c["raw_name"] for c in components if c.get("_split")]
+    names = list(dict.fromkeys(split))
+    if not names:
+        return
+    last: dict[str, int] = {}
+    for comp in components:
+        if comp["raw_name"] not in names:
+            last[comp["name"]] = max(last.get(comp["name"], -1), int(comp["number"]))
+    for raw in names:
+        group = [c for c in components if c["raw_name"] == raw]
+        group.sort(key=lambda c: c.get("_order", (int(c["number"]), 0)))
+        for comp in group:
+            number = last.get(comp["name"], -1) + 1
+            comp["number"] = number
+            last[comp["name"]] = number
 
 
 def _parse_clock_info(res_name: str, ios: tuple[Any, ...]) -> dict[str, Any]:
@@ -815,6 +903,7 @@ def _litex_role_entries(components: list[dict[str, Any]]) -> list[RoleEntry]:
             # An RGB LED's r/g/b subsignals flatten to several pins on one bit --
             # that bit has no single declarable port, so build_bank drops it.
             pins_per_bit=len(comp.get("pins") or []),
+            split=bool(comp.get("_split")),  # kept out of bank selection (D-3)
         )
         for comp in components
     ]
@@ -1064,6 +1153,7 @@ def _read_once(
     seg_tuples: list[tuple[Any, ...]] = []
     seg_ctrl_tuples: list[tuple[Any, ...]] = []
 
+    notes: list[str] = []  # unsupported multi-pin shapes, for the ledger (D-3)
     for io_tuple in captured_io:
         if not isinstance(io_tuple, tuple) or len(io_tuple) < 3:
             continue
@@ -1076,12 +1166,11 @@ def _read_once(
         ios = io_tuple[2:]
 
         kind = _classify_resource(res_name)
-        if kind == "led":
-            leds.append(_parse_io_as_component(res_name, res_num, ios, "led"))
-        elif kind == "button":
-            buttons.append(_parse_io_as_component(res_name, res_num, ios, "button"))
-        elif kind == "switch":
-            switches.append(_parse_io_as_component(res_name, res_num, ios, "switch"))
+        if kind in ("led", "button", "switch"):
+            comps, note = _resource_components(filename, res_name, res_num, ios, kind)
+            {"led": leds, "button": buttons, "switch": switches}[kind].extend(comps)
+            if note:
+                notes.append(note)
         elif kind == "clock":
             clock_infos.append(_parse_clock_info(res_name, ios))
         elif kind == "seven_seg":
@@ -1126,14 +1215,17 @@ def _read_once(
     board_name = _prettify_filename(filename)
     class_name = _make_class_name(filename)
 
+    for group in (leds, buttons, switches):
+        _number_split_groups(group)
     port_conventions = _build_litex_convention(clocks, leds, buttons, switches)
     leds = _mono_then_rgb(_upstream_order(leds))
     buttons = _upstream_order(buttons)
     switches = _upstream_order(switches)
-    # `raw_name` exists only to build the convention and the order above; keep it out
-    # of the persisted component JSON so the serialized led/btn/sw shape is unchanged.
+    # `raw_name`, `_split` and `_order` exist only to build the convention and the
+    # order above; keep them out of the persisted component JSON.
     for comp in (*leds, *buttons, *switches):
-        comp.pop("raw_name", None)
+        for key in ("raw_name", "_split", "_order"):
+            comp.pop(key, None)
 
     board: dict[str, Any] = {
         "name": board_name,
@@ -1159,4 +1251,4 @@ def _read_once(
         upstream_args=version,
         default=args is None,
     )
-    return ParseOutcome(boards=[produced])
+    return ParseOutcome(boards=[produced], warnings=notes)

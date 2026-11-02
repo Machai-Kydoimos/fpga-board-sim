@@ -1,7 +1,7 @@
 {
   "source_repo": "https://github.com/amaranth-lang/amaranth-boards",
   "source_commit": "f270d210e36b0787d62db77176c7b0e8032178d3",
-  "sync_timestamp": "2026-11-01T22:24:45.868495+00:00",
+  "sync_timestamp": "2026-11-02T00:29:13.040797+00:00",
   "board_count": 86,
   "files_written": [
     "alchitry_au.json",
@@ -170,6 +170,16 @@
     "zturn_lite_z007s.py": "skipped: not_a_board",
     "zturn_lite_z010.py": "skipped: not_a_board"
   },
-  "warnings": {},
+  "warnings": {
+    "butterstick.py": [
+      "ButterStickPlatform: unsupported_shape: rgb_leds_muxed 0 (a sub-signal of several pins)"
+    ],
+    "supercon19badge.py": [
+      "Supercon19BadgePlatform: unsupported_shape: led_cathodes 0 (bidirectional)"
+    ],
+    "tang_primer_20k.py": [
+      "TangPrimer20kDockPlatform: unsupported_shape: mic_led 0 (sub-signals clk, dat)"
+    ]
+  },
   "orphans": []
 }

@@ -1154,8 +1154,8 @@ It comes before the bump because the bump creates the first real orphans (the fi
   `build_bank`'s selection until Phase 6 accepts every group as a bank (defect 21, fixed in 1c,
   already keeps `rf_switches` out). Before coding,
   list the boards with multi-pin non-RGB resources at the pin now in force (Appendix B.4 is from
-  the old pins; the orphaned old Efinix Ti60 file stays frozen as it is, and its successor gets the
-  rule), classify them by shape (plain multi-pin vs r/g/b sub-signals vs muxed/bidirectional) and
+  the old pins; *2026-11-02:* the Efinix Ti60 file followed its rename at Phase 4, so it is live
+  and gets the rule itself), classify them by shape (plain multi-pin vs r/g/b sub-signals vs muxed/bidirectional) and
   put the table in the PR. D-2: in `_classify_resource` (`:239`) test `dip` before
   the `btn` substring and return `switch`; naming at `:312` → `switch`. The framework convention
   bank keeps name and width and moves from `buttons` to `switches` (verified on
@@ -1168,6 +1168,47 @@ It comes before the bump because the bump creates the first real orphans (the fi
   sheet for `litex-boards/lattice_versa_ecp5.json`,
   `amaranth-boards/versa_ecp5.json`, `litex-boards/trenz_c10lprefkit.json`,
   `litex-boards/siglent_sds1104xe.json`, `litex-boards/hackaday_hadbadge.json` → **visual review**.
+- **Done 2026-11-02, measured at the Phase 4 heads:**
+  - The shapes, at the pins now in force: 24 multi-pin components on 18 boards.
+
+    | Board | Resource (upstream) | Shape | Result |
+    |---|---|---|---|
+    | LiteX `lattice_versa_ecp5`, Amaranth `versa_ecp5`, `versa_ecp5_5g` | `alnum_led`: sub-signals `a`..`p`, `dp` | one-pin segments | 15 LEDs |
+    | LiteX `trenz_c10lprefkit` | `gpio_leds`: `Pins` of 8 | plain | 8 LEDs |
+    | LiteX `digilent_netfpga_sume` | `sfp_led` 0-3: `Pins` of 2 each | plain | 8 LEDs |
+    | LiteX `fairwaves_xtrx`, `limesdr_xtrx` | `user_led2`: `Pins` of 3 ("GPIO LED") | plain | 3 LEDs, numbered after `user_led` |
+    | LiteX `machdyne_krote`, `qwertyembedded_beaglewire` | `user_led`: `Pins` of 4 | plain | 4 LEDs |
+    | LiteX `alibaba_xcku3p` | `user_led_rgh`: sub-signals `r`, `g`, `h` | one-pin colors | 3 LEDs |
+    | LiteX `efinix_titanium_ti60_f225_dev_kit` | `user_led` 0-1: sub-signals `r`, `g`, `b` | RGB | 2 RGB sites |
+    | LiteX `hackaday_hadbadge` | `led` 0: `Pins` of 11, "Anodes" | plain | 11 LEDs, as the Amaranth twin has them |
+    | LiteX `hackaday_hadbadge` | `led` 1: `Pins` of 3, "Cathodes via FET" | multiplexed (upstream's comment) | whole, ledger |
+    | LiteX `gsd_butterstick` | `user_led_color`: `Pins` of 3 | multiplexed (the target drives one constant, "Blue") | whole, ledger |
+    | LiteX `modretro_chromatic` | `rgb_led`: sub-signals `en`, `r`, `g`, `b` | RGB behind an enable | whole, ledger |
+    | LiteX `siglent_sds1104xe` | `led_frontpanel` (`cs_n`/`clk`/`mosi`/`oe`), `btn_frontpanel` (`clk`/`cs_n`/`miso`) | bus | whole, ledger |
+    | Amaranth `butterstick` | `rgb_leds_muxed`: `leds` (7 pins) + `r`/`g`/`b` | multiplexed | whole, ledger |
+    | Amaranth `supercon19badge` | `led_cathodes`: `Pins` of 3, no direction (`io`) | bidirectional | whole, ledger |
+    | Amaranth `tang_primer20k_dock` | `mic_led`: sub-signals `clk`, `dat` | bus | whole, ledger |
+
+  - The rule (`framework_conventions.multi_pin_shape`, both parsers): sub-signals exactly r/g/b →
+    an RGB site in r, g, b order; plain pins, or one-pin sub-signals named one letter or `dp` → one
+    component per pin; anything else stays whole with an `unsupported_shape` warning. Two
+    multiplexed resources show it only in upstream's own words, so `litex_parser._MULTIPLEXED`
+    cites them. Split parts number after the labels already in use, and `RoleEntry.split` keeps
+    them out of bank selection.
+  - D-2 found more than B.3: `user_dip` (28 resources on `trellisboard`, `xilinx_zcu102`,
+    `xilinx_zcu104`, `xilinx_zcu216`) matched no rule, so those DIP switches were silently dropped.
+    "dip" → switch picks them up.
+  - Re-sync: 31 boards change (the 16 of B.3, 12 multi-pin with the LiteX Versa in both, and the 4
+    `user_dip` boards); 8 unsupported shapes on 7 boards are ledger warnings only. Impact matrix: no
+    design outcome changes; generics within B.8 (`NUM_LEDS` ≤ 32, `NUM_SWITCHES` ≤ 18); per-bank
+    rows change only on the 20 DIP boards: each moved bank is identical (name, width, polarity),
+    the button bank falls to the real buttons, and the 4 `user_dip` boards gain a switch bank.
+  - Found on the contact sheet: split banks' labels ("ALNUM_LED0".."ALNUM_LED14") printed over each
+    other. A bank of two or more LEDs whose labels are wider than its pitch now labels each LED
+    with its number, under the bank's own label (hover keeps the full name): 8 boards, the 5
+    whose banks were split and 3 that had this already (Alibaba XCKU3P, Puzhi PZ-A7xxT-KFB,
+    Alveo U280). Five boards now have more than 10 buttons
+    (was 7); the user guide's sentence became a registered, computed claim.
 - **Effort:** S.
 
 **Phase 6 — Aliases (D-1), §4.6.**
@@ -1226,7 +1267,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | done 2026-11-01 (#474); the review found differently named LEDs interleaving, so a board-native bank drove the wrong LED, fixed in the PR; reading the extension modules moved to Phase 4 |
 | 3 | orphan UI | **yes** | done 2026-11-01 (#475); the review asked for the saved copy's own file beside the successor, and for a successor only when the match is certain, both done in the PR |
 | 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | PR #476 (2026-11-01); the review found the five Efinix orphans were upstream renames, so renames are now followed (Rick, 2026-11-02), done in the PR |
-| 5 | multi-pin, DIP | **yes** | not started |
+| 5 | multi-pin, DIP | **yes** | PR #477, awaiting visual review (2026-11-02) |
 | 6 | aliases | **yes** | not started |
 | 7 | versions | **yes** (selector) | not started |
 | 8 | closeout + release v0.24.0 | no | not started |

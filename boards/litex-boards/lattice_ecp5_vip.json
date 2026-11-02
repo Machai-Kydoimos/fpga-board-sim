@@ -126,110 +126,6 @@
   ],
   "buttons": [
     {
-      "name": "button",
-      "number": 1,
-      "pins": [
-        "J1"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "button",
-      "number": 2,
-      "pins": [
-        "H1"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "button",
-      "number": 3,
-      "pins": [
-        "K1"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "button",
-      "number": 4,
-      "pins": [
-        "E15"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS25"
-      }
-    },
-    {
-      "name": "button",
-      "number": 5,
-      "pins": [
-        "D16"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS25"
-      }
-    },
-    {
-      "name": "button",
-      "number": 6,
-      "pins": [
-        "B16"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS25"
-      }
-    },
-    {
-      "name": "button",
-      "number": 7,
-      "pins": [
-        "C16"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS25"
-      }
-    },
-    {
-      "name": "button",
-      "number": 8,
-      "pins": [
-        "A16"
-      ],
-      "direction": "i",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS25"
-      }
-    },
-    {
       "name": "button_1",
       "number": 0,
       "pins": [
@@ -243,7 +139,112 @@
       }
     }
   ],
-  "switches": [],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "J1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "H1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "K1"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 4,
+      "pins": [
+        "E15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 5,
+      "pins": [
+        "D16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 6,
+      "pins": [
+        "B16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 7,
+      "pins": [
+        "C16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 8,
+      "pins": [
+        "A16"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    }
+  ],
   "seven_seg": null,
   "port_conventions": {
     "litex": {
@@ -254,9 +255,13 @@
         "width": 8
       },
       "naming": "framework-derived",
-      "buttons": {
+      "switches": {
         "name": "user_dip_btn",
         "width": 9
+      },
+      "buttons": {
+        "name": "button_1",
+        "width": 1
       }
     }
   },
@@ -265,7 +270,7 @@
     "origin": "litex-boards",
     "upstream_file": "lattice_ecp5_vip.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
   }
 }
