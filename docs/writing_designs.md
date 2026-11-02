@@ -140,6 +140,10 @@ Two consequences worth knowing:
   with a note, and an unassigned output is left open.
 - **A design may drive part of a display.** Four digits of a six-digit board is a
   normal thing to write; the rest stay dark, exactly as on the bench.
+- **One port per pin.** A constraint file that puts two of your ports on one pin is
+  refused, naming both ports and the pin. The vendor tools refuse it as well (Quartus
+  stops with Error 176310), so the project would not build for the board either. It is
+  usually a copied line whose pin was never changed.
 - **Wrong board?** When the constraint file names a device (`.qsf` files do), a
   mismatch with the selected board is reported by name rather than silently mapped.
 

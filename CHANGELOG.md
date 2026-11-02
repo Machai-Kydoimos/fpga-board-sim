@@ -146,6 +146,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Each bank now maps its bits to the board's resources, and every bit of every
   framework bank was checked against upstream's own pins (2,722 bits on 319 boards);
   16 boards' banks change. (Roadmap U56, Phase 6.)
+- **A constraint file that puts two ports on one pin is refused, naming both and the
+  pin.** The later port used to win silently: on an LED or a display segment the
+  earlier output went nowhere, and two inputs on one pin both read the same switch. No
+  FPGA build places two ports on one pin (Quartus stops with Error 176310), so the
+  file would not have built for the board either. (Roadmap U56, Phase 6.)
 - **A chip's label stays inside the chip.** Some of those part numbers are wider than
   the chip — `XCZU11EG-FFVF1517-2-I` on `litex-boards/adi_adrv2crr_fmc`,
   `LFE5UM5G-85F-8BG381C` on `litex-boards/radiona_ulx4m_ld_v2` — so they ran past its

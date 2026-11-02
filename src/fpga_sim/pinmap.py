@@ -498,6 +498,9 @@ def build_pin_map(
     clock_port = ""
     unknown: list[str] = []
     widths: list[tuple[str, int | None]] = []
+    # Each pin's first claimant, and every later one: (pin as written, first, later).
+    owner: dict[str, tuple[str, str]] = {}
+    shared: list[tuple[str, str, str]] = []
 
     for decl in ports:
         for name in decl.names:
@@ -513,11 +516,18 @@ def build_pin_map(
                     pin = assignments.get((name, 0))
                 if pin is None:
                     continue
-                role = pin_roles.get(normalize_pin(pin))
+                label = f"{name}{'' if bit is None else f'[{bit}]'}"
+                key = normalize_pin(pin)
+                role = pin_roles.get(key)
                 if role is None:
-                    unknown.append(f"{name}{'' if bit is None else f'[{bit}]'} -> pin {pin}")
+                    unknown.append(f"{label} -> pin {pin}")
                     continue
-                bound.append(BitBinding(name, bit, normalize_pin(pin), role))
+                if key in owner:
+                    first, written = owner[key]
+                    shared.append((written, first, label))
+                else:
+                    owner[key] = (label, pin.strip())
+                bound.append(BitBinding(name, bit, key, role))
 
             # B3: the off-by-one.  A port one bit narrower than its own pin
             # assignments binds every bit it has and leaves the last pin with
@@ -580,6 +590,21 @@ def build_pin_map(
             )
         return PinMapProblem(
             f"{source} assigns pins that {board.name} does not have:\n{detail}{extra}{hint}"
+        )
+
+    # One port per pin (U56 Phase 6).  The wrapper keeps one source per LED
+    # channel, segment and digit enable, so a second port on a pin silently won
+    # over the first, and two inputs on one pin both read one switch.  No FPGA
+    # build places two ports on one pin -- Quartus stops with Error 176310,
+    # Vivado refuses the second PACKAGE_PIN, nextpnr a second cell on one bel --
+    # so this file would not build for the board either.
+    if shared:
+        detail = "\n".join(f"  pin {pin}: {a} and {b}" for pin, a, b in shared[:8])
+        extra = f"\n  ... and {len(shared) - 8} more" if len(shared) > 8 else ""
+        return PinMapProblem(
+            f"{source} puts two of this design's ports on one pin, and a pin can belong "
+            f"to only one port:\n{detail}{extra}\n"
+            "Give each its own pin, or remove one of them."
         )
 
     if not outputs:

@@ -729,3 +729,74 @@ def test_every_target_board_can_be_indexed(board_name):
     index = board_pin_index(_board(board_name))
     kinds = {role.kind for role in index.values()}
     assert {"clk", "led", "sw", "btn", "seg"} <= kinds, kinds
+
+
+# ── One port per pin (U56 Phase 6) ───────────────────────────────────────────
+#
+# The wrapper keeps one source per LED channel, segment and digit enable, so the
+# later of two ports on one pin used to win silently: the earlier output went
+# nowhere, and two inputs read one switch.  No FPGA build accepts such a file --
+# Quartus stops with Error 176310 -- so the map does not either.
+
+_BEACON_VHDL = _LAB_VHDL.replace("hex : out", "beacon : out std_logic;\n        hex : out")
+
+
+def test_two_outputs_on_one_led_pin_are_refused_naming_both():
+    constraints = _LAB_QSF + "\nset_location_assignment PIN_AA24 -to BEACON"
+    result = _map(_BEACON_VHDL, "test_entity", constraints, "DE10-Standard", source="q.qsf")
+    assert isinstance(result, PinMapProblem)
+    assert result.message == (
+        "q.qsf puts two of this design's ports on one pin, and a pin can belong to only "
+        "one port:\n"
+        "  pin AA24: led_r[0] and beacon\n"
+        "Give each its own pin, or remove one of them."
+    )
+
+
+def test_two_inputs_on_one_switch_pin_are_refused_too():
+    # Harmless in simulation, where both would read SW0, but no build places them.
+    vhdl = _LAB_VHDL.replace("sw : in", "mode : in std_logic;\n        sw : in")
+    constraints = _LAB_QSF + "\nset_location_assignment PIN_AB30 -to MODE"
+    result = _map(vhdl, "test_entity", constraints, "DE10-Standard", source="q.qsf")
+    assert isinstance(result, PinMapProblem)
+    assert "\n  pin AB30: mode and sw[0]\n" in result.message
+
+
+def test_two_bits_of_one_port_on_one_pin_are_refused():
+    # The copy-paste slip: the second line kept the first line's pin.
+    constraints = _LAB_QSF.replace("PIN_AB23 -to LED_R[1]", "PIN_AA24 -to LED_R[1]")
+    assert constraints != _LAB_QSF
+    result = _map(_LAB_VHDL, "test_entity", constraints, "DE10-Standard", source="q.qsf")
+    assert isinstance(result, PinMapProblem)
+    assert "\n  pin AA24: led_r[0] and led_r[1]\n" in result.message
+
+
+def test_a_bus_on_another_bus_pins_lists_eight_and_counts_the_rest():
+    vhdl = _LAB_VHDL.replace(
+        "hex : out", "led_g : out std_logic_vector(9 downto 0);\n        hex : out"
+    )
+    pins = [p for n, p in _LAB_QSF_PINS.items() if n.startswith("LED_R[")]
+    constraints = _LAB_QSF + "".join(
+        f"\nset_location_assignment PIN_{p} -to LED_G[{i}]" for i, p in enumerate(pins)
+    )
+    result = _map(vhdl, "test_entity", constraints, "DE10-Standard", source="q.qsf")
+    assert isinstance(result, PinMapProblem)
+    lines = result.message.splitlines()
+    assert lines[1:9] == [f"  pin {p}: led_r[{i}] and led_g[{i}]" for i, p in enumerate(pins[:8])]
+    assert lines[9] == "  ... and 2 more"
+
+
+def test_a_shared_pin_reaches_the_user_through_the_contract_check(tmp_path):
+    design = tmp_path / "test_entity.vhd"
+    design.write_text(
+        _BEACON_VHDL + "architecture rtl of test_entity is begin end architecture;\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "test_entity.qsf").write_text(
+        _LAB_QSF + "\nset_location_assignment PIN_AA24 -to BEACON\n", encoding="utf-8"
+    )
+    result = check_vhdl_contract(design, _board("DE10-Standard"))
+    assert not result.ok and result.pinmap is None
+    assert result.message.startswith(
+        "test_entity.qsf puts two of this design's ports on one pin"
+    ), result.message
