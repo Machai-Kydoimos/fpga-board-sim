@@ -101,6 +101,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   numbers instead of putting 8 and 9 after 15. On the 25 boards whose order changed, a
   generic design's `led(k)`, `btn(k)` or `sw(k)` can now reach a different LED, button
   or switch than before: it follows the order the board shows. (Roadmap U56, Phase 2.)
+- **DIP switches are switches.** LiteX names its DIP switches `user_dip_btn`, so 16
+  boards drew them as buttons: the Lattice Versa ECP5's eight DIP switches were its eight
+  "buttons", and the VC707 showed 13 buttons where it has 5. They are switches now. Four
+  boards whose DIP switches the sync dropped altogether (`user_dip`) get them back: the
+  TrellisBoard, ZCU102, ZCU104 and ZCU216. On these boards a generic design's `sw(k)` now
+  reaches the DIP switches and its `btn(k)` the real buttons only; the Versa ECP5, the
+  MachXO3 and the Antmicro SDI-MIPI converter have no real button. A design written to
+  LiteX's own names keeps its `user_dip_btn` port, which keeps its width. (Roadmap U56,
+  Phase 5, D-2.)
+- **A resource with several pins shows each of its LEDs.** Twelve boards drew several
+  LEDs as one: the Versa ECP5's 14-segment display was a single "LED", the Trenz C10LP
+  RefKit's eight GPIO LEDs one more, the NetFPGA SUME's eight SFP LEDs four. Each pin is
+  its own LED now, and the Efinix Ti60's two RGB LEDs light in color. What is really a
+  bus or a multiplexed array (the Siglent front panel, the Hackaday badge's LED cathodes,
+  the ButterStick's color lines) stays as it was, and the sync's ledger lists it.
+  (Roadmap U56, Phase 5, D-3.)
+- **LED labels no longer print over each other.** Where a bank's labels are wider than
+  the space between its LEDs, as the Versa ECP5's "ALNUM_LED0" to "ALNUM_LED14" are, each
+  LED shows its number under the bank's own label, and hover still shows the full name.
+  The Alibaba XCKU3P, the Puzhi PZ-A7xxT-KFB and the Alveo U280 had this already.
+  (Roadmap U56, Phase 5.)
 - **A chip's label stays inside the chip.** Some of those part numbers are wider than
   the chip — `XCZU11EG-FFVF1517-2-I` on `litex-boards/adi_adrv2crr_fmc`,
   `LFE5UM5G-85F-8BG381C` on `litex-boards/radiona_ulx4m_ld_v2` — so they ran past its
