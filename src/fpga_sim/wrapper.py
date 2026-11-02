@@ -1053,7 +1053,9 @@ def _render_pinmap_wrapper(
         value = "'0'" if width is None else "(others => '0')"
         assigns.append(f"  {signal_of(port)} <= {value};  -- no pin assignment")
 
-    # Outputs: LED channels first, one line per boundary channel.
+    # Outputs: LED channels first, one line per boundary channel.  Every table
+    # below holds one source per resource: build_pin_map refuses a pin that two
+    # ports claim (U56 Phase 6), so no binding here can replace another.
     led_source: dict[int, str] = {}
     for binding in match.outputs:
         if binding.role.kind == "led":

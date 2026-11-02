@@ -1280,8 +1280,12 @@ It comes before the bump because the bump creates the first real orphans (the fi
     source); Vivado, "PACKAGE_PIN is occupied by port"; Quartus, Error 176310. GHDL and NVC know
     no pins. Tied to one `std_logic` net, two disagreeing drivers resolve to 'X'; the intended
     wired form, open-drain `'0'`/`'Z'` on one port, simulates as a NOR. On `main` the
-    iCEBreaker case ran with `led_r` left open. The constraint-file path still lets the later
-    port win; it follows in its own PR.
+    iCEBreaker case ran with `led_r` left open.
+  - The constraint-file path, which let the later of two ports on one pin win (an LED,
+    segment or digit enable; two inputs both read one switch), refuses any two of a design's
+    ports on one pin in a follow-up PR after #478, naming both ports and the pin. Inputs too,
+    because the toolchains refuse the file whatever the direction. The impact matrix is
+    unchanged: no fixture design has two ports on one pin.
 
 **Phase 7 — Versions (D-4), §4.7.**
 
@@ -1311,9 +1315,9 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 1c | parser misreadings at pins | **yes** (contact sheet: 56 new board files, part numbers on 91 chips, clocks on nine, LED order on 19) | done 2026-11-01 (#472); the review found long part numbers running past the chip, fixed in the PR |
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | done 2026-11-01 (#474); the review found differently named LEDs interleaving, so a board-native bank drove the wrong LED, fixed in the PR; reading the extension modules moved to Phase 4 |
 | 3 | orphan UI | **yes** | done 2026-11-01 (#475); the review asked for the saved copy's own file beside the successor, and for a successor only when the match is certain, both done in the PR |
-| 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | PR #476 (2026-11-01); the review found the five Efinix orphans were upstream renames, so renames are now followed (Rick, 2026-11-02), done in the PR |
-| 5 | multi-pin, DIP | **yes** | PR #477, awaiting visual review (2026-11-02) |
-| 6 | aliases | **yes** | PR #478, awaiting visual review (2026-11-02) |
+| 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | done 2026-11-02 (#476); the review found the five Efinix orphans were upstream renames, so renames are now followed (Rick, 2026-11-02), done in the PR |
+| 5 | multi-pin, DIP | **yes** | done 2026-11-02 (#477) |
+| 6 | aliases | **yes** | done 2026-11-02 (#478); the review settled one LED under two names: refused, with a message of its own, done in the PR. The same rule for constraint files (one port per pin) follows in its own PR |
 | 7 | versions | **yes** (selector) | not started |
 | 8 | closeout + release v0.24.0 | no | not started |
 
