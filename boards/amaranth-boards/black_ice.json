@@ -20,7 +20,14 @@
       "connector": null,
       "attrs": {
         "IO_STANDARD": "SB_LVCMOS"
-      }
+      },
+      "color": "blue",
+      "aliases": [
+        {
+          "name": "led_b",
+          "number": 0
+        }
+      ]
     },
     {
       "name": "led",
@@ -33,7 +40,14 @@
       "connector": null,
       "attrs": {
         "IO_STANDARD": "SB_LVCMOS"
-      }
+      },
+      "color": "green",
+      "aliases": [
+        {
+          "name": "led_g",
+          "number": 0
+        }
+      ]
     },
     {
       "name": "led",
@@ -46,7 +60,14 @@
       "connector": null,
       "attrs": {
         "IO_STANDARD": "SB_LVCMOS"
-      }
+      },
+      "color": "orange",
+      "aliases": [
+        {
+          "name": "led_o",
+          "number": 0
+        }
+      ]
     },
     {
       "name": "led",
@@ -59,63 +80,14 @@
       "connector": null,
       "attrs": {
         "IO_STANDARD": "SB_LVCMOS"
-      }
-    },
-    {
-      "name": "led_b",
-      "number": 0,
-      "pins": [
-        "71"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IO_STANDARD": "SB_LVCMOS"
       },
-      "color": "blue"
-    },
-    {
-      "name": "led_g",
-      "number": 0,
-      "pins": [
-        "67"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IO_STANDARD": "SB_LVCMOS"
-      },
-      "color": "green"
-    },
-    {
-      "name": "led_o",
-      "number": 0,
-      "pins": [
-        "68"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IO_STANDARD": "SB_LVCMOS"
-      },
-      "color": "orange"
-    },
-    {
-      "name": "led_r",
-      "number": 0,
-      "pins": [
-        "70"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IO_STANDARD": "SB_LVCMOS"
-      },
-      "color": "red"
+      "color": "red",
+      "aliases": [
+        {
+          "name": "led_r",
+          "number": 0
+        }
+      ]
     }
   ],
   "buttons": [
@@ -209,6 +181,36 @@
         "name": "led",
         "width": 4
       },
+      "led_banks": [
+        {
+          "name": "led_b",
+          "width": 1,
+          "channels": [
+            0
+          ]
+        },
+        {
+          "name": "led_g",
+          "width": 1,
+          "channels": [
+            1
+          ]
+        },
+        {
+          "name": "led_o",
+          "width": 1,
+          "channels": [
+            2
+          ]
+        },
+        {
+          "name": "led_r",
+          "width": 1,
+          "channels": [
+            3
+          ]
+        }
+      ],
       "naming": "framework-derived",
       "switches": {
         "name": "switch",
@@ -227,7 +229,7 @@
     "origin": "amaranth-boards",
     "upstream_file": "blackice.py",
     "upstream_class": "BlackIcePlatform",
-    "sync_commit": "be069dfd490b31df215337afac35711994a52418",
-    "sync_timestamp": "2026-10-31T23:32:50.118937+00:00"
+    "sync_commit": "f270d210e36b0787d62db77176c7b0e8032178d3",
+    "sync_timestamp": "2026-11-02T01:02:20.263817+00:00"
   }
 }

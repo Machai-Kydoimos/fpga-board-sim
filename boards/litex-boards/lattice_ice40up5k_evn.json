@@ -15,58 +15,6 @@
   "default_clock_hz": 12000000.0,
   "leds": [
     {
-      "name": "led",
-      "number": 0,
-      "pins": [
-        "39"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led",
-      "number": 0,
-      "pins": [
-        "39"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led",
-      "number": 0,
-      "pins": [
-        "40"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led",
-      "number": 0,
-      "pins": [
-        "41"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "rgb_led",
       "number": 0,
       "pins": [
@@ -79,7 +27,29 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "aliases": [
+        {
+          "name": "user_led_n",
+          "number": 0,
+          "channel": "b"
+        },
+        {
+          "name": "user_ledb_n",
+          "number": 0,
+          "channel": "b"
+        },
+        {
+          "name": "user_ledg_n",
+          "number": 0,
+          "channel": "g"
+        },
+        {
+          "name": "user_ledr_n",
+          "number": 0,
+          "channel": "r"
+        }
+      ]
     }
   ],
   "buttons": [],
@@ -145,13 +115,51 @@
       "leds": {
         "names": [
           "user_led_n",
-          "user_ledb_n",
           "user_ledg_n",
           "user_ledr_n"
         ],
-        "width": 4,
-        "active_low": true
+        "width": 3,
+        "active_low": true,
+        "channels": [
+          2,
+          1,
+          0
+        ]
       },
+      "led_banks": [
+        {
+          "name": "user_led_n",
+          "width": 1,
+          "active_low": true,
+          "channels": [
+            2
+          ]
+        },
+        {
+          "name": "user_ledb_n",
+          "width": 1,
+          "active_low": true,
+          "channels": [
+            2
+          ]
+        },
+        {
+          "name": "user_ledg_n",
+          "width": 1,
+          "active_low": true,
+          "channels": [
+            1
+          ]
+        },
+        {
+          "name": "user_ledr_n",
+          "width": 1,
+          "active_low": true,
+          "channels": [
+            0
+          ]
+        }
+      ],
       "naming": "framework-derived",
       "switches": {
         "name": "user_sw",
@@ -164,7 +172,7 @@
     "origin": "litex-boards",
     "upstream_file": "lattice_ice40up5k_evn.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T01:02:17.841769+00:00"
   }
 }

@@ -8,45 +8,6 @@
   "default_clock_hz": 48000000.0,
   "leds": [
     {
-      "name": "led",
-      "number": 0,
-      "pins": [
-        "39"
-      ],
-      "direction": "o",
-      "inverted": true,
-      "connector": null,
-      "attrs": {
-        "IO_STANDARD": "SB_LVCMOS"
-      }
-    },
-    {
-      "name": "led",
-      "number": 1,
-      "pins": [
-        "40"
-      ],
-      "direction": "o",
-      "inverted": true,
-      "connector": null,
-      "attrs": {
-        "IO_STANDARD": "SB_LVCMOS"
-      }
-    },
-    {
-      "name": "led",
-      "number": 2,
-      "pins": [
-        "41"
-      ],
-      "direction": "o",
-      "inverted": true,
-      "connector": null,
-      "attrs": {
-        "IO_STANDARD": "SB_LVCMOS"
-      }
-    },
-    {
       "name": "rgb_led",
       "number": 0,
       "pins": [
@@ -59,7 +20,24 @@
       "connector": null,
       "attrs": {
         "IO_STANDARD": "SB_LVCMOS"
-      }
+      },
+      "aliases": [
+        {
+          "name": "led",
+          "number": 0,
+          "channel": "g"
+        },
+        {
+          "name": "led",
+          "number": 1,
+          "channel": "b"
+        },
+        {
+          "name": "led",
+          "number": 2,
+          "channel": "r"
+        }
+      ]
     }
   ],
   "buttons": [],
@@ -72,7 +50,12 @@
       "leds": {
         "name": "led",
         "width": 3,
-        "active_low": true
+        "active_low": true,
+        "channels": [
+          1,
+          2,
+          0
+        ]
       },
       "naming": "framework-derived"
     }
@@ -82,7 +65,7 @@
     "origin": "amaranth-boards",
     "upstream_file": "upduino_v1.py",
     "upstream_class": "UpduinoV1Platform",
-    "sync_commit": "be069dfd490b31df215337afac35711994a52418",
-    "sync_timestamp": "2026-11-01T03:02:01.378669+00:00"
+    "sync_commit": "f270d210e36b0787d62db77176c7b0e8032178d3",
+    "sync_timestamp": "2026-11-02T01:02:20.263817+00:00"
   }
 }

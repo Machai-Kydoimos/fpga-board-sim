@@ -188,6 +188,16 @@
         "name": "user_led",
         "width": 5
       },
+      "led_banks": [
+        {
+          "name": "module_led",
+          "width": 2,
+          "channels": [
+            5,
+            6
+          ]
+        }
+      ],
       "naming": "framework-derived",
       "buttons": {
         "name": "user_btn",
@@ -200,7 +210,7 @@
     "origin": "litex-boards",
     "upstream_file": "puzhi_pz_a7xxt_kfb.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T01:02:17.841769+00:00"
   }
 }

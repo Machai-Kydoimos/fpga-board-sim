@@ -215,7 +215,7 @@ on a match, runs it unmodified — inverting active-low pins and packing the 7-s
 digits for you. That includes **physically multiplexed scan displays**: a design
 driving the Basys 3's shared `seg`/`dp`/`an` or a Nexys 4 DDR's `CA..CG`/`DP`/`AN`
 exactly as on real hardware is demultiplexed live, each digit rendered at its honest
-1/N scan brightness. **330 of the 355 boards** carry a convention (vendor-canonical
+1/N scan brightness. **334 of the 355 boards** carry a convention (vendor-canonical
 names where cited, litex/amaranth framework names elsewhere; canonical wins when both
 exist). Full guide: [docs/writing_designs.md](docs/writing_designs.md#board-native-designs).
 

@@ -9,45 +9,6 @@
   "default_clock_assumed": true,
   "leds": [
     {
-      "name": "led",
-      "number": 0,
-      "pins": [
-        "38"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led",
-      "number": 1,
-      "pins": [
-        "39"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led",
-      "number": 2,
-      "pins": [
-        "34"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
       "name": "rgb_led",
       "number": 0,
       "pins": [
@@ -60,7 +21,24 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "aliases": [
+        {
+          "name": "user_led",
+          "number": 0,
+          "channel": "b"
+        },
+        {
+          "name": "user_led",
+          "number": 1,
+          "channel": "g"
+        },
+        {
+          "name": "user_led",
+          "number": 2,
+          "channel": "r"
+        }
+      ]
     }
   ],
   "buttons": [
@@ -85,7 +63,7 @@
     "origin": "litex-boards",
     "upstream_file": "quicklogic_quickfeather.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T13:32:06.773355+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T01:02:17.841769+00:00"
   }
 }
