@@ -263,6 +263,18 @@ class UIComponent(abc.ABC):
         """Human-readable label from ComponentInfo, else ``<PREFIX><index>``."""
         return self.info.display_name if self.info else f"{self._LABEL_PREFIX}{self.index}"
 
+    #: Set by the board's LED layout when this LED's bank labels would overprint each
+    #: other (U56 Phase 5): the bank's own label above the row names it, so the LED
+    #: shows its number alone.  Hover still shows :attr:`label` in full.
+    compact_label: bool = False
+
+    @property
+    def drawn_label(self) -> str:
+        """The label drawn under the widget: :attr:`label`, or its number alone."""
+        if self.compact_label and self.info is not None:
+            return str(self.info.number)
+        return self.label
+
     @property
     def tooltip_extra(self) -> list[tuple[str, str]]:
         """Extra ``(prefix, value)`` hover rows beyond the shared pin metadata.
@@ -679,7 +691,7 @@ class LED(UIComponent):
             # short to host it), stacked: digits with a smaller % sign below.
             _blit_circle_pct(surface, self.level, cx, cy, r)
 
-        lbl = render_text(font, self.label, WHITE)
+        lbl = render_text(font, self.drawn_label, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
 
     @property
@@ -756,7 +768,7 @@ class RGBLED(LED):
 
         pygame.draw.circle(surface, WHITE, (cx, cy), r, 1)
 
-        lbl = render_text(font, self.label, WHITE)
+        lbl = render_text(font, self.drawn_label, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=cx, top=self.rect.bottom + 1))
 
     def _draw_debug_bars(self, surface: pygame.Surface, font: pygame.font.Font) -> None:
@@ -774,7 +786,7 @@ class RGBLED(LED):
             _draw_duty_bar(surface, track, lv, _LED_COLOR_RGB[_CHANNEL_COLOR[ch]], with_text=True)
             y += bar_h + gap
 
-        lbl = render_text(font, self.label, WHITE)
+        lbl = render_text(font, self.drawn_label, WHITE)
         surface.blit(lbl, lbl.get_rect(centerx=self.rect.centerx, top=self.rect.bottom + 1))
 
     @property

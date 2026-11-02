@@ -203,3 +203,33 @@ def test_switches_wrap_into_balanced_non_overlapping_rows(headless_pygame: Modul
     assert max(counts) - min(counts) <= 1  # columns balanced across the rows
     tops = sorted(rows)
     assert tops[1] - tops[0] >= fb.switches[0].rect.height  # rows do not overlap
+
+
+def _segmented_board() -> BoardDef:
+    """The Versa ECP5 after U56 Phase 5: 8 LEDs, 15 split display segments, a lone LED."""
+    return BoardDef(
+        name="Versa-ish",
+        class_name="VersaIsh",
+        leds=[ComponentInfo("led", "led", i, [f"L{i}"]) for i in range(8)]
+        + [ComponentInfo("led", "alnum_led", i, [f"A{i}"]) for i in range(15)]
+        + [ComponentInfo("led", "power_led", 0, ["P0"])],
+    )
+
+
+def test_a_bank_whose_labels_collide_shows_numbers(headless_pygame: ModuleType) -> None:
+    """ "ALNUM_LED0".."ALNUM_LED14" overprinted each other; the bank label names them."""
+    from fpga_sim.ui import FPGABoard
+
+    scr = headless_pygame.display.set_mode((1024, 700))
+    fb = FPGABoard(board_def=_segmented_board(), screen=scr, width=1024, height=700)
+    banks = dict(fb._led_banks)
+    segments = banks["ALNUM_LED"]
+    assert [led.drawn_label for led in segments] == [str(i) for i in range(15)]
+    assert segments[3].label == "ALNUM_LED3"  # hover keeps the full label
+    # A bank whose labels fit, and a lone LED with nothing to overprint, keep theirs.
+    assert [led.drawn_label for led in banks["LEDs"]] == [f"LED{i}" for i in range(8)]
+    assert [led.drawn_label for led in banks["POWER_LED"]] == ["POWER_LED0"]
+    # Each segment's number now fits between its neighbors.
+    font = headless_pygame.font.SysFont(None, 18)
+    pitch = segments[1].rect.left - segments[0].rect.left
+    assert all(font.size(led.drawn_label)[0] < pitch for led in segments)

@@ -839,6 +839,17 @@ class FPGABoard:
         block_h = size + label_h + led_label_h + gap
         placed, _ = flow(size)
 
+        # The bank's own label above the row names it.  When its LEDs' labels are
+        # wider than their pitch, neighbors overprint each other -- "ALNUM_LED0"..
+        # "ALNUM_LED14" under the Versa's split display -- so each LED shows its
+        # number alone; hover keeps the full label (U56 Phase 5).  A lone LED has
+        # no neighbor in its bank, so it keeps its label.
+        item_font = get_font(max(10, round(13 * scale)))
+        for _bank_label, widgets, _bank_x, _row, _wrap in placed:
+            wide = len(widgets) > 1 and max(item_font.size(w.label)[0] for w in widgets) >= pitch
+            for w in widgets:
+                w.compact_label = wide
+
         # Center each row horizontally so its LEDs are balanced left-to-right.
         row_right: dict[int, float] = {}
         for _lbl, widgets, bank_x, base_row, wrap in placed:
