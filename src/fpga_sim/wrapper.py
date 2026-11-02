@@ -27,7 +27,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from fpga_sim.conventions import ConventionMatch, NativePort
+from fpga_sim.conventions import ConventionMatch, NativePort, led_port_channels
 from fpga_sim.paths import SIM_DIR
 from fpga_sim.pinmap import PinMapMatch
 from fpga_sim.sim_backends import _backend
@@ -200,7 +200,15 @@ def _render_native_wrapper(
         sig = f"{role}_uut"
         inv = "not " if port.active_low else ""
         decls.append(f"  signal {sig} : std_logic_vector({port.width} - 1 downto 0);")
-        assigns.append(f"  {sig} <= {inv}{wrapper_port}({port.width} - 1 downto 0);")
+        if port.channels is None:
+            assigns.append(f"  {sig} <= {inv}{wrapper_port}({port.width} - 1 downto 0);")
+        else:
+            # A channel map (U56 Phase 6): bit k reads the board's input channels[k],
+            # and a bit the board has no resource for idles released.
+            idle = "'1'" if port.active_low else "'0'"
+            for k, channel in enumerate(port.channels):
+                src = f"{inv}{wrapper_port}({channel})" if channel is not None else idle
+                assigns.append(f"  {sig}({k}) <= {src};")
         pmap += _native_port_map(port, sig)
 
     # LEDs: read the native bank(s) back (invert when active-low) onto the board
@@ -212,7 +220,40 @@ def _render_native_wrapper(
         if board_def is not None
         else (led.width if led is not None else 0)
     )
-    if rgb is None:
+    per_channel = bool(match.led_banks) or any(
+        p is not None and p.channels is not None for p in (led, rgb)
+    )
+    if per_channel:
+        # Channel maps (U56 Phase 6): each bank's bit k drives the boundary channel
+        # its map names -- an alias of an RGB site's channel, a split group after
+        # the bank before it, a bank that is not first.  The matcher already
+        # rejected two ports on one channel, so each channel has at most one
+        # driver; the rest are dark.
+        banks = [(led, "led_uut", None), (rgb, "rgbch_uut", mono)] + [
+            (bank, f"ledbank{j}_uut", None) for j, bank in enumerate(match.led_banks)
+        ]
+        resolved = [
+            (port, sig, led_port_channels(port, base))
+            for port, sig, base in banks
+            if port is not None
+        ]
+        boundary_leds = (
+            max(1, board_def.num_led_channels)
+            if board_def is not None
+            else 1 + max((c for _, _, cs in resolved for c in cs if c is not None), default=0)
+        )
+        drivers: dict[int, str] = {}
+        for port, sig, channels in resolved:
+            inv = "not " if port.active_low else ""
+            decls.append(f"  signal {sig} : std_logic_vector({port.width} - 1 downto 0);")
+            pmap += _native_port_map(port, sig)
+            for k, channel in enumerate(channels):
+                if channel is not None and channel < boundary_leds:
+                    drivers[channel] = f"{inv}{sig}({k})"
+        for channel in range(boundary_leds):
+            source = drivers.get(channel, "'0'")
+            assigns.append(f"  {led_out}({channel}) <= {source};")
+    elif rgb is None:
         # No RGB bank matched: the mono bank zero-extends over the whole
         # boundary (RGB channel bits, if any, stay dark) -- the pre-U38 form.
         assert led is not None  # the match floor: at least one of leds/leds_rgb
@@ -324,7 +365,9 @@ def _render_native_wrapper(
         num_sw_def = sw.width if sw is not None else 1
         num_btn_def = btn.width if btn is not None else 1
         num_led_def = max(
-            1, (led.width if led is not None else 0) + (rgb.width if rgb is not None else 0)
+            1,
+            (led.width if led is not None else 0) + (rgb.width if rgb is not None else 0),
+            boundary_leds if per_channel else 0,
         )
 
     # num_digits, NOT len(names): a scan match's names are the shared segment

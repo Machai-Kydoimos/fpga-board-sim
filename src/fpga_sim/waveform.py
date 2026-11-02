@@ -213,6 +213,8 @@ def _native_gtkw_signals(match: ConventionMatch) -> list[str]:
         sigs += _port(match.leds_rgb)
     if match.leds_green is not None:
         sigs += _port(match.leds_green)
+    for bank in match.led_banks:  # aliases, split groups, other LED names (U56 Phase 6)
+        sigs += _port(bank)
     if match.seven_seg is not None:
         seg = match.seven_seg
         if seg.style == "scan":
