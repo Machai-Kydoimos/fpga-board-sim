@@ -37,6 +37,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Pro and the RFSoC 4x2 (355 boards in all). Nothing upstream wrote was executed, and a
   static scan of the three heads found nothing that reaches for the environment, a
   command or the network. (Roadmap U56, Phase 4.)
+- **Every version LiteX lists is a board of its own: 86 more (441 boards in all).**
+  A LiteX platform file can describe several versions of a board, chosen by a
+  constructor argument, and the sync used to read only the default. It now reads every
+  value upstream's own code lists, one argument at a time, and each version gets its
+  own file and name: "Digilent Arty (variant a7-100)", "Gsd Orangecrab (revision 0.1)",
+  "Sipeed Tang Primer 20k (dock lite)", "Radiona Ulx3s (device LFE5U-85F-6BG381C)".
+  13 have other LEDs, switches, buttons or clocks than their default; 66 differ in the
+  FPGA part alone, as Amaranth already ships the ULX3S and the OrangeCrab per part; 7
+  match their default in everything the simulator models, and differ upstream in I/O
+  it does not. A board setting such as an I/O-voltage jumper is not a version. Every
+  existing board keeps its file and name. (Roadmap U56, Phase 7, D-4.)
 
 ### Security
 
