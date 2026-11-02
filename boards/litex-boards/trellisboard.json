@@ -230,7 +230,112 @@
       }
     }
   ],
-  "switches": [],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "AE31"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135_I"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "AE32"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135_I"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "AD32"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135_I"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "AC32"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135_I"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 4,
+      "pins": [
+        "AB32"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135_I"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 5,
+      "pins": [
+        "AB31"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135_I"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 6,
+      "pins": [
+        "AC31"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135_I"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 7,
+      "pins": [
+        "AC30"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "SSTL135_I"
+      }
+    }
+  ],
   "seven_seg": null,
   "port_conventions": {
     "litex": {
@@ -241,6 +346,10 @@
         "width": 12
       },
       "naming": "framework-derived",
+      "switches": {
+        "name": "user_dip",
+        "width": 8
+      },
       "buttons": {
         "name": "user_btn",
         "width": 4
@@ -271,7 +380,7 @@
     "origin": "litex-boards",
     "upstream_file": "trellisboard.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
   }
 }

@@ -1,7 +1,7 @@
 {
   "source_repo": "https://github.com/litex-hub/litex-boards",
   "source_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
-  "sync_timestamp": "2026-11-01T23:31:01.246418+00:00",
+  "sync_timestamp": "2026-11-02T00:29:11.989377+00:00",
   "board_count": 234,
   "files_written": [
     "adi_adrv2crr_fmc.json",
@@ -497,6 +497,20 @@
     "ypcb_00338_1p1.py": "boards: ypcb_00338_1p1.json",
     "ztex213.py": "boards: ztex213.json"
   },
-  "warnings": {},
+  "warnings": {
+    "gsd_butterstick.py": [
+      "unsupported_shape: user_led_color 0 (the color lines of the seven user LEDs)"
+    ],
+    "hackaday_hadbadge.py": [
+      "unsupported_shape: led 1 (the cathodes of an LED matrix)"
+    ],
+    "modretro_chromatic.py": [
+      "unsupported_shape: rgb_led 0 (sub-signals en, r, g, b)"
+    ],
+    "siglent_sds1104xe.py": [
+      "unsupported_shape: btn_frontpanel 0 (sub-signals clk, cs_n, miso)",
+      "unsupported_shape: led_frontpanel 0 (sub-signals cs_n, clk, mosi, oe)"
+    ]
+  },
   "orphans": []
 }

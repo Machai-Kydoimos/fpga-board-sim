@@ -88,13 +88,97 @@
       "name": "gpio_leds",
       "number": 0,
       "pins": [
-        "AB10",
-        "AA10",
-        "AA9",
-        "Y10",
-        "W10",
-        "U9",
-        "U8",
+        "AB10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "gpio_leds",
+      "number": 1,
+      "pins": [
+        "AA10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "gpio_leds",
+      "number": 2,
+      "pins": [
+        "AA9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "gpio_leds",
+      "number": 3,
+      "pins": [
+        "Y10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "gpio_leds",
+      "number": 4,
+      "pins": [
+        "W10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "gpio_leds",
+      "number": 5,
+      "pins": [
+        "U9"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "gpio_leds",
+      "number": 6,
+      "pins": [
+        "U8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "gpio_leds",
+      "number": 7,
+      "pins": [
         "U7"
       ],
       "direction": "o",
@@ -194,7 +278,7 @@
     "origin": "litex-boards",
     "upstream_file": "trenz_c10lprefkit.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
   }
 }

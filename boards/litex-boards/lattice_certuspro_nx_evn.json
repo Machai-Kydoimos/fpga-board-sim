@@ -376,9 +376,11 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS18"
       }
-    },
+    }
+  ],
+  "switches": [
     {
-      "name": "button",
+      "name": "switch",
       "number": 0,
       "pins": [
         "K8"
@@ -391,7 +393,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 1,
       "pins": [
         "K7"
@@ -404,7 +406,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 2,
       "pins": [
         "K6"
@@ -417,7 +419,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 3,
       "pins": [
         "K4"
@@ -430,7 +432,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 4,
       "pins": [
         "K3"
@@ -443,7 +445,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 5,
       "pins": [
         "K2"
@@ -456,7 +458,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 6,
       "pins": [
         "J7"
@@ -469,7 +471,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 7,
       "pins": [
         "J6"
@@ -482,7 +484,6 @@
       }
     }
   ],
-  "switches": [],
   "seven_seg": null,
   "port_conventions": {
     "litex": {
@@ -493,9 +494,14 @@
         "width": 24
       },
       "naming": "framework-derived",
-      "buttons": {
+      "switches": {
         "name": "user_dip_btn",
         "width": 8
+      },
+      "buttons": {
+        "name": "user_btn_n",
+        "width": 3,
+        "active_low": true
       }
     }
   },
@@ -504,7 +510,7 @@
     "origin": "litex-boards",
     "upstream_file": "lattice_certuspro_nx_evn.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
   }
 }

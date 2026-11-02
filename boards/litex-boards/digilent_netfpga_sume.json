@@ -49,8 +49,7 @@
       "name": "sfp_led",
       "number": 0,
       "pins": [
-        "G13",
-        "L15"
+        "G13"
       ],
       "direction": "o",
       "inverted": false,
@@ -63,8 +62,7 @@
       "name": "sfp_led",
       "number": 1,
       "pins": [
-        "AL22",
-        "BA20"
+        "L15"
       ],
       "direction": "o",
       "inverted": false,
@@ -77,8 +75,7 @@
       "name": "sfp_led",
       "number": 2,
       "pins": [
-        "AY18",
-        "AY17"
+        "AL22"
       ],
       "direction": "o",
       "inverted": false,
@@ -91,7 +88,58 @@
       "name": "sfp_led",
       "number": 3,
       "pins": [
-        "P31",
+        "BA20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "sfp_led",
+      "number": 4,
+      "pins": [
+        "AY18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "sfp_led",
+      "number": 5,
+      "pins": [
+        "AY17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "sfp_led",
+      "number": 6,
+      "pins": [
+        "P31"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "sfp_led",
+      "number": 7,
+      "pins": [
         "K32"
       ],
       "direction": "o",
@@ -152,7 +200,7 @@
     "origin": "litex-boards",
     "upstream_file": "digilent_netfpga_sume.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
   }
 }

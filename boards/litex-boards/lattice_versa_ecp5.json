@@ -122,20 +122,188 @@
       "name": "alnum_led",
       "number": 0,
       "pins": [
-        "M20",
-        "L18",
-        "M19",
-        "L16",
-        "L17",
-        "M18",
-        "N16",
-        "M17",
-        "N18",
-        "P17",
-        "N17",
-        "P16",
-        "R16",
-        "R17",
+        "M20"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 1,
+      "pins": [
+        "L18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 2,
+      "pins": [
+        "M19"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 3,
+      "pins": [
+        "L16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 4,
+      "pins": [
+        "L17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 5,
+      "pins": [
+        "M18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 6,
+      "pins": [
+        "N16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 7,
+      "pins": [
+        "M17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 8,
+      "pins": [
+        "N18"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 9,
+      "pins": [
+        "P17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 10,
+      "pins": [
+        "N17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 11,
+      "pins": [
+        "P16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 12,
+      "pins": [
+        "R16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 13,
+      "pins": [
+        "R17"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS25"
+      }
+    },
+    {
+      "name": "alnum_led",
+      "number": 14,
+      "pins": [
         "U1"
       ],
       "direction": "o",
@@ -146,9 +314,10 @@
       }
     }
   ],
-  "buttons": [
+  "buttons": [],
+  "switches": [
     {
-      "name": "button",
+      "name": "switch",
       "number": 0,
       "pins": [
         "H2"
@@ -161,7 +330,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 1,
       "pins": [
         "K3"
@@ -174,7 +343,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 2,
       "pins": [
         "G3"
@@ -187,7 +356,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 3,
       "pins": [
         "F2"
@@ -200,7 +369,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 4,
       "pins": [
         "J18"
@@ -213,7 +382,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 5,
       "pins": [
         "K18"
@@ -226,7 +395,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 6,
       "pins": [
         "K19"
@@ -239,7 +408,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 7,
       "pins": [
         "K20"
@@ -252,7 +421,6 @@
       }
     }
   ],
-  "switches": [],
   "seven_seg": null,
   "port_conventions": {
     "litex": {
@@ -263,7 +431,7 @@
         "width": 8
       },
       "naming": "framework-derived",
-      "buttons": {
+      "switches": {
         "name": "user_dip_btn",
         "width": 8
       }
@@ -274,7 +442,7 @@
     "origin": "litex-boards",
     "upstream_file": "lattice_versa_ecp5.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
   }
 }

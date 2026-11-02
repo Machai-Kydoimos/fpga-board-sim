@@ -147,9 +147,11 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
       }
-    },
+    }
+  ],
+  "switches": [
     {
-      "name": "button",
+      "name": "switch",
       "number": 0,
       "pins": [
         "AA23"
@@ -162,7 +164,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 1,
       "pins": [
         "AB22"
@@ -175,7 +177,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 2,
       "pins": [
         "AC22"
@@ -188,7 +190,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 3,
       "pins": [
         "AA22"
@@ -201,7 +203,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 4,
       "pins": [
         "W21"
@@ -214,7 +216,6 @@
       }
     }
   ],
-  "switches": [],
   "seven_seg": {
     "num_digits": 3,
     "has_dp": true,
@@ -231,9 +232,13 @@
         "width": 8
       },
       "naming": "framework-derived",
-      "buttons": {
+      "switches": {
         "name": "user_dip_btn",
         "width": 5
+      },
+      "buttons": {
+        "name": "user_btn",
+        "width": 1
       }
     }
   },
@@ -242,7 +247,7 @@
     "origin": "litex-boards",
     "upstream_file": "lattice_certuspro_nx_versa.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
   }
 }

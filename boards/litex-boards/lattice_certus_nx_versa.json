@@ -188,9 +188,11 @@
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
       }
-    },
+    }
+  ],
+  "switches": [
     {
-      "name": "button",
+      "name": "switch",
       "number": 0,
       "pins": [
         "L10"
@@ -203,7 +205,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 1,
       "pins": [
         "E16"
@@ -216,7 +218,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 2,
       "pins": [
         "L11"
@@ -229,7 +231,7 @@
       }
     },
     {
-      "name": "button",
+      "name": "switch",
       "number": 3,
       "pins": [
         "R3"
@@ -242,7 +244,6 @@
       }
     }
   ],
-  "switches": [],
   "seven_seg": null,
   "port_conventions": {
     "litex": {
@@ -254,9 +255,14 @@
         "active_low": true
       },
       "naming": "framework-derived",
-      "buttons": {
+      "switches": {
         "name": "user_dip_btn",
         "width": 4
+      },
+      "buttons": {
+        "name": "user_btn_n",
+        "width": 3,
+        "active_low": true
       }
     }
   },
@@ -266,6 +272,6 @@
     "upstream_file": "lattice_certus_nx_versa.py",
     "upstream_class": "Platform",
     "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
-    "sync_timestamp": "2026-11-01T22:24:43.342916+00:00"
+    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
   }
 }

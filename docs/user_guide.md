@@ -382,7 +382,7 @@ presenting the guess as the board's.
   do with its single cursor. The **numpad** digits work too, so a numeric keypad
   becomes a button pad. Each bound button shows its key on its face, and the
   hover tooltip names it as well. Hex covers the whole fleet: the largest board
-  has 13 buttons, and only 7 of 355 have more than 10
+  has 13 buttons, and only 5 of 355 have more than 10
 - **Right-click a button** to **latch** it down hands-free; right-click again to
   release it. A latched button draws in its own color with a small padlock in
   its top-right corner, and combines freely with a live hold — hold it with the mouse *as well*, let the
