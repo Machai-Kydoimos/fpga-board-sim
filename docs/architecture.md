@@ -404,10 +404,11 @@ board JSON — the cocotb testbench boundary never changes.
    cluster listed alphabetically, a bank behind another (DECA's `user_btn`), a bit
    with no resource (the ECP5 EVN's DIP switches, numbered from 1, idle released).
    Framework conventions also list every other LED name as a **`led_banks`** entry, so
-   a design may drive an LED by any name upstream gives it; two names of one LED in
-   one design are a near-miss naming the shared pin. The wrapper's default generics
-   mirror the board's resource counts, so analysis validates the same widths the run
-   passes.
+   a design may drive an LED by any name upstream gives it. Two names of one LED in
+   one design drive its pin twice, which FPGA toolchains refuse, so the simulator
+   refuses the design too, with a message of its own naming both and the pin. The
+   wrapper's default generics mirror the board's resource counts, so analysis
+   validates the same widths the run passes.
 4. **Scan displays (U22).** On boards whose display is physically multiplexed
    (Basys 3's shared `seg[6:0]` + `dp` + `an[3:0]`; the Nexys 4 DDR / A7 family's
    `CA..CG` + `DP` + `AN[7:0]` scalars), the convention's `seven_seg` carries

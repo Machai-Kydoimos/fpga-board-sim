@@ -8,6 +8,9 @@ under both GHDL and NVC.
 * mono + mono: Amaranth iCEBreaker, ``led_r``/``led_g`` = ``led`` 0/1;
 * mono names on an RGB LED: LiteX OrangeCrab, ``user_led`` 0-2 = r, g, b;
 * three names on one RGB LED: LiteX iCE40UP5K EVN, ``user_ledr_n``/``_g_``/``_b_``.
+
+A design that declares two names of one LED is refused before any simulator runs,
+with a message naming both and the pin they share.
 """
 
 from __future__ import annotations
@@ -87,6 +90,32 @@ def _run(toplevel: str, board_rel: str, expect: str, sim: Simulator) -> None:
     assert "FAIL=0" in output and "PASS=1" in output, (
         f"{toplevel} under {sim.upper()}:\n" + "\n".join(output.splitlines()[-30:])
     )
+
+
+#: (toplevel, board JSON, how the message starts): every port of these designs
+#: matches, so the refusal gets its own message, not the near-miss list.
+_TWICE = [
+    (
+        "twice_icebreaker",
+        "amaranth-boards/icebreaker.json",
+        "'twice_icebreaker.vhd' drives one ICEBreaker LED twice: led(0) and led_r are two "
+        "names for pin 11, and a pin can have only one driver.\n",
+    ),
+    (
+        "twice_ice40up5k",
+        "litex-boards/lattice_ice40up5k_evn.json",
+        "'twice_ice40up5k.vhd' drives one Lattice Ice40up5k Evn LED twice: user_led_n and "
+        "user_ledb_n are two names for pin 39, and a pin can have only one driver.\n",
+    ),
+]
+
+
+@pytest.mark.parametrize(("toplevel", "board_rel", "expect"), _TWICE)
+def test_two_names_of_one_led_are_refused(toplevel, board_rel, expect):
+    bd = BoardDef.from_json((PROJECT / "boards" / board_rel).read_text(encoding="utf-8"))
+    res = check_vhdl_contract(DESIGNS / f"{toplevel}.vhd", board_def=bd)
+    assert not res.ok and res.match is None
+    assert res.message.startswith(expect), res.message
 
 
 @pytest.mark.slow

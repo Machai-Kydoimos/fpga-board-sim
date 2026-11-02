@@ -162,6 +162,27 @@ class ContractResult:
 
 
 @dataclass(frozen=True)
+class _SharedLed:
+    """Two of a design's ports that reach one LED pin (U56 Phase 6, D-1).
+
+    Upstream lists some LEDs under two names, and a design may use either; one that
+    declares both drives the pin twice.  FPGA toolchains refuse that -- Amaranth
+    refuses the second request, and nextpnr, Vivado and Quartus a second port on a
+    placed pin -- so the matcher refuses it too.
+    """
+
+    first: str  # the earlier port, as the design names its bit: ``led(0)``
+    second: str  # the later one: ``led_r``
+    pin: str  # the board pin both reach; "" when the board names none
+
+    @property
+    def problem(self) -> str:
+        """The clash as one item of a near-miss list."""
+        where = f" (pin {self.pin})" if self.pin else ""
+        return f"{self.first} and {self.second} drive the same LED{where}"
+
+
+@dataclass(frozen=True)
 class _ConventionAttempt:
     """Result of trying one convention block: a full match, or the near-miss detail."""
 
@@ -170,6 +191,7 @@ class _ConventionAttempt:
     match: ConventionMatch | None  # a complete board-native match, else None
     matched_roles: tuple[str, ...]  # role tags that matched (near-miss scoring)
     problems: tuple[str, ...]  # human-readable missing/mismatched roles
+    shared_led: _SharedLed | None = None  # two ports on one LED; also in ``problems``
 
 
 _SIZING_GENERICS = {"num_switches", "num_buttons", "num_leds", "num_segs", "num_rgb_leds"}
@@ -380,8 +402,8 @@ def _shared_led_channel(
     leds: NativePort | None,
     leds_rgb: NativePort | None,
     led_banks: tuple[NativePort, ...],
-) -> str:
-    """Name the first LED two matched ports both drive, or return ``""`` (U56 Phase 6).
+) -> _SharedLed | None:
+    """Return the first LED two matched ports both drive, or None (U56 Phase 6).
 
     Upstream lists some LEDs under two names (D-1).  A design may use either; one
     that declares both drives the pin twice, which the board cannot do.
@@ -396,11 +418,9 @@ def _shared_led_channel(
                 continue
             label = _bit_label(port, k)
             if channel in owner:
-                pin = _led_channel_pin(board_def, channel)
-                where = f" (pin {pin})" if pin else ""
-                return f"{owner[channel]} and {label} drive the same LED{where}"
+                return _SharedLed(owner[channel], label, _led_channel_pin(board_def, channel))
             owner[channel] = label
-    return ""
+    return None
 
 
 def _attempt_convention(
@@ -518,9 +538,9 @@ def _attempt_convention(
 
     # Two declared ports that reach one LED drive one pin (U56 Phase 6, D-1): upstream
     # lists the LED under both names, and the design drives it twice.
-    clash = _shared_led_channel(board_def, leds, leds_rgb, led_banks)
-    if clash:
-        problems.append(clash)
+    shared_led = _shared_led_channel(board_def, leds, leds_rgb, led_banks)
+    if shared_led is not None:
+        problems.append(shared_led.problem)
 
     # U31: a *default-less* input the convention does not map would be left
     # unbound in the wrapper's uut port map (an elaboration error), so a native
@@ -552,7 +572,7 @@ def _attempt_convention(
     if (
         clk_port is not None
         and (leds is not None or leds_rgb is not None or led_banks)
-        and not clash
+        and shared_led is None
         and (not sw_declared or switches is not None)
         and (not btn_declared or buttons is not None)
         and seg_ok
@@ -570,7 +590,9 @@ def _attempt_convention(
             leds_rgb=leds_rgb,
             led_banks=led_banks,
         )
-    return _ConventionAttempt(maker, board_def.name, match, tuple(matched), tuple(problems))
+    return _ConventionAttempt(
+        maker, board_def.name, match, tuple(matched), tuple(problems), shared_led
+    )
 
 
 # Convention match precedence.  Authoritative blocks -- vendor-canonical or
@@ -679,8 +701,29 @@ def _native_convention_message(match: ConventionMatch, filename: str) -> str:
     )
 
 
+def _shared_led_message(attempt: _ConventionAttempt, filename: str) -> str:
+    """User-facing message for a design whose one problem is an LED under two names."""
+    shared = attempt.shared_led
+    assert shared is not None
+    names = f"two names for pin {shared.pin}" if shared.pin else "two names for one LED"
+    return (
+        f"'{filename}' drives one {attempt.board_name} LED twice: {shared.first} and "
+        f"{shared.second} are {names}, and a pin can have only one driver.\n"
+        # Not "remove a port": led(0) is a bit of the port led, so which port goes
+        # depends on the design (drop led_r, or trade led for led_r + led_g).
+        "Drive that LED through one name only."
+    )
+
+
 def _near_miss_convention_message(attempt: _ConventionAttempt, filename: str) -> str:
-    """User-facing message for a design that partially matches a board convention."""
+    """User-facing message for a design that partially matches a board convention.
+
+    A design whose one problem is an LED under two names gets its own message (U56
+    Phase 6): every port it declares matches, so "missing/mismatched" would send the
+    reader looking for a typo that is not there.
+    """
+    if attempt.shared_led is not None and len(attempt.problems) == 1:
+        return _shared_led_message(attempt, filename)
     return (
         f"'{filename}' is close to {attempt.board_name}'s board-native '{attempt.maker}' "
         f"interface but does not fully match it "

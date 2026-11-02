@@ -393,7 +393,9 @@ presenting the guess as the board's.
   buttons all labeled `BTN0` — so the tooltip is where the on-screen widget and
   your VHDL index line up. An LED that upstream lists under several names shows
   them all (**Also**: `led_r` on the iCEBreaker's red LED); a design written to
-  the board's own port names may use any one of them
+  the board's own port names may use any one of them, but only one per LED: a
+  design that declares two drives the LED's pin twice, and is refused with a
+  message naming both
 - **`SIM: …`** toggle → cycle between installed simulators, each shown by a
   short label (`SIM: GHDL`, `SIM: NVC`, and the GHDL code generators
   `SIM: GHDL-LLVM` / `SIM: GHDL-JIT`); the choice is remembered per session.

@@ -135,7 +135,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   iCE40UP5K EVN), and so is every LED group: the XTRX's `user_led2`, the Versa ECP5's
   `alnum_led` segments, the OCP Timecard's `user_led`. The GMM-7550, the Hackaday
   badge, the Machdyne Krote and the BeagleWire, which had no such convention, get one.
-  A design that drives one LED under two names is told so, with the pin they share.
+  A design that drives one LED under two names is refused with a message naming both
+  and the pin they share, the way FPGA toolchains refuse a pin driven twice.
   (Roadmap U56, Phase 6.)
 - **A board-native bank's bit k reaches the resource it names.** Banks of separately
   named buttons listed the names alphabetically while the board lists the buttons in

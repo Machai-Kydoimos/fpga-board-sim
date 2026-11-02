@@ -4,7 +4,8 @@ Upstream lists some LEDs under several names -- the iCE40UP5K EVN's RGB LED is a
 ``user_ledr_n`` / ``user_ledg_n`` / ``user_ledb_n``, and its blue is ``user_led_n``
 too.  The sync draws one LED and lists the other names as ``aliases``; the
 convention gives each name a bank with a ``channels`` map.  A design may use any of
-them; one that drives a pin under two names is a near-miss that names the pin.
+them; one that drives a pin under two names is refused with a message naming both
+and the pin.
 
 Hermetic: synthetic boards shaped like the real ones, the real interface parser,
 matcher and wrapper renderer.
@@ -13,12 +14,15 @@ matcher and wrapper renderer.
 from __future__ import annotations
 
 import json
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from fpga_sim.board_loader import BoardDef, ComponentInfo
-from fpga_sim.conventions import ConventionMatch, match_convention
+from fpga_sim.conventions import ContractResult, ConventionMatch, match_convention
 from fpga_sim.manifest import _native_sources
 from fpga_sim.pinmap import PinRole, board_pin_index
+from fpga_sim.vhdl_contract import check_vhdl_contract
 from fpga_sim.vhdl_interface import _parse_toplevel_interface
 from fpga_sim.waveform import _native_gtkw_signals
 from fpga_sim.wrapper import _render_native_wrapper
@@ -59,6 +63,28 @@ _ICE40 = BoardDef(
                     ("user_ledg_n", 1),
                     ("user_ledr_n", 0),
                 )
+            ],
+            "naming": "framework-derived",
+        }
+    },
+)
+
+#: The Amaranth iCEBreaker after the merge: ``led`` 0/1 are also ``led_r``/``led_g``
+#: (pins 11 and 37, active-low).  Its button is left out.
+_ICEBREAKER = BoardDef(
+    name="ICEBreaker",
+    class_name="ICEBreakerPlatform",
+    leds=[
+        ComponentInfo("led", "led", 0, ["11"], aliases=[{"name": "led_r", "number": 0}]),
+        ComponentInfo("led", "led", 1, ["37"], aliases=[{"name": "led_g", "number": 0}]),
+    ],
+    port_conventions={
+        "amaranth": {
+            "clk": "clk12",
+            "leds": {"name": "led", "width": 2, "active_low": True},
+            "led_banks": [
+                {"name": "led_r", "width": 1, "active_low": True, "channels": [0]},
+                {"name": "led_g", "width": 1, "active_low": True, "channels": [1]},
             ],
             "naming": "framework-derived",
         }
@@ -112,24 +138,64 @@ def test_a_whole_cluster_does_not_also_match_its_names_one_by_one():
     assert m.led_banks == ()
 
 
-def test_two_names_of_one_led_are_a_near_miss_naming_the_pin():
-    from fpga_sim.vhdl_contract import check_vhdl_contract
-
+def _contract(board: BoardDef, ports: list[str]) -> ContractResult:
+    """Run the real contract check on a design ``twice`` declaring *ports*."""
     text = (
         "library ieee; use ieee.std_logic_1164.all;\n"
-        "entity twice is port (clk12 : in std_logic; user_led_n : out std_logic;"
-        " user_ledb_n : out std_logic); end entity;\n"
+        f"entity twice is port ({'; '.join(ports)}); end entity;\n"
         "architecture rtl of twice is begin end architecture;\n"
     )
-    import tempfile
-    from pathlib import Path
-
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "twice.vhd"
         path.write_text(text, encoding="utf-8")
-        result = check_vhdl_contract(str(path), board_def=_ICE40)
+        return check_vhdl_contract(str(path), board_def=board)
+
+
+def test_two_names_of_one_led_get_a_message_of_their_own():
+    # Every port matches, so the near-miss list's "missing/mismatched" would send
+    # the reader looking for a typo that is not there.
+    result = _contract(
+        _ICE40,
+        ["clk12 : in std_logic", "user_led_n : out std_logic", "user_ledb_n : out std_logic"],
+    )
+    assert not result.ok and result.match is None
+    assert result.message.startswith(
+        "'twice.vhd' drives one iCE40UP5K EVN LED twice: user_led_n and user_ledb_n are two "
+        "names for pin 39, and a pin can have only one driver.\n"
+        "Drive that LED through one name only."
+    ), result.message
+
+
+def test_a_vector_bit_and_a_scalar_can_name_one_led():
+    result = _contract(
+        _ICEBREAKER,
+        [
+            "clk12 : in std_logic",
+            "led : out std_logic_vector(1 downto 0)",
+            "led_r : out std_logic",
+        ],
+    )
     assert not result.ok
-    assert "user_led_n and user_ledb_n drive the same LED (pin 39)" in result.message
+    assert "led(0) and led_r are two names for pin 11," in result.message
+
+
+def test_two_names_beside_another_problem_stay_in_the_near_miss_list():
+    # A default-less input the convention does not map is a problem of its own;
+    # the list names both, as it names any other pair of problems.
+    result = _contract(
+        _ICEBREAKER,
+        [
+            "clk12 : in std_logic",
+            "uart_rx : in std_logic",
+            "led : out std_logic_vector(1 downto 0)",
+            "led_r : out std_logic",
+        ],
+    )
+    assert not result.ok
+    assert (
+        "(missing/mismatched: led(0) and led_r drive the same LED (pin 11), "
+        "unmapped input port(s): uart_rx)"
+    ) in result.message
 
 
 def test_the_wrapper_drives_each_channel_from_the_bank_its_map_names():

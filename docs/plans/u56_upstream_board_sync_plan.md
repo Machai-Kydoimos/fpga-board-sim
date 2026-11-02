@@ -1251,7 +1251,8 @@ It comes before the bump because the bump creates the first real orphans (the fi
     names cluster takes each LED once: the iCE40UP5K EVN's drops `user_ledb_n`, a second name for
     the blue `user_led_n` holds.
   - Matcher: `led_banks` are optional and any one meets the LED floor; a port belongs to the
-    first bank that claims it; two matched ports on one LED are a near-miss naming the pin.
+    first bank that claims it; two matched ports on one LED are refused, naming both and the
+    pin (below).
     Wrapper: bit-by-bit wiring when a bank has a map or a `led_banks` entry matched (an input
     bit with no resource idles released); every other wrapper is byte-identical. Pin maps: no
     code change -- `board_pin_index` keys each pin once, so an alias's pin reaches the merged
@@ -1270,6 +1271,17 @@ It comes before the bump because the bump creates the first real orphans (the fi
   - End to end, GHDL and NVC: Amaranth iCEBreaker `led_r`/`led_g` → boundary "01"; LiteX
     OrangeCrab `user_led` "110" on the RGB LED; LiteX iCE40UP5K EVN red only → "001", which a
     map by bank order would light blue.
+  - Two names of one LED, settled with Rick on 2026-11-02 while #478 was open: refused, and
+    when that is the design's only problem, with a message of its own: "'red_twice.vhd' drives
+    one ICEBreaker LED twice: led(0) and led_r are two names for pin 11, and a pin can have only
+    one driver." The near-miss list's "missing/mismatched" misled, since every port matches.
+    Every real flow refuses the design before a bitstream exists: Amaranth's `ResourceError`;
+    nextpnr's placer, "cannot be bound to bel … since it is already bound" (read in its
+    source); Vivado, "PACKAGE_PIN is occupied by port"; Quartus, Error 176310. GHDL and NVC know
+    no pins. Tied to one `std_logic` net, two disagreeing drivers resolve to 'X'; the intended
+    wired form, open-drain `'0'`/`'Z'` on one port, simulates as a NOR. On `main` the
+    iCEBreaker case ran with `led_r` left open. The constraint-file path still lets the later
+    port win; it follows in its own PR.
 
 **Phase 7 — Versions (D-4), §4.7.**
 
