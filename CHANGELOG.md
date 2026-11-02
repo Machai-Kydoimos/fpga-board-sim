@@ -122,6 +122,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   LED shows its number under the bank's own label, and hover still shows the full name.
   The Alibaba XCKU3P, the Puzhi PZ-A7xxT-KFB and the Alveo U280 had this already.
   (Roadmap U56, Phase 5.)
+- **One LED per pin.** Upstream lists some LEDs under several names: the OrangeCrab's
+  `user_led` 0-2 are its RGB LED's red, green and blue, and Amaranth's iCEBreaker adds
+  `led_r` and `led_g` as "semantic aliases" of its two LEDs. The sync drew every name as
+  an LED of its own. 29 boards now draw one LED per pin: the OrangeCrab one RGB LED
+  instead of three more LEDs beside it, the ZCU216 8 RGB LEDs instead of 8 more LEDs,
+  the Black Ice 4 colored LEDs instead of 8. A generic design's `led(k)` follows: on a
+  board whose only LED is now an RGB LED, `led(0)` to `led(2)` are its red, green and
+  blue. Hovering an LED lists its other names. (Roadmap U56, Phase 6, D-1.)
+- **A design written to a board's own port names may use any name upstream gives.**
+  Each of an LED's names is a port (`led_r` on the iCEBreaker, `user_ledr_n` on the
+  iCE40UP5K EVN), and so is every LED group: the XTRX's `user_led2`, the Versa ECP5's
+  `alnum_led` segments, the OCP Timecard's `user_led`. The GMM-7550, the Hackaday
+  badge, the Machdyne Krote and the BeagleWire, which had no such convention, get one.
+  A design that drives one LED under two names is told so, with the pin they share.
+  (Roadmap U56, Phase 6.)
+- **A board-native bank's bit k reaches the resource it names.** Banks of separately
+  named buttons listed the names alphabetically while the board lists the buttons in
+  upstream's order, so on the Basys 3 a design's `user_btnc` answered to the board's
+  `user_btnu`. On the DECA, `user_btn(0)` answered to the power button; on the ECP5
+  EVN and VIP, whose DIP switches upstream numbers from 1, every switch was one off.
+  Each bank now maps its bits to the board's resources, and every bit of every
+  framework bank was checked against upstream's own pins (2,722 bits on 319 boards);
+  16 boards' banks change. (Roadmap U56, Phase 6.)
 - **A chip's label stays inside the chip.** Some of those part numbers are wider than
   the chip — `XCZU11EG-FFVF1517-2-I` on `litex-boards/adi_adrv2crr_fmc`,
   `LFE5UM5G-85F-8BG381C` on `litex-boards/radiona_ulx4m_ld_v2` — so they ran past its

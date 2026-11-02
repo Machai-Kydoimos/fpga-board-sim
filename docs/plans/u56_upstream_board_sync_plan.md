@@ -1237,6 +1237,39 @@ It comes before the bump because the bump creates the first real orphans (the fi
   mono+RGB channel: `litex-boards/gsd_orangecrab.json`; triple:
   `litex-boards/lattice_ice40up5k_evn.json`); PNGs → **visual review**.
 - **Effort:** L.
+- **Done 2026-11-02, measured at the Phase 4 heads:**
+  - Do-first: the matrix's per-bank rows covered every bank before this phase (805 rows). Split
+    groups had none, since D-3 kept them out; each is now a `led_banks` row.
+  - Board model: `framework_conventions.plan_led_aliases`, shared by both parsers. The 29 boards
+    of B.2 reach the "pin-merged" column exactly; no `alias_overlap` warning at the pins. Colors
+    come from alias names where the heuristic reads one (Amaranth iCEBreaker red/green, Black
+    Ice blue/green/orange/red; LiteX `user_ledr_n` carries none: the heuristic reads `led_r`).
+  - Conventions: a bank whose bit k is not the board's resource k carries `channels`
+    (`RoleEntry.channel`, set from the board's own boundary layout). `led_banks` lists every
+    other LED name group -- broader than "alias and split groups" above, following D-1's "accept
+    every upstream name": the OCP Timecard's `user_led`, the Mega 138K Pro's `led_done` too. A
+    names cluster takes each LED once: the iCE40UP5K EVN's drops `user_ledb_n`, a second name for
+    the blue `user_led_n` holds.
+  - Matcher: `led_banks` are optional and any one meets the LED floor; a port belongs to the
+    first bank that claims it; two matched ports on one LED are a near-miss naming the pin.
+    Wrapper: bit-by-bit wiring when a bank has a map or a `led_banks` entry matched (an input
+    bit with no resource idles released); every other wrapper is byte-identical. Pin maps: no
+    code change -- `board_pin_index` keys each pin once, so an alias's pin reaches the merged
+    channel (tested). The hover tooltip lists an LED's other names ("Also").
+  - Defect 25: 16 boards' banks gain a map (the button clusters of Basys 3, AC701, KC705,
+    KCU105, KCU116, VC707, VCU118, ZC706, ZCU106, ZCU216 and AliExpress XC7K420T; DECA's
+    buttons; the OCP Timecard's LEDs; the ECP5 EVN, VIP and Amaranth ECP5-5G EVN DIP switches).
+    Every bit of every framework bank, checked against upstream's own pins through `BoardDef`:
+    2,722 bits on 319 boards, 0 problems.
+  - Impact matrix: no design outcome changes. Every per-bank row that matched still matches with
+    the same width and polarity but one, by D-1: the iCE40UP5K EVN's cluster goes 4 → 3, since
+    the old 4-name design drove pin 39 under two names. 54 new rows, all matching. Generics
+    change on the 29 B.2 boards only. Four boards gain a convention: `gmm7550` (its
+    mixed-polarity cluster had none), `hackaday_hadbadge`, `machdyne_krote` and
+    `qwertyembedded_beaglewire` (only split groups).
+  - End to end, GHDL and NVC: Amaranth iCEBreaker `led_r`/`led_g` → boundary "01"; LiteX
+    OrangeCrab `user_led` "110" on the RGB LED; LiteX iCE40UP5K EVN red only → "001", which a
+    map by bank order would light blue.
 
 **Phase 7 — Versions (D-4), §4.7.**
 
@@ -1268,7 +1301,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 3 | orphan UI | **yes** | done 2026-11-01 (#475); the review asked for the saved copy's own file beside the successor, and for a successor only when the match is certain, both done in the PR |
 | 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | PR #476 (2026-11-01); the review found the five Efinix orphans were upstream renames, so renames are now followed (Rick, 2026-11-02), done in the PR |
 | 5 | multi-pin, DIP | **yes** | PR #477, awaiting visual review (2026-11-02) |
-| 6 | aliases | **yes** | not started |
+| 6 | aliases | **yes** | awaiting visual review (2026-11-02) |
 | 7 | versions | **yes** (selector) | not started |
 | 8 | closeout + release v0.24.0 | no | not started |
 

@@ -391,7 +391,9 @@ presenting the guess as the board's.
   vector bit it drives (`btn(3)` / `sw(11)`). The bit is worth knowing: on a few
   boards the *drawn label* is not the index — the Sword renders three different
   buttons all labeled `BTN0` — so the tooltip is where the on-screen widget and
-  your VHDL index line up
+  your VHDL index line up. An LED that upstream lists under several names shows
+  them all (**Also**: `led_r` on the iCEBreaker's red LED); a design written to
+  the board's own port names may use any one of them
 - **`SIM: …`** toggle → cycle between installed simulators, each shown by a
   short label (`SIM: GHDL`, `SIM: NVC`, and the GHDL code generators
   `SIM: GHDL-LLVM` / `SIM: GHDL-JIT`); the choice is remembered per session.
@@ -515,7 +517,7 @@ simulator itself runs headless in the background:
 - **LEDs** reflect FPGA outputs from the simulation
 - **7-segment digits** show live hex glyphs on supported boards
 - **Hover a component** → tooltip with its net name, pin, direction, vector bit,
-  and whether it is latched
+  the LED's other upstream names, and whether it is latched
 - **Toolbar** (bottom-left) → **[Back to Boards]**, **[Change VHDL]**, or
   **[Reload VHDL]** — Reload re-analyzes the current file (pick up edits you just
   made in your editor) and restarts, without leaving the simulation
