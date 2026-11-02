@@ -1267,7 +1267,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 2 | extensions, docks, instance clock (+ D-6) | **yes** | done 2026-11-01 (#474); the review found differently named LEDs interleaving, so a board-native bank drove the wrong LED, fixed in the PR; reading the extension modules moved to Phase 4 |
 | 3 | orphan UI | **yes** | done 2026-11-01 (#475); the review asked for the saved copy's own file beside the successor, and for a successor only when the match is certain, both done in the PR |
 | 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | PR #476 (2026-11-01); the review found the five Efinix orphans were upstream renames, so renames are now followed (Rick, 2026-11-02), done in the PR |
-| 5 | multi-pin, DIP | **yes** | awaiting visual review (2026-11-02) |
+| 5 | multi-pin, DIP | **yes** | PR #477, awaiting visual review (2026-11-02) |
 | 6 | aliases | **yes** | not started |
 | 7 | versions | **yes** (selector) | not started |
 | 8 | closeout + release v0.24.0 | no | not started |
