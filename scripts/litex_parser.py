@@ -16,7 +16,14 @@ import sys
 from collections.abc import Iterator, Mapping
 from typing import Any
 
-from framework_conventions import RoleEntry, build_convention, group_by_name, multi_pin_shape
+from framework_conventions import (
+    LedView,
+    RoleEntry,
+    build_convention,
+    group_by_name,
+    multi_pin_shape,
+    plan_led_aliases,
+)
 from led_metadata import color_from_name
 from sync_common import ParseOutcome, ProducedBoard, normalize_error
 from sync_identity import VERSION_PARAMS
@@ -903,7 +910,8 @@ def _litex_role_entries(components: list[dict[str, Any]]) -> list[RoleEntry]:
             # An RGB LED's r/g/b subsignals flatten to several pins on one bit --
             # that bit has no single declarable port, so build_bank drops it.
             pins_per_bit=len(comp.get("pins") or []),
-            split=bool(comp.get("_split")),  # kept out of bank selection (D-3)
+            split=bool(comp.get("_split")),  # never the primary bank (D-3)
+            channel=comp.get("_channel"),  # the boundary channel it reaches (Phase 6)
         )
         for comp in components
     ]
@@ -977,6 +985,70 @@ def _upstream_order(components: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ``led`` do.
     """
     return group_by_name(components, lambda c: str(c["raw_name"]), lambda c: int(c["number"]))
+
+
+def _is_rgb_site(led: dict[str, Any]) -> bool:
+    """Whether *led* is a 3-pin RGB site (``BoardDef.is_rgb``'s rule)."""
+    return led.get("name") == "rgb_led" and len(led.get("pins", [])) == 3
+
+
+def _merge_led_aliases(
+    leds: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
+    """Fold the LED entries upstream lists under another name into one LED (D-1).
+
+    Upstream's own pin assignment decides (:func:`framework_conventions.plan_led_aliases`):
+    the OrangeCrab's ``user_led`` 0-2 are its ``rgb_led``'s r, g and b, so the board
+    draws one RGB LED, not three LEDs beside it.  The first-declared entry stays the
+    LED and lists the others in ``aliases``; a name that carries a color colors it.
+    Returns the LEDs, the folded entries (each still a native port, so the
+    convention builder sees it, with ``_target`` and ``_offset`` saying where it
+    lands) and an ``alias_overlap`` note for any other kind of shared pin.
+    """
+    plan, overlaps = plan_led_aliases(
+        [LedView(tuple(led["pins"]), _is_rgb_site(led)) for led in leds]
+    )
+    for i in sorted(plan):
+        target, offset = plan[i]
+        alias, primary = leds[i], leds[target]
+        record: dict[str, Any] = {"name": alias["raw_name"], "number": alias["number"]}
+        if offset is not None:
+            record["channel"] = "rgb"[offset]
+        primary.setdefault("aliases", []).append(record)
+        color = color_from_name(alias["raw_name"]) or alias.get("color", "")
+        if offset is None and color and "color" not in primary:
+            primary["color"] = color
+        alias["_target"], alias["_offset"] = primary, offset
+    notes = [
+        f"alias_overlap: {leds[i]['raw_name']} {leds[i]['number']} (shares a pin, not as a name)"
+        for i in overlaps
+    ]
+    merged = [led for i, led in enumerate(leds) if i not in plan]
+    return merged, [leds[i] for i in sorted(plan)], notes
+
+
+def _number_channels(
+    leds: list[dict[str, Any]],
+    aliases: list[dict[str, Any]],
+    buttons: list[dict[str, Any]],
+    switches: list[dict[str, Any]],
+) -> None:
+    """Record the boundary channel each component and alias reaches (U56 Phase 6).
+
+    The board's own layout (``BoardDef.led_channels``): mono LEDs in order, then
+    r, g, b per RGB site.  An alias reaches its LED's channel, or its site's.
+    Switches and buttons reach their place in the board's list.
+    """
+    mono = [led for led in leds if not _is_rgb_site(led)]
+    for k, led in enumerate(mono):
+        led["_channel"] = k
+    for j, led in enumerate(led for led in leds if _is_rgb_site(led)):
+        led["_channel"] = len(mono) + 3 * j
+    for alias in aliases:
+        alias["_channel"] = alias["_target"]["_channel"] + (alias["_offset"] or 0)
+    for group in (buttons, switches):
+        for k, comp in enumerate(group):
+            comp["_channel"] = k
 
 
 def _mono_then_rgb(leds: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -1217,14 +1289,17 @@ def _read_once(
 
     for group in (leds, buttons, switches):
         _number_split_groups(group)
-    port_conventions = _build_litex_convention(clocks, leds, buttons, switches)
     leds = _mono_then_rgb(_upstream_order(leds))
     buttons = _upstream_order(buttons)
     switches = _upstream_order(switches)
-    # `raw_name`, `_split` and `_order` exist only to build the convention and the
-    # order above; keep them out of the persisted component JSON.
+    leds, aliases, overlaps = _merge_led_aliases(leds)
+    notes.extend(overlaps)
+    _number_channels(leds, aliases, buttons, switches)
+    port_conventions = _build_litex_convention(clocks, leds + aliases, buttons, switches)
+    # `raw_name`, `_split`, `_order` and `_channel` exist only to build the convention
+    # and the order above; keep them out of the persisted component JSON.
     for comp in (*leds, *buttons, *switches):
-        for key in ("raw_name", "_split", "_order"):
+        for key in ("raw_name", "_split", "_order", "_channel"):
             comp.pop(key, None)
 
     board: dict[str, Any] = {
