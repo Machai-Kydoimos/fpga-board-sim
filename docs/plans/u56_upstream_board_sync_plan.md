@@ -447,7 +447,11 @@ Identity key = `(origin, upstream_file, upstream_class, upstream_args)`.
 - **Version-selecting parameters** (Phase 7 enumerates their values; Phase 1a records their
   effective values for the default construction): `variant`, `revision`, `board_version`,
   `version`, `dock`, `expansion`, `baseboard`, `som`, `board`. Not `device`, `toolchain`,
-  `speedgrade` (D-4 governs part variants). Effective value = the `inspect.signature(cls.__init__)`
+  `speedgrade` (D-4 governs part variants). **Amended 2026-11-02 (Phase 7, Rick):** `kgates` and
+  `device` join the list, because where upstream *lists* a part size (`assert device in ["12F",
+  "25F", "45F", "85F"]`) it is a version in D-4's sense; a `device` nothing lists only records its
+  value. Board *settings* are not versions and are not recorded: `vccio`, `io_voltage`,
+  `device_version` ("we'll handle future situations/expansions in the future"). Effective value = the `inspect.signature(cls.__init__)`
   default when not passed, so the default construction and an explicit `revision=1` are one
   identity. **Amended 2026-11-01 (Phase 4):** a plain value the constructor stores under the
   parameter's own name (`self.revision = revision`) wins over the signature's, because a
@@ -476,7 +480,9 @@ Identity key = `(origin, upstream_file, upstream_class, upstream_args)`.
   append `_<param>-<value>` for every version parameter instead: the default revision 1 of Wukong
   arrives after the revision-2 identity holds `qmtech_wukong.json`, so it becomes
   `qmtech_wukong_revision-1.json`. Any other clash **fails** the sync, naming both — never a silent
-  `_2`. `unique_name` is retired from the write path.
+  `_2`. `unique_name` is retired from the write path. *Amended 2026-11-02 (Phase 7):* file and class
+  names spell `+` as `plus`; the file-name rule drops `+`, so `variant="au+"` would have been named
+  after the other variant, `au`. Display names keep the value as written.
 - **`class_name` and display name for a new versioned identity** append the version
   (`QmtechWukongRevision1Platform`, "Qmtech Wukong (revision 1)") so `(class_name, source)` stays
   unique for recents.
@@ -673,7 +679,11 @@ a dict literal (Wukong `{1: _io_v1, 2: _io_v2}[revision]`; Tang `docks[dock]`; Z
 `{"z7-10": …, "z7-20": …, "original": …}[variant]`); plus `if param == "<literal>"` comparisons
 (ZTEX `expansion == "debug"` / `"sbus"`). Construct each version through the identity machinery
 (§4.1); the default version keeps the existing file. D-4 is decided: every version is emitted,
-including versions that differ only in FPGA part.
+including versions that differ only in FPGA part. *Amended 2026-11-02 (Phase 7 report, Rick):*
+`param in [literals]` lists count too (Machdyne Schoko's `v2` is otherwise only an else branch);
+versions are built one parameter at a time, the others at their defaults, since a combination may
+be one upstream refuses; a version upstream's own constructor refuses is a `version_unbuilt`
+warning; a version whose identity is the default's (an alias) is the same board.
 
 ### 4.8 Orphans in the UI (Phase 3)
 
@@ -1294,10 +1304,29 @@ It comes before the bump because the bump creates the first real orphans (the fi
 - **Verify:** default versions keep their files and `class_name`s; new versions follow §4.1 naming;
   the impact matrix shows zero outcome changes on existing boards; selector PNG → **visual review**.
 - **Effort:** M.
+- **Done 2026-11-02, at the Phase 4 heads (LiteX `97186cf`):**
+  - Report first (`~/.claude/u56-audit/phase7-versions-report.md`): 59 files take a version
+    parameter; §4.7's rules plus `in` lists find 44 versions beyond the defaults on 33 files, one
+    already shipped (Wukong revision 2) and one refused by upstream's constructor (ColorLight i5
+    revision 7.2 on the i5; its i9 build reaches 7.2), so 42 new boards. Rick's decisions: count
+    `in` lists (+4); `device` and `kgates` are version parameters (+44 part sizes on 20 files; 37
+    existing files gain the key in `upstream_args`, no content change); board settings `vccio`,
+    `io_voltage`, `device_version` are not versions and are not recorded (each other value
+    built a file identical to its default, every field compared); emit the 7 versions identical
+    in what we simulate; spell `+` as `plus`; one parameter at a time.
+  - Code: `litex_parser.listed_versions` (syntax tree only) and `version_args`; `run_sync` takes
+    a `versions` callable and builds each listed version once (`_construct_versions`), before
+    the on-disk identities, so a listed version is never built twice.
+  - Re-sync at the pin: 86 new LiteX boards (234 → 320; 441 in all), exactly the report's names.
+    By what differs from the default: 13 in LEDs, switches, buttons or clocks; 66 in the FPGA
+    part alone; 7 in nothing we model. Ledger warnings 5 → 6 (the i5 refusal).
+  - Impact matrix: no existing row changed; 1,364 entries added; all 158 new per-bank rows match
+    on their own boards. Two new boards have no bank row, as their defaults have none: the Tang
+    Primer 20K lite dock (no LEDs, like its Amaranth twin) and an ECPIX-5 part size (RGB LEDs only).
 
 **Phase 8 — Closeout.** `CHANGELOG.md`; `README.md` / `docs/user_guide.md` / `docs/architecture.md`
 / `CLAUDE.md` counts and sync description (found in Phase 4: the README's filter example says "9
-Intel boards", as its GIF shows, but it has been 11 since v0.20.0 and 13 since Phase 1c); roadmap card → delivered (+ `docs/roadmap_delivered.md`
+Intel boards", as its GIF shows, but it has been 11 since v0.20.0 and 13 since Phase 1c; reworded without a number in #482, Rick 2026-11-02); roadmap card → delivered (+ `docs/roadmap_delivered.md`
 entry); Icebox P35 closed as absorbed; this file's status → executed; release as v0.24.0 (D-5,
 revised: the whole arc, with no release at the Phase 4 checkpoint).
 
@@ -1318,7 +1347,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | done 2026-11-02 (#476); the review found the five Efinix orphans were upstream renames, so renames are now followed (Rick, 2026-11-02), done in the PR |
 | 5 | multi-pin, DIP | **yes** | done 2026-11-02 (#477) |
 | 6 | aliases | **yes** | done 2026-11-02 (#478); the review settled one LED under two names: refused, with a message of its own, done in the PR. The same rule for constraint files (one port per pin) follows in its own PR |
-| 7 | versions | **yes** (selector) | not started |
+| 7 | versions | **yes** (selector) | PR #482, awaiting visual review (2026-11-02); the report settled six decisions (§4.1, §4.7 amended) |
 | 8 | closeout + release v0.24.0 | no | not started |
 
 ---

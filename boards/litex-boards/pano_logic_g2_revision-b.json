@@ -1,0 +1,101 @@
+{
+  "name": "Pano Logic G2 (revision b)",
+  "class_name": "PanoLogicG2RevisionbPlatform",
+  "vendor": "Xilinx",
+  "device": "xc6slx150-2-fgg484",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk125",
+      "hz": 125000000.0,
+      "pin": "Y13",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 125000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "E12"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "H13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "F13"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button__n",
+      "number": 0,
+      "pins": [
+        "H12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk125",
+      "leds": {
+        "name": "user_led",
+        "width": 3
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "user_btn_n",
+        "width": 1,
+        "active_low": true
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "pano_logic_g2.py",
+    "upstream_class": "Platform",
+    "upstream_args": {
+      "revision": "b"
+    },
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T16:24:17.572246+00:00"
+  }
+}
