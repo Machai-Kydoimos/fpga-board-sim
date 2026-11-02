@@ -1369,7 +1369,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 5 | multi-pin, DIP | **yes** | done 2026-11-02 (#477) |
 | 6 | aliases | **yes** | done 2026-11-02 (#478); the review settled one LED under two names: refused, with a message of its own, done in the PR. The same rule for constraint files (one port per pin) follows in its own PR |
 | 7 | versions | **yes** (selector) | done 2026-11-02 (#482); the report settled six decisions (§4.1, §4.7 amended); the review passed the selector and asked for the README's filter example without a count, done in the PR |
-| 8 | closeout + release v0.24.0 | no | closeout in progress 2026-11-02; the release PR follows it |
+| 8 | closeout + release v0.24.0 | no | closeout PR #483 (2026-11-02); the release PR follows it |
 
 ---
 
