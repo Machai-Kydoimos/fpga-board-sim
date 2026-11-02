@@ -109,15 +109,13 @@ Board definitions are stored as JSON files in `boards/`, organized by source:
 
 - **`boards/amaranth-boards/`** — auto-synced from
   [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via
-  `scripts/sync_amaranth_boards.py` (~79 boards)
+  `scripts/sync_amaranth_boards.py`
 - **`boards/litex-boards/`** — auto-synced from
   [litex-boards](https://github.com/litex-hub/litex-boards) via
-  `scripts/sync_litex_boards.py` (~167 boards across Xilinx, Intel, Lattice, Gowin,
-  Efinix)
+  `scripts/sync_litex_boards.py` (Xilinx, Intel, Lattice, Gowin, Efinix and more)
 - **`boards/digilent-xdc/`** — auto-synced from
   [Digilent XDC](https://github.com/Digilent/digilent-xdc) via
-  `scripts/sync_digilent_xdc.py` (~26 Digilent boards with `port_conventions` for
-  board-native VHDL mode)
+  `scripts/sync_digilent_xdc.py` (with `port_conventions` for board-native VHDL mode)
 - **`boards/custom/`** — manually maintained boards (new boards go here)
 
 Each subdirectory under `boards/` is a "source." The loader scans all sources and
