@@ -1,0 +1,233 @@
+{
+  "name": "RFSo C4x2",
+  "class_name": "RFSoC4x2Platform",
+  "vendor": "Xilinx",
+  "device": "xczu48dr",
+  "package": "ffvg1517",
+  "clocks": [
+    100000000.0,
+    156250000.0,
+    200000000.0
+  ],
+  "default_clock_hz": 100000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "AR11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "AW10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 2,
+      "pins": [
+        "AT11"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "led",
+      "number": 3,
+      "pins": [
+        "AU10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "AM8",
+        "AM7",
+        "AN8"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 1,
+      "pins": [
+        "AR12",
+        "AP8",
+        "AT10"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "AV12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "AV10"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button",
+      "number": 2,
+      "pins": [
+        "AW9"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "button",
+      "number": 3,
+      "pins": [
+        "AT12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "AN13"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "AU12"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 2,
+      "pins": [
+        "AW11"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 3,
+      "pins": [
+        "AV11"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS18"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "port_conventions": {
+    "amaranth": {
+      "description": "amaranth-boards platform port names (auto-derived from the board .py file)",
+      "clk": "clk",
+      "leds": {
+        "name": "led",
+        "width": 4
+      },
+      "naming": "framework-derived",
+      "switches": {
+        "name": "switch",
+        "width": 4
+      },
+      "buttons": {
+        "name": "button",
+        "width": 4
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "rfsoc4x2.py",
+    "upstream_class": "RFSoC4x2Platform",
+    "sync_commit": "f270d210e36b0787d62db77176c7b0e8032178d3",
+    "sync_timestamp": "2026-11-01T22:24:45.699376+00:00"
+  }
+}

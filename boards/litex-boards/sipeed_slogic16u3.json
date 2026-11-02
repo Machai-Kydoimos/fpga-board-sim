@@ -1,0 +1,53 @@
+{
+  "name": "Sipeed Slogic16u3",
+  "class_name": "SipeedSlogic16u3Platform",
+  "vendor": "Gowin",
+  "device": "GW5AT-LV15MG132C1/I0",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk125_oe",
+      "hz": 125000000.0,
+      "pin": "D14"
+    }
+  ],
+  "default_clock_hz": 12000000.0,
+  "default_clock_assumed": true,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "G14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk125_oe",
+      "leds": {
+        "name": "user_led",
+        "width": 1
+      },
+      "naming": "framework-derived"
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "sipeed_slogic16u3.py",
+    "upstream_class": "Platform",
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-01T22:24:43.342916+00:00"
+  }
+}

@@ -23,9 +23,9 @@ _FALLBACK_CLOCK_HZ: float = 12e6  # most common across 80 surveyed boards
 
 #: The first sentence of an orphaned board's note, by why upstream dropped it (U56 §4.8).
 _ORPHAN_LEADS: dict[str, str] = {
-    "file_removed": "No longer in {source}{since}.",
-    "no_longer_defined": "{source} no longer defines this version{since}.",
-    "no_simulatable_io": "{source} lists no LED, switch or button for this board{since}.",
+    "file_removed": "No longer in {source}{noticed}.",
+    "no_longer_defined": "{source} no longer defines this version{noticed}.",
+    "no_simulatable_io": "{source} lists no LED, switch or button for this board{noticed}.",
 }
 
 
@@ -62,6 +62,7 @@ _DISPLAY_NAME_OVERRIDES: dict[str, str] = {
     "OrangeCrabR0_2_85FPlatform": "OrangeCrab R0.2 85F",  # orangecrab_r0_2.py
     "SitlinvAE115fbPlatform": "Sitlinv AE115fb",  # sitlinv_a_e115fb.py
     "IceVWirelessPlatform": "ICE-V Wireless",  # ice_v_wireless.py; its header: "ICE-V wireless"
+    "RFSoC4x2Platform": "RFSoC 4x2",  # rfsoc4x2.py; AMD and Real Digital: "RFSoC 4x2"
     # ── A space where the vendor uses a hyphen ────────────────────────────
     # Not caught by the guard below -- "DE0 CV" breaks no mechanical rule --
     # but wrong all the same, and these are the boards this project's own
@@ -518,8 +519,11 @@ class BoardDef:
     def orphan_parts(self) -> tuple[str, list[tuple[str, str]]]:
         """Return an orphan's note as a lead and label/value rows, else ``("", [])``.
 
-        The lead says why upstream dropped the board, since when, and that a design
-        still runs on this saved copy.  With a successor, two rows follow, this
+        The lead says why upstream dropped the board, when the sync noticed, and that
+        a design still runs on this saved copy.  When the sync noticed, not since when:
+        a sync reads one upstream snapshot, so it cannot know the commit that dropped
+        the board.  (The Efinix renames it found at Phase 4 were upstream's of July,
+        noticed in November.)  With a successor, two rows follow, this
         board's file and then the successor's, so a reader can compare the names.
         Both use the ``<source>/<file>`` spelling that ``--board`` takes, the one name
         that picks exactly one board (display names repeat across sources).  The sync
@@ -528,15 +532,12 @@ class BoardDef:
         """
         if self.upstream_status != "orphaned":
             return "", []
-        when = [part for part in (self.orphaned_at_date, self.orphaned_at_commit[:7]) if part]
-        since = (
-            f" since {when[0]} ({when[1]})"
-            if len(when) == 2
-            else "".join(f" since {part}" for part in when)
-        )
-        why = _ORPHAN_LEADS.get(self.orphaned_reason, "{source} no longer defines it{since}.")
+        date, commit = self.orphaned_at_date, self.orphaned_at_commit[:7]
+        when = ", at ".join(part for part in (date, commit) if part)
+        noticed = f" (noticed {'at ' if commit and not date else ''}{when})" if when else ""
+        why = _ORPHAN_LEADS.get(self.orphaned_reason, "{source} no longer defines it{noticed}.")
         lead = (
-            why.format(source=self.source or "Upstream", since=since)
+            why.format(source=self.source or "Upstream", noticed=noticed)
             + " Your design still runs on this saved copy; it will not receive upstream fixes."
         )
         if not self.successor:

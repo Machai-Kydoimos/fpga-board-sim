@@ -1,7 +1,7 @@
 {
   "source_repo": "https://github.com/Digilent/digilent-xdc",
-  "source_commit": "00a3404901f35aa9567b01ecb3f2c233b6efe9f4",
-  "sync_timestamp": "2026-11-01T03:02:00.390915+00:00",
+  "source_commit": "c8644a9fe31cc803789643124545d56b3bef4600",
+  "sync_timestamp": "2026-11-01T22:24:47.007075+00:00",
   "board_count": 27,
   "files_written": [
     "arty.json",

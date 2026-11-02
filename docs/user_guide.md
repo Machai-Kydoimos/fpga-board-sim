@@ -307,7 +307,7 @@ help overlay covering the workflow, keyboard shortcuts, and the VHDL design cont
 
 ### 1. Select a board
 
-A list of 344 FPGA boards appears, **sorted by name**. Type to filter, click or
+A list of 355 FPGA boards appears, **sorted by name**. Type to filter, click or
 press **Enter** to select — the cursor starts on the first row, so the keyboard
 alone works from the first frame.
 
@@ -323,10 +323,13 @@ The **Sort** dropdown and the component / vendor chips narrow the list further;
 both, and the filter text, persist across sessions.
 
 A board tagged **orphaned upstream** is one its source no longer defines: the file
-was removed, the version is gone, or it lists no LED, switch or button any more. The
+was removed, the version is gone, or it lists no LED, switch or button any more. A
+board whose upstream file was only renamed is not orphaned: it keeps its file, so
+`--board` and your sessions still find it, and takes upstream's new name. An orphaned
 board stays in the list as a saved copy, so a design written for it still runs, but
-it will not receive upstream fixes. Its preview says why and since when, and names
-the board that replaces it, when upstream has one with the same FPGA, clocks and I/O.
+it will not receive upstream fixes. Its preview says why and when the sync noticed,
+and names the board that replaces it, when upstream has one with the same FPGA,
+clocks and I/O.
 
 ### 2. Preview the board
 
@@ -335,10 +338,10 @@ The board renders with LEDs, buttons, switches, and — on supported boards — 
 opens with an amber note across the top, for example:
 
 ```text
-No longer in litex-boards since 2026-11-02 (97186cf). Your design still runs on this
-saved copy; it will not receive upstream fixes.
-This board: litex-boards/efinix_t8f81_dev_kit
-Successor:  litex-boards/efinix_t8_f81_dev_kit (same FPGA, clocks and I/O)
+litex-boards no longer defines this version (noticed <date>, at <commit>). Your
+design still runs on this saved copy; it will not receive upstream fixes.
+This board: litex-boards/<this board's file>
+Successor:  litex-boards/<the successor's file> (same FPGA, clocks and I/O)
 ```
 
 The two files sit one above the other, so you can compare the names. Both are spelled
@@ -379,7 +382,7 @@ presenting the guess as the board's.
   do with its single cursor. The **numpad** digits work too, so a numeric keypad
   becomes a button pad. Each bound button shows its key on its face, and the
   hover tooltip names it as well. Hex covers the whole fleet: the largest board
-  has 13 buttons, and only 7 of 344 have more than 10
+  has 13 buttons, and only 7 of 355 have more than 10
 - **Right-click a button** to **latch** it down hands-free; right-click again to
   release it. A latched button draws in its own color with a small padlock in
   its top-right corner, and combines freely with a live hold — hold it with the mouse *as well*, let the

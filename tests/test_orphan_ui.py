@@ -46,23 +46,38 @@ _ORPHAN = {
 @pytest.mark.parametrize(
     ("reason", "lead"),
     [
-        ("file_removed", "No longer in litex-boards since 2026-11-02 (97186cf)."),
+        ("file_removed", "No longer in litex-boards (noticed 2026-11-02, at 97186cf)."),
         (
             "no_longer_defined",
-            "litex-boards no longer defines this version since 2026-11-02 (97186cf).",
+            "litex-boards no longer defines this version (noticed 2026-11-02, at 97186cf).",
         ),
         (
             "no_simulatable_io",
             "litex-boards lists no LED, switch or button for this board"
-            " since 2026-11-02 (97186cf).",
+            " (noticed 2026-11-02, at 97186cf).",
         ),
     ],
 )
-def test_the_note_says_why_since_when_and_that_the_design_still_runs(reason, lead):
+def test_the_note_says_why_when_it_was_noticed_and_that_the_design_still_runs(reason, lead):
     note = _board(**_ORPHAN, orphaned_reason=reason).orphan_note()
     assert note == (
         f"{lead} Your design still runs on this saved copy; it will not receive upstream fixes."
     )
+
+
+@pytest.mark.parametrize(
+    ("stamps", "noticed"),
+    [
+        ({"orphaned_at_date": "2026-11-02"}, " (noticed 2026-11-02)"),
+        ({"orphaned_at_commit": "97186cfc90cca23b"}, " (noticed at 97186cf)"),
+        ({}, ""),
+    ],
+)
+def test_the_note_says_what_it_knows_of_when_it_was_noticed(stamps, noticed):
+    # When the sync noticed, never "since": one upstream snapshot cannot say when upstream
+    # dropped the board (the Efinix renames were July's, noticed in November).
+    board = _board(upstream_status="orphaned", orphaned_reason="file_removed", **stamps)
+    assert board.orphan_parts()[0].startswith(f"No longer in litex-boards{noticed}. ")
 
 
 _SUCCESSOR = {**_ORPHAN, "orphaned_reason": "file_removed", "successor": "litex-boards/new.json"}
@@ -72,7 +87,7 @@ def test_a_successor_is_named_under_this_boards_own_file():
     # Both by the file that opens them, one above the other, so they can be compared;
     # the sync names a successor only when its FPGA, clocks and I/O are identical.
     lead, rows = _board(**_SUCCESSOR).orphan_parts()
-    assert lead.startswith("No longer in litex-boards since 2026-11-02 (97186cf).")
+    assert lead.startswith("No longer in litex-boards (noticed 2026-11-02, at 97186cf).")
     assert rows == [
         ("This board:", "litex-boards/old_board"),
         ("Successor:", "litex-boards/new (same FPGA, clocks and I/O)"),
@@ -85,11 +100,6 @@ def test_the_printed_note_lines_the_two_files_up():
         "This board: litex-boards/old_board",
         "Successor:  litex-boards/new (same FPGA, clocks and I/O)",
     ]
-
-
-def test_the_note_drops_a_date_or_commit_it_does_not_have():
-    no_date = {**_ORPHAN, "orphaned_at_date": ""}
-    assert "since 97186cf." in _board(**no_date, orphaned_reason="file_removed").orphan_note()
 
 
 def test_a_board_upstream_still_defines_has_no_note():

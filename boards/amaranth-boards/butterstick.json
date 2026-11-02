@@ -1,0 +1,74 @@
+{
+  "name": "Butter Stick",
+  "class_name": "ButterStickPlatform",
+  "vendor": "Lattice",
+  "device": "LFE5UM5G-85F",
+  "package": "BG381",
+  "clocks": [
+    30000000.0
+  ],
+  "default_clock_hz": 30000000.0,
+  "leds": [
+    {
+      "name": "rgb_leds_muxed",
+      "number": 0,
+      "pins": [
+        "C13",
+        "D12",
+        "U2",
+        "T3",
+        "D13",
+        "E13",
+        "C16",
+        "T1",
+        "U1",
+        "R1"
+      ],
+      "direction": "io",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "U16"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "SSTL135_I"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "T17"
+      ],
+      "direction": "i",
+      "inverted": true,
+      "connector": null,
+      "attrs": {
+        "IO_TYPE": "SSTL135_I"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {},
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "amaranth-boards",
+    "upstream_file": "butterstick.py",
+    "upstream_class": "ButterStickPlatform",
+    "sync_commit": "f270d210e36b0787d62db77176c7b0e8032178d3",
+    "sync_timestamp": "2026-11-01T22:24:45.699376+00:00"
+  }
+}

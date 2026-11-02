@@ -12,9 +12,11 @@ come from a re-sync nobody is reading the diff of.
 
 Four things are checked, and they fail on different mistakes:
 
-1. **The shape rule** — over every board's final name. Two mechanical tells, both
-   taken from the real damage: a standalone single capital as its own word, and
-   a leading or trailing separator. This is the half that fires on a *new* board.
+1. **The shape rule** — over every board's final name. Three mechanical tells, all
+   taken from the real damage: a standalone single capital as its own word, a
+   leading or trailing separator, and an acronym split before its last capital
+   ("RFSo C4x2", which arrived with U56's bump to the upstream heads). This is the
+   half that fires on a *new* board.
 2. **The table is honest** — every key names a board that exists and every value
    actually changes something. A stale key is dead weight, and an entry that
    renames nothing is a claim the tree does not support.
@@ -53,6 +55,13 @@ _LONE_CAPITAL = re.compile(r"(?:^|[\s-])[A-Z](?:$|[\s-])")
 
 #: A name that opens or closes on a separator: the dangling "ULX3S_45F_" hyphen.
 _EDGE_SEPARATOR = re.compile(r"^[\s-]|[\s-]$")
+
+#: An acronym split before its last capital: ``RFSoC4x2Platform`` -> "RFSo C4x2" (U56
+#: Phase 4), which the lone-capital tell misses because a digit follows the C. Two
+#: capitals at least, so a two-letter word ("Alchitry Pt V2", "Mi ST") is not one.
+_SPLIT_ACRONYM = re.compile(r"(?<![A-Za-z])[A-Z]{2,}[a-z] [A-Z](?![a-z])")
+
+_SHAPE_RULES = (_LONE_CAPITAL, _EDGE_SEPARATOR, _SPLIT_ACRONYM)
 
 #: Names that trip a rule above and are nonetheless correct, each with the
 #: source that says so. Kept as exact names, so a *different* Genesys board
@@ -100,7 +109,7 @@ def test_no_board_name_is_mangled(boards: list[Any]) -> None:
     for board in boards:
         if board.name in _VENDOR_SPELLINGS:
             continue
-        if _LONE_CAPITAL.search(board.name) or _EDGE_SEPARATOR.search(board.name):
+        if any(rule.search(board.name) for rule in _SHAPE_RULES):
             offenders.append(f"{board.name!r} ({board.class_name})")
     assert not offenders, (
         "mangled board display name(s): "
@@ -120,10 +129,19 @@ def test_the_two_target_names_from_the_plan_read_correctly(boards: list[Any]) ->
 
 def test_the_shape_rule_would_catch_the_names_it_was_written_for() -> None:
     """A guard that matches nothing is not a guard: prove it fires."""
-    for wreck in ("DE1 So C", "ULX3 S-45 F-", "Cmod S7-", "AX7325 B"):
-        assert _LONE_CAPITAL.search(wreck) or _EDGE_SEPARATOR.search(wreck), wreck
-    for fine in ("DE10-Standard", "Basys 3", "Nexys 4 DDR", "Tang Nano 9K", "iCEstick"):
-        assert not _LONE_CAPITAL.search(fine) and not _EDGE_SEPARATOR.search(fine), fine
+    for wreck in ("DE1 So C", "ULX3 S-45 F-", "Cmod S7-", "AX7325 B", "RFSo C4x2"):
+        assert any(rule.search(wreck) for rule in _SHAPE_RULES), wreck
+    for fine in (
+        "DE10-Standard",
+        "Basys 3",
+        "Nexys 4 DDR",
+        "Tang Nano 9K",
+        "iCEstick",
+        "Alchitry Pt V2",
+        "Mi ST",
+        "RFSoC 4x2",
+    ):
+        assert not any(rule.search(fine) for rule in _SHAPE_RULES), fine
 
 
 # ── 2. The table is honest ────────────────────────────────────────────────────

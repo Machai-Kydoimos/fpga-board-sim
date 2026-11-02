@@ -1,5 +1,5 @@
 {
-  "name": "Efinix Trion T120 Bga576 Dev Kit",
+  "name": "Efinix T120 F576 Dev Kit",
   "class_name": "EfinixTrionT120Bga576DevKitPlatform",
   "vendor": "Efinix",
   "device": "T120F576I4",
@@ -266,9 +266,9 @@
   "$schema": "../schema/board.schema.json",
   "source": {
     "origin": "litex-boards",
-    "upstream_file": "efinix_trion_t120_bga576_dev_kit.py",
+    "upstream_file": "efinix_t120_f576_dev_kit.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-10-31T23:32:51.652149+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-01T23:30:59.899250+00:00"
   }
 }
