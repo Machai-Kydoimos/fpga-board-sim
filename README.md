@@ -24,7 +24,7 @@ displays — compiled and simulated live by [GHDL](https://github.com/ghdl/ghdl)
 
 *Above — one of **441 boards** (the DE10-Lite) running one example design, [`hdl/snake_7seg.vhd`](hdl/snake_7seg.vhd), live on GHDL / NVC + cocotb — not a pre-rendered animation. Every switch and button is a **real input to the running VHDL**; the design reads them and computes the LED and 7-segment **outputs** you see. So **BTN0** makes the design reverse the snake, **BTN1** makes it light every segment, and **SW0** makes it run faster — cause and effect, exactly as on real hardware — and finally the inputs are restored so the loop plays seamlessly. Captured headlessly via [`scripts/capture_demo.py`](scripts/capture_demo.py). ▶ [Watch the full talk](https://youtu.be/v4Fc6HctK1E).*
 
-Choose from **441 real FPGA boards** (Xilinx, Intel, Lattice, Gowin, Efinix, and more). Filter live by component and vendor — here the catalog narrows from the full list down to the 9 Intel boards that have LEDs, switches, buttons, *and* a 7-segment display:
+Choose from **441 real FPGA boards** (Xilinx, Intel, Lattice, Gowin, Efinix, and more). Filter live by component and vendor — here the catalog narrows from the full list down to the Intel boards that have LEDs, switches, buttons, *and* a 7-segment display:
 
 ![The board selector filtering live: clicking the Has LEDs / Switches / Buttons / 7-seg and Intel chips narrows the board list to 9, the count updating on each click](docs/assets/board_selector.gif)
 

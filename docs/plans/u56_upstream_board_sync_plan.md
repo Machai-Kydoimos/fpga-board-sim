@@ -1326,7 +1326,7 @@ It comes before the bump because the bump creates the first real orphans (the fi
 
 **Phase 8 — Closeout.** `CHANGELOG.md`; `README.md` / `docs/user_guide.md` / `docs/architecture.md`
 / `CLAUDE.md` counts and sync description (found in Phase 4: the README's filter example says "9
-Intel boards", as its GIF shows, but it has been 11 since v0.20.0 and 13 since Phase 1c); roadmap card → delivered (+ `docs/roadmap_delivered.md`
+Intel boards", as its GIF shows, but it has been 11 since v0.20.0 and 13 since Phase 1c; reworded without a number in #482, Rick 2026-11-02); roadmap card → delivered (+ `docs/roadmap_delivered.md`
 entry); Icebox P35 closed as absorbed; this file's status → executed; release as v0.24.0 (D-5,
 revised: the whole arc, with no release at the Phase 4 checkpoint).
 
