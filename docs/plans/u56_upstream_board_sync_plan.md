@@ -1,6 +1,11 @@
 # U56 — Upstream board-sync repair: arc plan (faithful parsers, stable identity, orphaned boards)
 
-**Status:** **APPROVED 2026-10-31 (Rick)** — drafted 2026-10-28, revised twice on 2026-10-31, and
+**Status:** ✅ **COMPLETE — every phase merged by 2026-11-02** (#469–#472, #474–#479 and #482,
+after PR 0 #465 and the early #466); Phase 8, the closeout, releases the arc as v0.24.0. Full
+delivered record: [`roadmap_delivered.md`](../roadmap_delivered.md#u56-upstream-board-sync-repair--faithful-parsers-stable-board-identity-orphaned-boards-).
+Retained as the decision and evidence record; §12 carries the phase ledger.
+
+**Originally:** **APPROVED 2026-10-31 (Rick)** — drafted 2026-10-28, revised twice on 2026-10-31, and
 amended the same day at the start of execution. **Executing → v0.24.0, the whole arc** (D-5,
 revised: next, ahead of U39–U41 → v0.25.0 and D16 → v0.26.0; Phases 5–7 included). **No upstream
 code is ever executed** (D-7): Phase 0 replaces the Amaranth and LiteX parsers' `exec()` with a
@@ -1330,6 +1335,22 @@ Intel boards", as its GIF shows, but it has been 11 since v0.20.0 and 13 since P
 entry); Icebox P35 closed as absorbed; this file's status → executed; release as v0.24.0 (D-5,
 revised: the whole arc, with no release at the Phase 4 checkpoint).
 
+- **Closeout 2026-11-02:**
+  - Each phase wrote its CHANGELOG entry against the fleet of its day, which already held boards
+    new in this release. Every count under Changed and Fixed now counts the 285 boards v0.23.0
+    shipped, taken from each phase's own diff: one LED per pin 29 → 20; DIP switches drawn as
+    buttons 16 → 9, and dropped 4 → 3; multi-pin 12 → 8; native banks the regroup fixed 17 → 10,
+    and lists it reordered 25 → 18; channel maps 16 → 8. Examples that were new boards (VC707,
+    ZCU104, MachXO3, NetFPGA SUME, Tang Primer 20K, LiteX DECA, Krote, BeagleWire, Alveo U280)
+    were replaced or dropped. No v0.23.0 board's LED labels overprinted (today's rule at 800x560,
+    1024x700 and 1600x1000), so the compact-label entry joined the multi-pin one. Five boards,
+    not four, have an assumed clock: the Phase 4 bump added the Sipeed SLogic16U3. The running
+    totals became one entry: 441 boards, up from 285.
+  - Phase 6's bit-by-bit bank check, re-run over the release and now building every listed
+    version as the sync does: 3,252 bits on all 406 LiteX and Amaranth boards, 0 problems.
+  - `--board`'s "Fourteen boards" stays: it counts v0.23.0's boards. Three of the 56 Phase 1c
+    boards share an Amaranth twin's name (17 in all), as the Phase 1c entry now says.
+
 ---
 
 ## 12. Phase ledger
@@ -1347,8 +1368,8 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 4 | bump to heads (read, never executed) — checkpoint | **yes** (contact sheet of new and changed boards) | done 2026-11-02 (#476); the review found the five Efinix orphans were upstream renames, so renames are now followed (Rick, 2026-11-02), done in the PR |
 | 5 | multi-pin, DIP | **yes** | done 2026-11-02 (#477) |
 | 6 | aliases | **yes** | done 2026-11-02 (#478); the review settled one LED under two names: refused, with a message of its own, done in the PR. The same rule for constraint files (one port per pin) follows in its own PR |
-| 7 | versions | **yes** (selector) | PR #482, awaiting visual review (2026-11-02); the report settled six decisions (§4.1, §4.7 amended) |
-| 8 | closeout + release v0.24.0 | no | not started |
+| 7 | versions | **yes** (selector) | done 2026-11-02 (#482); the report settled six decisions (§4.1, §4.7 amended); the review passed the selector and asked for the README's filter example without a count, done in the PR |
+| 8 | closeout + release v0.24.0 | no | closeout in progress 2026-11-02; the release PR follows it |
 
 ---
 

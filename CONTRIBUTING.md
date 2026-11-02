@@ -635,7 +635,10 @@ file, the platform class, and for LiteX the constructor's version arguments), an
 board file keeps its name forever**. The cited registries key boards by file path, and
 recent runs by class name, so never rename a generated board file or change its
 `class_name`. A board that is new upstream is named after its upstream file, not its
-display name.
+display name, and each version a LiteX file lists gets a file of its own, named after
+the upstream file and the version (`digilent_arty_variant-a7-100.json`). When upstream
+renames a file and exactly one new board has the same FPGA, clocks and I/O, the existing
+file follows it: it keeps its name and reads the renamed file from then on.
 
 Each sync prints a ledger, and writes it into the source's `_sync_metadata.json`. It
 records one outcome per upstream file (`boards: …`, `skipped: not_a_board`,
