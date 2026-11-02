@@ -215,7 +215,18 @@
       "switches": {
         "name": "switch",
         "width": 9,
-        "active_low": true
+        "active_low": true,
+        "channels": [
+          null,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ]
       },
       "buttons": {
         "name": "button",
@@ -229,7 +240,7 @@
     "origin": "amaranth-boards",
     "upstream_file": "ecp5_5g_evn.py",
     "upstream_class": "ECP55GEVNPlatform",
-    "sync_commit": "be069dfd490b31df215337afac35711994a52418",
-    "sync_timestamp": "2026-10-31T23:32:50.118937+00:00"
+    "sync_commit": "f270d210e36b0787d62db77176c7b0e8032178d3",
+    "sync_timestamp": "2026-11-02T01:02:20.263817+00:00"
   }
 }

@@ -236,6 +236,37 @@
               "pattern": "^#[0-9a-fA-F]{6}$"
             }
           ]
+        },
+        "aliases": {
+          "type": "array",
+          "description": "Other upstream names for this same LED: upstream maps each to this LED's pin, or to one channel of this RGB LED (U56 Phase 6, D-1). The sync draws one LED, keeps the first-declared entry as the component, and lists the rest here; each stays a native port of its own.",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "number"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The upstream resource name, as the framework spells it (e.g. 'user_ledr_n', 'led_r')"
+              },
+              "number": {
+                "type": "integer",
+                "description": "The upstream resource index"
+              },
+              "channel": {
+                "type": "string",
+                "enum": [
+                  "r",
+                  "g",
+                  "b"
+                ],
+                "description": "The RGB channel this name drives, when the LED is an RGB site"
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
@@ -441,6 +472,16 @@
           "$ref": "#/$defs/port_mapping",
           "description": "Secondary (e.g. green) LED bank on boards with two-color LED rows, such as Terasic DE2-115's LEDG"
         },
+        "led_banks": {
+          "type": "array",
+          "description": "More LED banks a design may drive besides 'leds', each with its 'channels' map: every other upstream LED name -- aliases of an LED, groups split from a multi-pin resource, other named groups (U56 Phase 6). A design may declare any of them; two declared ports that reach one LED channel are a near-miss naming the shared pin.",
+          "items": {
+            "$ref": "#/$defs/port_mapping",
+            "required": [
+              "channels"
+            ]
+          }
+        },
         "leds_rgb": {
           "$ref": "#/$defs/port_mapping",
           "description": "3-pin RGB LED channels as a bank of distinct scalar ports ('names', in (r,g,b) order per LED site, sites ascending \u2014 matching the boundary channel layout led(MONO + 3i + c)), e.g. Arty's led0_r/led0_g/led0_b/led1_r/... . 'active_low' covers the whole bank; a board whose RGB polarity is unverified or mixed omits this mapping (verify-or-omit)."
@@ -479,6 +520,21 @@
         "active_low": {
           "type": "boolean",
           "default": false
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "Bit k of the bank reaches boundary channel channels[k]: an LED channel (mono LEDs first, then r, g, b per RGB site) or a switch/button index; null where the board has no resource for that bit (U56 Phase 6). Absent means bit k reaches channel k ('leds_rgb': the RGB block's channel k)."
         }
       }
     },

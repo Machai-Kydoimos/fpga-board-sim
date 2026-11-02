@@ -137,6 +137,7 @@ ignore = [
 "sim/test_cpu_dice.py" = ["ANN"]     # cocotb headless tests: dut signals are dynamic
 "sim/test_cpu_wide_led.py" = ["ANN"] # cocotb headless tests: dut signals are dynamic
 "sim/test_stopwatch.py" = ["ANN"]    # cocotb headless tests: dut signals are dynamic
+"sim/test_led_aliases.py" = ["ANN"]   # cocotb headless tests: dut signals are dynamic
 "sim/test_duty.py" = ["ANN"]         # cocotb headless tests: dut signals are dynamic
 "sim/test_rgb.py" = ["ANN"]          # cocotb headless tests: dut signals are dynamic
 "sim/test_native_scan.py" = ["ANN"]  # cocotb headless tests: dut signals are dynamic
@@ -181,6 +182,7 @@ module = [
     "test_gates_mux",
     "test_countdown",
     "test_running_light",
+    "test_led_aliases",
 ]
 disallow_untyped_defs = false    # test functions and fixtures are exempt
 disallow_untyped_calls = false   # ...and so are their calls to each other

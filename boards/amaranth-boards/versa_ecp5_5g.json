@@ -427,6 +427,30 @@
         "width": 8,
         "active_low": true
       },
+      "led_banks": [
+        {
+          "name": "alnum_led",
+          "width": 15,
+          "active_low": true,
+          "channels": [
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22
+          ]
+        }
+      ],
       "naming": "framework-derived",
       "switches": {
         "name": "switch",
@@ -440,6 +464,6 @@
     "upstream_file": "versa_ecp5_5g.py",
     "upstream_class": "VersaECP55GPlatform",
     "sync_commit": "f270d210e36b0787d62db77176c7b0e8032178d3",
-    "sync_timestamp": "2026-11-02T00:27:29.393172+00:00"
+    "sync_timestamp": "2026-11-02T01:02:20.263817+00:00"
   }
 }

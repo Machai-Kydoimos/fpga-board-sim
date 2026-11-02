@@ -35,7 +35,14 @@
       "connector": null,
       "attrs": {
         "IO_STANDARD": "SB_LVCMOS"
-      }
+      },
+      "color": "red",
+      "aliases": [
+        {
+          "name": "led_r",
+          "number": 0
+        }
+      ]
     },
     {
       "name": "led",
@@ -48,35 +55,14 @@
       "connector": null,
       "attrs": {
         "IO_STANDARD": "SB_LVCMOS"
-      }
-    },
-    {
-      "name": "led_r",
-      "number": 0,
-      "pins": [
-        "25"
-      ],
-      "direction": "o",
-      "inverted": true,
-      "connector": null,
-      "attrs": {
-        "IO_STANDARD": "SB_LVCMOS"
       },
-      "color": "red"
-    },
-    {
-      "name": "led_g",
-      "number": 0,
-      "pins": [
-        "6"
-      ],
-      "direction": "o",
-      "inverted": true,
-      "connector": null,
-      "attrs": {
-        "IO_STANDARD": "SB_LVCMOS"
-      },
-      "color": "green"
+      "color": "green",
+      "aliases": [
+        {
+          "name": "led_g",
+          "number": 0
+        }
+      ]
     }
   ],
   "buttons": [
@@ -105,6 +91,24 @@
         "width": 2,
         "active_low": true
       },
+      "led_banks": [
+        {
+          "name": "led_r",
+          "width": 1,
+          "active_low": true,
+          "channels": [
+            0
+          ]
+        },
+        {
+          "name": "led_g",
+          "width": 1,
+          "active_low": true,
+          "channels": [
+            1
+          ]
+        }
+      ],
       "naming": "framework-derived",
       "buttons": {
         "name": "button",
@@ -118,7 +122,7 @@
     "origin": "amaranth-boards",
     "upstream_file": "icebreaker_bitsy.py",
     "upstream_class": "ICEBreakerBitsyPlatform",
-    "sync_commit": "be069dfd490b31df215337afac35711994a52418",
-    "sync_timestamp": "2026-10-31T23:32:50.118937+00:00"
+    "sync_commit": "f270d210e36b0787d62db77176c7b0e8032178d3",
+    "sync_timestamp": "2026-11-02T01:02:20.263817+00:00"
   }
 }

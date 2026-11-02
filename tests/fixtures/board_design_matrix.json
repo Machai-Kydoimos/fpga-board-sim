@@ -12,8 +12,8 @@
     "amaranth-boards/arty_z720": {"CLK_HALF_NS_INIT": "4", "COUNTER_BITS": "17", "NUM_BUTTONS": "4", "NUM_LEDS": "10", "NUM_RGB_LEDS": "2", "NUM_SWITCHES": "2"},
     "amaranth-boards/atlys": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "5", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "8"},
     "amaranth-boards/ax7325_b": {"CLK_HALF_NS_INIT": "2", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "amaranth-boards/black_ice": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
-    "amaranth-boards/black_ice_ii": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
+    "amaranth-boards/black_ice": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
+    "amaranth-boards/black_ice_ii": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
     "amaranth-boards/butterstick": {"CLK_HALF_NS_INIT": "17", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "amaranth-boards/chameleon96": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "amaranth-boards/cmod_a7-15": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "5", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
@@ -32,17 +32,17 @@
     "amaranth-boards/ecp55_gevn": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "8"},
     "amaranth-boards/ecpix545": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "12", "NUM_RGB_LEDS": "4", "NUM_SWITCHES": "1"},
     "amaranth-boards/ecpix585": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "12", "NUM_RGB_LEDS": "4", "NUM_SWITCHES": "1"},
-    "amaranth-boards/fomu_hacker": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "4", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
-    "amaranth-boards/fomu_pvt": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "4", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "amaranth-boards/fomu_hacker": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "amaranth-boards/fomu_pvt": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "amaranth-boards/genesys2": {"CLK_HALF_NS_INIT": "2", "COUNTER_BITS": "17", "NUM_BUTTONS": "5", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "8"},
     "amaranth-boards/ice40_hx1_kblink_evn": {"CLK_HALF_NS_INIT": "152", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "amaranth-boards/ice40_hx8_kbevn": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "amaranth-boards/ice40_up5_kbevn": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "4"},
-    "amaranth-boards/icebreaker": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "amaranth-boards/icebreaker_bitsy": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "7", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "amaranth-boards/ice40_up5_kbevn": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "4"},
+    "amaranth-boards/icebreaker": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
+    "amaranth-boards/icebreaker_bitsy": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "5", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "amaranth-boards/icepi_zero1-3": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "5", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "amaranth-boards/icestick": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "5", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "amaranth-boards/icesugar": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "4"},
+    "amaranth-boards/icesugar": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "4"},
     "amaranth-boards/icesugar_nano": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "amaranth-boards/icesugar_pro": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "amaranth-boards/kc705": {"CLK_HALF_NS_INIT": "3", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
@@ -82,8 +82,8 @@
     "amaranth-boards/ulx3_s-25_f": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "13", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
     "amaranth-boards/ulx3_s-45_f": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "13", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
     "amaranth-boards/ulx3_s-85_f": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "13", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
-    "amaranth-boards/upduino_v1": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
-    "amaranth-boards/upduino_v2": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "amaranth-boards/upduino_v1": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "amaranth-boards/upduino_v2": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "amaranth-boards/upduino_v3": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "amaranth-boards/versa_ecp5": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "23", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "8"},
     "amaranth-boards/versa_ecp5_5g": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "23", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "8"},
@@ -196,20 +196,20 @@
     "litex-boards/gadgetfactory_papilio_pro": {"CLK_HALF_NS_INIT": "16", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/gmm7550": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/gsd_butterstick": {"CLK_HALF_NS_INIT": "17", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/gsd_orangecrab": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/gsd_orangecrab": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "litex-boards/hackaday_hadbadge": {"CLK_HALF_NS_INIT": "62", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "12", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/hseda_xc7a35t": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "4", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/hyvision_pcie_opt01_revf": {"CLK_HALF_NS_INIT": "2", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "16", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "2"},
     "litex-boards/ice_v_wireless": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/icebreaker": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/icebreaker_bitsy": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "7", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/icebreaker": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
+    "litex-boards/icebreaker_bitsy": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "5", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "litex-boards/icepi_zero": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "5", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/intergalaktik_ulx5m_gs": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "3", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/isx_im1283": {"CLK_HALF_NS_INIT": "2", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
     "litex-boards/jungle_electronics_fireant": {"CLK_HALF_NS_INIT": "15", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/kosagi_fomu_evt": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "4", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
-    "litex-boards/kosagi_fomu_hacker": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "4", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
-    "litex-boards/kosagi_fomu_pvt": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "4", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/kosagi_fomu_evt": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/kosagi_fomu_hacker": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/kosagi_fomu_pvt": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "litex-boards/kosagi_netv2": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/krtkl_snickerdoodle": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/lambdaconcept_ecpix5": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "12", "NUM_RGB_LEDS": "4", "NUM_SWITCHES": "1"},
@@ -223,7 +223,7 @@
     "litex-boards/lattice_crosslink_nx_vip": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
     "litex-boards/lattice_ecp5_evn": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "8"},
     "litex-boards/lattice_ecp5_vip": {"CLK_HALF_NS_INIT": "19", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "8"},
-    "litex-boards/lattice_ice40up5k_evn": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "7", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "4"},
+    "litex-boards/lattice_ice40up5k_evn": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "4"},
     "litex-boards/lattice_machxo3": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
     "litex-boards/lattice_versa_ecp5": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "23", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "8"},
     "litex-boards/lckfb_ljpi": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
@@ -233,13 +233,13 @@
     "litex-boards/litex_acorn_baseboard": {"CLK_HALF_NS_INIT": "988142", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/logicbone": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/machdyne_kolsch": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/machdyne_konfekt": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
-    "litex-boards/machdyne_kopflos": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/machdyne_konfekt": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/machdyne_kopflos": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "litex-boards/machdyne_krote": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/machdyne_lakritz": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/machdyne_minze": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/machdyne_noir": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
-    "litex-boards/machdyne_schoko": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/machdyne_noir": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/machdyne_schoko": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "litex-boards/machdyne_vanille": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/micronova_mercury2": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/microphase_a7_lite": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
@@ -249,15 +249,15 @@
     "litex-boards/mlk_cu07_ku15p": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "3", "NUM_LEDS": "7", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/mlkpai_fs01_dr1v90m": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "3", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/modretro_chromatic": {"CLK_HALF_NS_INIT": "15", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/muselab_icesugar": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "4"},
-    "litex-boards/muselab_icesugar_pro": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/muselab_icesugar": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "4"},
+    "litex-boards/muselab_icesugar_pro": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "litex-boards/myir_myc_j7a100t": {"CLK_HALF_NS_INIT": "2", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/myminieye_runber": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "8", "NUM_LEDS": "20", "NUM_RGB_LEDS": "4", "NUM_SEGS": "1", "NUM_SWITCHES": "8"},
     "litex-boards/newae_cw305": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
-    "litex-boards/numato_aller": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/numato_aller": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "litex-boards/numato_mimas_a7": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "4", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SEGS": "4", "NUM_SWITCHES": "8"},
     "litex-boards/numato_nereid": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
-    "litex-boards/numato_tagus": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/numato_tagus": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "litex-boards/ocp_tap_timecard": {"CLK_HALF_NS_INIT": "2", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "9", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/olimex_gatemate_a1_evb": {"CLK_HALF_NS_INIT": "50", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/opalkelly_xem8320": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
@@ -279,7 +279,7 @@
     "litex-boards/qmtech_wukong_revision-1": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/qmtech_xc7a35t": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/qmtech_xc7k325t": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/quicklogic_quickfeather": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/quicklogic_quickfeather": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "litex-boards/qwertyembedded_beaglewire": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/radiona_ulx3s": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "7", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
     "litex-boards/radiona_ulx4m_ld_v2": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "3", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "2"},
@@ -296,7 +296,7 @@
     "litex-boards/sipeed_tang_mega_138k": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "3", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/sipeed_tang_mega_138k_pro": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "4", "NUM_LEDS": "9", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/sipeed_tang_mega_60k": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/sipeed_tang_nano": {"CLK_HALF_NS_INIT": "21", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/sipeed_tang_nano": {"CLK_HALF_NS_INIT": "21", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "litex-boards/sipeed_tang_nano_20k": {"CLK_HALF_NS_INIT": "19", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "7", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/sipeed_tang_nano_4k": {"CLK_HALF_NS_INIT": "19", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/sipeed_tang_nano_9k": {"CLK_HALF_NS_INIT": "19", "COUNTER_BITS": "17", "NUM_BUTTONS": "2", "NUM_LEDS": "6", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
@@ -335,7 +335,7 @@
     "litex-boards/trenz_te0741": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "2", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/trenz_te0890": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/trenz_tec0117": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/trenz_tel0025": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "6", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
+    "litex-boards/trenz_tel0025": {"CLK_HALF_NS_INIT": "20", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "1", "NUM_SWITCHES": "1"},
     "litex-boards/trenz_tem0006": {"CLK_HALF_NS_INIT": "42", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "1", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/tul_pynq_z2": {"CLK_HALF_NS_INIT": "4", "COUNTER_BITS": "17", "NUM_BUTTONS": "4", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "2"},
     "litex-boards/xilinx_ac701": {"CLK_HALF_NS_INIT": "3", "COUNTER_BITS": "17", "NUM_BUTTONS": "5", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
@@ -353,7 +353,7 @@
     "litex-boards/xilinx_zcu102": {"CLK_HALF_NS_INIT": "4", "COUNTER_BITS": "17", "NUM_BUTTONS": "5", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "8"},
     "litex-boards/xilinx_zcu104": {"CLK_HALF_NS_INIT": "4", "COUNTER_BITS": "17", "NUM_BUTTONS": "4", "NUM_LEDS": "4", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "4"},
     "litex-boards/xilinx_zcu106": {"CLK_HALF_NS_INIT": "4", "COUNTER_BITS": "17", "NUM_BUTTONS": "5", "NUM_LEDS": "8", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
-    "litex-boards/xilinx_zcu216": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "5", "NUM_LEDS": "32", "NUM_RGB_LEDS": "8", "NUM_SWITCHES": "8"},
+    "litex-boards/xilinx_zcu216": {"CLK_HALF_NS_INIT": "5", "COUNTER_BITS": "17", "NUM_BUTTONS": "5", "NUM_LEDS": "24", "NUM_RGB_LEDS": "8", "NUM_SWITCHES": "8"},
     "litex-boards/ypcb_00338_1p1": {"CLK_HALF_NS_INIT": "2", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "3", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"},
     "litex-boards/ztex213": {"CLK_HALF_NS_INIT": "10", "COUNTER_BITS": "17", "NUM_BUTTONS": "1", "NUM_LEDS": "30", "NUM_RGB_LEDS": "0", "NUM_SWITCHES": "1"}
   },
@@ -362,7 +362,7 @@
     "boards_loaded": 355,
     "contract_checks": 12425,
     "designs": 35,
-    "native_banks": 805
+    "native_banks": 859
   },
   "designs": {
     "hdl/blinky.vhd": {
@@ -898,11 +898,19 @@
     },
     "amaranth-boards/black_ice": {
       "amaranth.buttons": {"active_low": true, "match": "amaranth", "names": ["button"], "scalar_ports": false, "width": 2},
+      "amaranth.led_banks.led_b": {"active_low": false, "channels": [0], "match": "amaranth", "names": ["led_b"], "scalar_ports": false, "width": 1},
+      "amaranth.led_banks.led_g": {"active_low": false, "channels": [1], "match": "amaranth", "names": ["led_g"], "scalar_ports": false, "width": 1},
+      "amaranth.led_banks.led_o": {"active_low": false, "channels": [2], "match": "amaranth", "names": ["led_o"], "scalar_ports": false, "width": 1},
+      "amaranth.led_banks.led_r": {"active_low": false, "channels": [3], "match": "amaranth", "names": ["led_r"], "scalar_ports": false, "width": 1},
       "amaranth.leds": {"active_low": false, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 4},
       "amaranth.switches": {"active_low": true, "match": "amaranth", "names": ["switch"], "scalar_ports": false, "width": 4}
     },
     "amaranth-boards/black_ice_ii": {
       "amaranth.buttons": {"active_low": true, "match": "amaranth", "names": ["button"], "scalar_ports": false, "width": 2},
+      "amaranth.led_banks.led_b": {"active_low": false, "channels": [0], "match": "amaranth", "names": ["led_b"], "scalar_ports": false, "width": 1},
+      "amaranth.led_banks.led_g": {"active_low": false, "channels": [1], "match": "amaranth", "names": ["led_g"], "scalar_ports": false, "width": 1},
+      "amaranth.led_banks.led_o": {"active_low": false, "channels": [2], "match": "amaranth", "names": ["led_o"], "scalar_ports": false, "width": 1},
+      "amaranth.led_banks.led_r": {"active_low": false, "channels": [3], "match": "amaranth", "names": ["led_r"], "scalar_ports": false, "width": 1},
       "amaranth.leds": {"active_low": false, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 4},
       "amaranth.switches": {"active_low": true, "match": "amaranth", "names": ["switch"], "scalar_ports": false, "width": 4}
     },
@@ -996,13 +1004,13 @@
     "amaranth-boards/ecp55_gevn": {
       "amaranth.buttons": {"active_low": true, "match": "amaranth", "names": ["button"], "scalar_ports": false, "width": 1},
       "amaranth.leds": {"active_low": true, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 8},
-      "amaranth.switches": {"active_low": true, "match": "amaranth", "names": ["switch"], "scalar_ports": false, "width": 9}
+      "amaranth.switches": {"active_low": true, "channels": [null, 0, 1, 2, 3, 4, 5, 6, 7], "match": "amaranth", "names": ["switch"], "scalar_ports": false, "width": 9}
     },
     "amaranth-boards/fomu_hacker": {
-      "amaranth.leds": {"active_low": true, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 1}
+      "amaranth.leds": {"active_low": true, "channels": [2], "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 1}
     },
     "amaranth-boards/fomu_pvt": {
-      "amaranth.leds": {"active_low": true, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 1}
+      "amaranth.leds": {"active_low": true, "channels": [1], "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 1}
     },
     "amaranth-boards/genesys2": {
       "amaranth.buttons": {"active_low": false, "match": "amaranth", "names": ["button"], "scalar_ports": false, "width": 5},
@@ -1019,15 +1027,19 @@
       "amaranth.leds": {"active_low": false, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 8}
     },
     "amaranth-boards/ice40_up5_kbevn": {
-      "amaranth.leds": {"active_low": true, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 3},
+      "amaranth.leds": {"active_low": true, "channels": [2, 1, 0], "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 3},
       "amaranth.switches": {"active_low": true, "match": "amaranth", "names": ["switch"], "scalar_ports": false, "width": 4}
     },
     "amaranth-boards/icebreaker": {
       "amaranth.buttons": {"active_low": true, "match": "amaranth", "names": ["button"], "scalar_ports": false, "width": 1},
+      "amaranth.led_banks.led_g": {"active_low": true, "channels": [1], "match": "amaranth", "names": ["led_g"], "scalar_ports": false, "width": 1},
+      "amaranth.led_banks.led_r": {"active_low": true, "channels": [0], "match": "amaranth", "names": ["led_r"], "scalar_ports": false, "width": 1},
       "amaranth.leds": {"active_low": true, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 2}
     },
     "amaranth-boards/icebreaker_bitsy": {
       "amaranth.buttons": {"active_low": true, "match": "amaranth", "names": ["button"], "scalar_ports": false, "width": 1},
+      "amaranth.led_banks.led_g": {"active_low": true, "channels": [1], "match": "amaranth", "names": ["led_g"], "scalar_ports": false, "width": 1},
+      "amaranth.led_banks.led_r": {"active_low": true, "channels": [0], "match": "amaranth", "names": ["led_r"], "scalar_ports": false, "width": 1},
       "amaranth.leds": {"active_low": true, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 2}
     },
     "amaranth-boards/icepi_zero1-3": {
@@ -1051,6 +1063,7 @@
       "amaranth.leds": {"active_low": false, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 8}
     },
     "amaranth-boards/litefury": {
+      "amaranth.led_banks.m2led": {"active_low": false, "channels": [4], "match": "amaranth", "names": ["m2led"], "scalar_ports": false, "width": 1},
       "amaranth.leds": {"active_low": true, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 4},
       "rhs_research.leds": {"active_low": true, "match": "rhs_research", "names": ["LED_A1", "LED_A2", "LED_A3", "LED_A4"], "scalar_ports": true, "width": 4}
     },
@@ -1083,6 +1096,9 @@
     },
     "amaranth-boards/mister": {
       "amaranth.buttons": {"active_low": true, "match": "amaranth", "names": ["button"], "scalar_ports": false, "width": 2},
+      "amaranth.led_banks.disk_led": {"active_low": true, "channels": [9], "match": "amaranth", "names": ["disk_led"], "scalar_ports": false, "width": 1},
+      "amaranth.led_banks.power_led": {"active_low": true, "channels": [8], "match": "amaranth", "names": ["power_led"], "scalar_ports": false, "width": 1},
+      "amaranth.led_banks.user_led": {"active_low": true, "channels": [10], "match": "amaranth", "names": ["user_led"], "scalar_ports": false, "width": 1},
       "amaranth.leds": {"active_low": false, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 8},
       "amaranth.switches": {"active_low": false, "match": "amaranth", "names": ["switch"], "scalar_ports": false, "width": 4}
     },
@@ -1099,6 +1115,7 @@
       "digilent.switches": {"active_low": false, "match": "digilent", "names": ["SW"], "scalar_ports": false, "width": 16}
     },
     "amaranth-boards/nitefury_ii": {
+      "amaranth.led_banks.m2led": {"active_low": false, "channels": [4], "match": "amaranth", "names": ["m2led"], "scalar_ports": false, "width": 1},
       "amaranth.leds": {"active_low": true, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 4},
       "rhs_research.leds": {"active_low": true, "match": "rhs_research", "names": ["LED_A1", "LED_A2", "LED_A3", "LED_A4"], "scalar_ports": true, "width": 4}
     },
@@ -1170,16 +1187,18 @@
       "amaranth.switches": {"active_low": false, "match": "amaranth", "names": ["switch"], "scalar_ports": false, "width": 4}
     },
     "amaranth-boards/upduino_v1": {
-      "amaranth.leds": {"active_low": true, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 3}
+      "amaranth.leds": {"active_low": true, "channels": [1, 2, 0], "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 3}
     },
     "amaranth-boards/upduino_v2": {
-      "amaranth.leds": {"active_low": true, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 3}
+      "amaranth.leds": {"active_low": true, "channels": [1, 2, 0], "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 3}
     },
     "amaranth-boards/versa_ecp5": {
+      "amaranth.led_banks.alnum_led": {"active_low": true, "channels": [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], "match": "amaranth", "names": ["alnum_led"], "scalar_ports": false, "width": 15},
       "amaranth.leds": {"active_low": true, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 8},
       "amaranth.switches": {"active_low": false, "match": "amaranth", "names": ["switch"], "scalar_ports": false, "width": 8}
     },
     "amaranth-boards/versa_ecp5_5g": {
+      "amaranth.led_banks.alnum_led": {"active_low": true, "channels": [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], "match": "amaranth", "names": ["alnum_led"], "scalar_ports": false, "width": 15},
       "amaranth.leds": {"active_low": true, "match": "amaranth", "names": ["led"], "scalar_ports": false, "width": 8},
       "amaranth.switches": {"active_low": false, "match": "amaranth", "names": ["switch"], "scalar_ports": false, "width": 8}
     },
@@ -1395,10 +1414,13 @@
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8}
     },
     "litex-boards/alibaba_vu13p": {
+      "litex.led_banks.run_led": {"active_low": false, "channels": [8], "match": "litex", "names": ["run_led"], "scalar_ports": false, "width": 1},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_sw"], "scalar_ports": false, "width": 3}
     },
     "litex-boards/alibaba_xcku3p": {
+      "litex.led_banks.sfp_led": {"active_low": false, "channels": [7, 8], "match": "litex", "names": ["sfp_led"], "scalar_ports": false, "width": 2},
+      "litex.led_banks.user_led_rgh": {"active_low": false, "channels": [null, null, null, null, 4, 5, 6], "match": "litex", "names": ["user_led_rgh"], "scalar_ports": false, "width": 7},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 4}
     },
     "litex-boards/alientek_davincipro": {
@@ -1410,7 +1432,7 @@
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 4}
     },
     "litex-boards/aliexpress_xc7k420t": {
-      "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn_k2", "user_btn_k3"], "scalar_ports": true, "width": 2},
+      "litex.buttons": {"active_low": false, "channels": [1, 0], "match": "litex", "names": ["user_btn_k2", "user_btn_k3"], "scalar_ports": true, "width": 2},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8}
     },
     "litex-boards/aliexpress_xc7k70t": {
@@ -1470,6 +1492,9 @@
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip_btn"], "scalar_ports": false, "width": 2}
     },
     "litex-boards/antmicro_sodimm_ddr5_tester": {
+      "litex.led_banks.LED_green": {"active_low": false, "channels": [7], "match": "litex", "names": ["LED_green"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.LED_red": {"active_low": false, "channels": [6], "match": "litex", "names": ["LED_red"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.LED_yellow": {"active_low": false, "channels": [5], "match": "litex", "names": ["LED_yellow"], "scalar_ports": false, "width": 1},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 5}
     },
     "litex-boards/arrow_axe5000": {
@@ -1514,6 +1539,7 @@
       "litex.leds": {"active_low": true, "match": "litex", "names": ["user_led_n"], "scalar_ports": false, "width": 1}
     },
     "litex-boards/colorlight_i9plus": {
+      "litex.led_banks.serial_rgb_led_dout": {"active_low": false, "channels": [1], "match": "litex", "names": ["serial_rgb_led_dout"], "scalar_ports": false, "width": 1},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 1}
     },
     "litex-boards/digilent_arty": {
@@ -1552,7 +1578,7 @@
       "digilent.buttons": {"active_low": false, "match": "digilent", "names": ["btnC", "btnU", "btnD", "btnL", "btnR"], "scalar_ports": true, "width": 5},
       "digilent.leds": {"active_low": false, "match": "digilent", "names": ["led"], "scalar_ports": false, "width": 16},
       "digilent.switches": {"active_low": false, "match": "digilent", "names": ["sw"], "scalar_ports": false, "width": 16},
-      "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btnc", "user_btnd", "user_btnl", "user_btnr", "user_btnu"], "scalar_ports": true, "width": 5},
+      "litex.buttons": {"active_low": false, "channels": [4, 1, 2, 3, 0], "match": "litex", "names": ["user_btnc", "user_btnd", "user_btnl", "user_btnr", "user_btnu"], "scalar_ports": true, "width": 5},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 16},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_sw"], "scalar_ports": false, "width": 16}
     },
@@ -1570,6 +1596,7 @@
     },
     "litex-boards/digilent_netfpga_sume": {
       "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn"], "scalar_ports": false, "width": 2},
+      "litex.led_banks.sfp_led": {"active_low": false, "channels": [2, 3, 4, 5, 6, 7, 8, 9], "match": "litex", "names": ["sfp_led"], "scalar_ports": false, "width": 8},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 2}
     },
     "litex-boards/digilent_nexys4": {
@@ -1669,6 +1696,7 @@
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 1}
     },
     "litex-boards/fairwaves_xtrx": {
+      "litex.led_banks.user_led2": {"active_low": false, "channels": [null, 1, 2, 3], "match": "litex", "names": ["user_led2"], "scalar_ports": false, "width": 4},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 1}
     },
     "litex-boards/fpc_iii": {
@@ -1680,6 +1708,10 @@
     "litex-boards/gadgetfactory_papilio_pro": {
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 1}
     },
+    "litex-boards/gmm7550": {
+      "litex.led_banks.led_green": {"active_low": false, "channels": [1], "match": "litex", "names": ["led_green"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.led_red_n": {"active_low": true, "channels": [0], "match": "litex", "names": ["led_red_n"], "scalar_ports": false, "width": 1}
+    },
     "litex-boards/gsd_butterstick": {
       "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 2},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 7}
@@ -1687,6 +1719,9 @@
     "litex-boards/gsd_orangecrab": {
       "litex.buttons": {"active_low": false, "match": "litex", "names": ["usr_btn"], "scalar_ports": false, "width": 1},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 3}
+    },
+    "litex-boards/hackaday_hadbadge": {
+      "litex.led_banks.led": {"active_low": false, "channels": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "match": "litex", "names": ["led"], "scalar_ports": false, "width": 11}
     },
     "litex-boards/hseda_xc7a35t": {
       "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn"], "scalar_ports": false, "width": 4},
@@ -1702,10 +1737,14 @@
     },
     "litex-boards/icebreaker": {
       "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.user_ledg_n": {"active_low": true, "channels": [1], "match": "litex", "names": ["user_ledg_n"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.user_ledr_n": {"active_low": true, "channels": [0], "match": "litex", "names": ["user_ledr_n"], "scalar_ports": false, "width": 1},
       "litex.leds": {"active_low": true, "match": "litex", "names": ["user_led_n"], "scalar_ports": false, "width": 2}
     },
     "litex-boards/icebreaker_bitsy": {
       "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.user_ledg_n": {"active_low": true, "channels": [1], "match": "litex", "names": ["user_ledg_n"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.user_ledr_n": {"active_low": true, "channels": [0], "match": "litex", "names": ["user_ledr_n"], "scalar_ports": false, "width": 1},
       "litex.leds": {"active_low": true, "match": "litex", "names": ["user_led_n"], "scalar_ports": false, "width": 2}
     },
     "litex-boards/icepi_zero": {
@@ -1728,13 +1767,13 @@
     },
     "litex-boards/kosagi_fomu_evt": {
       "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 2},
-      "litex.leds": {"active_low": true, "match": "litex", "names": ["user_led_n"], "scalar_ports": false, "width": 1}
+      "litex.leds": {"active_low": true, "channels": [2], "match": "litex", "names": ["user_led_n"], "scalar_ports": false, "width": 1}
     },
     "litex-boards/kosagi_fomu_hacker": {
-      "litex.leds": {"active_low": true, "match": "litex", "names": ["user_led_n"], "scalar_ports": false, "width": 1}
+      "litex.leds": {"active_low": true, "channels": [2], "match": "litex", "names": ["user_led_n"], "scalar_ports": false, "width": 1}
     },
     "litex-boards/kosagi_fomu_pvt": {
-      "litex.leds": {"active_low": true, "match": "litex", "names": ["user_led_n"], "scalar_ports": false, "width": 1}
+      "litex.leds": {"active_low": true, "channels": [1], "match": "litex", "names": ["user_led_n"], "scalar_ports": false, "width": 1}
     },
     "litex-boards/kosagi_netv2": {
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 6}
@@ -1782,15 +1821,19 @@
     "litex-boards/lattice_ecp5_evn": {
       "litex.buttons": {"active_low": false, "match": "litex", "names": ["button_1"], "scalar_ports": false, "width": 1},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
-      "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip_btn"], "scalar_ports": false, "width": 9}
+      "litex.switches": {"active_low": false, "channels": [null, 0, 1, 2, 3, 4, 5, 6, 7], "match": "litex", "names": ["user_dip_btn"], "scalar_ports": false, "width": 9}
     },
     "litex-boards/lattice_ecp5_vip": {
       "litex.buttons": {"active_low": false, "match": "litex", "names": ["button_1"], "scalar_ports": false, "width": 1},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
-      "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip_btn"], "scalar_ports": false, "width": 9}
+      "litex.switches": {"active_low": false, "channels": [null, 0, 1, 2, 3, 4, 5, 6, 7], "match": "litex", "names": ["user_dip_btn"], "scalar_ports": false, "width": 9}
     },
     "litex-boards/lattice_ice40up5k_evn": {
-      "litex.leds": {"active_low": true, "match": "litex", "names": ["user_led_n", "user_ledb_n", "user_ledg_n", "user_ledr_n"], "scalar_ports": true, "width": 4},
+      "litex.led_banks.user_led_n": {"active_low": true, "channels": [2], "match": "litex", "names": ["user_led_n"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.user_ledb_n": {"active_low": true, "channels": [2], "match": "litex", "names": ["user_ledb_n"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.user_ledg_n": {"active_low": true, "channels": [1], "match": "litex", "names": ["user_ledg_n"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.user_ledr_n": {"active_low": true, "channels": [0], "match": "litex", "names": ["user_ledr_n"], "scalar_ports": false, "width": 1},
+      "litex.leds": {"active_low": true, "channels": [2, 1, 0], "match": "litex", "names": ["user_led_n", "user_ledg_n", "user_ledr_n"], "scalar_ports": true, "width": 3},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_sw"], "scalar_ports": false, "width": 4}
     },
     "litex-boards/lattice_machxo3": {
@@ -1798,6 +1841,7 @@
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip_btn"], "scalar_ports": false, "width": 4}
     },
     "litex-boards/lattice_versa_ecp5": {
+      "litex.led_banks.alnum_led": {"active_low": false, "channels": [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22], "match": "litex", "names": ["alnum_led"], "scalar_ports": false, "width": 15},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip_btn"], "scalar_ports": false, "width": 8}
     },
@@ -1806,9 +1850,11 @@
       "litex.leds": {"active_low": false, "match": "litex", "names": ["led"], "scalar_ports": false, "width": 6}
     },
     "litex-boards/limesdr_mini_v2": {
+      "litex.led_banks.led_r_n": {"active_low": true, "channels": [3, 4, 5], "match": "litex", "names": ["led_r_n"], "scalar_ports": false, "width": 3},
       "litex.leds": {"active_low": true, "match": "litex", "names": ["led_g_n"], "scalar_ports": false, "width": 3}
     },
     "litex-boards/limesdr_xtrx": {
+      "litex.led_banks.user_led2": {"active_low": false, "channels": [null, null, 2, 3, 4], "match": "litex", "names": ["user_led2"], "scalar_ports": false, "width": 5},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 2}
     },
     "litex-boards/linsn_rv901t": {
@@ -1828,6 +1874,9 @@
     "litex-boards/machdyne_kopflos": {
       "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn"], "scalar_ports": false, "width": 1},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 3}
+    },
+    "litex-boards/machdyne_krote": {
+      "litex.led_banks.user_led": {"active_low": false, "channels": [0, 1, 2, 3], "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 4}
     },
     "litex-boards/machdyne_lakritz": {
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 1}
@@ -1897,7 +1946,9 @@
     },
     "litex-boards/ocp_tap_timecard": {
       "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn"], "scalar_ports": false, "width": 2},
-      "litex.leds": {"active_low": false, "match": "litex", "names": ["led"], "scalar_ports": false, "width": 4}
+      "litex.led_banks.som_led": {"active_low": false, "channels": [8], "match": "litex", "names": ["som_led"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.user_led": {"active_low": false, "channels": [0, 1, 2, 3], "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 4},
+      "litex.leds": {"active_low": false, "channels": [4, 5, 6, 7], "match": "litex", "names": ["led"], "scalar_ports": false, "width": 4}
     },
     "litex-boards/olimex_gatemate_a1_evb": {
       "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 1},
@@ -1920,6 +1971,7 @@
     },
     "litex-boards/puzhi_pz_a7xxt_kfb": {
       "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn"], "scalar_ports": false, "width": 5},
+      "litex.led_banks.module_led": {"active_low": false, "channels": [5, 6], "match": "litex", "names": ["module_led"], "scalar_ports": false, "width": 2},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 5}
     },
     "litex-boards/qmtech_10cl006": {
@@ -1973,6 +2025,10 @@
     "litex-boards/qmtech_xc7k325t": {
       "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 2},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 2}
+    },
+    "litex-boards/qwertyembedded_beaglewire": {
+      "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.user_led": {"active_low": false, "channels": [0, 1, 2, 3], "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 4}
     },
     "litex-boards/radiona_ulx3s": {
       "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn"], "scalar_ports": false, "width": 7},
@@ -2029,6 +2085,9 @@
     },
     "litex-boards/sipeed_tang_mega_138k_pro": {
       "litex.buttons": {"active_low": true, "match": "litex", "names": ["btn_n"], "scalar_ports": false, "width": 4},
+      "litex.led_banks.led_done": {"active_low": false, "channels": [6], "match": "litex", "names": ["led_done"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.led_ready": {"active_low": false, "channels": [7], "match": "litex", "names": ["led_ready"], "scalar_ports": false, "width": 1},
+      "litex.led_banks.led_ws2812": {"active_low": false, "channels": [8], "match": "litex", "names": ["led_ws2812"], "scalar_ports": false, "width": 1},
       "litex.leds": {"active_low": true, "match": "litex", "names": ["led_n"], "scalar_ports": false, "width": 6}
     },
     "litex-boards/sipeed_tang_mega_60k": {
@@ -2037,10 +2096,11 @@
     },
     "litex-boards/sipeed_tang_nano": {
       "litex.buttons": {"active_low": true, "match": "litex", "names": ["user_btn_n"], "scalar_ports": false, "width": 2},
-      "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 3}
+      "litex.leds": {"active_low": false, "channels": [1, 2, 0], "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 3}
     },
     "litex-boards/sipeed_tang_nano_20k": {
       "litex.buttons": {"active_low": false, "match": "litex", "names": ["btn"], "scalar_ports": false, "width": 2},
+      "litex.led_banks.rgb_led": {"active_low": false, "channels": [6], "match": "litex", "names": ["rgb_led"], "scalar_ports": false, "width": 1},
       "litex.leds": {"active_low": true, "match": "litex", "names": ["led_n"], "scalar_ports": false, "width": 6},
       "sipeed.leds": {"active_low": true, "match": "sipeed", "names": ["leds"], "scalar_ports": false, "width": 6}
     },
@@ -2059,6 +2119,7 @@
     },
     "litex-boards/sipeed_tang_primer_20k": {
       "litex.buttons": {"active_low": true, "match": "litex", "names": ["btn_n"], "scalar_ports": false, "width": 5},
+      "litex.led_banks.rgb_led": {"active_low": false, "channels": [6], "match": "litex", "names": ["rgb_led"], "scalar_ports": false, "width": 1},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["led"], "scalar_ports": false, "width": 6}
     },
     "litex-boards/sipeed_tang_primer_25k": {
@@ -2125,7 +2186,7 @@
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 18}
     },
     "litex-boards/terasic_deca": {
-      "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn"], "scalar_ports": false, "width": 2},
+      "litex.buttons": {"active_low": false, "channels": [1, 2], "match": "litex", "names": ["user_btn"], "scalar_ports": false, "width": 2},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_sw"], "scalar_ports": false, "width": 2}
     },
@@ -2152,6 +2213,7 @@
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_sw"], "scalar_ports": false, "width": 3}
     },
     "litex-boards/trenz_c10lprefkit": {
+      "litex.led_banks.gpio_leds": {"active_low": false, "channels": [5, 6, 7, 8, 9, 10, 11, 12], "match": "litex", "names": ["gpio_leds"], "scalar_ports": false, "width": 8},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 5},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["sw"], "scalar_ports": false, "width": 5}
     },
@@ -2214,7 +2276,7 @@
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_sw"], "scalar_ports": false, "width": 2}
     },
     "litex-boards/xilinx_ac701": {
-      "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
+      "litex.buttons": {"active_low": false, "channels": [4, 1, 0, 2, 3], "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 4},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_sw"], "scalar_ports": false, "width": 4}
     },
@@ -2230,17 +2292,17 @@
       "litex.leds": {"active_low": false, "match": "litex", "names": ["gpio_led"], "scalar_ports": false, "width": 3}
     },
     "litex-boards/xilinx_kc705": {
-      "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
+      "litex.buttons": {"active_low": false, "channels": [0, 4, 1, 2, 3], "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip_btn"], "scalar_ports": false, "width": 4}
     },
     "litex-boards/xilinx_kcu105": {
-      "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
+      "litex.buttons": {"active_low": false, "channels": [0, 4, 1, 2, 3], "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip_btn"], "scalar_ports": false, "width": 4}
     },
     "litex-boards/xilinx_kcu116": {
-      "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
+      "litex.buttons": {"active_low": false, "channels": [0, 4, 1, 2, 3], "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip_sw"], "scalar_ports": false, "width": 4}
     },
@@ -2250,12 +2312,12 @@
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_sw"], "scalar_ports": false, "width": 4}
     },
     "litex-boards/xilinx_vc707": {
-      "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
+      "litex.buttons": {"active_low": false, "channels": [0, 2, 1, 3, 4], "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip_btn"], "scalar_ports": false, "width": 8}
     },
     "litex-boards/xilinx_vcu118": {
-      "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
+      "litex.buttons": {"active_low": false, "channels": [0, 2, 1, 3, 4], "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip_btn"], "scalar_ports": false, "width": 4}
     },
@@ -2263,7 +2325,7 @@
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8}
     },
     "litex-boards/xilinx_zc706": {
-      "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn_c", "user_btn_l", "user_btn_r"], "scalar_ports": true, "width": 3},
+      "litex.buttons": {"active_low": false, "channels": [1, 0, 2], "match": "litex", "names": ["user_btn_c", "user_btn_l", "user_btn_r"], "scalar_ports": true, "width": 3},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 4},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip_btn"], "scalar_ports": false, "width": 4}
     },
@@ -2278,12 +2340,12 @@
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip"], "scalar_ports": false, "width": 4}
     },
     "litex-boards/xilinx_zcu106": {
-      "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
+      "litex.buttons": {"active_low": false, "channels": [0, 4, 1, 2, 3], "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
       "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8}
     },
     "litex-boards/xilinx_zcu216": {
-      "litex.buttons": {"active_low": false, "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
-      "litex.leds": {"active_low": false, "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
+      "litex.buttons": {"active_low": false, "channels": [0, 4, 1, 2, 3], "match": "litex", "names": ["user_btn_c", "user_btn_e", "user_btn_n", "user_btn_s", "user_btn_w"], "scalar_ports": true, "width": 5},
+      "litex.leds": {"active_low": false, "channels": [1, 4, 7, 10, 13, 16, 19, 22], "match": "litex", "names": ["user_led"], "scalar_ports": false, "width": 8},
       "litex.switches": {"active_low": false, "match": "litex", "names": ["user_dip"], "scalar_ports": false, "width": 8}
     },
     "litex-boards/ypcb_00338_1p1": {

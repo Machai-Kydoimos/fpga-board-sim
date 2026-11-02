@@ -160,10 +160,12 @@ def minimal_block(block: Mapping[str, Any], role: str) -> dict[str, Any]:
     native design for that bank.
     """
     sub: dict[str, Any] = {"clk": block.get("clk"), role: block[role]}
-    if role not in _LED_FLOOR:
+    if role not in _LED_FLOOR and role != "led_banks":
         floor = next((r for r in _LED_FLOOR if isinstance(block.get(r), dict)), None)
         if floor is not None:
             sub[floor] = block[floor]
+        elif block.get("led_banks"):  # only other LED banks (U56 Phase 6): the first
+            sub["led_banks"] = block["led_banks"][:1]
     for name in _INPUT_ROLES:
         if block.get(name):
             sub[name] = block[name]
@@ -200,13 +202,50 @@ def bank_rows(board: BoardDef) -> dict[str, object]:
             design = synth_interface(minimal_block(block, role))
             match = match_convention(design, [], board)
             port = _role_port(match, role) if match is not None else None
-            row: dict[str, object] = {"match": match.maker if match is not None else None}
-            if port is not None:
-                row.update(dataclasses.asdict(port))
-            else:
-                row["declared"] = bank
-            rows[f"{maker}.{role}"] = _Inline(row)
+            rows[f"{maker}.{role}"] = _bank_row(match, port, bank)
+        # The other LED banks (U56 Phase 6), keyed by the names they declare: each
+        # one alone, with the clock and the inputs a match requires.
+        for bank in block.get("led_banks") or []:
+            if not isinstance(bank, dict):
+                continue
+            label = "+".join(bank.get("names") or [str(bank.get("name"))])
+            sub = minimal_block({**block, "led_banks": [bank]}, "led_banks")
+            match = match_convention(synth_interface(sub), [], board)
+            port = match.led_banks[0] if match is not None and match.led_banks else None
+            rows[f"{maker}.led_banks.{label}"] = _bank_row(match, port, bank)
     return rows
+
+
+def _bank_row(
+    match: ConventionMatch | None, port: NativePort | None, bank: dict[str, Any]
+) -> _Inline:
+    """One per-bank row: the matched maker and the bank as bound, or as declared."""
+    row: dict[str, object] = {"match": match.maker if match is not None else None}
+    if port is not None:
+        row.update(_without_defaults(dataclasses.asdict(port)))
+    else:
+        row["declared"] = bank
+    return _Inline(row)
+
+
+def _without_defaults(record: dict[str, Any]) -> dict[str, Any]:
+    """Drop the fields U56 Phase 6 added while they hold nothing.
+
+    A bank with no ``channels`` map and a match with no other LED banks read as
+    they did before, so the matrix's diff shows where a map or a bank appears.
+    """
+    out = {}
+    for key, value in record.items():
+        if key == "channels" and value is None:
+            continue
+        if key == "led_banks" and not value:
+            continue
+        if isinstance(value, dict):
+            value = _without_defaults(value)
+        elif isinstance(value, (list, tuple)):
+            value = [_without_defaults(v) if isinstance(v, dict) else v for v in value]
+        out[key] = value
+    return out
 
 
 # ── One design ───────────────────────────────────────────────────────────────
@@ -219,7 +258,7 @@ def wrong_board_hint_fired(result: ContractResult) -> bool:
 
 def _convention_record(match: ConventionMatch) -> dict[str, object]:
     """Lay out a native match minus ``board_name``: one line per field."""
-    fields = dataclasses.asdict(match)
+    fields = _without_defaults(dataclasses.asdict(match))
     del fields["board_name"]
     return {name: _Inline(value) for name, value in fields.items()}
 

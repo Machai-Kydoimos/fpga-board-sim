@@ -43,8 +43,26 @@ def tooltip_rows(
             rows.append(("Pin" if len(info.pins) == 1 else "Pins", ", ".join(info.pins)))
         if info.direction:
             rows.append(("Dir", info.direction))
+        if info.aliases:
+            rows.append(("Also", _alias_text(info.aliases)))
     rows.extend(extra)
     return rows
+
+
+def _alias_text(aliases: Sequence[dict[str, object]]) -> str:
+    """Spell an LED's other upstream names (U56 Phase 6), the names a design may use.
+
+    A name upstream gives several resources carries its number (``user_led(1)``);
+    one on an RGB LED, the channel it drives (``user_ledr_n (r)``).
+    """
+    names = [str(a.get("name", "")) for a in aliases]
+    parts = []
+    for alias, name in zip(aliases, names, strict=True):
+        text = f"{name}({alias.get('number', 0)})" if names.count(name) > 1 else name
+        if alias.get("channel"):
+            text += f" ({alias['channel']})"
+        parts.append(text)
+    return ", ".join(parts)
 
 
 class Tooltip:

@@ -7,14 +7,18 @@ the litex and amaranth sync parsers feed.
 """
 
 import copy
+from typing import Any
 
 import pytest
 from framework_conventions import (
+    LedView,
     RoleEntry,
     build_bank,
     build_convention,
+    build_led_banks,
     group_by_name,
     multi_pin_shape,
+    plan_led_aliases,
     reconcile_framework_polarity,
 )
 
@@ -368,3 +372,106 @@ def test_split_bits_never_choose_the_bank():
     ]
     assert build_bank(entries) == {"name": "user_led", "width": 1}
     assert build_bank([e for e in entries if e.split]) is None
+
+
+# ── aliases and channel maps (U56 Phase 6, D-1, defect 25) ──────────────────────
+
+
+def _view(*pins: str, rgb: bool = False) -> LedView:
+    return LedView(tuple(pins), rgb)
+
+
+def _bank(entries: list[RoleEntry]) -> dict[str, Any]:
+    bank = build_bank(entries)
+    assert bank is not None
+    return bank
+
+
+def test_a_second_name_on_one_pin_is_an_alias_of_the_first():
+    # Amaranth iCEBreaker: led 0/1 on pins 11/37, then led_r/led_g on the same pins.
+    plan, overlaps = plan_led_aliases([_view("11"), _view("37"), _view("11"), _view("37")])
+    assert (plan, overlaps) == ({2: (0, None), 3: (1, None)}, [])
+
+
+def test_a_name_on_an_rgb_pin_is_that_channel_wherever_it_is_declared():
+    # OrangeCrab: user_led 0-2 on the rgb_led's r, g, b pins; the site may come last.
+    leds = [_view("K4"), _view("M3"), _view("J3"), _view("K4", "M3", "J3", rgb=True)]
+    plan, overlaps = plan_led_aliases(leds)
+    assert (plan, overlaps) == ({0: (3, 0), 1: (3, 1), 2: (3, 2)}, [])
+
+
+def test_three_names_on_one_pin_are_one_channel():
+    # iCE40UP5K EVN: user_led_n and user_ledb_n are both the RGB LED's blue.
+    leds = [_view("39"), _view("39"), _view("40"), _view("41"), _view("41", "40", "39", rgb=True)]
+    plan, _ = plan_led_aliases(leds)
+    assert plan == {0: (4, 2), 1: (4, 2), 2: (4, 1), 3: (4, 0)}
+
+
+def test_other_shared_pins_merge_nothing_and_are_reported():
+    rgb_overlap = [_view("A", "B", "C", rgb=True), _view("C", "D", "E", rgb=True)]
+    assert plan_led_aliases(rgb_overlap) == ({}, [1])
+    whole = [_view("A"), _view("A", "B")]  # a multi-pin resource kept whole (D-3)
+    assert plan_led_aliases(whole) == ({}, [1])
+    assert plan_led_aliases([_view("A"), _view("B")]) == ({}, [])  # different pins
+
+
+def test_a_bank_carries_a_channel_map_only_where_bit_k_is_not_channel_k():
+    aligned = [RoleEntry("led", "user_led", k, False, channel=k) for k in range(3)]
+    assert build_bank(aligned) == {"name": "user_led", "width": 3}
+    # ZCU216: each user_led is its RGB site's green channel.
+    green = [RoleEntry("led", "user_led", k, False, channel=1 + 3 * k) for k in range(3)]
+    assert _bank(green)["channels"] == [1, 4, 7]
+    # ECP5 EVN numbers its DIP switches from 1: bit 0 reaches no switch.
+    dip = [RoleEntry("switch", "user_dip_btn", k, False, channel=k - 1) for k in range(1, 4)]
+    assert build_bank(dip) == {"name": "user_dip_btn", "width": 4, "channels": [None, 0, 1, 2]}
+    # A parser that gives no channels gets no map.
+    assert "channels" not in _bank([RoleEntry("led", "user_led", 1, False)])
+
+
+def test_a_cluster_lists_names_alphabetically_and_maps_them_to_the_board():
+    # Basys 3-style directional buttons, declared btnu, btnd, btnc.
+    entries = [
+        RoleEntry("button", "user_btnu", 0, False, channel=0),
+        RoleEntry("button", "user_btnd", 0, False, channel=1),
+        RoleEntry("button", "user_btnc", 0, False, channel=2),
+    ]
+    bank = _bank(entries)
+    assert bank["names"] == ["user_btnc", "user_btnd", "user_btnu"]
+    assert bank["channels"] == [2, 1, 0]
+
+
+def test_a_cluster_never_holds_two_names_of_one_led():
+    entries = [
+        RoleEntry("led", "user_led_n", 0, False, channel=2),
+        RoleEntry("led", "user_ledb_n", 0, False, channel=2),
+        RoleEntry("led", "user_ledg_n", 0, False, channel=1),
+    ]
+    bank = _bank(entries)
+    assert bank["names"] == ["user_led_n", "user_ledg_n"]
+    assert bank["channels"] == [2, 1]
+
+
+def test_every_other_led_name_is_a_bank_of_its_own():
+    entries = [
+        RoleEntry("led", "led", 0, False, channel=0),
+        RoleEntry("led", "led", 1, False, channel=1),
+        RoleEntry("led", "led_r", 0, False, channel=0),
+        RoleEntry("led", "user_led2", 0, False, split=True, channel=2),
+        RoleEntry("rgb_led", "rgb_led", 0, False, pins_per_bit=3, channel=3),
+    ]
+    primary = build_bank(entries)
+    assert primary == {"name": "led", "width": 2}
+    assert build_led_banks(entries, primary) == [
+        {"name": "led_r", "width": 1, "channels": [0]},
+        {"name": "user_led2", "width": 1, "channels": [2]},  # a split group (D-3)
+    ]
+
+
+def test_a_board_whose_only_leds_are_split_still_gets_a_convention():
+    entries = [RoleEntry("led", "user_led", k, False, split=True, channel=k) for k in range(4)]
+    conv = build_convention("litex", "clk25", entries, [], [], description="d")
+    assert conv is not None
+    assert "leds" not in conv["litex"]
+    assert conv["litex"]["led_banks"] == [
+        {"name": "user_led", "width": 4, "channels": [0, 1, 2, 3]}
+    ]

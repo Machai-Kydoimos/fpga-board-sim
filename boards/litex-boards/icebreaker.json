@@ -25,7 +25,13 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "aliases": [
+        {
+          "name": "user_ledr_n",
+          "number": 0
+        }
+      ]
     },
     {
       "name": "led",
@@ -38,33 +44,13 @@
       "connector": null,
       "attrs": {
         "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led",
-      "number": 0,
-      "pins": [
-        "11"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
-    },
-    {
-      "name": "led",
-      "number": 0,
-      "pins": [
-        "37"
-      ],
-      "direction": "o",
-      "inverted": false,
-      "connector": null,
-      "attrs": {
-        "IOSTANDARD": "LVCMOS33"
-      }
+      },
+      "aliases": [
+        {
+          "name": "user_ledg_n",
+          "number": 0
+        }
+      ]
     }
   ],
   "buttons": [
@@ -93,6 +79,24 @@
         "width": 2,
         "active_low": true
       },
+      "led_banks": [
+        {
+          "name": "user_ledr_n",
+          "width": 1,
+          "active_low": true,
+          "channels": [
+            0
+          ]
+        },
+        {
+          "name": "user_ledg_n",
+          "width": 1,
+          "active_low": true,
+          "channels": [
+            1
+          ]
+        }
+      ],
       "naming": "framework-derived",
       "buttons": {
         "name": "user_btn_n",
@@ -106,7 +110,7 @@
     "origin": "litex-boards",
     "upstream_file": "icebreaker.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T20:22:45.944021+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T01:02:17.841769+00:00"
   }
 }

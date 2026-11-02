@@ -52,6 +52,15 @@
         "name": "user_led",
         "width": 1
       },
+      "led_banks": [
+        {
+          "name": "serial_rgb_led_dout",
+          "width": 1,
+          "channels": [
+            1
+          ]
+        }
+      ],
       "naming": "framework-derived"
     }
   },
@@ -60,7 +69,7 @@
     "origin": "litex-boards",
     "upstream_file": "colorlight_i9plus.py",
     "upstream_class": "Platform",
-    "sync_commit": "8bf5de766fed9b89fdb265b17d2becc08039e9d1",
-    "sync_timestamp": "2026-11-01T03:02:02.821936+00:00"
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T01:02:17.841769+00:00"
   }
 }

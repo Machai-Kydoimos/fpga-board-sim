@@ -188,6 +188,22 @@
         "name": "user_led",
         "width": 2
       },
+      "led_banks": [
+        {
+          "name": "sfp_led",
+          "width": 8,
+          "channels": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ]
+        }
+      ],
       "naming": "framework-derived",
       "buttons": {
         "name": "user_btn",
@@ -201,6 +217,6 @@
     "upstream_file": "digilent_netfpga_sume.py",
     "upstream_class": "Platform",
     "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
-    "sync_timestamp": "2026-11-02T00:27:26.809931+00:00"
+    "sync_timestamp": "2026-11-02T01:02:17.841769+00:00"
   }
 }
