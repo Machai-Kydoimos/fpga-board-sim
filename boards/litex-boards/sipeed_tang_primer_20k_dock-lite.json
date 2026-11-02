@@ -1,0 +1,85 @@
+{
+  "name": "Sipeed Tang Primer 20k (dock lite)",
+  "class_name": "SipeedTangPrimer20kDocklitePlatform",
+  "vendor": "Gowin",
+  "device": "GW2A-LV18PG256C8/I7",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk27",
+      "hz": 27000000.0,
+      "pin": "H11",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 27000000.0,
+  "leds": [],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "CARD1:15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "CARD1:163"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    }
+  ],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "CARD1:159"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "CARD1:157"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS15"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "sipeed_tang_primer_20k.py",
+    "upstream_class": "Platform",
+    "upstream_args": {
+      "dock": "lite"
+    },
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T16:24:17.572246+00:00"
+  }
+}

@@ -164,7 +164,10 @@
     "origin": "litex-boards",
     "upstream_file": "antmicro_sodimm_ddr5_tester.py",
     "upstream_class": "Platform",
+    "upstream_args": {
+      "device": "xc7k160tffg676-3"
+    },
     "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
-    "sync_timestamp": "2026-11-02T01:02:17.841769+00:00"
+    "sync_timestamp": "2026-11-02T16:24:17.572246+00:00"
   }
 }

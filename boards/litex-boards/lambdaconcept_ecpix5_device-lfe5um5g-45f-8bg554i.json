@@ -1,0 +1,97 @@
+{
+  "name": "Lambdaconcept Ecpix5 (device LFE5UM5G-45F-8BG554I)",
+  "class_name": "LambdaconceptEcpix5DeviceLFE5UM5G45F8BG554IPlatform",
+  "vendor": "Lattice",
+  "device": "LFE5UM5G-45F-8BG554I",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk100",
+      "hz": 100000000.0,
+      "pin": "K23",
+      "is_default": true
+    },
+    {
+      "name": "clk26",
+      "hz": 26000000.0,
+      "pin": "N22"
+    }
+  ],
+  "default_clock_hz": 100000000.0,
+  "leds": [
+    {
+      "name": "rgb_led",
+      "number": 0,
+      "pins": [
+        "P21",
+        "R23",
+        "P22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 1,
+      "pins": [
+        "K21",
+        "K24",
+        "M21"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 2,
+      "pins": [
+        "U21",
+        "W21",
+        "T24"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "rgb_led",
+      "number": 3,
+      "pins": [
+        "T23",
+        "R21",
+        "T22"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "lambdaconcept_ecpix5.py",
+    "upstream_class": "Platform",
+    "upstream_args": {
+      "device": "LFE5UM5G-45F-8BG554I"
+    },
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T16:24:17.572246+00:00"
+  }
+}
