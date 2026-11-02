@@ -239,7 +239,9 @@ def test_each_upstream_name_stays_together_in_number_order():
     # U56 Phase 2: the board shows a name's LEDs side by side, as the Dock has them.
     b = parse_litex_board(_DOCK, "dock_board.py")[0]
     assert [c["pins"] for c in b["leds"]] == [["C13"], ["A13"], ["N16"], ["N14"], ["T9"]]
-    assert [c["pins"] for c in b["buttons"]] == [["D1"], ["D2"], ["E1"], ["E2"]]
+    # The DIP switches are switches since Phase 5 (D-2); the buttons keep their order.
+    assert [c["pins"] for c in b["switches"]] == [["D1"], ["D2"]]
+    assert [c["pins"] for c in b["buttons"]] == [["E1"], ["E2"]]
 
 
 def test_a_native_bank_is_the_first_bits_of_its_role():
@@ -249,8 +251,8 @@ def test_a_native_bank_is_the_first_bits_of_its_role():
     conv = b["port_conventions"]["litex"]
     assert conv["leds"] == {"name": "led", "width": 4}
     assert [c["pins"] for c in b["leds"][:4]] == [["C13"], ["A13"], ["N16"], ["N14"]]
-    assert conv["buttons"] == {"name": "user_dip_btn", "width": 2}
-    assert [c["pins"] for c in b["buttons"][:2]] == [["D1"], ["D2"]]
+    assert conv["switches"] == {"name": "user_dip_btn", "width": 2}
+    assert [c["pins"] for c in b["switches"][:2]] == [["D1"], ["D2"]]
 
 
 def test_no_simulatable_resources_skipped():
@@ -725,3 +727,110 @@ def test_a_shim_calling_get_io_on_the_platform_class_works():
     """Upstream's deprecated helpers call ``Ext(...).get_io(PlatformClass)`` at module level."""
     shim = _DOCKED_AT_HEAD + '\n_compat = Pmod("pmoda").get_io(GowinPlatform)\n'
     assert read_litex_file(shim, "shim.py", modules=_MODULES).outcome == "boards"
+
+
+# ── DIP switches (D-2) and multi-pin resources (D-3), U56 Phase 5 ───────────────
+
+_VERSA_LIKE = """
+from litex.build.generic_platform import *
+from litex.build.lattice import LatticeECP5Platform
+
+_io = [
+    ("clk100", 0, Pins("P3")),
+    ("user_led", 0, Pins("E16")),
+    ("user_dip_btn", 0, Pins("H2")),
+    ("user_dip_btn", 1, Pins("K3")),
+    ("user_dip_btn", 2, Pins("G3")),
+    ("user_btn", 0, Pins("F2")),
+]
+
+class Platform(LatticeECP5Platform):
+    default_clk_name = "clk100"
+    default_clk_period = 1e9/100e6
+    def __init__(self):
+        LatticeECP5Platform.__init__(self, "LFE5UM5G-45F-8BG381C", _io)
+"""
+
+
+def test_a_dip_switch_is_a_switch_and_its_bank_moves_with_it():
+    # LiteX names them `user_dip_btn`; upstream's own name says DIP, and Amaranth calls
+    # the same parts switches.  The bank keeps its name and width, under switches.
+    b = parse_litex_board(_VERSA_LIKE, "versa_like.py")[0]
+    assert [(c["name"], c["pins"]) for c in b["switches"]] == [
+        ("switch", ["H2"]),
+        ("switch", ["K3"]),
+        ("switch", ["G3"]),
+    ]
+    assert [c["pins"] for c in b["buttons"]] == [["F2"]]
+    conv = b["port_conventions"]["litex"]
+    assert conv["switches"] == {"name": "user_dip_btn", "width": 3}
+    # The wider DIP group hid the real button; now it is the buttons bank.
+    assert conv["buttons"] == {"name": "user_btn", "width": 1}
+
+
+_MULTI_PIN = """
+from litex.build.generic_platform import *
+from litex.build.xilinx import Xilinx7SeriesPlatform
+
+_io = [
+    ("clk100", 0, Pins("H11")),
+    ("user_led", 0, Pins("A1")),
+    ("user_led2", 0, Pins("B1 B2 B3")),
+    ("user_led_rgb", 0,
+        Subsignal("g", Pins("C2")), Subsignal("r", Pins("C1")), Subsignal("b", Pins("C3"))),
+    ("alnum_led", 0,
+        Subsignal("a", Pins("D1")), Subsignal("b", Pins("D2")), Subsignal("dp", Pins("D3"))),
+    ("led_frontpanel", 0, Subsignal("cs_n", Pins("E1")), Subsignal("clk", Pins("E2"))),
+]
+
+class Platform(Xilinx7SeriesPlatform):
+    default_clk_name = "clk100"
+    default_clk_period = 1e9/100e6
+    def __init__(self):
+        Xilinx7SeriesPlatform.__init__(self, "xc7a35t", _io)
+"""
+
+
+def test_a_multi_pin_resource_becomes_one_component_per_pin():
+    outcome = read_litex_file(_MULTI_PIN, "multi_pin.py")
+    leds = outcome.boards[0].board["leds"]
+    assert [(c["name"], c["number"], c["pins"]) for c in leds] == [
+        ("led", 0, ["A1"]),
+        # The XTRX's `user_led2`: three LEDs, numbered after `user_led`'s LED0 rather
+        # than a second LED0 (the labels show the name and the number).
+        ("led", 1, ["B1"]),
+        ("led", 2, ["B2"]),
+        ("led", 3, ["B3"]),
+        # Segments of an alphanumeric display: one LED each.
+        ("alnum_led", 0, ["D1"]),
+        ("alnum_led", 1, ["D2"]),
+        ("alnum_led", 2, ["D3"]),
+        # A bus to an LED driver is not LEDs: one component, as before.
+        ("led_frontpanel", 0, ["E1", "E2"]),
+        # r/g/b sub-signals make one RGB site, in r, g, b order, whatever the name.
+        ("rgb_led", 0, ["C1", "C2", "C3"]),
+    ]
+    assert outcome.warnings == ["unsupported_shape: led_frontpanel 0 (sub-signals cs_n, clk)"]
+    assert all("_split" not in c and "_order" not in c for c in leds)
+
+
+def test_a_split_group_never_moves_the_bank():
+    # D-3: the XTRX's split `user_led2` (3) would outrank `user_led` (1) and break a
+    # design written to it.  Split groups wait for Phase 6.
+    b = parse_litex_board(_MULTI_PIN, "multi_pin.py")[0]
+    assert b["port_conventions"]["litex"]["leds"] == {"name": "user_led", "width": 1}
+
+
+def test_a_multiplexed_resource_upstream_names_plainly_stays_whole():
+    # The ButterStick's `user_led_color` is the color of all seven LEDs (its target
+    # drives it with one constant), not three more LEDs.
+    source = _MULTI_PIN.replace(
+        '("user_led2", 0, Pins("B1 B2 B3"))', '("user_led_color", 0, Pins("T1 R1 U1"))'
+    )
+    outcome = read_litex_file(source, "gsd_butterstick.py")
+    leds = outcome.boards[0].board["leds"]
+    assert ["T1", "R1", "U1"] in [c["pins"] for c in leds]
+    assert (
+        "unsupported_shape: user_led_color 0 (the color lines of the seven user LEDs)"
+        in outcome.warnings
+    )

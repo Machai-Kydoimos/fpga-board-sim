@@ -239,8 +239,10 @@ class ComponentInfo:
 
         The pin-count gate is load-bearing, not defensive: a 1-pin ``rgb_led``
         is a serial addressable LED (WS2812-style, e.g. colorlight_i9plus) and
-        a 4-pin one is RGBW (modretro_chromatic) -- neither is three PWM
-        channels, so both stay ordinary mono boundary bits.
+        a 4-pin one is an RGB LED behind an enable line (modretro_chromatic's
+        ``en``/``r``/``g``/``b``, which the sync keeps whole and lists as an
+        unsupported shape, U56 Phase 5) -- neither is three PWM channels, so both
+        stay ordinary mono boundary bits.
         """
         return self.name == "rgb_led" and len(self.pins) == 3
 

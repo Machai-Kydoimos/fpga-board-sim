@@ -80,6 +80,42 @@ def group_by_name(
     return sorted(items, key=lambda item: (first[name(item)], number(item)))
 
 
+#: A sub-signal name that marks one LED among several (U56 Phase 5, D-3): a segment
+#: letter of an alphanumeric display (the Versa's ``a``..``p`` and ``dp``) or a color
+#: letter (the Alibaba XCKU3P's ``r``/``g``/``h``).  A clock, select, data or enable
+#: line -- ``clk``, ``cs_n``, ``mosi``, ``dat``, ``en`` -- makes a bus, not LEDs.
+_ONE_LED_SUBSIGNAL = re.compile(r"[a-z]|dp")
+
+
+def multi_pin_shape(subsignals: Sequence[tuple[str, int]], direction: str) -> str:
+    """Return how a resource of several pins becomes components (U56 Phase 5, D-3).
+
+    ``subsignals`` lists each sub-signal's name and pin count, and is empty for plain
+    ``Pins("a b c")``.  The answer is one of:
+
+    * ``"rgb"`` -- sub-signals exactly ``r``, ``g`` and ``b``, one pin each: one RGB
+      site, whatever the resource is called (the Efinix Ti60's ``user_led``);
+    * ``"split"`` -- plain pins, or one-pin sub-signals named like segments or
+      colors: one component per pin (Trenz ``gpio_leds``, the Versa's ``alnum_led``);
+    * ``"unsupported"`` -- bidirectional pins, a sub-signal of several pins, or a bus
+      (Siglent's ``cs_n``/``clk``/``mosi``/``oe``).  The resource stays one component,
+      as before, and the sync's ledger says so: a bus or a multiplexed array is not
+      a row of LEDs.
+    """
+    if direction == "io":
+        return "unsupported"
+    if not subsignals:
+        return "split"
+    if any(count != 1 for _, count in subsignals):
+        return "unsupported"
+    names = sorted(name.lower() for name, _ in subsignals)
+    if names == ["b", "g", "r"]:
+        return "rgb"
+    if all(_ONE_LED_SUBSIGNAL.fullmatch(name) for name in names):
+        return "split"
+    return "unsupported"
+
+
 # Normalized net-names that name a "primary" bank -- preferred over a decorated
 # sibling such as ``rgb_led`` when choosing the group a convention advertises.
 _PRIMARY_NETS = ("led", "switch", "button")
@@ -98,6 +134,10 @@ class RoleEntry(NamedTuple):
         with no single declarable ``std_logic`` port (an RGB LED's r/g/b, an
         RGBW's r/g/b/w), so it is not emittable as a native port -- see
         :func:`build_bank`.
+    ``split`` -- the bit came from splitting a multi-pin resource (U56 Phase 5,
+        D-3).  Split groups stay out of bank selection until Phase 6 makes every
+        group a bank: splitting the XTRX boards' 3-pin ``user_led2`` would
+        otherwise replace the ``user_led`` bank a design is written to.
     """
 
     normalized: str
@@ -105,6 +145,7 @@ class RoleEntry(NamedTuple):
     bit: int
     inverted: bool
     pins_per_bit: int = 1
+    split: bool = False
 
 
 def build_bank(entries: list[RoleEntry]) -> dict[str, Any] | None:
@@ -134,9 +175,10 @@ def build_bank(entries: list[RoleEntry]) -> dict[str, Any] | None:
     r/g/b(/w) subsignals -- there is no single declarable ``std_logic`` port for it,
     so advertising one would be fiction.  Such bits are dropped up front; a bank
     left empty (an RGB-only board with no plain LEDs) yields no convention, so the
-    board simply isn't board-native-able -- truth over coverage.
+    board simply isn't board-native-able -- truth over coverage.  Bits split from a
+    multi-pin resource (``split``) are dropped too, so a split never moves a bank.
     """
-    entries = [e for e in entries if e.pins_per_bit <= 1]
+    entries = [e for e in entries if e.pins_per_bit <= 1 and not e.split]
     if not entries:
         return None
     # (A) Prefer a plain-normalized bank, so `rgb_led` yields to `led` and a stray

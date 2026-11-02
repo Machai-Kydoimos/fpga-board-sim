@@ -325,3 +325,51 @@ def test_a_default_clock_upstream_gives_no_frequency_is_marked_assumed():
     data = json.loads(next(iter(generate_board_json({"osc_test.py": source}, "c0ffee").values())))
     assert data["default_clock_hz"] == 12e6
     assert data["default_clock_assumed"] is True
+
+
+# ── multi-pin resources (U56 Phase 5, D-3) ─────────────────────────────────────
+
+_MULTI_PIN_SOURCE = """
+from amaranth.build import *
+from amaranth.vendor import LatticeECP5Platform
+__all__ = ["MultiPinPlatform"]
+class MultiPinPlatform(LatticeECP5Platform):
+    default_clk = "clk100"
+    resources = [
+        Resource("clk100", 0, Pins("P3", dir="i"), Clock(100e6)),
+        *LEDResources(pins="E16 D17", invert=True),
+        Resource("alnum_led", 0,
+            Subsignal("a", PinsN("M20", dir="o")),
+            Subsignal("b", PinsN("L18", dir="o")),
+            Subsignal("dp", Pins("U1", dir="o"))),
+        Resource("led_cathodes", 0, Pins("P19 L18 K18")),
+        Resource("mic_led", 0,
+            Subsignal("clk", Pins("P9", dir="o")),
+            Subsignal("dat", Pins("T9", dir="o"))),
+    ]
+"""
+
+
+def test_multi_pin_resources_split_or_stay_whole_by_shape():
+    from amaranth_parser import read_amaranth_file
+
+    outcome = read_amaranth_file(_MULTI_PIN_SOURCE, "multi_pin.py")
+    leds = outcome.boards[0].board["leds"]
+    assert [(c["name"], c["number"], c["pins"], c["inverted"]) for c in leds] == [
+        ("led", 0, ["E16"], True),
+        ("led", 1, ["D17"], True),
+        # The Versa's segments: one LED each, each with its own pins' polarity.
+        ("alnum_led", 0, ["M20"], True),
+        ("alnum_led", 1, ["L18"], True),
+        ("alnum_led", 2, ["U1"], False),
+        # Bidirectional (Amaranth's default direction) and a bus: whole, as before.
+        ("led_cathodes", 0, ["P19", "L18", "K18"], False),
+        ("mic_led", 0, ["P9", "T9"], False),
+    ]
+    assert outcome.warnings == [
+        "MultiPinPlatform: unsupported_shape: led_cathodes 0 (bidirectional)",
+        "MultiPinPlatform: unsupported_shape: mic_led 0 (sub-signals clk, dat)",
+    ]
+    # The split segments never become the LED bank (D-3); `led` stays it.
+    conv = outcome.boards[0].board["port_conventions"]["amaranth"]
+    assert conv["leds"] == {"name": "led", "width": 2, "active_low": True}
