@@ -13,7 +13,7 @@ Each item lists *why* it matters, *what* to do, *which files* are touched, a rou
 
 ## Current focus
 
-*Updated 2026-11-02 — the live execution view; the tiers below are strategy and delivered
+*Updated 2026-11-03 — the live execution view; the tiers below are strategy and delivered
 history. This section says what is in flight, what is queued in what order, and what was just
 decided. Update it when an arc starts, ships, or changes order.*
 
@@ -23,18 +23,19 @@ decided. Update it when an arc starts, ships, or changes order.*
 > why card IDs were being reserved by cross-references between plan docs. This rule and the
 > ID-allocation note below close that gap.)
 
-### Now — U56, upstream board-sync repair: complete, releasing as v0.24.0
+### Now — U56, upstream board-sync repair: released as v0.24.0
 
-> **Every phase merged by 2026-11-02**, the whole arc, ahead of the peripherals (Rick: "U56 should
-> come next, and we need the full arc"). Its first phase was a security fix: the Amaranth and
-> LiteX syncs read upstream board files by *executing* them, and now **no upstream code is ever
-> executed** (plan decision D-7) — a reader that only parses replaced them. Then stable board
-> identity, a ledger of every skipped file, the parser fixes, upstream's extensions,
-> orphaned-board marking, the bump to today's upstream, multi-pin resources and DIP switches,
-> aliased LEDs, and every upstream-listed version: 441 boards, up from 285. The early
-> `--board <source>/<file>` fix shipped in [#466](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/466).
-> Phase 8, the closeout, releases it as v0.24.0. Plan: [u56_upstream_board_sync_plan.md](plans/u56_upstream_board_sync_plan.md);
-> delivered record: [roadmap_delivered.md](roadmap_delivered.md#u56-upstream-board-sync-repair--faithful-parsers-stable-board-identity-orphaned-boards-).
+> **Released as v0.24.0, "the board-sync release", on 2026-11-03**, every phase merged by
+> 2026-11-02 — the whole arc, ahead of the peripherals (Rick: "U56 should come next, and we
+> need the full arc"). Its first phase was a security fix: the Amaranth and LiteX syncs read
+> upstream board files by *executing* them, and now **no upstream code is ever executed** (plan
+> decision D-7) — a reader that only parses replaced them. Then stable board identity, a ledger
+> of every skipped file, the parser fixes, upstream's extensions, orphaned-board marking, the
+> bump to today's upstream, multi-pin resources and DIP switches, aliased LEDs, and every
+> upstream-listed version: 441 boards, up from 285. The early `--board <source>/<file>` fix
+> shipped in [#466](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/466). Plan:
+> [u56_upstream_board_sync_plan.md](plans/u56_upstream_board_sync_plan.md); delivered record:
+> [roadmap_delivered.md](roadmap_delivered.md#u56-upstream-board-sync-repair--faithful-parsers-stable-board-identity-orphaned-boards-).
 > Next in the queue: U39–U41 → v0.25.0, then D16 → v0.26.0.
 
 ### Still owed — U48–U54 + D17, the classroom arc's open tail
@@ -80,11 +81,12 @@ tagged ≥ 4 days before the first lab. Milestone and issues open per PR as the 
    are multi-file to the core); **U54** (testbench runner) stays out (D-11) and rides the next
    release. Graduates Icebox **P17** (into U48) and **P11** (into U52), and resolves **P13** /
    **P14** in its docs PR.
-2. **U56 — upstream board-sync repair** → v0.24.0, ✅ **complete 2026-11-02**, releasing
-   ([plan](plans/u56_upstream_board_sync_plan.md)) — plan **approved 2026-10-31** and moved ahead
-   of the peripherals the same day as the whole arc (its decision D-5, revised). Its first phase
-   stopped the syncs executing upstream code (D-7). The `--board <source>/<file>` fix shipped early
-   in [#466](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/466). Card: U56 in Part 1 / Tier 2.
+2. **U56 — upstream board-sync repair** → ✅ **v0.24.0, "the board-sync release", released
+   2026-11-03** ([plan](plans/u56_upstream_board_sync_plan.md)) — plan **approved 2026-10-31** and
+   moved ahead of the peripherals the same day as the whole arc (its decision D-5, revised). Its
+   first phase stopped the syncs executing upstream code (D-7). The `--board <source>/<file>` fix
+   shipped early in [#466](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/466). Card: U56
+   in Part 1 / Tier 2.
 3. **U39–U41 board peripherals** → v0.25.0 ([plan](plans/u39_peripherals_plan.md)) — plan **approved
    2026-08-05** (its architecture decisions were locked 2026-07-27); displaced twice, by the
    classroom arc (2026-09-05) and by U56 (2026-10-31), unstarted either way. Full card: U39–U41 in
@@ -119,7 +121,7 @@ The live plans, then executed history (each file carries its own detailed status
 | [u48_classroom_arc_plan_v2.md](plans/u48_classroom_arc_plan_v2.md) | **LIVE — released as v0.23.0 2026-10-26**; open tail: the doc review, §10.2/§10.3, the delivered entries |
 | [u39_peripherals_plan.md](plans/u39_peripherals_plan.md) | **LIVE — approved 2026-08-05**; displaced twice (the classroom arc, then U56) → v0.25.0 |
 | [docs_assets_improvement_plan_v2.md](plans/docs_assets_improvement_plan_v2.md) | **LIVE — decisions resolved 2026-08-05**; split execution: PRs 1–2 ✅, PRs 3–6 with the peripherals arc |
-| [u56_upstream_board_sync_plan.md](plans/u56_upstream_board_sync_plan.md) | **LIVE — complete 2026-11-02**, releasing as v0.24.0; no upstream code is executed (D-7) |
+| [u56_upstream_board_sync_plan.md](plans/u56_upstream_board_sync_plan.md) | executed → v0.24.0; no upstream code is executed (D-7) |
 | [u44_multi_input_plan_v1.md](plans/u44_multi_input_plan_v1.md) | executed → v0.21.0 |
 | [u22_7seg_scan_plan.md](plans/u22_7seg_scan_plan.md) | executed → v0.19.0 |
 | [u9_led_complete_plan.md](plans/u9_led_complete_plan.md) | executed → v0.17.0 + v0.18.0 |
@@ -184,7 +186,7 @@ Still reserved by a live plan, to be filed as full cards / Icebox rows at that a
 
 ## Context
 
-The simulator is mature: ~21,600 LOC across 65 Python modules (≈23,800 incl. `sim/`), 105 test files (3109 tests), multi-platform CI (Linux x64/arm64 · Windows · macOS arm64), two simulator engines surfaced as four selectable backends (GHDL mcode/LLVM/JIT + NVC, U35), 7-segment support including physical scan displays shipped, embedded CPU core systems (6502/Z80) shipped, 285 board definitions from four sources, three UI themes with exact duty-cycle brightness and RGB rendering, performance profiled and tuned (PR #31 / U25 / U34), **v0.23.0 released (2026-10-26)** — the classroom release. *(Counts refreshed 2026-10-26.)*
+The simulator is mature: ~22,200 LOC across 65 Python modules (≈24,500 incl. `sim/`), 115 test files (3673 tests), multi-platform CI (Linux x64/arm64 · Windows · macOS arm64), two simulator engines surfaced as four selectable backends (GHDL mcode/LLVM/JIT + NVC, U35), 7-segment support including physical scan displays shipped, embedded CPU core systems (6502/Z80) shipped, 441 board definitions from four sources, three UI themes with exact duty-cycle brightness and RGB rendering, performance profiled and tuned (PR #31 / U25 / U34), **v0.24.0 released (2026-11-03)** — the board-sync release. *(Counts refreshed 2026-11-03.)*
 
 It is feature-complete for experienced FPGA users, but the codebase and UX have grown organically. Four patterns motivated this roadmap; several are now partly addressed (noted inline):
 
@@ -803,7 +805,7 @@ This document inventories all viable improvements and ranks them by impact.
 
 #### U56. Upstream board-sync repair — faithful parsers, stable board identity, orphaned boards ✅
 
-- ✅ **Complete 2026-11-02**, releasing as v0.24.0 — PR 0
+- ✅ **Complete 2026-11-02, released as v0.24.0 on 2026-11-03** — PR 0
   ([#465](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/465)) and the early `--board` item
   ([#466](https://github.com/Machai-Kydoimos/fpga-board-sim/pull/466)), then one PR per phase:
   phase 0 (the parse-only reader) #469 · 1a #470 · 1b #471 · 1c #472 · 2 #474 · 3 #475 · 4 #476 ·

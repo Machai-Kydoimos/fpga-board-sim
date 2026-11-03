@@ -1,7 +1,7 @@
 # U56 — Upstream board-sync repair: arc plan (faithful parsers, stable identity, orphaned boards)
 
 **Status:** ✅ **COMPLETE — every phase merged by 2026-11-02** (#469–#472, #474–#479 and #482,
-after PR 0 #465 and the early #466); Phase 8, the closeout, releases the arc as v0.24.0. Full
+after PR 0 #465 and the early #466). **Released as v0.24.0 on 2026-11-03.** Full
 delivered record: [`roadmap_delivered.md`](../roadmap_delivered.md#u56-upstream-board-sync-repair--faithful-parsers-stable-board-identity-orphaned-boards-).
 Retained as the decision and evidence record; §12 carries the phase ledger.
 
@@ -1369,7 +1369,7 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
 | 5 | multi-pin, DIP | **yes** | done 2026-11-02 (#477) |
 | 6 | aliases | **yes** | done 2026-11-02 (#478); the review settled one LED under two names: refused, with a message of its own, done in the PR. The same rule for constraint files (one port per pin) follows in its own PR |
 | 7 | versions | **yes** (selector) | done 2026-11-02 (#482); the report settled six decisions (§4.1, §4.7 amended); the review passed the selector and asked for the README's filter example without a count, done in the PR |
-| 8 | closeout + release v0.24.0 | no | closeout PR #483 (2026-11-02); the release PR follows it |
+| 8 | closeout + release v0.24.0 | no | done 2026-11-03: the closeout #483, then the release PR |
 
 ---
 
