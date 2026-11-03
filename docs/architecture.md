@@ -109,15 +109,13 @@ Board definitions are stored as JSON files in `boards/`, organized by source:
 
 - **`boards/amaranth-boards/`** — auto-synced from
   [amaranth-boards](https://github.com/amaranth-lang/amaranth-boards) via
-  `scripts/sync_amaranth_boards.py` (~79 boards)
+  `scripts/sync_amaranth_boards.py`
 - **`boards/litex-boards/`** — auto-synced from
   [litex-boards](https://github.com/litex-hub/litex-boards) via
-  `scripts/sync_litex_boards.py` (~167 boards across Xilinx, Intel, Lattice, Gowin,
-  Efinix)
+  `scripts/sync_litex_boards.py` (Xilinx, Intel, Lattice, Gowin, Efinix and more)
 - **`boards/digilent-xdc/`** — auto-synced from
   [Digilent XDC](https://github.com/Digilent/digilent-xdc) via
-  `scripts/sync_digilent_xdc.py` (~26 Digilent boards with `port_conventions` for
-  board-native VHDL mode)
+  `scripts/sync_digilent_xdc.py` (with `port_conventions` for board-native VHDL mode)
 - **`boards/custom/`** — manually maintained boards (new boards go here)
 
 Each subdirectory under `boards/` is a "source." The loader scans all sources and
@@ -159,7 +157,15 @@ platform class, and for LiteX the effective values of the constructor's
 version-selecting parameters (`upstream_args`, e.g. `{"variant": "au"}`).
 `sync_identity.run_sync`, the write path the three syncs share, pairs the produced
 boards with the existing files by identity, so **a board file keeps its name forever**:
-a new identity is named from its upstream file, never from its display name. An existing
+a new identity is named from its upstream file, never from its display name. LiteX
+also builds every **version** a platform file lists besides its default (U56 Phase 7):
+`litex_parser.listed_versions` reads the values from the syntax tree, one constructor
+argument at a time, and each version becomes a board with the version in its file and
+display name (`digilent_arty_variant-a7-100.json`, "Digilent Arty (variant a7-100)").
+A version upstream's own constructor refuses is a ledger warning. A board whose
+upstream file was renamed follows it (U56 Phase 4): when exactly one new board has the
+same FPGA, clocks and I/O, and it matches no other file, the board keeps its file and
+`class_name` and takes the new `upstream_file` and display name. Any other existing
 file that nothing produced is kept and marked orphaned when its upstream file is gone.
 When the file still parses but no longer yields that board, or our parser failed on it,
 the sync **stops** instead of guessing, unless the accept-list

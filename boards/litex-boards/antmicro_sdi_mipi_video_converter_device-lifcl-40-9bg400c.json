@@ -1,0 +1,100 @@
+{
+  "name": "Antmicro Sdi Mipi Video Converter (device LIFCL-40-9BG400C)",
+  "class_name": "AntmicroSdiMipiVideoConverterDeviceLIFCL409BG400CPlatform",
+  "vendor": "Lattice",
+  "device": "LIFCL-40-9BG400C",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk40",
+      "hz": 40000000.0,
+      "pin": "G15",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 40000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "E15"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "led",
+      "number": 1,
+      "pins": [
+        "E16"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [
+    {
+      "name": "switch",
+      "number": 0,
+      "pins": [
+        "F15"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    },
+    {
+      "name": "switch",
+      "number": 1,
+      "pins": [
+        "H10"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk40",
+      "leds": {
+        "name": "user_led",
+        "width": 2
+      },
+      "naming": "framework-derived",
+      "switches": {
+        "name": "user_dip_btn",
+        "width": 2
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "antmicro_sdi_mipi_video_converter.py",
+    "upstream_class": "Platform",
+    "upstream_args": {
+      "device": "LIFCL-40-9BG400C"
+    },
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T16:24:17.572246+00:00"
+  }
+}

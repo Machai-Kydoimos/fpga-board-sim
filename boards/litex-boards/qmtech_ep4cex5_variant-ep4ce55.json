@@ -1,0 +1,87 @@
+{
+  "name": "Qmtech Ep4cex5 (variant ep4ce55)",
+  "class_name": "QmtechEp4cex5Variantep4ce55Platform",
+  "vendor": "Intel",
+  "device": "EP4CE55F23C8",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk50",
+      "hz": 50000000.0,
+      "pin": "T2",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 50000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "E4"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "buttons": [
+    {
+      "name": "button",
+      "number": 0,
+      "pins": [
+        "Y13"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    },
+    {
+      "name": "button",
+      "number": 1,
+      "pins": [
+        "W13"
+      ],
+      "direction": "i",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "3.3-V LVTTL"
+      }
+    }
+  ],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk50",
+      "leds": {
+        "name": "user_led",
+        "width": 1
+      },
+      "naming": "framework-derived",
+      "buttons": {
+        "name": "key",
+        "width": 2
+      }
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "qmtech_ep4cex5.py",
+    "upstream_class": "Platform",
+    "upstream_args": {
+      "variant": "ep4ce55"
+    },
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T16:24:17.572246+00:00"
+  }
+}
