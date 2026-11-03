@@ -118,12 +118,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Snickerdoodle at 100 MHz, instead of an invented 12 MHz. (Roadmap U56, Phase 2.)
 - **Each group of LEDs, buttons and switches stays together, and a native design drives
   the LED it names.** The LiteX sync sorted them by number alone, so differently named
-  groups interleaved: the Tang Nano 20K showed LED0, its WS2812, then LED1–5. Where a
-  design written to LiteX's own port names was split this way, it drove the wrong LED:
-  on the Tang Nano 20K, `led_n(1)` lit the WS2812 and LED5 never lit. This affected 10
-  boards, the Tang Mega 138K Pro among them. Each name's resources now stay together, in
-  number order, and the Amaranth Nexys 4 DDR's switches follow their numbers instead of
-  putting 8 and 9 after 15. On the 18 boards whose order changed, a generic design's
+  groups interleaved: the Tang Nano 20K drew its first LED, then its WS2812, then the
+  other five. Where a design written to LiteX's own port names was split this way, it
+  drove the wrong LED: on the Tang Nano 20K, `led_n(1)` lit the WS2812 and the last LED
+  never lit. This affected 10 boards, the Tang Mega 138K Pro among them. Each name's
+  resources now stay together, in number order, and the Amaranth Nexys 4 DDR's switches
+  follow their numbers instead of putting 8 and 9 after 15. On the 18 boards whose order changed, a generic design's
   `led(k)`, `btn(k)` or `sw(k)` can now reach a different LED, button or switch than
   before: it follows the order the board shows. (Roadmap U56, Phase 2.)
 - **DIP switches are switches.** LiteX names its DIP switches `user_dip_btn`, so nine
