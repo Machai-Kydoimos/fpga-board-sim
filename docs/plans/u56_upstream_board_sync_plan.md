@@ -1416,7 +1416,10 @@ revised: the whole arc, with no release at the Phase 4 checkpoint).
   follow-up; it improves the message without changing data (decision 4). Appendix B.6 now lists 20
   twins; none of the six added on 2026-10-31 carries a canonical block.
 - Multiplexed LED matrices (ButterStick `rgb_leds_muxed`, Supercon badge `led_cathodes`) as a scan
-  model — a new card if wanted.
+  model — a new card if wanted. Filed as Icebox **P38** at the closeout (2026-11-03).
+- Found during the arc and filed at the closeout (2026-11-03): **P39**, an unresolved LED bit
+  freezes the whole LED word; **P40**, a warning for a signal with two drivers; **P41**, labels
+  built from a name's suffix ("N0", "10").
 - Acorn clock — upstream #934.
 - 18-switch custom boards (DE2-115, VEEK-MT2) exceed the CPU designs' 16-bit switch window; the
   firmware reads only `sw(7:0)`; pre-existing and unrelated.
