@@ -162,7 +162,10 @@ also builds every **version** a platform file lists besides its default (U56 Pha
 `litex_parser.listed_versions` reads the values from the syntax tree, one constructor
 argument at a time, and each version becomes a board with the version in its file and
 display name (`digilent_arty_variant-a7-100.json`, "Digilent Arty (variant a7-100)").
-A version upstream's own constructor refuses is a ledger warning. An existing
+A version upstream's own constructor refuses is a ledger warning. A board whose
+upstream file was renamed follows it (U56 Phase 4): when exactly one new board has the
+same FPGA, clocks and I/O, and it matches no other file, the board keeps its file and
+`class_name` and takes the new `upstream_file` and display name. Any other existing
 file that nothing produced is kept and marked orphaned when its upstream file is gone.
 When the file still parses but no longer yields that board, or our parser failed on it,
 the sync **stops** instead of guessing, unless the accept-list
