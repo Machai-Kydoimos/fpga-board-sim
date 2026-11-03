@@ -1,0 +1,56 @@
+{
+  "name": "Krtkl Snickerdoodle (variant z7-20)",
+  "class_name": "KrtklSnickerdoodleVariantz720Platform",
+  "vendor": "Xilinx",
+  "device": "xc7z020-clg400-3",
+  "package": "",
+  "clocks": [
+    {
+      "name": "clk100",
+      "hz": 100000000.0,
+      "pin": "H16",
+      "is_default": true
+    }
+  ],
+  "default_clock_hz": 100000000.0,
+  "leds": [
+    {
+      "name": "led",
+      "number": 0,
+      "pins": [
+        "G14"
+      ],
+      "direction": "o",
+      "inverted": false,
+      "connector": null,
+      "attrs": {
+        "IOSTANDARD": "LVCMOS33"
+      }
+    }
+  ],
+  "buttons": [],
+  "switches": [],
+  "seven_seg": null,
+  "port_conventions": {
+    "litex": {
+      "description": "LiteX platform port names (auto-derived from the litex-boards _io file)",
+      "clk": "clk100",
+      "leds": {
+        "name": "user_led",
+        "width": 1
+      },
+      "naming": "framework-derived"
+    }
+  },
+  "$schema": "../schema/board.schema.json",
+  "source": {
+    "origin": "litex-boards",
+    "upstream_file": "krtkl_snickerdoodle.py",
+    "upstream_class": "Platform",
+    "upstream_args": {
+      "variant": "z7-20"
+    },
+    "sync_commit": "97186cfc90cca23baa34680c520d2c04bbf6b828",
+    "sync_timestamp": "2026-11-02T16:24:17.572246+00:00"
+  }
+}

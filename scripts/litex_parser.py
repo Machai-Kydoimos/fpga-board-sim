@@ -1094,6 +1094,113 @@ def _effective_version(version: Mapping[str, Any], instance: object) -> dict[str
     }
 
 
+def _dict_keys(node: ast.expr) -> list[object] | None:
+    """Return the keys of a dict literal, or ``None`` unless every key is a plain constant."""
+    if not isinstance(node, ast.Dict):
+        return None
+    keys: list[object] = [k.value for k in node.keys if isinstance(k, ast.Constant)]
+    return keys if len(keys) == len(node.keys) else None
+
+
+def _init_of(tree: ast.Module, class_name: str) -> ast.FunctionDef | None:
+    """Return the ``__init__`` a class runs: its own, else the nearest in-file base's."""
+    classes = {c.name: c for c in tree.body if isinstance(c, ast.ClassDef)}
+    cls, seen = classes.get(class_name), set()
+    while cls is not None and cls.name not in seen:
+        seen.add(cls.name)
+        for stmt in cls.body:
+            if isinstance(stmt, ast.FunctionDef) and stmt.name == "__init__":
+                return stmt
+        base = next((b.id for b in cls.bases if isinstance(b, ast.Name) and b.id in classes), "")
+        cls = classes.get(base)
+    return None
+
+
+def listed_versions(source: str, class_name: str) -> dict[str, list[Any]]:
+    """Return the values upstream's own code lists for each version parameter (plan §4.7).
+
+    Read from the syntax tree; nothing runs (D-7).  In the ``__init__`` of *class_name*,
+    for each version parameter (``VERSION_PARAMS``) it takes:
+
+    * the keys of a dict literal indexed by it, inline or bound to a module-level name:
+      Wukong's ``{1: _io_v1, 2: _io_v2}[revision]``, Tang's ``docks[dock]``;
+    * a value it is compared equal to: ZTEX's ``expansion == "sbus"``;
+    * the values it is checked against with ``in``: Machdyne Schoko's ``assert revision
+      in ["v1", "v2"]``, whose ``v2`` is otherwise only the else branch (decided
+      2026-11-02, with ``device`` and ``kgates`` joining the parameters).
+
+    Values are strings and numbers, in first-seen order.  A parameter upstream lists no
+    values for -- a free-form ``device=`` -- is absent.
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return {}
+    init = _init_of(tree, class_name)
+    if init is None:
+        return {}
+    taken = {a.arg for a in (*init.args.args, *init.args.kwonlyargs)}
+    params = {p for p in VERSION_PARAMS if p in taken}
+    module_dicts: dict[str, list[object]] = {}
+    for stmt in tree.body:
+        if (
+            isinstance(stmt, ast.Assign)
+            and len(stmt.targets) == 1
+            and isinstance(stmt.targets[0], ast.Name)
+        ):
+            keys = _dict_keys(stmt.value)
+            if keys is not None:
+                module_dicts[stmt.targets[0].id] = keys
+
+    found: dict[str, list[object]] = {}
+
+    def param(node: ast.expr) -> str | None:
+        return node.id if isinstance(node, ast.Name) and node.id in params else None
+
+    for node in ast.walk(init):
+        if isinstance(node, ast.Subscript) and (p := param(node.slice)):
+            keys = _dict_keys(node.value)
+            if keys is None and isinstance(node.value, ast.Name):
+                keys = module_dicts.get(node.value.id)
+            found.setdefault(p, []).extend(keys or [])
+        elif isinstance(node, ast.Compare) and len(node.ops) == 1:
+            left, right = node.left, node.comparators[0]
+            if isinstance(node.ops[0], ast.Eq):
+                for x, y in ((left, right), (right, left)):
+                    if (p := param(x)) and isinstance(y, ast.Constant):
+                        found.setdefault(p, []).append(y.value)
+            elif isinstance(node.ops[0], ast.In) and (p := param(left)):
+                if isinstance(right, ast.List | ast.Tuple | ast.Set):
+                    found.setdefault(p, []).extend(
+                        e.value for e in right.elts if isinstance(e, ast.Constant)
+                    )
+    return {
+        p: list(dict.fromkeys(v for v in values if _is_version_value(v)))
+        for p, values in found.items()
+        if any(_is_version_value(v) for v in values)
+    }
+
+
+def _is_version_value(value: object) -> bool:
+    return isinstance(value, str | int | float) and not isinstance(value, bool)
+
+
+def version_args(filename: str, text: str, outcome: ParseOutcome) -> list[dict[str, Any]]:
+    """Return the constructor arguments of each listed version but the default (§4.7, D-4).
+
+    One parameter at a time, the others at their defaults (decided 2026-11-02): a
+    combination may be one upstream refuses, and every listed value is reached this way.
+    A value that resolves to the default's identity (``device="12F"`` against its full
+    part number) is built once more and dropped by the sync as the same board.
+    """
+    del filename  # the reader already named the file; the class comes from the outcome
+    args: list[dict[str, Any]] = []
+    for board in outcome.boards:
+        for name, values in listed_versions(text, board.upstream_class).items():
+            args.extend({name: v} for v in values if v != board.upstream_args.get(name))
+    return args
+
+
 def _platform_attr(instance: object, platform_class: type, name: str) -> object:
     """Return *name* as the constructor left it on *instance*, else the class's, else ``None``.
 

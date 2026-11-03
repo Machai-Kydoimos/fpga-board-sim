@@ -4,8 +4,9 @@ Every board a sync produces has an identity -- ``(origin, upstream_file, upstrea
 upstream_args)`` -- recorded in its file's ``source`` block, and a board file keeps its
 name forever once it has one. :func:`run_sync` is the write path all three syncs share:
 
-1. read every upstream file (the parser returns a :class:`~sync_common.ParseOutcome`), and
-   build the identities already on disk that the default construction does not cover;
+1. read every upstream file (the parser returns a :class:`~sync_common.ParseOutcome`),
+   build every version it lists besides the default (§4.7, LiteX), and build the
+   identities already on disk that neither covers;
 2. pair the produced boards with the existing files by identity -- most specific first,
    the default construction preferred -- or, for a file written before identities
    existed, by the file name today's naming gives it; then follow renames: a file whose
@@ -42,8 +43,13 @@ from sync_common import (
     write_outputs,
 )
 
-#: Constructor parameters that select a board version (§4.1); Phase 7 enumerates their values.
-#: Not ``device``, ``toolchain`` or ``speedgrade``: part variants are D-4's business.
+#: Constructor parameters that select a board version (§4.1); Phase 7 builds every value
+#: upstream lists for them (§4.7).  ``kgates`` and ``device`` joined on 2026-11-02 (Rick,
+#: Phase 7 decision 2): where upstream lists a part size -- Machdyne's ``assert device in
+#: ["12F", "25F", "45F", "85F"]`` -- it is a version in D-4's sense, as the Amaranth ULX3S's
+#: four part sizes are four boards.  A ``device`` nothing lists only records its value.
+#: Not ``toolchain`` (how a board is built, not which board), nor a setting of one board:
+#: ``vccio``, ``io_voltage``, ``device_version`` (decided 2026-11-02).
 VERSION_PARAMS = (
     "variant",
     "revision",
@@ -54,6 +60,8 @@ VERSION_PARAMS = (
     "baseboard",
     "som",
     "board",
+    "kgates",
+    "device",
 )
 
 ACCEPT_LIST = Path(__file__).with_name("board_sync_accepted.toml")
@@ -64,6 +72,10 @@ ACCEPT_SCHEMA = Path(__file__).with_name("board_sync_accepted.schema.json")
 _CONTENT_KEYS = ("leds", "switches", "buttons", "seven_seg", "clocks", "device")
 
 Reader = Callable[[str, str, Mapping[str, Any] | None], ParseOutcome]
+
+#: The versions one upstream file lists besides its default construction (§4.7): given
+#: the file's name, its text and the default outcome, the constructor arguments to build.
+Versions = Callable[[str, str, ParseOutcome], list[dict[str, Any]]]
 
 
 def summarize(report: SyncReport) -> str:
@@ -166,14 +178,63 @@ def _load_existing(output_dir: Path, origin: str, classless: bool) -> list[_Exis
     return existing
 
 
+def _args_key(args: Mapping[str, Any]) -> str:
+    return json.dumps(dict(args), sort_keys=True, default=str)
+
+
+def _construct_versions(
+    read: Reader,
+    filename: str,
+    text: str,
+    outcome: ParseOutcome,
+    listed: list[dict[str, Any]],
+) -> list[ProducedBoard]:
+    """Build every version upstream lists for *filename* besides the default (§4.7, D-4).
+
+    One parameter at a time (decided 2026-11-02): a combination may be one upstream
+    refuses.  A version upstream's own constructor refuses -- the ColorLight i5 takes
+    revision 7.2 only for the i9, whose own build reaches 7.2 -- is a ``version_unbuilt``
+    warning, not an error: the file reads, its default built.  A version that resolves
+    to an identity already built is that board again and is dropped: Antmicro's
+    ``device="LIFCL"`` is an alias of its default part.
+    """
+    built: list[ProducedBoard] = []
+    if outcome.outcome != "boards":
+        return built
+    seen = {(b.upstream_class, _args_key(b.upstream_args)) for b in outcome.boards}
+    for args in listed:
+        try:
+            alternative = read(filename, text, args)
+        except Exception as exc:  # a parser bug: report the version, never crash the sync
+            alternative = ParseOutcome(outcome="error", detail=normalize_error(exc))
+        if alternative.outcome != "boards" or not alternative.boards:
+            why = alternative.detail.split(":")[0] if alternative.outcome == "error" else ""
+            detail = why or alternative.detail or alternative.outcome
+            outcome.warnings.append(f"version_unbuilt: {_args_key(args)}: {detail}")
+            continue
+        for board in alternative.boards:
+            key = (board.upstream_class, _args_key(board.upstream_args))
+            if key in seen:
+                continue
+            seen.add(key)
+            board.default = False
+            built.append(board)
+    return built
+
+
 def _construct_recorded(
     read: Reader,
     filename: str,
     text: str,
     outcome: ParseOutcome,
     existing: list[_Existing],
+    built: list[ProducedBoard] | None = None,
 ) -> list[ProducedBoard]:
-    """Build each on-disk identity of *filename* that the default construction misses (§4.1)."""
+    """Build each on-disk identity of *filename* that nothing built so far covers (§4.1).
+
+    *built* is what this sync already made of the file besides its default -- the
+    versions it lists (§4.7) -- so a listed version is read once, not twice.
+    """
     extra: list[ProducedBoard] = []
     if outcome.outcome != "boards" or any(w.startswith("io_fallback") for w in outcome.warnings):
         return extra  # while the fallback exists, a failed default yields its one board only
@@ -185,7 +246,7 @@ def _construct_recorded(
         if any(
             b.upstream_class == entry.upstream_class
             and _args_match(entry.upstream_args, b.upstream_args)
-            for b in outcome.boards + extra
+            for b in outcome.boards + (built or []) + extra
         ):
             continue
         try:
@@ -274,9 +335,27 @@ def _follow_renames(
     }
 
 
+def _spell(value: object) -> str:
+    """Spell a version value as file and class names do: ``+`` is ``plus``.
+
+    The file-name rule drops ``+``, so Alchitry Au ``variant="au+"`` would have been
+    named after the *other* variant, ``au``, and a ``cle-215+`` beside ``cle-215`` would
+    clash (decided 2026-11-02).  Display names keep the value as written.
+    """
+    return str(value).replace("+", "plus")
+
+
+def _version_tag(board: ProducedBoard, keys: list[str] | tuple[str, ...]) -> str:
+    """Return the version as a ``class_name`` spells it: ``Revision1``, ``Variantauplus``."""
+    return "".join(
+        key.title().replace("_", "") + re.sub(r"[^0-9A-Za-z]", "", _spell(board.upstream_args[key]))
+        for key in keys
+    )
+
+
 def _version_suffix(board: ProducedBoard, keys: list[str]) -> str:
     return "".join(
-        f"_{sanitize_filename(key)}-{sanitize_filename(str(board.upstream_args[key]))}"
+        f"_{sanitize_filename(key)}-{sanitize_filename(_spell(board.upstream_args[key]))}"
         for key in keys
     )
 
@@ -337,10 +416,7 @@ def _mark_version(board: ProducedBoard, keys: list[str]) -> None:
     "Qmtech Wukong (revision 1)".
     """
     data = board.board
-    tag = "".join(
-        key.title().replace("_", "") + re.sub(r"[^0-9A-Za-z]", "", str(board.upstream_args[key]))
-        for key in keys
-    )
+    tag = _version_tag(board, keys)
     data["class_name"] = f"{str(data.get('class_name', '')).removesuffix('Platform')}{tag}Platform"
     spelled = ", ".join(f"{key} {board.upstream_args[key]}" for key in keys)
     data["name"] = f"{data.get('name', '')} ({spelled})"
@@ -361,12 +437,7 @@ def _restore_version(board: ProducedBoard, existing_class: str) -> None:
     base = produced.removesuffix("Platform")
     for size in range(1, len(keys) + 1):
         for combo in itertools.combinations(keys, size):
-            tag = "".join(
-                key.title().replace("_", "")
-                + re.sub(r"[^0-9A-Za-z]", "", str(board.upstream_args[key]))
-                for key in combo
-            )
-            if f"{base}{tag}Platform" == existing_class:
+            if f"{base}{_version_tag(board, combo)}Platform" == existing_class:
                 _mark_version(board, list(combo))
                 return
     board.board["class_name"] = existing_class
@@ -398,13 +469,15 @@ def run_sync(
     color_registry: dict[str, Any] | None = None,
     classless: bool = False,
     file_stem: Callable[[str], str] = _plain_stem,
+    versions: Versions | None = None,
 ) -> SyncReport:
     """Read every upstream file, decide each board's file, and write (module docstring).
 
     ``classless`` is for a source whose files define no classes (Digilent XDC): its
     identity is ``(origin, upstream_file)``, so every existing file already has one.
     ``file_stem`` turns an upstream file name into the stem a new board's file is named
-    after (Digilent drops the ``-Master`` every XDC file name ends in).
+    after (Digilent drops the ``-Master`` every XDC file name ends in).  ``versions``
+    lists what else to build of a file besides its default construction (§4.7, LiteX).
     """
     acceptances = [a for a in (accept_list or []) if a.source == origin]
     used: set[Acceptance] = set()
@@ -418,7 +491,10 @@ def run_sync(
         except Exception as exc:  # a parser bug must still reach the ledger
             outcome = ParseOutcome(outcome="error", detail=normalize_error(exc))
         produced.extend(outcome.boards)
-        produced.extend(_construct_recorded(read, filename, text, outcome, existing))
+        listed = versions(filename, text, outcome) if versions and outcome.boards else []
+        built = _construct_versions(read, filename, text, outcome, listed)
+        produced.extend(built)
+        produced.extend(_construct_recorded(read, filename, text, outcome, existing, built))
         outcomes[filename] = outcome
 
     pairs, unpaired = _pair(existing, produced)

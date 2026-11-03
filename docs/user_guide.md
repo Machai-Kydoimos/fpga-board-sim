@@ -307,7 +307,7 @@ help overlay covering the workflow, keyboard shortcuts, and the VHDL design cont
 
 ### 1. Select a board
 
-A list of 355 FPGA boards appears, **sorted by name**. Type to filter, click or
+A list of 441 FPGA boards appears, **sorted by name**. Type to filter, click or
 press **Enter** to select — the cursor starts on the first row, so the keyboard
 alone works from the first frame.
 
@@ -321,6 +321,12 @@ manufacturers, so they do not match this way.)
 
 The **Sort** dropdown and the component / vendor chips narrow the list further;
 both, and the filter text, persist across sessions.
+
+A board that upstream describes in several **versions** (revisions, variants, docks,
+part sizes) is listed once per version, with the version in its name: "Digilent Arty
+(variant a7-100)" beside "Digilent Arty". Typing the board's name lists them together.
+Some versions differ only in the FPGA part, and a few in nothing the simulator models;
+they are listed anyway, as upstream lists them.
 
 A board tagged **orphaned upstream** is one its source no longer defines: the file
 was removed, the version is gone, or it lists no LED, switch or button any more. A
@@ -382,7 +388,7 @@ presenting the guess as the board's.
   do with its single cursor. The **numpad** digits work too, so a numeric keypad
   becomes a button pad. Each bound button shows its key on its face, and the
   hover tooltip names it as well. Hex covers the whole fleet: the largest board
-  has 13 buttons, and only 5 of 355 have more than 10
+  has 13 buttons, and only 5 of 441 have more than 10
 - **Right-click a button** to **latch** it down hands-free; right-click again to
   release it. A latched button draws in its own color with a small padlock in
   its top-right corner, and combines freely with a live hold — hold it with the mouse *as well*, let the

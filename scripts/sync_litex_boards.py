@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from litex_parser import read_litex_file  # noqa: E402
+from litex_parser import read_litex_file, version_args  # noqa: E402
 from sync_common import (  # noqa: E402
     ParseOutcome,
     ProducedBoard,
@@ -219,6 +219,7 @@ def main() -> int:
             accept_list=load_accept_list(),
             dry_run=args.dry_run,
             describe=describe,
+            versions=version_args,  # every version upstream lists (plan §4.7, Phase 7)
         )
     except SyncFailureError as failure:
         print("\nSync stopped; nothing was written:", file=sys.stderr)
